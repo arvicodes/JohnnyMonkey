@@ -1,0 +1,19 @@
+{
+  "name": "fullstack-app",
+  "version": "1.0.0",
+  "description": "School System Full Stack Application",
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install"
+  },
+  "dependencies": {
+    "@types/react-router-dom": "^5.3.3",
+    "concurrently": "^8.0.1",
+    "react-router-dom": "^7.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18"
+  }
+}
