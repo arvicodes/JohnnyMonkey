@@ -4,6 +4,7 @@ import { PrismaClient } from './generated/prisma';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import learningGroupRoutes from './routes/learningGroups';
+import adminRoutes from './routes/admin';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/learning-groups', learningGroupRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
