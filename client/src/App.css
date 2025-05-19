@@ -1,8 +1,11 @@
 .App {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   min-height: 100vh;
+  width: 98%;
+  margin: 1%;
+  padding: 0;
   background-color: #f5f5f5;
 }
 
@@ -25,7 +28,7 @@
 
 .App-header h1 {
   margin: 0;
-  font-size: 2em;
+  font-size: 1.5em;
 }
 
 nav ul {
@@ -53,41 +56,48 @@ main {
   padding: 20px;
   max-width: 800px;
   margin: 0 auto;
-  font-size: 1.2em;
+  font-size: 1em;
 }
 
 /* Login Styles */
 .login-container {
   background: white;
-  padding: 2rem;
+  padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
+  width: 50%;
+  margin: 2rem auto;
 }
 
 .login-container h1 {
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1.2rem 0;
   color: #333;
   text-align: center;
+  font-size: 1.4rem;
+}
+
+.login-container h2 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   color: #666;
+  font-size: 0.8rem;
 }
 
 .form-group input {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.6rem;
   border: 2px solid #ddd;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 0.85rem;
   text-align: center;
   letter-spacing: 0.1em;
 }
@@ -99,14 +109,14 @@ main {
 
 button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.6rem;
   background-color: #4fa8d5;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 0.85rem;
   cursor: pointer;
-  margin-top: 1rem;
+  margin-top: 0.8rem;
 }
 
 button:hover {
@@ -114,22 +124,23 @@ button:hover {
 }
 
 .message {
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 0.8rem;
+  margin-bottom: 0.8rem;
   border-radius: 4px;
   text-align: center;
   background-color: #f8f9fa;
   color: #666;
+  font-size: 0.8rem;
 }
 
 .login-hint {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
+  margin-top: 1.2rem;
+  padding-top: 0.8rem;
   border-top: 1px solid #eee;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   color: #666;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .user-info {
@@ -138,13 +149,14 @@ button:hover {
 
 .user-info h2 {
   color: #333;
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
+  margin: 0 0 0.8rem 0;
+  font-size: 1.1rem;
 }
 
 .user-info p {
   color: #666;
-  margin: 0.5rem 0;
+  margin: 0.4rem 0;
+  font-size: 0.8rem;
 }
 
 .user-info ul {
@@ -154,11 +166,12 @@ button:hover {
 }
 
 .user-info li {
-  padding: 0.5rem;
-  margin: 0.25rem 0;
+  padding: 0.4rem;
+  margin: 0.2rem 0;
   background-color: #f8f9fa;
   border-radius: 4px;
   color: #666;
+  font-size: 0.8rem;
 }
 
 /* Dashboard Styles */
@@ -168,7 +181,8 @@ button:hover {
 
 .dashboard-welcome {
   color: #666;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
+  font-size: 0.85rem;
 }
 
 .dashboard-content {
@@ -192,19 +206,21 @@ button:hover {
 
 .dashboard-card h3 {
   color: #282c34;
-  margin: 0 0 15px 0;
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
 }
 
 .stat-number {
-  font-size: 2.5em;
+  font-size: 1.8em;
   font-weight: bold;
   color: #61dafb;
-  margin: 10px 0;
+  margin: 8px 0;
 }
 
 .stat-label {
   color: #666;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
 }
 
 .dashboard-card button,
@@ -234,7 +250,8 @@ button:hover {
 
 .dashboard-actions h3 {
   color: #282c34;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  font-size: 1.1rem;
 }
 
 .action-buttons {
@@ -245,8 +262,8 @@ button:hover {
 }
 
 .action-buttons button {
-  padding: 12px 20px;
-  font-size: 15px;
+  padding: 10px 16px;
+  font-size: 0.8rem;
 }
 
 @keyframes App-logo-spin {

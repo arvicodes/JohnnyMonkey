@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import './App.css';
+import TeacherDashboard from './components/TeacherDashboard';
+import StudentDashboard from './components/StudentDashboard';
+import { Snackbar, Alert } from '@mui/material';
 
 interface User {
   id: string;
   name: string;
   role: string;
-  groups: Array<{
-    id: string;
-    name: string;
-  }>;
 }
 
 function App() {
   const [loginCode, setLoginCode] = useState('');
   const [message, setMessage] = useState('');
   const [user, setUser] = useState<User | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +30,9 @@ function App() {
       const data = await response.json();
       
       if (response.ok) {
-        setMessage(data.message);
         setUser(data.user);
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000); // Hide after 3 seconds
       } else {
         setMessage(data.message);
         setUser(null);
@@ -42,54 +43,54 @@ function App() {
     }
   };
 
+  const renderDashboard = () => {
+    if (!user) return null;
+    
+    return user.role === 'TEACHER' ? (
+      <TeacherDashboard userId={user.id} />
+    ) : (
+      <StudentDashboard userId={user.id} />
+    );
+  };
+
   return (
     <div className="App">
-      <div className="login-container">
-        <h1>Login</h1>
-        {message && <div className="message">{message}</div>}
-        
-        {!user ? (
+      {!user ? (
+        <div className="login-container">
+          <h2>Willkommen!</h2>
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label>Login-Code:</label>
               <input
                 type="text"
                 value={loginCode}
                 onChange={(e) => setLoginCode(e.target.value)}
-                placeholder="Code eingeben"
+                placeholder="Login-Code eingeben"
                 required
+                autoFocus
               />
             </div>
             <button type="submit">Anmelden</button>
+            {message && <p className="message">{message}</p>}
           </form>
-        ) : (
-          <div className="user-info">
-            <h2>Willkommen, {user.name}!</h2>
-            <p>Rolle: {user.role === 'TEACHER' ? 'Lehrer' : 'Schüler'}</p>
-            {user.groups.length > 0 && (
-              <>
-                <p>Ihre Gruppen:</p>
-                <ul>
-                  {user.groups.map(group => (
-                    <li key={group.id}>{group.name}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <button onClick={() => { setUser(null); setLoginCode(''); setMessage(''); }}>
-              Ausloggen
-            </button>
-          </div>
-        )}
-
-        {!user && (
-          <div className="login-hint">
-            Beispiel-Codes:<br />
-            Lehrer: TEACH001, TEACH002<br />
-            Schüler: STUD001 bis STUD008
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        renderDashboard()
+      )}
+      
+      <Snackbar
+        open={showSuccessMessage}
+        autoHideDuration={3000}
+        onClose={() => setShowSuccessMessage(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowSuccessMessage(false)} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          Login erfolgreich!
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

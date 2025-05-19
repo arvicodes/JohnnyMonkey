@@ -9,6 +9,7 @@
     "install-all": "npm install && cd client && npm install && cd ../server && npm install"
   },
   "dependencies": {
+    "@mui/icons-material": "^7.1.0",
     "@types/react-router-dom": "^5.3.3",
     "concurrently": "^8.0.1",
     "react-router-dom": "^7.6.0"

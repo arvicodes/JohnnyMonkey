@@ -7,7 +7,7 @@ async function main() {
   const teacher1 = await prisma.user.create({
     data: {
       name: 'Frau Christ',
-      loginCode: 'TEACH001',
+      loginCode: '1',
       role: 'TEACHER',
     },
   })
@@ -54,7 +54,7 @@ async function main() {
   const student1 = await prisma.user.create({
     data: {
       name: 'Emma Schmidt',
-      loginCode: 'STUD001',
+      loginCode: 'S1',
       role: 'STUDENT',
       learningGroups: {
         connect: [{ id: klasse6a.id }],
