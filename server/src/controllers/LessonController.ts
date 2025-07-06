@@ -21,7 +21,8 @@ export const getLessons = async (req: Request, res: Response) => {
     const { topicId } = req.query;
     if (!topicId) return res.status(400).json({ error: 'TopicId fehlt' });
     const lessons = await prisma.lesson.findMany({
-      where: { topicId: String(topicId) }
+      where: { topicId: String(topicId) },
+      orderBy: { order: 'asc' }
     });
     res.json(lessons);
   } catch (error) {

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
+import { LearningGroupPage } from './pages/LearningGroupPage';
 import { Snackbar, Alert } from '@mui/material';
 
 interface User {
@@ -10,16 +12,17 @@ interface User {
   role: string;
 }
 
-function App() {
+function AppContent() {
   const [loginCode, setLoginCode] = useState('');
   const [message, setMessage] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:3002/api/auth/login', {
+      const response = await fetch('http://localhost:3005/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,40 +46,53 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    navigate('/');
+  };
+
   const renderDashboard = () => {
-    if (!user) return null;
+    if (!user) return <Navigate to="/" />;
     
     return user.role === 'TEACHER' ? (
-      <TeacherDashboard userId={user.id} />
+      <TeacherDashboard userId={user.id} onLogout={handleLogout} />
     ) : (
-      <StudentDashboard userId={user.id} />
+      <StudentDashboard userId={user.id} onLogout={handleLogout} />
     );
   };
 
   return (
     <div className="App">
-      {!user ? (
-        <div className="login-container">
-          <h2>Willkommen!</h2>
-          <form onSubmit={handleLogin}>
-            <div className="form-group">
-              <input
-                type="text"
-                value={loginCode}
-                onChange={(e) => setLoginCode(e.target.value)}
-                placeholder="Login-Code eingeben"
-                required
-                autoFocus
-              />
-            </div>
-            <button type="submit">Anmelden</button>
-            {message && <p className="message">{message}</p>}
-          </form>
-        </div>
-      ) : (
-        renderDashboard()
-      )}
-      
+      <Routes>
+        <Route
+          path="/"
+          element={
+            !user ? (
+              <div className="login-container">
+                <h2>Willkommen!</h2>
+                <form onSubmit={handleLogin}>
+                  <div className="form-group">
+                    <input
+                      type="text"
+                      value={loginCode}
+                      onChange={(e) => setLoginCode(e.target.value)}
+                      placeholder="Login-Code eingeben"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <button type="submit">Anmelden</button>
+                  {message && <p className="message">{message}</p>}
+                </form>
+              </div>
+            ) : (
+              <Navigate to="/dashboard" />
+            )
+          }
+        />
+        <Route path="/dashboard" element={renderDashboard()} />
+        <Route path="/learning-group/:id" element={<LearningGroupPage />} />
+      </Routes>
       <Snackbar
         open={showSuccessMessage}
         autoHideDuration={3000}
@@ -92,6 +108,14 @@ function App() {
         </Alert>
       </Snackbar>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

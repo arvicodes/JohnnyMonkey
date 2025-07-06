@@ -1,0 +1,35 @@
+******* Billing ******
+Also ich habe im Mai meine 150 Tokens für die kostenlose Pro Trial auf meinen Google Account genommen
+
+Jetzt nehme ich im Juni die auf den GitHub Account
+
+Danach die auf ve.christ, auf ve.binsi, auf JohnnyMail auf Seminarmail ... etc. 
+Das müsste über den ganzen Sommer reichen erstmal. Immer wieder in Settings ausloggen und einloggen
+
+Achso: immer nur zwei Wochen Testen, dann ist Ende ... darauf achten
+
+*********** im Ordner Server *************
+sudo pkill -f node && npm run dev 
+
+*********** im Ordner Client / neues Terminal *************
+npm start
+oder 
+npm start | cat
+
+
+
+************Das hier ist der aktuelle Stand*********************
+Server Status: Running successfully on port 3002
+Client Status: Running on port 3004 (to avoid conflicts)
+
+Local:            http://localhost:3003
+On Your Network:  http://172.16.0.139:3003
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+nvm install 20
+nvm use 20
+
+rm -rf node_modules server/node_modules package-lock.json server/package-lock.json
+npm install
+npm install --prefix server
+npx prisma generate --schema=server/prisma/schema.prisma

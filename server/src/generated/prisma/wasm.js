@@ -147,6 +147,7 @@ exports.Prisma.SubjectScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
+  order: 'order',
   teacherId: 'teacherId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -156,6 +157,7 @@ exports.Prisma.BlockScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
+  order: 'order',
   subjectId: 'subjectId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -165,6 +167,7 @@ exports.Prisma.UnitScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
+  order: 'order',
   blockId: 'blockId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -174,6 +177,7 @@ exports.Prisma.TopicScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
+  order: 'order',
   unitId: 'unitId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -183,6 +187,7 @@ exports.Prisma.LessonScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
+  order: 'order',
   topicId: 'topicId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

@@ -5,32 +5,27 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // Get all learning groups for a teacher
-router.get('/teacher/:teacherId', async (req: Request, res: Response) => {
+router.get('/teacher/:id', async (req: Request, res: Response) => {
   try {
     const groups = await prisma.learningGroup.findMany({
-      where: { teacherId: req.params.teacherId },
-      include: {
-        students: true,
-        teacher: true,
-      },
+      where: { teacherId: req.params.id },
+      include: { students: true }
     });
     res.json(groups);
   } catch (error) {
-    console.error('Error fetching teacher groups:', error);
-    res.status(500).json({ message: 'Server-Fehler beim Laden der Lerngruppen' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Create a new learning group
-router.post('/', async (req: Request, res: Response) => {
-  const { name, teacherId } = req.body;
-  
+// Get all learning groups for a student
+router.get('/student/:id', async (req: Request, res: Response) => {
   try {
-    const newGroup = await prisma.learningGroup.create({
-      data: {
-        name,
-        teacher: {
-          connect: { id: teacherId }
+    const groups = await prisma.learningGroup.findMany({
+      where: {
+        students: {
+          some: {
+            id: req.params.id
+          }
         }
       },
       include: {
@@ -38,59 +33,87 @@ router.post('/', async (req: Request, res: Response) => {
         students: true
       }
     });
-    res.status(201).json(newGroup);
+    res.json(groups);
   } catch (error) {
-    console.error('Error creating learning group:', error);
-    res.status(500).json({ message: 'Server-Fehler beim Erstellen der Lerngruppe' });
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get a single learning group by ID
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const group = await prisma.learningGroup.findUnique({
+      where: { id: req.params.id },
+      include: {
+        teacher: true,
+        students: true
+      }
+    });
+
+    if (!group) {
+      return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+    }
+
+    res.json(group);
+  } catch (error) {
+    console.error('Error fetching learning group:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Create a new learning group
+router.post('/', async (req: Request, res: Response) => {
+  const { name, teacherId } = req.body;
+  try {
+    const group = await prisma.learningGroup.create({
+      data: {
+        name,
+        teacher: {
+          connect: { id: teacherId }
+        }
+      },
+      include: { students: true }
+    });
+    res.json(group);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Add students to a learning group
-router.post('/:groupId/students', async (req: Request, res: Response) => {
+router.post('/:id/students', async (req: Request, res: Response) => {
   const { studentIds } = req.body;
-  const { groupId } = req.params;
-
   try {
-    const updatedGroup = await prisma.learningGroup.update({
-      where: { id: groupId },
+    const group = await prisma.learningGroup.update({
+      where: { id: req.params.id },
       data: {
         students: {
           connect: studentIds.map((id: string) => ({ id }))
         }
       },
-      include: {
-        students: true,
-        teacher: true
-      }
+      include: { students: true }
     });
-    res.json(updatedGroup);
+    res.json(group);
   } catch (error) {
-    console.error('Error adding students to group:', error);
-    res.status(500).json({ message: 'Server-Fehler beim Hinzufügen der Schüler' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Remove a student from a learning group
 router.delete('/:groupId/students/:studentId', async (req: Request, res: Response) => {
-  const { groupId, studentId } = req.params;
-
   try {
-    const updatedGroup = await prisma.learningGroup.update({
-      where: { id: groupId },
+    const group = await prisma.learningGroup.update({
+      where: { id: req.params.groupId },
       data: {
         students: {
-          disconnect: { id: studentId }
+          disconnect: { id: req.params.studentId }
         }
       },
-      include: {
-        students: true,
-        teacher: true
-      }
+      include: { students: true }
     });
-    res.json(updatedGroup);
+    res.json(group);
   } catch (error) {
-    console.error('Error removing student from group:', error);
-    res.status(500).json({ message: 'Server-Fehler beim Entfernen des Schülers' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

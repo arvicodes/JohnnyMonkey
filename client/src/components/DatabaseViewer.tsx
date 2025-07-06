@@ -31,6 +31,13 @@ interface LearningGroup {
   students: User[];
 }
 
+interface Subject {
+  id: string;
+  name: string;
+  description?: string;
+  teacher: { id: string; name: string };
+}
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -59,7 +66,7 @@ function TabPanel(props: TabPanelProps) {
 
 const DatabaseViewer: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
-  const [data, setData] = useState<{ users: User[]; learningGroups: LearningGroup[] } | null>(null);
+  const [data, setData] = useState<{ users: User[]; learningGroups: LearningGroup[]; subjects: Subject[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +76,7 @@ const DatabaseViewer: React.FC = () => {
 
   const fetchDatabaseContent = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/admin/db-content');
+      const response = await fetch('http://localhost:3005/api/admin/db-content');
       if (!response.ok) throw new Error('Fehler beim Laden der Daten');
       const result = await response.json();
       setData(result);
@@ -106,6 +113,7 @@ const DatabaseViewer: React.FC = () => {
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="database tables">
           <Tab label="Benutzer" />
           <Tab label="Lerngruppen" />
+          <Tab label="Fächer" />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -196,6 +204,31 @@ const DatabaseViewer: React.FC = () => {
                         />
                       ))}
                     </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Beschreibung</TableCell>
+                  <TableCell>Lehrer</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {data?.subjects?.map((subject) => (
+                  <TableRow key={subject.id}>
+                    <TableCell>{subject.id}</TableCell>
+                    <TableCell>{subject.name}</TableCell>
+                    <TableCell>{subject.description}</TableCell>
+                    <TableCell>{subject.teacher?.name}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

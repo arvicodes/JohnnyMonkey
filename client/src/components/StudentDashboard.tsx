@@ -31,9 +31,10 @@ interface LearningGroup {
 
 interface StudentDashboardProps {
   userId: string;
+  onLogout: () => void;
 }
 
-const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) => {
+const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout }) => {
   const [lerngruppen, setLerngruppen] = useState<LearningGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) => {
   useEffect(() => {
     const fetchLerngruppen = async () => {
       try {
-        const response = await fetch(`http://localhost:3002/api/learning-groups/student/${userId}`);
+        const response = await fetch(`http://localhost:3005/api/learning-groups/student/${userId}`);
         if (!response.ok) {
           throw new Error('Lerngruppen konnten nicht geladen werden');
         }
@@ -101,74 +102,98 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) => {
         {/* Header Section - Full Width */}
         <Grid item xs={12}>
           <Box sx={{ 
-            p: 3, 
-            background: `linear-gradient(45deg, ${colors.primary} 30%, ${colors.accent1} 90%)`,
-            color: 'white',
-            borderRadius: '0 0 20px 20px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+            p: 1.05,
+            background: '#f8f9fa',
+            color: '#222',
+            borderRadius: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar 
-                sx={{ 
-                  width: 60, 
-                  height: 60, 
-                  bgcolor: colors.secondary,
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
-                }}
-              >
-                {studentName.charAt(0)}
-              </Avatar>
-              <Box>
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
-                  Hallo {studentName.split(' ')[0]}! 👋
-                </Typography>
-                <Typography variant="subtitle1">
-                  Willkommen zurück in deinem Lernbereich
-                </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar 
+                  sx={{ 
+                    width: 28, 
+                    height: 28, 
+                    bgcolor: colors.secondary,
+                    boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)'
+                  }}
+                >
+                  {studentName.charAt(0)}
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" component="h1" sx={{ fontWeight: 600, fontSize: '0.77rem', mb: 0 }}>
+                    Hallo {studentName.split(' ')[0]}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: '0.67rem', opacity: 0.85 }}>
+                    Willkommen zurück
+                  </Typography>
+                </Box>
               </Box>
+              <Button 
+                variant="contained"
+                color="primary"
+                size="small"
+                sx={{
+                  width: '5%',
+                  minWidth: 49,
+                  ml: 'auto',
+                  bgcolor: '#333',
+                  color: 'white',
+                  fontWeight: 500,
+                  boxShadow: 'none',
+                  '&:hover': { bgcolor: '#222' },
+                  borderRadius: 1.4,
+                  fontSize: '0.7rem',
+                  py: 0.35,
+                  px: 0.7
+                }}
+                onClick={onLogout}
+              >
+                Logout
+              </Button>
             </Box>
           </Box>
         </Grid>
 
         {/* Available Quizzes Section */}
         <Grid item xs={12} md={6}>
-          <Box sx={{ p: 2 }}>
+          <Box sx={{ p: 1.4 }}>
             <Card sx={{ 
-              borderRadius: 4,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              borderRadius: 2.8,
+              boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
               bgcolor: colors.cardBg,
-              transition: 'transform 0.2s',
+              transition: 'transform 0.14s',
               '&:hover': {
-                transform: 'translateY(-4px)'
+                transform: 'translateY(-2.8px)'
               }
             }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                  <StarsIcon sx={{ mr: 2, color: colors.secondary, fontSize: 40 }} />
-                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.secondary }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
+                  <StarsIcon sx={{ mr: 1.4, color: colors.secondary, fontSize: 28 }} />
+                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.secondary, fontSize: '1.12rem' }}>
                     Deine Quizze
                   </Typography>
                 </Box>
-                <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                <Typography variant="body1" sx={{ mb: 2.1, color: 'text.secondary', fontSize: '0.84rem' }}>
                   Bereit für eine neue Herausforderung? 🎯
                 </Typography>
-                <Grid container spacing={2}>
+                <Grid container spacing={1.4}>
                   <Grid item xs={12}>
                     <Card variant="outlined" sx={{ 
-                      borderRadius: 3,
+                      borderRadius: 2.1,
                       border: 'none',
                       bgcolor: '#f8f9fa',
                       position: 'relative',
                       overflow: 'visible'
                     }}>
                       <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <TrophyIcon sx={{ color: colors.accent2, mr: 1 }} />
-                          <Typography variant="h6" sx={{ color: colors.accent2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.4 }}>
+                          <TrophyIcon sx={{ color: colors.accent2, mr: 0.7, fontSize: 21 }} />
+                          <Typography variant="h6" sx={{ color: colors.accent2, fontSize: '0.84rem' }}>
                             Mathematik Quiz
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                        <Typography variant="body2" sx={{ mb: 1.4, color: 'text.secondary', fontSize: '0.7rem' }}>
                           Grundlagen der Algebra - Teste dein Wissen! 🧮
                         </Typography>
                         <Button 
@@ -179,8 +204,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) => {
                               bgcolor: colors.accent2,
                               filter: 'brightness(1.1)'
                             },
-                            borderRadius: 3,
-                            px: 4
+                            borderRadius: 2.1,
+                            px: 2.8,
+                            fontSize: '0.7rem',
+                            py: 0.35
                           }}
                         >
                           Quiz starten 🚀
@@ -196,37 +223,37 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) => {
 
         {/* Learning Groups Section */}
         <Grid item xs={12} md={6}>
-          <Box sx={{ p: 2 }}>
+          <Box sx={{ p: 1.4 }}>
             <Card sx={{ 
-              borderRadius: 4,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              borderRadius: 2.8,
+              boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
               bgcolor: colors.cardBg,
-              transition: 'transform 0.2s',
+              transition: 'transform 0.14s',
               '&:hover': {
-                transform: 'translateY(-4px)'
+                transform: 'translateY(-2.8px)'
               }
             }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                  <SchoolIcon sx={{ mr: 2, color: colors.primary, fontSize: 40 }} />
-                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.primary }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
+                  <SchoolIcon sx={{ mr: 1.4, color: colors.primary, fontSize: 28 }} />
+                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.primary, fontSize: '1.12rem' }}>
                     Deine Lerngruppen
                   </Typography>
                 </Box>
-                <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                <Typography variant="body1" sx={{ mb: 2.1, color: 'text.secondary', fontSize: '0.84rem' }}>
                   Hier sind deine Klassen und Lehrer 📚
                 </Typography>
-                <Grid container spacing={2}>
+                <Grid container spacing={1.4}>
                   {lerngruppen.map((gruppe) => (
                     <Grid item xs={12} key={gruppe.id}>
                       <Card variant="outlined" sx={{ 
-                        borderRadius: 3,
+                        borderRadius: 2.1,
                         border: 'none',
                         bgcolor: '#f8f9fa'
                       }}>
                         <CardContent>
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Typography variant="h6" sx={{ color: colors.accent1, fontWeight: 'bold' }}>
+                            <Typography variant="h6" sx={{ color: colors.accent1, fontWeight: 'bold', fontSize: '0.84rem' }}>
                               {gruppe.name} 
                             </Typography>
                             <Chip 
@@ -235,20 +262,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId }) => {
                               sx={{ 
                                 bgcolor: colors.success,
                                 color: 'white',
-                                fontWeight: 'bold'
+                                fontWeight: 'bold',
+                                fontSize: '0.7rem',
+                                height: 18
                               }} 
                             />
                           </Box>
                           <Box sx={{ 
                             display: 'flex', 
                             alignItems: 'center', 
-                            gap: 1,
-                            mt: 2
+                            gap: 0.7,
+                            mt: 1.4
                           }}>
-                            <Avatar sx={{ bgcolor: colors.accent1, width: 32, height: 32 }}>
+                            <Avatar sx={{ bgcolor: colors.accent1, width: 22, height: 22 }}>
                               {gruppe.teacher.name.charAt(0)}
                             </Avatar>
-                            <Typography variant="body2">
+                            <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
                               {gruppe.teacher.name}
                             </Typography>
                           </Box>

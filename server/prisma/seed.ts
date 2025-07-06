@@ -3,144 +3,83 @@ import { PrismaClient } from '../src/generated/prisma'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create teachers
-  const teacher1 = await prisma.user.create({
-    data: {
-      name: 'Frau Christ',
-      loginCode: '1',
-      role: 'TEACHER',
-    },
-  })
+  // --- TEACHERS ---
+  let teacher1 = await prisma.user.findUnique({ where: { loginCode: '1' } })
+  if (!teacher1) {
+    teacher1 = await prisma.user.create({
+      data: { name: 'Frau Christ', loginCode: '1', role: 'TEACHER' },
+    })
+  }
+  let teacher2 = await prisma.user.findUnique({ where: { loginCode: 'TEACH002' } })
+  if (!teacher2) {
+    teacher2 = await prisma.user.create({
+      data: { name: 'Herr Kowalski', loginCode: 'TEACH002', role: 'TEACHER' },
+    })
+  }
 
-  const teacher2 = await prisma.user.create({
-    data: {
-      name: 'Herr Kowalski',
-      loginCode: 'TEACH002',
-      role: 'TEACHER',
-    },
-  })
+  // --- SUBJECTS ---
+  let matheSubject = await prisma.subject.findFirst({ where: { name: 'Mathematik', teacherId: teacher1.id } })
+  if (!matheSubject) {
+    matheSubject = await prisma.subject.create({
+      data: { name: 'Mathematik', description: 'Mathematik für Klasse 6a', teacherId: teacher1.id, order: 0 },
+    })
+  }
+  let informatikSubject = await prisma.subject.findFirst({ where: { name: 'Informatik', teacherId: teacher1.id } })
+  if (!informatikSubject) {
+    informatikSubject = await prisma.subject.create({
+      data: { name: 'Informatik', description: 'Informatik für GK11', teacherId: teacher1.id, order: 1 },
+    })
+  }
 
-  // Create learning groups for Frau Christ
-  const klasse6a = await prisma.learningGroup.create({
-    data: {
-      name: 'Klasse 6a Mathe',
-      teacherId: teacher1.id,
-    },
-  })
+  // --- BLOCKS ---
+  let algebraBlock = await prisma.block.findFirst({ where: { name: 'Algebra', subjectId: matheSubject.id } })
+  if (!algebraBlock) {
+    algebraBlock = await prisma.block.create({
+      data: { name: 'Algebra', description: 'Grundlagen der Algebra', subjectId: matheSubject.id, order: 0 },
+    })
+  }
+  let geometrieBlock = await prisma.block.findFirst({ where: { name: 'Geometrie', subjectId: matheSubject.id } })
+  if (!geometrieBlock) {
+    geometrieBlock = await prisma.block.create({
+      data: { name: 'Geometrie', description: 'Grundlagen der Geometrie', subjectId: matheSubject.id, order: 1 },
+    })
+  }
 
-  const gk11 = await prisma.learningGroup.create({
-    data: {
-      name: 'GK11 Informatik',
-      teacherId: teacher1.id,
-    },
-  })
+  // --- UNITS ---
+  let gleichungenUnit = await prisma.unit.findFirst({ where: { name: 'Lineare Gleichungen', blockId: algebraBlock.id } })
+  if (!gleichungenUnit) {
+    gleichungenUnit = await prisma.unit.create({
+      data: { name: 'Lineare Gleichungen', description: 'Lösen linearer Gleichungen', blockId: algebraBlock.id, order: 0 },
+    })
+  }
+  let funktionenUnit = await prisma.unit.findFirst({ where: { name: 'Funktionen', blockId: algebraBlock.id } })
+  if (!funktionenUnit) {
+    funktionenUnit = await prisma.unit.create({
+      data: { name: 'Funktionen', description: 'Einführung in Funktionen', blockId: algebraBlock.id, order: 1 },
+    })
+  }
 
-  // Create learning groups for Herr Kowalski
-  const klasse8d = await prisma.learningGroup.create({
-    data: {
-      name: 'Klasse 8d Mathe',
-      teacherId: teacher2.id,
-    },
-  })
+  // --- TOPICS ---
+  let gleichungenTopic = await prisma.topic.findFirst({ where: { name: 'Gleichungen mit einer Unbekannten', unitId: gleichungenUnit.id } })
+  if (!gleichungenTopic) {
+    gleichungenTopic = await prisma.topic.create({
+      data: { name: 'Gleichungen mit einer Unbekannten', description: 'Grundlegende Gleichungslösung', unitId: gleichungenUnit.id, order: 0 },
+    })
+  }
 
-  const gk13 = await prisma.learningGroup.create({
-    data: {
-      name: 'GK13 Informatik',
-      teacherId: teacher2.id,
-    },
-  })
-
-  // Create students for Klasse 6a
-  const student1 = await prisma.user.create({
-    data: {
-      name: 'Emma Schmidt',
-      loginCode: 'S1',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: klasse6a.id }],
-      },
-    },
-  })
-
-  const student2 = await prisma.user.create({
-    data: {
-      name: 'Leon Meyer',
-      loginCode: 'STUD002',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: klasse6a.id }],
-      },
-    },
-  })
-
-  // Create students for GK11
-  const student3 = await prisma.user.create({
-    data: {
-      name: 'Sophie Wagner',
-      loginCode: 'STUD003',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: gk11.id }],
-      },
-    },
-  })
-
-  const student4 = await prisma.user.create({
-    data: {
-      name: 'Tim Becker',
-      loginCode: 'STUD004',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: gk11.id }],
-      },
-    },
-  })
-
-  // Create students for Klasse 8d
-  const student5 = await prisma.user.create({
-    data: {
-      name: 'Laura Fischer',
-      loginCode: 'STUD005',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: klasse8d.id }],
-      },
-    },
-  })
-
-  const student6 = await prisma.user.create({
-    data: {
-      name: 'Felix Weber',
-      loginCode: 'STUD006',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: klasse8d.id }],
-      },
-    },
-  })
-
-  // Create students for GK13
-  const student7 = await prisma.user.create({
-    data: {
-      name: 'Julia Koch',
-      loginCode: 'STUD007',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: gk13.id }],
-      },
-    },
-  })
-
-  const student8 = await prisma.user.create({
-    data: {
-      name: 'Max Hoffmann',
-      loginCode: 'STUD008',
-      role: 'STUDENT',
-      learningGroups: {
-        connect: [{ id: gk13.id }],
-      },
-    },
-  })
+  // --- LESSONS ---
+  let lesson1 = await prisma.lesson.findFirst({ where: { name: 'Einführung in Gleichungen', topicId: gleichungenTopic.id } })
+  if (!lesson1) {
+    lesson1 = await prisma.lesson.create({
+      data: { name: 'Einführung in Gleichungen', description: 'Was sind Gleichungen?', topicId: gleichungenTopic.id, order: 0 },
+    })
+  }
+  let lesson2 = await prisma.lesson.findFirst({ where: { name: 'Gleichungen lösen', topicId: gleichungenTopic.id } })
+  if (!lesson2) {
+    lesson2 = await prisma.lesson.create({
+      data: { name: 'Gleichungen lösen', description: 'Praktische Übungen', topicId: gleichungenTopic.id, order: 1 },
+    })
+  }
 
   console.log('Database has been seeded! 🌱')
 }
