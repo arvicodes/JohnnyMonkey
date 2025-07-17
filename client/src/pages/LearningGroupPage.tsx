@@ -109,6 +109,21 @@ export const LearningGroupPage: React.FC = () => {
 
       <TabPanel value={tabValue} index={0}>
         <Typography>Übersicht der Lerngruppe</Typography>
+        <Box sx={{ mt: 2 }}>
+          <a href="http://localhost:5000" target="_blank" rel="noopener noreferrer">
+            <button style={{
+              padding: '10px 20px',
+              backgroundColor: '#1976d2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}>
+              GeoCodingQuest starten
+            </button>
+          </a>
+        </Box>
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>

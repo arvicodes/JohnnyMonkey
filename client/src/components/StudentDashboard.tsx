@@ -290,6 +290,52 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             </Card>
           </Box>
         </Grid>
+
+        {/* GeoQuests Section */}
+        <Grid item xs={12} md={6}>
+          <Box sx={{ p: 1.4 }}>
+            <Card sx={{ 
+              borderRadius: 2.8,
+              boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
+              bgcolor: colors.cardBg,
+              transition: 'transform 0.14s',
+              '&:hover': {
+                transform: 'translateY(-2.8px)'
+              }
+            }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
+                  <QuizIcon sx={{ mr: 1.4, color: colors.accent1, fontSize: 28 }} />
+                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.accent1, fontSize: '1.12rem' }}>
+                    Deine GeoQuests
+                  </Typography>
+                </Box>
+                <Typography variant="body1" sx={{ mb: 2.1, color: 'text.secondary', fontSize: '0.84rem' }}>
+                  Starte spannende GeoCoding-Abenteuer! 🗺️
+                </Typography>
+                <Button 
+                  variant="contained" 
+                  sx={{ 
+                    bgcolor: colors.accent1,
+                    '&:hover': {
+                      bgcolor: colors.accent1,
+                      filter: 'brightness(1.1)'
+                    },
+                    borderRadius: 2.1,
+                    px: 2.8,
+                    fontSize: '0.7rem',
+                    py: 0.35
+                  }}
+                  href="http://localhost:5000"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GeoCodingQuest starten 🌍
+                </Button>
+              </CardContent>
+            </Card>
+          </Box>
+        </Grid>
       </Grid>
     </Box>
   );
