@@ -4,6 +4,7 @@ import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import { LearningGroupPage } from './pages/LearningGroupPage';
+import GeoCodingQuest from './pages/GeoCodingQuest';
 import { Snackbar, Alert } from '@mui/material';
 
 interface User {
@@ -92,6 +93,7 @@ function AppContent() {
         />
         <Route path="/dashboard" element={renderDashboard()} />
         <Route path="/learning-group/:id" element={<LearningGroupPage />} />
+        <Route path="/geocoding-quest" element={<GeoCodingQuest />} />
       </Routes>
       <Snackbar
         open={showSuccessMessage}

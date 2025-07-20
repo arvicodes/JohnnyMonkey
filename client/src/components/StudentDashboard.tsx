@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
   Typography, 
@@ -15,7 +16,8 @@ import {
   QuestionAnswer as QuizIcon,
   Person as PersonIcon,
   EmojiEvents as TrophyIcon,
-  Stars as StarsIcon
+  Stars as StarsIcon,
+  Map as MapIcon
 } from '@mui/icons-material';
 
 interface Teacher {
@@ -35,6 +37,7 @@ interface StudentDashboardProps {
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout }) => {
+  const navigate = useNavigate();
   const [lerngruppen, setLerngruppen] = useState<LearningGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -326,9 +329,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     fontSize: '0.7rem',
                     py: 0.35
                   }}
-                  href="http://localhost:5000"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={() => window.open('http://localhost:5000', '_blank')}
                 >
                   GeoCodingQuest starten 🌍
                 </Button>
