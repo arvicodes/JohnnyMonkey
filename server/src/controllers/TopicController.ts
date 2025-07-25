@@ -52,4 +52,15 @@ export const deleteTopic = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Fehler beim Löschen des Themas' });
   }
+};
+
+export const getTopic = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const topic = await prisma.topic.findUnique({ where: { id } });
+    if (!topic) return res.status(404).json({ error: 'Topic nicht gefunden' });
+    res.json(topic);
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Laden des Topics' });
+  }
 }; 

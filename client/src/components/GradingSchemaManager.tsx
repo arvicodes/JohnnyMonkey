@@ -39,7 +39,7 @@ export const GradingSchemaManager: React.FC<Props> = ({ groupId }) => {
 
   const fetchSchemas = async () => {
     try {
-      const response = await fetch(`http://localhost:3005/api/grading-schemas/group/${groupId}`);
+      const response = await fetch(`/api/grading-schemas/group/${groupId}`);
       if (response.ok) {
         const data = await response.json();
         setSchemas(data);
@@ -55,7 +55,7 @@ export const GradingSchemaManager: React.FC<Props> = ({ groupId }) => {
 
   const handleCreateSchema = async () => {
     try {
-      const response = await fetch('http://localhost:3005/api/grading-schemas', {
+      const response = await fetch('/api/grading-schemas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ export const GradingSchemaManager: React.FC<Props> = ({ groupId }) => {
 
   const handleDeleteSchema = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3005/api/grading-schemas/${id}`, {
+      const response = await fetch(`/api/grading-schemas/${id}`, {
         method: 'DELETE',
       });
 

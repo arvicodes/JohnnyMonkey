@@ -45,6 +45,7 @@ model LearningGroup {
   gradingSchemas GradingSchema[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  assignments   GroupAssignment[]
 }
 
 model Subject {
@@ -104,4 +105,13 @@ model Lesson {
   topicId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model GroupAssignment {
+  id        String        @id @default(uuid())
+  group     LearningGroup @relation(fields: [groupId], references: [id])
+  groupId   String
+  type      String        // 'subject' | 'block' | 'unit' | 'topic' | 'lesson'
+  refId     String        // ID des zugeordneten Elements
+  createdAt DateTime      @default(now())
 }

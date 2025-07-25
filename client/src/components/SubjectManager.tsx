@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar, Alert } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon, GroupAdd as GroupAddIcon, Group as GroupIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Menu, MenuItem, Chip, Tooltip } from '@mui/material';
 import {
   DndContext,
   closestCenter,
@@ -62,10 +63,84 @@ interface Topic {
 
 interface SubjectManagerProps {
   teacherId: string;
+  subjectAssignments?: { [subjectId: string]: string[] };
+  setSubjectAssignments?: React.Dispatch<React.SetStateAction<{ [subjectId: string]: string[] }>>;
+  blockAssignments?: { [blockId: string]: string[] };
+  setBlockAssignments?: React.Dispatch<React.SetStateAction<{ [blockId: string]: string[] }>>;
+  unitAssignments?: { [unitId: string]: string[] };
+  setUnitAssignments?: React.Dispatch<React.SetStateAction<{ [unitId: string]: string[] }>>;
+  topicAssignments?: { [topicId: string]: string[] };
+  setTopicAssignments?: React.Dispatch<React.SetStateAction<{ [topicId: string]: string[] }>>;
+  lessonAssignments?: { [lessonId: string]: string[] };
+  setLessonAssignments?: React.Dispatch<React.SetStateAction<{ [lessonId: string]: string[] }>>;
+  setSubjects?: React.Dispatch<React.SetStateAction<any[]>>;
+  setBlocks?: React.Dispatch<React.SetStateAction<any[]>>;
+  setUnits?: React.Dispatch<React.SetStateAction<any[]>>;
+  setTopics?: React.Dispatch<React.SetStateAction<any[]>>;
+  setLessons?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
+// Hilfsfunktion für Chips
+const GroupChips = ({ groupIds, groups, onRemove }: { groupIds: string[], groups: {id: string, name: string}[], onRemove: (id: string) => void }) => (
+  <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
+    {groupIds.map(gid => {
+      const group = groups.find(g => g.id === gid);
+      if (!group) return null;
+      return (
+        <Chip
+          key={gid}
+          label={group.name}
+          size="small"
+          icon={<GroupIcon fontSize="small" />}
+          onDelete={() => onRemove(gid)}
+          sx={{ bgcolor: '#e3f0fc', color: '#0066cc', fontWeight: 500 }}
+        />
+      );
+    })}
+  </Box>
+);
+
+// Extrahiere fetchAssignments als Hilfsfunktion
+export const fetchAssignments = async (
+  groups: {id: string, name: string}[],
+  subjectSetter: (v: any) => void,
+  blockSetter: (v: any) => void,
+  unitSetter: (v: any) => void,
+  topicSetter: (v: any) => void,
+  lessonSetter: (v: any) => void
+) => {
+  const subj: { [id: string]: string[] } = {};
+  const block: { [id: string]: string[] } = {};
+  const unit: { [id: string]: string[] } = {};
+  const topic: { [id: string]: string[] } = {};
+  const lesson: { [id: string]: string[] } = {};
+  for (const group of groups) {
+    const res = await fetch(`/api/learning-groups/${group.id}/assignments`);
+    if (!res.ok) continue;
+    const assignments = await res.json();
+    for (const a of assignments) {
+      if (a.type === 'subject') {
+        subj[a.refId] = [...(subj[a.refId] || []), group.id];
+      } else if (a.type === 'block') {
+        block[a.refId] = [...(block[a.refId] || []), group.id];
+      } else if (a.type === 'unit') {
+        unit[a.refId] = [...(unit[a.refId] || []), group.id];
+      } else if (a.type === 'topic') {
+        topic[a.refId] = [...(topic[a.refId] || []), group.id];
+      } else if (a.type === 'lesson') {
+        lesson[a.refId] = [...(lesson[a.refId] || []), group.id];
+      }
+    }
+  }
+  subjectSetter(subj);
+  blockSetter(block);
+  unitSetter(unit);
+  topicSetter(topic);
+  lessonSetter(lesson);
+};
+
 // Sortable Components
-const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, onToggleCollapse }: any) => {
+const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, onToggleCollapse, groups, assignments, setAssignments, setSubjectAssignments, setBlockAssignments, setUnitAssignments, setTopicAssignments, setLessonAssignments }: any) => {
   const {
     attributes,
     listeners,
@@ -79,6 +154,50 @@ const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, o
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleAddGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [subject.id]: [...(prev[subject.id] || []), groupId].filter((v, i, a) => a.indexOf(v) === i)
+    }));
+    handleMenuClose();
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'subject', refId: subject.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
+  };
+  const handleRemoveGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [subject.id]: (prev[subject.id] || []).filter((id: string) => id !== groupId)
+    }));
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'subject', refId: subject.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
   };
 
   return (
@@ -135,9 +254,33 @@ const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, o
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
       <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 700, color: '#0066cc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subject.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(subject)}>✏️</IconButton>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(subject.id)}>🗑️</IconButton>
+        <IconButton
+          size="small"
+          sx={{
+            color: '#b0b8c1',
+            borderRadius: 1,
+            width: 22,
+            height: 22,
+            p: 0.2,
+            ml: 0.5,
+            // Entferne position: 'absolute', right: 36
+            '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
+          }}
+          onClick={handleMenuOpen}
+        >
+          <Tooltip title="Zu Lerngruppe hinzufügen"><GroupAddIcon fontSize="small" /></Tooltip>
+        </IconButton>
+        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+          {groups.map((g: any) => (
+            <MenuItem key={g.id} onClick={() => handleAddGroup(g.id)} disabled={(assignments[subject.id]||[]).includes(g.id)}>
+              {g.name}
+            </MenuItem>
+          ))}
+        </Menu>
+        <GroupChips groupIds={assignments[subject.id]||[]} groups={groups} onRemove={handleRemoveGroup} />
       </Box>
       <IconButton
         className="plus-btn"
@@ -162,7 +305,7 @@ const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, o
   );
 };
 
-const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onToggleCollapse }: any) => {
+const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onToggleCollapse, groups, assignments, setAssignments, setSubjectAssignments, setBlockAssignments, setUnitAssignments, setTopicAssignments, setLessonAssignments }: any) => {
   const {
     attributes,
     listeners,
@@ -176,6 +319,50 @@ const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onTogg
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleAddGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [block.id]: [...(prev[block.id] || []), groupId].filter((v, i, a) => a.indexOf(v) === i)
+    }));
+    handleMenuClose();
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'block', refId: block.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
+  };
+  const handleRemoveGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [block.id]: (prev[block.id] || []).filter((id: string) => id !== groupId)
+    }));
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'block', refId: block.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
   };
 
   return (
@@ -232,9 +419,33 @@ const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onTogg
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
       <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 600, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(block)}>✏️</IconButton>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(block.id)}>🗑️</IconButton>
+        <IconButton
+          size="small"
+          sx={{
+            color: '#b0b8c1',
+            borderRadius: 1,
+            width: 22,
+            height: 22,
+            p: 0.2,
+            ml: 0.5,
+            // Entferne position: 'absolute', right: 36
+            '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
+          }}
+          onClick={handleMenuOpen}
+        >
+          <Tooltip title="Zu Lerngruppe hinzufügen"><GroupAddIcon fontSize="small" /></Tooltip>
+        </IconButton>
+        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+          {groups.map((g: any) => (
+            <MenuItem key={g.id} onClick={() => handleAddGroup(g.id)} disabled={(assignments[block.id]||[]).includes(g.id)}>
+              {g.name}
+            </MenuItem>
+          ))}
+        </Menu>
+        <GroupChips groupIds={assignments[block.id]||[]} groups={groups} onRemove={handleRemoveGroup} />
       </Box>
       <IconButton
         className="plus-btn"
@@ -259,7 +470,7 @@ const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onTogg
   );
 };
 
-const SortableUnit = ({ unit, onEdit, onDelete, onAddTopic, isCollapsed, onToggleCollapse }: any) => {
+const SortableUnit = ({ unit, onEdit, onDelete, onAddTopic, isCollapsed, onToggleCollapse, groups, assignments, setAssignments, setSubjectAssignments, setBlockAssignments, setUnitAssignments, setTopicAssignments, setLessonAssignments }: any) => {
   const {
     attributes,
     listeners,
@@ -273,6 +484,50 @@ const SortableUnit = ({ unit, onEdit, onDelete, onAddTopic, isCollapsed, onToggl
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleAddGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [unit.id]: [...(prev[unit.id] || []), groupId].filter((v, i, a) => a.indexOf(v) === i)
+    }));
+    handleMenuClose();
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'unit', refId: unit.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
+  };
+  const handleRemoveGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [unit.id]: (prev[unit.id] || []).filter((id: string) => id !== groupId)
+    }));
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'unit', refId: unit.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
   };
 
   return (
@@ -330,9 +585,33 @@ const SortableUnit = ({ unit, onEdit, onDelete, onAddTopic, isCollapsed, onToggl
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
       <Typography variant="body2" sx={{ flex: 1, fontStyle: 'italic', color: '#3a4a5d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{unit.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(unit)}>✏️</IconButton>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(unit.id)}>🗑️</IconButton>
+        <IconButton
+          size="small"
+          sx={{
+            color: '#b0b8c1',
+            borderRadius: 1,
+            width: 22,
+            height: 22,
+            p: 0.2,
+            ml: 0.5,
+            // Entferne position: 'absolute', right: 36
+            '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
+          }}
+          onClick={handleMenuOpen}
+        >
+          <Tooltip title="Zu Lerngruppe hinzufügen"><GroupAddIcon fontSize="small" /></Tooltip>
+        </IconButton>
+        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+          {groups.map((g: any) => (
+            <MenuItem key={g.id} onClick={() => handleAddGroup(g.id)} disabled={(assignments[unit.id]||[]).includes(g.id)}>
+              {g.name}
+            </MenuItem>
+          ))}
+        </Menu>
+        <GroupChips groupIds={assignments[unit.id]||[]} groups={groups} onRemove={handleRemoveGroup} />
       </Box>
       <IconButton
         className="plus-btn"
@@ -357,7 +636,7 @@ const SortableUnit = ({ unit, onEdit, onDelete, onAddTopic, isCollapsed, onToggl
   );
 };
 
-const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onToggleCollapse }: any) => {
+const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onToggleCollapse, groups, assignments, setAssignments, setSubjectAssignments, setBlockAssignments, setUnitAssignments, setTopicAssignments, setLessonAssignments }: any) => {
   const {
     attributes,
     listeners,
@@ -371,6 +650,50 @@ const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onTo
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleAddGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [topic.id]: [...(prev[topic.id] || []), groupId].filter((v, i, a) => a.indexOf(v) === i)
+    }));
+    handleMenuClose();
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'topic', refId: topic.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
+  };
+  const handleRemoveGroup = async (groupId: string) => {
+    setAssignments((prev: any) => ({
+      ...prev,
+      [topic.id]: (prev[topic.id] || []).filter((id: string) => id !== groupId)
+    }));
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'topic', refId: topic.id })
+    });
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
   };
 
   return (
@@ -428,9 +751,33 @@ const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onTo
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
       <Typography variant="body2" sx={{ flex: 1, fontWeight: 500, color: '#4a5a6d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{topic.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(topic)}>✏️</IconButton>
         <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(topic.id)}>🗑️</IconButton>
+        <IconButton
+          size="small"
+          sx={{
+            color: '#b0b8c1',
+            borderRadius: 1,
+            width: 22,
+            height: 22,
+            p: 0.2,
+            ml: 0.5,
+            // Entferne position: 'absolute', right: 36
+            '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
+          }}
+          onClick={handleMenuOpen}
+        >
+          <Tooltip title="Zu Lerngruppe hinzufügen"><GroupAddIcon fontSize="small" /></Tooltip>
+        </IconButton>
+        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+          {groups.map((g: any) => (
+            <MenuItem key={g.id} onClick={() => handleAddGroup(g.id)} disabled={(assignments[topic.id]||[]).includes(g.id)}>
+              {g.name}
+            </MenuItem>
+          ))}
+        </Menu>
+        <GroupChips groupIds={assignments[topic.id]||[]} groups={groups} onRemove={handleRemoveGroup} />
       </Box>
       <IconButton
         className="plus-btn"
@@ -455,7 +802,7 @@ const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onTo
   );
 };
 
-const SortableLesson = ({ lesson, onEdit, onDelete }: any) => {
+const SortableLesson = ({ lesson, subject, ...props }: any) => {
   const {
     attributes,
     listeners,
@@ -469,6 +816,50 @@ const SortableLesson = ({ lesson, onEdit, onDelete }: any) => {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleAddGroup = async (groupId: string) => {
+    props.setAssignments((prev: any) => ({
+      ...prev,
+      [lesson.id]: [...(prev[lesson.id] || []), groupId].filter((v, i, a) => a.indexOf(v) === i)
+    }));
+    handleMenuClose();
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'lesson', refId: lesson.id })
+    });
+    fetchAssignments(
+      props.groups,
+      props.setSubjectAssignments,
+      props.setBlockAssignments,
+      props.setUnitAssignments,
+      props.setTopicAssignments,
+      props.setLessonAssignments
+    );
+  };
+  const handleRemoveGroup = async (groupId: string) => {
+    props.setAssignments((prev: any) => ({
+      ...prev,
+      [lesson.id]: (prev[lesson.id] || []).filter((id: string) => id !== groupId)
+    }));
+    await fetch(`/api/learning-groups/${groupId}/assign`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'lesson', refId: lesson.id })
+    });
+    fetchAssignments(
+      props.groups,
+      props.setSubjectAssignments,
+      props.setBlockAssignments,
+      props.setUnitAssignments,
+      props.setTopicAssignments,
+      props.setLessonAssignments
+    );
   };
 
   return (
@@ -489,7 +880,15 @@ const SortableLesson = ({ lesson, onEdit, onDelete }: any) => {
         borderLeft: '4px solid #e0e7ef',
         fontWeight: 400,
         color: '#5a6a7d',
-        position: 'relative'
+        position: 'relative',
+        cursor: (subject?.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg') ? 'pointer' : 'default',
+        transition: 'background 0.2s',
+        '&:hover': (subject?.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg') ? { background: '#e3f0fc' } : {},
+      }}
+      onClick={() => {
+        if (subject?.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg') {
+          window.open('/material/3D-Druck-Intro.html', '_blank');
+        }
       }}
     >
       <IconButton
@@ -506,24 +905,88 @@ const SortableLesson = ({ lesson, onEdit, onDelete }: any) => {
           cursor: 'grab',
           '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 }
         }}
+        onClick={e => e.stopPropagation()}
       >
         <DragIcon fontSize="small" />
       </IconButton>
-      <Typography variant="body2" sx={{ flex: 1, fontWeight: 400, color: '#5a6a7d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lesson.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2 }}>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(lesson)}>✏️</IconButton>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(lesson.id)}>🗑️</IconButton>
+      <Typography
+        variant="body2"
+        sx={{ flex: 1, fontWeight: 400, color: '#5a6a7d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+      >
+        {lesson.name}
+      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, position: 'relative' }}>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={e => { e.stopPropagation(); props.onEdit(lesson); }}>✏️</IconButton>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={e => { e.stopPropagation(); props.onDelete(lesson.id); }}>🗑️</IconButton>
+        <IconButton
+          size="small"
+          sx={{
+            color: '#b0b8c1',
+            borderRadius: 1,
+            width: 22,
+            height: 22,
+            p: 0.2,
+            ml: 0.5,
+            '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
+          }}
+          onClick={e => { e.stopPropagation(); handleMenuOpen(e); }}
+        >
+          <Tooltip title="Zu Lerngruppe hinzufügen"><GroupAddIcon fontSize="small" /></Tooltip>
+        </IconButton>
+        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+          {props.groups.map((g: any) => (
+            <MenuItem key={g.id} onClick={() => handleAddGroup(g.id)} disabled={(props.assignments[lesson.id]||[]).includes(g.id)}>
+              {g.name}
+            </MenuItem>
+          ))}
+        </Menu>
+        <GroupChips groupIds={props.assignments[lesson.id]||[]} groups={props.groups} onRemove={handleRemoveGroup} />
       </Box>
     </Box>
   );
 };
 
-const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
+const SubjectManager: React.FC<SubjectManagerProps> = ({
+  teacherId,
+  subjectAssignments: subjectAssignmentsProp,
+  setSubjectAssignments: setSubjectAssignmentsProp,
+  blockAssignments: blockAssignmentsProp,
+  setBlockAssignments: setBlockAssignmentsProp,
+  unitAssignments: unitAssignmentsProp,
+  setUnitAssignments: setUnitAssignmentsProp,
+  topicAssignments: topicAssignmentsProp,
+  setTopicAssignments: setTopicAssignmentsProp,
+  lessonAssignments: lessonAssignmentsProp,
+  setLessonAssignments: setLessonAssignmentsProp,
+  setSubjects: setSubjectsProp,
+  setBlocks: setBlocksProp,
+  setUnits: setUnitsProp,
+  setTopics: setTopicsProp,
+  setLessons: setLessonsProp,
+}) => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [blocks, setBlocks] = useState<{ [subjectId: string]: Block[] }>({});
   const [units, setUnits] = useState<{ [blockId: string]: Unit[] }>({});
   const [topics, setTopics] = useState<{ [unitId: string]: Topic[] }>({});
   const [lessons, setLessons] = useState<{ [topicId: string]: Lesson[] }>({});
+  // Gruppen-Logik
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  // Zuordnungen: Map von Element-ID zu Array von Group-IDs
+  const [subjectAssignmentsState, setSubjectAssignmentsState] = useState<{ [subjectId: string]: string[] }>({});
+  const [blockAssignmentsState, setBlockAssignmentsState] = useState<{ [blockId: string]: string[] }>({});
+  const [unitAssignmentsState, setUnitAssignmentsState] = useState<{ [unitId: string]: string[] }>({});
+  const [topicAssignmentsState, setTopicAssignmentsState] = useState<{ [topicId: string]: string[] }>({});
+  const [lessonAssignmentsState, setLessonAssignmentsState] = useState<{ [lessonId: string]: string[] }>({});
+  const subjectAssignments = subjectAssignmentsProp ?? subjectAssignmentsState;
+  const setSubjectAssignments = setSubjectAssignmentsProp ?? setSubjectAssignmentsState;
+  const blockAssignments = blockAssignmentsProp ?? blockAssignmentsState;
+  const setBlockAssignments = setBlockAssignmentsProp ?? setBlockAssignmentsState;
+  const unitAssignments = unitAssignmentsProp ?? unitAssignmentsState;
+  const setUnitAssignments = setUnitAssignmentsProp ?? setUnitAssignmentsState;
+  const topicAssignments = topicAssignmentsProp ?? topicAssignmentsState;
+  const setTopicAssignments = setTopicAssignmentsProp ?? setTopicAssignmentsState;
+  const lessonAssignments = lessonAssignmentsProp ?? lessonAssignmentsState;
+  const setLessonAssignments = setLessonAssignmentsProp ?? setLessonAssignmentsState;
   const [openDialog, setOpenDialog] = useState(false);
   const [editSubject, setEditSubject] = useState<Subject | null>(null);
   const [name, setName] = useState('');
@@ -558,6 +1021,13 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
   const unitNameInputRef = useRef<HTMLInputElement>(null);
   const topicNameInputRef = useRef<HTMLInputElement>(null);
   const lessonNameInputRef = useRef<HTMLInputElement>(null);
+
+  // Nach den useState/Props-Zuweisungen am Anfang der Komponente:
+  const subjectAssignmentsSetter = setSubjectAssignmentsProp ?? setSubjectAssignmentsState;
+  const blockAssignmentsSetter = setBlockAssignmentsProp ?? setBlockAssignmentsState;
+  const unitAssignmentsSetter = setUnitAssignmentsProp ?? setUnitAssignmentsState;
+  const topicAssignmentsSetter = setTopicAssignmentsProp ?? setTopicAssignmentsState;
+  const lessonAssignmentsSetter = setLessonAssignmentsProp ?? setLessonAssignmentsState;
 
   useEffect(() => {
     fetchSubjects();
@@ -598,6 +1068,36 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
       }
     });
   }, [topics]);
+
+  // Gruppen laden
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const res = await fetch(`/api/learning-groups/teacher/${teacherId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setGroups(data.map((g: any) => ({ id: g.id, name: g.name })));
+        }
+      } catch (e) {
+        // Fehlerbehandlung optional
+      }
+    };
+    fetchGroups();
+  }, [teacherId]);
+
+  // Nach dem Laden der Gruppen: Zuordnungen aus Backend laden
+  useEffect(() => {
+    if (groups.length === 0) return;
+    fetchAssignments(
+      groups,
+      subjectAssignmentsSetter,
+      blockAssignmentsSetter,
+      unitAssignmentsSetter,
+      topicAssignmentsSetter,
+      lessonAssignmentsSetter
+    );
+    // eslint-disable-next-line
+  }, [groups.length]);
 
   useEffect(() => {
     if (openDialog) {
@@ -651,7 +1151,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const fetchSubjects = async () => {
     try {
-      const res = await fetch(`http://localhost:3005/api/subjects?teacherId=${teacherId}`);
+      const res = await fetch(`/api/subjects?teacherId=${teacherId}`);
       if (res.ok) {
         const subjectsData = await res.json();
         setSubjects(subjectsData);
@@ -667,7 +1167,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const fetchBlocks = async (subjectId: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/blocks?subjectId=${subjectId}`);
+      const res = await fetch(`/api/blocks?subjectId=${subjectId}`);
       if (res.ok) {
         const blocksData = await res.json();
         setBlocks(prev => ({ ...prev, [subjectId]: blocksData }));
@@ -679,7 +1179,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const fetchUnits = async (blockId: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/units?blockId=${blockId}`);
+      const res = await fetch(`/api/units?blockId=${blockId}`);
       if (res.ok) {
         const unitsData = await res.json();
         setUnits(prev => ({ ...prev, [blockId]: unitsData }));
@@ -691,7 +1191,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const fetchTopics = async (unitId: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/topics?unitId=${unitId}`);
+      const res = await fetch(`/api/topics?unitId=${unitId}`);
       if (res.ok) {
         const topicsData = await res.json();
         setTopics(prev => ({ ...prev, [unitId]: topicsData }));
@@ -703,7 +1203,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const fetchLessons = async (topicId: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/lessons?topicId=${topicId}`);
+      const res = await fetch(`/api/lessons?topicId=${topicId}`);
       if (res.ok) {
         const lessonsData = await res.json();
         setLessons(prev => ({ ...prev, [topicId]: lessonsData }));
@@ -730,7 +1230,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
   const handleSave = async () => {
     try {
       const method = editSubject ? 'PUT' : 'POST';
-      const url = editSubject ? `http://localhost:3005/api/subjects/${editSubject.id}` : 'http://localhost:3005/api/subjects';
+      const url = editSubject ? `/api/subjects/${editSubject.id}` : '/api/subjects';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -747,7 +1247,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/subjects/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/subjects/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Fehler beim Löschen');
       await fetchSubjects();
       showSnackbar('Fach gelöscht', 'success');
@@ -774,7 +1274,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
   const handleSaveBlock = async () => {
     try {
       const method = editBlock ? 'PUT' : 'POST';
-      const url = editBlock ? `http://localhost:3005/api/blocks/${editBlock.id}` : 'http://localhost:3005/api/blocks';
+      const url = editBlock ? `/api/blocks/${editBlock.id}` : '/api/blocks';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -791,7 +1291,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const handleDeleteBlock = async (subjectId: string, id: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/blocks/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/blocks/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Fehler beim Löschen');
       await fetchBlocks(subjectId);
       showSnackbar('Block gelöscht', 'success');
@@ -818,7 +1318,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
   const handleSaveUnit = async () => {
     try {
       const method = editUnit ? 'PUT' : 'POST';
-      const url = editUnit ? `http://localhost:3005/api/units/${editUnit.id}` : 'http://localhost:3005/api/units';
+      const url = editUnit ? `/api/units/${editUnit.id}` : '/api/units';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -835,7 +1335,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const handleDeleteUnit = async (blockId: string, id: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/units/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/units/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Fehler beim Löschen');
       await fetchUnits(blockId);
       showSnackbar('Unterrichtsreihe gelöscht', 'success');
@@ -862,7 +1362,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
   const handleSaveTopic = async () => {
     try {
       const method = editTopic ? 'PUT' : 'POST';
-      const url = editTopic ? `http://localhost:3005/api/topics/${editTopic.id}` : 'http://localhost:3005/api/topics';
+      const url = editTopic ? `/api/topics/${editTopic.id}` : '/api/topics';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -879,7 +1379,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const handleDeleteTopic = async (unitId: string, topicId: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/topics/${topicId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/topics/${topicId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Fehler beim Löschen');
       await fetchTopics(unitId);
       showSnackbar('Thema gelöscht', 'success');
@@ -906,7 +1406,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
   const handleSaveLesson = async () => {
     try {
       const method = editLesson ? 'PUT' : 'POST';
-      const url = editLesson ? `http://localhost:3005/api/lessons/${editLesson.id}` : 'http://localhost:3005/api/lessons';
+      const url = editLesson ? `/api/lessons/${editLesson.id}` : '/api/lessons';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -923,7 +1423,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
 
   const handleDeleteLesson = async (topicId: string, lessonId: string) => {
     try {
-      const res = await fetch(`http://localhost:3005/api/lessons/${lessonId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/lessons/${lessonId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Fehler beim Löschen');
       await fetchLessons(topicId);
       showSnackbar('Stunde gelöscht', 'success');
@@ -974,7 +1474,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
       setSubjects(newSubjects);
       
       try {
-        await fetch('http://localhost:3005/api/subjects/reorder', {
+        await fetch('/api/subjects/reorder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1000,7 +1500,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
       setBlocks(prev => ({ ...prev, [subjectId]: newBlocks }));
       
       try {
-        await fetch('http://localhost:3005/api/subjects/blocks/reorder', {
+        await fetch('/api/subjects/blocks/reorder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1026,7 +1526,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
       setUnits(prev => ({ ...prev, [blockId]: newUnits }));
       
       try {
-        await fetch('http://localhost:3005/api/subjects/units/reorder', {
+        await fetch('/api/subjects/units/reorder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1052,7 +1552,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
       setTopics(prev => ({ ...prev, [unitId]: newTopics }));
       
       try {
-        await fetch('http://localhost:3005/api/subjects/topics/reorder', {
+        await fetch('/api/subjects/topics/reorder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1078,7 +1578,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
       setLessons(prev => ({ ...prev, [topicId]: newLessons }));
       
       try {
-        await fetch('http://localhost:3005/api/subjects/lessons/reorder', {
+        await fetch('/api/subjects/lessons/reorder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -1124,6 +1624,14 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
                 onAddBlock={handleOpenBlockDialog}
                 isCollapsed={collapsedSubjects[subject.id]}
                 onToggleCollapse={() => toggleSubjectCollapse(subject.id)}
+                groups={groups}
+                assignments={subjectAssignments}
+                setAssignments={setSubjectAssignments}
+                setSubjectAssignments={setSubjectAssignments}
+                setBlockAssignments={setBlockAssignments}
+                setUnitAssignments={setUnitAssignments}
+                setTopicAssignments={setTopicAssignments}
+                setLessonAssignments={setLessonAssignments}
               />
               {!collapsedSubjects[subject.id] && (
                 <Box sx={{ ml: 4, mb: 1 }}>
@@ -1142,6 +1650,14 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
                             onAddUnit={handleOpenUnitDialog}
                             isCollapsed={collapsedBlocks[block.id]}
                             onToggleCollapse={() => toggleBlockCollapse(block.id)}
+                            groups={groups}
+                            assignments={blockAssignments}
+                            setAssignments={setBlockAssignments}
+                            setSubjectAssignments={setSubjectAssignments}
+                            setBlockAssignments={setBlockAssignments}
+                            setUnitAssignments={setUnitAssignments}
+                            setTopicAssignments={setTopicAssignments}
+                            setLessonAssignments={setLessonAssignments}
                           />
                           {!collapsedBlocks[block.id] && (
                             <Box sx={{ ml: 4, mb: 1 }}>
@@ -1160,6 +1676,14 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
                                         onAddTopic={handleOpenTopicDialog}
                                         isCollapsed={collapsedUnits[unit.id]}
                                         onToggleCollapse={() => toggleUnitCollapse(unit.id)}
+                                        groups={groups}
+                                        assignments={unitAssignments}
+                                        setAssignments={setUnitAssignments}
+                                        setSubjectAssignments={setSubjectAssignments}
+                                        setBlockAssignments={setBlockAssignments}
+                                        setUnitAssignments={setUnitAssignments}
+                                        setTopicAssignments={setTopicAssignments}
+                                        setLessonAssignments={setLessonAssignments}
                                       />
                                       {!collapsedUnits[unit.id] && (
                                         <Box sx={{ ml: 4, mb: 1 }}>
@@ -1178,6 +1702,14 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
                                                     onAddLesson={handleOpenLessonDialog}
                                                     isCollapsed={collapsedTopics[topic.id]}
                                                     onToggleCollapse={() => toggleTopicCollapse(topic.id)}
+                                                    groups={groups}
+                                                    assignments={topicAssignments}
+                                                    setAssignments={setTopicAssignments}
+                                                    setSubjectAssignments={setSubjectAssignments}
+                                                    setBlockAssignments={setBlockAssignments}
+                                                    setUnitAssignments={setUnitAssignments}
+                                                    setTopicAssignments={setTopicAssignments}
+                                                    setLessonAssignments={setLessonAssignments}
                                                   />
                                                   {!collapsedTopics[topic.id] && (
                                                     <Box sx={{ ml: 4, mb: 1 }}>
@@ -1191,8 +1723,17 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ teacherId }) => {
                                                             <SortableLesson
                                                               key={lesson.id}
                                                               lesson={lesson}
+                                                              subject={subject}
                                                               onEdit={(lesson: Lesson) => handleOpenLessonDialog(topic.id, lesson)}
                                                               onDelete={(id: string) => handleDeleteLesson(topic.id, id)}
+                                                              groups={groups}
+                                                              assignments={lessonAssignments}
+                                                              setAssignments={setLessonAssignments}
+                                                              setSubjectAssignments={setSubjectAssignments}
+                                                              setBlockAssignments={setBlockAssignments}
+                                                              setUnitAssignments={setUnitAssignments}
+                                                              setTopicAssignments={setTopicAssignments}
+                                                              setLessonAssignments={setLessonAssignments}
                                                             />
                                                           ))}
                                                         </SortableContext>

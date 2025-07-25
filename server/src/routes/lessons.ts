@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createLesson, getLessons, updateLesson, deleteLesson } from '../controllers/LessonController';
+import { createLesson, getLessons, updateLesson, deleteLesson, getLesson } from '../controllers/LessonController';
 
 const router = Router();
 
@@ -11,5 +11,6 @@ router.post('/', createLesson);
 router.put('/:id', updateLesson);
 // Lesson löschen
 router.delete('/:id', deleteLesson);
+router.get('/:id', getLesson);
 
 export default router; 

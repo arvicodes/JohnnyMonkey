@@ -52,4 +52,15 @@ export const deleteUnit = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Fehler beim Löschen der Unterrichtsreihe' });
   }
+};
+
+export const getUnit = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const unit = await prisma.unit.findUnique({ where: { id } });
+    if (!unit) return res.status(404).json({ error: 'Unit nicht gefunden' });
+    res.json(unit);
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Laden der Unit' });
+  }
 }; 

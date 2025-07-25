@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createUnit, getUnits, updateUnit, deleteUnit } from '../controllers/UnitController';
+import { createUnit, getUnits, updateUnit, deleteUnit, getUnit } from '../controllers/UnitController';
 
 const router = Router();
 
@@ -11,5 +11,6 @@ router.post('/', createUnit);
 router.put('/:id', updateUnit);
 // Unit löschen
 router.delete('/:id', deleteUnit);
+router.get('/:id', getUnit);
 
 export default router; 

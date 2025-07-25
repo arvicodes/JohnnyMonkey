@@ -151,4 +151,63 @@ router.get('/:groupId/available-students', async (req: Request, res: Response) =
   }
 });
 
+// Zuordnung von Inhalten zu Lerngruppen
+router.post('/:groupId/assign', async (req: Request, res: Response) => {
+  const { type, refId } = req.body;
+  try {
+    const assignment = await prisma.groupAssignment.create({
+      data: {
+        groupId: req.params.groupId,
+        type,
+        refId,
+      },
+    });
+    res.json(assignment);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/:groupId/assign', async (req: Request, res: Response) => {
+  const { type, refId } = req.body;
+  try {
+    const deleted = await prisma.groupAssignment.deleteMany({
+      where: {
+        groupId: req.params.groupId,
+        type,
+        refId,
+      },
+    });
+    res.json({ deleted: deleted.count });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/:groupId/assignments', async (req: Request, res: Response) => {
+  try {
+    const assignments = await prisma.groupAssignment.findMany({
+      where: { groupId: req.params.groupId },
+    });
+    res.json(assignments);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete a learning group by ID
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    // Zuerst alle zugehörigen GroupAssignments löschen
+    await prisma.groupAssignment.deleteMany({ where: { groupId: req.params.id } });
+    // Dann alle zugehörigen GradingSchemas löschen
+    await prisma.gradingSchema.deleteMany({ where: { groupId: req.params.id } });
+    // Jetzt die Lerngruppe selbst löschen
+    await prisma.learningGroup.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 export default router; 

@@ -31,6 +31,17 @@ export const getSubjects = async (req: Request, res: Response) => {
   }
 };
 
+export const getSubject = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const subject = await prisma.subject.findUnique({ where: { id } });
+    if (!subject) return res.status(404).json({ error: 'Subject nicht gefunden' });
+    res.json(subject);
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Laden des Subjects' });
+  }
+};
+
 export const updateSubject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

@@ -52,4 +52,15 @@ export const deleteBlock = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Fehler beim Löschen des Blocks' });
   }
+};
+
+export const getBlock = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const block = await prisma.block.findUnique({ where: { id } });
+    if (!block) return res.status(404).json({ error: 'Block nicht gefunden' });
+    res.json(block);
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Laden des Blocks' });
+  }
 }; 

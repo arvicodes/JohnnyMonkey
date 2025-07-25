@@ -8,7 +8,8 @@ import {
   Paper,
   IconButton,
   Breadcrumbs,
-  Link
+  Link,
+  Grid
 } from '@mui/material';
 import { GradingSchemaManager } from '../components/GradingSchemaManager';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
@@ -49,6 +50,8 @@ export const LearningGroupPage: React.FC = () => {
   const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
   const [group, setGroup] = useState<LearningGroup | null>(null);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignmentDetails, setAssignmentDetails] = useState<any[]>([]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -56,7 +59,7 @@ export const LearningGroupPage: React.FC = () => {
 
   const fetchGroupDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:3005/api/learning-groups/${id}`);
+      const response = await fetch(`/api/learning-groups/${id}`);
       if (response.ok) {
         const data = await response.json();
         setGroup(data);
@@ -66,9 +69,58 @@ export const LearningGroupPage: React.FC = () => {
     }
   };
 
+  const fetchAssignments = async () => {
+    try {
+      const response = await fetch(`/api/learning-groups/${id}/assignments`);
+      if (response.ok) {
+        const data = await response.json();
+        setAssignments(data);
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+    }
+  };
+
+  // Hilfsfunktion: Hole den Namen für einen Assignment-Typ und eine refId
+  const fetchNameForAssignment = async (type: string, refId: string) => {
+    let url = '';
+    if (type === 'subject') url = `/api/subjects/${refId}`;
+    if (type === 'block') url = `/api/blocks/${refId}`;
+    if (type === 'unit') url = `/api/units/${refId}`;
+    if (type === 'topic') url = `/api/topics/${refId}`;
+    if (type === 'lesson') url = `/api/lessons/${refId}`;
+    if (!url) return null;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.name || null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Lade Details (Namen) zu allen Assignments
+  useEffect(() => {
+    if (assignments.length === 0) {
+      setAssignmentDetails([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const details = await Promise.all(assignments.map(async (a) => {
+        const name = await fetchNameForAssignment(a.type, a.refId);
+        return { ...a, name };
+      }));
+      if (!cancelled) setAssignmentDetails(details);
+    })();
+    return () => { cancelled = true; };
+  }, [assignments]);
+
   useEffect(() => {
     if (id) {
       fetchGroupDetails();
+      fetchAssignments();
     }
   }, [id]);
 
@@ -108,22 +160,52 @@ export const LearningGroupPage: React.FC = () => {
       </Box>
 
       <TabPanel value={tabValue} index={0}>
-        <Typography>Übersicht der Lerngruppe</Typography>
-        <Box sx={{ mt: 2 }}>
-          <a href="http://localhost:5000" target="_blank" rel="noopener noreferrer">
-            <button style={{
-              padding: '10px 20px',
-              backgroundColor: '#1976d2',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}>
-              GeoCodingQuest starten
-            </button>
-          </a>
-        </Box>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={7}>
+            <Typography>Übersicht der Lerngruppe</Typography>
+          </Grid>
+          <Grid item xs={12} md={5}>
+            <Typography variant="h6">Zugeordnete Inhalte aus „Meine Fächer“</Typography>
+            {assignmentDetails.length === 0 && <Typography>Keine Inhalte zugeordnet.</Typography>}
+            {assignmentDetails.length > 0 && (
+              <Box>
+                {['subject', 'block', 'unit', 'topic', 'lesson'].map(type => {
+                  const items = assignmentDetails.filter(a => a.type === type);
+                  if (items.length === 0) return null;
+                  let label = '';
+                  if (type === 'subject') label = 'Fächer';
+                  if (type === 'block') label = 'Blöcke';
+                  if (type === 'unit') label = 'Units';
+                  if (type === 'topic') label = 'Themen';
+                  if (type === 'lesson') label = 'Stunden';
+                  return (
+                    <Box key={type} sx={{ mb: 2 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2' }}>{label}</Typography>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {items.map(a => (
+                          a.name === 'Ein einfacher Einstieg' ? (
+                            <li key={a.type + a.refId}>
+                              <a
+                                href="/material/3D-Druck-Intro.html"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer' }}
+                              >
+                                {a.name}
+                              </a>
+                            </li>
+                          ) : (
+                            <li key={a.type + a.refId}>{a.name || a.refId}</li>
+                          )
+                        ))}
+                      </ul>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+          </Grid>
+        </Grid>
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
@@ -131,7 +213,54 @@ export const LearningGroupPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={2}>
-        <Typography>Schülerliste</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={7}>
+            <Typography variant="h6">Schülerliste</Typography>
+            {/* Hier könnte eine echte Schülerliste stehen */}
+            <Typography variant="body2" color="text.secondary">(Platzhalter für Schülerliste)</Typography>
+          </Grid>
+          <Grid item xs={12} md={5}>
+            <Typography variant="h6">Zugeordnete Inhalte</Typography>
+            {assignmentDetails.length === 0 && <Typography>Keine Inhalte zugeordnet.</Typography>}
+            {assignmentDetails.length > 0 && (
+              <Box>
+                {['subject', 'block', 'unit', 'topic', 'lesson'].map(type => {
+                  const items = assignmentDetails.filter(a => a.type === type);
+                  if (items.length === 0) return null;
+                  let label = '';
+                  if (type === 'subject') label = 'Fächer';
+                  if (type === 'block') label = 'Blöcke';
+                  if (type === 'unit') label = 'Units';
+                  if (type === 'topic') label = 'Themen';
+                  if (type === 'lesson') label = 'Stunden';
+                  return (
+                    <Box key={type} sx={{ mb: 2 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2' }}>{label}</Typography>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {items.map(a => (
+                          a.name === 'Ein einfacher Einstieg' ? (
+                            <li key={a.type + a.refId}>
+                              <a
+                                href="/material/3D-Druck-Intro.html"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#1976d2', textDecoration: 'underline', cursor: 'pointer' }}
+                              >
+                                {a.name}
+                              </a>
+                            </li>
+                          ) : (
+                            <li key={a.type + a.refId}>{a.name || a.refId}</li>
+                          )
+                        ))}
+                      </ul>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+          </Grid>
+        </Grid>
       </TabPanel>
     </Box>
   );

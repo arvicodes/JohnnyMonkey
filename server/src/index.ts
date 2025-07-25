@@ -11,6 +11,7 @@ import unitRoutes from './routes/units';
 import blockRoutes from './routes/blocks';
 import topicRoutes from './routes/topics';
 import lessonRoutes from './routes/lessons';
+import path from 'path';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -30,6 +31,7 @@ app.use('/api/units', unitRoutes);
 app.use('/api/blocks', blockRoutes);
 app.use('/api/topics', topicRoutes);
 app.use('/api/lessons', lessonRoutes);
+app.use('/material', express.static(path.join(__dirname, '../../material')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

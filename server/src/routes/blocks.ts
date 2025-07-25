@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createBlock, getBlocks, updateBlock, deleteBlock } from '../controllers/BlockController';
+import { createBlock, getBlocks, updateBlock, deleteBlock, getBlock } from '../controllers/BlockController';
 
 const router = Router();
 
@@ -11,5 +11,7 @@ router.post('/', createBlock);
 router.put('/:id', updateBlock);
 // Block löschen
 router.delete('/:id', deleteBlock);
+// Block per ID holen
+router.get('/:id', getBlock);
 
 export default router; 

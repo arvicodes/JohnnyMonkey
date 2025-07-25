@@ -53,6 +53,11 @@ export type Topic = $Result.DefaultSelection<Prisma.$TopicPayload>
  * 
  */
 export type Lesson = $Result.DefaultSelection<Prisma.$LessonPayload>
+/**
+ * Model GroupAssignment
+ * 
+ */
+export type GroupAssignment = $Result.DefaultSelection<Prisma.$GroupAssignmentPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -258,6 +263,16 @@ export class PrismaClient<
     * ```
     */
   get lesson(): Prisma.LessonDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.groupAssignment`: Exposes CRUD operations for the **GroupAssignment** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GroupAssignments
+    * const groupAssignments = await prisma.groupAssignment.findMany()
+    * ```
+    */
+  get groupAssignment(): Prisma.GroupAssignmentDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -316,8 +331,8 @@ export namespace Prisma {
   export import Exact = $Public.Exact
 
   /**
-   * Prisma Client JS version: 6.11.1
-   * Query Engine version: f40f79ec31188888a2e33acda0ecc8fd10a853a9
+   * Prisma Client JS version: 6.12.0
+   * Query Engine version: 8047c96bbd92db98a2abc7c9323ce77c02c89dbc
    */
   export type PrismaVersion = {
     client: string
@@ -705,7 +720,8 @@ export namespace Prisma {
     Block: 'Block',
     Unit: 'Unit',
     Topic: 'Topic',
-    Lesson: 'Lesson'
+    Lesson: 'Lesson',
+    GroupAssignment: 'GroupAssignment'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -724,7 +740,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson"
+      modelProps: "user" | "gradingSchema" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1320,6 +1336,80 @@ export namespace Prisma {
           }
         }
       }
+      GroupAssignment: {
+        payload: Prisma.$GroupAssignmentPayload<ExtArgs>
+        fields: Prisma.GroupAssignmentFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GroupAssignmentFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GroupAssignmentFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>
+          }
+          findFirst: {
+            args: Prisma.GroupAssignmentFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GroupAssignmentFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>
+          }
+          findMany: {
+            args: Prisma.GroupAssignmentFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>[]
+          }
+          create: {
+            args: Prisma.GroupAssignmentCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>
+          }
+          createMany: {
+            args: Prisma.GroupAssignmentCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.GroupAssignmentCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>[]
+          }
+          delete: {
+            args: Prisma.GroupAssignmentDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>
+          }
+          update: {
+            args: Prisma.GroupAssignmentUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>
+          }
+          deleteMany: {
+            args: Prisma.GroupAssignmentDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GroupAssignmentUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.GroupAssignmentUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>[]
+          }
+          upsert: {
+            args: Prisma.GroupAssignmentUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GroupAssignmentPayload>
+          }
+          aggregate: {
+            args: Prisma.GroupAssignmentAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGroupAssignment>
+          }
+          groupBy: {
+            args: Prisma.GroupAssignmentGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GroupAssignmentGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GroupAssignmentCountArgs<ExtArgs>
+            result: $Utils.Optional<GroupAssignmentCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1412,6 +1502,7 @@ export namespace Prisma {
     unit?: UnitOmit
     topic?: TopicOmit
     lesson?: LessonOmit
+    groupAssignment?: GroupAssignmentOmit
   }
 
   /* Types for Logging */
@@ -1557,11 +1648,13 @@ export namespace Prisma {
   export type LearningGroupCountOutputType = {
     students: number
     gradingSchemas: number
+    assignments: number
   }
 
   export type LearningGroupCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     students?: boolean | LearningGroupCountOutputTypeCountStudentsArgs
     gradingSchemas?: boolean | LearningGroupCountOutputTypeCountGradingSchemasArgs
+    assignments?: boolean | LearningGroupCountOutputTypeCountAssignmentsArgs
   }
 
   // Custom InputTypes
@@ -1587,6 +1680,13 @@ export namespace Prisma {
    */
   export type LearningGroupCountOutputTypeCountGradingSchemasArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: GradingSchemaWhereInput
+  }
+
+  /**
+   * LearningGroupCountOutputType without action
+   */
+  export type LearningGroupCountOutputTypeCountAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GroupAssignmentWhereInput
   }
 
 
@@ -4091,6 +4191,7 @@ export namespace Prisma {
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
+    assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["learningGroup"]>
 
@@ -4125,6 +4226,7 @@ export namespace Prisma {
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
+    assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type LearningGroupIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4140,6 +4242,7 @@ export namespace Prisma {
       teacher: Prisma.$UserPayload<ExtArgs>
       students: Prisma.$UserPayload<ExtArgs>[]
       gradingSchemas: Prisma.$GradingSchemaPayload<ExtArgs>[]
+      assignments: Prisma.$GroupAssignmentPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -4544,6 +4647,7 @@ export namespace Prisma {
     teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     students<T extends LearningGroup$studentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$studentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     gradingSchemas<T extends LearningGroup$gradingSchemasArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$gradingSchemasArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GradingSchemaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    assignments<T extends LearningGroup$assignmentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -5017,6 +5121,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: GradingSchemaScalarFieldEnum | GradingSchemaScalarFieldEnum[]
+  }
+
+  /**
+   * LearningGroup.assignments
+   */
+  export type LearningGroup$assignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    where?: GroupAssignmentWhereInput
+    orderBy?: GroupAssignmentOrderByWithRelationInput | GroupAssignmentOrderByWithRelationInput[]
+    cursor?: GroupAssignmentWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: GroupAssignmentScalarFieldEnum | GroupAssignmentScalarFieldEnum[]
   }
 
   /**
@@ -10739,6 +10867,1062 @@ export namespace Prisma {
 
 
   /**
+   * Model GroupAssignment
+   */
+
+  export type AggregateGroupAssignment = {
+    _count: GroupAssignmentCountAggregateOutputType | null
+    _min: GroupAssignmentMinAggregateOutputType | null
+    _max: GroupAssignmentMaxAggregateOutputType | null
+  }
+
+  export type GroupAssignmentMinAggregateOutputType = {
+    id: string | null
+    groupId: string | null
+    type: string | null
+    refId: string | null
+    createdAt: Date | null
+  }
+
+  export type GroupAssignmentMaxAggregateOutputType = {
+    id: string | null
+    groupId: string | null
+    type: string | null
+    refId: string | null
+    createdAt: Date | null
+  }
+
+  export type GroupAssignmentCountAggregateOutputType = {
+    id: number
+    groupId: number
+    type: number
+    refId: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type GroupAssignmentMinAggregateInputType = {
+    id?: true
+    groupId?: true
+    type?: true
+    refId?: true
+    createdAt?: true
+  }
+
+  export type GroupAssignmentMaxAggregateInputType = {
+    id?: true
+    groupId?: true
+    type?: true
+    refId?: true
+    createdAt?: true
+  }
+
+  export type GroupAssignmentCountAggregateInputType = {
+    id?: true
+    groupId?: true
+    type?: true
+    refId?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type GroupAssignmentAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GroupAssignment to aggregate.
+     */
+    where?: GroupAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GroupAssignments to fetch.
+     */
+    orderBy?: GroupAssignmentOrderByWithRelationInput | GroupAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GroupAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GroupAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GroupAssignments.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GroupAssignments
+    **/
+    _count?: true | GroupAssignmentCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GroupAssignmentMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GroupAssignmentMaxAggregateInputType
+  }
+
+  export type GetGroupAssignmentAggregateType<T extends GroupAssignmentAggregateArgs> = {
+        [P in keyof T & keyof AggregateGroupAssignment]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGroupAssignment[P]>
+      : GetScalarType<T[P], AggregateGroupAssignment[P]>
+  }
+
+
+
+
+  export type GroupAssignmentGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GroupAssignmentWhereInput
+    orderBy?: GroupAssignmentOrderByWithAggregationInput | GroupAssignmentOrderByWithAggregationInput[]
+    by: GroupAssignmentScalarFieldEnum[] | GroupAssignmentScalarFieldEnum
+    having?: GroupAssignmentScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GroupAssignmentCountAggregateInputType | true
+    _min?: GroupAssignmentMinAggregateInputType
+    _max?: GroupAssignmentMaxAggregateInputType
+  }
+
+  export type GroupAssignmentGroupByOutputType = {
+    id: string
+    groupId: string
+    type: string
+    refId: string
+    createdAt: Date
+    _count: GroupAssignmentCountAggregateOutputType | null
+    _min: GroupAssignmentMinAggregateOutputType | null
+    _max: GroupAssignmentMaxAggregateOutputType | null
+  }
+
+  type GetGroupAssignmentGroupByPayload<T extends GroupAssignmentGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GroupAssignmentGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GroupAssignmentGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GroupAssignmentGroupByOutputType[P]>
+            : GetScalarType<T[P], GroupAssignmentGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GroupAssignmentSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    groupId?: boolean
+    type?: boolean
+    refId?: boolean
+    createdAt?: boolean
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["groupAssignment"]>
+
+  export type GroupAssignmentSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    groupId?: boolean
+    type?: boolean
+    refId?: boolean
+    createdAt?: boolean
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["groupAssignment"]>
+
+  export type GroupAssignmentSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    groupId?: boolean
+    type?: boolean
+    refId?: boolean
+    createdAt?: boolean
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["groupAssignment"]>
+
+  export type GroupAssignmentSelectScalar = {
+    id?: boolean
+    groupId?: boolean
+    type?: boolean
+    refId?: boolean
+    createdAt?: boolean
+  }
+
+  export type GroupAssignmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "groupId" | "type" | "refId" | "createdAt", ExtArgs["result"]["groupAssignment"]>
+  export type GroupAssignmentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }
+  export type GroupAssignmentIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }
+  export type GroupAssignmentIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }
+
+  export type $GroupAssignmentPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GroupAssignment"
+    objects: {
+      group: Prisma.$LearningGroupPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      groupId: string
+      type: string
+      refId: string
+      createdAt: Date
+    }, ExtArgs["result"]["groupAssignment"]>
+    composites: {}
+  }
+
+  type GroupAssignmentGetPayload<S extends boolean | null | undefined | GroupAssignmentDefaultArgs> = $Result.GetResult<Prisma.$GroupAssignmentPayload, S>
+
+  type GroupAssignmentCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<GroupAssignmentFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: GroupAssignmentCountAggregateInputType | true
+    }
+
+  export interface GroupAssignmentDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GroupAssignment'], meta: { name: 'GroupAssignment' } }
+    /**
+     * Find zero or one GroupAssignment that matches the filter.
+     * @param {GroupAssignmentFindUniqueArgs} args - Arguments to find a GroupAssignment
+     * @example
+     * // Get one GroupAssignment
+     * const groupAssignment = await prisma.groupAssignment.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GroupAssignmentFindUniqueArgs>(args: SelectSubset<T, GroupAssignmentFindUniqueArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one GroupAssignment that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {GroupAssignmentFindUniqueOrThrowArgs} args - Arguments to find a GroupAssignment
+     * @example
+     * // Get one GroupAssignment
+     * const groupAssignment = await prisma.groupAssignment.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GroupAssignmentFindUniqueOrThrowArgs>(args: SelectSubset<T, GroupAssignmentFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GroupAssignment that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GroupAssignmentFindFirstArgs} args - Arguments to find a GroupAssignment
+     * @example
+     * // Get one GroupAssignment
+     * const groupAssignment = await prisma.groupAssignment.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GroupAssignmentFindFirstArgs>(args?: SelectSubset<T, GroupAssignmentFindFirstArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GroupAssignment that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GroupAssignmentFindFirstOrThrowArgs} args - Arguments to find a GroupAssignment
+     * @example
+     * // Get one GroupAssignment
+     * const groupAssignment = await prisma.groupAssignment.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GroupAssignmentFindFirstOrThrowArgs>(args?: SelectSubset<T, GroupAssignmentFindFirstOrThrowArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more GroupAssignments that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GroupAssignmentFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GroupAssignments
+     * const groupAssignments = await prisma.groupAssignment.findMany()
+     * 
+     * // Get first 10 GroupAssignments
+     * const groupAssignments = await prisma.groupAssignment.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const groupAssignmentWithIdOnly = await prisma.groupAssignment.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GroupAssignmentFindManyArgs>(args?: SelectSubset<T, GroupAssignmentFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a GroupAssignment.
+     * @param {GroupAssignmentCreateArgs} args - Arguments to create a GroupAssignment.
+     * @example
+     * // Create one GroupAssignment
+     * const GroupAssignment = await prisma.groupAssignment.create({
+     *   data: {
+     *     // ... data to create a GroupAssignment
+     *   }
+     * })
+     * 
+     */
+    create<T extends GroupAssignmentCreateArgs>(args: SelectSubset<T, GroupAssignmentCreateArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many GroupAssignments.
+     * @param {GroupAssignmentCreateManyArgs} args - Arguments to create many GroupAssignments.
+     * @example
+     * // Create many GroupAssignments
+     * const groupAssignment = await prisma.groupAssignment.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GroupAssignmentCreateManyArgs>(args?: SelectSubset<T, GroupAssignmentCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many GroupAssignments and returns the data saved in the database.
+     * @param {GroupAssignmentCreateManyAndReturnArgs} args - Arguments to create many GroupAssignments.
+     * @example
+     * // Create many GroupAssignments
+     * const groupAssignment = await prisma.groupAssignment.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many GroupAssignments and only return the `id`
+     * const groupAssignmentWithIdOnly = await prisma.groupAssignment.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends GroupAssignmentCreateManyAndReturnArgs>(args?: SelectSubset<T, GroupAssignmentCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a GroupAssignment.
+     * @param {GroupAssignmentDeleteArgs} args - Arguments to delete one GroupAssignment.
+     * @example
+     * // Delete one GroupAssignment
+     * const GroupAssignment = await prisma.groupAssignment.delete({
+     *   where: {
+     *     // ... filter to delete one GroupAssignment
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GroupAssignmentDeleteArgs>(args: SelectSubset<T, GroupAssignmentDeleteArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one GroupAssignment.
+     * @param {GroupAssignmentUpdateArgs} args - Arguments to update one GroupAssignment.
+     * @example
+     * // Update one GroupAssignment
+     * const groupAssignment = await prisma.groupAssignment.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GroupAssignmentUpdateArgs>(args: SelectSubset<T, GroupAssignmentUpdateArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more GroupAssignments.
+     * @param {GroupAssignmentDeleteManyArgs} args - Arguments to filter GroupAssignments to delete.
+     * @example
+     * // Delete a few GroupAssignments
+     * const { count } = await prisma.groupAssignment.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GroupAssignmentDeleteManyArgs>(args?: SelectSubset<T, GroupAssignmentDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GroupAssignments.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GroupAssignmentUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GroupAssignments
+     * const groupAssignment = await prisma.groupAssignment.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GroupAssignmentUpdateManyArgs>(args: SelectSubset<T, GroupAssignmentUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GroupAssignments and returns the data updated in the database.
+     * @param {GroupAssignmentUpdateManyAndReturnArgs} args - Arguments to update many GroupAssignments.
+     * @example
+     * // Update many GroupAssignments
+     * const groupAssignment = await prisma.groupAssignment.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more GroupAssignments and only return the `id`
+     * const groupAssignmentWithIdOnly = await prisma.groupAssignment.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends GroupAssignmentUpdateManyAndReturnArgs>(args: SelectSubset<T, GroupAssignmentUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one GroupAssignment.
+     * @param {GroupAssignmentUpsertArgs} args - Arguments to update or create a GroupAssignment.
+     * @example
+     * // Update or create a GroupAssignment
+     * const groupAssignment = await prisma.groupAssignment.upsert({
+     *   create: {
+     *     // ... data to create a GroupAssignment
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GroupAssignment we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GroupAssignmentUpsertArgs>(args: SelectSubset<T, GroupAssignmentUpsertArgs<ExtArgs>>): Prisma__GroupAssignmentClient<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of GroupAssignments.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GroupAssignmentCountArgs} args - Arguments to filter GroupAssignments to count.
+     * @example
+     * // Count the number of GroupAssignments
+     * const count = await prisma.groupAssignment.count({
+     *   where: {
+     *     // ... the filter for the GroupAssignments we want to count
+     *   }
+     * })
+    **/
+    count<T extends GroupAssignmentCountArgs>(
+      args?: Subset<T, GroupAssignmentCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GroupAssignmentCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GroupAssignment.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GroupAssignmentAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GroupAssignmentAggregateArgs>(args: Subset<T, GroupAssignmentAggregateArgs>): Prisma.PrismaPromise<GetGroupAssignmentAggregateType<T>>
+
+    /**
+     * Group by GroupAssignment.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GroupAssignmentGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GroupAssignmentGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GroupAssignmentGroupByArgs['orderBy'] }
+        : { orderBy?: GroupAssignmentGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GroupAssignmentGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGroupAssignmentGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GroupAssignment model
+   */
+  readonly fields: GroupAssignmentFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GroupAssignment.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GroupAssignmentClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    group<T extends LearningGroupDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroupDefaultArgs<ExtArgs>>): Prisma__LearningGroupClient<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GroupAssignment model
+   */
+  interface GroupAssignmentFieldRefs {
+    readonly id: FieldRef<"GroupAssignment", 'String'>
+    readonly groupId: FieldRef<"GroupAssignment", 'String'>
+    readonly type: FieldRef<"GroupAssignment", 'String'>
+    readonly refId: FieldRef<"GroupAssignment", 'String'>
+    readonly createdAt: FieldRef<"GroupAssignment", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GroupAssignment findUnique
+   */
+  export type GroupAssignmentFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which GroupAssignment to fetch.
+     */
+    where: GroupAssignmentWhereUniqueInput
+  }
+
+  /**
+   * GroupAssignment findUniqueOrThrow
+   */
+  export type GroupAssignmentFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which GroupAssignment to fetch.
+     */
+    where: GroupAssignmentWhereUniqueInput
+  }
+
+  /**
+   * GroupAssignment findFirst
+   */
+  export type GroupAssignmentFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which GroupAssignment to fetch.
+     */
+    where?: GroupAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GroupAssignments to fetch.
+     */
+    orderBy?: GroupAssignmentOrderByWithRelationInput | GroupAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GroupAssignments.
+     */
+    cursor?: GroupAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GroupAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GroupAssignments.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GroupAssignments.
+     */
+    distinct?: GroupAssignmentScalarFieldEnum | GroupAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * GroupAssignment findFirstOrThrow
+   */
+  export type GroupAssignmentFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which GroupAssignment to fetch.
+     */
+    where?: GroupAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GroupAssignments to fetch.
+     */
+    orderBy?: GroupAssignmentOrderByWithRelationInput | GroupAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GroupAssignments.
+     */
+    cursor?: GroupAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GroupAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GroupAssignments.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GroupAssignments.
+     */
+    distinct?: GroupAssignmentScalarFieldEnum | GroupAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * GroupAssignment findMany
+   */
+  export type GroupAssignmentFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which GroupAssignments to fetch.
+     */
+    where?: GroupAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GroupAssignments to fetch.
+     */
+    orderBy?: GroupAssignmentOrderByWithRelationInput | GroupAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GroupAssignments.
+     */
+    cursor?: GroupAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GroupAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GroupAssignments.
+     */
+    skip?: number
+    distinct?: GroupAssignmentScalarFieldEnum | GroupAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * GroupAssignment create
+   */
+  export type GroupAssignmentCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * The data needed to create a GroupAssignment.
+     */
+    data: XOR<GroupAssignmentCreateInput, GroupAssignmentUncheckedCreateInput>
+  }
+
+  /**
+   * GroupAssignment createMany
+   */
+  export type GroupAssignmentCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GroupAssignments.
+     */
+    data: GroupAssignmentCreateManyInput | GroupAssignmentCreateManyInput[]
+  }
+
+  /**
+   * GroupAssignment createManyAndReturn
+   */
+  export type GroupAssignmentCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * The data used to create many GroupAssignments.
+     */
+    data: GroupAssignmentCreateManyInput | GroupAssignmentCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * GroupAssignment update
+   */
+  export type GroupAssignmentUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * The data needed to update a GroupAssignment.
+     */
+    data: XOR<GroupAssignmentUpdateInput, GroupAssignmentUncheckedUpdateInput>
+    /**
+     * Choose, which GroupAssignment to update.
+     */
+    where: GroupAssignmentWhereUniqueInput
+  }
+
+  /**
+   * GroupAssignment updateMany
+   */
+  export type GroupAssignmentUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GroupAssignments.
+     */
+    data: XOR<GroupAssignmentUpdateManyMutationInput, GroupAssignmentUncheckedUpdateManyInput>
+    /**
+     * Filter which GroupAssignments to update
+     */
+    where?: GroupAssignmentWhereInput
+    /**
+     * Limit how many GroupAssignments to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GroupAssignment updateManyAndReturn
+   */
+  export type GroupAssignmentUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * The data used to update GroupAssignments.
+     */
+    data: XOR<GroupAssignmentUpdateManyMutationInput, GroupAssignmentUncheckedUpdateManyInput>
+    /**
+     * Filter which GroupAssignments to update
+     */
+    where?: GroupAssignmentWhereInput
+    /**
+     * Limit how many GroupAssignments to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * GroupAssignment upsert
+   */
+  export type GroupAssignmentUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * The filter to search for the GroupAssignment to update in case it exists.
+     */
+    where: GroupAssignmentWhereUniqueInput
+    /**
+     * In case the GroupAssignment found by the `where` argument doesn't exist, create a new GroupAssignment with this data.
+     */
+    create: XOR<GroupAssignmentCreateInput, GroupAssignmentUncheckedCreateInput>
+    /**
+     * In case the GroupAssignment was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GroupAssignmentUpdateInput, GroupAssignmentUncheckedUpdateInput>
+  }
+
+  /**
+   * GroupAssignment delete
+   */
+  export type GroupAssignmentDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter which GroupAssignment to delete.
+     */
+    where: GroupAssignmentWhereUniqueInput
+  }
+
+  /**
+   * GroupAssignment deleteMany
+   */
+  export type GroupAssignmentDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GroupAssignments to delete
+     */
+    where?: GroupAssignmentWhereInput
+    /**
+     * Limit how many GroupAssignments to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * GroupAssignment without action
+   */
+  export type GroupAssignmentDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GroupAssignment
+     */
+    select?: GroupAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GroupAssignment
+     */
+    omit?: GroupAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: GroupAssignmentInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -10847,6 +12031,17 @@ export namespace Prisma {
   };
 
   export type LessonScalarFieldEnum = (typeof LessonScalarFieldEnum)[keyof typeof LessonScalarFieldEnum]
+
+
+  export const GroupAssignmentScalarFieldEnum: {
+    id: 'id',
+    groupId: 'groupId',
+    type: 'type',
+    refId: 'refId',
+    createdAt: 'createdAt'
+  };
+
+  export type GroupAssignmentScalarFieldEnum = (typeof GroupAssignmentScalarFieldEnum)[keyof typeof GroupAssignmentScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -11039,6 +12234,7 @@ export namespace Prisma {
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
     gradingSchemas?: GradingSchemaListRelationFilter
+    assignments?: GroupAssignmentListRelationFilter
   }
 
   export type LearningGroupOrderByWithRelationInput = {
@@ -11050,6 +12246,7 @@ export namespace Prisma {
     teacher?: UserOrderByWithRelationInput
     students?: UserOrderByRelationAggregateInput
     gradingSchemas?: GradingSchemaOrderByRelationAggregateInput
+    assignments?: GroupAssignmentOrderByRelationAggregateInput
   }
 
   export type LearningGroupWhereUniqueInput = Prisma.AtLeast<{
@@ -11064,6 +12261,7 @@ export namespace Prisma {
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
     gradingSchemas?: GradingSchemaListRelationFilter
+    assignments?: GroupAssignmentListRelationFilter
   }, "id">
 
   export type LearningGroupOrderByWithAggregationInput = {
@@ -11435,6 +12633,61 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"Lesson"> | Date | string
   }
 
+  export type GroupAssignmentWhereInput = {
+    AND?: GroupAssignmentWhereInput | GroupAssignmentWhereInput[]
+    OR?: GroupAssignmentWhereInput[]
+    NOT?: GroupAssignmentWhereInput | GroupAssignmentWhereInput[]
+    id?: StringFilter<"GroupAssignment"> | string
+    groupId?: StringFilter<"GroupAssignment"> | string
+    type?: StringFilter<"GroupAssignment"> | string
+    refId?: StringFilter<"GroupAssignment"> | string
+    createdAt?: DateTimeFilter<"GroupAssignment"> | Date | string
+    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
+  }
+
+  export type GroupAssignmentOrderByWithRelationInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    type?: SortOrder
+    refId?: SortOrder
+    createdAt?: SortOrder
+    group?: LearningGroupOrderByWithRelationInput
+  }
+
+  export type GroupAssignmentWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: GroupAssignmentWhereInput | GroupAssignmentWhereInput[]
+    OR?: GroupAssignmentWhereInput[]
+    NOT?: GroupAssignmentWhereInput | GroupAssignmentWhereInput[]
+    groupId?: StringFilter<"GroupAssignment"> | string
+    type?: StringFilter<"GroupAssignment"> | string
+    refId?: StringFilter<"GroupAssignment"> | string
+    createdAt?: DateTimeFilter<"GroupAssignment"> | Date | string
+    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
+  }, "id">
+
+  export type GroupAssignmentOrderByWithAggregationInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    type?: SortOrder
+    refId?: SortOrder
+    createdAt?: SortOrder
+    _count?: GroupAssignmentCountOrderByAggregateInput
+    _max?: GroupAssignmentMaxOrderByAggregateInput
+    _min?: GroupAssignmentMinOrderByAggregateInput
+  }
+
+  export type GroupAssignmentScalarWhereWithAggregatesInput = {
+    AND?: GroupAssignmentScalarWhereWithAggregatesInput | GroupAssignmentScalarWhereWithAggregatesInput[]
+    OR?: GroupAssignmentScalarWhereWithAggregatesInput[]
+    NOT?: GroupAssignmentScalarWhereWithAggregatesInput | GroupAssignmentScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"GroupAssignment"> | string
+    groupId?: StringWithAggregatesFilter<"GroupAssignment"> | string
+    type?: StringWithAggregatesFilter<"GroupAssignment"> | string
+    refId?: StringWithAggregatesFilter<"GroupAssignment"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"GroupAssignment"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
@@ -11580,6 +12833,7 @@ export namespace Prisma {
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupUncheckedCreateInput = {
@@ -11590,6 +12844,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupUpdateInput = {
@@ -11600,6 +12855,7 @@ export namespace Prisma {
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateInput = {
@@ -11610,6 +12866,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupCreateManyInput = {
@@ -11996,6 +13253,61 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type GroupAssignmentCreateInput = {
+    id?: string
+    type: string
+    refId: string
+    createdAt?: Date | string
+    group: LearningGroupCreateNestedOneWithoutAssignmentsInput
+  }
+
+  export type GroupAssignmentUncheckedCreateInput = {
+    id?: string
+    groupId: string
+    type: string
+    refId: string
+    createdAt?: Date | string
+  }
+
+  export type GroupAssignmentUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    refId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    group?: LearningGroupUpdateOneRequiredWithoutAssignmentsNestedInput
+  }
+
+  export type GroupAssignmentUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    refId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GroupAssignmentCreateManyInput = {
+    id?: string
+    groupId: string
+    type: string
+    refId: string
+    createdAt?: Date | string
+  }
+
+  export type GroupAssignmentUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    refId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GroupAssignmentUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    refId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -12148,11 +13460,21 @@ export namespace Prisma {
     none?: GradingSchemaWhereInput
   }
 
+  export type GroupAssignmentListRelationFilter = {
+    every?: GroupAssignmentWhereInput
+    some?: GroupAssignmentWhereInput
+    none?: GroupAssignmentWhereInput
+  }
+
   export type UserOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
   export type GradingSchemaOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type GroupAssignmentOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -12493,6 +13815,30 @@ export namespace Prisma {
     order?: SortOrder
   }
 
+  export type GroupAssignmentCountOrderByAggregateInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    type?: SortOrder
+    refId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type GroupAssignmentMaxOrderByAggregateInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    type?: SortOrder
+    refId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type GroupAssignmentMinOrderByAggregateInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    type?: SortOrder
+    refId?: SortOrder
+    createdAt?: SortOrder
+  }
+
   export type LearningGroupCreateNestedManyWithoutStudentsInput = {
     create?: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput> | LearningGroupCreateWithoutStudentsInput[] | LearningGroupUncheckedCreateWithoutStudentsInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutStudentsInput | LearningGroupCreateOrConnectWithoutStudentsInput[]
@@ -12656,6 +14002,13 @@ export namespace Prisma {
     connect?: GradingSchemaWhereUniqueInput | GradingSchemaWhereUniqueInput[]
   }
 
+  export type GroupAssignmentCreateNestedManyWithoutGroupInput = {
+    create?: XOR<GroupAssignmentCreateWithoutGroupInput, GroupAssignmentUncheckedCreateWithoutGroupInput> | GroupAssignmentCreateWithoutGroupInput[] | GroupAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: GroupAssignmentCreateOrConnectWithoutGroupInput | GroupAssignmentCreateOrConnectWithoutGroupInput[]
+    createMany?: GroupAssignmentCreateManyGroupInputEnvelope
+    connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+  }
+
   export type UserUncheckedCreateNestedManyWithoutLearningGroupsInput = {
     create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
     connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
@@ -12667,6 +14020,13 @@ export namespace Prisma {
     connectOrCreate?: GradingSchemaCreateOrConnectWithoutLearningGroupInput | GradingSchemaCreateOrConnectWithoutLearningGroupInput[]
     createMany?: GradingSchemaCreateManyLearningGroupInputEnvelope
     connect?: GradingSchemaWhereUniqueInput | GradingSchemaWhereUniqueInput[]
+  }
+
+  export type GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput = {
+    create?: XOR<GroupAssignmentCreateWithoutGroupInput, GroupAssignmentUncheckedCreateWithoutGroupInput> | GroupAssignmentCreateWithoutGroupInput[] | GroupAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: GroupAssignmentCreateOrConnectWithoutGroupInput | GroupAssignmentCreateOrConnectWithoutGroupInput[]
+    createMany?: GroupAssignmentCreateManyGroupInputEnvelope
+    connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
   }
 
   export type UserUpdateOneRequiredWithoutTeacherGroupsNestedInput = {
@@ -12704,6 +14064,20 @@ export namespace Prisma {
     deleteMany?: GradingSchemaScalarWhereInput | GradingSchemaScalarWhereInput[]
   }
 
+  export type GroupAssignmentUpdateManyWithoutGroupNestedInput = {
+    create?: XOR<GroupAssignmentCreateWithoutGroupInput, GroupAssignmentUncheckedCreateWithoutGroupInput> | GroupAssignmentCreateWithoutGroupInput[] | GroupAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: GroupAssignmentCreateOrConnectWithoutGroupInput | GroupAssignmentCreateOrConnectWithoutGroupInput[]
+    upsert?: GroupAssignmentUpsertWithWhereUniqueWithoutGroupInput | GroupAssignmentUpsertWithWhereUniqueWithoutGroupInput[]
+    createMany?: GroupAssignmentCreateManyGroupInputEnvelope
+    set?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    disconnect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    delete?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    update?: GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
+    updateMany?: GroupAssignmentUpdateManyWithWhereWithoutGroupInput | GroupAssignmentUpdateManyWithWhereWithoutGroupInput[]
+    deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
+  }
+
   export type UserUncheckedUpdateManyWithoutLearningGroupsNestedInput = {
     create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
     connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
@@ -12729,6 +14103,20 @@ export namespace Prisma {
     update?: GradingSchemaUpdateWithWhereUniqueWithoutLearningGroupInput | GradingSchemaUpdateWithWhereUniqueWithoutLearningGroupInput[]
     updateMany?: GradingSchemaUpdateManyWithWhereWithoutLearningGroupInput | GradingSchemaUpdateManyWithWhereWithoutLearningGroupInput[]
     deleteMany?: GradingSchemaScalarWhereInput | GradingSchemaScalarWhereInput[]
+  }
+
+  export type GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput = {
+    create?: XOR<GroupAssignmentCreateWithoutGroupInput, GroupAssignmentUncheckedCreateWithoutGroupInput> | GroupAssignmentCreateWithoutGroupInput[] | GroupAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: GroupAssignmentCreateOrConnectWithoutGroupInput | GroupAssignmentCreateOrConnectWithoutGroupInput[]
+    upsert?: GroupAssignmentUpsertWithWhereUniqueWithoutGroupInput | GroupAssignmentUpsertWithWhereUniqueWithoutGroupInput[]
+    createMany?: GroupAssignmentCreateManyGroupInputEnvelope
+    set?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    disconnect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    delete?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+    update?: GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
+    updateMany?: GroupAssignmentUpdateManyWithWhereWithoutGroupInput | GroupAssignmentUpdateManyWithWhereWithoutGroupInput[]
+    deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
   }
 
   export type UserCreateNestedOneWithoutSubjectsInput = {
@@ -12981,6 +14369,20 @@ export namespace Prisma {
     update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutLessonsInput, TopicUpdateWithoutLessonsInput>, TopicUncheckedUpdateWithoutLessonsInput>
   }
 
+  export type LearningGroupCreateNestedOneWithoutAssignmentsInput = {
+    create?: XOR<LearningGroupCreateWithoutAssignmentsInput, LearningGroupUncheckedCreateWithoutAssignmentsInput>
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutAssignmentsInput
+    connect?: LearningGroupWhereUniqueInput
+  }
+
+  export type LearningGroupUpdateOneRequiredWithoutAssignmentsNestedInput = {
+    create?: XOR<LearningGroupCreateWithoutAssignmentsInput, LearningGroupUncheckedCreateWithoutAssignmentsInput>
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutAssignmentsInput
+    upsert?: LearningGroupUpsertWithoutAssignmentsInput
+    connect?: LearningGroupWhereUniqueInput
+    update?: XOR<XOR<LearningGroupUpdateToOneWithWhereWithoutAssignmentsInput, LearningGroupUpdateWithoutAssignmentsInput>, LearningGroupUncheckedUpdateWithoutAssignmentsInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -13124,6 +14526,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupUncheckedCreateWithoutStudentsInput = {
@@ -13133,6 +14536,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupCreateOrConnectWithoutStudentsInput = {
@@ -13147,6 +14551,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     students?: UserCreateNestedManyWithoutLearningGroupsInput
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupUncheckedCreateWithoutTeacherInput = {
@@ -13156,6 +14561,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupCreateOrConnectWithoutTeacherInput = {
@@ -13275,6 +14681,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupUncheckedCreateWithoutGradingSchemasInput = {
@@ -13284,6 +14691,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
+    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupCreateOrConnectWithoutGradingSchemasInput = {
@@ -13309,6 +14717,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateWithoutGradingSchemasInput = {
@@ -13318,6 +14727,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
   }
 
   export type UserCreateWithoutTeacherGroupsInput = {
@@ -13397,6 +14807,29 @@ export namespace Prisma {
 
   export type GradingSchemaCreateManyLearningGroupInputEnvelope = {
     data: GradingSchemaCreateManyLearningGroupInput | GradingSchemaCreateManyLearningGroupInput[]
+  }
+
+  export type GroupAssignmentCreateWithoutGroupInput = {
+    id?: string
+    type: string
+    refId: string
+    createdAt?: Date | string
+  }
+
+  export type GroupAssignmentUncheckedCreateWithoutGroupInput = {
+    id?: string
+    type: string
+    refId: string
+    createdAt?: Date | string
+  }
+
+  export type GroupAssignmentCreateOrConnectWithoutGroupInput = {
+    where: GroupAssignmentWhereUniqueInput
+    create: XOR<GroupAssignmentCreateWithoutGroupInput, GroupAssignmentUncheckedCreateWithoutGroupInput>
+  }
+
+  export type GroupAssignmentCreateManyGroupInputEnvelope = {
+    data: GroupAssignmentCreateManyGroupInput | GroupAssignmentCreateManyGroupInput[]
   }
 
   export type UserUpsertWithoutTeacherGroupsInput = {
@@ -13486,6 +14919,33 @@ export namespace Prisma {
     groupId?: StringFilter<"GradingSchema"> | string
     createdAt?: DateTimeFilter<"GradingSchema"> | Date | string
     updatedAt?: DateTimeFilter<"GradingSchema"> | Date | string
+  }
+
+  export type GroupAssignmentUpsertWithWhereUniqueWithoutGroupInput = {
+    where: GroupAssignmentWhereUniqueInput
+    update: XOR<GroupAssignmentUpdateWithoutGroupInput, GroupAssignmentUncheckedUpdateWithoutGroupInput>
+    create: XOR<GroupAssignmentCreateWithoutGroupInput, GroupAssignmentUncheckedCreateWithoutGroupInput>
+  }
+
+  export type GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput = {
+    where: GroupAssignmentWhereUniqueInput
+    data: XOR<GroupAssignmentUpdateWithoutGroupInput, GroupAssignmentUncheckedUpdateWithoutGroupInput>
+  }
+
+  export type GroupAssignmentUpdateManyWithWhereWithoutGroupInput = {
+    where: GroupAssignmentScalarWhereInput
+    data: XOR<GroupAssignmentUpdateManyMutationInput, GroupAssignmentUncheckedUpdateManyWithoutGroupInput>
+  }
+
+  export type GroupAssignmentScalarWhereInput = {
+    AND?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
+    OR?: GroupAssignmentScalarWhereInput[]
+    NOT?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
+    id?: StringFilter<"GroupAssignment"> | string
+    groupId?: StringFilter<"GroupAssignment"> | string
+    type?: StringFilter<"GroupAssignment"> | string
+    refId?: StringFilter<"GroupAssignment"> | string
+    createdAt?: DateTimeFilter<"GroupAssignment"> | Date | string
   }
 
   export type UserCreateWithoutSubjectsInput = {
@@ -14002,6 +15462,62 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type LearningGroupCreateWithoutAssignmentsInput = {
+    id?: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
+    students?: UserCreateNestedManyWithoutLearningGroupsInput
+    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+  }
+
+  export type LearningGroupUncheckedCreateWithoutAssignmentsInput = {
+    id?: string
+    name: string
+    teacherId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
+    gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+  }
+
+  export type LearningGroupCreateOrConnectWithoutAssignmentsInput = {
+    where: LearningGroupWhereUniqueInput
+    create: XOR<LearningGroupCreateWithoutAssignmentsInput, LearningGroupUncheckedCreateWithoutAssignmentsInput>
+  }
+
+  export type LearningGroupUpsertWithoutAssignmentsInput = {
+    update: XOR<LearningGroupUpdateWithoutAssignmentsInput, LearningGroupUncheckedUpdateWithoutAssignmentsInput>
+    create: XOR<LearningGroupCreateWithoutAssignmentsInput, LearningGroupUncheckedCreateWithoutAssignmentsInput>
+    where?: LearningGroupWhereInput
+  }
+
+  export type LearningGroupUpdateToOneWithWhereWithoutAssignmentsInput = {
+    where?: LearningGroupWhereInput
+    data: XOR<LearningGroupUpdateWithoutAssignmentsInput, LearningGroupUncheckedUpdateWithoutAssignmentsInput>
+  }
+
+  export type LearningGroupUpdateWithoutAssignmentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
+    students?: UserUpdateManyWithoutLearningGroupsNestedInput
+    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+  }
+
+  export type LearningGroupUncheckedUpdateWithoutAssignmentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+    gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+  }
+
   export type LearningGroupCreateManyTeacherInput = {
     id?: string
     name: string
@@ -14025,6 +15541,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateWithoutStudentsInput = {
@@ -14034,6 +15551,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateManyWithoutStudentsInput = {
@@ -14051,6 +15569,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateWithoutTeacherInput = {
@@ -14060,6 +15579,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateManyWithoutTeacherInput = {
@@ -14104,6 +15624,13 @@ export namespace Prisma {
     structure: string
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type GroupAssignmentCreateManyGroupInput = {
+    id?: string
+    type: string
+    refId: string
+    createdAt?: Date | string
   }
 
   export type UserUpdateWithoutLearningGroupsInput = {
@@ -14159,6 +15686,27 @@ export namespace Prisma {
     structure?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GroupAssignmentUpdateWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    refId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GroupAssignmentUncheckedUpdateWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    refId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GroupAssignmentUncheckedUpdateManyWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    refId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type BlockCreateManySubjectInput = {

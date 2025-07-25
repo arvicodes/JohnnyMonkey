@@ -36,6 +36,7 @@ interface Subject {
   name: string;
   description?: string;
   teacher: { id: string; name: string };
+  blocks?: any[]; // Added for nested structure
 }
 
 interface TabPanelProps {
@@ -76,7 +77,7 @@ const DatabaseViewer: React.FC = () => {
 
   const fetchDatabaseContent = async () => {
     try {
-      const response = await fetch('http://localhost:3005/api/admin/db-content');
+      const response = await fetch('/api/admin/db-content');
       if (!response.ok) throw new Error('Fehler beim Laden der Daten');
       const result = await response.json();
       setData(result);
@@ -220,6 +221,7 @@ const DatabaseViewer: React.FC = () => {
                   <TableCell>Name</TableCell>
                   <TableCell>Beschreibung</TableCell>
                   <TableCell>Lehrer</TableCell>
+                  <TableCell>Struktur</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -229,6 +231,53 @@ const DatabaseViewer: React.FC = () => {
                     <TableCell>{subject.name}</TableCell>
                     <TableCell>{subject.description}</TableCell>
                     <TableCell>{subject.teacher?.name}</TableCell>
+                    <TableCell>
+                      {/* Verschachtelte Struktur anzeigen */}
+                      {subject.blocks && subject.blocks.length > 0 ? (
+                        <Box sx={{ ml: 1 }}>
+                          {subject.blocks.map((block: any) => (
+                            <Box key={block.id} sx={{ mb: 0.5 }}>
+                              <Typography variant="body2" sx={{ color: '#1976d2', fontWeight: 500 }}>
+                                Block: {block.name}
+                              </Typography>
+                              {block.units && block.units.length > 0 && (
+                                <Box sx={{ ml: 2 }}>
+                                  {block.units.map((unit: any) => (
+                                    <Box key={unit.id} sx={{ mb: 0.5 }}>
+                                      <Typography variant="body2" sx={{ color: '#388e3c' }}>
+                                        Reihe: {unit.name}
+                                      </Typography>
+                                      {unit.topics && unit.topics.length > 0 && (
+                                        <Box sx={{ ml: 2 }}>
+                                          {unit.topics.map((topic: any) => (
+                                            <Box key={topic.id} sx={{ mb: 0.5 }}>
+                                              <Typography variant="body2" sx={{ color: '#e91e63' }}>
+                                                Thema: {topic.name}
+                                              </Typography>
+                                              {topic.lessons && topic.lessons.length > 0 && (
+                                                <Box sx={{ ml: 2 }}>
+                                                  {topic.lessons.map((lesson: any) => (
+                                                    <Typography key={lesson.id} variant="body2" sx={{ color: '#888' }}>
+                                                      Stunde: {lesson.name}
+                                                    </Typography>
+                                                  ))}
+                                                </Box>
+                                              )}
+                                            </Box>
+                                          ))}
+                                        </Box>
+                                      )}
+                                    </Box>
+                                  ))}
+                                </Box>
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">Keine Struktur</Typography>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

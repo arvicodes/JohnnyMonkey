@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createSubject, getSubjects, updateSubject, deleteSubject, reorderSubjects, reorderBlocks, reorderUnits, reorderTopics, reorderLessons } from '../controllers/SubjectController';
+import { createSubject, getSubjects, updateSubject, deleteSubject, reorderSubjects, reorderBlocks, reorderUnits, reorderTopics, reorderLessons, getSubject } from '../controllers/SubjectController';
 
 const router = Router();
 
@@ -16,5 +16,6 @@ router.post('/blocks/reorder', reorderBlocks);
 router.post('/units/reorder', reorderUnits);
 router.post('/topics/reorder', reorderTopics);
 router.post('/lessons/reorder', reorderLessons);
+router.get('/:id', getSubject);
 
 export default router; 

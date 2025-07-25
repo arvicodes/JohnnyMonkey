@@ -22,7 +22,20 @@ router.get('/db-content', async (req: Request, res: Response) => {
       }),
       prisma.subject.findMany({
         include: {
-          teacher: true
+          teacher: true,
+          blocks: {
+            include: {
+              units: {
+                include: {
+                  topics: {
+                    include: {
+                      lessons: true
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       })
     ]);

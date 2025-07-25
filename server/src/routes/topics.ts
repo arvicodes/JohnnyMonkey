@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createTopic, getTopics, updateTopic, deleteTopic } from '../controllers/TopicController';
+import { createTopic, getTopics, updateTopic, deleteTopic, getTopic } from '../controllers/TopicController';
 
 const router = Router();
 
@@ -11,5 +11,7 @@ router.post('/', createTopic);
 router.put('/:id', updateTopic);
 // Topic löschen
 router.delete('/:id', deleteTopic);
+// Einzelnes Topic abrufen
+router.get('/:id', getTopic);
 
 export default router; 

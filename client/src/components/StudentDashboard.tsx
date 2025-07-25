@@ -57,7 +57,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   useEffect(() => {
     const fetchLerngruppen = async () => {
       try {
-        const response = await fetch(`http://localhost:3005/api/learning-groups/student/${userId}`);
+        const response = await fetch(`/api/learning-groups/student/${userId}`);
         if (!response.ok) {
           throw new Error('Lerngruppen konnten nicht geladen werden');
         }

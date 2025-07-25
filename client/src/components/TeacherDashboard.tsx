@@ -23,7 +23,9 @@ import {
   Snackbar,
   Alert,
   Tab,
-  Tabs
+  Tabs,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import {
   AccessTime as TimeIcon,
@@ -35,10 +37,12 @@ import {
   Group as GroupIcon,
   PersonAdd as PersonAddIcon,
   Delete as DeleteIcon,
-  Storage as StorageIcon
+  Storage as StorageIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
+import { fetchAssignments } from './SubjectManager';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -94,6 +98,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [mainTabValue, setMainTabValue] = useState(0);
+  const [groupContents, setGroupContents] = useState<{ [groupId: string]: string[] }>({});
+  const [contentInputs, setContentInputs] = useState<{ [groupId: string]: string }>({});
+  // Im TeacherDashboard State:
+  const [subjectAssignments, setSubjectAssignments] = useState<{ [subjectId: string]: string[] }>({});
+  const [blockAssignments, setBlockAssignments] = useState<{ [blockId: string]: string[] }>({});
+  const [unitAssignments, setUnitAssignments] = useState<{ [unitId: string]: string[] }>({});
+  const [topicAssignments, setTopicAssignments] = useState<{ [topicId: string]: string[] }>({});
+  const [lessonAssignments, setLessonAssignments] = useState<{ [lessonId: string]: string[] }>({});
+  // Listen für Namen
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [blocks, setBlocks] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuGroupId, setMenuGroupId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
+  const [confirmDelete1, setConfirmDelete1] = useState(false);
+  const [confirmDelete2, setConfirmDelete2] = useState(false);
 
   // Spielerische Farbpalette
   const colors = {
@@ -110,9 +134,63 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     fetchGroups();
   }, [userId]);
 
+  // Nach dem Laden der Gruppen: Zuweisungen und Listen laden
+  useEffect(() => {
+    if (groups.length === 0) return;
+    // Zuweisungen laden
+    fetchAssignments(
+      groups,
+      setSubjectAssignments,
+      setBlockAssignments,
+      setUnitAssignments,
+      setTopicAssignments,
+      setLessonAssignments
+    );
+    // Listen laden
+    const fetchAll = async () => {
+      // Subjects
+      const resSubjects = await fetch(`/api/subjects?teacherId=${userId}`);
+      const subjectsData = resSubjects.ok ? await resSubjects.json() : [];
+      setSubjects(subjectsData);
+      // Blocks
+      let allBlocks: any[] = [];
+      for (const subj of subjectsData) {
+        const resBlocks = await fetch(`/api/blocks?subjectId=${subj.id}`);
+        const blocksData = resBlocks.ok ? await resBlocks.json() : [];
+        allBlocks = allBlocks.concat(blocksData);
+      }
+      setBlocks(allBlocks);
+      // Units
+      let allUnits: any[] = [];
+      for (const block of allBlocks) {
+        const resUnits = await fetch(`/api/units?blockId=${block.id}`);
+        const unitsData = resUnits.ok ? await resUnits.json() : [];
+        allUnits = allUnits.concat(unitsData);
+      }
+      setUnits(allUnits);
+      // Topics
+      let allTopics: any[] = [];
+      for (const unit of allUnits) {
+        const resTopics = await fetch(`/api/topics?unitId=${unit.id}`);
+        const topicsData = resTopics.ok ? await resTopics.json() : [];
+        allTopics = allTopics.concat(topicsData);
+      }
+      setTopics(allTopics);
+      // Lessons
+      let allLessons: any[] = [];
+      for (const topic of allTopics) {
+        const resLessons = await fetch(`/api/lessons?topicId=${topic.id}`);
+        const lessonsData = resLessons.ok ? await resLessons.json() : [];
+        allLessons = allLessons.concat(lessonsData);
+      }
+      setLessons(allLessons);
+    };
+    fetchAll();
+  }, [groups, userId]);
+
   const fetchGroups = async () => {
     try {
-      const response = await fetch(`http://localhost:3005/api/learning-groups/teacher/${userId}`);
+      const response = await fetch(`/api/learning-groups/teacher/${userId}`);
       if (response.ok) {
         const data = await response.json();
         setGroups(data);
@@ -124,7 +202,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const handleCreateGroup = async () => {
     try {
-      const response = await fetch('http://localhost:3005/api/learning-groups', {
+      const response = await fetch('/api/learning-groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newGroupName, teacherId: userId }),
@@ -142,7 +220,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const handleOpenAddStudents = async (groupId: string) => {
     setSelectedGroupId(groupId);
     try {
-      const response = await fetch(`http://localhost:3005/api/learning-groups/${groupId}/available-students`);
+      const response = await fetch(`/api/learning-groups/${groupId}/available-students`);
       if (!response.ok) throw new Error('Fehler beim Laden der verfügbaren Schüler');
       const data = await response.json();
       setAvailableStudents(data);
@@ -154,7 +232,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const handleAddStudents = async () => {
     try {
-      const response = await fetch(`http://localhost:3005/api/learning-groups/${selectedGroupId}/students`, {
+      const response = await fetch(`/api/learning-groups/${selectedGroupId}/students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentIds: selectedStudents }),
@@ -171,7 +249,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const handleRemoveStudent = async (groupId: string, studentId: string) => {
     try {
-      const response = await fetch(`http://localhost:3005/api/learning-groups/${groupId}/students/${studentId}`, {
+      const response = await fetch(`/api/learning-groups/${groupId}/students/${studentId}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Fehler beim Entfernen des Schülers');
@@ -192,6 +270,39 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const handleGroupClick = (groupId: string) => {
     navigate(`/learning-group/${groupId}`);
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, groupId: string) => {
+    setMenuAnchorEl(event.currentTarget);
+    setMenuGroupId(groupId);
+  };
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+    setMenuGroupId(null);
+  };
+  const handleDeleteDialogOpen = (groupId: string) => {
+    setDeleteGroupId(groupId);
+    setDeleteDialogOpen(true);
+    handleMenuClose();
+  };
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setDeleteGroupId(null);
+    setConfirmDelete1(false);
+    setConfirmDelete2(false);
+  };
+  const handleDeleteGroup = async () => {
+    if (!deleteGroupId) return;
+    try {
+      const res = await fetch(`/api/learning-groups/${deleteGroupId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Fehler beim Löschen');
+      await fetchGroups();
+      showSnackbar('Lerngruppe gelöscht', 'success');
+    } catch (e) {
+      showSnackbar('Fehler beim Löschen', 'error');
+    } finally {
+      handleDeleteDialogClose();
+    }
   };
 
   return (
@@ -345,91 +456,160 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }} 
                           />
                         </Box>
-                        <Button
-                          variant="outlined"
-                          startIcon={<PersonAddIcon />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenAddStudents(group.id);
-                          }}
-                          sx={{ 
-                            color: colors.primary,
-                            borderColor: colors.primary,
-                            '&:hover': { 
-                              borderColor: colors.primary,
-                              bgcolor: `${colors.primary}10`
-                            },
-                            ml: 1.4,
-                            py: 0.35,
-                            px: 1.4,
-                            fontSize: '0.525rem',
-                            height: '22.4px',
-                            width: '14%'
-                          }}
-                        >
-                          Schüler hinzufügen
-                        </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <IconButton
+                            aria-label="Mehr"
+                            onClick={e => { e.stopPropagation(); handleMenuOpen(e, group.id); }}
+                            sx={{ ml: 1 }}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                        </Box>
                       </Box>
                       <Grid container spacing={1.4}>
-                        {group.students.map((student) => (
-                          <Grid item xs={12} sm={6} md={4} lg={3} key={student.id}>
-                            <Card variant="outlined" sx={{ 
-                              borderRadius: 2.1,
-                              border: 'none',
-                              bgcolor: '#f8f9fa',
-                              transition: 'transform 0.14s',
-                              '&:hover': {
-                                transform: 'translateY(-2.8px)',
-                                boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)'
-                              }
-                            }}>
-                              <CardContent>
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.4 }}>
-                                  <Avatar sx={{ bgcolor: colors.accent1, mr: 1.4, width: 22, height: 22 }}>
-                                    {student.name.charAt(0)}
-                                  </Avatar>
-                                  <Box>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
-                                      {student.name}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                                      Code: {student.loginCode}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Chip 
-                                    label="Aktiv" 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: colors.success,
-                                      color: 'white',
-                                      fontWeight: 'bold',
-                                      fontSize: '0.7rem',
-                                      height: 18
-                                    }} 
-                                  />
-                                  <IconButton 
-                                    size="small"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveStudent(group.id, student.id);
-                                    }}
-                                    sx={{ 
-                                      color: colors.accent2,
-                                      '&:hover': {
-                                        bgcolor: `${colors.accent2}10`
-                                      },
-                                      fontSize: '1.1rem'
-                                    }}
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </Box>
-                              </CardContent>
-                            </Card>
+                        <Grid item xs={12} md={8}>
+                          <Grid container spacing={1.4}>
+                            {group.students.map((student) => (
+                              <Grid item xs={12} sm={6} md={6} lg={4} key={student.id}>
+                                <Card variant="outlined" sx={{ 
+                                  borderRadius: 2.1,
+                                  border: 'none',
+                                  bgcolor: '#f8f9fa',
+                                  transition: 'transform 0.14s',
+                                  '&:hover': {
+                                    transform: 'translateY(-2.8px)',
+                                    boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)'
+                                  }
+                                }}>
+                                  <CardContent>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.4 }}>
+                                      <Avatar sx={{ bgcolor: colors.accent1, mr: 1.4, width: 22, height: 22 }}>
+                                        {student.name.charAt(0)}
+                                      </Avatar>
+                                      <Box>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
+                                          {student.name}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                          Code: {student.loginCode}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Chip 
+                                        label="Aktiv" 
+                                        size="small" 
+                                        sx={{ 
+                                          bgcolor: colors.success,
+                                          color: 'white',
+                                          fontWeight: 'bold',
+                                          fontSize: '0.7rem',
+                                          height: 18
+                                        }} 
+                                      />
+                                      <IconButton 
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRemoveStudent(group.id, student.id);
+                                        }}
+                                        sx={{ 
+                                          color: colors.accent2,
+                                          '&:hover': {
+                                            bgcolor: `${colors.accent2}10`
+                                          },
+                                          fontSize: '1.1rem'
+                                        }}
+                                      >
+                                        <DeleteIcon />
+                                      </IconButton>
+                                    </Box>
+                                  </CardContent>
+                                </Card>
+                              </Grid>
+                            ))}
                           </Grid>
-                        ))}
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Box sx={{ p: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                              Zugeordnete Inhalte
+                            </Typography>
+                            {/* Verschachtelte Darstellung */}
+                            <Box sx={{ ml: 1 }}>
+                              {subjects
+                                .filter(subject => (subjectAssignments[subject.id] || []).includes(group.id))
+                                .map(subject => (
+                                  <Box key={subject.id} sx={{ mb: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: colors.accent1 }}>
+                                      Fach: {subject.name}
+                                    </Typography>
+                                    {/* Blöcke */}
+                                    {blocks
+                                      .filter(block => block.subjectId === subject.id && (blockAssignments[block.id] || []).includes(group.id))
+                                      .map(block => (
+                                        <Box key={block.id} sx={{ ml: 2, mb: 0.5 }}>
+                                          <Typography variant="body2" sx={{ color: colors.primary }}>
+                                            Block: {block.name}
+                                          </Typography>
+                                          {/* Units */}
+                                          {units
+                                            .filter(unit => unit.blockId === block.id && (unitAssignments[unit.id] || []).includes(group.id))
+                                            .map(unit => (
+                                              <Box key={unit.id} sx={{ ml: 2, mb: 0.5 }}>
+                                                <Typography variant="body2" sx={{ color: colors.secondary }}>
+                                                  Reihe: {unit.name}
+                                                </Typography>
+                                                {/* Themen */}
+                                                {topics
+                                                  .filter(topic => topic.unitId === unit.id && (topicAssignments[topic.id] || []).includes(group.id))
+                                                  .map(topic => (
+                                                    <Box key={topic.id} sx={{ ml: 2, mb: 0.5 }}>
+                                                      <Typography variant="body2" sx={{ color: colors.accent2 }}>
+                                                        Thema: {topic.name}
+                                                      </Typography>
+                                                      {/* Stunden */}
+                                                      {lessons
+                                                        .filter(lesson => lesson.topicId === topic.id && (lessonAssignments[lesson.id] || []).includes(group.id))
+                                                        .map(lesson => (
+                                                          <Box key={lesson.id} sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+                                                            <Typography variant="body2" sx={{ color: '#888' }}>
+                                                              Stunde: {lesson.name}
+                                                            </Typography>
+                                                            {/* Material-Link nur für 3D Druck / Ein einfacher Einstieg */}
+                                                            {subject.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg' && (
+                                                              <Button
+                                                                size="small"
+                                                                sx={{ ml: 1, textTransform: 'none', fontSize: '0.85em', color: '#1976d2' }}
+                                                                onClick={e => {
+                                                                  e.stopPropagation();
+                                                                  window.open('/material/3D-Druck-Intro.html', '_blank');
+                                                                }}
+                                                              >
+                                                                Material öffnen
+                                                              </Button>
+                                                            )}
+                                                          </Box>
+                                                        ))}
+                                                    </Box>
+                                                  ))}
+                                              </Box>
+                                            ))}
+                                        </Box>
+                                      ))}
+                                  </Box>
+                                ))}
+                              {/* Falls keine Inhalte */}
+                              {!(subjects.some(subject => (subjectAssignments[subject.id] || []).includes(group.id)) ||
+                                blocks.some(block => (blockAssignments[block.id] || []).includes(group.id)) ||
+                                units.some(unit => (unitAssignments[unit.id] || []).includes(group.id)) ||
+                                topics.some(topic => (topicAssignments[topic.id] || []).includes(group.id)) ||
+                                lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(group.id))) && (
+                                <Typography variant="body2" color="text.secondary">Noch keine Inhalte zugeordnet.</Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        </Grid>
                       </Grid>
                     </Box>
                   ))}
@@ -443,7 +623,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={2}>
-            <SubjectManager teacherId={userId} />
+            <SubjectManager
+              teacherId={userId}
+              subjectAssignments={subjectAssignments}
+              setSubjectAssignments={setSubjectAssignments}
+              blockAssignments={blockAssignments}
+              setBlockAssignments={setBlockAssignments}
+              unitAssignments={unitAssignments}
+              setUnitAssignments={setUnitAssignments}
+              topicAssignments={topicAssignments}
+              setTopicAssignments={setTopicAssignments}
+              lessonAssignments={lessonAssignments}
+              setLessonAssignments={setLessonAssignments}
+              setSubjects={setSubjects}
+              setBlocks={setBlocks}
+              setUnits={setUnits}
+              setTopics={setTopics}
+              setLessons={setLessons}
+            />
           </TabPanel>
         </Grid>
       </Grid>
@@ -520,6 +717,44 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Kontextmenü für Gruppen */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => { handleOpenAddStudents(menuGroupId!); handleMenuClose(); }}>
+          <PersonAddIcon fontSize="small" sx={{ mr: 1 }} /> Schüler hinzufügen
+        </MenuItem>
+        <MenuItem onClick={() => handleDeleteDialogOpen(menuGroupId!)}>
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Löschen
+        </MenuItem>
+      </Menu>
+      {/* Bestätigungsdialog für Löschen */}
+      <Dialog open={deleteDialogOpen} onClose={handleDeleteDialogClose}>
+        <DialogTitle>Lerngruppe löschen</DialogTitle>
+        <DialogContent>
+          <Typography>Möchtest du diese Lerngruppe wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</Typography>
+          <Typography sx={{ color: 'error.main', mt: 2, fontWeight: 'bold' }}>
+            Achtung: Diese Aktion löscht alle Zuweisungen und Bewertungsschemata dieser Gruppe unwiderruflich!
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <label style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <input type="checkbox" checked={confirmDelete1} onChange={e => setConfirmDelete1(e.target.checked)} style={{ marginRight: 8 }} />
+              Ich habe verstanden, dass alle Inhalte und Zuweisungen gelöscht werden.
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center' }}>
+              <input type="checkbox" checked={confirmDelete2} onChange={e => setConfirmDelete2(e.target.checked)} style={{ marginRight: 8 }} />
+              Ich möchte diese Gruppe wirklich unwiderruflich löschen.
+            </label>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteDialogClose}>Abbrechen</Button>
+          <Button onClick={handleDeleteGroup} color="error" variant="contained" disabled={!(confirmDelete1 && confirmDelete2)}>Löschen</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

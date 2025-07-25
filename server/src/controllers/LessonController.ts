@@ -52,4 +52,15 @@ export const deleteLesson = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Fehler beim Löschen der Stunde' });
   }
+};
+
+export const getLesson = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const lesson = await prisma.lesson.findUnique({ where: { id } });
+    if (!lesson) return res.status(404).json({ error: 'Lesson nicht gefunden' });
+    res.json(lesson);
+  } catch (error) {
+    res.status(500).json({ error: 'Fehler beim Laden der Lesson' });
+  }
 }; 
