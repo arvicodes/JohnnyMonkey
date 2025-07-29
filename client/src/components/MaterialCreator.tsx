@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Typography,
@@ -77,12 +78,15 @@ interface Note {
   id: string;
   title: string;
   content: string;
+  authorId: string;
+  isPrivate: boolean;
+  tags?: string;
   createdAt: string;
-  color: string;
-  order: number;
+  updatedAt: string;
 }
 
 const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
+  console.log('MaterialCreator received teacherId:', teacherId, 'type:', typeof teacherId);
   const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -104,7 +108,6 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Notizzettel states
-  const [notes, setNotes] = useState<Note[]>([]);
   const [newNoteTitle, setNewNoteTitle] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteColor, setNewNoteColor] = useState('#4CAF50');
@@ -365,6 +368,158 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     }
   };
 
+  // React Query für Notizen
+  const queryClient = useQueryClient();
+  
+  // Fetch notes
+  const { data: notes = [], refetch: refetchNotes } = useQuery({
+    queryKey: ['notes', teacherId],
+    queryFn: async (): Promise<Note[]> => {
+      const response = await fetch(`/api/notes?userId=${teacherId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch notes');
+      }
+      return response.json();
+    },
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  // Create note mutation
+  const createNoteMutation = useMutation({
+    mutationFn: async (noteData: { title: string; content: string; authorId: string; isPrivate: boolean; tags?: string }) => {
+      const response = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: noteData.title,
+          content: noteData.content,
+          authorId: noteData.authorId,
+          isPrivate: noteData.isPrivate,
+          tags: noteData.tags
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create note');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchNotes();
+      setNewNoteTitle('');
+      setNewNoteContent('');
+      setNewNoteColor('#4CAF50');
+      setShowNoteForm(false);
+      showSnackbar('Notiz erfolgreich erstellt', 'success');
+    },
+    onError: () => {
+      showSnackbar('Fehler beim Erstellen der Notiz', 'error');
+    },
+  });
+
+  // Update note mutation
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ id, noteData }: { id: string; noteData: { title: string; content: string; authorId: string; isPrivate: boolean; tags?: string } }) => {
+      const response = await fetch(`/api/notes/${id}?userId=${noteData.authorId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: noteData.title,
+          content: noteData.content,
+          isPrivate: noteData.isPrivate,
+          tags: noteData.tags
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update note');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      refetchNotes();
+      setEditNoteDialogOpen(false);
+      setEditingNote(null);
+      showSnackbar('Notiz erfolgreich aktualisiert', 'success');
+    },
+    onError: () => {
+      showSnackbar('Fehler beim Aktualisieren der Notiz', 'error');
+    },
+  });
+
+  // Delete note mutation
+  const deleteNoteMutation = useMutation({
+    mutationFn: async ({ id, authorId }: { id: string; authorId: string }) => {
+      const response = await fetch(`/api/notes/${id}?userId=${authorId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete note');
+      }
+      return response.status === 204 ? null : response.json();
+    },
+    onSuccess: () => {
+      refetchNotes();
+      setDeleteNoteDialogOpen(false);
+      setNoteToDelete(null);
+      showSnackbar('Notiz erfolgreich gelöscht', 'success');
+    },
+    onError: () => {
+      showSnackbar('Fehler beim Löschen der Notiz', 'error');
+    },
+  });
+
+  // Reorder notes mutation
+  const reorderNotesMutation = useMutation({
+    mutationFn: async ({ userId, noteIds }: { userId: string; noteIds: string[] }) => {
+      const requestBody = { noteIds };
+      console.log('Sending reorder request:', { userId, noteIds });
+      console.log('Request body stringified:', JSON.stringify(requestBody));
+      
+      console.log('Making fetch request to: /api/notes/reorder');
+      console.log('Request method: PUT');
+      console.log('Request headers:', { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      });
+      
+      const response = await fetch(`/api/notes/reorder?userId=${userId}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('Response received:', response);
+      console.log('Response status:', response.status);
+      console.log('Response statusText:', response.statusText);
+      
+      console.log('Reorder response status:', response.status);
+      console.log('Reorder response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Reorder error response:', errorText);
+        throw new Error(`Failed to reorder notes: ${response.status} ${errorText}`);
+      }
+      const result = await response.json();
+      console.log('Reorder success response:', result);
+      return result;
+    },
+    onSuccess: () => {
+      console.log('Reorder mutation successful, refetching notes');
+      refetchNotes();
+    },
+    onError: (error) => {
+      console.error('Reorder mutation error:', error);
+      showSnackbar('Fehler beim Umsortieren der Notizen', 'error');
+    },
+  });
+
   // Lade Quizze beim ersten Rendern
   React.useEffect(() => {
     fetchQuizzes();
@@ -408,81 +563,25 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   };
 
   // Notizzettel Funktionen
-  const fetchNotes = async () => {
-    try {
-      // Für jetzt verwenden wir lokale Daten, da die API noch nicht existiert
-      // const response = await fetch('/api/notes');
-      // if (response.ok) {
-      //   const notesData = await response.json();
-      //   setNotes(notesData);
-      // }
-      console.log('Notizen werden geladen...');
-    } catch (error) {
-      console.error('Error fetching notes:', error);
-    }
-  };
-
   const addNote = async () => {
     if (!newNoteTitle.trim() || !newNoteContent.trim()) return;
     
-    try {
-      // Für jetzt verwenden wir lokale Daten, da die API noch nicht existiert
-      const newNote: Note = {
-        id: Date.now().toString(), // Einfache ID-Generierung
-        title: newNoteTitle.trim(),
-        content: newNoteContent.trim(),
-        createdAt: new Date().toISOString(),
-        color: newNoteColor,
-        order: notes.length // Neue Notiz am Ende hinzufügen
-      };
-      
-      setNotes(prevNotes => [...prevNotes, newNote]);
-      setNewNoteTitle('');
-      setNewNoteContent('');
-      setNewNoteColor('#4CAF50');
-      setShowNoteForm(false);
-      
-      // API-Aufruf (später aktivieren):
-      // const response = await fetch('/api/notes', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     title: newNoteTitle.trim(),
-      //     content: newNoteContent.trim(),
-      //     color: newNoteColor
-      //   }),
-      // });
-
-      // if (response.ok) {
-      //   setNewNoteTitle('');
-      //   setNewNoteContent('');
-      //   setNewNoteColor('#4CAF50');
-      //   setShowNoteForm(false);
-      //   await fetchNotes();
-      // }
-    } catch (error) {
-      console.error('Error adding note:', error);
-    }
+    createNoteMutation.mutate({
+      title: newNoteTitle.trim(),
+      content: newNoteContent.trim(),
+      authorId: teacherId,
+      isPrivate: true,
+      tags: newNoteColor // Verwende die Farbe als Tag
+    });
   };
 
   const deleteNote = async (noteId: string) => {
-    try {
-      // Für jetzt verwenden wir lokale Daten, da die API noch nicht existiert
-      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
-      
-      // API-Aufruf (später aktivieren):
-      // const response = await fetch(`/api/notes/${noteId}`, {
-      //   method: 'DELETE',
-      // });
+    deleteNoteMutation.mutate({ id: noteId, authorId: teacherId });
+  };
 
-      // if (response.ok) {
-      //   await fetchNotes();
-      // }
-    } catch (error) {
-      console.error('Error deleting note:', error);
-    }
+  const handleDeleteNote = (note: Note) => {
+    setNoteToDelete(note);
+    setDeleteNoteDialogOpen(true);
   };
 
   // Drag & Drop Funktionen für Notizen
@@ -499,19 +598,30 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     const draggedNoteId = e.dataTransfer.getData('text/plain');
     const draggedIndex = notes.findIndex(note => note.id === draggedNoteId);
     
+    console.log('Drag & Drop:', { draggedNoteId, draggedIndex, targetIndex, notesLength: notes.length });
+    
     if (draggedIndex === -1 || draggedIndex === targetIndex) return;
     
     const updatedNotes = [...notes];
     const [draggedNote] = updatedNotes.splice(draggedIndex, 1);
     updatedNotes.splice(targetIndex, 0, draggedNote);
     
-    // Order neu setzen
-    const reorderedNotes = updatedNotes.map((note, index) => ({
-      ...note,
-      order: index
-    }));
+    console.log('Updated notes order:', updatedNotes.map(n => ({ id: n.id, title: n.title })));
     
-    setNotes(reorderedNotes);
+    // Aktualisiere die Reihenfolge in der Datenbank
+    updateNoteOrder(updatedNotes);
+  };
+
+  // Funktion zum Aktualisieren der Notizen-Reihenfolge
+  const updateNoteOrder = async (reorderedNotes: Note[]) => {
+    const noteIds = reorderedNotes.map(note => note.id);
+    console.log('Updating note order:', { teacherId, noteIds, teacherIdType: typeof teacherId });
+    if (!teacherId) {
+      console.error('teacherId is missing or empty');
+      showSnackbar('Fehler: Benutzer-ID fehlt', 'error');
+      return;
+    }
+    reorderNotesMutation.mutate({ userId: teacherId, noteIds });
   };
 
   const handleEditNote = (note: Note) => {
@@ -527,38 +637,16 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const handleUpdateNote = async () => {
     if (!editingNote) return;
     
-    try {
-      // Für jetzt verwenden wir lokale Daten, da die API noch nicht existiert
-      setNotes(prevNotes => 
-        prevNotes.map(note => 
-          note.id === editingNote.id 
-            ? { ...editingNote, createdAt: note.createdAt, order: note.order }
-            : note
-        )
-      );
-      
-      setEditNoteDialogOpen(false);
-      setEditingNote(null);
-      
-      // API-Aufruf (später aktivieren):
-      // const response = await fetch(`/api/notes/${editingNote.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     title: editingNote.title,
-      //     content: editingNote.content,
-      //     color: editingNote.color
-      //   })
-      // });
-
-      // if (response.ok) {
-      //   setEditNoteDialogOpen(false);
-      //   setEditingNote(null);
-      //   await fetchNotes();
-      // }
-    } catch (error) {
-      console.error('Error updating note:', error);
-    }
+    updateNoteMutation.mutate({
+      id: editingNote.id,
+      noteData: {
+        title: editingNote.title,
+        content: editingNote.content,
+        authorId: teacherId,
+        isPrivate: true,
+        tags: editingNote.tags || '#4CAF50' // Verwende die Farbe als Tag
+      }
+    });
   };
 
   return (
@@ -786,8 +874,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                       <ListItem
                         key={note.id}
                         sx={{ 
-                          background: `linear-gradient(135deg, ${note.color}15 0%, ${note.color}25 100%)`,
-                          border: `2px solid ${note.color}40`,
+                          background: `linear-gradient(135deg, ${note.tags || '#4CAF50'}15 0%, ${note.tags || '#4CAF50'}25 100%)`,
+                          border: `2px solid ${note.tags || '#4CAF50'}40`,
                           mb: 1, 
                           borderRadius: 1,
                           position: 'relative',
@@ -798,8 +886,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                             cursor: 'grabbing'
                           },
                           '&:hover': {
-                            background: `linear-gradient(135deg, ${note.color}25 0%, ${note.color}35 100%)`,
-                            border: `2px solid ${note.color}60`
+                            background: `linear-gradient(135deg, ${note.tags || '#4CAF50'}25 0%, ${note.tags || '#4CAF50'}35 100%)`,
+                            border: `2px solid ${note.tags || '#4CAF50'}60`
                           }
                         }}
                         draggable
@@ -808,56 +896,53 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                         onDrop={(e) => handleNoteDrop(e, index)}
                       >
                         <ListItemIcon sx={{ minWidth: 32, mr: 1 }}>
-                          <DragIcon sx={{ color: note.color, fontSize: 20 }} />
+                          <DragIcon sx={{ color: note.tags || '#4CAF50', fontSize: 20 }} />
                         </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Typography variant="subtitle2" sx={{ 
-                                fontWeight: 'bold', 
-                                color: note.color,
-                                fontSize: '0.9rem',
-                                mb: 0.5
-                              }}>
-                                {note.title}
-                              </Typography>
-                              <Box
-                                sx={{
-                                  width: 12,
-                                  height: 12,
-                                  borderRadius: '50%',
-                                  backgroundColor: note.color,
-                                  border: '1px solid #fff',
-                                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                                }}
-                              />
-                            </Box>
-                          }
-                          secondary={
-                            <Box>
-                              <Typography variant="body2" sx={{ 
-                                color: '#333', 
-                                mb: 0.5,
-                                lineHeight: 1.4,
-                                whiteSpace: 'pre-wrap'
-                              }}>
-                                {note.content}
-                              </Typography>
-                              <Typography variant="caption" sx={{ 
-                                color: '#666',
-                                fontSize: '0.75rem'
-                              }}>
-                                {new Date(note.createdAt).toLocaleDateString('de-DE')} {new Date(note.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                              </Typography>
-                            </Box>
-                          }
-                          sx={{ 
-                            flex: 1,
-                            mr: 1 // Abstand zu den Icons
-                          }}
-                        />
+                        <Box sx={{ 
+                          flex: 1,
+                          mr: 1 // Abstand zu den Icons
+                        }}>
+                          {/* Primary content */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                            <Typography variant="subtitle2" component="div" sx={{ 
+                              fontWeight: 'bold', 
+                              color: note.tags || '#4CAF50',
+                              fontSize: '0.9rem'
+                            }}>
+                              {note.title}
+                            </Typography>
+                            <Box
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                backgroundColor: note.tags || '#4CAF50',
+                                border: '1px solid #fff',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                              }}
+                            />
+                          </Box>
+                          {/* Secondary content */}
+                          <Box>
+                            <Typography variant="body2" component="div" sx={{ 
+                              color: '#333', 
+                              mb: 0.5,
+                              lineHeight: 1.4,
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {note.content}
+                            </Typography>
+                            <Typography variant="caption" component="div" sx={{ 
+                              color: '#666',
+                              fontSize: '0.75rem'
+                            }}>
+                              {new Date(note.createdAt).toLocaleDateString('de-DE')} {new Date(note.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                            </Typography>
+                          </Box>
+                        </Box>
                         <Box sx={{ 
                           display: 'flex', 
+                          flexDirection: 'column',
                           gap: 0.5,
                           alignItems: 'flex-start',
                           pt: 0.5
@@ -868,10 +953,10 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                             color="primary"
                             title="Notiz bearbeiten"
                             sx={{ 
-                              p: 0.5,
-                              '& .MuiSvgIcon-root': { fontSize: '1rem' },
+                              p: 1,
+                              '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
                               '&:hover': {
-                                backgroundColor: `${note.color}20`
+                                backgroundColor: `${note.tags || '#4CAF50'}20`
                               }
                             }}
                           >
@@ -879,15 +964,12 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           </IconButton>
                           <IconButton
                             size="small"
-                            onClick={() => {
-                              setNoteToDelete(note);
-                              setDeleteNoteDialogOpen(true);
-                            }}
+                            onClick={() => handleDeleteNote(note)}
                             color="error"
                             title="Notiz löschen"
                             sx={{ 
-                              p: 0.5,
-                              '& .MuiSvgIcon-root': { fontSize: '1rem' },
+                              p: 1,
+                              '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
                               '&:hover': {
                                 backgroundColor: '#ffebee'
                               }
@@ -929,19 +1011,19 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                       <ListItemIcon>
                         <QuizIcon sx={{ color: '#ff9800' }} />
                       </ListItemIcon>
-                      <ListItemText
-                        primary={quiz.title}
-                        secondary={
-                          <Box>
-                            <Typography variant="body2" sx={{ color: '#666' }}>
-                              {quiz.description}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#666' }}>
-                              Fragen: {quiz.questions.length} | Zeit: {quiz.timeLimit} Min.
-                            </Typography>
-                          </Box>
-                        }
-                      />
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle2" component="div" sx={{ fontWeight: 'bold', color: '#333' }}>
+                          {quiz.title}
+                        </Typography>
+                        <Box>
+                          <Typography variant="body2" component="div" sx={{ color: '#666' }}>
+                            {quiz.description}
+                          </Typography>
+                          <Typography variant="caption" component="div" sx={{ color: '#666' }}>
+                            Fragen: {quiz.questions.length} | Zeit: {quiz.timeLimit} Min.
+                          </Typography>
+                        </Box>
+                      </Box>
                       <Box sx={{ display: 'flex', gap: 0.5 }}>
                         <IconButton
                           size="small"
@@ -1393,9 +1475,9 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <InputLabel>Farbe</InputLabel>
                 <Select
-                  value={editingNote?.color || '#4CAF50'}
+                  value={editingNote?.tags || '#4CAF50'}
                   label="Farbe"
-                  onChange={(e) => setEditingNote(prev => prev ? { ...prev, color: e.target.value as string } : null)}
+                  onChange={(e) => setEditingNote(prev => prev ? { ...prev, tags: e.target.value as string } : null)}
                 >
                   {noteColors.map((color) => (
                     <MenuItem key={color.value} value={color.value}>
@@ -1468,7 +1550,6 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
           <Button onClick={() => {
             if (noteToDelete) {
               deleteNote(noteToDelete.id);
-              setDeleteNoteDialogOpen(false);
             }
           }} color="error" variant="contained">
             Löschen

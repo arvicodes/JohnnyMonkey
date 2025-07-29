@@ -58,6 +58,11 @@ export type Lesson = $Result.DefaultSelection<Prisma.$LessonPayload>
  * 
  */
 export type GroupAssignment = $Result.DefaultSelection<Prisma.$GroupAssignmentPayload>
+/**
+ * Model Note
+ * 
+ */
+export type Note = $Result.DefaultSelection<Prisma.$NotePayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -273,6 +278,16 @@ export class PrismaClient<
     * ```
     */
   get groupAssignment(): Prisma.GroupAssignmentDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.note`: Exposes CRUD operations for the **Note** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Notes
+    * const notes = await prisma.note.findMany()
+    * ```
+    */
+  get note(): Prisma.NoteDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -721,7 +736,8 @@ export namespace Prisma {
     Unit: 'Unit',
     Topic: 'Topic',
     Lesson: 'Lesson',
-    GroupAssignment: 'GroupAssignment'
+    GroupAssignment: 'GroupAssignment',
+    Note: 'Note'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -740,7 +756,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment"
+      modelProps: "user" | "gradingSchema" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1410,6 +1426,80 @@ export namespace Prisma {
           }
         }
       }
+      Note: {
+        payload: Prisma.$NotePayload<ExtArgs>
+        fields: Prisma.NoteFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.NoteFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.NoteFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>
+          }
+          findFirst: {
+            args: Prisma.NoteFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.NoteFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>
+          }
+          findMany: {
+            args: Prisma.NoteFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>[]
+          }
+          create: {
+            args: Prisma.NoteCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>
+          }
+          createMany: {
+            args: Prisma.NoteCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.NoteCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>[]
+          }
+          delete: {
+            args: Prisma.NoteDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>
+          }
+          update: {
+            args: Prisma.NoteUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>
+          }
+          deleteMany: {
+            args: Prisma.NoteDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.NoteUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.NoteUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>[]
+          }
+          upsert: {
+            args: Prisma.NoteUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$NotePayload>
+          }
+          aggregate: {
+            args: Prisma.NoteAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateNote>
+          }
+          groupBy: {
+            args: Prisma.NoteGroupByArgs<ExtArgs>
+            result: $Utils.Optional<NoteGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.NoteCountArgs<ExtArgs>
+            result: $Utils.Optional<NoteCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1503,6 +1593,7 @@ export namespace Prisma {
     topic?: TopicOmit
     lesson?: LessonOmit
     groupAssignment?: GroupAssignmentOmit
+    note?: NoteOmit
   }
 
   /* Types for Logging */
@@ -1597,15 +1688,17 @@ export namespace Prisma {
    */
 
   export type UserCountOutputType = {
-    learningGroups: number
     teacherGroups: number
+    notes: number
     subjects: number
+    learningGroups: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    learningGroups?: boolean | UserCountOutputTypeCountLearningGroupsArgs
     teacherGroups?: boolean | UserCountOutputTypeCountTeacherGroupsArgs
+    notes?: boolean | UserCountOutputTypeCountNotesArgs
     subjects?: boolean | UserCountOutputTypeCountSubjectsArgs
+    learningGroups?: boolean | UserCountOutputTypeCountLearningGroupsArgs
   }
 
   // Custom InputTypes
@@ -1622,15 +1715,15 @@ export namespace Prisma {
   /**
    * UserCountOutputType without action
    */
-  export type UserCountOutputTypeCountLearningGroupsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+  export type UserCountOutputTypeCountTeacherGroupsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: LearningGroupWhereInput
   }
 
   /**
    * UserCountOutputType without action
    */
-  export type UserCountOutputTypeCountTeacherGroupsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: LearningGroupWhereInput
+  export type UserCountOutputTypeCountNotesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: NoteWhereInput
   }
 
   /**
@@ -1640,21 +1733,28 @@ export namespace Prisma {
     where?: SubjectWhereInput
   }
 
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountLearningGroupsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LearningGroupWhereInput
+  }
+
 
   /**
    * Count Type LearningGroupCountOutputType
    */
 
   export type LearningGroupCountOutputType = {
-    students: number
     gradingSchemas: number
     assignments: number
+    students: number
   }
 
   export type LearningGroupCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    students?: boolean | LearningGroupCountOutputTypeCountStudentsArgs
     gradingSchemas?: boolean | LearningGroupCountOutputTypeCountGradingSchemasArgs
     assignments?: boolean | LearningGroupCountOutputTypeCountAssignmentsArgs
+    students?: boolean | LearningGroupCountOutputTypeCountStudentsArgs
   }
 
   // Custom InputTypes
@@ -1671,13 +1771,6 @@ export namespace Prisma {
   /**
    * LearningGroupCountOutputType without action
    */
-  export type LearningGroupCountOutputTypeCountStudentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: UserWhereInput
-  }
-
-  /**
-   * LearningGroupCountOutputType without action
-   */
   export type LearningGroupCountOutputTypeCountGradingSchemasArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: GradingSchemaWhereInput
   }
@@ -1687,6 +1780,13 @@ export namespace Prisma {
    */
   export type LearningGroupCountOutputTypeCountAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: GroupAssignmentWhereInput
+  }
+
+  /**
+   * LearningGroupCountOutputType without action
+   */
+  export type LearningGroupCountOutputTypeCountStudentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: UserWhereInput
   }
 
 
@@ -1990,9 +2090,10 @@ export namespace Prisma {
     role?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    learningGroups?: boolean | User$learningGroupsArgs<ExtArgs>
     teacherGroups?: boolean | User$teacherGroupsArgs<ExtArgs>
+    notes?: boolean | User$notesArgs<ExtArgs>
     subjects?: boolean | User$subjectsArgs<ExtArgs>
+    learningGroups?: boolean | User$learningGroupsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -2025,9 +2126,10 @@ export namespace Prisma {
 
   export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "loginCode" | "role" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    learningGroups?: boolean | User$learningGroupsArgs<ExtArgs>
     teacherGroups?: boolean | User$teacherGroupsArgs<ExtArgs>
+    notes?: boolean | User$notesArgs<ExtArgs>
     subjects?: boolean | User$subjectsArgs<ExtArgs>
+    learningGroups?: boolean | User$learningGroupsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -2036,9 +2138,10 @@ export namespace Prisma {
   export type $UserPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "User"
     objects: {
-      learningGroups: Prisma.$LearningGroupPayload<ExtArgs>[]
       teacherGroups: Prisma.$LearningGroupPayload<ExtArgs>[]
+      notes: Prisma.$NotePayload<ExtArgs>[]
       subjects: Prisma.$SubjectPayload<ExtArgs>[]
+      learningGroups: Prisma.$LearningGroupPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -2441,9 +2544,10 @@ export namespace Prisma {
    */
   export interface Prisma__UserClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    learningGroups<T extends User$learningGroupsArgs<ExtArgs> = {}>(args?: Subset<T, User$learningGroupsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     teacherGroups<T extends User$teacherGroupsArgs<ExtArgs> = {}>(args?: Subset<T, User$teacherGroupsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    notes<T extends User$notesArgs<ExtArgs> = {}>(args?: Subset<T, User$notesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     subjects<T extends User$subjectsArgs<ExtArgs> = {}>(args?: Subset<T, User$subjectsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SubjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    learningGroups<T extends User$learningGroupsArgs<ExtArgs> = {}>(args?: Subset<T, User$learningGroupsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2865,30 +2969,6 @@ export namespace Prisma {
   }
 
   /**
-   * User.learningGroups
-   */
-  export type User$learningGroupsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the LearningGroup
-     */
-    select?: LearningGroupSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the LearningGroup
-     */
-    omit?: LearningGroupOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: LearningGroupInclude<ExtArgs> | null
-    where?: LearningGroupWhereInput
-    orderBy?: LearningGroupOrderByWithRelationInput | LearningGroupOrderByWithRelationInput[]
-    cursor?: LearningGroupWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: LearningGroupScalarFieldEnum | LearningGroupScalarFieldEnum[]
-  }
-
-  /**
    * User.teacherGroups
    */
   export type User$teacherGroupsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2913,6 +2993,30 @@ export namespace Prisma {
   }
 
   /**
+   * User.notes
+   */
+  export type User$notesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    where?: NoteWhereInput
+    orderBy?: NoteOrderByWithRelationInput | NoteOrderByWithRelationInput[]
+    cursor?: NoteWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: NoteScalarFieldEnum | NoteScalarFieldEnum[]
+  }
+
+  /**
    * User.subjects
    */
   export type User$subjectsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2934,6 +3038,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: SubjectScalarFieldEnum | SubjectScalarFieldEnum[]
+  }
+
+  /**
+   * User.learningGroups
+   */
+  export type User$learningGroupsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LearningGroup
+     */
+    select?: LearningGroupSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LearningGroup
+     */
+    omit?: LearningGroupOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LearningGroupInclude<ExtArgs> | null
+    where?: LearningGroupWhereInput
+    orderBy?: LearningGroupOrderByWithRelationInput | LearningGroupOrderByWithRelationInput[]
+    cursor?: LearningGroupWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LearningGroupScalarFieldEnum | LearningGroupScalarFieldEnum[]
   }
 
   /**
@@ -4037,25 +4165,25 @@ export namespace Prisma {
   export type LearningGroupMinAggregateOutputType = {
     id: string | null
     name: string | null
-    teacherId: string | null
     createdAt: Date | null
     updatedAt: Date | null
+    teacherId: string | null
   }
 
   export type LearningGroupMaxAggregateOutputType = {
     id: string | null
     name: string | null
-    teacherId: string | null
     createdAt: Date | null
     updatedAt: Date | null
+    teacherId: string | null
   }
 
   export type LearningGroupCountAggregateOutputType = {
     id: number
     name: number
-    teacherId: number
     createdAt: number
     updatedAt: number
+    teacherId: number
     _all: number
   }
 
@@ -4063,25 +4191,25 @@ export namespace Prisma {
   export type LearningGroupMinAggregateInputType = {
     id?: true
     name?: true
-    teacherId?: true
     createdAt?: true
     updatedAt?: true
+    teacherId?: true
   }
 
   export type LearningGroupMaxAggregateInputType = {
     id?: true
     name?: true
-    teacherId?: true
     createdAt?: true
     updatedAt?: true
+    teacherId?: true
   }
 
   export type LearningGroupCountAggregateInputType = {
     id?: true
     name?: true
-    teacherId?: true
     createdAt?: true
     updatedAt?: true
+    teacherId?: true
     _all?: true
   }
 
@@ -4160,9 +4288,9 @@ export namespace Prisma {
   export type LearningGroupGroupByOutputType = {
     id: string
     name: string
-    teacherId: string
     createdAt: Date
     updatedAt: Date
+    teacherId: string
     _count: LearningGroupCountAggregateOutputType | null
     _min: LearningGroupMinAggregateOutputType | null
     _max: LearningGroupMaxAggregateOutputType | null
@@ -4185,48 +4313,48 @@ export namespace Prisma {
   export type LearningGroupSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     name?: boolean
-    teacherId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-    students?: boolean | LearningGroup$studentsArgs<ExtArgs>
+    teacherId?: boolean
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+    students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["learningGroup"]>
 
   export type LearningGroupSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     name?: boolean
-    teacherId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    teacherId?: boolean
     teacher?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["learningGroup"]>
 
   export type LearningGroupSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     name?: boolean
-    teacherId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    teacherId?: boolean
     teacher?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["learningGroup"]>
 
   export type LearningGroupSelectScalar = {
     id?: boolean
     name?: boolean
-    teacherId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    teacherId?: boolean
   }
 
-  export type LearningGroupOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "teacherId" | "createdAt" | "updatedAt", ExtArgs["result"]["learningGroup"]>
+  export type LearningGroupOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "createdAt" | "updatedAt" | "teacherId", ExtArgs["result"]["learningGroup"]>
   export type LearningGroupInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-    students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+    students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type LearningGroupIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4239,17 +4367,17 @@ export namespace Prisma {
   export type $LearningGroupPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "LearningGroup"
     objects: {
-      teacher: Prisma.$UserPayload<ExtArgs>
-      students: Prisma.$UserPayload<ExtArgs>[]
       gradingSchemas: Prisma.$GradingSchemaPayload<ExtArgs>[]
       assignments: Prisma.$GroupAssignmentPayload<ExtArgs>[]
+      teacher: Prisma.$UserPayload<ExtArgs>
+      students: Prisma.$UserPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       name: string
-      teacherId: string
       createdAt: Date
       updatedAt: Date
+      teacherId: string
     }, ExtArgs["result"]["learningGroup"]>
     composites: {}
   }
@@ -4644,10 +4772,10 @@ export namespace Prisma {
    */
   export interface Prisma__LearningGroupClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    students<T extends LearningGroup$studentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$studentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     gradingSchemas<T extends LearningGroup$gradingSchemasArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$gradingSchemasArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GradingSchemaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     assignments<T extends LearningGroup$assignmentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    students<T extends LearningGroup$studentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$studentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4679,9 +4807,9 @@ export namespace Prisma {
   interface LearningGroupFieldRefs {
     readonly id: FieldRef<"LearningGroup", 'String'>
     readonly name: FieldRef<"LearningGroup", 'String'>
-    readonly teacherId: FieldRef<"LearningGroup", 'String'>
     readonly createdAt: FieldRef<"LearningGroup", 'DateTime'>
     readonly updatedAt: FieldRef<"LearningGroup", 'DateTime'>
+    readonly teacherId: FieldRef<"LearningGroup", 'String'>
   }
     
 
@@ -5076,30 +5204,6 @@ export namespace Prisma {
   }
 
   /**
-   * LearningGroup.students
-   */
-  export type LearningGroup$studentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the User
-     */
-    select?: UserSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the User
-     */
-    omit?: UserOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: UserInclude<ExtArgs> | null
-    where?: UserWhereInput
-    orderBy?: UserOrderByWithRelationInput | UserOrderByWithRelationInput[]
-    cursor?: UserWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: UserScalarFieldEnum | UserScalarFieldEnum[]
-  }
-
-  /**
    * LearningGroup.gradingSchemas
    */
   export type LearningGroup$gradingSchemasArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5145,6 +5249,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: GroupAssignmentScalarFieldEnum | GroupAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * LearningGroup.students
+   */
+  export type LearningGroup$studentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the User
+     */
+    select?: UserSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the User
+     */
+    omit?: UserOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: UserInclude<ExtArgs> | null
+    where?: UserWhereInput
+    orderBy?: UserOrderByWithRelationInput | UserOrderByWithRelationInput[]
+    cursor?: UserWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: UserScalarFieldEnum | UserScalarFieldEnum[]
   }
 
   /**
@@ -5380,8 +5508,8 @@ export namespace Prisma {
     teacherId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
     blocks?: boolean | Subject$blocksArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
     _count?: boolean | SubjectCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["subject"]>
 
@@ -5419,8 +5547,8 @@ export namespace Prisma {
 
   export type SubjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "order" | "teacherId" | "createdAt" | "updatedAt", ExtArgs["result"]["subject"]>
   export type SubjectInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
     blocks?: boolean | Subject$blocksArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
     _count?: boolean | SubjectCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SubjectIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5433,8 +5561,8 @@ export namespace Prisma {
   export type $SubjectPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Subject"
     objects: {
-      teacher: Prisma.$UserPayload<ExtArgs>
       blocks: Prisma.$BlockPayload<ExtArgs>[]
+      teacher: Prisma.$UserPayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -5838,8 +5966,8 @@ export namespace Prisma {
    */
   export interface Prisma__SubjectClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     blocks<T extends Subject$blocksArgs<ExtArgs> = {}>(args?: Subset<T, Subject$blocksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BlockPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -7672,8 +7800,8 @@ export namespace Prisma {
     blockId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    block?: boolean | BlockDefaultArgs<ExtArgs>
     topics?: boolean | Unit$topicsArgs<ExtArgs>
+    block?: boolean | BlockDefaultArgs<ExtArgs>
     _count?: boolean | UnitCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["unit"]>
 
@@ -7711,8 +7839,8 @@ export namespace Prisma {
 
   export type UnitOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "order" | "blockId" | "createdAt" | "updatedAt", ExtArgs["result"]["unit"]>
   export type UnitInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    block?: boolean | BlockDefaultArgs<ExtArgs>
     topics?: boolean | Unit$topicsArgs<ExtArgs>
+    block?: boolean | BlockDefaultArgs<ExtArgs>
     _count?: boolean | UnitCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UnitIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -7725,8 +7853,8 @@ export namespace Prisma {
   export type $UnitPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Unit"
     objects: {
-      block: Prisma.$BlockPayload<ExtArgs>
       topics: Prisma.$TopicPayload<ExtArgs>[]
+      block: Prisma.$BlockPayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -8130,8 +8258,8 @@ export namespace Prisma {
    */
   export interface Prisma__UnitClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    block<T extends BlockDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BlockDefaultArgs<ExtArgs>>): Prisma__BlockClient<$Result.GetResult<Prisma.$BlockPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     topics<T extends Unit$topicsArgs<ExtArgs> = {}>(args?: Subset<T, Unit$topicsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    block<T extends BlockDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BlockDefaultArgs<ExtArgs>>): Prisma__BlockClient<$Result.GetResult<Prisma.$BlockPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -8818,8 +8946,8 @@ export namespace Prisma {
     unitId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    unit?: boolean | UnitDefaultArgs<ExtArgs>
     lessons?: boolean | Topic$lessonsArgs<ExtArgs>
+    unit?: boolean | UnitDefaultArgs<ExtArgs>
     _count?: boolean | TopicCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["topic"]>
 
@@ -8857,8 +8985,8 @@ export namespace Prisma {
 
   export type TopicOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "order" | "unitId" | "createdAt" | "updatedAt", ExtArgs["result"]["topic"]>
   export type TopicInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    unit?: boolean | UnitDefaultArgs<ExtArgs>
     lessons?: boolean | Topic$lessonsArgs<ExtArgs>
+    unit?: boolean | UnitDefaultArgs<ExtArgs>
     _count?: boolean | TopicCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type TopicIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8871,8 +8999,8 @@ export namespace Prisma {
   export type $TopicPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Topic"
     objects: {
-      unit: Prisma.$UnitPayload<ExtArgs>
       lessons: Prisma.$LessonPayload<ExtArgs>[]
+      unit: Prisma.$UnitPayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -9276,8 +9404,8 @@ export namespace Prisma {
    */
   export interface Prisma__TopicClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    unit<T extends UnitDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UnitDefaultArgs<ExtArgs>>): Prisma__UnitClient<$Result.GetResult<Prisma.$UnitPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     lessons<T extends Topic$lessonsArgs<ExtArgs> = {}>(args?: Subset<T, Topic$lessonsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LessonPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    unit<T extends UnitDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UnitDefaultArgs<ExtArgs>>): Prisma__UnitClient<$Result.GetResult<Prisma.$UnitPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -11923,6 +12051,1148 @@ export namespace Prisma {
 
 
   /**
+   * Model Note
+   */
+
+  export type AggregateNote = {
+    _count: NoteCountAggregateOutputType | null
+    _avg: NoteAvgAggregateOutputType | null
+    _sum: NoteSumAggregateOutputType | null
+    _min: NoteMinAggregateOutputType | null
+    _max: NoteMaxAggregateOutputType | null
+  }
+
+  export type NoteAvgAggregateOutputType = {
+    order: number | null
+  }
+
+  export type NoteSumAggregateOutputType = {
+    order: number | null
+  }
+
+  export type NoteMinAggregateOutputType = {
+    id: string | null
+    title: string | null
+    content: string | null
+    authorId: string | null
+    isPrivate: boolean | null
+    tags: string | null
+    order: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type NoteMaxAggregateOutputType = {
+    id: string | null
+    title: string | null
+    content: string | null
+    authorId: string | null
+    isPrivate: boolean | null
+    tags: string | null
+    order: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type NoteCountAggregateOutputType = {
+    id: number
+    title: number
+    content: number
+    authorId: number
+    isPrivate: number
+    tags: number
+    order: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type NoteAvgAggregateInputType = {
+    order?: true
+  }
+
+  export type NoteSumAggregateInputType = {
+    order?: true
+  }
+
+  export type NoteMinAggregateInputType = {
+    id?: true
+    title?: true
+    content?: true
+    authorId?: true
+    isPrivate?: true
+    tags?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type NoteMaxAggregateInputType = {
+    id?: true
+    title?: true
+    content?: true
+    authorId?: true
+    isPrivate?: true
+    tags?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type NoteCountAggregateInputType = {
+    id?: true
+    title?: true
+    content?: true
+    authorId?: true
+    isPrivate?: true
+    tags?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type NoteAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Note to aggregate.
+     */
+    where?: NoteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Notes to fetch.
+     */
+    orderBy?: NoteOrderByWithRelationInput | NoteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: NoteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Notes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Notes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Notes
+    **/
+    _count?: true | NoteCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: NoteAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: NoteSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: NoteMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: NoteMaxAggregateInputType
+  }
+
+  export type GetNoteAggregateType<T extends NoteAggregateArgs> = {
+        [P in keyof T & keyof AggregateNote]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateNote[P]>
+      : GetScalarType<T[P], AggregateNote[P]>
+  }
+
+
+
+
+  export type NoteGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: NoteWhereInput
+    orderBy?: NoteOrderByWithAggregationInput | NoteOrderByWithAggregationInput[]
+    by: NoteScalarFieldEnum[] | NoteScalarFieldEnum
+    having?: NoteScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: NoteCountAggregateInputType | true
+    _avg?: NoteAvgAggregateInputType
+    _sum?: NoteSumAggregateInputType
+    _min?: NoteMinAggregateInputType
+    _max?: NoteMaxAggregateInputType
+  }
+
+  export type NoteGroupByOutputType = {
+    id: string
+    title: string
+    content: string
+    authorId: string
+    isPrivate: boolean
+    tags: string | null
+    order: number
+    createdAt: Date
+    updatedAt: Date
+    _count: NoteCountAggregateOutputType | null
+    _avg: NoteAvgAggregateOutputType | null
+    _sum: NoteSumAggregateOutputType | null
+    _min: NoteMinAggregateOutputType | null
+    _max: NoteMaxAggregateOutputType | null
+  }
+
+  type GetNoteGroupByPayload<T extends NoteGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<NoteGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof NoteGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], NoteGroupByOutputType[P]>
+            : GetScalarType<T[P], NoteGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type NoteSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    title?: boolean
+    content?: boolean
+    authorId?: boolean
+    isPrivate?: boolean
+    tags?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    author?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["note"]>
+
+  export type NoteSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    title?: boolean
+    content?: boolean
+    authorId?: boolean
+    isPrivate?: boolean
+    tags?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    author?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["note"]>
+
+  export type NoteSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    title?: boolean
+    content?: boolean
+    authorId?: boolean
+    isPrivate?: boolean
+    tags?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    author?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["note"]>
+
+  export type NoteSelectScalar = {
+    id?: boolean
+    title?: boolean
+    content?: boolean
+    authorId?: boolean
+    isPrivate?: boolean
+    tags?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type NoteOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "content" | "authorId" | "isPrivate" | "tags" | "order" | "createdAt" | "updatedAt", ExtArgs["result"]["note"]>
+  export type NoteInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    author?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type NoteIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    author?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type NoteIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    author?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $NotePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Note"
+    objects: {
+      author: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      title: string
+      content: string
+      authorId: string
+      isPrivate: boolean
+      tags: string | null
+      order: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["note"]>
+    composites: {}
+  }
+
+  type NoteGetPayload<S extends boolean | null | undefined | NoteDefaultArgs> = $Result.GetResult<Prisma.$NotePayload, S>
+
+  type NoteCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<NoteFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: NoteCountAggregateInputType | true
+    }
+
+  export interface NoteDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Note'], meta: { name: 'Note' } }
+    /**
+     * Find zero or one Note that matches the filter.
+     * @param {NoteFindUniqueArgs} args - Arguments to find a Note
+     * @example
+     * // Get one Note
+     * const note = await prisma.note.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends NoteFindUniqueArgs>(args: SelectSubset<T, NoteFindUniqueArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Note that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {NoteFindUniqueOrThrowArgs} args - Arguments to find a Note
+     * @example
+     * // Get one Note
+     * const note = await prisma.note.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends NoteFindUniqueOrThrowArgs>(args: SelectSubset<T, NoteFindUniqueOrThrowArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Note that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {NoteFindFirstArgs} args - Arguments to find a Note
+     * @example
+     * // Get one Note
+     * const note = await prisma.note.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends NoteFindFirstArgs>(args?: SelectSubset<T, NoteFindFirstArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Note that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {NoteFindFirstOrThrowArgs} args - Arguments to find a Note
+     * @example
+     * // Get one Note
+     * const note = await prisma.note.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends NoteFindFirstOrThrowArgs>(args?: SelectSubset<T, NoteFindFirstOrThrowArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Notes that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {NoteFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Notes
+     * const notes = await prisma.note.findMany()
+     * 
+     * // Get first 10 Notes
+     * const notes = await prisma.note.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const noteWithIdOnly = await prisma.note.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends NoteFindManyArgs>(args?: SelectSubset<T, NoteFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Note.
+     * @param {NoteCreateArgs} args - Arguments to create a Note.
+     * @example
+     * // Create one Note
+     * const Note = await prisma.note.create({
+     *   data: {
+     *     // ... data to create a Note
+     *   }
+     * })
+     * 
+     */
+    create<T extends NoteCreateArgs>(args: SelectSubset<T, NoteCreateArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Notes.
+     * @param {NoteCreateManyArgs} args - Arguments to create many Notes.
+     * @example
+     * // Create many Notes
+     * const note = await prisma.note.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends NoteCreateManyArgs>(args?: SelectSubset<T, NoteCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Notes and returns the data saved in the database.
+     * @param {NoteCreateManyAndReturnArgs} args - Arguments to create many Notes.
+     * @example
+     * // Create many Notes
+     * const note = await prisma.note.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Notes and only return the `id`
+     * const noteWithIdOnly = await prisma.note.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends NoteCreateManyAndReturnArgs>(args?: SelectSubset<T, NoteCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Note.
+     * @param {NoteDeleteArgs} args - Arguments to delete one Note.
+     * @example
+     * // Delete one Note
+     * const Note = await prisma.note.delete({
+     *   where: {
+     *     // ... filter to delete one Note
+     *   }
+     * })
+     * 
+     */
+    delete<T extends NoteDeleteArgs>(args: SelectSubset<T, NoteDeleteArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Note.
+     * @param {NoteUpdateArgs} args - Arguments to update one Note.
+     * @example
+     * // Update one Note
+     * const note = await prisma.note.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends NoteUpdateArgs>(args: SelectSubset<T, NoteUpdateArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Notes.
+     * @param {NoteDeleteManyArgs} args - Arguments to filter Notes to delete.
+     * @example
+     * // Delete a few Notes
+     * const { count } = await prisma.note.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends NoteDeleteManyArgs>(args?: SelectSubset<T, NoteDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Notes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {NoteUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Notes
+     * const note = await prisma.note.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends NoteUpdateManyArgs>(args: SelectSubset<T, NoteUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Notes and returns the data updated in the database.
+     * @param {NoteUpdateManyAndReturnArgs} args - Arguments to update many Notes.
+     * @example
+     * // Update many Notes
+     * const note = await prisma.note.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Notes and only return the `id`
+     * const noteWithIdOnly = await prisma.note.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends NoteUpdateManyAndReturnArgs>(args: SelectSubset<T, NoteUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Note.
+     * @param {NoteUpsertArgs} args - Arguments to update or create a Note.
+     * @example
+     * // Update or create a Note
+     * const note = await prisma.note.upsert({
+     *   create: {
+     *     // ... data to create a Note
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Note we want to update
+     *   }
+     * })
+     */
+    upsert<T extends NoteUpsertArgs>(args: SelectSubset<T, NoteUpsertArgs<ExtArgs>>): Prisma__NoteClient<$Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Notes.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {NoteCountArgs} args - Arguments to filter Notes to count.
+     * @example
+     * // Count the number of Notes
+     * const count = await prisma.note.count({
+     *   where: {
+     *     // ... the filter for the Notes we want to count
+     *   }
+     * })
+    **/
+    count<T extends NoteCountArgs>(
+      args?: Subset<T, NoteCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], NoteCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Note.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {NoteAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends NoteAggregateArgs>(args: Subset<T, NoteAggregateArgs>): Prisma.PrismaPromise<GetNoteAggregateType<T>>
+
+    /**
+     * Group by Note.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {NoteGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends NoteGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: NoteGroupByArgs['orderBy'] }
+        : { orderBy?: NoteGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, NoteGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetNoteGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Note model
+   */
+  readonly fields: NoteFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Note.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__NoteClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    author<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Note model
+   */
+  interface NoteFieldRefs {
+    readonly id: FieldRef<"Note", 'String'>
+    readonly title: FieldRef<"Note", 'String'>
+    readonly content: FieldRef<"Note", 'String'>
+    readonly authorId: FieldRef<"Note", 'String'>
+    readonly isPrivate: FieldRef<"Note", 'Boolean'>
+    readonly tags: FieldRef<"Note", 'String'>
+    readonly order: FieldRef<"Note", 'Int'>
+    readonly createdAt: FieldRef<"Note", 'DateTime'>
+    readonly updatedAt: FieldRef<"Note", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Note findUnique
+   */
+  export type NoteFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * Filter, which Note to fetch.
+     */
+    where: NoteWhereUniqueInput
+  }
+
+  /**
+   * Note findUniqueOrThrow
+   */
+  export type NoteFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * Filter, which Note to fetch.
+     */
+    where: NoteWhereUniqueInput
+  }
+
+  /**
+   * Note findFirst
+   */
+  export type NoteFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * Filter, which Note to fetch.
+     */
+    where?: NoteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Notes to fetch.
+     */
+    orderBy?: NoteOrderByWithRelationInput | NoteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Notes.
+     */
+    cursor?: NoteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Notes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Notes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Notes.
+     */
+    distinct?: NoteScalarFieldEnum | NoteScalarFieldEnum[]
+  }
+
+  /**
+   * Note findFirstOrThrow
+   */
+  export type NoteFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * Filter, which Note to fetch.
+     */
+    where?: NoteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Notes to fetch.
+     */
+    orderBy?: NoteOrderByWithRelationInput | NoteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Notes.
+     */
+    cursor?: NoteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Notes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Notes.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Notes.
+     */
+    distinct?: NoteScalarFieldEnum | NoteScalarFieldEnum[]
+  }
+
+  /**
+   * Note findMany
+   */
+  export type NoteFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * Filter, which Notes to fetch.
+     */
+    where?: NoteWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Notes to fetch.
+     */
+    orderBy?: NoteOrderByWithRelationInput | NoteOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Notes.
+     */
+    cursor?: NoteWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Notes from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Notes.
+     */
+    skip?: number
+    distinct?: NoteScalarFieldEnum | NoteScalarFieldEnum[]
+  }
+
+  /**
+   * Note create
+   */
+  export type NoteCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Note.
+     */
+    data: XOR<NoteCreateInput, NoteUncheckedCreateInput>
+  }
+
+  /**
+   * Note createMany
+   */
+  export type NoteCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Notes.
+     */
+    data: NoteCreateManyInput | NoteCreateManyInput[]
+  }
+
+  /**
+   * Note createManyAndReturn
+   */
+  export type NoteCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * The data used to create many Notes.
+     */
+    data: NoteCreateManyInput | NoteCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Note update
+   */
+  export type NoteUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Note.
+     */
+    data: XOR<NoteUpdateInput, NoteUncheckedUpdateInput>
+    /**
+     * Choose, which Note to update.
+     */
+    where: NoteWhereUniqueInput
+  }
+
+  /**
+   * Note updateMany
+   */
+  export type NoteUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Notes.
+     */
+    data: XOR<NoteUpdateManyMutationInput, NoteUncheckedUpdateManyInput>
+    /**
+     * Filter which Notes to update
+     */
+    where?: NoteWhereInput
+    /**
+     * Limit how many Notes to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Note updateManyAndReturn
+   */
+  export type NoteUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * The data used to update Notes.
+     */
+    data: XOR<NoteUpdateManyMutationInput, NoteUncheckedUpdateManyInput>
+    /**
+     * Filter which Notes to update
+     */
+    where?: NoteWhereInput
+    /**
+     * Limit how many Notes to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Note upsert
+   */
+  export type NoteUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Note to update in case it exists.
+     */
+    where: NoteWhereUniqueInput
+    /**
+     * In case the Note found by the `where` argument doesn't exist, create a new Note with this data.
+     */
+    create: XOR<NoteCreateInput, NoteUncheckedCreateInput>
+    /**
+     * In case the Note was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<NoteUpdateInput, NoteUncheckedUpdateInput>
+  }
+
+  /**
+   * Note delete
+   */
+  export type NoteDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+    /**
+     * Filter which Note to delete.
+     */
+    where: NoteWhereUniqueInput
+  }
+
+  /**
+   * Note deleteMany
+   */
+  export type NoteDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Notes to delete
+     */
+    where?: NoteWhereInput
+    /**
+     * Limit how many Notes to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Note without action
+   */
+  export type NoteDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Note
+     */
+    select?: NoteSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Note
+     */
+    omit?: NoteOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: NoteInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -11960,9 +13230,9 @@ export namespace Prisma {
   export const LearningGroupScalarFieldEnum: {
     id: 'id',
     name: 'name',
-    teacherId: 'teacherId',
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
+    updatedAt: 'updatedAt',
+    teacherId: 'teacherId'
   };
 
   export type LearningGroupScalarFieldEnum = (typeof LearningGroupScalarFieldEnum)[keyof typeof LearningGroupScalarFieldEnum]
@@ -12044,6 +13314,21 @@ export namespace Prisma {
   export type GroupAssignmentScalarFieldEnum = (typeof GroupAssignmentScalarFieldEnum)[keyof typeof GroupAssignmentScalarFieldEnum]
 
 
+  export const NoteScalarFieldEnum: {
+    id: 'id',
+    title: 'title',
+    content: 'content',
+    authorId: 'authorId',
+    isPrivate: 'isPrivate',
+    tags: 'tags',
+    order: 'order',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type NoteScalarFieldEnum = (typeof NoteScalarFieldEnum)[keyof typeof NoteScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -12087,6 +13372,13 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'Boolean'
+   */
+  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+  /**
    * Reference to a field of type 'Float'
    */
   export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -12106,9 +13398,10 @@ export namespace Prisma {
     role?: StringFilter<"User"> | string
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
-    learningGroups?: LearningGroupListRelationFilter
     teacherGroups?: LearningGroupListRelationFilter
+    notes?: NoteListRelationFilter
     subjects?: SubjectListRelationFilter
+    learningGroups?: LearningGroupListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -12118,9 +13411,10 @@ export namespace Prisma {
     role?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-    learningGroups?: LearningGroupOrderByRelationAggregateInput
     teacherGroups?: LearningGroupOrderByRelationAggregateInput
+    notes?: NoteOrderByRelationAggregateInput
     subjects?: SubjectOrderByRelationAggregateInput
+    learningGroups?: LearningGroupOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -12133,9 +13427,10 @@ export namespace Prisma {
     role?: StringFilter<"User"> | string
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
-    learningGroups?: LearningGroupListRelationFilter
     teacherGroups?: LearningGroupListRelationFilter
+    notes?: NoteListRelationFilter
     subjects?: SubjectListRelationFilter
+    learningGroups?: LearningGroupListRelationFilter
   }, "id" | "loginCode">
 
   export type UserOrderByWithAggregationInput = {
@@ -12228,25 +13523,25 @@ export namespace Prisma {
     NOT?: LearningGroupWhereInput | LearningGroupWhereInput[]
     id?: StringFilter<"LearningGroup"> | string
     name?: StringFilter<"LearningGroup"> | string
-    teacherId?: StringFilter<"LearningGroup"> | string
     createdAt?: DateTimeFilter<"LearningGroup"> | Date | string
     updatedAt?: DateTimeFilter<"LearningGroup"> | Date | string
-    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
-    students?: UserListRelationFilter
+    teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+    students?: UserListRelationFilter
   }
 
   export type LearningGroupOrderByWithRelationInput = {
     id?: SortOrder
     name?: SortOrder
-    teacherId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-    teacher?: UserOrderByWithRelationInput
-    students?: UserOrderByRelationAggregateInput
+    teacherId?: SortOrder
     gradingSchemas?: GradingSchemaOrderByRelationAggregateInput
     assignments?: GroupAssignmentOrderByRelationAggregateInput
+    teacher?: UserOrderByWithRelationInput
+    students?: UserOrderByRelationAggregateInput
   }
 
   export type LearningGroupWhereUniqueInput = Prisma.AtLeast<{
@@ -12255,21 +13550,21 @@ export namespace Prisma {
     OR?: LearningGroupWhereInput[]
     NOT?: LearningGroupWhereInput | LearningGroupWhereInput[]
     name?: StringFilter<"LearningGroup"> | string
-    teacherId?: StringFilter<"LearningGroup"> | string
     createdAt?: DateTimeFilter<"LearningGroup"> | Date | string
     updatedAt?: DateTimeFilter<"LearningGroup"> | Date | string
-    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
-    students?: UserListRelationFilter
+    teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+    students?: UserListRelationFilter
   }, "id">
 
   export type LearningGroupOrderByWithAggregationInput = {
     id?: SortOrder
     name?: SortOrder
-    teacherId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    teacherId?: SortOrder
     _count?: LearningGroupCountOrderByAggregateInput
     _max?: LearningGroupMaxOrderByAggregateInput
     _min?: LearningGroupMinOrderByAggregateInput
@@ -12281,9 +13576,9 @@ export namespace Prisma {
     NOT?: LearningGroupScalarWhereWithAggregatesInput | LearningGroupScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"LearningGroup"> | string
     name?: StringWithAggregatesFilter<"LearningGroup"> | string
-    teacherId?: StringWithAggregatesFilter<"LearningGroup"> | string
     createdAt?: DateTimeWithAggregatesFilter<"LearningGroup"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"LearningGroup"> | Date | string
+    teacherId?: StringWithAggregatesFilter<"LearningGroup"> | string
   }
 
   export type SubjectWhereInput = {
@@ -12297,8 +13592,8 @@ export namespace Prisma {
     teacherId?: StringFilter<"Subject"> | string
     createdAt?: DateTimeFilter<"Subject"> | Date | string
     updatedAt?: DateTimeFilter<"Subject"> | Date | string
-    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     blocks?: BlockListRelationFilter
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
   }
 
   export type SubjectOrderByWithRelationInput = {
@@ -12309,8 +13604,8 @@ export namespace Prisma {
     teacherId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-    teacher?: UserOrderByWithRelationInput
     blocks?: BlockOrderByRelationAggregateInput
+    teacher?: UserOrderByWithRelationInput
   }
 
   export type SubjectWhereUniqueInput = Prisma.AtLeast<{
@@ -12324,8 +13619,8 @@ export namespace Prisma {
     teacherId?: StringFilter<"Subject"> | string
     createdAt?: DateTimeFilter<"Subject"> | Date | string
     updatedAt?: DateTimeFilter<"Subject"> | Date | string
-    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     blocks?: BlockListRelationFilter
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
   }, "id">
 
   export type SubjectOrderByWithAggregationInput = {
@@ -12437,8 +13732,8 @@ export namespace Prisma {
     blockId?: StringFilter<"Unit"> | string
     createdAt?: DateTimeFilter<"Unit"> | Date | string
     updatedAt?: DateTimeFilter<"Unit"> | Date | string
-    block?: XOR<BlockScalarRelationFilter, BlockWhereInput>
     topics?: TopicListRelationFilter
+    block?: XOR<BlockScalarRelationFilter, BlockWhereInput>
   }
 
   export type UnitOrderByWithRelationInput = {
@@ -12449,8 +13744,8 @@ export namespace Prisma {
     blockId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-    block?: BlockOrderByWithRelationInput
     topics?: TopicOrderByRelationAggregateInput
+    block?: BlockOrderByWithRelationInput
   }
 
   export type UnitWhereUniqueInput = Prisma.AtLeast<{
@@ -12464,8 +13759,8 @@ export namespace Prisma {
     blockId?: StringFilter<"Unit"> | string
     createdAt?: DateTimeFilter<"Unit"> | Date | string
     updatedAt?: DateTimeFilter<"Unit"> | Date | string
-    block?: XOR<BlockScalarRelationFilter, BlockWhereInput>
     topics?: TopicListRelationFilter
+    block?: XOR<BlockScalarRelationFilter, BlockWhereInput>
   }, "id">
 
   export type UnitOrderByWithAggregationInput = {
@@ -12507,8 +13802,8 @@ export namespace Prisma {
     unitId?: StringFilter<"Topic"> | string
     createdAt?: DateTimeFilter<"Topic"> | Date | string
     updatedAt?: DateTimeFilter<"Topic"> | Date | string
-    unit?: XOR<UnitScalarRelationFilter, UnitWhereInput>
     lessons?: LessonListRelationFilter
+    unit?: XOR<UnitScalarRelationFilter, UnitWhereInput>
   }
 
   export type TopicOrderByWithRelationInput = {
@@ -12519,8 +13814,8 @@ export namespace Prisma {
     unitId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
-    unit?: UnitOrderByWithRelationInput
     lessons?: LessonOrderByRelationAggregateInput
+    unit?: UnitOrderByWithRelationInput
   }
 
   export type TopicWhereUniqueInput = Prisma.AtLeast<{
@@ -12534,8 +13829,8 @@ export namespace Prisma {
     unitId?: StringFilter<"Topic"> | string
     createdAt?: DateTimeFilter<"Topic"> | Date | string
     updatedAt?: DateTimeFilter<"Topic"> | Date | string
-    unit?: XOR<UnitScalarRelationFilter, UnitWhereInput>
     lessons?: LessonListRelationFilter
+    unit?: XOR<UnitScalarRelationFilter, UnitWhereInput>
   }, "id">
 
   export type TopicOrderByWithAggregationInput = {
@@ -12688,6 +13983,83 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"GroupAssignment"> | Date | string
   }
 
+  export type NoteWhereInput = {
+    AND?: NoteWhereInput | NoteWhereInput[]
+    OR?: NoteWhereInput[]
+    NOT?: NoteWhereInput | NoteWhereInput[]
+    id?: StringFilter<"Note"> | string
+    title?: StringFilter<"Note"> | string
+    content?: StringFilter<"Note"> | string
+    authorId?: StringFilter<"Note"> | string
+    isPrivate?: BoolFilter<"Note"> | boolean
+    tags?: StringNullableFilter<"Note"> | string | null
+    order?: IntFilter<"Note"> | number
+    createdAt?: DateTimeFilter<"Note"> | Date | string
+    updatedAt?: DateTimeFilter<"Note"> | Date | string
+    author?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type NoteOrderByWithRelationInput = {
+    id?: SortOrder
+    title?: SortOrder
+    content?: SortOrder
+    authorId?: SortOrder
+    isPrivate?: SortOrder
+    tags?: SortOrderInput | SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    author?: UserOrderByWithRelationInput
+  }
+
+  export type NoteWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: NoteWhereInput | NoteWhereInput[]
+    OR?: NoteWhereInput[]
+    NOT?: NoteWhereInput | NoteWhereInput[]
+    title?: StringFilter<"Note"> | string
+    content?: StringFilter<"Note"> | string
+    authorId?: StringFilter<"Note"> | string
+    isPrivate?: BoolFilter<"Note"> | boolean
+    tags?: StringNullableFilter<"Note"> | string | null
+    order?: IntFilter<"Note"> | number
+    createdAt?: DateTimeFilter<"Note"> | Date | string
+    updatedAt?: DateTimeFilter<"Note"> | Date | string
+    author?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id">
+
+  export type NoteOrderByWithAggregationInput = {
+    id?: SortOrder
+    title?: SortOrder
+    content?: SortOrder
+    authorId?: SortOrder
+    isPrivate?: SortOrder
+    tags?: SortOrderInput | SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: NoteCountOrderByAggregateInput
+    _avg?: NoteAvgOrderByAggregateInput
+    _max?: NoteMaxOrderByAggregateInput
+    _min?: NoteMinOrderByAggregateInput
+    _sum?: NoteSumOrderByAggregateInput
+  }
+
+  export type NoteScalarWhereWithAggregatesInput = {
+    AND?: NoteScalarWhereWithAggregatesInput | NoteScalarWhereWithAggregatesInput[]
+    OR?: NoteScalarWhereWithAggregatesInput[]
+    NOT?: NoteScalarWhereWithAggregatesInput | NoteScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Note"> | string
+    title?: StringWithAggregatesFilter<"Note"> | string
+    content?: StringWithAggregatesFilter<"Note"> | string
+    authorId?: StringWithAggregatesFilter<"Note"> | string
+    isPrivate?: BoolWithAggregatesFilter<"Note"> | boolean
+    tags?: StringNullableWithAggregatesFilter<"Note"> | string | null
+    order?: IntWithAggregatesFilter<"Note"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"Note"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Note"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
@@ -12695,9 +14067,10 @@ export namespace Prisma {
     role?: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
     subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -12707,9 +14080,10 @@ export namespace Prisma {
     role?: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
     subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
   }
 
   export type UserUpdateInput = {
@@ -12719,9 +14093,10 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
     subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -12731,9 +14106,10 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
     subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -12830,21 +14206,21 @@ export namespace Prisma {
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
-    students?: UserCreateNestedManyWithoutLearningGroupsInput
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
+    students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
 
   export type LearningGroupUncheckedCreateInput = {
     id?: string
     name: string
-    teacherId: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
+    teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
   export type LearningGroupUpdateInput = {
@@ -12852,29 +14228,29 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
-    students?: UserUpdateManyWithoutLearningGroupsNestedInput
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
+    students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
 
   export type LearningGroupUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
-    teacherId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+    teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
   export type LearningGroupCreateManyInput = {
     id?: string
     name: string
-    teacherId: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    teacherId: string
   }
 
   export type LearningGroupUpdateManyMutationInput = {
@@ -12887,9 +14263,9 @@ export namespace Prisma {
   export type LearningGroupUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
-    teacherId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherId?: StringFieldUpdateOperationsInput | string
   }
 
   export type SubjectCreateInput = {
@@ -12899,8 +14275,8 @@ export namespace Prisma {
     order?: number
     createdAt?: Date | string
     updatedAt?: Date | string
-    teacher: UserCreateNestedOneWithoutSubjectsInput
     blocks?: BlockCreateNestedManyWithoutSubjectInput
+    teacher: UserCreateNestedOneWithoutSubjectsInput
   }
 
   export type SubjectUncheckedCreateInput = {
@@ -12921,8 +14297,8 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    teacher?: UserUpdateOneRequiredWithoutSubjectsNestedInput
     blocks?: BlockUpdateManyWithoutSubjectNestedInput
+    teacher?: UserUpdateOneRequiredWithoutSubjectsNestedInput
   }
 
   export type SubjectUncheckedUpdateInput = {
@@ -13045,8 +14421,8 @@ export namespace Prisma {
     order?: number
     createdAt?: Date | string
     updatedAt?: Date | string
-    block: BlockCreateNestedOneWithoutUnitsInput
     topics?: TopicCreateNestedManyWithoutUnitInput
+    block: BlockCreateNestedOneWithoutUnitsInput
   }
 
   export type UnitUncheckedCreateInput = {
@@ -13067,8 +14443,8 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    block?: BlockUpdateOneRequiredWithoutUnitsNestedInput
     topics?: TopicUpdateManyWithoutUnitNestedInput
+    block?: BlockUpdateOneRequiredWithoutUnitsNestedInput
   }
 
   export type UnitUncheckedUpdateInput = {
@@ -13118,8 +14494,8 @@ export namespace Prisma {
     order?: number
     createdAt?: Date | string
     updatedAt?: Date | string
-    unit: UnitCreateNestedOneWithoutTopicsInput
     lessons?: LessonCreateNestedManyWithoutTopicInput
+    unit: UnitCreateNestedOneWithoutTopicsInput
   }
 
   export type TopicUncheckedCreateInput = {
@@ -13140,8 +14516,8 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    unit?: UnitUpdateOneRequiredWithoutTopicsNestedInput
     lessons?: LessonUpdateManyWithoutTopicNestedInput
+    unit?: UnitUpdateOneRequiredWithoutTopicsNestedInput
   }
 
   export type TopicUncheckedUpdateInput = {
@@ -13308,6 +14684,89 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type NoteCreateInput = {
+    id?: string
+    title: string
+    content: string
+    isPrivate?: boolean
+    tags?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    author: UserCreateNestedOneWithoutNotesInput
+  }
+
+  export type NoteUncheckedCreateInput = {
+    id?: string
+    title: string
+    content: string
+    authorId: string
+    isPrivate?: boolean
+    tags?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type NoteUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
+    tags?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    author?: UserUpdateOneRequiredWithoutNotesNestedInput
+  }
+
+  export type NoteUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    authorId?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
+    tags?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type NoteCreateManyInput = {
+    id?: string
+    title: string
+    content: string
+    authorId: string
+    isPrivate?: boolean
+    tags?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type NoteUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
+    tags?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type NoteUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    authorId?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
+    tags?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -13339,6 +14798,12 @@ export namespace Prisma {
     none?: LearningGroupWhereInput
   }
 
+  export type NoteListRelationFilter = {
+    every?: NoteWhereInput
+    some?: NoteWhereInput
+    none?: NoteWhereInput
+  }
+
   export type SubjectListRelationFilter = {
     every?: SubjectWhereInput
     some?: SubjectWhereInput
@@ -13346,6 +14811,10 @@ export namespace Prisma {
   }
 
   export type LearningGroupOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type NoteOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -13443,17 +14912,6 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
-  export type UserScalarRelationFilter = {
-    is?: UserWhereInput
-    isNot?: UserWhereInput
-  }
-
-  export type UserListRelationFilter = {
-    every?: UserWhereInput
-    some?: UserWhereInput
-    none?: UserWhereInput
-  }
-
   export type GradingSchemaListRelationFilter = {
     every?: GradingSchemaWhereInput
     some?: GradingSchemaWhereInput
@@ -13466,8 +14924,15 @@ export namespace Prisma {
     none?: GroupAssignmentWhereInput
   }
 
-  export type UserOrderByRelationAggregateInput = {
-    _count?: SortOrder
+  export type UserScalarRelationFilter = {
+    is?: UserWhereInput
+    isNot?: UserWhereInput
+  }
+
+  export type UserListRelationFilter = {
+    every?: UserWhereInput
+    some?: UserWhereInput
+    none?: UserWhereInput
   }
 
   export type GradingSchemaOrderByRelationAggregateInput = {
@@ -13478,28 +14943,32 @@ export namespace Prisma {
     _count?: SortOrder
   }
 
+  export type UserOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type LearningGroupCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
-    teacherId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    teacherId?: SortOrder
   }
 
   export type LearningGroupMaxOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
-    teacherId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    teacherId?: SortOrder
   }
 
   export type LearningGroupMinOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
-    teacherId?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    teacherId?: SortOrder
   }
 
   export type StringNullableFilter<$PrismaModel = never> = {
@@ -13666,15 +15135,15 @@ export namespace Prisma {
     order?: SortOrder
   }
 
-  export type BlockScalarRelationFilter = {
-    is?: BlockWhereInput
-    isNot?: BlockWhereInput
-  }
-
   export type TopicListRelationFilter = {
     every?: TopicWhereInput
     some?: TopicWhereInput
     none?: TopicWhereInput
+  }
+
+  export type BlockScalarRelationFilter = {
+    is?: BlockWhereInput
+    isNot?: BlockWhereInput
   }
 
   export type TopicOrderByRelationAggregateInput = {
@@ -13719,15 +15188,15 @@ export namespace Prisma {
     order?: SortOrder
   }
 
-  export type UnitScalarRelationFilter = {
-    is?: UnitWhereInput
-    isNot?: UnitWhereInput
-  }
-
   export type LessonListRelationFilter = {
     every?: LessonWhereInput
     some?: LessonWhereInput
     none?: LessonWhereInput
+  }
+
+  export type UnitScalarRelationFilter = {
+    is?: UnitWhereInput
+    isNot?: UnitWhereInput
   }
 
   export type LessonOrderByRelationAggregateInput = {
@@ -13839,10 +15308,61 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
-  export type LearningGroupCreateNestedManyWithoutStudentsInput = {
-    create?: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput> | LearningGroupCreateWithoutStudentsInput[] | LearningGroupUncheckedCreateWithoutStudentsInput[]
-    connectOrCreate?: LearningGroupCreateOrConnectWithoutStudentsInput | LearningGroupCreateOrConnectWithoutStudentsInput[]
-    connect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
+  export type BoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
+  export type NoteCountOrderByAggregateInput = {
+    id?: SortOrder
+    title?: SortOrder
+    content?: SortOrder
+    authorId?: SortOrder
+    isPrivate?: SortOrder
+    tags?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type NoteAvgOrderByAggregateInput = {
+    order?: SortOrder
+  }
+
+  export type NoteMaxOrderByAggregateInput = {
+    id?: SortOrder
+    title?: SortOrder
+    content?: SortOrder
+    authorId?: SortOrder
+    isPrivate?: SortOrder
+    tags?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type NoteMinOrderByAggregateInput = {
+    id?: SortOrder
+    title?: SortOrder
+    content?: SortOrder
+    authorId?: SortOrder
+    isPrivate?: SortOrder
+    tags?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type NoteSumOrderByAggregateInput = {
+    order?: SortOrder
+  }
+
+  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type LearningGroupCreateNestedManyWithoutTeacherInput = {
@@ -13852,6 +15372,13 @@ export namespace Prisma {
     connect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
   }
 
+  export type NoteCreateNestedManyWithoutAuthorInput = {
+    create?: XOR<NoteCreateWithoutAuthorInput, NoteUncheckedCreateWithoutAuthorInput> | NoteCreateWithoutAuthorInput[] | NoteUncheckedCreateWithoutAuthorInput[]
+    connectOrCreate?: NoteCreateOrConnectWithoutAuthorInput | NoteCreateOrConnectWithoutAuthorInput[]
+    createMany?: NoteCreateManyAuthorInputEnvelope
+    connect?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+  }
+
   export type SubjectCreateNestedManyWithoutTeacherInput = {
     create?: XOR<SubjectCreateWithoutTeacherInput, SubjectUncheckedCreateWithoutTeacherInput> | SubjectCreateWithoutTeacherInput[] | SubjectUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: SubjectCreateOrConnectWithoutTeacherInput | SubjectCreateOrConnectWithoutTeacherInput[]
@@ -13859,7 +15386,7 @@ export namespace Prisma {
     connect?: SubjectWhereUniqueInput | SubjectWhereUniqueInput[]
   }
 
-  export type LearningGroupUncheckedCreateNestedManyWithoutStudentsInput = {
+  export type LearningGroupCreateNestedManyWithoutStudentsInput = {
     create?: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput> | LearningGroupCreateWithoutStudentsInput[] | LearningGroupUncheckedCreateWithoutStudentsInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutStudentsInput | LearningGroupCreateOrConnectWithoutStudentsInput[]
     connect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
@@ -13872,11 +15399,24 @@ export namespace Prisma {
     connect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
   }
 
+  export type NoteUncheckedCreateNestedManyWithoutAuthorInput = {
+    create?: XOR<NoteCreateWithoutAuthorInput, NoteUncheckedCreateWithoutAuthorInput> | NoteCreateWithoutAuthorInput[] | NoteUncheckedCreateWithoutAuthorInput[]
+    connectOrCreate?: NoteCreateOrConnectWithoutAuthorInput | NoteCreateOrConnectWithoutAuthorInput[]
+    createMany?: NoteCreateManyAuthorInputEnvelope
+    connect?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+  }
+
   export type SubjectUncheckedCreateNestedManyWithoutTeacherInput = {
     create?: XOR<SubjectCreateWithoutTeacherInput, SubjectUncheckedCreateWithoutTeacherInput> | SubjectCreateWithoutTeacherInput[] | SubjectUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: SubjectCreateOrConnectWithoutTeacherInput | SubjectCreateOrConnectWithoutTeacherInput[]
     createMany?: SubjectCreateManyTeacherInputEnvelope
     connect?: SubjectWhereUniqueInput | SubjectWhereUniqueInput[]
+  }
+
+  export type LearningGroupUncheckedCreateNestedManyWithoutStudentsInput = {
+    create?: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput> | LearningGroupCreateWithoutStudentsInput[] | LearningGroupUncheckedCreateWithoutStudentsInput[]
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutStudentsInput | LearningGroupCreateOrConnectWithoutStudentsInput[]
+    connect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -13885,19 +15425,6 @@ export namespace Prisma {
 
   export type DateTimeFieldUpdateOperationsInput = {
     set?: Date | string
-  }
-
-  export type LearningGroupUpdateManyWithoutStudentsNestedInput = {
-    create?: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput> | LearningGroupCreateWithoutStudentsInput[] | LearningGroupUncheckedCreateWithoutStudentsInput[]
-    connectOrCreate?: LearningGroupCreateOrConnectWithoutStudentsInput | LearningGroupCreateOrConnectWithoutStudentsInput[]
-    upsert?: LearningGroupUpsertWithWhereUniqueWithoutStudentsInput | LearningGroupUpsertWithWhereUniqueWithoutStudentsInput[]
-    set?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
-    disconnect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
-    delete?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
-    connect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
-    update?: LearningGroupUpdateWithWhereUniqueWithoutStudentsInput | LearningGroupUpdateWithWhereUniqueWithoutStudentsInput[]
-    updateMany?: LearningGroupUpdateManyWithWhereWithoutStudentsInput | LearningGroupUpdateManyWithWhereWithoutStudentsInput[]
-    deleteMany?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
   }
 
   export type LearningGroupUpdateManyWithoutTeacherNestedInput = {
@@ -13914,6 +15441,20 @@ export namespace Prisma {
     deleteMany?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
   }
 
+  export type NoteUpdateManyWithoutAuthorNestedInput = {
+    create?: XOR<NoteCreateWithoutAuthorInput, NoteUncheckedCreateWithoutAuthorInput> | NoteCreateWithoutAuthorInput[] | NoteUncheckedCreateWithoutAuthorInput[]
+    connectOrCreate?: NoteCreateOrConnectWithoutAuthorInput | NoteCreateOrConnectWithoutAuthorInput[]
+    upsert?: NoteUpsertWithWhereUniqueWithoutAuthorInput | NoteUpsertWithWhereUniqueWithoutAuthorInput[]
+    createMany?: NoteCreateManyAuthorInputEnvelope
+    set?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    disconnect?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    delete?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    connect?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    update?: NoteUpdateWithWhereUniqueWithoutAuthorInput | NoteUpdateWithWhereUniqueWithoutAuthorInput[]
+    updateMany?: NoteUpdateManyWithWhereWithoutAuthorInput | NoteUpdateManyWithWhereWithoutAuthorInput[]
+    deleteMany?: NoteScalarWhereInput | NoteScalarWhereInput[]
+  }
+
   export type SubjectUpdateManyWithoutTeacherNestedInput = {
     create?: XOR<SubjectCreateWithoutTeacherInput, SubjectUncheckedCreateWithoutTeacherInput> | SubjectCreateWithoutTeacherInput[] | SubjectUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: SubjectCreateOrConnectWithoutTeacherInput | SubjectCreateOrConnectWithoutTeacherInput[]
@@ -13928,7 +15469,7 @@ export namespace Prisma {
     deleteMany?: SubjectScalarWhereInput | SubjectScalarWhereInput[]
   }
 
-  export type LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput = {
+  export type LearningGroupUpdateManyWithoutStudentsNestedInput = {
     create?: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput> | LearningGroupCreateWithoutStudentsInput[] | LearningGroupUncheckedCreateWithoutStudentsInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutStudentsInput | LearningGroupCreateOrConnectWithoutStudentsInput[]
     upsert?: LearningGroupUpsertWithWhereUniqueWithoutStudentsInput | LearningGroupUpsertWithWhereUniqueWithoutStudentsInput[]
@@ -13955,6 +15496,20 @@ export namespace Prisma {
     deleteMany?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
   }
 
+  export type NoteUncheckedUpdateManyWithoutAuthorNestedInput = {
+    create?: XOR<NoteCreateWithoutAuthorInput, NoteUncheckedCreateWithoutAuthorInput> | NoteCreateWithoutAuthorInput[] | NoteUncheckedCreateWithoutAuthorInput[]
+    connectOrCreate?: NoteCreateOrConnectWithoutAuthorInput | NoteCreateOrConnectWithoutAuthorInput[]
+    upsert?: NoteUpsertWithWhereUniqueWithoutAuthorInput | NoteUpsertWithWhereUniqueWithoutAuthorInput[]
+    createMany?: NoteCreateManyAuthorInputEnvelope
+    set?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    disconnect?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    delete?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    connect?: NoteWhereUniqueInput | NoteWhereUniqueInput[]
+    update?: NoteUpdateWithWhereUniqueWithoutAuthorInput | NoteUpdateWithWhereUniqueWithoutAuthorInput[]
+    updateMany?: NoteUpdateManyWithWhereWithoutAuthorInput | NoteUpdateManyWithWhereWithoutAuthorInput[]
+    deleteMany?: NoteScalarWhereInput | NoteScalarWhereInput[]
+  }
+
   export type SubjectUncheckedUpdateManyWithoutTeacherNestedInput = {
     create?: XOR<SubjectCreateWithoutTeacherInput, SubjectUncheckedCreateWithoutTeacherInput> | SubjectCreateWithoutTeacherInput[] | SubjectUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: SubjectCreateOrConnectWithoutTeacherInput | SubjectCreateOrConnectWithoutTeacherInput[]
@@ -13967,6 +15522,19 @@ export namespace Prisma {
     update?: SubjectUpdateWithWhereUniqueWithoutTeacherInput | SubjectUpdateWithWhereUniqueWithoutTeacherInput[]
     updateMany?: SubjectUpdateManyWithWhereWithoutTeacherInput | SubjectUpdateManyWithWhereWithoutTeacherInput[]
     deleteMany?: SubjectScalarWhereInput | SubjectScalarWhereInput[]
+  }
+
+  export type LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput = {
+    create?: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput> | LearningGroupCreateWithoutStudentsInput[] | LearningGroupUncheckedCreateWithoutStudentsInput[]
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutStudentsInput | LearningGroupCreateOrConnectWithoutStudentsInput[]
+    upsert?: LearningGroupUpsertWithWhereUniqueWithoutStudentsInput | LearningGroupUpsertWithWhereUniqueWithoutStudentsInput[]
+    set?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
+    disconnect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
+    delete?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
+    connect?: LearningGroupWhereUniqueInput | LearningGroupWhereUniqueInput[]
+    update?: LearningGroupUpdateWithWhereUniqueWithoutStudentsInput | LearningGroupUpdateWithWhereUniqueWithoutStudentsInput[]
+    updateMany?: LearningGroupUpdateManyWithWhereWithoutStudentsInput | LearningGroupUpdateManyWithWhereWithoutStudentsInput[]
+    deleteMany?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
   }
 
   export type LearningGroupCreateNestedOneWithoutGradingSchemasInput = {
@@ -13983,18 +15551,6 @@ export namespace Prisma {
     update?: XOR<XOR<LearningGroupUpdateToOneWithWhereWithoutGradingSchemasInput, LearningGroupUpdateWithoutGradingSchemasInput>, LearningGroupUncheckedUpdateWithoutGradingSchemasInput>
   }
 
-  export type UserCreateNestedOneWithoutTeacherGroupsInput = {
-    create?: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutTeacherGroupsInput
-    connect?: UserWhereUniqueInput
-  }
-
-  export type UserCreateNestedManyWithoutLearningGroupsInput = {
-    create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
-    connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
-    connect?: UserWhereUniqueInput | UserWhereUniqueInput[]
-  }
-
   export type GradingSchemaCreateNestedManyWithoutLearningGroupInput = {
     create?: XOR<GradingSchemaCreateWithoutLearningGroupInput, GradingSchemaUncheckedCreateWithoutLearningGroupInput> | GradingSchemaCreateWithoutLearningGroupInput[] | GradingSchemaUncheckedCreateWithoutLearningGroupInput[]
     connectOrCreate?: GradingSchemaCreateOrConnectWithoutLearningGroupInput | GradingSchemaCreateOrConnectWithoutLearningGroupInput[]
@@ -14009,7 +15565,13 @@ export namespace Prisma {
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
   }
 
-  export type UserUncheckedCreateNestedManyWithoutLearningGroupsInput = {
+  export type UserCreateNestedOneWithoutTeacherGroupsInput = {
+    create?: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutTeacherGroupsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserCreateNestedManyWithoutLearningGroupsInput = {
     create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
     connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
     connect?: UserWhereUniqueInput | UserWhereUniqueInput[]
@@ -14029,25 +15591,10 @@ export namespace Prisma {
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
   }
 
-  export type UserUpdateOneRequiredWithoutTeacherGroupsNestedInput = {
-    create?: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutTeacherGroupsInput
-    upsert?: UserUpsertWithoutTeacherGroupsInput
-    connect?: UserWhereUniqueInput
-    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutTeacherGroupsInput, UserUpdateWithoutTeacherGroupsInput>, UserUncheckedUpdateWithoutTeacherGroupsInput>
-  }
-
-  export type UserUpdateManyWithoutLearningGroupsNestedInput = {
+  export type UserUncheckedCreateNestedManyWithoutLearningGroupsInput = {
     create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
     connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
-    upsert?: UserUpsertWithWhereUniqueWithoutLearningGroupsInput | UserUpsertWithWhereUniqueWithoutLearningGroupsInput[]
-    set?: UserWhereUniqueInput | UserWhereUniqueInput[]
-    disconnect?: UserWhereUniqueInput | UserWhereUniqueInput[]
-    delete?: UserWhereUniqueInput | UserWhereUniqueInput[]
     connect?: UserWhereUniqueInput | UserWhereUniqueInput[]
-    update?: UserUpdateWithWhereUniqueWithoutLearningGroupsInput | UserUpdateWithWhereUniqueWithoutLearningGroupsInput[]
-    updateMany?: UserUpdateManyWithWhereWithoutLearningGroupsInput | UserUpdateManyWithWhereWithoutLearningGroupsInput[]
-    deleteMany?: UserScalarWhereInput | UserScalarWhereInput[]
   }
 
   export type GradingSchemaUpdateManyWithoutLearningGroupNestedInput = {
@@ -14078,7 +15625,15 @@ export namespace Prisma {
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
   }
 
-  export type UserUncheckedUpdateManyWithoutLearningGroupsNestedInput = {
+  export type UserUpdateOneRequiredWithoutTeacherGroupsNestedInput = {
+    create?: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutTeacherGroupsInput
+    upsert?: UserUpsertWithoutTeacherGroupsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutTeacherGroupsInput, UserUpdateWithoutTeacherGroupsInput>, UserUncheckedUpdateWithoutTeacherGroupsInput>
+  }
+
+  export type UserUpdateManyWithoutLearningGroupsNestedInput = {
     create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
     connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
     upsert?: UserUpsertWithWhereUniqueWithoutLearningGroupsInput | UserUpsertWithWhereUniqueWithoutLearningGroupsInput[]
@@ -14119,10 +15674,17 @@ export namespace Prisma {
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
   }
 
-  export type UserCreateNestedOneWithoutSubjectsInput = {
-    create?: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutSubjectsInput
-    connect?: UserWhereUniqueInput
+  export type UserUncheckedUpdateManyWithoutLearningGroupsNestedInput = {
+    create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
+    connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
+    upsert?: UserUpsertWithWhereUniqueWithoutLearningGroupsInput | UserUpsertWithWhereUniqueWithoutLearningGroupsInput[]
+    set?: UserWhereUniqueInput | UserWhereUniqueInput[]
+    disconnect?: UserWhereUniqueInput | UserWhereUniqueInput[]
+    delete?: UserWhereUniqueInput | UserWhereUniqueInput[]
+    connect?: UserWhereUniqueInput | UserWhereUniqueInput[]
+    update?: UserUpdateWithWhereUniqueWithoutLearningGroupsInput | UserUpdateWithWhereUniqueWithoutLearningGroupsInput[]
+    updateMany?: UserUpdateManyWithWhereWithoutLearningGroupsInput | UserUpdateManyWithWhereWithoutLearningGroupsInput[]
+    deleteMany?: UserScalarWhereInput | UserScalarWhereInput[]
   }
 
   export type BlockCreateNestedManyWithoutSubjectInput = {
@@ -14130,6 +15692,12 @@ export namespace Prisma {
     connectOrCreate?: BlockCreateOrConnectWithoutSubjectInput | BlockCreateOrConnectWithoutSubjectInput[]
     createMany?: BlockCreateManySubjectInputEnvelope
     connect?: BlockWhereUniqueInput | BlockWhereUniqueInput[]
+  }
+
+  export type UserCreateNestedOneWithoutSubjectsInput = {
+    create?: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSubjectsInput
+    connect?: UserWhereUniqueInput
   }
 
   export type BlockUncheckedCreateNestedManyWithoutSubjectInput = {
@@ -14151,14 +15719,6 @@ export namespace Prisma {
     divide?: number
   }
 
-  export type UserUpdateOneRequiredWithoutSubjectsNestedInput = {
-    create?: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutSubjectsInput
-    upsert?: UserUpsertWithoutSubjectsInput
-    connect?: UserWhereUniqueInput
-    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSubjectsInput, UserUpdateWithoutSubjectsInput>, UserUncheckedUpdateWithoutSubjectsInput>
-  }
-
   export type BlockUpdateManyWithoutSubjectNestedInput = {
     create?: XOR<BlockCreateWithoutSubjectInput, BlockUncheckedCreateWithoutSubjectInput> | BlockCreateWithoutSubjectInput[] | BlockUncheckedCreateWithoutSubjectInput[]
     connectOrCreate?: BlockCreateOrConnectWithoutSubjectInput | BlockCreateOrConnectWithoutSubjectInput[]
@@ -14171,6 +15731,14 @@ export namespace Prisma {
     update?: BlockUpdateWithWhereUniqueWithoutSubjectInput | BlockUpdateWithWhereUniqueWithoutSubjectInput[]
     updateMany?: BlockUpdateManyWithWhereWithoutSubjectInput | BlockUpdateManyWithWhereWithoutSubjectInput[]
     deleteMany?: BlockScalarWhereInput | BlockScalarWhereInput[]
+  }
+
+  export type UserUpdateOneRequiredWithoutSubjectsNestedInput = {
+    create?: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSubjectsInput
+    upsert?: UserUpsertWithoutSubjectsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSubjectsInput, UserUpdateWithoutSubjectsInput>, UserUncheckedUpdateWithoutSubjectsInput>
   }
 
   export type BlockUncheckedUpdateManyWithoutSubjectNestedInput = {
@@ -14243,12 +15811,6 @@ export namespace Prisma {
     deleteMany?: UnitScalarWhereInput | UnitScalarWhereInput[]
   }
 
-  export type BlockCreateNestedOneWithoutUnitsInput = {
-    create?: XOR<BlockCreateWithoutUnitsInput, BlockUncheckedCreateWithoutUnitsInput>
-    connectOrCreate?: BlockCreateOrConnectWithoutUnitsInput
-    connect?: BlockWhereUniqueInput
-  }
-
   export type TopicCreateNestedManyWithoutUnitInput = {
     create?: XOR<TopicCreateWithoutUnitInput, TopicUncheckedCreateWithoutUnitInput> | TopicCreateWithoutUnitInput[] | TopicUncheckedCreateWithoutUnitInput[]
     connectOrCreate?: TopicCreateOrConnectWithoutUnitInput | TopicCreateOrConnectWithoutUnitInput[]
@@ -14256,19 +15818,17 @@ export namespace Prisma {
     connect?: TopicWhereUniqueInput | TopicWhereUniqueInput[]
   }
 
+  export type BlockCreateNestedOneWithoutUnitsInput = {
+    create?: XOR<BlockCreateWithoutUnitsInput, BlockUncheckedCreateWithoutUnitsInput>
+    connectOrCreate?: BlockCreateOrConnectWithoutUnitsInput
+    connect?: BlockWhereUniqueInput
+  }
+
   export type TopicUncheckedCreateNestedManyWithoutUnitInput = {
     create?: XOR<TopicCreateWithoutUnitInput, TopicUncheckedCreateWithoutUnitInput> | TopicCreateWithoutUnitInput[] | TopicUncheckedCreateWithoutUnitInput[]
     connectOrCreate?: TopicCreateOrConnectWithoutUnitInput | TopicCreateOrConnectWithoutUnitInput[]
     createMany?: TopicCreateManyUnitInputEnvelope
     connect?: TopicWhereUniqueInput | TopicWhereUniqueInput[]
-  }
-
-  export type BlockUpdateOneRequiredWithoutUnitsNestedInput = {
-    create?: XOR<BlockCreateWithoutUnitsInput, BlockUncheckedCreateWithoutUnitsInput>
-    connectOrCreate?: BlockCreateOrConnectWithoutUnitsInput
-    upsert?: BlockUpsertWithoutUnitsInput
-    connect?: BlockWhereUniqueInput
-    update?: XOR<XOR<BlockUpdateToOneWithWhereWithoutUnitsInput, BlockUpdateWithoutUnitsInput>, BlockUncheckedUpdateWithoutUnitsInput>
   }
 
   export type TopicUpdateManyWithoutUnitNestedInput = {
@@ -14285,6 +15845,14 @@ export namespace Prisma {
     deleteMany?: TopicScalarWhereInput | TopicScalarWhereInput[]
   }
 
+  export type BlockUpdateOneRequiredWithoutUnitsNestedInput = {
+    create?: XOR<BlockCreateWithoutUnitsInput, BlockUncheckedCreateWithoutUnitsInput>
+    connectOrCreate?: BlockCreateOrConnectWithoutUnitsInput
+    upsert?: BlockUpsertWithoutUnitsInput
+    connect?: BlockWhereUniqueInput
+    update?: XOR<XOR<BlockUpdateToOneWithWhereWithoutUnitsInput, BlockUpdateWithoutUnitsInput>, BlockUncheckedUpdateWithoutUnitsInput>
+  }
+
   export type TopicUncheckedUpdateManyWithoutUnitNestedInput = {
     create?: XOR<TopicCreateWithoutUnitInput, TopicUncheckedCreateWithoutUnitInput> | TopicCreateWithoutUnitInput[] | TopicUncheckedCreateWithoutUnitInput[]
     connectOrCreate?: TopicCreateOrConnectWithoutUnitInput | TopicCreateOrConnectWithoutUnitInput[]
@@ -14299,12 +15867,6 @@ export namespace Prisma {
     deleteMany?: TopicScalarWhereInput | TopicScalarWhereInput[]
   }
 
-  export type UnitCreateNestedOneWithoutTopicsInput = {
-    create?: XOR<UnitCreateWithoutTopicsInput, UnitUncheckedCreateWithoutTopicsInput>
-    connectOrCreate?: UnitCreateOrConnectWithoutTopicsInput
-    connect?: UnitWhereUniqueInput
-  }
-
   export type LessonCreateNestedManyWithoutTopicInput = {
     create?: XOR<LessonCreateWithoutTopicInput, LessonUncheckedCreateWithoutTopicInput> | LessonCreateWithoutTopicInput[] | LessonUncheckedCreateWithoutTopicInput[]
     connectOrCreate?: LessonCreateOrConnectWithoutTopicInput | LessonCreateOrConnectWithoutTopicInput[]
@@ -14312,19 +15874,17 @@ export namespace Prisma {
     connect?: LessonWhereUniqueInput | LessonWhereUniqueInput[]
   }
 
+  export type UnitCreateNestedOneWithoutTopicsInput = {
+    create?: XOR<UnitCreateWithoutTopicsInput, UnitUncheckedCreateWithoutTopicsInput>
+    connectOrCreate?: UnitCreateOrConnectWithoutTopicsInput
+    connect?: UnitWhereUniqueInput
+  }
+
   export type LessonUncheckedCreateNestedManyWithoutTopicInput = {
     create?: XOR<LessonCreateWithoutTopicInput, LessonUncheckedCreateWithoutTopicInput> | LessonCreateWithoutTopicInput[] | LessonUncheckedCreateWithoutTopicInput[]
     connectOrCreate?: LessonCreateOrConnectWithoutTopicInput | LessonCreateOrConnectWithoutTopicInput[]
     createMany?: LessonCreateManyTopicInputEnvelope
     connect?: LessonWhereUniqueInput | LessonWhereUniqueInput[]
-  }
-
-  export type UnitUpdateOneRequiredWithoutTopicsNestedInput = {
-    create?: XOR<UnitCreateWithoutTopicsInput, UnitUncheckedCreateWithoutTopicsInput>
-    connectOrCreate?: UnitCreateOrConnectWithoutTopicsInput
-    upsert?: UnitUpsertWithoutTopicsInput
-    connect?: UnitWhereUniqueInput
-    update?: XOR<XOR<UnitUpdateToOneWithWhereWithoutTopicsInput, UnitUpdateWithoutTopicsInput>, UnitUncheckedUpdateWithoutTopicsInput>
   }
 
   export type LessonUpdateManyWithoutTopicNestedInput = {
@@ -14339,6 +15899,14 @@ export namespace Prisma {
     update?: LessonUpdateWithWhereUniqueWithoutTopicInput | LessonUpdateWithWhereUniqueWithoutTopicInput[]
     updateMany?: LessonUpdateManyWithWhereWithoutTopicInput | LessonUpdateManyWithWhereWithoutTopicInput[]
     deleteMany?: LessonScalarWhereInput | LessonScalarWhereInput[]
+  }
+
+  export type UnitUpdateOneRequiredWithoutTopicsNestedInput = {
+    create?: XOR<UnitCreateWithoutTopicsInput, UnitUncheckedCreateWithoutTopicsInput>
+    connectOrCreate?: UnitCreateOrConnectWithoutTopicsInput
+    upsert?: UnitUpsertWithoutTopicsInput
+    connect?: UnitWhereUniqueInput
+    update?: XOR<XOR<UnitUpdateToOneWithWhereWithoutTopicsInput, UnitUpdateWithoutTopicsInput>, UnitUncheckedUpdateWithoutTopicsInput>
   }
 
   export type LessonUncheckedUpdateManyWithoutTopicNestedInput = {
@@ -14381,6 +15949,24 @@ export namespace Prisma {
     upsert?: LearningGroupUpsertWithoutAssignmentsInput
     connect?: LearningGroupWhereUniqueInput
     update?: XOR<XOR<LearningGroupUpdateToOneWithWhereWithoutAssignmentsInput, LearningGroupUpdateWithoutAssignmentsInput>, LearningGroupUncheckedUpdateWithoutAssignmentsInput>
+  }
+
+  export type UserCreateNestedOneWithoutNotesInput = {
+    create?: XOR<UserCreateWithoutNotesInput, UserUncheckedCreateWithoutNotesInput>
+    connectOrCreate?: UserCreateOrConnectWithoutNotesInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type BoolFieldUpdateOperationsInput = {
+    set?: boolean
+  }
+
+  export type UserUpdateOneRequiredWithoutNotesNestedInput = {
+    create?: XOR<UserCreateWithoutNotesInput, UserUncheckedCreateWithoutNotesInput>
+    connectOrCreate?: UserCreateOrConnectWithoutNotesInput
+    upsert?: UserUpsertWithoutNotesInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutNotesInput, UserUpdateWithoutNotesInput>, UserUncheckedUpdateWithoutNotesInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -14519,29 +16105,17 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
-  export type LearningGroupCreateWithoutStudentsInput = {
-    id?: string
-    name: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
-    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
-    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
   }
 
-  export type LearningGroupUncheckedCreateWithoutStudentsInput = {
-    id?: string
-    name: string
-    teacherId: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
-    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
-  }
-
-  export type LearningGroupCreateOrConnectWithoutStudentsInput = {
-    where: LearningGroupWhereUniqueInput
-    create: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput>
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type LearningGroupCreateWithoutTeacherInput = {
@@ -14549,9 +16123,9 @@ export namespace Prisma {
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    students?: UserCreateNestedManyWithoutLearningGroupsInput
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
 
   export type LearningGroupUncheckedCreateWithoutTeacherInput = {
@@ -14559,9 +16133,9 @@ export namespace Prisma {
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
   export type LearningGroupCreateOrConnectWithoutTeacherInput = {
@@ -14571,6 +16145,37 @@ export namespace Prisma {
 
   export type LearningGroupCreateManyTeacherInputEnvelope = {
     data: LearningGroupCreateManyTeacherInput | LearningGroupCreateManyTeacherInput[]
+  }
+
+  export type NoteCreateWithoutAuthorInput = {
+    id?: string
+    title: string
+    content: string
+    isPrivate?: boolean
+    tags?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type NoteUncheckedCreateWithoutAuthorInput = {
+    id?: string
+    title: string
+    content: string
+    isPrivate?: boolean
+    tags?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type NoteCreateOrConnectWithoutAuthorInput = {
+    where: NoteWhereUniqueInput
+    create: XOR<NoteCreateWithoutAuthorInput, NoteUncheckedCreateWithoutAuthorInput>
+  }
+
+  export type NoteCreateManyAuthorInputEnvelope = {
+    data: NoteCreateManyAuthorInput | NoteCreateManyAuthorInput[]
   }
 
   export type SubjectCreateWithoutTeacherInput = {
@@ -14602,31 +16207,29 @@ export namespace Prisma {
     data: SubjectCreateManyTeacherInput | SubjectCreateManyTeacherInput[]
   }
 
-  export type LearningGroupUpsertWithWhereUniqueWithoutStudentsInput = {
+  export type LearningGroupCreateWithoutStudentsInput = {
+    id?: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
+  }
+
+  export type LearningGroupUncheckedCreateWithoutStudentsInput = {
+    id?: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherId: string
+    gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+  }
+
+  export type LearningGroupCreateOrConnectWithoutStudentsInput = {
     where: LearningGroupWhereUniqueInput
-    update: XOR<LearningGroupUpdateWithoutStudentsInput, LearningGroupUncheckedUpdateWithoutStudentsInput>
     create: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput>
-  }
-
-  export type LearningGroupUpdateWithWhereUniqueWithoutStudentsInput = {
-    where: LearningGroupWhereUniqueInput
-    data: XOR<LearningGroupUpdateWithoutStudentsInput, LearningGroupUncheckedUpdateWithoutStudentsInput>
-  }
-
-  export type LearningGroupUpdateManyWithWhereWithoutStudentsInput = {
-    where: LearningGroupScalarWhereInput
-    data: XOR<LearningGroupUpdateManyMutationInput, LearningGroupUncheckedUpdateManyWithoutStudentsInput>
-  }
-
-  export type LearningGroupScalarWhereInput = {
-    AND?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
-    OR?: LearningGroupScalarWhereInput[]
-    NOT?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
-    id?: StringFilter<"LearningGroup"> | string
-    name?: StringFilter<"LearningGroup"> | string
-    teacherId?: StringFilter<"LearningGroup"> | string
-    createdAt?: DateTimeFilter<"LearningGroup"> | Date | string
-    updatedAt?: DateTimeFilter<"LearningGroup"> | Date | string
   }
 
   export type LearningGroupUpsertWithWhereUniqueWithoutTeacherInput = {
@@ -14643,6 +16246,48 @@ export namespace Prisma {
   export type LearningGroupUpdateManyWithWhereWithoutTeacherInput = {
     where: LearningGroupScalarWhereInput
     data: XOR<LearningGroupUpdateManyMutationInput, LearningGroupUncheckedUpdateManyWithoutTeacherInput>
+  }
+
+  export type LearningGroupScalarWhereInput = {
+    AND?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
+    OR?: LearningGroupScalarWhereInput[]
+    NOT?: LearningGroupScalarWhereInput | LearningGroupScalarWhereInput[]
+    id?: StringFilter<"LearningGroup"> | string
+    name?: StringFilter<"LearningGroup"> | string
+    createdAt?: DateTimeFilter<"LearningGroup"> | Date | string
+    updatedAt?: DateTimeFilter<"LearningGroup"> | Date | string
+    teacherId?: StringFilter<"LearningGroup"> | string
+  }
+
+  export type NoteUpsertWithWhereUniqueWithoutAuthorInput = {
+    where: NoteWhereUniqueInput
+    update: XOR<NoteUpdateWithoutAuthorInput, NoteUncheckedUpdateWithoutAuthorInput>
+    create: XOR<NoteCreateWithoutAuthorInput, NoteUncheckedCreateWithoutAuthorInput>
+  }
+
+  export type NoteUpdateWithWhereUniqueWithoutAuthorInput = {
+    where: NoteWhereUniqueInput
+    data: XOR<NoteUpdateWithoutAuthorInput, NoteUncheckedUpdateWithoutAuthorInput>
+  }
+
+  export type NoteUpdateManyWithWhereWithoutAuthorInput = {
+    where: NoteScalarWhereInput
+    data: XOR<NoteUpdateManyMutationInput, NoteUncheckedUpdateManyWithoutAuthorInput>
+  }
+
+  export type NoteScalarWhereInput = {
+    AND?: NoteScalarWhereInput | NoteScalarWhereInput[]
+    OR?: NoteScalarWhereInput[]
+    NOT?: NoteScalarWhereInput | NoteScalarWhereInput[]
+    id?: StringFilter<"Note"> | string
+    title?: StringFilter<"Note"> | string
+    content?: StringFilter<"Note"> | string
+    authorId?: StringFilter<"Note"> | string
+    isPrivate?: BoolFilter<"Note"> | boolean
+    tags?: StringNullableFilter<"Note"> | string | null
+    order?: IntFilter<"Note"> | number
+    createdAt?: DateTimeFilter<"Note"> | Date | string
+    updatedAt?: DateTimeFilter<"Note"> | Date | string
   }
 
   export type SubjectUpsertWithWhereUniqueWithoutTeacherInput = {
@@ -14674,24 +16319,40 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Subject"> | Date | string
   }
 
+  export type LearningGroupUpsertWithWhereUniqueWithoutStudentsInput = {
+    where: LearningGroupWhereUniqueInput
+    update: XOR<LearningGroupUpdateWithoutStudentsInput, LearningGroupUncheckedUpdateWithoutStudentsInput>
+    create: XOR<LearningGroupCreateWithoutStudentsInput, LearningGroupUncheckedCreateWithoutStudentsInput>
+  }
+
+  export type LearningGroupUpdateWithWhereUniqueWithoutStudentsInput = {
+    where: LearningGroupWhereUniqueInput
+    data: XOR<LearningGroupUpdateWithoutStudentsInput, LearningGroupUncheckedUpdateWithoutStudentsInput>
+  }
+
+  export type LearningGroupUpdateManyWithWhereWithoutStudentsInput = {
+    where: LearningGroupScalarWhereInput
+    data: XOR<LearningGroupUpdateManyMutationInput, LearningGroupUncheckedUpdateManyWithoutStudentsInput>
+  }
+
   export type LearningGroupCreateWithoutGradingSchemasInput = {
     id?: string
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
-    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupUncheckedCreateWithoutGradingSchemasInput = {
     id?: string
     name: string
-    teacherId: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
+    teacherId: string
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
   export type LearningGroupCreateOrConnectWithoutGradingSchemasInput = {
@@ -14715,73 +16376,19 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
-    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateWithoutGradingSchemasInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
-    teacherId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+    teacherId?: StringFieldUpdateOperationsInput | string
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
-  }
-
-  export type UserCreateWithoutTeacherGroupsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
-    subjects?: SubjectCreateNestedManyWithoutTeacherInput
-  }
-
-  export type UserUncheckedCreateWithoutTeacherGroupsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
-    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
-  }
-
-  export type UserCreateOrConnectWithoutTeacherGroupsInput = {
-    where: UserWhereUniqueInput
-    create: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
-  }
-
-  export type UserCreateWithoutLearningGroupsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
-    subjects?: SubjectCreateNestedManyWithoutTeacherInput
-  }
-
-  export type UserUncheckedCreateWithoutLearningGroupsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
-    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
-  }
-
-  export type UserCreateOrConnectWithoutLearningGroupsInput = {
-    where: UserWhereUniqueInput
-    create: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput>
+    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
   export type GradingSchemaCreateWithoutLearningGroupInput = {
@@ -14832,65 +16439,62 @@ export namespace Prisma {
     data: GroupAssignmentCreateManyGroupInput | GroupAssignmentCreateManyGroupInput[]
   }
 
-  export type UserUpsertWithoutTeacherGroupsInput = {
-    update: XOR<UserUpdateWithoutTeacherGroupsInput, UserUncheckedUpdateWithoutTeacherGroupsInput>
+  export type UserCreateWithoutTeacherGroupsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+  }
+
+  export type UserUncheckedCreateWithoutTeacherGroupsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+  }
+
+  export type UserCreateOrConnectWithoutTeacherGroupsInput = {
+    where: UserWhereUniqueInput
     create: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
-    where?: UserWhereInput
   }
 
-  export type UserUpdateToOneWithWhereWithoutTeacherGroupsInput = {
-    where?: UserWhereInput
-    data: XOR<UserUpdateWithoutTeacherGroupsInput, UserUncheckedUpdateWithoutTeacherGroupsInput>
+  export type UserCreateWithoutLearningGroupsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
   }
 
-  export type UserUpdateWithoutTeacherGroupsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
-    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+  export type UserUncheckedCreateWithoutLearningGroupsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
   }
 
-  export type UserUncheckedUpdateWithoutTeacherGroupsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
-    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
-  }
-
-  export type UserUpsertWithWhereUniqueWithoutLearningGroupsInput = {
+  export type UserCreateOrConnectWithoutLearningGroupsInput = {
     where: UserWhereUniqueInput
-    update: XOR<UserUpdateWithoutLearningGroupsInput, UserUncheckedUpdateWithoutLearningGroupsInput>
     create: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput>
-  }
-
-  export type UserUpdateWithWhereUniqueWithoutLearningGroupsInput = {
-    where: UserWhereUniqueInput
-    data: XOR<UserUpdateWithoutLearningGroupsInput, UserUncheckedUpdateWithoutLearningGroupsInput>
-  }
-
-  export type UserUpdateManyWithWhereWithoutLearningGroupsInput = {
-    where: UserScalarWhereInput
-    data: XOR<UserUpdateManyMutationInput, UserUncheckedUpdateManyWithoutLearningGroupsInput>
-  }
-
-  export type UserScalarWhereInput = {
-    AND?: UserScalarWhereInput | UserScalarWhereInput[]
-    OR?: UserScalarWhereInput[]
-    NOT?: UserScalarWhereInput | UserScalarWhereInput[]
-    id?: StringFilter<"User"> | string
-    name?: StringFilter<"User"> | string
-    loginCode?: StringFilter<"User"> | string
-    role?: StringFilter<"User"> | string
-    createdAt?: DateTimeFilter<"User"> | Date | string
-    updatedAt?: DateTimeFilter<"User"> | Date | string
   }
 
   export type GradingSchemaUpsertWithWhereUniqueWithoutLearningGroupInput = {
@@ -14948,31 +16552,67 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"GroupAssignment"> | Date | string
   }
 
-  export type UserCreateWithoutSubjectsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
-    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+  export type UserUpsertWithoutTeacherGroupsInput = {
+    update: XOR<UserUpdateWithoutTeacherGroupsInput, UserUncheckedUpdateWithoutTeacherGroupsInput>
+    create: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
+    where?: UserWhereInput
   }
 
-  export type UserUncheckedCreateWithoutSubjectsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
-    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+  export type UserUpdateToOneWithWhereWithoutTeacherGroupsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutTeacherGroupsInput, UserUncheckedUpdateWithoutTeacherGroupsInput>
   }
 
-  export type UserCreateOrConnectWithoutSubjectsInput = {
+  export type UserUpdateWithoutTeacherGroupsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutTeacherGroupsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
+  }
+
+  export type UserUpsertWithWhereUniqueWithoutLearningGroupsInput = {
     where: UserWhereUniqueInput
-    create: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
+    update: XOR<UserUpdateWithoutLearningGroupsInput, UserUncheckedUpdateWithoutLearningGroupsInput>
+    create: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput>
+  }
+
+  export type UserUpdateWithWhereUniqueWithoutLearningGroupsInput = {
+    where: UserWhereUniqueInput
+    data: XOR<UserUpdateWithoutLearningGroupsInput, UserUncheckedUpdateWithoutLearningGroupsInput>
+  }
+
+  export type UserUpdateManyWithWhereWithoutLearningGroupsInput = {
+    where: UserScalarWhereInput
+    data: XOR<UserUpdateManyMutationInput, UserUncheckedUpdateManyWithoutLearningGroupsInput>
+  }
+
+  export type UserScalarWhereInput = {
+    AND?: UserScalarWhereInput | UserScalarWhereInput[]
+    OR?: UserScalarWhereInput[]
+    NOT?: UserScalarWhereInput | UserScalarWhereInput[]
+    id?: StringFilter<"User"> | string
+    name?: StringFilter<"User"> | string
+    loginCode?: StringFilter<"User"> | string
+    role?: StringFilter<"User"> | string
+    createdAt?: DateTimeFilter<"User"> | Date | string
+    updatedAt?: DateTimeFilter<"User"> | Date | string
   }
 
   export type BlockCreateWithoutSubjectInput = {
@@ -15004,37 +16644,33 @@ export namespace Prisma {
     data: BlockCreateManySubjectInput | BlockCreateManySubjectInput[]
   }
 
-  export type UserUpsertWithoutSubjectsInput = {
-    update: XOR<UserUpdateWithoutSubjectsInput, UserUncheckedUpdateWithoutSubjectsInput>
+  export type UserCreateWithoutSubjectsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+  }
+
+  export type UserUncheckedCreateWithoutSubjectsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+  }
+
+  export type UserCreateOrConnectWithoutSubjectsInput = {
+    where: UserWhereUniqueInput
     create: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
-    where?: UserWhereInput
-  }
-
-  export type UserUpdateToOneWithWhereWithoutSubjectsInput = {
-    where?: UserWhereInput
-    data: XOR<UserUpdateWithoutSubjectsInput, UserUncheckedUpdateWithoutSubjectsInput>
-  }
-
-  export type UserUpdateWithoutSubjectsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
-    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
-  }
-
-  export type UserUncheckedUpdateWithoutSubjectsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
-    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type BlockUpsertWithWhereUniqueWithoutSubjectInput = {
@@ -15064,6 +16700,41 @@ export namespace Prisma {
     subjectId?: StringFilter<"Block"> | string
     createdAt?: DateTimeFilter<"Block"> | Date | string
     updatedAt?: DateTimeFilter<"Block"> | Date | string
+  }
+
+  export type UserUpsertWithoutSubjectsInput = {
+    update: XOR<UserUpdateWithoutSubjectsInput, UserUncheckedUpdateWithoutSubjectsInput>
+    create: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutSubjectsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutSubjectsInput, UserUncheckedUpdateWithoutSubjectsInput>
+  }
+
+  export type UserUpdateWithoutSubjectsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutSubjectsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
   }
 
   export type SubjectCreateWithoutBlocksInput = {
@@ -15180,31 +16851,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Unit"> | Date | string
   }
 
-  export type BlockCreateWithoutUnitsInput = {
-    id?: string
-    name: string
-    description?: string | null
-    order?: number
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    subject: SubjectCreateNestedOneWithoutBlocksInput
-  }
-
-  export type BlockUncheckedCreateWithoutUnitsInput = {
-    id?: string
-    name: string
-    description?: string | null
-    order?: number
-    subjectId: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type BlockCreateOrConnectWithoutUnitsInput = {
-    where: BlockWhereUniqueInput
-    create: XOR<BlockCreateWithoutUnitsInput, BlockUncheckedCreateWithoutUnitsInput>
-  }
-
   export type TopicCreateWithoutUnitInput = {
     id?: string
     name: string
@@ -15232,6 +16878,60 @@ export namespace Prisma {
 
   export type TopicCreateManyUnitInputEnvelope = {
     data: TopicCreateManyUnitInput | TopicCreateManyUnitInput[]
+  }
+
+  export type BlockCreateWithoutUnitsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    subject: SubjectCreateNestedOneWithoutBlocksInput
+  }
+
+  export type BlockUncheckedCreateWithoutUnitsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    subjectId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type BlockCreateOrConnectWithoutUnitsInput = {
+    where: BlockWhereUniqueInput
+    create: XOR<BlockCreateWithoutUnitsInput, BlockUncheckedCreateWithoutUnitsInput>
+  }
+
+  export type TopicUpsertWithWhereUniqueWithoutUnitInput = {
+    where: TopicWhereUniqueInput
+    update: XOR<TopicUpdateWithoutUnitInput, TopicUncheckedUpdateWithoutUnitInput>
+    create: XOR<TopicCreateWithoutUnitInput, TopicUncheckedCreateWithoutUnitInput>
+  }
+
+  export type TopicUpdateWithWhereUniqueWithoutUnitInput = {
+    where: TopicWhereUniqueInput
+    data: XOR<TopicUpdateWithoutUnitInput, TopicUncheckedUpdateWithoutUnitInput>
+  }
+
+  export type TopicUpdateManyWithWhereWithoutUnitInput = {
+    where: TopicScalarWhereInput
+    data: XOR<TopicUpdateManyMutationInput, TopicUncheckedUpdateManyWithoutUnitInput>
+  }
+
+  export type TopicScalarWhereInput = {
+    AND?: TopicScalarWhereInput | TopicScalarWhereInput[]
+    OR?: TopicScalarWhereInput[]
+    NOT?: TopicScalarWhereInput | TopicScalarWhereInput[]
+    id?: StringFilter<"Topic"> | string
+    name?: StringFilter<"Topic"> | string
+    description?: StringNullableFilter<"Topic"> | string | null
+    order?: IntFilter<"Topic"> | number
+    unitId?: StringFilter<"Topic"> | string
+    createdAt?: DateTimeFilter<"Topic"> | Date | string
+    updatedAt?: DateTimeFilter<"Topic"> | Date | string
   }
 
   export type BlockUpsertWithoutUnitsInput = {
@@ -15265,33 +16965,31 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type TopicUpsertWithWhereUniqueWithoutUnitInput = {
-    where: TopicWhereUniqueInput
-    update: XOR<TopicUpdateWithoutUnitInput, TopicUncheckedUpdateWithoutUnitInput>
-    create: XOR<TopicCreateWithoutUnitInput, TopicUncheckedCreateWithoutUnitInput>
+  export type LessonCreateWithoutTopicInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
-  export type TopicUpdateWithWhereUniqueWithoutUnitInput = {
-    where: TopicWhereUniqueInput
-    data: XOR<TopicUpdateWithoutUnitInput, TopicUncheckedUpdateWithoutUnitInput>
+  export type LessonUncheckedCreateWithoutTopicInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
-  export type TopicUpdateManyWithWhereWithoutUnitInput = {
-    where: TopicScalarWhereInput
-    data: XOR<TopicUpdateManyMutationInput, TopicUncheckedUpdateManyWithoutUnitInput>
+  export type LessonCreateOrConnectWithoutTopicInput = {
+    where: LessonWhereUniqueInput
+    create: XOR<LessonCreateWithoutTopicInput, LessonUncheckedCreateWithoutTopicInput>
   }
 
-  export type TopicScalarWhereInput = {
-    AND?: TopicScalarWhereInput | TopicScalarWhereInput[]
-    OR?: TopicScalarWhereInput[]
-    NOT?: TopicScalarWhereInput | TopicScalarWhereInput[]
-    id?: StringFilter<"Topic"> | string
-    name?: StringFilter<"Topic"> | string
-    description?: StringNullableFilter<"Topic"> | string | null
-    order?: IntFilter<"Topic"> | number
-    unitId?: StringFilter<"Topic"> | string
-    createdAt?: DateTimeFilter<"Topic"> | Date | string
-    updatedAt?: DateTimeFilter<"Topic"> | Date | string
+  export type LessonCreateManyTopicInputEnvelope = {
+    data: LessonCreateManyTopicInput | LessonCreateManyTopicInput[]
   }
 
   export type UnitCreateWithoutTopicsInput = {
@@ -15319,31 +17017,33 @@ export namespace Prisma {
     create: XOR<UnitCreateWithoutTopicsInput, UnitUncheckedCreateWithoutTopicsInput>
   }
 
-  export type LessonCreateWithoutTopicInput = {
-    id?: string
-    name: string
-    description?: string | null
-    order?: number
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type LessonUncheckedCreateWithoutTopicInput = {
-    id?: string
-    name: string
-    description?: string | null
-    order?: number
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type LessonCreateOrConnectWithoutTopicInput = {
+  export type LessonUpsertWithWhereUniqueWithoutTopicInput = {
     where: LessonWhereUniqueInput
+    update: XOR<LessonUpdateWithoutTopicInput, LessonUncheckedUpdateWithoutTopicInput>
     create: XOR<LessonCreateWithoutTopicInput, LessonUncheckedCreateWithoutTopicInput>
   }
 
-  export type LessonCreateManyTopicInputEnvelope = {
-    data: LessonCreateManyTopicInput | LessonCreateManyTopicInput[]
+  export type LessonUpdateWithWhereUniqueWithoutTopicInput = {
+    where: LessonWhereUniqueInput
+    data: XOR<LessonUpdateWithoutTopicInput, LessonUncheckedUpdateWithoutTopicInput>
+  }
+
+  export type LessonUpdateManyWithWhereWithoutTopicInput = {
+    where: LessonScalarWhereInput
+    data: XOR<LessonUpdateManyMutationInput, LessonUncheckedUpdateManyWithoutTopicInput>
+  }
+
+  export type LessonScalarWhereInput = {
+    AND?: LessonScalarWhereInput | LessonScalarWhereInput[]
+    OR?: LessonScalarWhereInput[]
+    NOT?: LessonScalarWhereInput | LessonScalarWhereInput[]
+    id?: StringFilter<"Lesson"> | string
+    name?: StringFilter<"Lesson"> | string
+    description?: StringNullableFilter<"Lesson"> | string | null
+    order?: IntFilter<"Lesson"> | number
+    topicId?: StringFilter<"Lesson"> | string
+    createdAt?: DateTimeFilter<"Lesson"> | Date | string
+    updatedAt?: DateTimeFilter<"Lesson"> | Date | string
   }
 
   export type UnitUpsertWithoutTopicsInput = {
@@ -15375,35 +17075,6 @@ export namespace Prisma {
     blockId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type LessonUpsertWithWhereUniqueWithoutTopicInput = {
-    where: LessonWhereUniqueInput
-    update: XOR<LessonUpdateWithoutTopicInput, LessonUncheckedUpdateWithoutTopicInput>
-    create: XOR<LessonCreateWithoutTopicInput, LessonUncheckedCreateWithoutTopicInput>
-  }
-
-  export type LessonUpdateWithWhereUniqueWithoutTopicInput = {
-    where: LessonWhereUniqueInput
-    data: XOR<LessonUpdateWithoutTopicInput, LessonUncheckedUpdateWithoutTopicInput>
-  }
-
-  export type LessonUpdateManyWithWhereWithoutTopicInput = {
-    where: LessonScalarWhereInput
-    data: XOR<LessonUpdateManyMutationInput, LessonUncheckedUpdateManyWithoutTopicInput>
-  }
-
-  export type LessonScalarWhereInput = {
-    AND?: LessonScalarWhereInput | LessonScalarWhereInput[]
-    OR?: LessonScalarWhereInput[]
-    NOT?: LessonScalarWhereInput | LessonScalarWhereInput[]
-    id?: StringFilter<"Lesson"> | string
-    name?: StringFilter<"Lesson"> | string
-    description?: StringNullableFilter<"Lesson"> | string | null
-    order?: IntFilter<"Lesson"> | number
-    topicId?: StringFilter<"Lesson"> | string
-    createdAt?: DateTimeFilter<"Lesson"> | Date | string
-    updatedAt?: DateTimeFilter<"Lesson"> | Date | string
   }
 
   export type TopicCreateWithoutLessonsInput = {
@@ -15467,19 +17138,19 @@ export namespace Prisma {
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
-    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
   }
 
   export type LearningGroupUncheckedCreateWithoutAssignmentsInput = {
     id?: string
     name: string
-    teacherId: string
     createdAt?: Date | string
     updatedAt?: Date | string
-    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
+    teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
   export type LearningGroupCreateOrConnectWithoutAssignmentsInput = {
@@ -15503,24 +17174,99 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
-    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateWithoutAssignmentsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
-    teacherId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+    teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+  }
+
+  export type UserCreateWithoutNotesInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+  }
+
+  export type UserUncheckedCreateWithoutNotesInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+  }
+
+  export type UserCreateOrConnectWithoutNotesInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutNotesInput, UserUncheckedCreateWithoutNotesInput>
+  }
+
+  export type UserUpsertWithoutNotesInput = {
+    update: XOR<UserUpdateWithoutNotesInput, UserUncheckedUpdateWithoutNotesInput>
+    create: XOR<UserCreateWithoutNotesInput, UserUncheckedCreateWithoutNotesInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutNotesInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutNotesInput, UserUncheckedUpdateWithoutNotesInput>
+  }
+
+  export type UserUpdateWithoutNotesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutNotesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
   }
 
   export type LearningGroupCreateManyTeacherInput = {
     id?: string
     name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type NoteCreateManyAuthorInput = {
+    id?: string
+    title: string
+    content: string
+    isPrivate?: boolean
+    tags?: string | null
+    order?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -15534,42 +17280,14 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
-  export type LearningGroupUpdateWithoutStudentsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
-    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
-    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
-  }
-
-  export type LearningGroupUncheckedUpdateWithoutStudentsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    teacherId?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
-    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
-  }
-
-  export type LearningGroupUncheckedUpdateManyWithoutStudentsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    teacherId?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
   export type LearningGroupUpdateWithoutTeacherInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    students?: UserUpdateManyWithoutLearningGroupsNestedInput
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
 
   export type LearningGroupUncheckedUpdateWithoutTeacherInput = {
@@ -15577,14 +17295,47 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
   export type LearningGroupUncheckedUpdateManyWithoutTeacherInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type NoteUpdateWithoutAuthorInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
+    tags?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type NoteUncheckedUpdateWithoutAuthorInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
+    tags?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type NoteUncheckedUpdateManyWithoutAuthorInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    content?: StringFieldUpdateOperationsInput | string
+    isPrivate?: BoolFieldUpdateOperationsInput | boolean
+    tags?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -15618,6 +17369,34 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type LearningGroupUpdateWithoutStudentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
+  }
+
+  export type LearningGroupUncheckedUpdateWithoutStudentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+  }
+
+  export type LearningGroupUncheckedUpdateManyWithoutStudentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+  }
+
   export type GradingSchemaCreateManyLearningGroupInput = {
     id?: string
     name: string
@@ -15631,37 +17410,6 @@ export namespace Prisma {
     type: string
     refId: string
     createdAt?: Date | string
-  }
-
-  export type UserUpdateWithoutLearningGroupsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
-    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
-  }
-
-  export type UserUncheckedUpdateWithoutLearningGroupsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
-    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
-  }
-
-  export type UserUncheckedUpdateManyWithoutLearningGroupsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type GradingSchemaUpdateWithoutLearningGroupInput = {
@@ -15707,6 +17455,39 @@ export namespace Prisma {
     type?: StringFieldUpdateOperationsInput | string
     refId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserUpdateWithoutLearningGroupsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutLearningGroupsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+  }
+
+  export type UserUncheckedUpdateManyWithoutLearningGroupsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type BlockCreateManySubjectInput = {

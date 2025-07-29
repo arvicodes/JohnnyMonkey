@@ -138,9 +138,9 @@ exports.Prisma.GradingSchemaScalarFieldEnum = {
 exports.Prisma.LearningGroupScalarFieldEnum = {
   id: 'id',
   name: 'name',
-  teacherId: 'teacherId',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  teacherId: 'teacherId'
 };
 
 exports.Prisma.SubjectScalarFieldEnum = {
@@ -201,6 +201,18 @@ exports.Prisma.GroupAssignmentScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.NoteScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  content: 'content',
+  authorId: 'authorId',
+  isPrivate: 'isPrivate',
+  tags: 'tags',
+  order: 'order',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -221,7 +233,8 @@ exports.Prisma.ModelName = {
   Unit: 'Unit',
   Topic: 'Topic',
   Lesson: 'Lesson',
-  GroupAssignment: 'GroupAssignment'
+  GroupAssignment: 'GroupAssignment',
+  Note: 'Note'
 };
 
 /**

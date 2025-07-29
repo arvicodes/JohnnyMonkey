@@ -17,7 +17,7 @@ import {
   Person as PersonIcon,
   EmojiEvents as TrophyIcon,
   Stars as StarsIcon,
-  Map as MapIcon
+  Map as MapIcon,
 } from '@mui/icons-material';
 
 interface Teacher {
@@ -337,6 +337,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             </Card>
           </Box>
         </Grid>
+
+
       </Grid>
     </Box>
   );

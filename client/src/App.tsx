@@ -6,6 +6,7 @@ import StudentDashboard from './components/StudentDashboard';
 import { LearningGroupPage } from './pages/LearningGroupPage';
 import GeoCodingQuest from './pages/GeoCodingQuest';
 import { QuizPlayerPage } from './pages/QuizPlayerPage';
+
 import { Snackbar, Alert } from '@mui/material';
 
 interface User {
@@ -36,6 +37,7 @@ function AppContent() {
       const data = await response.json();
       
       if (response.ok) {
+        console.log('Login successful, user data:', data.user);
         setUser(data.user);
         setShowSuccessMessage(true);
         setTimeout(() => setShowSuccessMessage(false), 3000); // Hide after 3 seconds
@@ -116,6 +118,7 @@ function AppContent() {
         <Route path="/learning-group/:id" element={<LearningGroupPage />} />
         <Route path="/geocoding-quest" element={<GeoCodingQuest />} />
         <Route path="/quiz-player/:quizId" element={<QuizPlayerPage />} />
+
       </Routes>
       <Snackbar
         open={showSuccessMessage}

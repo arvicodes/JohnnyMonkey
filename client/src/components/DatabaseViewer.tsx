@@ -39,6 +39,19 @@ interface Subject {
   blocks?: any[]; // Added for nested structure
 }
 
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  isPrivate: boolean;
+  tags?: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  author?: { id: string; name: string };
+}
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -67,7 +80,7 @@ function TabPanel(props: TabPanelProps) {
 
 const DatabaseViewer: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
-  const [data, setData] = useState<{ users: User[]; learningGroups: LearningGroup[]; subjects: Subject[] } | null>(null);
+  const [data, setData] = useState<{ users: User[]; learningGroups: LearningGroup[]; subjects: Subject[]; notes: Note[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,6 +128,7 @@ const DatabaseViewer: React.FC = () => {
           <Tab label="Benutzer" />
           <Tab label="Lerngruppen" />
           <Tab label="Fächer" />
+          <Tab label="Notizen" />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -278,6 +292,59 @@ const DatabaseViewer: React.FC = () => {
                         <Typography variant="body2" color="text.secondary">Keine Struktur</Typography>
                       )}
                     </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Titel</TableCell>
+                  <TableCell>Inhalt</TableCell>
+                  <TableCell>Autor</TableCell>
+                  <TableCell>Privat</TableCell>
+                  <TableCell>Tags</TableCell>
+                  <TableCell>Reihenfolge</TableCell>
+                  <TableCell>Erstellt</TableCell>
+                  <TableCell>Aktualisiert</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {data?.notes?.map((note) => (
+                  <TableRow key={note.id}>
+                    <TableCell>{note.id}</TableCell>
+                    <TableCell>{note.title}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {note.content}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{note.author?.name || note.authorId}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={note.isPrivate ? 'Privat' : 'Öffentlich'} 
+                        color={note.isPrivate ? 'error' : 'success'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {note.tags && (
+                        <Chip 
+                          label={note.tags}
+                          size="small"
+                          sx={{ backgroundColor: note.tags }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>{note.order}</TableCell>
+                    <TableCell>{new Date(note.createdAt).toLocaleDateString('de-DE')}</TableCell>
+                    <TableCell>{new Date(note.updatedAt).toLocaleDateString('de-DE')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

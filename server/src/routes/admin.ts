@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // Get all database content
 router.get('/db-content', async (req: Request, res: Response) => {
   try {
-    const [users, learningGroups, subjects] = await Promise.all([
+    const [users, learningGroups, subjects, notes] = await Promise.all([
       prisma.user.findMany({
         include: {
           learningGroups: true,
@@ -37,10 +37,24 @@ router.get('/db-content', async (req: Request, res: Response) => {
             }
           }
         }
+      }),
+      prisma.note.findMany({
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        },
+        orderBy: [
+          { order: 'asc' },
+          { updatedAt: 'desc' }
+        ]
       })
     ]);
 
-    res.json({ users, learningGroups, subjects });
+    res.json({ users, learningGroups, subjects, notes });
   } catch (error) {
     console.error('Error fetching database content:', error);
     res.status(500).json({ error: 'Server error' });

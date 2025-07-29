@@ -38,11 +38,11 @@ import {
   Group as GroupIcon,
   PersonAdd as PersonAddIcon,
   Delete as DeleteIcon,
+  Edit as EditIcon,
   Storage as StorageIcon,
   MoreVert as MoreVertIcon,
   Build as BuildIcon,
-  Quiz as QuizIcon,
-  Note as NoteIcon
+  Quiz as QuizIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -94,6 +94,9 @@ function TabPanel(props: TabPanelProps) {
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
+  
+  // Debug: Log userId
+  console.log('TeacherDashboard received userId:', userId);
   const [groups, setGroups] = useState<LearningGroup[]>([]);
   const [openNewGroupDialog, setOpenNewGroupDialog] = useState(false);
   const [openAddStudentsDialog, setOpenAddStudentsDialog] = useState(false);
@@ -125,6 +128,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
   const [confirmDelete1, setConfirmDelete1] = useState(false);
   const [confirmDelete2, setConfirmDelete2] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupId, setEditGroupId] = useState<string | null>(null);
 
   // Spielerische Farbpalette
   const colors = {
@@ -395,13 +401,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  const handleEditDialogOpen = (groupId: string, currentName: string) => {
+    setEditGroupId(groupId);
+    setEditGroupName(currentName);
+    setEditDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleEditDialogClose = () => {
+    setEditDialogOpen(false);
+    setEditGroupId(null);
+    setEditGroupName('');
+  };
+
+  const handleEditGroup = async () => {
+    if (!editGroupId || !editGroupName.trim()) return;
+    try {
+      const response = await fetch(`/api/learning-groups/${editGroupId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editGroupName.trim() }),
+      });
+      if (!response.ok) throw new Error('Fehler beim Bearbeiten der Lerngruppe');
+      await fetchGroups();
+      showSnackbar('Lerngruppe erfolgreich bearbeitet', 'success');
+      handleEditDialogClose();
+    } catch (error) {
+      showSnackbar('Fehler beim Bearbeiten der Lerngruppe', 'error');
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onLogout();
       e.preventDefault();
     } else if (e.key === 'Tab') {
       return; // Let Tab work normally for accessibility
-    } else if (e.key === 'ArrowRight' && mainTabValue < 3) {
+            } else if (e.key === 'ArrowRight' && mainTabValue < 3) {
       e.preventDefault();
       setMainTabValue(mainTabValue + 1);
     } else if (e.key === 'ArrowLeft' && mainTabValue > 0) {
@@ -782,6 +818,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               </Box>
             </Box>
           </TabPanel>
+
         </Grid>
       </Grid>
 
@@ -903,10 +940,52 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <MenuItem onClick={() => { handleOpenAddStudents(menuGroupId!); handleMenuClose(); }}>
           <PersonAddIcon fontSize="small" sx={{ mr: 1 }} /> Schüler hinzufügen
         </MenuItem>
+        <MenuItem onClick={() => handleEditDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
+          <EditIcon fontSize="small" sx={{ mr: 1 }} /> Bearbeiten
+        </MenuItem>
         <MenuItem onClick={() => handleDeleteDialogOpen(menuGroupId!)}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Löschen
         </MenuItem>
       </Menu>
+      {/* Bearbeitungsdialog für Lerngruppe */}
+      <Dialog open={editDialogOpen} onClose={handleEditDialogClose}>
+        <DialogTitle>Lerngruppe bearbeiten</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Name der Lerngruppe"
+            type="text"
+            fullWidth
+            value={editGroupName}
+            onChange={(e) => setEditGroupName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleEditGroup();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditDialogClose}>
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleEditGroup} 
+            variant="contained" 
+            color="primary"
+            disabled={!editGroupName.trim()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleEditGroup();
+              }
+            }}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Bestätigungsdialog für Löschen */}
       <Dialog open={deleteDialogOpen} onClose={handleDeleteDialogClose}>
         <DialogTitle>Lerngruppe löschen</DialogTitle>

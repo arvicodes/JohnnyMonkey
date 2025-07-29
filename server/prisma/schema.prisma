@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -21,31 +15,32 @@ model User {
   role           String          @default("STUDENT")
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  learningGroups LearningGroup[] @relation("StudentGroups")
   teacherGroups  LearningGroup[] @relation("TeacherGroups")
+  notes          Note[]
   subjects       Subject[]
+  learningGroups LearningGroup[] @relation("StudentGroups")
 }
 
 model GradingSchema {
-  id            String       @id @default(uuid())
+  id            String        @id @default(uuid())
   name          String
-  structure     String       // JSON string representing the hierarchical structure
-  learningGroup LearningGroup @relation(fields: [groupId], references: [id])
+  structure     String
   groupId       String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  learningGroup LearningGroup @relation(fields: [groupId], references: [id])
 }
 
 model LearningGroup {
-  id            String    @id @default(uuid())
-  name          String
-  teacher       User      @relation("TeacherGroups", fields: [teacherId], references: [id])
-  teacherId     String
-  students      User[]    @relation("StudentGroups")
+  id             String            @id @default(uuid())
+  name           String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  teacherId      String
   gradingSchemas GradingSchema[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  assignments   GroupAssignment[]
+  assignments    GroupAssignment[]
+  teacher        User              @relation("TeacherGroups", fields: [teacherId], references: [id])
+  students       User[]            @relation("StudentGroups")
 }
 
 model Subject {
@@ -53,11 +48,11 @@ model Subject {
   name        String
   description String?
   order       Int      @default(0)
-  teacher     User     @relation(fields: [teacherId], references: [id])
   teacherId   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  blocks        Block[]
+  blocks      Block[]
+  teacher     User     @relation(fields: [teacherId], references: [id])
 }
 
 model Block {
@@ -65,11 +60,11 @@ model Block {
   name        String
   description String?
   order       Int      @default(0)
-  subject     Subject  @relation(fields: [subjectId], references: [id])
   subjectId   String
-  units       Unit[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  units       Unit[]
 }
 
 model Unit {
@@ -77,11 +72,11 @@ model Unit {
   name        String
   description String?
   order       Int      @default(0)
-  block       Block    @relation(fields: [blockId], references: [id])
   blockId     String
-  topics      Topic[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  topics      Topic[]
+  block       Block    @relation(fields: [blockId], references: [id])
 }
 
 model Topic {
@@ -89,11 +84,11 @@ model Topic {
   name        String
   description String?
   order       Int      @default(0)
-  unit        Unit     @relation(fields: [unitId], references: [id])
   unitId      String
-  lessons     Lesson[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  lessons     Lesson[]
+  unit        Unit     @relation(fields: [unitId], references: [id])
 }
 
 model Lesson {
@@ -101,17 +96,30 @@ model Lesson {
   name        String
   description String?
   order       Int      @default(0)
-  topic       Topic    @relation(fields: [topicId], references: [id])
   topicId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  topic       Topic    @relation(fields: [topicId], references: [id])
 }
 
 model GroupAssignment {
   id        String        @id @default(uuid())
-  group     LearningGroup @relation(fields: [groupId], references: [id])
   groupId   String
-  type      String        // 'subject' | 'block' | 'unit' | 'topic' | 'lesson'
-  refId     String        // ID des zugeordneten Elements
+  type      String
+  refId     String
   createdAt DateTime      @default(now())
+  group     LearningGroup @relation(fields: [groupId], references: [id])
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  authorId  String
+  isPrivate Boolean  @default(true)
+  tags      String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
 }
