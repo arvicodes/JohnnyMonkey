@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import { LearningGroupPage } from './pages/LearningGroupPage';
 import GeoCodingQuest from './pages/GeoCodingQuest';
+import { QuizPlayerPage } from './pages/QuizPlayerPage';
 import { Snackbar, Alert } from '@mui/material';
 
 interface User {
@@ -19,6 +20,7 @@ function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const navigate = useNavigate();
+  const loginInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +54,21 @@ function AppContent() {
     navigate('/');
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setLoginCode('');
+      setMessage('');
+      loginInputRef.current?.focus();
+      e.preventDefault();
+    }
+  };
+
+  useEffect(() => {
+    if (!user) {
+      loginInputRef.current?.focus();
+    }
+  }, [user]);
+
   const renderDashboard = () => {
     if (!user) return <Navigate to="/" />;
     
@@ -63,7 +80,7 @@ function AppContent() {
   };
 
   return (
-    <div className="App">
+    <div className="App" onKeyDown={handleKeyDown}>
       <Routes>
         <Route
           path="/"
@@ -74,6 +91,7 @@ function AppContent() {
                 <form onSubmit={handleLogin}>
                   <div className="form-group">
                     <input
+                      ref={loginInputRef}
                       type="text"
                       value={loginCode}
                       onChange={(e) => setLoginCode(e.target.value)}
@@ -84,6 +102,9 @@ function AppContent() {
                   </div>
                   <button type="submit">Anmelden</button>
                   {message && <p className="message">{message}</p>}
+                  <p className="keyboard-help">
+                    Tastatur: Enter zum Anmelden, ESC zum Zurücksetzen
+                  </p>
                 </form>
               </div>
             ) : (
@@ -94,6 +115,7 @@ function AppContent() {
         <Route path="/dashboard" element={renderDashboard()} />
         <Route path="/learning-group/:id" element={<LearningGroupPage />} />
         <Route path="/geocoding-quest" element={<GeoCodingQuest />} />
+        <Route path="/quiz-player/:quizId" element={<QuizPlayerPage />} />
       </Routes>
       <Snackbar
         open={showSuccessMessage}

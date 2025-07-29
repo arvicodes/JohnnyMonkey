@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { X, Lightbulb, CheckCircle } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -17,6 +17,8 @@ export default function PuzzleModal({ point, onClose, onSubmit }: PuzzleModalPro
   const [showHint1, setShowHint1] = useState(false)
   const [showHint2, setShowHint2] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(0)
+  const modalRef = useRef<HTMLDivElement>(null)
 
   const handleSubmit = async () => {
     if (!answer.trim()) return
@@ -43,9 +45,38 @@ export default function PuzzleModal({ point, onClose, onSubmit }: PuzzleModalPro
     onSubmit(point.id, '', hintsUsed, true)
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose()
+      e.preventDefault()
+    } else if (e.key === 'Enter' && e.target === modalRef.current) {
+      e.preventDefault()
+      if (answer.trim()) {
+        handleSubmit()
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const totalElements = 4 // input, submit, hint1, hint2, giveup
+      setFocusedIndex((prev) => (prev + 1) % totalElements)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      const totalElements = 4
+      setFocusedIndex((prev) => (prev - 1 + totalElements) % totalElements)
+    }
+  }
+
+  useEffect(() => {
+    modalRef.current?.focus()
+  }, [])
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <Card 
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto"
+        ref={modalRef}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+      >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-lg">{point.name}</CardTitle>
           <Button
@@ -72,6 +103,8 @@ export default function PuzzleModal({ point, onClose, onSubmit }: PuzzleModalPro
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+              tabIndex={focusedIndex === 0 ? 0 : -1}
+              className={focusedIndex === 0 ? 'ring-2 ring-blue-500' : ''}
             />
             
             <div className="flex space-x-2">
@@ -79,6 +112,7 @@ export default function PuzzleModal({ point, onClose, onSubmit }: PuzzleModalPro
                 onClick={handleSubmit}
                 disabled={!answer.trim() || isSubmitting}
                 className="flex-1"
+                tabIndex={focusedIndex === 1 ? 0 : -1}
               >
                 {isSubmitting ? 'Prüfe...' : 'Antwort senden'}
               </Button>
@@ -99,7 +133,11 @@ export default function PuzzleModal({ point, onClose, onSubmit }: PuzzleModalPro
                 size="sm"
                 onClick={() => handleHint(1)}
                 disabled={showHint1}
-                className="w-full justify-start"
+                className={cn(
+                  "w-full justify-start",
+                  focusedIndex === 2 && "ring-2 ring-blue-500"
+                )}
+                tabIndex={focusedIndex === 2 ? 0 : -1}
               >
                 <Lightbulb className="w-4 h-4 mr-2" />
                 Hinweis 1 {showHint1 && <CheckCircle className="w-4 h-4 ml-auto" />}
@@ -110,7 +148,11 @@ export default function PuzzleModal({ point, onClose, onSubmit }: PuzzleModalPro
                 size="sm"
                 onClick={() => handleHint(2)}
                 disabled={showHint2}
-                className="w-full justify-start"
+                className={cn(
+                  "w-full justify-start",
+                  focusedIndex === 3 && "ring-2 ring-blue-500"
+                )}
+                tabIndex={focusedIndex === 3 ? 0 : -1}
               >
                 <Lightbulb className="w-4 h-4 mr-2" />
                 Hinweis 2 {showHint2 && <CheckCircle className="w-4 h-4 ml-auto" />}
@@ -135,7 +177,11 @@ export default function PuzzleModal({ point, onClose, onSubmit }: PuzzleModalPro
               variant="destructive"
               size="sm"
               onClick={handleGiveUp}
-              className="w-full"
+              className={cn(
+                "w-full",
+                focusedIndex === 4 && "ring-2 ring-blue-500"
+              )}
+              tabIndex={focusedIndex === 4 ? 0 : -1}
             >
               Aufgeben
             </Button>

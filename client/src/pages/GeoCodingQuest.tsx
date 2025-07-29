@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "../lib/queryClient";
 import MapContainer from "../components/game/MapContainer";
@@ -70,6 +70,7 @@ export default function GeoCodingQuest() {
     lat: 50.3101, 
     lng: 7.5953
   });
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const userId = 1; // Fixed for demo
 
@@ -228,6 +229,35 @@ export default function GeoCodingQuest() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      if (selectedPoint) {
+        handleClosePuzzle();
+      } else if (gameStarted) {
+        handleBackToTopics();
+      } else {
+        handleBackToDashboard();
+      }
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight' && gameStarted) {
+      e.preventDefault();
+      const tabs = ['map', 'progress', 'collection', 'profile'];
+      const currentIndex = tabs.indexOf(currentTab);
+      const nextIndex = (currentIndex + 1) % tabs.length;
+      setCurrentTab(tabs[nextIndex]);
+    } else if (e.key === 'ArrowLeft' && gameStarted) {
+      e.preventDefault();
+      const tabs = ['map', 'progress', 'collection', 'profile'];
+      const currentIndex = tabs.indexOf(currentTab);
+      const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      setCurrentTab(tabs[prevIndex]);
+    }
+  };
+
+  useEffect(() => {
+    pageRef.current?.focus();
+  }, []);
+
   // Get current topic progress
   const currentTopicProgress = userProgress.find(
     p => p.topicId === selectedTopic && p.difficulty === selectedDifficulty
@@ -263,7 +293,12 @@ export default function GeoCodingQuest() {
 
   if (!gameStarted) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div 
+        className="min-h-screen bg-gray-50"
+        ref={pageRef}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+      >
         <div className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
@@ -278,6 +313,12 @@ export default function GeoCodingQuest() {
           </div>
         </div>
         <TopicSelector onTopicSelect={handleTopicSelect} userProgress={userProgress} />
+        
+        <div className="p-4 bg-gray-100 border-t">
+          <p className="text-xs text-gray-600 text-center">
+            Tastatur: ESC zum Zurückgehen, Pfeiltasten zum Navigieren (im Spiel)
+          </p>
+        </div>
       </div>
     );
   }
@@ -291,7 +332,12 @@ export default function GeoCodingQuest() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div 
+      className="min-h-screen bg-gray-50"
+      ref={pageRef}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       {/* Back Button - Always visible */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -403,6 +449,12 @@ export default function GeoCodingQuest() {
           onClose={() => setShowSuccess(false)}
         />
       )}
+      
+      <div className="p-2 bg-gray-100 border-t">
+        <p className="text-xs text-gray-600 text-center">
+          Tastatur: ESC zum Zurückgehen, ←/→ für Tabs
+        </p>
+      </div>
     </div>
   );
 }

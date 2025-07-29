@@ -170,8 +170,25 @@ export const GradingSchemaManager: React.FC<Props> = ({ groupId }) => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Abbrechen</Button>
-          <Button onClick={handleCreateSchema} variant="contained">
+          <Button 
+            onClick={() => setOpenDialog(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setOpenDialog(false);
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleCreateSchema} 
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCreateSchema();
+              }
+            }}
+          >
             Erstellen
           </Button>
         </DialogActions>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -25,7 +25,8 @@ import {
   Tab,
   Tabs,
   Menu,
-  MenuItem
+  MenuItem,
+  Paper
 } from '@mui/material';
 import {
   AccessTime as TimeIcon,
@@ -38,11 +39,15 @@ import {
   PersonAdd as PersonAddIcon,
   Delete as DeleteIcon,
   Storage as StorageIcon,
-  MoreVert as MoreVertIcon
+  MoreVert as MoreVertIcon,
+  Build as BuildIcon,
+  Quiz as QuizIcon,
+  Note as NoteIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
+import MaterialCreator from './MaterialCreator';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -98,6 +103,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [mainTabValue, setMainTabValue] = useState(0);
+  const [lessonMaterials, setLessonMaterials] = useState<{[key: string]: any[]}>({});
+  const [lessonQuizzes, setLessonQuizzes] = useState<{[key: string]: any}>({});
   const [groupContents, setGroupContents] = useState<{ [groupId: string]: string[] }>({});
   const [contentInputs, setContentInputs] = useState<{ [groupId: string]: string }>({});
   // Im TeacherDashboard State:
@@ -129,6 +136,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     cardBg: '#FFFFFF',
     success: '#8BC34A',
   };
+
+  const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchGroups();
@@ -184,6 +193,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         allLessons = allLessons.concat(lessonsData);
       }
       setLessons(allLessons);
+
+      // Materialien und Quizze für alle Lessons laden
+      const materialsMap: {[key: string]: any[]} = {};
+      const quizzesMap: {[key: string]: any} = {};
+      for (const lesson of allLessons) {
+        const materials = await fetchLessonMaterials(lesson.id);
+        const quiz = await fetchLessonQuiz(lesson.id);
+        materialsMap[lesson.id] = materials;
+        if (quiz) {
+          quizzesMap[lesson.id] = quiz;
+        }
+      }
+      setLessonMaterials(materialsMap);
+      setLessonQuizzes(quizzesMap);
     };
     fetchAll();
   }, [groups, userId]);
@@ -264,6 +287,73 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setSnackbar({ open: true, message, severity });
   };
 
+  // Hilfsfunktion: Hole Materialien für eine Lesson
+  const fetchLessonMaterials = async (lessonId: string) => {
+    try {
+      const response = await fetch(`/api/materials/lesson/${lessonId}`);
+      if (response.ok) {
+        const materials = await response.json();
+        return materials;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching lesson materials:', error);
+      return [];
+    }
+  };
+
+  // Hilfsfunktion: Hole Quiz für eine Lesson
+  const fetchLessonQuiz = async (lessonId: string) => {
+    try {
+      const response = await fetch(`/api/lesson-quizzes/lesson/${lessonId}`);
+      if (response.ok) {
+        const quiz = await response.json();
+        return quiz;
+      } else if (response.status === 404) {
+        return null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching lesson quiz:', error);
+      return null;
+    }
+  };
+
+  // Hilfsfunktion: Öffne Material oder Quiz für eine Lesson
+  const openLessonContent = async (lessonId: string, lessonName: string) => {
+    // Prüfe zuerst auf Quiz
+    const quiz = await fetchLessonQuiz(lessonId);
+    if (quiz) {
+      // Bestätigung für Quiz-Start anzeigen
+      if (window.confirm(`Prüfung "${quiz.quiz.title}" starten?`)) {
+        // Öffne den Quiz-Player in einem neuen Tab
+        const quizUrl = `/quiz-player/${quiz.quiz.id}`;
+        window.open(quizUrl, '_blank');
+      }
+      return;
+    }
+
+    // Falls kein Quiz, prüfe auf Material
+    const materials = await fetchLessonMaterials(lessonId);
+    if (materials.length > 0) {
+      const material = materials[0]; // Öffne das erste Material
+      const ext = material.filePath.split('.').pop()?.toLowerCase();
+      
+      // Verwende den Server-Port (3005) für HTML-Dateien
+      const fullUrl = ext === 'html' 
+        ? 'http://localhost:3005' + material.filePath 
+        : window.location.origin + material.filePath;
+      
+      const newWindow = window.open(fullUrl, '_blank');
+      
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        alert('Das Material konnte nicht geöffnet werden. Versuchen Sie es erneut.');
+      }
+    } else {
+      alert(`Keine Materialien oder Quizze für "${lessonName}" gefunden.`);
+    }
+  };
+
   const handleMainTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setMainTabValue(newValue);
   };
@@ -305,8 +395,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onLogout();
+      e.preventDefault();
+    } else if (e.key === 'Tab') {
+      return; // Let Tab work normally for accessibility
+    } else if (e.key === 'ArrowRight' && mainTabValue < 3) {
+      e.preventDefault();
+      setMainTabValue(mainTabValue + 1);
+    } else if (e.key === 'ArrowLeft' && mainTabValue > 0) {
+      e.preventDefault();
+      setMainTabValue(mainTabValue - 1);
+    }
+  };
+
+  useEffect(() => {
+    dashboardRef.current?.focus();
+  }, []);
+
   return (
-    <Box sx={{ width: '100%', bgcolor: colors.background, p: 0 }}>
+    <Box 
+      sx={{ width: '100%', bgcolor: colors.background, p: 0 }}
+      ref={dashboardRef}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       <Grid container spacing={0}>
         {/* Header Section */}
         <Grid item xs={12}>
@@ -367,9 +481,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <Grid item xs={12}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 1.4 }}>
             <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
-              <Tab icon={<GroupIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.7rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 1.4 }} />
-              <Tab icon={<StorageIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.7rem' }}>Datenbank</span>} sx={{ minHeight: 28, px: 1.4 }} />
-              <Tab icon={<SchoolIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.7rem' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 1.4 }} />
+              <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0.7 }} />
+              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0.7 }} />
+              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0.7 }} />
+              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Material & Quiz</span>} sx={{ minHeight: 28, px: 0.7 }} />
             </Tabs>
           </Box>
         </Grid>
@@ -572,22 +687,39 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       {lessons
                                                         .filter(lesson => lesson.topicId === topic.id && (lessonAssignments[lesson.id] || []).includes(group.id))
                                                         .map(lesson => (
-                                                          <Box key={lesson.id} sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-                                                            <Typography variant="body2" sx={{ color: '#888' }}>
+                                                          <Box key={lesson.id} sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <Typography 
+                                                              variant="body2" 
+                                                              sx={{ 
+                                                                color: '#888',
+                                                                cursor: (lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? 'pointer' : 'default'
+                                                              }}
+                                                              onClick={e => {
+                                                                e.stopPropagation();
+                                                                if ((lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id]) {
+                                                                  openLessonContent(lesson.id, lesson.name);
+                                                                }
+                                                              }}
+                                                              title={(lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? "Material/Quiz öffnen" : ""}
+                                                            >
                                                               Stunde: {lesson.name}
                                                             </Typography>
-                                                            {/* Material-Link nur für 3D Druck / Ein einfacher Einstieg */}
-                                                            {subject.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg' && (
-                                                              <Button
-                                                                size="small"
-                                                                sx={{ ml: 1, textTransform: 'none', fontSize: '0.85em', color: '#1976d2' }}
+                                                            {((lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id]) && (
+                                                              <span 
+                                                                style={{ 
+                                                                  color: '#ff9800', 
+                                                                  fontSize: '0.8em', 
+                                                                  cursor: 'pointer',
+                                                                  marginLeft: '4px'
+                                                                }}
                                                                 onClick={e => {
                                                                   e.stopPropagation();
-                                                                  window.open('/material/3D-Druck-Intro.html', '_blank');
+                                                                  openLessonContent(lesson.id, lesson.name);
                                                                 }}
+                                                                title="Material/Quiz öffnen"
                                                               >
-                                                                Material öffnen
-                                                              </Button>
+                                                                {lessonQuizzes[lesson.id] ? '🧩' : '📄'}
+                                                              </span>
                                                             )}
                                                           </Box>
                                                         ))}
@@ -642,6 +774,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               setLessons={setLessons}
             />
           </TabPanel>
+          <TabPanel value={mainTabValue} index={3}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {/* Hauptbereich - MaterialCreator */}
+              <Box>
+                <MaterialCreator teacherId={userId} />
+              </Box>
+            </Box>
+          </TabPanel>
         </Grid>
       </Grid>
 
@@ -660,8 +800,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenNewGroupDialog(false)}>Abbrechen</Button>
-          <Button onClick={handleCreateGroup} variant="contained" color="primary">
+          <Button 
+            onClick={() => setOpenNewGroupDialog(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setOpenNewGroupDialog(false);
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleCreateGroup} 
+            variant="contained" 
+            color="primary"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCreateGroup();
+              }
+            }}
+          >
             Erstellen
           </Button>
         </DialogActions>
@@ -696,8 +854,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </List>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAddStudentsDialog(false)}>Abbrechen</Button>
-          <Button onClick={handleAddStudents} variant="contained" color="primary">
+          <Button 
+            onClick={() => setOpenAddStudentsDialog(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setOpenAddStudentsDialog(false);
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleAddStudents} 
+            variant="contained" 
+            color="primary"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleAddStudents();
+              }
+            }}
+          >
             Hinzufügen
           </Button>
         </DialogActions>
@@ -755,6 +931,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           <Button onClick={handleDeleteGroup} color="error" variant="contained" disabled={!(confirmDelete1 && confirmDelete2)}>Löschen</Button>
         </DialogActions>
       </Dialog>
+
+      <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', mt: 2 }}>
+        <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+          Tastatur: Tab zum Navigieren, Pfeiltasten für Tabs, ESC zum Logout
+        </Typography>
+      </Box>
     </Box>
   );
 };

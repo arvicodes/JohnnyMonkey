@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar, Alert } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon, GroupAdd as GroupAddIcon, Group as GroupIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon, GroupAdd as GroupAddIcon, Group as GroupIcon, Close as CloseIcon, Description as DescriptionIcon } from '@mui/icons-material';
 import { Menu, MenuItem, Chip, Tooltip } from '@mui/material';
 import {
   DndContext,
@@ -21,6 +21,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import LessonContentDialog from './LessonContentDialog';
 
 interface Subject {
   id: string;
@@ -802,7 +803,7 @@ const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onTo
   );
 };
 
-const SortableLesson = ({ lesson, subject, ...props }: any) => {
+const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any) => {
   const {
     attributes,
     listeners,
@@ -819,9 +820,92 @@ const SortableLesson = ({ lesson, subject, ...props }: any) => {
   };
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [lessonMaterials, setLessonMaterials] = useState<any[]>([]);
+  const [lessonQuiz, setLessonQuiz] = useState<any>(null);
   const open = Boolean(anchorEl);
   const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
+
+  // Materialien der Lesson laden
+  const fetchLessonMaterials = async () => {
+    try {
+      const response = await fetch(`/api/materials/lesson/${lesson.id}`);
+      if (response.ok) {
+        const materials = await response.json();
+        setLessonMaterials(materials);
+      }
+    } catch (error) {
+      console.error('Error fetching lesson materials:', error);
+    }
+  };
+
+  // Quiz der Lesson laden
+  const fetchLessonQuiz = async () => {
+    try {
+      const response = await fetch(`/api/lesson-quizzes/lesson/${lesson.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLessonQuiz(data);
+      } else if (response.status === 404) {
+        setLessonQuiz(null);
+      }
+    } catch (error) {
+      console.error('Error fetching lesson quiz:', error);
+      setLessonQuiz(null);
+    }
+  };
+
+  // Beim ersten Laden Materialien und Quiz abrufen
+  useEffect(() => {
+    fetchLessonMaterials();
+    fetchLessonQuiz();
+  }, [lesson.id]);
+
+  // Inhalt öffnen (Material oder Quiz)
+  const handleLessonClick = () => {
+    if (lessonMaterials.length > 0) {
+      // Öffne das erste Material in einem neuen Tab
+      const materialPath = lessonMaterials[0].filePath;
+      const ext = materialPath.split('.').pop()?.toLowerCase();
+      
+      // Verwende den Server-Port (3005) für HTML-Dateien
+      const fullUrl = ext === 'html' 
+        ? 'http://localhost:3005' + materialPath 
+        : window.location.origin + materialPath;
+      
+      // Versuche zuerst, die Datei in einem neuen Tab zu öffnen
+      const newWindow = window.open(fullUrl, '_blank');
+      
+      // Falls das nicht funktioniert, zeige eine Meldung
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        alert('Das Material konnte nicht geöffnet werden. Versuchen Sie es erneut oder verwenden Sie die Vorschau-Funktion.');
+      }
+    } else if (lessonQuiz) {
+      // Bestätigung für Quiz-Start anzeigen
+      if (window.confirm(`Prüfung "${lessonQuiz.quiz.title}" starten?`)) {
+        // Öffne den Quiz-Player in einem neuen Tab
+        const quizUrl = `/quiz-player/${lessonQuiz.quiz.id}`;
+        window.open(quizUrl, '_blank');
+      }
+    }
+  };
+
+  // Material entfernen (Rechtsklick)
+  const handleLessonRightClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (lessonMaterials.length > 0) {
+      if (window.confirm(`Möchten Sie das Material "${lessonMaterials[0].fileName}" von dieser Lesson entfernen?`)) {
+        fetch(`/api/materials/lesson/${lesson.id}/${lessonMaterials[0].id}`, {
+          method: 'DELETE',
+        }).then(() => {
+          fetchLessonMaterials();
+        }).catch(error => {
+          console.error('Error removing material:', error);
+          alert('Fehler beim Entfernen des Materials');
+        });
+      }
+    }
+  };
   const handleAddGroup = async (groupId: string) => {
     props.setAssignments((prev: any) => ({
       ...prev,
@@ -881,15 +965,12 @@ const SortableLesson = ({ lesson, subject, ...props }: any) => {
         fontWeight: 400,
         color: '#5a6a7d',
         position: 'relative',
-        cursor: (subject?.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg') ? 'pointer' : 'default',
+        cursor: (lessonMaterials.length > 0 || lessonQuiz) ? 'pointer' : 'default',
         transition: 'background 0.2s',
-        '&:hover': (subject?.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg') ? { background: '#e3f0fc' } : {},
+        '&:hover': (lessonMaterials.length > 0 || lessonQuiz) ? { background: '#e3f0fc' } : {},
       }}
-      onClick={() => {
-        if (subject?.name === '3D Druck' && lesson.name === 'Ein einfacher Einstieg') {
-          window.open('/material/3D-Druck-Intro.html', '_blank');
-        }
-      }}
+      onClick={handleLessonClick}
+      onContextMenu={handleLessonRightClick}
     >
       <IconButton
         {...attributes}
@@ -911,13 +992,56 @@ const SortableLesson = ({ lesson, subject, ...props }: any) => {
       </IconButton>
       <Typography
         variant="body2"
-        sx={{ flex: 1, fontWeight: 400, color: '#5a6a7d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        sx={{ 
+          flex: 1, 
+          fontWeight: 400, 
+          color: '#5a6a7d', 
+          whiteSpace: 'nowrap', 
+          overflow: 'hidden', 
+          textOverflow: 'ellipsis',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}
       >
         {lesson.name}
+        {lessonMaterials.length > 0 && (
+          <span style={{ color: '#ff9800', fontSize: '0.8em' }}>📄</span>
+        )}
+        {lessonQuiz && (
+          <span style={{ color: '#ff9800', fontSize: '0.8em' }}>🧩</span>
+        )}
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, position: 'relative' }}>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={e => { e.stopPropagation(); props.onEdit(lesson); }}>✏️</IconButton>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={e => { e.stopPropagation(); props.onDelete(lesson.id); }}>🗑️</IconButton>
+        <IconButton 
+          size="small" 
+          sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} 
+          onClick={e => { e.stopPropagation(); props.onEdit(lesson); }}
+        >
+          ✏️
+        </IconButton>
+        <IconButton 
+          size="small" 
+          sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} 
+          onClick={e => { e.stopPropagation(); props.onDelete(lesson.id); }}
+        >
+          🗑️
+        </IconButton>
+        <IconButton
+          size="small"
+          sx={{
+            color: '#ff9800',
+            borderRadius: 1,
+            width: 22,
+            height: 22,
+            p: 0.2,
+            ml: 0.5,
+            '&:hover': { bgcolor: '#fff3e0', color: '#f57c00', borderRadius: 1 }
+          }}
+          onClick={e => { e.stopPropagation(); onOpenMaterialDialog(lesson); }}
+        >
+          <Tooltip title="Material hinzufügen"><DescriptionIcon fontSize="small" /></Tooltip>
+        </IconButton>
         <IconButton
           size="small"
           sx={{
@@ -1016,6 +1140,8 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
   const [collapsedBlocks, setCollapsedBlocks] = useState<{ [key: string]: boolean }>({});
   const [collapsedUnits, setCollapsedUnits] = useState<{ [key: string]: boolean }>({});
   const [collapsedTopics, setCollapsedTopics] = useState<{ [key: string]: boolean }>({});
+  const [openMaterialDialog, setOpenMaterialDialog] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const blockNameInputRef = useRef<HTMLInputElement>(null);
   const unitNameInputRef = useRef<HTMLInputElement>(null);
@@ -1432,6 +1558,16 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
     }
   };
 
+  const handleOpenMaterialDialog = (lesson: Lesson) => {
+    setSelectedLesson(lesson);
+    setOpenMaterialDialog(true);
+  };
+
+  const handleCloseMaterialDialog = () => {
+    setOpenMaterialDialog(false);
+    setSelectedLesson(null);
+  };
+
   const refreshAllData = async () => {
     await fetchSubjects();
   };
@@ -1724,8 +1860,10 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
                                                               key={lesson.id}
                                                               lesson={lesson}
                                                               subject={subject}
+                                                              teacherId={teacherId}
                                                               onEdit={(lesson: Lesson) => handleOpenLessonDialog(topic.id, lesson)}
                                                               onDelete={(id: string) => handleDeleteLesson(topic.id, id)}
+                                                              onOpenMaterialDialog={handleOpenMaterialDialog}
                                                               groups={groups}
                                                               assignments={lessonAssignments}
                                                               setAssignments={setLessonAssignments}
@@ -1789,8 +1927,27 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Abbrechen</Button>
-          <Button onClick={handleSave} variant="contained">Speichern</Button>
+          <Button 
+            onClick={handleCloseDialog}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCloseDialog();
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSave();
+              }
+            }}
+          >
+            Speichern
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1819,8 +1976,27 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseBlockDialog}>Abbrechen</Button>
-          <Button onClick={handleSaveBlock} variant="contained">Speichern</Button>
+          <Button 
+            onClick={handleCloseBlockDialog}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCloseBlockDialog();
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSaveBlock} 
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSaveBlock();
+              }
+            }}
+          >
+            Speichern
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1849,8 +2025,27 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseUnitDialog}>Abbrechen</Button>
-          <Button onClick={handleSaveUnit} variant="contained">Speichern</Button>
+          <Button 
+            onClick={handleCloseUnitDialog}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCloseUnitDialog();
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSaveUnit} 
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSaveUnit();
+              }
+            }}
+          >
+            Speichern
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1913,6 +2108,16 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
           <Button onClick={handleSaveLesson} variant="contained">Speichern</Button>
         </DialogActions>
       </Dialog>
+
+      {selectedLesson && (
+        <LessonContentDialog
+          open={openMaterialDialog}
+          onClose={handleCloseMaterialDialog}
+          lessonId={selectedLesson.id}
+          lessonName={selectedLesson.name}
+          teacherId={teacherId}
+        />
+      )}
 
       <Snackbar
         open={snackbar.open}
