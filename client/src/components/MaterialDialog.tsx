@@ -26,8 +26,12 @@ interface MaterialFile {
 
 interface LessonMaterial {
   id: string;
-  fileName: string;
-  filePath: string;
+  material: {
+    id: string;
+    fileName: string;
+    filePath: string;
+    type: string;
+  };
   createdAt: string;
 }
 
@@ -216,7 +220,7 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
       if (focusedSection === 'assigned') {
         const currentItem = lessonMaterials[focusedIndex];
         if (currentItem) {
-          openMaterial(currentItem.filePath);
+          openMaterial(currentItem.material.filePath);
         }
       } else {
         const currentItem = availableMaterials[focusedIndex];
@@ -239,7 +243,7 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
 
   // Filtere bereits zugeordnete Materialien aus
   const unassignedMaterials = availableMaterials.filter(
-    material => !lessonMaterials.some(lessonMaterial => lessonMaterial.fileName === material.fileName)
+    material => !lessonMaterials.some(lessonMaterial => lessonMaterial.material.fileName === material.fileName)
   );
 
   return (
@@ -300,12 +304,12 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
                       bgcolor: focusedSection === 'assigned' && focusedIndex === index ? '#e3f2fd' : 'transparent',
                       borderColor: focusedSection === 'assigned' && focusedIndex === index ? 'primary.main' : '#e0e0e0'
                     }}
-                    onClick={() => openMaterial(material.filePath)}
+                    onClick={() => openMaterial(material.material.filePath)}
                     tabIndex={focusedSection === 'assigned' && focusedIndex === index ? 0 : -1}
                   >
                     <DescriptionIcon sx={{ mr: 2, color: 'primary.main' }} />
                     <ListItemText
-                      primary={material.fileName}
+                      primary={material.material.fileName}
                       secondary={`Hinzugefügt am ${new Date(material.createdAt).toLocaleDateString('de-DE')}`}
                     />
                     <ListItemSecondaryAction>
@@ -313,7 +317,7 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
                         edge="end"
                         onClick={(e) => {
                           e.stopPropagation();
-                          showMaterialInDialog(material.filePath);
+                          showMaterialInDialog(material.material.filePath);
                         }}
                         color="primary"
                         sx={{ mr: 1 }}

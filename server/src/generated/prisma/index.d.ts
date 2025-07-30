@@ -63,6 +63,16 @@ export type GroupAssignment = $Result.DefaultSelection<Prisma.$GroupAssignmentPa
  * 
  */
 export type Note = $Result.DefaultSelection<Prisma.$NotePayload>
+/**
+ * Model Material
+ * 
+ */
+export type Material = $Result.DefaultSelection<Prisma.$MaterialPayload>
+/**
+ * Model LessonMaterial
+ * 
+ */
+export type LessonMaterial = $Result.DefaultSelection<Prisma.$LessonMaterialPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -288,6 +298,26 @@ export class PrismaClient<
     * ```
     */
   get note(): Prisma.NoteDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.material`: Exposes CRUD operations for the **Material** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Materials
+    * const materials = await prisma.material.findMany()
+    * ```
+    */
+  get material(): Prisma.MaterialDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.lessonMaterial`: Exposes CRUD operations for the **LessonMaterial** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LessonMaterials
+    * const lessonMaterials = await prisma.lessonMaterial.findMany()
+    * ```
+    */
+  get lessonMaterial(): Prisma.LessonMaterialDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -737,7 +767,9 @@ export namespace Prisma {
     Topic: 'Topic',
     Lesson: 'Lesson',
     GroupAssignment: 'GroupAssignment',
-    Note: 'Note'
+    Note: 'Note',
+    Material: 'Material',
+    LessonMaterial: 'LessonMaterial'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -756,7 +788,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note"
+      modelProps: "user" | "gradingSchema" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1500,6 +1532,154 @@ export namespace Prisma {
           }
         }
       }
+      Material: {
+        payload: Prisma.$MaterialPayload<ExtArgs>
+        fields: Prisma.MaterialFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.MaterialFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.MaterialFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>
+          }
+          findFirst: {
+            args: Prisma.MaterialFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.MaterialFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>
+          }
+          findMany: {
+            args: Prisma.MaterialFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>[]
+          }
+          create: {
+            args: Prisma.MaterialCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>
+          }
+          createMany: {
+            args: Prisma.MaterialCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.MaterialCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>[]
+          }
+          delete: {
+            args: Prisma.MaterialDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>
+          }
+          update: {
+            args: Prisma.MaterialUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>
+          }
+          deleteMany: {
+            args: Prisma.MaterialDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.MaterialUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.MaterialUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>[]
+          }
+          upsert: {
+            args: Prisma.MaterialUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MaterialPayload>
+          }
+          aggregate: {
+            args: Prisma.MaterialAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateMaterial>
+          }
+          groupBy: {
+            args: Prisma.MaterialGroupByArgs<ExtArgs>
+            result: $Utils.Optional<MaterialGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.MaterialCountArgs<ExtArgs>
+            result: $Utils.Optional<MaterialCountAggregateOutputType> | number
+          }
+        }
+      }
+      LessonMaterial: {
+        payload: Prisma.$LessonMaterialPayload<ExtArgs>
+        fields: Prisma.LessonMaterialFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LessonMaterialFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LessonMaterialFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>
+          }
+          findFirst: {
+            args: Prisma.LessonMaterialFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LessonMaterialFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>
+          }
+          findMany: {
+            args: Prisma.LessonMaterialFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>[]
+          }
+          create: {
+            args: Prisma.LessonMaterialCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>
+          }
+          createMany: {
+            args: Prisma.LessonMaterialCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LessonMaterialCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>[]
+          }
+          delete: {
+            args: Prisma.LessonMaterialDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>
+          }
+          update: {
+            args: Prisma.LessonMaterialUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>
+          }
+          deleteMany: {
+            args: Prisma.LessonMaterialDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LessonMaterialUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.LessonMaterialUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>[]
+          }
+          upsert: {
+            args: Prisma.LessonMaterialUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LessonMaterialPayload>
+          }
+          aggregate: {
+            args: Prisma.LessonMaterialAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLessonMaterial>
+          }
+          groupBy: {
+            args: Prisma.LessonMaterialGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LessonMaterialGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LessonMaterialCountArgs<ExtArgs>
+            result: $Utils.Optional<LessonMaterialCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1594,6 +1774,8 @@ export namespace Prisma {
     lesson?: LessonOmit
     groupAssignment?: GroupAssignmentOmit
     note?: NoteOmit
+    material?: MaterialOmit
+    lessonMaterial?: LessonMaterialOmit
   }
 
   /* Types for Logging */
@@ -1911,6 +2093,68 @@ export namespace Prisma {
    */
   export type TopicCountOutputTypeCountLessonsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: LessonWhereInput
+  }
+
+
+  /**
+   * Count Type LessonCountOutputType
+   */
+
+  export type LessonCountOutputType = {
+    materials: number
+  }
+
+  export type LessonCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    materials?: boolean | LessonCountOutputTypeCountMaterialsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * LessonCountOutputType without action
+   */
+  export type LessonCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonCountOutputType
+     */
+    select?: LessonCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * LessonCountOutputType without action
+   */
+  export type LessonCountOutputTypeCountMaterialsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LessonMaterialWhereInput
+  }
+
+
+  /**
+   * Count Type MaterialCountOutputType
+   */
+
+  export type MaterialCountOutputType = {
+    lessonMaterials: number
+  }
+
+  export type MaterialCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    lessonMaterials?: boolean | MaterialCountOutputTypeCountLessonMaterialsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * MaterialCountOutputType without action
+   */
+  export type MaterialCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MaterialCountOutputType
+     */
+    select?: MaterialCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * MaterialCountOutputType without action
+   */
+  export type MaterialCountOutputTypeCountLessonMaterialsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LessonMaterialWhereInput
   }
 
 
@@ -10093,6 +10337,8 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     topic?: boolean | TopicDefaultArgs<ExtArgs>
+    materials?: boolean | Lesson$materialsArgs<ExtArgs>
+    _count?: boolean | LessonCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["lesson"]>
 
   export type LessonSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -10130,6 +10376,8 @@ export namespace Prisma {
   export type LessonOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "order" | "topicId" | "createdAt" | "updatedAt", ExtArgs["result"]["lesson"]>
   export type LessonInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     topic?: boolean | TopicDefaultArgs<ExtArgs>
+    materials?: boolean | Lesson$materialsArgs<ExtArgs>
+    _count?: boolean | LessonCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type LessonIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     topic?: boolean | TopicDefaultArgs<ExtArgs>
@@ -10142,6 +10390,7 @@ export namespace Prisma {
     name: "Lesson"
     objects: {
       topic: Prisma.$TopicPayload<ExtArgs>
+      materials: Prisma.$LessonMaterialPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -10546,6 +10795,7 @@ export namespace Prisma {
   export interface Prisma__LessonClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     topic<T extends TopicDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TopicDefaultArgs<ExtArgs>>): Prisma__TopicClient<$Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    materials<T extends Lesson$materialsArgs<ExtArgs> = {}>(args?: Subset<T, Lesson$materialsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -10973,6 +11223,30 @@ export namespace Prisma {
      * Limit how many Lessons to delete.
      */
     limit?: number
+  }
+
+  /**
+   * Lesson.materials
+   */
+  export type Lesson$materialsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    where?: LessonMaterialWhereInput
+    orderBy?: LessonMaterialOrderByWithRelationInput | LessonMaterialOrderByWithRelationInput[]
+    cursor?: LessonMaterialWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LessonMaterialScalarFieldEnum | LessonMaterialScalarFieldEnum[]
   }
 
   /**
@@ -13193,6 +13467,2138 @@ export namespace Prisma {
 
 
   /**
+   * Model Material
+   */
+
+  export type AggregateMaterial = {
+    _count: MaterialCountAggregateOutputType | null
+    _min: MaterialMinAggregateOutputType | null
+    _max: MaterialMaxAggregateOutputType | null
+  }
+
+  export type MaterialMinAggregateOutputType = {
+    id: string | null
+    fileName: string | null
+    filePath: string | null
+    type: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type MaterialMaxAggregateOutputType = {
+    id: string | null
+    fileName: string | null
+    filePath: string | null
+    type: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type MaterialCountAggregateOutputType = {
+    id: number
+    fileName: number
+    filePath: number
+    type: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type MaterialMinAggregateInputType = {
+    id?: true
+    fileName?: true
+    filePath?: true
+    type?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type MaterialMaxAggregateInputType = {
+    id?: true
+    fileName?: true
+    filePath?: true
+    type?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type MaterialCountAggregateInputType = {
+    id?: true
+    fileName?: true
+    filePath?: true
+    type?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type MaterialAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Material to aggregate.
+     */
+    where?: MaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Materials to fetch.
+     */
+    orderBy?: MaterialOrderByWithRelationInput | MaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: MaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Materials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Materials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Materials
+    **/
+    _count?: true | MaterialCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: MaterialMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: MaterialMaxAggregateInputType
+  }
+
+  export type GetMaterialAggregateType<T extends MaterialAggregateArgs> = {
+        [P in keyof T & keyof AggregateMaterial]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateMaterial[P]>
+      : GetScalarType<T[P], AggregateMaterial[P]>
+  }
+
+
+
+
+  export type MaterialGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: MaterialWhereInput
+    orderBy?: MaterialOrderByWithAggregationInput | MaterialOrderByWithAggregationInput[]
+    by: MaterialScalarFieldEnum[] | MaterialScalarFieldEnum
+    having?: MaterialScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: MaterialCountAggregateInputType | true
+    _min?: MaterialMinAggregateInputType
+    _max?: MaterialMaxAggregateInputType
+  }
+
+  export type MaterialGroupByOutputType = {
+    id: string
+    fileName: string
+    filePath: string
+    type: string
+    createdAt: Date
+    updatedAt: Date
+    _count: MaterialCountAggregateOutputType | null
+    _min: MaterialMinAggregateOutputType | null
+    _max: MaterialMaxAggregateOutputType | null
+  }
+
+  type GetMaterialGroupByPayload<T extends MaterialGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<MaterialGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof MaterialGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], MaterialGroupByOutputType[P]>
+            : GetScalarType<T[P], MaterialGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type MaterialSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    fileName?: boolean
+    filePath?: boolean
+    type?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    lessonMaterials?: boolean | Material$lessonMaterialsArgs<ExtArgs>
+    _count?: boolean | MaterialCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["material"]>
+
+  export type MaterialSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    fileName?: boolean
+    filePath?: boolean
+    type?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["material"]>
+
+  export type MaterialSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    fileName?: boolean
+    filePath?: boolean
+    type?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["material"]>
+
+  export type MaterialSelectScalar = {
+    id?: boolean
+    fileName?: boolean
+    filePath?: boolean
+    type?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type MaterialOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fileName" | "filePath" | "type" | "createdAt" | "updatedAt", ExtArgs["result"]["material"]>
+  export type MaterialInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    lessonMaterials?: boolean | Material$lessonMaterialsArgs<ExtArgs>
+    _count?: boolean | MaterialCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type MaterialIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type MaterialIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+
+  export type $MaterialPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Material"
+    objects: {
+      lessonMaterials: Prisma.$LessonMaterialPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      fileName: string
+      filePath: string
+      type: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["material"]>
+    composites: {}
+  }
+
+  type MaterialGetPayload<S extends boolean | null | undefined | MaterialDefaultArgs> = $Result.GetResult<Prisma.$MaterialPayload, S>
+
+  type MaterialCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<MaterialFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: MaterialCountAggregateInputType | true
+    }
+
+  export interface MaterialDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Material'], meta: { name: 'Material' } }
+    /**
+     * Find zero or one Material that matches the filter.
+     * @param {MaterialFindUniqueArgs} args - Arguments to find a Material
+     * @example
+     * // Get one Material
+     * const material = await prisma.material.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends MaterialFindUniqueArgs>(args: SelectSubset<T, MaterialFindUniqueArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Material that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {MaterialFindUniqueOrThrowArgs} args - Arguments to find a Material
+     * @example
+     * // Get one Material
+     * const material = await prisma.material.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends MaterialFindUniqueOrThrowArgs>(args: SelectSubset<T, MaterialFindUniqueOrThrowArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Material that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MaterialFindFirstArgs} args - Arguments to find a Material
+     * @example
+     * // Get one Material
+     * const material = await prisma.material.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends MaterialFindFirstArgs>(args?: SelectSubset<T, MaterialFindFirstArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Material that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MaterialFindFirstOrThrowArgs} args - Arguments to find a Material
+     * @example
+     * // Get one Material
+     * const material = await prisma.material.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends MaterialFindFirstOrThrowArgs>(args?: SelectSubset<T, MaterialFindFirstOrThrowArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Materials that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MaterialFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Materials
+     * const materials = await prisma.material.findMany()
+     * 
+     * // Get first 10 Materials
+     * const materials = await prisma.material.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const materialWithIdOnly = await prisma.material.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends MaterialFindManyArgs>(args?: SelectSubset<T, MaterialFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Material.
+     * @param {MaterialCreateArgs} args - Arguments to create a Material.
+     * @example
+     * // Create one Material
+     * const Material = await prisma.material.create({
+     *   data: {
+     *     // ... data to create a Material
+     *   }
+     * })
+     * 
+     */
+    create<T extends MaterialCreateArgs>(args: SelectSubset<T, MaterialCreateArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Materials.
+     * @param {MaterialCreateManyArgs} args - Arguments to create many Materials.
+     * @example
+     * // Create many Materials
+     * const material = await prisma.material.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends MaterialCreateManyArgs>(args?: SelectSubset<T, MaterialCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Materials and returns the data saved in the database.
+     * @param {MaterialCreateManyAndReturnArgs} args - Arguments to create many Materials.
+     * @example
+     * // Create many Materials
+     * const material = await prisma.material.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Materials and only return the `id`
+     * const materialWithIdOnly = await prisma.material.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends MaterialCreateManyAndReturnArgs>(args?: SelectSubset<T, MaterialCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Material.
+     * @param {MaterialDeleteArgs} args - Arguments to delete one Material.
+     * @example
+     * // Delete one Material
+     * const Material = await prisma.material.delete({
+     *   where: {
+     *     // ... filter to delete one Material
+     *   }
+     * })
+     * 
+     */
+    delete<T extends MaterialDeleteArgs>(args: SelectSubset<T, MaterialDeleteArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Material.
+     * @param {MaterialUpdateArgs} args - Arguments to update one Material.
+     * @example
+     * // Update one Material
+     * const material = await prisma.material.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends MaterialUpdateArgs>(args: SelectSubset<T, MaterialUpdateArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Materials.
+     * @param {MaterialDeleteManyArgs} args - Arguments to filter Materials to delete.
+     * @example
+     * // Delete a few Materials
+     * const { count } = await prisma.material.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends MaterialDeleteManyArgs>(args?: SelectSubset<T, MaterialDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Materials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MaterialUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Materials
+     * const material = await prisma.material.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends MaterialUpdateManyArgs>(args: SelectSubset<T, MaterialUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Materials and returns the data updated in the database.
+     * @param {MaterialUpdateManyAndReturnArgs} args - Arguments to update many Materials.
+     * @example
+     * // Update many Materials
+     * const material = await prisma.material.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Materials and only return the `id`
+     * const materialWithIdOnly = await prisma.material.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends MaterialUpdateManyAndReturnArgs>(args: SelectSubset<T, MaterialUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Material.
+     * @param {MaterialUpsertArgs} args - Arguments to update or create a Material.
+     * @example
+     * // Update or create a Material
+     * const material = await prisma.material.upsert({
+     *   create: {
+     *     // ... data to create a Material
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Material we want to update
+     *   }
+     * })
+     */
+    upsert<T extends MaterialUpsertArgs>(args: SelectSubset<T, MaterialUpsertArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Materials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MaterialCountArgs} args - Arguments to filter Materials to count.
+     * @example
+     * // Count the number of Materials
+     * const count = await prisma.material.count({
+     *   where: {
+     *     // ... the filter for the Materials we want to count
+     *   }
+     * })
+    **/
+    count<T extends MaterialCountArgs>(
+      args?: Subset<T, MaterialCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], MaterialCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Material.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MaterialAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends MaterialAggregateArgs>(args: Subset<T, MaterialAggregateArgs>): Prisma.PrismaPromise<GetMaterialAggregateType<T>>
+
+    /**
+     * Group by Material.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MaterialGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends MaterialGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: MaterialGroupByArgs['orderBy'] }
+        : { orderBy?: MaterialGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, MaterialGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetMaterialGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Material model
+   */
+  readonly fields: MaterialFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Material.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__MaterialClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    lessonMaterials<T extends Material$lessonMaterialsArgs<ExtArgs> = {}>(args?: Subset<T, Material$lessonMaterialsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Material model
+   */
+  interface MaterialFieldRefs {
+    readonly id: FieldRef<"Material", 'String'>
+    readonly fileName: FieldRef<"Material", 'String'>
+    readonly filePath: FieldRef<"Material", 'String'>
+    readonly type: FieldRef<"Material", 'String'>
+    readonly createdAt: FieldRef<"Material", 'DateTime'>
+    readonly updatedAt: FieldRef<"Material", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Material findUnique
+   */
+  export type MaterialFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which Material to fetch.
+     */
+    where: MaterialWhereUniqueInput
+  }
+
+  /**
+   * Material findUniqueOrThrow
+   */
+  export type MaterialFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which Material to fetch.
+     */
+    where: MaterialWhereUniqueInput
+  }
+
+  /**
+   * Material findFirst
+   */
+  export type MaterialFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which Material to fetch.
+     */
+    where?: MaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Materials to fetch.
+     */
+    orderBy?: MaterialOrderByWithRelationInput | MaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Materials.
+     */
+    cursor?: MaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Materials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Materials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Materials.
+     */
+    distinct?: MaterialScalarFieldEnum | MaterialScalarFieldEnum[]
+  }
+
+  /**
+   * Material findFirstOrThrow
+   */
+  export type MaterialFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which Material to fetch.
+     */
+    where?: MaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Materials to fetch.
+     */
+    orderBy?: MaterialOrderByWithRelationInput | MaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Materials.
+     */
+    cursor?: MaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Materials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Materials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Materials.
+     */
+    distinct?: MaterialScalarFieldEnum | MaterialScalarFieldEnum[]
+  }
+
+  /**
+   * Material findMany
+   */
+  export type MaterialFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which Materials to fetch.
+     */
+    where?: MaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Materials to fetch.
+     */
+    orderBy?: MaterialOrderByWithRelationInput | MaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Materials.
+     */
+    cursor?: MaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Materials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Materials.
+     */
+    skip?: number
+    distinct?: MaterialScalarFieldEnum | MaterialScalarFieldEnum[]
+  }
+
+  /**
+   * Material create
+   */
+  export type MaterialCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Material.
+     */
+    data: XOR<MaterialCreateInput, MaterialUncheckedCreateInput>
+  }
+
+  /**
+   * Material createMany
+   */
+  export type MaterialCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Materials.
+     */
+    data: MaterialCreateManyInput | MaterialCreateManyInput[]
+  }
+
+  /**
+   * Material createManyAndReturn
+   */
+  export type MaterialCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * The data used to create many Materials.
+     */
+    data: MaterialCreateManyInput | MaterialCreateManyInput[]
+  }
+
+  /**
+   * Material update
+   */
+  export type MaterialUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Material.
+     */
+    data: XOR<MaterialUpdateInput, MaterialUncheckedUpdateInput>
+    /**
+     * Choose, which Material to update.
+     */
+    where: MaterialWhereUniqueInput
+  }
+
+  /**
+   * Material updateMany
+   */
+  export type MaterialUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Materials.
+     */
+    data: XOR<MaterialUpdateManyMutationInput, MaterialUncheckedUpdateManyInput>
+    /**
+     * Filter which Materials to update
+     */
+    where?: MaterialWhereInput
+    /**
+     * Limit how many Materials to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Material updateManyAndReturn
+   */
+  export type MaterialUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * The data used to update Materials.
+     */
+    data: XOR<MaterialUpdateManyMutationInput, MaterialUncheckedUpdateManyInput>
+    /**
+     * Filter which Materials to update
+     */
+    where?: MaterialWhereInput
+    /**
+     * Limit how many Materials to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Material upsert
+   */
+  export type MaterialUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Material to update in case it exists.
+     */
+    where: MaterialWhereUniqueInput
+    /**
+     * In case the Material found by the `where` argument doesn't exist, create a new Material with this data.
+     */
+    create: XOR<MaterialCreateInput, MaterialUncheckedCreateInput>
+    /**
+     * In case the Material was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<MaterialUpdateInput, MaterialUncheckedUpdateInput>
+  }
+
+  /**
+   * Material delete
+   */
+  export type MaterialDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+    /**
+     * Filter which Material to delete.
+     */
+    where: MaterialWhereUniqueInput
+  }
+
+  /**
+   * Material deleteMany
+   */
+  export type MaterialDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Materials to delete
+     */
+    where?: MaterialWhereInput
+    /**
+     * Limit how many Materials to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Material.lessonMaterials
+   */
+  export type Material$lessonMaterialsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    where?: LessonMaterialWhereInput
+    orderBy?: LessonMaterialOrderByWithRelationInput | LessonMaterialOrderByWithRelationInput[]
+    cursor?: LessonMaterialWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: LessonMaterialScalarFieldEnum | LessonMaterialScalarFieldEnum[]
+  }
+
+  /**
+   * Material without action
+   */
+  export type MaterialDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Material
+     */
+    select?: MaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Material
+     */
+    omit?: MaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MaterialInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LessonMaterial
+   */
+
+  export type AggregateLessonMaterial = {
+    _count: LessonMaterialCountAggregateOutputType | null
+    _min: LessonMaterialMinAggregateOutputType | null
+    _max: LessonMaterialMaxAggregateOutputType | null
+  }
+
+  export type LessonMaterialMinAggregateOutputType = {
+    id: string | null
+    lessonId: string | null
+    materialId: string | null
+    createdAt: Date | null
+  }
+
+  export type LessonMaterialMaxAggregateOutputType = {
+    id: string | null
+    lessonId: string | null
+    materialId: string | null
+    createdAt: Date | null
+  }
+
+  export type LessonMaterialCountAggregateOutputType = {
+    id: number
+    lessonId: number
+    materialId: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type LessonMaterialMinAggregateInputType = {
+    id?: true
+    lessonId?: true
+    materialId?: true
+    createdAt?: true
+  }
+
+  export type LessonMaterialMaxAggregateInputType = {
+    id?: true
+    lessonId?: true
+    materialId?: true
+    createdAt?: true
+  }
+
+  export type LessonMaterialCountAggregateInputType = {
+    id?: true
+    lessonId?: true
+    materialId?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type LessonMaterialAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LessonMaterial to aggregate.
+     */
+    where?: LessonMaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LessonMaterials to fetch.
+     */
+    orderBy?: LessonMaterialOrderByWithRelationInput | LessonMaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LessonMaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LessonMaterials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LessonMaterials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LessonMaterials
+    **/
+    _count?: true | LessonMaterialCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LessonMaterialMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LessonMaterialMaxAggregateInputType
+  }
+
+  export type GetLessonMaterialAggregateType<T extends LessonMaterialAggregateArgs> = {
+        [P in keyof T & keyof AggregateLessonMaterial]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLessonMaterial[P]>
+      : GetScalarType<T[P], AggregateLessonMaterial[P]>
+  }
+
+
+
+
+  export type LessonMaterialGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LessonMaterialWhereInput
+    orderBy?: LessonMaterialOrderByWithAggregationInput | LessonMaterialOrderByWithAggregationInput[]
+    by: LessonMaterialScalarFieldEnum[] | LessonMaterialScalarFieldEnum
+    having?: LessonMaterialScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LessonMaterialCountAggregateInputType | true
+    _min?: LessonMaterialMinAggregateInputType
+    _max?: LessonMaterialMaxAggregateInputType
+  }
+
+  export type LessonMaterialGroupByOutputType = {
+    id: string
+    lessonId: string
+    materialId: string
+    createdAt: Date
+    _count: LessonMaterialCountAggregateOutputType | null
+    _min: LessonMaterialMinAggregateOutputType | null
+    _max: LessonMaterialMaxAggregateOutputType | null
+  }
+
+  type GetLessonMaterialGroupByPayload<T extends LessonMaterialGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LessonMaterialGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LessonMaterialGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LessonMaterialGroupByOutputType[P]>
+            : GetScalarType<T[P], LessonMaterialGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LessonMaterialSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    lessonId?: boolean
+    materialId?: boolean
+    createdAt?: boolean
+    lesson?: boolean | LessonDefaultArgs<ExtArgs>
+    material?: boolean | MaterialDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["lessonMaterial"]>
+
+  export type LessonMaterialSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    lessonId?: boolean
+    materialId?: boolean
+    createdAt?: boolean
+    lesson?: boolean | LessonDefaultArgs<ExtArgs>
+    material?: boolean | MaterialDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["lessonMaterial"]>
+
+  export type LessonMaterialSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    lessonId?: boolean
+    materialId?: boolean
+    createdAt?: boolean
+    lesson?: boolean | LessonDefaultArgs<ExtArgs>
+    material?: boolean | MaterialDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["lessonMaterial"]>
+
+  export type LessonMaterialSelectScalar = {
+    id?: boolean
+    lessonId?: boolean
+    materialId?: boolean
+    createdAt?: boolean
+  }
+
+  export type LessonMaterialOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "lessonId" | "materialId" | "createdAt", ExtArgs["result"]["lessonMaterial"]>
+  export type LessonMaterialInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    lesson?: boolean | LessonDefaultArgs<ExtArgs>
+    material?: boolean | MaterialDefaultArgs<ExtArgs>
+  }
+  export type LessonMaterialIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    lesson?: boolean | LessonDefaultArgs<ExtArgs>
+    material?: boolean | MaterialDefaultArgs<ExtArgs>
+  }
+  export type LessonMaterialIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    lesson?: boolean | LessonDefaultArgs<ExtArgs>
+    material?: boolean | MaterialDefaultArgs<ExtArgs>
+  }
+
+  export type $LessonMaterialPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LessonMaterial"
+    objects: {
+      lesson: Prisma.$LessonPayload<ExtArgs>
+      material: Prisma.$MaterialPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      lessonId: string
+      materialId: string
+      createdAt: Date
+    }, ExtArgs["result"]["lessonMaterial"]>
+    composites: {}
+  }
+
+  type LessonMaterialGetPayload<S extends boolean | null | undefined | LessonMaterialDefaultArgs> = $Result.GetResult<Prisma.$LessonMaterialPayload, S>
+
+  type LessonMaterialCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<LessonMaterialFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: LessonMaterialCountAggregateInputType | true
+    }
+
+  export interface LessonMaterialDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LessonMaterial'], meta: { name: 'LessonMaterial' } }
+    /**
+     * Find zero or one LessonMaterial that matches the filter.
+     * @param {LessonMaterialFindUniqueArgs} args - Arguments to find a LessonMaterial
+     * @example
+     * // Get one LessonMaterial
+     * const lessonMaterial = await prisma.lessonMaterial.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LessonMaterialFindUniqueArgs>(args: SelectSubset<T, LessonMaterialFindUniqueArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one LessonMaterial that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {LessonMaterialFindUniqueOrThrowArgs} args - Arguments to find a LessonMaterial
+     * @example
+     * // Get one LessonMaterial
+     * const lessonMaterial = await prisma.lessonMaterial.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LessonMaterialFindUniqueOrThrowArgs>(args: SelectSubset<T, LessonMaterialFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first LessonMaterial that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LessonMaterialFindFirstArgs} args - Arguments to find a LessonMaterial
+     * @example
+     * // Get one LessonMaterial
+     * const lessonMaterial = await prisma.lessonMaterial.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LessonMaterialFindFirstArgs>(args?: SelectSubset<T, LessonMaterialFindFirstArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first LessonMaterial that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LessonMaterialFindFirstOrThrowArgs} args - Arguments to find a LessonMaterial
+     * @example
+     * // Get one LessonMaterial
+     * const lessonMaterial = await prisma.lessonMaterial.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LessonMaterialFindFirstOrThrowArgs>(args?: SelectSubset<T, LessonMaterialFindFirstOrThrowArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more LessonMaterials that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LessonMaterialFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LessonMaterials
+     * const lessonMaterials = await prisma.lessonMaterial.findMany()
+     * 
+     * // Get first 10 LessonMaterials
+     * const lessonMaterials = await prisma.lessonMaterial.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const lessonMaterialWithIdOnly = await prisma.lessonMaterial.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LessonMaterialFindManyArgs>(args?: SelectSubset<T, LessonMaterialFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a LessonMaterial.
+     * @param {LessonMaterialCreateArgs} args - Arguments to create a LessonMaterial.
+     * @example
+     * // Create one LessonMaterial
+     * const LessonMaterial = await prisma.lessonMaterial.create({
+     *   data: {
+     *     // ... data to create a LessonMaterial
+     *   }
+     * })
+     * 
+     */
+    create<T extends LessonMaterialCreateArgs>(args: SelectSubset<T, LessonMaterialCreateArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many LessonMaterials.
+     * @param {LessonMaterialCreateManyArgs} args - Arguments to create many LessonMaterials.
+     * @example
+     * // Create many LessonMaterials
+     * const lessonMaterial = await prisma.lessonMaterial.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LessonMaterialCreateManyArgs>(args?: SelectSubset<T, LessonMaterialCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LessonMaterials and returns the data saved in the database.
+     * @param {LessonMaterialCreateManyAndReturnArgs} args - Arguments to create many LessonMaterials.
+     * @example
+     * // Create many LessonMaterials
+     * const lessonMaterial = await prisma.lessonMaterial.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LessonMaterials and only return the `id`
+     * const lessonMaterialWithIdOnly = await prisma.lessonMaterial.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LessonMaterialCreateManyAndReturnArgs>(args?: SelectSubset<T, LessonMaterialCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a LessonMaterial.
+     * @param {LessonMaterialDeleteArgs} args - Arguments to delete one LessonMaterial.
+     * @example
+     * // Delete one LessonMaterial
+     * const LessonMaterial = await prisma.lessonMaterial.delete({
+     *   where: {
+     *     // ... filter to delete one LessonMaterial
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LessonMaterialDeleteArgs>(args: SelectSubset<T, LessonMaterialDeleteArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one LessonMaterial.
+     * @param {LessonMaterialUpdateArgs} args - Arguments to update one LessonMaterial.
+     * @example
+     * // Update one LessonMaterial
+     * const lessonMaterial = await prisma.lessonMaterial.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LessonMaterialUpdateArgs>(args: SelectSubset<T, LessonMaterialUpdateArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more LessonMaterials.
+     * @param {LessonMaterialDeleteManyArgs} args - Arguments to filter LessonMaterials to delete.
+     * @example
+     * // Delete a few LessonMaterials
+     * const { count } = await prisma.lessonMaterial.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LessonMaterialDeleteManyArgs>(args?: SelectSubset<T, LessonMaterialDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LessonMaterials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LessonMaterialUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LessonMaterials
+     * const lessonMaterial = await prisma.lessonMaterial.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LessonMaterialUpdateManyArgs>(args: SelectSubset<T, LessonMaterialUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LessonMaterials and returns the data updated in the database.
+     * @param {LessonMaterialUpdateManyAndReturnArgs} args - Arguments to update many LessonMaterials.
+     * @example
+     * // Update many LessonMaterials
+     * const lessonMaterial = await prisma.lessonMaterial.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more LessonMaterials and only return the `id`
+     * const lessonMaterialWithIdOnly = await prisma.lessonMaterial.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends LessonMaterialUpdateManyAndReturnArgs>(args: SelectSubset<T, LessonMaterialUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one LessonMaterial.
+     * @param {LessonMaterialUpsertArgs} args - Arguments to update or create a LessonMaterial.
+     * @example
+     * // Update or create a LessonMaterial
+     * const lessonMaterial = await prisma.lessonMaterial.upsert({
+     *   create: {
+     *     // ... data to create a LessonMaterial
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LessonMaterial we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LessonMaterialUpsertArgs>(args: SelectSubset<T, LessonMaterialUpsertArgs<ExtArgs>>): Prisma__LessonMaterialClient<$Result.GetResult<Prisma.$LessonMaterialPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of LessonMaterials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LessonMaterialCountArgs} args - Arguments to filter LessonMaterials to count.
+     * @example
+     * // Count the number of LessonMaterials
+     * const count = await prisma.lessonMaterial.count({
+     *   where: {
+     *     // ... the filter for the LessonMaterials we want to count
+     *   }
+     * })
+    **/
+    count<T extends LessonMaterialCountArgs>(
+      args?: Subset<T, LessonMaterialCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LessonMaterialCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LessonMaterial.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LessonMaterialAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LessonMaterialAggregateArgs>(args: Subset<T, LessonMaterialAggregateArgs>): Prisma.PrismaPromise<GetLessonMaterialAggregateType<T>>
+
+    /**
+     * Group by LessonMaterial.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LessonMaterialGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LessonMaterialGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LessonMaterialGroupByArgs['orderBy'] }
+        : { orderBy?: LessonMaterialGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LessonMaterialGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLessonMaterialGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LessonMaterial model
+   */
+  readonly fields: LessonMaterialFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LessonMaterial.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LessonMaterialClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    lesson<T extends LessonDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LessonDefaultArgs<ExtArgs>>): Prisma__LessonClient<$Result.GetResult<Prisma.$LessonPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    material<T extends MaterialDefaultArgs<ExtArgs> = {}>(args?: Subset<T, MaterialDefaultArgs<ExtArgs>>): Prisma__MaterialClient<$Result.GetResult<Prisma.$MaterialPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LessonMaterial model
+   */
+  interface LessonMaterialFieldRefs {
+    readonly id: FieldRef<"LessonMaterial", 'String'>
+    readonly lessonId: FieldRef<"LessonMaterial", 'String'>
+    readonly materialId: FieldRef<"LessonMaterial", 'String'>
+    readonly createdAt: FieldRef<"LessonMaterial", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LessonMaterial findUnique
+   */
+  export type LessonMaterialFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which LessonMaterial to fetch.
+     */
+    where: LessonMaterialWhereUniqueInput
+  }
+
+  /**
+   * LessonMaterial findUniqueOrThrow
+   */
+  export type LessonMaterialFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which LessonMaterial to fetch.
+     */
+    where: LessonMaterialWhereUniqueInput
+  }
+
+  /**
+   * LessonMaterial findFirst
+   */
+  export type LessonMaterialFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which LessonMaterial to fetch.
+     */
+    where?: LessonMaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LessonMaterials to fetch.
+     */
+    orderBy?: LessonMaterialOrderByWithRelationInput | LessonMaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LessonMaterials.
+     */
+    cursor?: LessonMaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LessonMaterials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LessonMaterials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LessonMaterials.
+     */
+    distinct?: LessonMaterialScalarFieldEnum | LessonMaterialScalarFieldEnum[]
+  }
+
+  /**
+   * LessonMaterial findFirstOrThrow
+   */
+  export type LessonMaterialFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which LessonMaterial to fetch.
+     */
+    where?: LessonMaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LessonMaterials to fetch.
+     */
+    orderBy?: LessonMaterialOrderByWithRelationInput | LessonMaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LessonMaterials.
+     */
+    cursor?: LessonMaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LessonMaterials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LessonMaterials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LessonMaterials.
+     */
+    distinct?: LessonMaterialScalarFieldEnum | LessonMaterialScalarFieldEnum[]
+  }
+
+  /**
+   * LessonMaterial findMany
+   */
+  export type LessonMaterialFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * Filter, which LessonMaterials to fetch.
+     */
+    where?: LessonMaterialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LessonMaterials to fetch.
+     */
+    orderBy?: LessonMaterialOrderByWithRelationInput | LessonMaterialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LessonMaterials.
+     */
+    cursor?: LessonMaterialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LessonMaterials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LessonMaterials.
+     */
+    skip?: number
+    distinct?: LessonMaterialScalarFieldEnum | LessonMaterialScalarFieldEnum[]
+  }
+
+  /**
+   * LessonMaterial create
+   */
+  export type LessonMaterialCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * The data needed to create a LessonMaterial.
+     */
+    data: XOR<LessonMaterialCreateInput, LessonMaterialUncheckedCreateInput>
+  }
+
+  /**
+   * LessonMaterial createMany
+   */
+  export type LessonMaterialCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LessonMaterials.
+     */
+    data: LessonMaterialCreateManyInput | LessonMaterialCreateManyInput[]
+  }
+
+  /**
+   * LessonMaterial createManyAndReturn
+   */
+  export type LessonMaterialCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * The data used to create many LessonMaterials.
+     */
+    data: LessonMaterialCreateManyInput | LessonMaterialCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LessonMaterial update
+   */
+  export type LessonMaterialUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * The data needed to update a LessonMaterial.
+     */
+    data: XOR<LessonMaterialUpdateInput, LessonMaterialUncheckedUpdateInput>
+    /**
+     * Choose, which LessonMaterial to update.
+     */
+    where: LessonMaterialWhereUniqueInput
+  }
+
+  /**
+   * LessonMaterial updateMany
+   */
+  export type LessonMaterialUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LessonMaterials.
+     */
+    data: XOR<LessonMaterialUpdateManyMutationInput, LessonMaterialUncheckedUpdateManyInput>
+    /**
+     * Filter which LessonMaterials to update
+     */
+    where?: LessonMaterialWhereInput
+    /**
+     * Limit how many LessonMaterials to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * LessonMaterial updateManyAndReturn
+   */
+  export type LessonMaterialUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * The data used to update LessonMaterials.
+     */
+    data: XOR<LessonMaterialUpdateManyMutationInput, LessonMaterialUncheckedUpdateManyInput>
+    /**
+     * Filter which LessonMaterials to update
+     */
+    where?: LessonMaterialWhereInput
+    /**
+     * Limit how many LessonMaterials to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * LessonMaterial upsert
+   */
+  export type LessonMaterialUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * The filter to search for the LessonMaterial to update in case it exists.
+     */
+    where: LessonMaterialWhereUniqueInput
+    /**
+     * In case the LessonMaterial found by the `where` argument doesn't exist, create a new LessonMaterial with this data.
+     */
+    create: XOR<LessonMaterialCreateInput, LessonMaterialUncheckedCreateInput>
+    /**
+     * In case the LessonMaterial was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LessonMaterialUpdateInput, LessonMaterialUncheckedUpdateInput>
+  }
+
+  /**
+   * LessonMaterial delete
+   */
+  export type LessonMaterialDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+    /**
+     * Filter which LessonMaterial to delete.
+     */
+    where: LessonMaterialWhereUniqueInput
+  }
+
+  /**
+   * LessonMaterial deleteMany
+   */
+  export type LessonMaterialDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LessonMaterials to delete
+     */
+    where?: LessonMaterialWhereInput
+    /**
+     * Limit how many LessonMaterials to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * LessonMaterial without action
+   */
+  export type LessonMaterialDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LessonMaterial
+     */
+    select?: LessonMaterialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LessonMaterial
+     */
+    omit?: LessonMaterialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: LessonMaterialInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -13327,6 +15733,28 @@ export namespace Prisma {
   };
 
   export type NoteScalarFieldEnum = (typeof NoteScalarFieldEnum)[keyof typeof NoteScalarFieldEnum]
+
+
+  export const MaterialScalarFieldEnum: {
+    id: 'id',
+    fileName: 'fileName',
+    filePath: 'filePath',
+    type: 'type',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type MaterialScalarFieldEnum = (typeof MaterialScalarFieldEnum)[keyof typeof MaterialScalarFieldEnum]
+
+
+  export const LessonMaterialScalarFieldEnum: {
+    id: 'id',
+    lessonId: 'lessonId',
+    materialId: 'materialId',
+    createdAt: 'createdAt'
+  };
+
+  export type LessonMaterialScalarFieldEnum = (typeof LessonMaterialScalarFieldEnum)[keyof typeof LessonMaterialScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -13873,6 +16301,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Lesson"> | Date | string
     updatedAt?: DateTimeFilter<"Lesson"> | Date | string
     topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+    materials?: LessonMaterialListRelationFilter
   }
 
   export type LessonOrderByWithRelationInput = {
@@ -13884,6 +16313,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     topic?: TopicOrderByWithRelationInput
+    materials?: LessonMaterialOrderByRelationAggregateInput
   }
 
   export type LessonWhereUniqueInput = Prisma.AtLeast<{
@@ -13898,6 +16328,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Lesson"> | Date | string
     updatedAt?: DateTimeFilter<"Lesson"> | Date | string
     topic?: XOR<TopicScalarRelationFilter, TopicWhereInput>
+    materials?: LessonMaterialListRelationFilter
   }, "id">
 
   export type LessonOrderByWithAggregationInput = {
@@ -14058,6 +16489,119 @@ export namespace Prisma {
     order?: IntWithAggregatesFilter<"Note"> | number
     createdAt?: DateTimeWithAggregatesFilter<"Note"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Note"> | Date | string
+  }
+
+  export type MaterialWhereInput = {
+    AND?: MaterialWhereInput | MaterialWhereInput[]
+    OR?: MaterialWhereInput[]
+    NOT?: MaterialWhereInput | MaterialWhereInput[]
+    id?: StringFilter<"Material"> | string
+    fileName?: StringFilter<"Material"> | string
+    filePath?: StringFilter<"Material"> | string
+    type?: StringFilter<"Material"> | string
+    createdAt?: DateTimeFilter<"Material"> | Date | string
+    updatedAt?: DateTimeFilter<"Material"> | Date | string
+    lessonMaterials?: LessonMaterialListRelationFilter
+  }
+
+  export type MaterialOrderByWithRelationInput = {
+    id?: SortOrder
+    fileName?: SortOrder
+    filePath?: SortOrder
+    type?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    lessonMaterials?: LessonMaterialOrderByRelationAggregateInput
+  }
+
+  export type MaterialWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: MaterialWhereInput | MaterialWhereInput[]
+    OR?: MaterialWhereInput[]
+    NOT?: MaterialWhereInput | MaterialWhereInput[]
+    fileName?: StringFilter<"Material"> | string
+    filePath?: StringFilter<"Material"> | string
+    type?: StringFilter<"Material"> | string
+    createdAt?: DateTimeFilter<"Material"> | Date | string
+    updatedAt?: DateTimeFilter<"Material"> | Date | string
+    lessonMaterials?: LessonMaterialListRelationFilter
+  }, "id">
+
+  export type MaterialOrderByWithAggregationInput = {
+    id?: SortOrder
+    fileName?: SortOrder
+    filePath?: SortOrder
+    type?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: MaterialCountOrderByAggregateInput
+    _max?: MaterialMaxOrderByAggregateInput
+    _min?: MaterialMinOrderByAggregateInput
+  }
+
+  export type MaterialScalarWhereWithAggregatesInput = {
+    AND?: MaterialScalarWhereWithAggregatesInput | MaterialScalarWhereWithAggregatesInput[]
+    OR?: MaterialScalarWhereWithAggregatesInput[]
+    NOT?: MaterialScalarWhereWithAggregatesInput | MaterialScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Material"> | string
+    fileName?: StringWithAggregatesFilter<"Material"> | string
+    filePath?: StringWithAggregatesFilter<"Material"> | string
+    type?: StringWithAggregatesFilter<"Material"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"Material"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Material"> | Date | string
+  }
+
+  export type LessonMaterialWhereInput = {
+    AND?: LessonMaterialWhereInput | LessonMaterialWhereInput[]
+    OR?: LessonMaterialWhereInput[]
+    NOT?: LessonMaterialWhereInput | LessonMaterialWhereInput[]
+    id?: StringFilter<"LessonMaterial"> | string
+    lessonId?: StringFilter<"LessonMaterial"> | string
+    materialId?: StringFilter<"LessonMaterial"> | string
+    createdAt?: DateTimeFilter<"LessonMaterial"> | Date | string
+    lesson?: XOR<LessonScalarRelationFilter, LessonWhereInput>
+    material?: XOR<MaterialScalarRelationFilter, MaterialWhereInput>
+  }
+
+  export type LessonMaterialOrderByWithRelationInput = {
+    id?: SortOrder
+    lessonId?: SortOrder
+    materialId?: SortOrder
+    createdAt?: SortOrder
+    lesson?: LessonOrderByWithRelationInput
+    material?: MaterialOrderByWithRelationInput
+  }
+
+  export type LessonMaterialWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: LessonMaterialWhereInput | LessonMaterialWhereInput[]
+    OR?: LessonMaterialWhereInput[]
+    NOT?: LessonMaterialWhereInput | LessonMaterialWhereInput[]
+    lessonId?: StringFilter<"LessonMaterial"> | string
+    materialId?: StringFilter<"LessonMaterial"> | string
+    createdAt?: DateTimeFilter<"LessonMaterial"> | Date | string
+    lesson?: XOR<LessonScalarRelationFilter, LessonWhereInput>
+    material?: XOR<MaterialScalarRelationFilter, MaterialWhereInput>
+  }, "id">
+
+  export type LessonMaterialOrderByWithAggregationInput = {
+    id?: SortOrder
+    lessonId?: SortOrder
+    materialId?: SortOrder
+    createdAt?: SortOrder
+    _count?: LessonMaterialCountOrderByAggregateInput
+    _max?: LessonMaterialMaxOrderByAggregateInput
+    _min?: LessonMaterialMinOrderByAggregateInput
+  }
+
+  export type LessonMaterialScalarWhereWithAggregatesInput = {
+    AND?: LessonMaterialScalarWhereWithAggregatesInput | LessonMaterialScalarWhereWithAggregatesInput[]
+    OR?: LessonMaterialScalarWhereWithAggregatesInput[]
+    NOT?: LessonMaterialScalarWhereWithAggregatesInput | LessonMaterialScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"LessonMaterial"> | string
+    lessonId?: StringWithAggregatesFilter<"LessonMaterial"> | string
+    materialId?: StringWithAggregatesFilter<"LessonMaterial"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"LessonMaterial"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -14568,6 +17112,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     topic: TopicCreateNestedOneWithoutLessonsInput
+    materials?: LessonMaterialCreateNestedManyWithoutLessonInput
   }
 
   export type LessonUncheckedCreateInput = {
@@ -14578,6 +17123,7 @@ export namespace Prisma {
     topicId: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    materials?: LessonMaterialUncheckedCreateNestedManyWithoutLessonInput
   }
 
   export type LessonUpdateInput = {
@@ -14588,6 +17134,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     topic?: TopicUpdateOneRequiredWithoutLessonsNestedInput
+    materials?: LessonMaterialUpdateManyWithoutLessonNestedInput
   }
 
   export type LessonUncheckedUpdateInput = {
@@ -14598,6 +17145,7 @@ export namespace Prisma {
     topicId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    materials?: LessonMaterialUncheckedUpdateManyWithoutLessonNestedInput
   }
 
   export type LessonCreateManyInput = {
@@ -14765,6 +17313,120 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MaterialCreateInput = {
+    id?: string
+    fileName: string
+    filePath: string
+    type: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lessonMaterials?: LessonMaterialCreateNestedManyWithoutMaterialInput
+  }
+
+  export type MaterialUncheckedCreateInput = {
+    id?: string
+    fileName: string
+    filePath: string
+    type: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lessonMaterials?: LessonMaterialUncheckedCreateNestedManyWithoutMaterialInput
+  }
+
+  export type MaterialUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    filePath?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lessonMaterials?: LessonMaterialUpdateManyWithoutMaterialNestedInput
+  }
+
+  export type MaterialUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    filePath?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lessonMaterials?: LessonMaterialUncheckedUpdateManyWithoutMaterialNestedInput
+  }
+
+  export type MaterialCreateManyInput = {
+    id?: string
+    fileName: string
+    filePath: string
+    type: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MaterialUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    filePath?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MaterialUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    filePath?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialCreateInput = {
+    id?: string
+    createdAt?: Date | string
+    lesson: LessonCreateNestedOneWithoutMaterialsInput
+    material: MaterialCreateNestedOneWithoutLessonMaterialsInput
+  }
+
+  export type LessonMaterialUncheckedCreateInput = {
+    id?: string
+    lessonId: string
+    materialId: string
+    createdAt?: Date | string
+  }
+
+  export type LessonMaterialUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lesson?: LessonUpdateOneRequiredWithoutMaterialsNestedInput
+    material?: MaterialUpdateOneRequiredWithoutLessonMaterialsNestedInput
+  }
+
+  export type LessonMaterialUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lessonId?: StringFieldUpdateOperationsInput | string
+    materialId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialCreateManyInput = {
+    id?: string
+    lessonId: string
+    materialId: string
+    createdAt?: Date | string
+  }
+
+  export type LessonMaterialUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lessonId?: StringFieldUpdateOperationsInput | string
+    materialId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type StringFilter<$PrismaModel = never> = {
@@ -15246,6 +17908,16 @@ export namespace Prisma {
     isNot?: TopicWhereInput
   }
 
+  export type LessonMaterialListRelationFilter = {
+    every?: LessonMaterialWhereInput
+    some?: LessonMaterialWhereInput
+    none?: LessonMaterialWhereInput
+  }
+
+  export type LessonMaterialOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type LessonCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
@@ -15363,6 +18035,64 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedBoolFilter<$PrismaModel>
     _max?: NestedBoolFilter<$PrismaModel>
+  }
+
+  export type MaterialCountOrderByAggregateInput = {
+    id?: SortOrder
+    fileName?: SortOrder
+    filePath?: SortOrder
+    type?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MaterialMaxOrderByAggregateInput = {
+    id?: SortOrder
+    fileName?: SortOrder
+    filePath?: SortOrder
+    type?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MaterialMinOrderByAggregateInput = {
+    id?: SortOrder
+    fileName?: SortOrder
+    filePath?: SortOrder
+    type?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LessonScalarRelationFilter = {
+    is?: LessonWhereInput
+    isNot?: LessonWhereInput
+  }
+
+  export type MaterialScalarRelationFilter = {
+    is?: MaterialWhereInput
+    isNot?: MaterialWhereInput
+  }
+
+  export type LessonMaterialCountOrderByAggregateInput = {
+    id?: SortOrder
+    lessonId?: SortOrder
+    materialId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LessonMaterialMaxOrderByAggregateInput = {
+    id?: SortOrder
+    lessonId?: SortOrder
+    materialId?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type LessonMaterialMinOrderByAggregateInput = {
+    id?: SortOrder
+    lessonId?: SortOrder
+    materialId?: SortOrder
+    createdAt?: SortOrder
   }
 
   export type LearningGroupCreateNestedManyWithoutTeacherInput = {
@@ -15929,12 +18659,54 @@ export namespace Prisma {
     connect?: TopicWhereUniqueInput
   }
 
+  export type LessonMaterialCreateNestedManyWithoutLessonInput = {
+    create?: XOR<LessonMaterialCreateWithoutLessonInput, LessonMaterialUncheckedCreateWithoutLessonInput> | LessonMaterialCreateWithoutLessonInput[] | LessonMaterialUncheckedCreateWithoutLessonInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutLessonInput | LessonMaterialCreateOrConnectWithoutLessonInput[]
+    createMany?: LessonMaterialCreateManyLessonInputEnvelope
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+  }
+
+  export type LessonMaterialUncheckedCreateNestedManyWithoutLessonInput = {
+    create?: XOR<LessonMaterialCreateWithoutLessonInput, LessonMaterialUncheckedCreateWithoutLessonInput> | LessonMaterialCreateWithoutLessonInput[] | LessonMaterialUncheckedCreateWithoutLessonInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutLessonInput | LessonMaterialCreateOrConnectWithoutLessonInput[]
+    createMany?: LessonMaterialCreateManyLessonInputEnvelope
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+  }
+
   export type TopicUpdateOneRequiredWithoutLessonsNestedInput = {
     create?: XOR<TopicCreateWithoutLessonsInput, TopicUncheckedCreateWithoutLessonsInput>
     connectOrCreate?: TopicCreateOrConnectWithoutLessonsInput
     upsert?: TopicUpsertWithoutLessonsInput
     connect?: TopicWhereUniqueInput
     update?: XOR<XOR<TopicUpdateToOneWithWhereWithoutLessonsInput, TopicUpdateWithoutLessonsInput>, TopicUncheckedUpdateWithoutLessonsInput>
+  }
+
+  export type LessonMaterialUpdateManyWithoutLessonNestedInput = {
+    create?: XOR<LessonMaterialCreateWithoutLessonInput, LessonMaterialUncheckedCreateWithoutLessonInput> | LessonMaterialCreateWithoutLessonInput[] | LessonMaterialUncheckedCreateWithoutLessonInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutLessonInput | LessonMaterialCreateOrConnectWithoutLessonInput[]
+    upsert?: LessonMaterialUpsertWithWhereUniqueWithoutLessonInput | LessonMaterialUpsertWithWhereUniqueWithoutLessonInput[]
+    createMany?: LessonMaterialCreateManyLessonInputEnvelope
+    set?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    disconnect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    delete?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    update?: LessonMaterialUpdateWithWhereUniqueWithoutLessonInput | LessonMaterialUpdateWithWhereUniqueWithoutLessonInput[]
+    updateMany?: LessonMaterialUpdateManyWithWhereWithoutLessonInput | LessonMaterialUpdateManyWithWhereWithoutLessonInput[]
+    deleteMany?: LessonMaterialScalarWhereInput | LessonMaterialScalarWhereInput[]
+  }
+
+  export type LessonMaterialUncheckedUpdateManyWithoutLessonNestedInput = {
+    create?: XOR<LessonMaterialCreateWithoutLessonInput, LessonMaterialUncheckedCreateWithoutLessonInput> | LessonMaterialCreateWithoutLessonInput[] | LessonMaterialUncheckedCreateWithoutLessonInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutLessonInput | LessonMaterialCreateOrConnectWithoutLessonInput[]
+    upsert?: LessonMaterialUpsertWithWhereUniqueWithoutLessonInput | LessonMaterialUpsertWithWhereUniqueWithoutLessonInput[]
+    createMany?: LessonMaterialCreateManyLessonInputEnvelope
+    set?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    disconnect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    delete?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    update?: LessonMaterialUpdateWithWhereUniqueWithoutLessonInput | LessonMaterialUpdateWithWhereUniqueWithoutLessonInput[]
+    updateMany?: LessonMaterialUpdateManyWithWhereWithoutLessonInput | LessonMaterialUpdateManyWithWhereWithoutLessonInput[]
+    deleteMany?: LessonMaterialScalarWhereInput | LessonMaterialScalarWhereInput[]
   }
 
   export type LearningGroupCreateNestedOneWithoutAssignmentsInput = {
@@ -15967,6 +18739,76 @@ export namespace Prisma {
     upsert?: UserUpsertWithoutNotesInput
     connect?: UserWhereUniqueInput
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutNotesInput, UserUpdateWithoutNotesInput>, UserUncheckedUpdateWithoutNotesInput>
+  }
+
+  export type LessonMaterialCreateNestedManyWithoutMaterialInput = {
+    create?: XOR<LessonMaterialCreateWithoutMaterialInput, LessonMaterialUncheckedCreateWithoutMaterialInput> | LessonMaterialCreateWithoutMaterialInput[] | LessonMaterialUncheckedCreateWithoutMaterialInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutMaterialInput | LessonMaterialCreateOrConnectWithoutMaterialInput[]
+    createMany?: LessonMaterialCreateManyMaterialInputEnvelope
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+  }
+
+  export type LessonMaterialUncheckedCreateNestedManyWithoutMaterialInput = {
+    create?: XOR<LessonMaterialCreateWithoutMaterialInput, LessonMaterialUncheckedCreateWithoutMaterialInput> | LessonMaterialCreateWithoutMaterialInput[] | LessonMaterialUncheckedCreateWithoutMaterialInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutMaterialInput | LessonMaterialCreateOrConnectWithoutMaterialInput[]
+    createMany?: LessonMaterialCreateManyMaterialInputEnvelope
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+  }
+
+  export type LessonMaterialUpdateManyWithoutMaterialNestedInput = {
+    create?: XOR<LessonMaterialCreateWithoutMaterialInput, LessonMaterialUncheckedCreateWithoutMaterialInput> | LessonMaterialCreateWithoutMaterialInput[] | LessonMaterialUncheckedCreateWithoutMaterialInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutMaterialInput | LessonMaterialCreateOrConnectWithoutMaterialInput[]
+    upsert?: LessonMaterialUpsertWithWhereUniqueWithoutMaterialInput | LessonMaterialUpsertWithWhereUniqueWithoutMaterialInput[]
+    createMany?: LessonMaterialCreateManyMaterialInputEnvelope
+    set?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    disconnect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    delete?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    update?: LessonMaterialUpdateWithWhereUniqueWithoutMaterialInput | LessonMaterialUpdateWithWhereUniqueWithoutMaterialInput[]
+    updateMany?: LessonMaterialUpdateManyWithWhereWithoutMaterialInput | LessonMaterialUpdateManyWithWhereWithoutMaterialInput[]
+    deleteMany?: LessonMaterialScalarWhereInput | LessonMaterialScalarWhereInput[]
+  }
+
+  export type LessonMaterialUncheckedUpdateManyWithoutMaterialNestedInput = {
+    create?: XOR<LessonMaterialCreateWithoutMaterialInput, LessonMaterialUncheckedCreateWithoutMaterialInput> | LessonMaterialCreateWithoutMaterialInput[] | LessonMaterialUncheckedCreateWithoutMaterialInput[]
+    connectOrCreate?: LessonMaterialCreateOrConnectWithoutMaterialInput | LessonMaterialCreateOrConnectWithoutMaterialInput[]
+    upsert?: LessonMaterialUpsertWithWhereUniqueWithoutMaterialInput | LessonMaterialUpsertWithWhereUniqueWithoutMaterialInput[]
+    createMany?: LessonMaterialCreateManyMaterialInputEnvelope
+    set?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    disconnect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    delete?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    connect?: LessonMaterialWhereUniqueInput | LessonMaterialWhereUniqueInput[]
+    update?: LessonMaterialUpdateWithWhereUniqueWithoutMaterialInput | LessonMaterialUpdateWithWhereUniqueWithoutMaterialInput[]
+    updateMany?: LessonMaterialUpdateManyWithWhereWithoutMaterialInput | LessonMaterialUpdateManyWithWhereWithoutMaterialInput[]
+    deleteMany?: LessonMaterialScalarWhereInput | LessonMaterialScalarWhereInput[]
+  }
+
+  export type LessonCreateNestedOneWithoutMaterialsInput = {
+    create?: XOR<LessonCreateWithoutMaterialsInput, LessonUncheckedCreateWithoutMaterialsInput>
+    connectOrCreate?: LessonCreateOrConnectWithoutMaterialsInput
+    connect?: LessonWhereUniqueInput
+  }
+
+  export type MaterialCreateNestedOneWithoutLessonMaterialsInput = {
+    create?: XOR<MaterialCreateWithoutLessonMaterialsInput, MaterialUncheckedCreateWithoutLessonMaterialsInput>
+    connectOrCreate?: MaterialCreateOrConnectWithoutLessonMaterialsInput
+    connect?: MaterialWhereUniqueInput
+  }
+
+  export type LessonUpdateOneRequiredWithoutMaterialsNestedInput = {
+    create?: XOR<LessonCreateWithoutMaterialsInput, LessonUncheckedCreateWithoutMaterialsInput>
+    connectOrCreate?: LessonCreateOrConnectWithoutMaterialsInput
+    upsert?: LessonUpsertWithoutMaterialsInput
+    connect?: LessonWhereUniqueInput
+    update?: XOR<XOR<LessonUpdateToOneWithWhereWithoutMaterialsInput, LessonUpdateWithoutMaterialsInput>, LessonUncheckedUpdateWithoutMaterialsInput>
+  }
+
+  export type MaterialUpdateOneRequiredWithoutLessonMaterialsNestedInput = {
+    create?: XOR<MaterialCreateWithoutLessonMaterialsInput, MaterialUncheckedCreateWithoutLessonMaterialsInput>
+    connectOrCreate?: MaterialCreateOrConnectWithoutLessonMaterialsInput
+    upsert?: MaterialUpsertWithoutLessonMaterialsInput
+    connect?: MaterialWhereUniqueInput
+    update?: XOR<XOR<MaterialUpdateToOneWithWhereWithoutLessonMaterialsInput, MaterialUpdateWithoutLessonMaterialsInput>, MaterialUncheckedUpdateWithoutLessonMaterialsInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -16972,6 +19814,7 @@ export namespace Prisma {
     order?: number
     createdAt?: Date | string
     updatedAt?: Date | string
+    materials?: LessonMaterialCreateNestedManyWithoutLessonInput
   }
 
   export type LessonUncheckedCreateWithoutTopicInput = {
@@ -16981,6 +19824,7 @@ export namespace Prisma {
     order?: number
     createdAt?: Date | string
     updatedAt?: Date | string
+    materials?: LessonMaterialUncheckedCreateNestedManyWithoutLessonInput
   }
 
   export type LessonCreateOrConnectWithoutTopicInput = {
@@ -17102,6 +19946,27 @@ export namespace Prisma {
     create: XOR<TopicCreateWithoutLessonsInput, TopicUncheckedCreateWithoutLessonsInput>
   }
 
+  export type LessonMaterialCreateWithoutLessonInput = {
+    id?: string
+    createdAt?: Date | string
+    material: MaterialCreateNestedOneWithoutLessonMaterialsInput
+  }
+
+  export type LessonMaterialUncheckedCreateWithoutLessonInput = {
+    id?: string
+    materialId: string
+    createdAt?: Date | string
+  }
+
+  export type LessonMaterialCreateOrConnectWithoutLessonInput = {
+    where: LessonMaterialWhereUniqueInput
+    create: XOR<LessonMaterialCreateWithoutLessonInput, LessonMaterialUncheckedCreateWithoutLessonInput>
+  }
+
+  export type LessonMaterialCreateManyLessonInputEnvelope = {
+    data: LessonMaterialCreateManyLessonInput | LessonMaterialCreateManyLessonInput[]
+  }
+
   export type TopicUpsertWithoutLessonsInput = {
     update: XOR<TopicUpdateWithoutLessonsInput, TopicUncheckedUpdateWithoutLessonsInput>
     create: XOR<TopicCreateWithoutLessonsInput, TopicUncheckedCreateWithoutLessonsInput>
@@ -17131,6 +19996,32 @@ export namespace Prisma {
     unitId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialUpsertWithWhereUniqueWithoutLessonInput = {
+    where: LessonMaterialWhereUniqueInput
+    update: XOR<LessonMaterialUpdateWithoutLessonInput, LessonMaterialUncheckedUpdateWithoutLessonInput>
+    create: XOR<LessonMaterialCreateWithoutLessonInput, LessonMaterialUncheckedCreateWithoutLessonInput>
+  }
+
+  export type LessonMaterialUpdateWithWhereUniqueWithoutLessonInput = {
+    where: LessonMaterialWhereUniqueInput
+    data: XOR<LessonMaterialUpdateWithoutLessonInput, LessonMaterialUncheckedUpdateWithoutLessonInput>
+  }
+
+  export type LessonMaterialUpdateManyWithWhereWithoutLessonInput = {
+    where: LessonMaterialScalarWhereInput
+    data: XOR<LessonMaterialUpdateManyMutationInput, LessonMaterialUncheckedUpdateManyWithoutLessonInput>
+  }
+
+  export type LessonMaterialScalarWhereInput = {
+    AND?: LessonMaterialScalarWhereInput | LessonMaterialScalarWhereInput[]
+    OR?: LessonMaterialScalarWhereInput[]
+    NOT?: LessonMaterialScalarWhereInput | LessonMaterialScalarWhereInput[]
+    id?: StringFilter<"LessonMaterial"> | string
+    lessonId?: StringFilter<"LessonMaterial"> | string
+    materialId?: StringFilter<"LessonMaterial"> | string
+    createdAt?: DateTimeFilter<"LessonMaterial"> | Date | string
   }
 
   export type LearningGroupCreateWithoutAssignmentsInput = {
@@ -17251,6 +20142,151 @@ export namespace Prisma {
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
     subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
+  }
+
+  export type LessonMaterialCreateWithoutMaterialInput = {
+    id?: string
+    createdAt?: Date | string
+    lesson: LessonCreateNestedOneWithoutMaterialsInput
+  }
+
+  export type LessonMaterialUncheckedCreateWithoutMaterialInput = {
+    id?: string
+    lessonId: string
+    createdAt?: Date | string
+  }
+
+  export type LessonMaterialCreateOrConnectWithoutMaterialInput = {
+    where: LessonMaterialWhereUniqueInput
+    create: XOR<LessonMaterialCreateWithoutMaterialInput, LessonMaterialUncheckedCreateWithoutMaterialInput>
+  }
+
+  export type LessonMaterialCreateManyMaterialInputEnvelope = {
+    data: LessonMaterialCreateManyMaterialInput | LessonMaterialCreateManyMaterialInput[]
+  }
+
+  export type LessonMaterialUpsertWithWhereUniqueWithoutMaterialInput = {
+    where: LessonMaterialWhereUniqueInput
+    update: XOR<LessonMaterialUpdateWithoutMaterialInput, LessonMaterialUncheckedUpdateWithoutMaterialInput>
+    create: XOR<LessonMaterialCreateWithoutMaterialInput, LessonMaterialUncheckedCreateWithoutMaterialInput>
+  }
+
+  export type LessonMaterialUpdateWithWhereUniqueWithoutMaterialInput = {
+    where: LessonMaterialWhereUniqueInput
+    data: XOR<LessonMaterialUpdateWithoutMaterialInput, LessonMaterialUncheckedUpdateWithoutMaterialInput>
+  }
+
+  export type LessonMaterialUpdateManyWithWhereWithoutMaterialInput = {
+    where: LessonMaterialScalarWhereInput
+    data: XOR<LessonMaterialUpdateManyMutationInput, LessonMaterialUncheckedUpdateManyWithoutMaterialInput>
+  }
+
+  export type LessonCreateWithoutMaterialsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    topic: TopicCreateNestedOneWithoutLessonsInput
+  }
+
+  export type LessonUncheckedCreateWithoutMaterialsInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    topicId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type LessonCreateOrConnectWithoutMaterialsInput = {
+    where: LessonWhereUniqueInput
+    create: XOR<LessonCreateWithoutMaterialsInput, LessonUncheckedCreateWithoutMaterialsInput>
+  }
+
+  export type MaterialCreateWithoutLessonMaterialsInput = {
+    id?: string
+    fileName: string
+    filePath: string
+    type: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MaterialUncheckedCreateWithoutLessonMaterialsInput = {
+    id?: string
+    fileName: string
+    filePath: string
+    type: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MaterialCreateOrConnectWithoutLessonMaterialsInput = {
+    where: MaterialWhereUniqueInput
+    create: XOR<MaterialCreateWithoutLessonMaterialsInput, MaterialUncheckedCreateWithoutLessonMaterialsInput>
+  }
+
+  export type LessonUpsertWithoutMaterialsInput = {
+    update: XOR<LessonUpdateWithoutMaterialsInput, LessonUncheckedUpdateWithoutMaterialsInput>
+    create: XOR<LessonCreateWithoutMaterialsInput, LessonUncheckedCreateWithoutMaterialsInput>
+    where?: LessonWhereInput
+  }
+
+  export type LessonUpdateToOneWithWhereWithoutMaterialsInput = {
+    where?: LessonWhereInput
+    data: XOR<LessonUpdateWithoutMaterialsInput, LessonUncheckedUpdateWithoutMaterialsInput>
+  }
+
+  export type LessonUpdateWithoutMaterialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    topic?: TopicUpdateOneRequiredWithoutLessonsNestedInput
+  }
+
+  export type LessonUncheckedUpdateWithoutMaterialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    topicId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MaterialUpsertWithoutLessonMaterialsInput = {
+    update: XOR<MaterialUpdateWithoutLessonMaterialsInput, MaterialUncheckedUpdateWithoutLessonMaterialsInput>
+    create: XOR<MaterialCreateWithoutLessonMaterialsInput, MaterialUncheckedCreateWithoutLessonMaterialsInput>
+    where?: MaterialWhereInput
+  }
+
+  export type MaterialUpdateToOneWithWhereWithoutLessonMaterialsInput = {
+    where?: MaterialWhereInput
+    data: XOR<MaterialUpdateWithoutLessonMaterialsInput, MaterialUncheckedUpdateWithoutLessonMaterialsInput>
+  }
+
+  export type MaterialUpdateWithoutLessonMaterialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    filePath?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MaterialUncheckedUpdateWithoutLessonMaterialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    filePath?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type LearningGroupCreateManyTeacherInput = {
@@ -17620,6 +20656,7 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    materials?: LessonMaterialUpdateManyWithoutLessonNestedInput
   }
 
   export type LessonUncheckedUpdateWithoutTopicInput = {
@@ -17629,6 +20666,7 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    materials?: LessonMaterialUncheckedUpdateManyWithoutLessonNestedInput
   }
 
   export type LessonUncheckedUpdateManyWithoutTopicInput = {
@@ -17638,6 +20676,54 @@ export namespace Prisma {
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialCreateManyLessonInput = {
+    id?: string
+    materialId: string
+    createdAt?: Date | string
+  }
+
+  export type LessonMaterialUpdateWithoutLessonInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    material?: MaterialUpdateOneRequiredWithoutLessonMaterialsNestedInput
+  }
+
+  export type LessonMaterialUncheckedUpdateWithoutLessonInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    materialId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialUncheckedUpdateManyWithoutLessonInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    materialId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialCreateManyMaterialInput = {
+    id?: string
+    lessonId: string
+    createdAt?: Date | string
+  }
+
+  export type LessonMaterialUpdateWithoutMaterialInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lesson?: LessonUpdateOneRequiredWithoutMaterialsNestedInput
+  }
+
+  export type LessonMaterialUncheckedUpdateWithoutMaterialInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lessonId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LessonMaterialUncheckedUpdateManyWithoutMaterialInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lessonId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
 

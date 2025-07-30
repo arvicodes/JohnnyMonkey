@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informationsdarstellung - Lernkarten</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .progress-section {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .topic-selector {
+            padding: 30px;
+            text-align: center;
+        }
+
+        .topic-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .topic-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .topic-btn.morse {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .topic-btn.barcode {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+
+        .topic-btn.qrcode {
+            background: linear-gradient(135deg, #a8edea, #fed6e3);
+            color: #333;
+        }
+
+        .topic-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .card-container {
+            padding: 30px;
+            display: none;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            margin: 0 auto;
+            perspective: 1000px;
+            margin-bottom: 30px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        .card-content {
+            font-size: 1.3rem;
+            line-height: 1.6;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .help-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #4facfe;
+        }
+
+        .help-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .help-content {
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        .difficulty-marker {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .difficulty-advanced {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .difficulty-transfer {
+            background: #9c88ff;
+            color: white;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .completion-message {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            color: white;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .exam-mode .card-back {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        .exam-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .btn-correct {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-wrong {
+            background: linear-gradient(135deg, #dc3545, #fd7e14);
+            color: white;
+        }
+
+        .exam-results {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .exam-question {
+            text-align: left;
+            padding: 20px;
+        }
+
+        .exam-question h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        .exam-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .exam-option {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .exam-option:hover:not(:disabled) {
+            border-color: #4facfe;
+            background: #f8f9fa;
+        }
+
+        .exam-option:disabled {
+            cursor: not-allowed;
+        }
+
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .matching-left .matching-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .matching-left .matching-item.selected {
+            border-color: #4facfe;
+            background: #e3f2fd;
+        }
+
+        .matching-right .matching-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .matching-right .matching-item:hover:not(:disabled) {
+            border-color: #4facfe;
+        }
+
+        .fill-blank-question {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin: 20px 0;
+        }
+
+        .blank-input {
+            display: inline-block;
+            padding: 5px 10px;
+            border: 2px solid #4facfe;
+            border-radius: 4px;
+            margin: 0 5px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .blank-input:focus {
+            outline: none;
+            border-color: #0056b3;
+        }
+
+        .ordering-container {
+            margin: 20px 0;
+        }
+
+        .ordering-items {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .ordering-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+
+        .ordering-item:hover {
+            border-color: #4facfe;
+            background: #e3f2fd;
+        }
+
+        .exam-navigation {
+            border-top: 1px solid #e9ecef;
+            padding-top: 20px;
+        }
+
+        .detailed-results {
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .result-item.correct {
+            background: rgba(40, 167, 69, 0.1);
+            border-left-color: #28a745;
+        }
+
+        .result-item.incorrect {
+            background: rgba(220, 53, 69, 0.1);
+            border-left-color: #dc3545;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .result-number {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .result-status {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .result-item.correct .result-status {
+            color: #28a745;
+        }
+
+        .result-item.incorrect .result-status {
+            color: #dc3545;
+        }
+
+        .result-question {
+            margin: 10px 0;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .result-answer, .result-correct {
+            margin: 8px 0;
+            color: #666;
+        }
+
+        .time-info {
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .grade-display {
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            border-radius: 25px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        .grade-excellent { background: #28a745; }
+        .grade-good { background: #17a2b8; }
+        .grade-satisfactory { background: #ffc107; color: #333; }
+        .grade-needs-improvement { background: #dc3545; }
+
+        @media (max-width: 768px) {
+            .topic-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .card {
+                height: 300px;
+            }
+            
+            .card-content {
+                font-size: 1.1rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Informationsdarstellung</h1>
+            <p>Lernkarten zu Morse-, Bar- und QR-Codes</p>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text">
+                <span id="progressText">Fortschritt: 0/30 Fragen</span>
+                <span id="topicProgress">Wähle ein Thema</span>
+            </div>
+        </div>
+
+        <div class="topic-selector" id="topicSelector">
+            <h2 style="margin-bottom: 30px; color: #333;">Wähle einen Modus:</h2>
+            
+            <div style="margin-bottom: 40px;">
+                <h3 style="color: #4facfe; margin-bottom: 20px;">📚 Lernmodus</h3>
+                <div class="topic-buttons">
+                    <button class="topic-btn morse" onclick="startTopic('morse')" id="morseBtn">
+                        📡 Morse-Codes
+                    </button>
+                    <button class="topic-btn barcode" onclick="startTopic('barcode')" id="barcodeBtn">
+                        📊 Barcodes
+                    </button>
+                    <button class="topic-btn qrcode" onclick="startTopic('qrcode')" id="qrcodeBtn">
+                        📱 QR-Codes
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 40px;">
+                <h3 style="color: #ff6b6b; margin-bottom: 20px;">🎯 Prüfungsmodus</h3>
+                <div class="topic-buttons">
+                    <button class="topic-btn" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white;" onclick="startExam()">
+                        📝 Prüfung starten
+                    </button>
+                </div>
+                <p style="color: #6c757d; font-size: 0.9rem; margin-top: 10px;">
+                    Zufällige Fragen aus allen Bereichen • Keine Antworten sichtbar • Bewertung am Ende
+                </p>
+            </div>
+
+            <div class="help-section">
+                <div class="help-title">
+                    💡 Spielanleitung
+                </div>
+                <div class="help-content">
+                    <strong>Lernmodus:</strong> Klicke auf ein Themengebiet, um zu starten. Jede Karte zeigt eine Frage - klicke darauf, um die Antwort zu sehen. 
+                    Nach den Grundfragen erwarten dich schwierigere Aufgaben!<br><br>
+                    <strong>Prüfungsmodus:</strong> 20 zufällige Fragen aus allen Bereichen. Du musst die Antworten selbst bewerten. 
+                    Perfekt zur Prüfungsvorbereitung!
+                </div>
+            </div>
+        </div>
+
+        <div class="card-container" id="cardContainer">
+            <div class="card" id="flashcard">
+                <div class="card-inner" id="cardInner">
+                    <div class="card-front">
+                        <div class="card-content" id="questionText"></div>
+                    </div>
+                    <div class="card-back">
+                        <div class="card-content" id="answerText"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-secondary" onclick="previousCard()">⬅️ Vorherige</button>
+                <button class="btn btn-primary" onclick="flipCard()">🔄 Umdrehen</button>
+                <button class="btn btn-secondary" onclick="nextCard()">Nächste ➡️</button>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-success" onclick="showTopics()">📚 Themen wählen</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="currentCardNum">1</div>
+                    <div class="stat-label">Aktuelle Karte</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="totalCards">10</div>
+                    <div class="stat-label">Gesamt</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="currentTopic">-</div>
+                    <div class="stat-label">Aktuelles Thema</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = {
+            morse: [
+                {
+                    question: "Was ist der Morse-Code und wer hat ihn erfunden?",
+                    answer: "Der Morse-Code ist ein Kommunikationssystem aus Punkten und Strichen, erfunden von Samuel Morse um 1835. Er dient zur Übertragung von Textnachrichten."
+                },
+                {
+                    question: "Wie wird der Buchstabe 'A' im Morse-Code dargestellt?",
+                    answer: "Der Buchstabe 'A' wird als '.-' dargestellt (kurz-lang)."
+                },
+                {
+                    question: "Was bedeutet 'SOS' im Morse-Code und wie wird es gesendet?",
+                    answer: "'SOS' ist das internationale Notsignal. Es wird als '... --- ...' gesendet (3x kurz, 3x lang, 3x kurz)."
+                },
+                {
+                    question: "Welche zwei Grundelemente bilden den Morse-Code?",
+                    answer: "Punkt (dit) und Strich (dah). Ein Strich ist etwa dreimal so lang wie ein Punkt."
+                },
+                {
+                    question: "Wie werden Wörter im Morse-Code voneinander getrennt?",
+                    answer: "Wörter werden durch längere Pausen getrennt, etwa 7 Zeiteinheiten. Buchstaben werden durch 3 Zeiteinheiten getrennt."
+                },
+                {
+                    question: "Warum wurden häufige Buchstaben wie 'E' und 'T' kurze Codes zugewiesen?",
+                    answer: "Um die Übertragungszeit zu minimieren. 'E' = '.' und 'T' = '-' sind die kürzesten Codes, da sie die häufigsten Buchstaben sind."
+                },
+                {
+                    question: "Welche Vorteile hat der Morse-Code gegenüber Sprache?",
+                    answer: "Funktioniert bei schlechten Verbindungen, benötigt weniger Bandbreite, kann auch optisch (Licht) oder taktil übertragen werden."
+                },
+                {
+                    question: "Wie wird die Ziffer '5' im Morse-Code dargestellt?",
+                    answer: "Die Ziffer '5' wird als '.....' dargestellt (5 Punkte)."
+                },
+                {
+                    question: "Was ist ein 'Prosign' im Morse-Code?",
+                    answer: "Ein Prosign ist ein Verfahrenszeichen, z.B. 'AR' (.-.-.) für 'Ende der Nachricht' oder 'SK' (...-.-) für 'Verbindungsende'."
+                },
+                {
+                    question: "Welche modernen Anwendungen nutzen noch Morse-Code?",
+                    answer: "Amateurfunk, Luftfahrt (Navigationshilfen), Notfallkommunikation und als Hilfsmittel für Menschen mit Behinderungen."
+                }
+            ],
+            barcode: [
+                {
+                    question: "Was ist ein Barcode und wozu dient er?",
+                    answer: "Ein Barcode ist eine maschinenlesbare Darstellung von Daten durch parallele Striche unterschiedlicher Breite. Er dient zur automatischen Identifikation von Produkten."
+                },
+                {
+                    question: "Aus welchen Grundelementen besteht ein Strichcode?",
+                    answer: "Aus schwarzen Balken (Strichen) und weißen Lücken unterschiedlicher Breite. Die Kombination codiert die Information."
+                },
+                {
+                    question: "Was bedeutet 'EAN-13' und wo findet man es?",
+                    answer: "European Article Number mit 13 Stellen. Findet man auf fast allen Produkten im Einzelhandel. Die ersten Ziffern kennzeichnen das Herkunftsland."
+                },
+                {
+                    question: "Wie funktioniert das Lesen eines Barcodes?",
+                    answer: "Ein Laserscanner oder Kamera erfasst die Hell-Dunkel-Übergänge und wandelt sie in digitale Signale um, die dann dekodiert werden."
+                },
+                {
+                    question: "Was ist der Unterschied zwischen 1D- und 2D-Barcodes?",
+                    answer: "1D-Barcodes speichern Daten nur horizontal (Strichcodes), 2D-Barcodes nutzen beide Dimensionen und können mehr Daten speichern."
+                },
+                {
+                    question: "Welche Vorteile bieten Barcodes im Handel?",
+                    answer: "Schnelle Erfassung an der Kasse, Lagerverwaltung, Fehlerreduktion, automatische Preisänderungen und Bestandskontrolle."
+                },
+                {
+                    question: "Was ist eine Prüfziffer bei Barcodes?",
+                    answer: "Eine berechnete Ziffer am Ende des Codes, die Übertragungsfehler erkennt. Bei EAN-13 wird sie nach einem speziellen Algorithmus berechnet."
+                },
+                {
+                    question: "Welche Informationen enthält ein typischer Produktbarcode?",
+                    answer: "Herstellercode, Produktcode und Prüfziffer. Zusätzliche Produktinfos (Preis, Name) werden in der Datenbank gespeichert, nicht im Code selbst."
+                },
+                {
+                    question: "Was passiert, wenn ein Barcode beschädigt ist?",
+                    answer: "Moderne Scanner können teilweise beschädigte Codes noch lesen. Bei starker Beschädigung erfolgt Fehlermeldung oder manuelle Eingabe."
+                },
+                {
+                    question: "Welche Branchen nutzen spezielle Barcode-Systeme?",
+                    answer: "Bibliotheken, Medizin (Patientenarmbänder), Logistik (Sendungsverfolgung), Industrie (Teileverfolgung) und Ticketing-Systeme."
+                }
+            ],
+            qrcode: [
+                {
+                    question: "Was bedeutet 'QR' in QR-Code und wer hat ihn entwickelt?",
+                    answer: "'Quick Response' (schnelle Antwort). Entwickelt 1994 von der japanischen Firma Denso Wave für die Automobilindustrie."
+                },
+                {
+                    question: "Welche Vorteile haben QR-Codes gegenüber herkömmlichen Barcodes?",
+                    answer: "Speichern mehr Daten, sind aus allen Richtungen lesbar, funktionieren auch bei Teilbeschädigung und können verschiedene Datentypen enthalten."
+                },
+                {
+                    question: "Welche Arten von Daten können in QR-Codes gespeichert werden?",
+                    answer: "Text, URLs, Kontaktdaten (vCard), WLAN-Zugangsdaten, SMS, E-Mail-Adressen, Kalenderereignisse und Geodaten."
+                },
+                {
+                    question: "Was sind die drei großen Quadrate in den Ecken eines QR-Codes?",
+                    answer: "Positionsmarkierungen (Finder Pattern), die dem Scanner helfen, den Code zu erkennen und richtig zu orientieren."
+                },
+                {
+                    question: "Wie viele Zeichen kann ein QR-Code maximal speichern?",
+                    answer: "Bis zu 4.296 alphanumerische Zeichen oder 7.089 numerische Zeichen, abhängig von der Version und Fehlerkorrektur."
+                },
+                {
+                    question: "Was ist Fehlerkorrektur bei QR-Codes?",
+                    answer: "Ein System, das es ermöglicht, den Code auch bei Beschädigung von bis zu 30% der Daten noch zu lesen. Es gibt 4 Stufen: L, M, Q, H."
+                },
+                {
+                    question: "Wie liest man einen QR-Code mit dem Smartphone?",
+                    answer: "Mit der Kamera-App (bei neueren Geräten) oder speziellen QR-Scanner-Apps. Der Code wird automatisch erkannt und dekodiert."
+                },
+                {
+                    question: "Welche Sicherheitsrisiken können QR-Codes bergen?",
+                    answer: "Weiterleitung zu schädlichen Websites, Malware-Download oder Phishing-Angriffe. Immer prüfen, bevor man einem Link folgt."
+                },
+                {
+                    question: "Was sind dynamische vs. statische QR-Codes?",
+                    answer: "Statische enthalten die Daten direkt, dynamische verweisen auf eine URL, deren Inhalt später geändert werden kann."
+                },
+                {
+                    question: "In welchen Bereichen werden QR-Codes heute häufig eingesetzt?",
+                    answer: "Marketing, Gastronomie (Speisekarten), Ticketing, Zahlungssysteme, Corona-Apps, Produktinformationen und Authentifizierung."
+                }
+            ],
+            morseAdvanced: [
+                {
+                    question: "🔥 SCHWIERIG: Berechne die optimale Übertragungsgeschwindigkeit für 'HELLO' in Morse bei 20 WPM",
+                    answer: "HELLO = .... . .-.. .-.. --- (14 Zeiteinheiten + Pausen). Bei 20 WPM (Words Per Minute) = 100 Zeichen/Min = 1,67 Zeichen/Sek. 'HELLO' dauert etwa 3 Sekunden bei optimaler Geschwindigkeit.",
+                    difficulty: "advanced",
+                    topic: "morse"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Analysiere die Huffman-Codierung im Morse-Code für deutsche Texte",
+                    answer: "Häufige Buchstaben (E=12%, N=10%, I=8%) bekommen kurze Codes. E='.', T='-', A='.-'. Seltene Buchstaben (Y=0,04%) bekommen längere Codes '-.--'. Dies minimiert die durchschnittliche Übertragungszeit.",
+                    difficulty: "advanced",
+                    topic: "morse"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Erkläre die Farnsworth-Methode beim Morse-Lernen",
+                    answer: "Zeichen werden mit hoher Geschwindigkeit gesendet (18+ WPM), aber mit längeren Pausen zwischen Zeichen/Wörtern. So lernt man die Zeichen als Klangmuster, nicht als einzelne Punkte/Striche.",
+                    difficulty: "advanced",
+                    topic: "morse"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Wie funktioniert automatische Morse-Dekodierung bei Rauschen?",
+                    answer: "Verwendung von Schwellwerten, Glättungsfiltern, Autokorrelation zur Geschwindigkeitserkennung und Fehlerkorrektur durch Wörterbuch-Abgleich. Machine Learning kann Muster in verrauschten Signalen erkennen.",
+                    difficulty: "advanced",
+                    topic: "morse"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Berechne die Bandbreite für Morse-Übertragung bei 25 WPM",
+                    answer: "25 WPM ≈ 125 Zeichen/Min ≈ 2 Hz Grundfrequenz. Für saubere Rechteckimpulse benötigt man etwa 5-10 Harmonische, also 10-20 Hz Bandbreite. Praktisch reichen oft 50-100 Hz.",
+                    difficulty: "advanced",
+                    topic: "morse"
+                }
+            ],
+            barcodeAdvanced: [
+                {
+                    question: "🔥 SCHWIERIG: Berechne die Prüfziffer für den EAN-Code 400123456789",
+                    answer: "Lösung: 1. Ungerade Positionen (4+0+2+4+6+8) × 1 = 24, 2. Gerade Positionen (0+1+3+5+7+9) × 3 = 75, 3. Summe: 99, 4. Nächste 10er-Zahl: 100, 5. Prüfziffer: 100-99 = 1",
+                    difficulty: "advanced",
+                    topic: "barcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Analysiere die Bit-Struktur eines Code-128 Barcodes",
+                    answer: "Code-128 verwendet 11 Bits pro Zeichen: 6 Balken und 5 Lücken. Jedes Zeichen hat eine eindeutige Bit-Sequenz. Start-/Stop-Zeichen und Prüfsumme sind integriert. Drei Zeichensätze (A, B, C) für verschiedene Datentypen.",
+                    difficulty: "advanced",
+                    topic: "barcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Erkläre die Funktionsweise von 2D-Stacked Barcodes (PDF417)",
+                    answer: "PDF417 stapelt mehrere 1D-Codes übereinander. Jede Zeile enthält Start/Stop-Pattern, Zeilennummer und Daten. Reed-Solomon-Fehlerkorrektur ermöglicht Rekonstruktion bei Beschädigung. Kompaktierung durch verschiedene Datenmodi.",
+                    difficulty: "advanced",
+                    topic: "barcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Berechne die Informationsdichte von DataMatrix vs. Code-39",
+                    answer: "DataMatrix: bis zu 2.335 alphanumerische Zeichen auf ~1cm². Code-39: ~20 Zeichen auf 5cm Länge. DataMatrix ist ~50x dichter durch 2D-Struktur und bessere Kodierung. Fehlerkorrektur reduziert nutzbare Kapazität um 20-30%.",
+                    difficulty: "advanced",
+                    topic: "barcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Analysiere die Auswirkungen von Druckqualität auf Barcode-Lesbarkeit",
+                    answer: "Kritische Parameter: Modulbreite-Toleranz (±10%), Kantenschärfe, Kontrast (>80%), Reflexionsgrad. Druckfehler wie Tintenkleckse, unscharfe Kanten oder falsche Breiten führen zu Lesefehlern. ISO/IEC 15415 definiert Qualitätsgrade A-F.",
+                    difficulty: "advanced",
+                    topic: "barcode"
+                }
+            ],
+            qrcodeAdvanced: [
+                {
+                    question: "🔥 SCHWIERIG: Erkläre den Reed-Solomon-Fehlerkorrektur-Algorithmus in QR-Codes",
+                    answer: "Reed-Solomon fügt redundante Daten hinzu, die mathematisch mit den ursprünglichen Daten verknüpft sind. Bei Fehlern können diese durch Polynominterpolation korrigiert werden. Je höher die Fehlerkorrektur-Stufe, desto mehr redundante Daten werden hinzugefügt.",
+                    difficulty: "advanced",
+                    topic: "qrcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Wie wird Datenkompression in QR-Codes implementiert?",
+                    answer: "QR-Codes nutzen verschiedene Kodierungsmodi: Numerisch (3,33 Bit/Zeichen), Alphanumerisch (5,5 Bit/Zeichen), Byte (8 Bit/Zeichen) und Kanji (13 Bit/Zeichen). Der optimale Modus wird automatisch gewählt.",
+                    difficulty: "advanced",
+                    topic: "qrcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Berechne die Informationsdichte eines QR-Codes Version 10",
+                    answer: "Version 10: 57×57 Module = 3.249 Module gesamt. Abzüglich Positionsmarkierungen, Timing-Pattern etc. bleiben ~2.040 Datenmodule. Bei Stufe M: ~1.530 Nutzdaten-Bits ≈ 191 Bytes nutzbare Kapazität.",
+                    difficulty: "advanced",
+                    topic: "qrcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Analysiere die Masking-Pattern in QR-Codes und ihre Auswirkungen",
+                    answer: "8 verschiedene Masking-Pattern verhindern ungünstige Strukturen (lange Linien, große weiße/schwarze Bereiche). Pattern wird durch Penalty-Score-Berechnung gewählt. Ziel: gleichmäßige Verteilung für optimale Scanner-Performance.",
+                    difficulty: "advanced",
+                    topic: "qrcode"
+                },
+                {
+                    question: "🔥 SCHWIERIG: Erkläre die Micro-QR-Code-Spezifikation und Anwendungsfälle",
+                    answer: "Micro-QR: nur eine Positionsmarkierung, 4 Versionen (M1-M4), max. 35 numerische Zeichen. Für kleine Bauteile, Elektronik-Komponenten. Weniger Fehlerkorrektur, aber 40% kleiner als normale QR-Codes.",
+                    difficulty: "advanced",
+                    topic: "qrcode"
+                }
+            ],
+            morseTransfer: [
+                {
+                    question: "🚀 TRANSFER: Entwirf ein Morse-basiertes Notfallkommunikationssystem für Smartphones",
+                    answer: "LED-Blitzen für Senden, Kamera für Empfang, Vibration für taktile Ausgabe. Automatische SOS-Erkennung, GPS-Koordinaten in Morse, Batterie-schonender Modus. Integration in Notfall-Apps mit vorgefertigten Nachrichten.",
+                    difficulty: "transfer",
+                    topic: "morse"
+                },
+                {
+                    question: "🚀 TRANSFER: Wie könnte man Morse-Code für barrierefreie Kommunikation einsetzen?",
+                    answer: "Taktile Ausgabe über Vibration, Eingabe über Tapping, Sprachsynthese für Ausgabe, große visuelle Anzeigen. Anpassbare Geschwindigkeit, Lernmodus mit Feedback, Integration in Screenreader und Braille-Displays.",
+                    difficulty: "transfer",
+                    topic: "morse"
+                },
+                {
+                    question: "🚀 TRANSFER: Entwickle ein Konzept für Morse-Code im IoT-Bereich",
+                    answer: "LED-Status-Signale für Geräte ohne Display, energiesparende Datenübertragung, einfache Protokolle für Mikrocontroller. Standardisierte Codes für Gerätezustände, Mesh-Netzwerk-Kommunikation, Debugging über Morse-Ausgabe.",
+                    difficulty: "transfer",
+                    topic: "morse"
+                }
+            ],
+            barcodeTransfer: [
+                {
+                    question: "🚀 TRANSFER: Entwirf ein Barcode-System für nachhaltige Lieferketten",
+                    answer: "Hierarchische Codes: Produkt → Charge → Rohstoffe → Herkunft. Blockchain-Integration für Unveränderlichkeit, CO2-Fußabdruck-Tracking, Recycling-Informationen. QR-Codes für Verbraucher-Transparenz, 1D für Logistik-Effizienz.",
+                    difficulty: "transfer",
+                    topic: "barcode"
+                },
+                {
+                    question: "🚀 TRANSFER: Entwickle ein Anti-Fälschungs-System mit Barcodes für Medikamente",
+                    answer: "Verschlüsselte 2D-Codes mit Herstellersignatur, Serialisierung jeder Packung, Blockchain-Verifikation, Temperatur-sensitive Codes, Manipulations-Erkennung. Integration in Apotheken-Systeme und Patient-Apps.",
+                    difficulty: "transfer",
+                    topic: "barcode"
+                },
+                {
+                    question: "🚀 TRANSFER: Konzipiere ein Barcode-basiertes Smart-Home-System",
+                    answer: "Geräte-Codes für automatische Konfiguration, Szenen-Codes zum Scannen, Gäste-Zugangscodes mit Zeitlimit, Wartungs-Codes für Service-Techniker. Integration mit Sprachassistenten und Mobile Apps für nahtlose Bedienung.",
+                    difficulty: "transfer",
+                    topic: "barcode"
+                }
+            ],
+            qrcodeTransfer: [
+                {
+                    question: "🚀 TRANSFER: Entwickle ein QR-Code-basiertes Bildungssystem für Museen",
+                    answer: "Mehrsprachige Inhalte, Audiotouren, AR-Integration, Barrierefreiheit, Offline-Verfügbarkeit. Personalisierte Routen, Gamification-Elemente, Social-Media-Integration. Analytics für Besucherverhalten und Content-Optimierung.",
+                    difficulty: "transfer",
+                    topic: "qrcode"
+                },
+                {
+                    question: "🚀 TRANSFER: Entwirf ein sicheres QR-Code-Zahlungssystem",
+                    answer: "Ende-zu-Ende-Verschlüsselung, Zeitstempel gegen Replay-Attacks, biometrische Authentifizierung, Transaktionslimits, Fraud-Detection. Offline-Fähigkeit für schlechte Netzabdeckung, Multi-Faktor-Authentifizierung.",
+                    difficulty: "transfer",
+                    topic: "qrcode"
+                },
+                {
+                    question: "🚀 TRANSFER: Konzipiere QR-Codes für Smart-City-Anwendungen",
+                    answer: "Haltestellen-Infos mit Echtzeitdaten, Parkplatz-Reservierung, Bürgerdienste-Zugang, Tourismus-Informationen, Notfall-Services. Integration mit städtischen Datenbanken, mehrsprachige Unterstützung, Datenschutz-konforme Umsetzung.",
+                    difficulty: "transfer",
+                    topic: "qrcode"
+                }
+            ]
+        };
+
+        let currentTopic = '';
+        let currentCardIndex = 0;
+        let allQuestions = [];
+        let isFlipped = false;
+        let completedBasics = false;
+        let isExamMode = false;
+        let examScore = 0;
+        let examAnswers = [];
+        let examTimer = null;
+        let examTimeLeft = 1200;
+        let examStartTime = 0;
+        let topicProgress = {
+            morse: { completed: false, current: 0 },
+            barcode: { completed: false, current: 0 },
+            qrcode: { completed: false, current: 0 }
+        };
+
+        function startTopic(topic) {
+            currentTopic = topic;
+            currentCardIndex = 0;
+            isFlipped = false;
+            completedBasics = false;
+            
+            // Always start fresh - topics are independent
+            topicProgress[topic].current = 1;
+            
+            // Grundfragen laden
+            allQuestions = [...questions[topic]];
+            
+            document.getElementById('topicSelector').style.display = 'none';
+            document.getElementById('cardContainer').style.display = 'block';
+            
+            updateTopicDisplay();
+            showCard();
+            updateProgress();
+        }
+
+        function showCard() {
+            const card = document.getElementById('flashcard');
+            const cardInner = document.getElementById('cardInner');
+            
+            // Reset flip state
+            card.classList.remove('flipped');
+            isFlipped = false;
+            
+            const currentQuestion = allQuestions[currentCardIndex];
+            document.getElementById('questionText').textContent = currentQuestion.question;
+            document.getElementById('answerText').textContent = currentQuestion.answer;
+            
+            // Add difficulty marker if present
+            if (currentQuestion.difficulty) {
+                const marker = document.createElement('div');
+                marker.className = `difficulty-marker difficulty-${currentQuestion.difficulty}`;
+                marker.textContent = currentQuestion.difficulty === 'advanced' ? 'SCHWIERIG' : 'TRANSFER-AUFGABE';
+                
+                const questionEl = document.getElementById('questionText');
+                questionEl.insertBefore(marker, questionEl.firstChild);
+            }
+            
+            updateStats();
+        }
+
+        function flipCard() {
+            const card = document.getElementById('flashcard');
+            card.classList.toggle('flipped');
+            isFlipped = !isFlipped;
+        }
+
+        function nextCard() {
+            if (currentCardIndex < allQuestions.length - 1) {
+                currentCardIndex++;
+                
+                if (isExamMode) {
+                    showExamCard();
+                } else {
+                    showCard();
+                }
+                updateProgress();
+            } else {
+                if (isExamMode) {
+                    showExamResults();
+                } else {
+                    // Check if we completed basic questions
+                    if (!completedBasics && !currentTopic.includes('Advanced') && !currentTopic.includes('Transfer')) {
+                        completedBasics = true;
+                        showCompletionMessage();
+                    } else {
+                        showFinalCompletion();
+                    }
+                }
+            }
+        }
+
+        function previousCard() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                showCard();
+                updateProgress();
+            }
+        }
+
+        function showCompletionMessage() {
+            const container = document.getElementById('cardContainer');
+            const topicName = currentTopic.charAt(0).toUpperCase() + currentTopic.slice(1);
+            container.innerHTML = `
+                <div class="completion-message">
+                    <h2>🎉 ${topicName}-Grundlagen abgeschlossen!</h2>
+                    <p>Du hast alle ${topicName}-Grundfragen gemeistert!</p>
+                    <p>Bereit für schwierigere Aufgaben?</p>
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="loadAdvanced('${currentTopic}')" style="margin: 10px;">🔥 Schwierige Aufgaben</button>
+                        <button class="btn btn-success" onclick="showTopics()" style="margin: 10px;">📚 Neues Thema wählen</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function loadAdvanced(topic) {
+            const advancedKey = topic + 'Advanced';
+            currentTopic = advancedKey;
+            currentCardIndex = 0;
+            allQuestions = [...questions[advancedKey]];
+            
+            // Restore card container
+            document.getElementById('cardContainer').innerHTML = `
+                <div class="card" id="flashcard">
+                    <div class="card-inner" id="cardInner">
+                        <div class="card-front">
+                            <div class="card-content" id="questionText"></div>
+                        </div>
+                        <div class="card-back">
+                            <div class="card-content" id="answerText"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-secondary" onclick="previousCard()">⬅️ Vorherige</button>
+                    <button class="btn btn-primary" onclick="flipCard()">🔄 Umdrehen</button>
+                    <button class="btn btn-secondary" onclick="nextCard()">Nächste ➡️</button>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-success" onclick="showTopics()">📚 Themen wählen</button>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="currentCardNum">1</div>
+                        <div class="stat-label">Aktuelle Karte</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalCards">5</div>
+                        <div class="stat-label">Gesamt</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="currentTopic">SCHWIERIG</div>
+                        <div class="stat-label">Schwierigkeitsgrad</div>
+                    </div>
+                </div>
+            `;
+            
+            updateTopicDisplay();
+            showCard();
+            updateProgress();
+        }
+
+        function loadTransfer(topic) {
+            const transferKey = topic + 'Transfer';
+            currentTopic = transferKey;
+            currentCardIndex = 0;
+            allQuestions = [...questions[transferKey]];
+            
+            // Restore card container
+            document.getElementById('cardContainer').innerHTML = `
+                <div class="card" id="flashcard">
+                    <div class="card-inner" id="cardInner">
+                        <div class="card-front">
+                            <div class="card-content" id="questionText"></div>
+                        </div>
+                        <div class="card-back">
+                            <div class="card-content" id="answerText"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-secondary" onclick="previousCard()">⬅️ Vorherige</button>
+                    <button class="btn btn-primary" onclick="flipCard()">🔄 Umdrehen</button>
+                    <button class="btn btn-secondary" onclick="nextCard()">Nächste ➡️</button>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-success" onclick="showTopics()">📚 Themen wählen</button>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="currentCardNum">1</div>
+                        <div class="stat-label">Aktuelle Karte</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalCards">5</div>
+                        <div class="stat-label">Gesamt</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="currentTopic">TRANSFER</div>
+                        <div class="stat-label">Aufgabentyp</div>
+                    </div>
+                </div>
+            `;
+            
+            updateTopicDisplay();
+            showCard();
+            updateProgress();
+        }
+
+        function showFinalCompletion() {
+            const container = document.getElementById('cardContainer');
+            let nextButton = '';
+            
+            if (currentTopic.includes('Advanced')) {
+                const baseTopic = currentTopic.replace('Advanced', '');
+                nextButton = `<button class="btn btn-primary" onclick="loadTransfer('${baseTopic}')" style="margin: 10px;">🚀 Transfer-Aufgaben</button>`;
+            }
+            
+            container.innerHTML = `
+                <div class="completion-message">
+                    <h2>🏆 Abschnitt abgeschlossen!</h2>
+                    <p>Hervorragend! Du hast alle Aufgaben gemeistert!</p>
+                    <div style="margin-top: 20px;">
+                        ${nextButton}
+                        <button class="btn btn-success" onclick="showTopics()" style="margin: 10px;">📚 Neues Thema wählen</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showTopics() {
+            document.getElementById('topicSelector').style.display = 'block';
+            document.getElementById('cardContainer').style.display = 'none';
+            currentTopic = '';
+            isExamMode = false;
+            document.getElementById('cardContainer').classList.remove('exam-mode');
+            updateProgress();
+            updateTopicButtons();
+        }
+
+        function updateTopicButtons() {
+            // Topics are independent - no visual completion tracking needed
+            // Each topic can be started fresh anytime
+        }
+
+        function startExam() {
+            isExamMode = true;
+            examScore = 0;
+            examAnswers = [];
+            currentCardIndex = 0;
+            examTimeLeft = 1200; // 20 minutes
+            examStartTime = Date.now();
+            
+            // Generate exam questions with different types
+            allQuestions = generateExamQuestions();
+            currentTopic = 'exam';
+            
+            document.getElementById('topicSelector').style.display = 'none';
+            document.getElementById('cardContainer').style.display = 'block';
+            document.getElementById('cardContainer').classList.add('exam-mode');
+            
+            startExamTimer();
+            showExamQuestion();
+            updateProgress();
+        }
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function generateExamQuestions() {
+            const examQuestions = [
+                // Multiple Choice Questions
+                {
+                    type: 'multiple-choice',
+                    question: 'Welcher Morse-Code steht für den Buchstaben "A"?',
+                    options: ['.-', '-.', '...', '---'],
+                    correct: 0,
+                    topic: 'morse'
+                },
+                {
+                    type: 'multiple-choice',
+                    question: 'Was bedeutet "EAN" in EAN-13?',
+                    options: ['European Article Number', 'Electronic Article Number', 'European Access Number', 'Electronic Access Number'],
+                    correct: 0,
+                    topic: 'barcode'
+                },
+                {
+                    type: 'multiple-choice',
+                    question: 'Wie viele Positionsmarkierungen hat ein QR-Code?',
+                    options: ['2', '3', '4', '5'],
+                    correct: 1,
+                    topic: 'qrcode'
+                },
+                {
+                    type: 'multiple-choice',
+                    question: 'Welches Notsignal wird im Morse-Code verwendet?',
+                    options: ['HELP', 'SOS', 'MAYDAY', 'EMERGENCY'],
+                    correct: 1,
+                    topic: 'morse'
+                },
+                {
+                    type: 'multiple-choice',
+                    question: 'Welche Fehlerkorrektur-Stufen gibt es bei QR-Codes?',
+                    options: ['A, B, C, D', 'L, M, Q, H', '1, 2, 3, 4', 'Low, Mid, High, Max'],
+                    correct: 1,
+                    topic: 'qrcode'
+                },
+                
+                // True/False Questions
+                {
+                    type: 'true-false',
+                    question: 'Ein Strich im Morse-Code ist dreimal so lang wie ein Punkt.',
+                    correct: true,
+                    topic: 'morse'
+                },
+                {
+                    type: 'true-false',
+                    question: 'QR-Codes können nur URLs speichern.',
+                    correct: false,
+                    topic: 'qrcode'
+                },
+                {
+                    type: 'true-false',
+                    question: 'Barcodes können auch bei teilweiser Beschädigung noch gelesen werden.',
+                    correct: true,
+                    topic: 'barcode'
+                },
+                
+                // Matching Questions
+                {
+                    type: 'matching',
+                    question: 'Ordne die Morse-Codes den Buchstaben zu:',
+                    pairs: [
+                        { left: 'E', right: '.' },
+                        { left: 'T', right: '-' },
+                        { left: 'S', right: '...' },
+                        { left: 'O', right: '---' }
+                    ],
+                    topic: 'morse'
+                },
+                {
+                    type: 'matching',
+                    question: 'Ordne die QR-Code-Begriffe den Erklärungen zu:',
+                    pairs: [
+                        { left: 'Finder Pattern', right: 'Positionsmarkierungen' },
+                        { left: 'Reed-Solomon', right: 'Fehlerkorrektur' },
+                        { left: 'Masking', right: 'Strukturoptimierung' },
+                        { left: 'Version', right: 'Größenangabe' }
+                    ],
+                    topic: 'qrcode'
+                },
+                
+                // Fill in the blank
+                {
+                    type: 'fill-blank',
+                    question: 'SOS wird im Morse-Code als ___ ___ ___ gesendet.',
+                    blanks: ['...', '---', '...'],
+                    topic: 'morse'
+                },
+                {
+                    type: 'fill-blank',
+                    question: 'Ein EAN-13 Code hat ___ Stellen, wobei die letzte eine ___ ist.',
+                    blanks: ['13', 'Prüfziffer'],
+                    topic: 'barcode'
+                },
+                
+                // Ordering Questions
+                {
+                    type: 'ordering',
+                    question: 'Bringe die Schritte der Barcode-Erstellung in die richtige Reihenfolge:',
+                    items: [
+                        'Produktcode festlegen',
+                        'Prüfziffer berechnen',
+                        'Code in Striche umwandeln',
+                        'Barcode drucken'
+                    ],
+                    topic: 'barcode'
+                },
+                
+                // More questions...
+                {
+                    type: 'multiple-choice',
+                    question: 'Welche Technologie wird zum Lesen von Barcodes verwendet?',
+                    options: ['Laser oder Kamera', 'Nur Laser', 'Nur Kamera', 'Magnetfeld'],
+                    correct: 0,
+                    topic: 'barcode'
+                },
+                {
+                    type: 'true-false',
+                    question: 'Morse-Code kann nur akustisch übertragen werden.',
+                    correct: false,
+                    topic: 'morse'
+                },
+                {
+                    type: 'multiple-choice',
+                    question: 'Was ist ein Micro-QR-Code?',
+                    options: ['Ein sehr kleiner QR-Code', 'Ein QR-Code für Mikrochips', 'Ein QR-Code mit weniger Daten', 'Ein QR-Code ohne Fehlerkorrektur'],
+                    correct: 0,
+                    topic: 'qrcode'
+                },
+                {
+                    type: 'fill-blank',
+                    question: 'Der Morse-Code wurde von ___ um das Jahr ___ erfunden.',
+                    blanks: ['Samuel Morse', '1835'],
+                    topic: 'morse'
+                },
+                {
+                    type: 'multiple-choice',
+                    question: 'Welcher Barcode-Typ wird hauptsächlich im Einzelhandel verwendet?',
+                    options: ['Code-128', 'EAN-13', 'QR-Code', 'PDF417'],
+                    correct: 1,
+                    topic: 'barcode'
+                },
+                {
+                    type: 'true-false',
+                    question: 'QR-Codes können bis zu 4.296 alphanumerische Zeichen speichern.',
+                    correct: true,
+                    topic: 'qrcode'
+                },
+                {
+                    type: 'multiple-choice',
+                    question: 'Wie werden Wörter im Morse-Code getrennt?',
+                    options: ['Durch kurze Pausen', 'Durch lange Pausen', 'Durch Punkte', 'Durch Striche'],
+                    correct: 1,
+                    topic: 'morse'
+                }
+            ];
+            
+            return shuffleArray(examQuestions).slice(0, 20);
+        }
+
+        function startExamTimer() {
+            examTimer = setInterval(() => {
+                examTimeLeft--;
+                updateTimerDisplay();
+                
+                if (examTimeLeft <= 0) {
+                    clearInterval(examTimer);
+                    showExamResults();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(examTimeLeft / 60);
+            const seconds = examTimeLeft % 60;
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            const timerEl = document.getElementById('examTimer');
+            if (timerEl) {
+                timerEl.textContent = timeString;
+                
+                // Warning colors
+                if (examTimeLeft <= 60) {
+                    timerEl.style.color = '#dc3545';
+                    timerEl.style.fontWeight = 'bold';
+                } else if (examTimeLeft <= 300) {
+                    timerEl.style.color = '#ffc107';
+                }
+            }
+        }
+
+        function showExamQuestion() {
+            const question = allQuestions[currentCardIndex];
+            let questionHTML = '';
+            
+            // Timer and progress header
+            const minutes = Math.floor(examTimeLeft / 60);
+            const seconds = examTimeLeft % 60;
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            questionHTML = `
+                <div style="background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; padding: 15px; margin: -30px -30px 20px -30px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>Prüfung</strong> - Frage ${currentCardIndex + 1}/20
+                    </div>
+                    <div style="font-size: 1.2rem; font-weight: bold;" id="examTimer">${timeString}</div>
+                </div>
+            `;
+            
+            switch (question.type) {
+                case 'multiple-choice':
+                    questionHTML += `
+                        <div class="exam-question">
+                            <h3>${question.question}</h3>
+                            <div class="exam-options">
+                                ${question.options.map((option, index) => `
+                                    <button class="exam-option" onclick="selectAnswer(${index})" data-index="${index}">
+                                        ${String.fromCharCode(65 + index)}) ${option}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'true-false':
+                    questionHTML += `
+                        <div class="exam-question">
+                            <h3>${question.question}</h3>
+                            <div class="exam-options">
+                                <button class="exam-option" onclick="selectAnswer(true)" data-answer="true">✓ Richtig</button>
+                                <button class="exam-option" onclick="selectAnswer(false)" data-answer="false">✗ Falsch</button>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'matching':
+                    const shuffledRight = shuffleArray([...question.pairs.map(p => p.right)]);
+                    questionHTML += `
+                        <div class="exam-question">
+                            <h3>${question.question}</h3>
+                            <p style="color: #666; margin-bottom: 15px;">Klicke zuerst auf einen Begriff links, dann auf die passende Antwort rechts.</p>
+                            <div class="matching-container">
+                                <div class="matching-left">
+                                    ${question.pairs.map((pair, index) => `
+                                        <div class="matching-item" onclick="selectLeftItem(this)" data-left="${index}">${pair.left}</div>
+                                    `).join('')}
+                                </div>
+                                <div class="matching-right">
+                                    ${shuffledRight.map((right, index) => `
+                                        <div class="matching-item matching-option" onclick="selectRightItem(this, '${right}')" data-right="${right}">${right}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'fill-blank':
+                    const questionParts = question.question.split('___');
+                    questionHTML += `
+                        <div class="exam-question">
+                            <h3>Fülle die Lücken aus:</h3>
+                            <div class="fill-blank-question">
+                                ${questionParts.map((part, index) => 
+                                    index < questionParts.length - 1 ? 
+                                    `${part}<input type="text" class="blank-input" data-index="${index}" placeholder="..." onchange="checkFillBlank()">` : 
+                                    part
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'ordering':
+                    const shuffledItems = shuffleArray([...question.items]);
+                    questionHTML += `
+                        <div class="exam-question">
+                            <h3>${question.question}</h3>
+                            <p style="color: #666; margin-bottom: 15px;">Ziehe die Elemente in die richtige Reihenfolge.</p>
+                            <div class="ordering-container">
+                                <div class="ordering-items" id="orderingItems">
+                                    ${shuffledItems.map((item, index) => `
+                                        <div class="ordering-item" draggable="true" data-item="${item}" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)">${item}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            questionHTML += `
+                <div class="exam-navigation" style="margin-top: 30px; text-align: center;">
+                    <button class="btn btn-secondary" onclick="previousExamQuestion()" ${currentCardIndex === 0 ? 'disabled' : ''}>⬅️ Vorherige</button>
+                    <button class="btn btn-primary" onclick="nextExamQuestion()" id="nextExamBtn" ${!examAnswers[currentCardIndex] ? 'disabled' : ''}>
+                        ${currentCardIndex === allQuestions.length - 1 ? '🏁 Prüfung beenden' : 'Nächste ➡️'}
+                    </button>
+                    <button class="btn btn-secondary" onclick="showTopics()" style="background: #dc3545; color: white; margin-left: 15px;">🚪 Prüfung verlassen</button>
+                </div>
+            `;
+            
+            document.getElementById('cardContainer').innerHTML = questionHTML;
+            
+            // Initialize drag and drop for ordering questions
+            if (question.type === 'ordering') {
+                initializeOrdering();
+            }
+            
+            // Reset matching selections for new question
+            if (question.type === 'matching') {
+                selectedLeftItem = null;
+                matchingSelections = {};
+            }
+            
+            updateTimerDisplay();
+        }
+
+        function selectAnswer(answer) {
+            const question = allQuestions[currentCardIndex];
+            let isCorrect = false;
+            
+            if (question.type === 'multiple-choice') {
+                isCorrect = answer === question.correct;
+            } else if (question.type === 'true-false') {
+                isCorrect = answer === question.correct;
+            }
+            
+            examAnswers[currentCardIndex] = {
+                answer: answer,
+                correct: isCorrect,
+                type: question.type
+            };
+            
+            // Visual feedback - only show selection, not correctness
+            const options = document.querySelectorAll('.exam-option');
+            options.forEach((option, index) => {
+                option.disabled = true;
+                option.style.opacity = '0.6';
+                
+                if (question.type === 'multiple-choice' && index === answer) {
+                    option.style.background = '#4facfe';
+                    option.style.color = 'white';
+                    option.style.opacity = '1';
+                } else if (question.type === 'true-false') {
+                    const optionAnswer = option.dataset.answer === 'true';
+                    if (optionAnswer === answer) {
+                        option.style.background = '#4facfe';
+                        option.style.color = 'white';
+                        option.style.opacity = '1';
+                    }
+                }
+            });
+            
+            document.getElementById('nextExamBtn').disabled = false;
+            updateProgress(); // Update progress when answer is selected
+        }
+
+        let selectedLeftItem = null;
+        let matchingSelections = {};
+
+        function selectLeftItem(element) {
+            // Remove previous selection
+            document.querySelectorAll('.matching-left .matching-item').forEach(item => {
+                item.classList.remove('selected');
+                item.style.background = '#f8f9fa';
+                item.style.color = '#333';
+            });
+            
+            // Select current item
+            element.classList.add('selected');
+            element.style.background = '#4facfe';
+            element.style.color = 'white';
+            selectedLeftItem = element;
+        }
+
+        function selectRightItem(element, value) {
+            if (!selectedLeftItem) {
+                alert('Bitte wähle zuerst einen Begriff auf der linken Seite!');
+                return;
+            }
+            
+            const leftIndex = selectedLeftItem.dataset.left;
+            
+            // Store the matching
+            matchingSelections[leftIndex] = value;
+            
+            // Visual feedback - neutral color
+            element.style.background = '#6c757d';
+            element.style.color = 'white';
+            element.style.pointerEvents = 'none';
+            
+            selectedLeftItem.style.background = '#6c757d';
+            selectedLeftItem.style.pointerEvents = 'none';
+            
+            // Clear selection
+            selectedLeftItem = null;
+            
+            // Check if all pairs are matched
+            checkMatchingComplete();
+        }
+
+        function checkMatchingComplete() {
+            const question = allQuestions[currentCardIndex];
+            
+            if (Object.keys(matchingSelections).length === question.pairs.length) {
+                // Calculate score
+                let correctCount = 0;
+                question.pairs.forEach((pair, index) => {
+                    if (matchingSelections[index] === pair.right) {
+                        correctCount++;
+                    }
+                });
+                
+                const isCorrect = correctCount === question.pairs.length;
+                
+                examAnswers[currentCardIndex] = {
+                    answer: {...matchingSelections},
+                    correct: isCorrect,
+                    type: 'matching',
+                    score: correctCount / question.pairs.length
+                };
+                
+                document.getElementById('nextExamBtn').disabled = false;
+            updateProgress(); // Update progress when answer is selected
+            }
+        }
+
+        function checkFillBlank() {
+            const question = allQuestions[currentCardIndex];
+            const inputs = document.querySelectorAll('.blank-input');
+            const answers = Array.from(inputs).map(input => input.value.trim());
+            
+            // Check if all fields are filled
+            const allFilled = answers.every(answer => answer.length > 0);
+            
+            if (allFilled) {
+                let correctCount = 0;
+                answers.forEach((answer, index) => {
+                    if (answer.toLowerCase() === question.blanks[index].toLowerCase()) {
+                        correctCount++;
+                    }
+                    // Neutral styling - no color feedback
+                    inputs[index].style.background = '#f8f9fa';
+                    inputs[index].style.borderColor = '#6c757d';
+                });
+                
+                const isCorrect = correctCount === question.blanks.length;
+                
+                examAnswers[currentCardIndex] = {
+                    answer: answers,
+                    correct: isCorrect,
+                    type: 'fill-blank',
+                    score: correctCount / question.blanks.length
+                };
+                
+                inputs.forEach(input => input.disabled = true);
+                document.getElementById('nextExamBtn').disabled = false;
+            updateProgress(); // Update progress when answer is selected
+            }
+        }
+
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.style.opacity = '0.5';
+        }
+
+        function handleDragEnd(e) {
+            e.target.style.opacity = '';
+            checkOrderingComplete();
+        }
+
+        function checkOrderingComplete() {
+            const question = allQuestions[currentCardIndex];
+            const items = Array.from(document.querySelectorAll('.ordering-item')).map(item => item.dataset.item);
+            
+            let correctCount = 0;
+            items.forEach((item, index) => {
+                if (item === question.items[index]) {
+                    correctCount++;
+                }
+            });
+            
+            const isCorrect = correctCount === question.items.length;
+            
+            examAnswers[currentCardIndex] = {
+                answer: items,
+                correct: isCorrect,
+                type: 'ordering',
+                score: correctCount / question.items.length
+            };
+            
+            document.getElementById('nextExamBtn').disabled = false;
+            updateProgress(); // Update progress when answer is selected
+        }
+
+        function initializeOrdering() {
+            const container = document.getElementById('orderingItems');
+            
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.target.classList.contains('ordering-item') && e.target !== draggedElement) {
+                    const allItems = Array.from(container.children);
+                    const draggedIndex = allItems.indexOf(draggedElement);
+                    const targetIndex = allItems.indexOf(e.target);
+                    
+                    if (draggedIndex < targetIndex) {
+                        container.insertBefore(draggedElement, e.target.nextSibling);
+                    } else {
+                        container.insertBefore(draggedElement, e.target);
+                    }
+                }
+            });
+        }
+
+        function nextExamQuestion() {
+            if (currentCardIndex < allQuestions.length - 1) {
+                currentCardIndex++;
+                showExamQuestion();
+                updateProgress(); // Update progress when moving to next question
+            } else {
+                clearInterval(examTimer);
+                showExamResults();
+            }
+        }
+
+        function previousExamQuestion() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                showExamQuestion();
+            }
+        }
+
+        function showExamResults() {
+            // Calculate detailed score
+            let totalScore = 0;
+            let correctAnswers = 0;
+            
+            examAnswers.forEach(answer => {
+                if (answer && answer.correct) {
+                    correctAnswers++;
+                    totalScore += (answer.score || 1);
+                } else if (answer && answer.score) {
+                    totalScore += answer.score;
+                }
+            });
+            
+            const percentage = Math.round((totalScore / examAnswers.length) * 100);
+            let grade, gradeClass, message;
+            
+            if (percentage >= 90) {
+                grade = "Sehr gut (1)";
+                gradeClass = "grade-excellent";
+                message = "Hervorragend! Du beherrschst das Thema perfekt!";
+            } else if (percentage >= 75) {
+                grade = "Gut (2)";
+                gradeClass = "grade-good";
+                message = "Sehr gut! Du hast ein solides Verständnis!";
+            } else if (percentage >= 60) {
+                grade = "Befriedigend (3)";
+                gradeClass = "grade-satisfactory";
+                message = "Gut gemacht! Mit etwas Übung wirst du noch besser!";
+            } else {
+                grade = "Verbesserung nötig";
+                gradeClass = "grade-needs-improvement";
+                message = "Nicht aufgeben! Wiederhole die Grundlagen und versuche es erneut!";
+            }
+            
+            // Calculate time taken
+            const timeSpent = Math.floor((Date.now() - examStartTime) / 1000);
+            const minutesSpent = Math.floor(timeSpent / 60);
+            const secondsSpent = timeSpent % 60;
+            
+            // Generate detailed results
+            let detailedResults = '';
+            allQuestions.forEach((question, index) => {
+                const answer = examAnswers[index];
+                const isCorrect = answer && answer.correct;
+                
+                detailedResults += `
+                    <div class="result-item ${isCorrect ? 'correct' : 'incorrect'}">
+                        <div class="result-header">
+                            <span class="result-number">Frage ${index + 1}</span>
+                            <span class="result-status">${isCorrect ? '✓' : '✗'}</span>
+                        </div>
+                        <div class="result-question">${question.question}</div>
+                        <div class="result-answer">
+                            <strong>Deine Antwort:</strong> ${formatUserAnswer(answer, question)}
+                        </div>
+                        <div class="result-correct">
+                            <strong>Richtige Antwort:</strong> ${formatCorrectAnswer(question)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            const container = document.getElementById('cardContainer');
+            container.innerHTML = `
+                <div class="exam-results">
+                    <h2>🎯 Prüfungsergebnis</h2>
+                    
+                    <div class="results-summary">
+                        <div class="score-display">${correctAnswers}/${examAnswers.length}</div>
+                        <div class="score-display" style="font-size: 2rem;">${percentage}%</div>
+                        <div class="grade-display ${gradeClass}">${grade}</div>
+                        <p style="margin: 20px 0; font-size: 1.1rem;">${message}</p>
+                        
+                        <div class="time-info">
+                            <strong>Benötigte Zeit:</strong> ${minutesSpent}:${secondsSpent.toString().padStart(2, '0')} Minuten
+                        </div>
+                    </div>
+                    
+                    <div class="results-actions" style="margin: 20px 0;">
+                        <button class="btn btn-secondary" onclick="toggleDetailedResults()" id="toggleBtn">📊 Detaillierte Ergebnisse anzeigen</button>
+                    </div>
+                    
+                    <div class="detailed-results" id="detailedResults" style="display: none;">
+                        <h3>Detaillierte Auswertung:</h3>
+                        ${detailedResults}
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <button class="btn btn-primary" onclick="startExam()" style="margin: 10px;">🔄 Neue Prüfung</button>
+                        <button class="btn btn-success" onclick="showTopics()" style="margin: 10px;">📚 Zurück zum Menü</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatUserAnswer(answer, question) {
+            if (!answer) return 'Nicht beantwortet';
+            
+            switch (question.type) {
+                case 'multiple-choice':
+                    return question.options[answer.answer] || 'Ungültig';
+                case 'true-false':
+                    return answer.answer ? 'Richtig' : 'Falsch';
+                case 'matching':
+                    return 'Zuordnung erstellt';
+                case 'fill-blank':
+                    return answer.answer.join(', ');
+                case 'ordering':
+                    return answer.answer.join(' → ');
+                default:
+                    return 'Unbekannt';
+            }
+        }
+
+        function formatCorrectAnswer(question) {
+            switch (question.type) {
+                case 'multiple-choice':
+                    return question.options[question.correct];
+                case 'true-false':
+                    return question.correct ? 'Richtig' : 'Falsch';
+                case 'matching':
+                    return question.pairs.map(p => `${p.left} → ${p.right}`).join(', ');
+                case 'fill-blank':
+                    return question.blanks.join(', ');
+                case 'ordering':
+                    return question.items.join(' → ');
+                default:
+                    return 'Unbekannt';
+            }
+        }
+
+        function toggleDetailedResults() {
+            const details = document.getElementById('detailedResults');
+            const btn = document.getElementById('toggleBtn');
+            
+            if (details.style.display === 'none') {
+                details.style.display = 'block';
+                btn.textContent = '📊 Detaillierte Ergebnisse ausblenden';
+            } else {
+                details.style.display = 'none';
+                btn.textContent = '📊 Detaillierte Ergebnisse anzeigen';
+            }
+        }
+
+        function exitExam() {
+            if (confirm('Möchtest du die Prüfung wirklich verlassen? Dein Fortschritt geht verloren.')) {
+                // Stop timer
+                if (examTimer) {
+                    clearInterval(examTimer);
+                    examTimer = null;
+                }
+                
+                // Reset exam state
+                isExamMode = false;
+                examScore = 0;
+                examAnswers = [];
+                currentCardIndex = 0;
+                examTimeLeft = 1200;
+                
+                // Return to topic selection
+                showTopics();
+            }
+        }
+
+        function updateProgress() {
+            if (isExamMode) {
+                // Show exam progress
+                const answeredQuestions = examAnswers.filter(answer => answer !== undefined).length;
+                const totalExamQuestions = allQuestions.length;
+                const progressPercent = (answeredQuestions / totalExamQuestions) * 100;
+                
+                document.getElementById('progressFill').style.width = progressPercent + '%';
+                document.getElementById('progressText').textContent = `Prüfung: ${answeredQuestions}/${totalExamQuestions} Fragen beantwortet`;
+                document.getElementById('topicProgress').textContent = 'Prüfungsmodus aktiv';
+            } else if (currentTopic) {
+                // Show current topic progress only
+                const currentCard = currentCardIndex + 1;
+                const totalCards = allQuestions.length;
+                const progressPercent = (currentCard / totalCards) * 100;
+                
+                document.getElementById('progressFill').style.width = progressPercent + '%';
+                document.getElementById('progressText').textContent = `Aktuelles Thema: ${currentCard}/${totalCards} Karten`;
+                
+                const topicNames = {
+                    'morse': 'Morse-Codes',
+                    'barcode': 'Barcodes', 
+                    'qrcode': 'QR-Codes',
+                    'morseAdvanced': 'Morse - Schwierig',
+                    'barcodeAdvanced': 'Barcode - Schwierig',
+                    'qrcodeAdvanced': 'QR-Code - Schwierig',
+                    'morseTransfer': 'Morse - Transfer',
+                    'barcodeTransfer': 'Barcode - Transfer',
+                    'qrcodeTransfer': 'QR-Code - Transfer'
+                };
+                document.getElementById('topicProgress').textContent = topicNames[currentTopic] || 'Aktuelles Thema';
+            } else {
+                // No topic selected
+                document.getElementById('progressFill').style.width = '0%';
+                document.getElementById('progressText').textContent = 'Wähle ein Thema zum Starten';
+                document.getElementById('topicProgress').textContent = 'Bereit zum Lernen';
+            }
+        }
+
+        function updateTopicDisplay() {
+            const topicNames = {
+                'morse': 'Morse-Codes',
+                'barcode': 'Barcodes',
+                'qrcode': 'QR-Codes',
+                'morseAdvanced': 'Morse - Schwierig',
+                'barcodeAdvanced': 'Barcode - Schwierig',
+                'qrcodeAdvanced': 'QR-Code - Schwierig',
+                'morseTransfer': 'Morse - Transfer',
+                'barcodeTransfer': 'Barcode - Transfer',
+                'qrcodeTransfer': 'QR-Code - Transfer',
+                'exam': 'Prüfungsmodus'
+            };
+            
+            document.getElementById('topicProgress').textContent = topicNames[currentTopic] || 'Wähle ein Thema';
+        }
+
+        function updateStats() {
+            document.getElementById('currentCardNum').textContent = currentCardIndex + 1;
+            document.getElementById('totalCards').textContent = allQuestions.length;
+            
+            const topicNames = {
+                'morse': 'MORSE',
+                'barcode': 'BARCODE',
+                'qrcode': 'QR-CODE',
+                'morseAdvanced': 'MORSE+',
+                'barcodeAdvanced': 'BARCODE+',
+                'qrcodeAdvanced': 'QR-CODE+',
+                'morseTransfer': 'MORSE-T',
+                'barcodeTransfer': 'BARCODE-T',
+                'qrcodeTransfer': 'QR-CODE-T',
+                'exam': 'PRÜFUNG'
+            };
+            
+            document.getElementById('currentTopic').textContent = topicNames[currentTopic] || '-';
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (document.getElementById('cardContainer').style.display === 'block') {
+                switch(event.key) {
+                    case 'ArrowLeft':
+                        previousCard();
+                        break;
+                    case 'ArrowRight':
+                        nextCard();
+                        break;
+                    case ' ':
+                    case 'Enter':
+                        event.preventDefault();
+                        flipCard();
+                        break;
+                }
+            }
+        });
+
+        // Click card to flip
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.card')) {
+                flipCard();
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'964c4cf33771d8ed',t:'MTc1MzQ1MzI1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

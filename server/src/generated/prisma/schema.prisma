@@ -92,14 +92,15 @@ model Topic {
 }
 
 model Lesson {
-  id          String   @id @default(uuid())
+  id          String           @id @default(uuid())
   name        String
   description String?
-  order       Int      @default(0)
+  order       Int              @default(0)
   topicId     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  topic       Topic    @relation(fields: [topicId], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  topic       Topic            @relation(fields: [topicId], references: [id])
+  materials   LessonMaterial[]
 }
 
 model GroupAssignment {
@@ -122,4 +123,23 @@ model Note {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   author    User     @relation(fields: [authorId], references: [id])
+}
+
+model Material {
+  id              String           @id @default(uuid())
+  fileName        String
+  filePath        String
+  type            String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lessonMaterials LessonMaterial[]
+}
+
+model LessonMaterial {
+  id         String   @id @default(uuid())
+  lessonId   String
+  materialId String
+  createdAt  DateTime @default(now())
+  lesson     Lesson   @relation(fields: [lessonId], references: [id])
+  material   Material @relation(fields: [materialId], references: [id])
 }

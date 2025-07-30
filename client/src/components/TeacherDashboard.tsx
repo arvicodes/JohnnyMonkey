@@ -342,7 +342,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // Falls kein Quiz, prüfe auf Material
     const materials = await fetchLessonMaterials(lessonId);
     if (materials.length > 0) {
-      const material = materials[0]; // Öffne das erste Material
+      const lessonMaterial = materials[0]; // Öffne das erste Material
+      const material = lessonMaterial.material; // Access the material property
+      
+      if (!material || !material.filePath) {
+        alert('Material-Daten sind unvollständig.');
+        return;
+      }
+      
       const ext = material.filePath.split('.').pop()?.toLowerCase();
       
       // Verwende den Server-Port (3005) für HTML-Dateien

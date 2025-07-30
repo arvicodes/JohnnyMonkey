@@ -90,7 +90,6 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [availableFiles, setAvailableFiles] = useState<FileInfo[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   
@@ -131,27 +130,10 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     { name: 'Braun', value: '#795548' }
   ];
 
-  // Mock-Daten für verfügbare Dateien (später durch API-Aufruf ersetzen)
-  const mockAvailableFiles: FileInfo[] = [
-    { name: '3D-Druck-Intro.html', path: '/material/3D-Druck-Intro.html', size: 2048, type: 'html' },
-    { name: 'Mathematik-Übung.pdf', path: '/material/Mathematik-Übung.pdf', size: 1536, type: 'pdf' },
-    { name: 'Physik-Experiment.docx', path: '/material/Physik-Experiment.docx', size: 3072, type: 'docx' }
-  ];
 
-  const handleMaterialDialogOpen = async () => {
+
+  const handleMaterialDialogOpen = () => {
     setMaterialDialogOpen(true);
-    try {
-      const response = await fetch('/api/materials/files');
-      if (response.ok) {
-        const files = await response.json();
-        setAvailableFiles(files);
-      } else {
-        setAvailableFiles(mockAvailableFiles);
-      }
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      setAvailableFiles(mockAvailableFiles);
-    }
   };
 
   const handleMaterialDialogClose = () => {
@@ -208,8 +190,6 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
         const result = await response.json();
         showSnackbar(result.message, 'success');
         handleMaterialDialogClose();
-        // Aktualisiere die verfügbaren Dateien
-        handleMaterialDialogOpen();
       } else {
         const error = await response.json();
         showSnackbar(error.error || 'Fehler beim Hochladen', 'error');
@@ -533,26 +513,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeAvailableFile = async (fileName: string) => {
-    if (window.confirm(`Möchten Sie die Datei "${fileName}" wirklich löschen?`)) {
-      try {
-        const response = await fetch(`/api/materials/files/${encodeURIComponent(fileName)}`, {
-          method: 'DELETE'
-        });
 
-        if (response.ok) {
-          showSnackbar(`Datei "${fileName}" erfolgreich gelöscht`, 'success');
-          // Aktualisiere die verfügbaren Dateien
-          handleMaterialDialogOpen();
-        } else {
-          const error = await response.json();
-          showSnackbar(error.error || 'Fehler beim Löschen', 'error');
-        }
-      } catch (error) {
-        showSnackbar('Fehler beim Löschen der Datei', 'error');
-      }
-    }
-  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -1067,7 +1028,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
         <DialogContent>
           <Grid container spacing={2}>
             {/* Datei-Upload Bereich */}
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12}>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
                 Neue Dateien hochladen
               </Typography>
@@ -1137,42 +1098,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
               )}
             </Grid>
 
-            {/* Verfügbare Dateien */}
-            <Grid item xs={12} md={6}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Verfügbare Dateien ({availableFiles.length})
-              </Typography>
-              
-              {availableFiles.length > 0 ? (
-                <List dense>
-                  {availableFiles.map((file, index) => (
-                    <ListItem key={index} sx={{ bgcolor: '#f5f5f5', mb: 1, borderRadius: 1 }}>
-                      <ListItemIcon>
-                        <FileIcon />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={file.name}
-                        secondary={formatFileSize(file.size)}
-                      />
-                      <Box sx={{ ml: 'auto' }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => removeAvailableFile(file.name)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-                  <FolderIcon sx={{ fontSize: 48, mb: 1 }} />
-                  <Typography>Keine Dateien verfügbar</Typography>
-                </Box>
-              )}
-            </Grid>
+
           </Grid>
         </DialogContent>
         <DialogActions>

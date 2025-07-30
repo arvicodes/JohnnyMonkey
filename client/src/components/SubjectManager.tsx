@@ -865,7 +865,7 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
   const handleLessonClick = () => {
     if (lessonMaterials.length > 0) {
       // Öffne das erste Material in einem neuen Tab
-      const materialPath = lessonMaterials[0].filePath;
+      const materialPath = lessonMaterials[0].material.filePath;
       const ext = materialPath.split('.').pop()?.toLowerCase();
       
       // Verwende den Server-Port (3005) für HTML-Dateien
@@ -894,7 +894,7 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
   const handleLessonRightClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (lessonMaterials.length > 0) {
-      if (window.confirm(`Möchten Sie das Material "${lessonMaterials[0].fileName}" von dieser Lesson entfernen?`)) {
+              if (window.confirm(`Möchten Sie das Material "${lessonMaterials[0].material.fileName}" von dieser Lesson entfernen?`)) {
         fetch(`/api/materials/lesson/${lesson.id}/${lessonMaterials[0].id}`, {
           method: 'DELETE',
         }).then(() => {
@@ -1902,7 +1902,17 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
       </DndContext>
 
       {/* Dialogs */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.stopPropagation();
+          }
+        }}
+      >
         <DialogTitle>{editSubject ? 'Fach bearbeiten' : 'Neues Fach'}</DialogTitle>
         <DialogContent>
           <TextField
@@ -1963,7 +1973,17 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openBlockDialog} onClose={handleCloseBlockDialog} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={openBlockDialog} 
+        onClose={handleCloseBlockDialog} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.stopPropagation();
+          }
+        }}
+      >
         <DialogTitle>{editBlock ? 'Block bearbeiten' : 'Neuer Block'}</DialogTitle>
         <DialogContent>
           <TextField
@@ -2024,7 +2044,17 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openUnitDialog} onClose={handleCloseUnitDialog} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={openUnitDialog} 
+        onClose={handleCloseUnitDialog} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.stopPropagation();
+          }
+        }}
+      >
         <DialogTitle>{editUnit ? 'Unterrichtsreihe bearbeiten' : 'Neue Unterrichtsreihe'}</DialogTitle>
         <DialogContent>
           <TextField
@@ -2085,7 +2115,17 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openTopicDialog} onClose={handleCloseTopicDialog} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={openTopicDialog} 
+        onClose={handleCloseTopicDialog} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.stopPropagation();
+          }
+        }}
+      >
         <DialogTitle>{editTopic ? 'Thema bearbeiten' : 'Neues Thema'}</DialogTitle>
         <DialogContent>
           <TextField
@@ -2146,7 +2186,17 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openLessonDialog} onClose={handleCloseLessonDialog} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={openLessonDialog} 
+        onClose={handleCloseLessonDialog} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.stopPropagation();
+          }
+        }}
+      >
         <DialogTitle>{editLesson ? 'Stunde bearbeiten' : 'Neue Stunde'}</DialogTitle>
         <DialogContent>
           <TextField

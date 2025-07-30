@@ -68,6 +68,28 @@ router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         res.status(500).json({ error: 'Server error' });
     }
 }));
+// Update a learning group
+router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { name } = req.body;
+        if (!name || name.trim() === '') {
+            return res.status(400).json({ error: 'Name ist erforderlich' });
+        }
+        const group = yield prisma.learningGroup.update({
+            where: { id: req.params.id },
+            data: { name: name.trim() },
+            include: {
+                teacher: true,
+                students: true
+            }
+        });
+        res.json(group);
+    }
+    catch (error) {
+        console.error('Error updating learning group:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+}));
 // Create a new learning group
 router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { name, teacherId } = req.body;

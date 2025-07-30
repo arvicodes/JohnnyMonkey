@@ -213,6 +213,22 @@ exports.Prisma.NoteScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.MaterialScalarFieldEnum = {
+  id: 'id',
+  fileName: 'fileName',
+  filePath: 'filePath',
+  type: 'type',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.LessonMaterialScalarFieldEnum = {
+  id: 'id',
+  lessonId: 'lessonId',
+  materialId: 'materialId',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -234,7 +250,9 @@ exports.Prisma.ModelName = {
   Topic: 'Topic',
   Lesson: 'Lesson',
   GroupAssignment: 'GroupAssignment',
-  Note: 'Note'
+  Note: 'Note',
+  Material: 'Material',
+  LessonMaterial: 'LessonMaterial'
 };
 
 /**

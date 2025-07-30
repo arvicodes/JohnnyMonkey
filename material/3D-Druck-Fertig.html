@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D-Druck Einstieg - Interaktive Lernseite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .timeline-item {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease;
+        }
+        
+        .timeline-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .flip-card {
+            background-color: transparent;
+            perspective: 1000px;
+        }
+        
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 12px;
+        }
+        
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .quiz-option {
+            transition: all 0.3s ease;
+        }
+        
+        .quiz-option:hover {
+            background-color: #e0f2fe;
+            transform: scale(1.02);
+        }
+        
+        .quiz-option.correct {
+            background-color: #c8e6c9;
+            border-color: #4caf50;
+        }
+        
+        .quiz-option.wrong {
+            background-color: #ffcdd2;
+            border-color: #f44336;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <h1 class="text-2xl font-bold text-gray-800">3D-Druck Einstieg</h1>
+                </div>
+                <nav class="hidden md:flex space-x-6">
+                    <a href="#geschichte" class="text-blue-600 hover:text-blue-800 font-medium">Geschichte</a>
+                    <a href="#komponenten" class="text-blue-600 hover:text-blue-800 font-medium">Komponenten</a>
+                    <a href="#vorgehen" class="text-blue-600 hover:text-blue-800 font-medium">Vorgehen</a>
+                    <a href="#projekte" class="text-blue-600 hover:text-blue-800 font-medium">Projekte</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="py-16 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-5xl font-bold text-gray-800 mb-6">3D-Druck</h2>
+            <p class="text-xl text-gray-600 mb-8">Entdecke die faszinierende Technologie, die aus digitalen Ideen echte Objekte macht</p>
+        </div>
+    </section>
+
+    <!-- Geschichte Timeline -->
+    <section id="geschichte" class="py-16 px-4 bg-white">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Die Geschichte des 3D-Drucks</h2>
+            
+            <div class="relative">
+                <div class="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-blue-300"></div>
+                
+                <!-- Timeline Items -->
+                <div class="timeline-item mb-12" data-year="1983">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="bg-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center font-bold text-lg">1983</div>
+                    </div>
+                    <div class="bg-gradient-to-r from-blue-100 to-purple-100 rounded-2xl p-6 mx-4 md:mx-12">
+                        <div class="flex flex-col md:flex-row items-center gap-6">
+                            <div class="w-full md:w-1/3">
+                                <div class="bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg p-4 text-white text-center shadow-lg">
+                                    <img src="https://cdn.elektroniknet.de/thumbs/media_uploads/images/1403519843-3-chuck-hullerfinder-des-3d-druckens-mit-stereolithografieteil-sla.jpg.650x366.webp" alt="Chuck Hull" class="rounded-lg w-full h-48 mx-auto mb-3 object-contain border-2 border-white bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="rounded-lg w-full h-48 mx-auto mb-3 bg-blue-200 flex items-center justify-center text-4xl border-2 border-white" style="display:none;">👨‍💼</div>
+                                    <h4 class="font-bold text-lg">Chuck Hull</h4>
+                                    <p class="text-sm opacity-90">Erfinder des 3D-Drucks</p>
+                                    <p class="text-xs mt-2">*1939 in Colorado</p>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-2/3">
+                                <h3 class="text-2xl font-bold mb-3 text-blue-800">Die Geburt des 3D-Drucks</h3>
+                                <p class="text-gray-700 mb-3"><strong>Chuck Hull</strong> erfindet die Stereolithographie - das erste 3D-Druckverfahren! Er druckte kleine Objekte aus flüssigem Kunstharz mit UV-Licht.</p>
+                                <div class="bg-yellow-100 p-3 rounded-lg">
+                                    <p class="text-sm"><strong>Fun Fact:</strong> Das erste 3D-gedruckte Objekt war ein kleiner schwarzer Becher! Hull testete damit seine SLA-1 Maschine.</p>
+                                    <div class="mt-2 p-4 bg-white rounded border">
+                                        <img src="https://de.3dsystems.com/sites/default/files/inline-images/1983_0.jpg" alt="Erster 3D-Druck" class="w-full h-40 object-contain rounded mb-3 bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="w-full h-40 bg-gray-200 rounded mb-3 flex items-center justify-center text-3xl" style="display:none;">☕</div>
+                                        <div class="text-center text-sm font-medium text-gray-700">Erster 3D-Druck der Welt (1983)</div>
+                                        <div class="text-center text-xs text-gray-500 mt-1">Chuck Hulls historischer schwarzer Becher</div>
+                                    </div>
+                                    <div class="mt-2 p-4 bg-white rounded border">
+                                        <img src="https://external-preview.redd.it/7x3An49_IcNy0Zir5KKEioNu3WufYGhJZoUL4zJl-WQ.png?format=pjpg&auto=webp&s=9f1f8a75f93c5250f6382b01045f8aca5d954352" alt="SLA-1 Maschine" class="w-full h-56 object-contain rounded-lg mb-3 bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="w-full h-56 bg-gray-200 rounded-lg mb-3 flex items-center justify-center text-5xl" style="display:none;">🖨️</div>
+                                        <div class="text-center">
+                                            <div class="text-base font-bold text-gray-800">SLA-1 Maschine</div>
+                                            <div class="text-sm text-gray-600">Erste kommerzielle 3D-Druckmaschine</div>
+                                            <div class="text-sm text-gray-500 mt-1">3D Systems, 1988 - Preis: $100.000</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item mb-12" data-year="1988">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="bg-green-500 text-white rounded-full w-16 h-16 flex items-center justify-center font-bold text-lg">1988</div>
+                    </div>
+                    <div class="bg-gradient-to-r from-green-100 to-blue-100 rounded-2xl p-6 mx-4 md:mx-12">
+                        <div class="flex flex-col md:flex-row-reverse items-center gap-6">
+                            <div class="w-full md:w-1/3">
+                                <div class="bg-white rounded-lg shadow-lg p-4 relative">
+                                    <img src="https://zongheng3d.com/wp-content/uploads/SLS-technology.jpg" alt="SLS Technologie Funktionsweise" class="rounded-lg w-full h-56 object-contain bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="rounded-lg w-full h-56 bg-gray-200 flex items-center justify-center text-5xl" style="display:none;">⚡</div>
+                                    <div class="text-center mt-3">
+                                        <div class="text-base font-bold text-gray-800 flex items-center justify-center gap-2">
+                                            SLS Technologie
+                                            <button onclick="toggleSLSHelp()" class="w-5 h-5 bg-blue-500 text-white rounded-full text-xs hover:bg-blue-600 flex items-center justify-center">?</button>
+                                        </div>
+                                        <div class="text-sm text-gray-600">Laser-Sintern von Pulver</div>
+                                        <div class="text-xs text-gray-500 mt-1">University of Texas, 1988</div>
+                                    </div>
+                                    
+                                    <!-- SLS Help Box -->
+                                    <div id="sls-help" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style="z-index: 100000;">
+                                        <div class="w-[95vw] max-w-[800px] bg-white border-2 border-blue-300 rounded-lg p-8 shadow-xl max-h-[85vh] overflow-y-auto">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <h4 class="font-bold text-blue-800 text-base">🔬 Wie funktioniert SLS?</h4>
+                                            <button onclick="toggleSLSHelp()" class="text-gray-500 hover:text-gray-700 text-xl leading-none">&times;</button>
+                                        </div>
+                                        
+                                        <div class="space-y-4 text-sm">
+                                            <div class="bg-blue-50 p-3 rounded">
+                                                <div class="font-semibold text-blue-800 mb-2">1. 🏗️ Pulverbett vorbereiten</div>
+                                                <div class="text-gray-700">Eine dünne Schicht Kunststoffpulver (meist Nylon) wird gleichmäßig auf der Bauplattform verteilt - wie Mehl sieben beim Backen!</div>
+                                            </div>
+                                            
+                                            <div class="bg-red-50 p-3 rounded">
+                                                <div class="font-semibold text-red-800 mb-2">2. ⚡ Laser schmilzt gezielt</div>
+                                                <div class="text-gray-700">Ein starker CO₂-Laser fährt über das Pulver und schmilzt nur die Stellen, wo das Objekt entstehen soll. Das Pulver wird zu festem Kunststoff!</div>
+                                            </div>
+                                            
+                                            <div class="bg-green-50 p-3 rounded">
+                                                <div class="font-semibold text-green-800 mb-2">3. 🔄 Schicht für Schicht</div>
+                                                <div class="text-gray-700">Die Plattform senkt sich um 0,1mm ab, neues Pulver wird aufgetragen und der Laser schmilzt die nächste Schicht. So entsteht das 3D-Objekt!</div>
+                                            </div>
+                                            
+                                            <div class="bg-purple-50 p-3 rounded">
+                                                <div class="font-semibold text-purple-800 mb-2">4. 🎁 Objekt freilegen</div>
+                                                <div class="text-gray-700">Nach dem Druck wird das fertige Objekt aus dem Pulverbett "ausgegraben". Das übrige Pulver kann wiederverwendet werden!</div>
+                                            </div>
+                                            
+                                            <div class="bg-yellow-50 p-3 rounded border-l-4 border-yellow-400">
+                                                <div class="font-semibold text-yellow-800 mb-2">💡 Warum ist SLS so cool?</div>
+                                                <div class="text-gray-700">
+                                                    • <strong>Keine Stützstrukturen nötig:</strong> Das Pulver stützt das Objekt<br>
+                                                    • <strong>Sehr stabile Teile:</strong> Perfekt für Funktionsteile<br>
+                                                    • <strong>Komplexe Geometrien:</strong> Auch ineinander verschachtelte Teile möglich<br>
+                                                    • <strong>Materialvielfalt:</strong> Nylon, Metall, Keramik, sogar Sand!
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="bg-gray-50 p-3 rounded text-center">
+                                                <div class="text-gray-600 text-sm">
+                                                    <strong>Fun Fact:</strong> NASA nutzt SLS für Raumfahrt-Komponenten!<br>
+                                                    Temperatur: bis zu 200°C | Genauigkeit: ±0,3mm
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-2/3">
+                                <h3 class="text-2xl font-bold mb-3 text-green-800">Laser-Power!</h3>
+                                <p class="text-gray-700 mb-3"><strong>Carl Deckard</strong> entwickelt das Selective Laser Sintering (SLS) - Laser verschmelzen Pulverpartikel zu festen Objekten!</p>
+                                <div class="bg-blue-100 p-3 rounded-lg">
+                                    <p class="text-sm"><strong>Wow:</strong> Diese Technologie wird heute noch in Industrie und Raumfahrt verwendet!</p>
+                                    <div class="mt-2 p-2 bg-white rounded border flex items-center gap-3">
+                                        <div class="w-12 h-12 rounded-full bg-green-200 flex items-center justify-center text-lg">👨‍🔬</div>
+                                        <div class="text-xs">
+                                            <div class="font-bold">Carl Deckard</div>
+                                            <div class="text-gray-600">SLS-Erfinder, University of Texas</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item mb-24 mt-32 relative" data-year="2009" style="z-index: 1;">
+                    <div class="flex items-center justify-center mb-4" style="z-index: 1;">
+                        <div class="bg-purple-500 text-white rounded-full w-16 h-16 flex items-center justify-center font-bold text-lg" style="z-index: 1;">2009</div>
+                    </div>
+                    <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-6 mx-4 md:mx-12">
+                        <div class="flex flex-col md:flex-row items-center gap-6">
+                            <div class="w-full md:w-1/3">
+                                <div class="bg-white rounded-lg shadow-lg p-4">
+                                    <img src="https://cdn-blog.adafruit.com/uploads/2019/10/reprap.jpg" alt="RepRap Darwin 3D-Drucker" class="rounded-lg w-full h-56 object-contain bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="rounded-lg w-full h-56 bg-gray-200 flex items-center justify-center text-5xl" style="display:none;">🌍</div>
+                                    <div class="text-center mt-3">
+                                        <div class="text-base font-bold text-gray-800">RepRap Darwin</div>
+                                        <div class="text-sm text-gray-600">Open-Source 3D-Drucker</div>
+                                        <div class="text-xs text-gray-500 mt-1">Adrian Bowyer, Bath University</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-2/3">
+                                <h3 class="text-2xl font-bold mb-3 text-purple-800">3D-Druck für alle!</h3>
+                                <p class="text-gray-700 mb-3">Das <strong>RepRap-Projekt</strong> macht 3D-Drucker erschwinglich! Erste Open-Source-Drucker entstehen - jeder kann mitmachen!</p>
+                                <div class="bg-green-100 p-3 rounded-lg">
+                                    <p class="text-sm"><strong>Genial:</strong> RepRap-Drucker können Teile für neue Drucker drucken!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item mb-12" data-year="2012">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="bg-red-500 text-white rounded-full w-16 h-16 flex items-center justify-center font-bold text-lg">2012</div>
+                    </div>
+                    <div class="bg-gradient-to-r from-red-100 to-orange-100 rounded-2xl p-6 mx-4 md:mx-12">
+                        <div class="flex flex-col md:flex-row-reverse items-center gap-6">
+                            <div class="w-full md:w-1/3">
+                                <div class="bg-white rounded-lg shadow-lg p-4">
+                                    <img src="https://www.3printr.com/wp-content/uploads/2015/06/makerbot_replicator.png?x81145" alt="MakerBot Replicator" class="rounded-lg w-full h-56 object-contain bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="rounded-lg w-full h-56 bg-gray-200 flex items-center justify-center text-5xl" style="display:none;">🏠</div>
+                                    <div class="text-center mt-3">
+                                        <div class="text-base font-bold text-gray-800">MakerBot Replicator</div>
+                                        <div class="text-sm text-gray-600">Desktop 3D-Drucker</div>
+                                        <div class="text-xs text-gray-500 mt-1">Bre Pettis, Brooklyn 2009</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-2/3">
+                                <h3 class="text-2xl font-bold mb-3 text-red-800">3D-Drucker zu Hause</h3>
+                                <p class="text-gray-700 mb-3">Firmen wie <strong>MakerBot</strong> bringen benutzerfreundliche Desktop-3D-Drucker auf den Markt. Der Boom beginnt!</p>
+                                <div class="bg-orange-100 p-3 rounded-lg">
+                                    <p class="text-sm"><strong>Milestone:</strong> Über 23.000 Desktop-3D-Drucker werden verkauft!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item mb-12" data-year="2024">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="bg-indigo-500 text-white rounded-full w-16 h-16 flex items-center justify-center font-bold text-lg">2024</div>
+                    </div>
+                    <div class="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-2xl p-6 mx-4 md:mx-12">
+                        <div class="flex flex-col md:flex-row items-center gap-6">
+                            <div class="w-full md:w-1/3">
+                                <div class="bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg p-8 text-white text-center">
+                                    <div class="text-4xl mb-2">🌟</div>
+                                    <p class="font-bold">HEUTE</p>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-2/3">
+                                <h3 class="text-2xl font-bold mb-3 text-indigo-800">Die Zukunft ist jetzt!</h3>
+                                <p class="text-gray-700 mb-3">3D-Druck revolutioniert Medizin, Architektur, Mode und Bildung. <strong>Du</strong> kannst Teil dieser Revolution sein!</p>
+                                <div class="bg-indigo-100 p-3 rounded-lg">
+                                    <p class="text-sm"><strong>Deine Chance:</strong> Mit Tools wie Tinkercad kannst du sofort loslegen!</p>
+                                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="p-4 bg-white rounded border shadow-sm">
+                                            <img src="https://cdn1.productnation.co/stg/sites/3/63999d9089046.jpg" alt="Prusa i3 MK3S" class="w-full h-32 object-contain rounded mb-3 bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                            <div class="w-full h-32 bg-gray-200 rounded mb-3 flex items-center justify-center text-2xl" style="display:none;">🖨️</div>
+                                            <div class="text-sm text-center text-gray-700 font-bold">Prusa i3 MK3S</div>
+                                            <div class="text-xs text-center text-gray-500 mt-1">~750€ - Profi-Qualität</div>
+                                        </div>
+                                        <div class="p-4 bg-white rounded border shadow-sm">
+                                            <img src="https://www.3dprintlab.co.za/wp-content/uploads/2023/09/Creality-Ender-3-V3-SE_Offset-with-filament.png" alt="Creality Ender 3" class="w-full h-32 object-contain rounded mb-3 bg-white" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                            <div class="w-full h-32 bg-gray-200 rounded mb-3 flex items-center justify-center text-2xl" style="display:none;">🖨️</div>
+                                            <div class="text-sm text-center text-gray-700 font-bold">Creality Ender 3</div>
+                                            <div class="text-xs text-center text-gray-500 mt-1">~200€ - Einsteigerfreundlich</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Quiz -->
+            <div class="mt-16 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-2xl p-8">
+                <h3 class="text-2xl font-bold text-center mb-6 text-orange-800">Quiz: Teste dein Wissen!</h3>
+                <div id="quiz-container">
+                    <div class="quiz-question mb-6">
+                        <p class="text-lg font-semibold mb-4">Wer erfand den 3D-Druck im Jahr 1983?</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <button class="quiz-option p-4 border-2 border-gray-300 rounded-lg text-left" data-correct="true">Chuck Hull</button>
+                            <button class="quiz-option p-4 border-2 border-gray-300 rounded-lg text-left" data-correct="false">Carl Deckard</button>
+                            <button class="quiz-option p-4 border-2 border-gray-300 rounded-lg text-left" data-correct="false">Steve Jobs</button>
+                            <button class="quiz-option p-4 border-2 border-gray-300 rounded-lg text-left" data-correct="false">Bill Gates</button>
+                        </div>
+                    </div>
+                    <div id="quiz-result" class="hidden text-center p-4 rounded-lg"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Komponenten Section -->
+    <section id="komponenten" class="py-16 px-4 bg-gradient-to-br from-green-50 to-blue-50">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">3D-Drucker Komponenten</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Extruder -->
+                <div class="flip-card h-64 card-hover cursor-pointer" onclick="flipCard(this)">
+                    <div class="flip-card-inner h-full">
+                        <div class="flip-card-front bg-gradient-to-br from-blue-400 to-blue-600 text-white p-6 flex flex-col items-center justify-center">
+                            <div class="text-5xl mb-4">🌡️</div>
+                            <h3 class="text-xl font-bold">Extruder</h3>
+                            <p class="text-sm opacity-90 mt-2">Klicken zum Umdrehen!</p>
+                        </div>
+                        <div class="flip-card-back bg-white p-6 border-2 border-blue-200">
+                            <h3 class="text-lg font-bold text-blue-800 mb-3">Extruder - Das Herz</h3>
+                            <p class="text-sm text-gray-700 mb-3">Schmilzt das Filament und drückt es durch die Düse. Wie eine heiße Klebepistole!</p>
+                            <div class="bg-blue-100 p-2 rounded text-xs">
+                                <strong>Temperatur:</strong> 180-250°C je nach Material
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Heizbett -->
+                <div class="flip-card h-64 card-hover cursor-pointer" onclick="flipCard(this)">
+                    <div class="flip-card-inner h-full">
+                        <div class="flip-card-front bg-gradient-to-br from-red-400 to-red-600 text-white p-6 flex flex-col items-center justify-center">
+                            <div class="text-5xl mb-4">🔥</div>
+                            <h3 class="text-xl font-bold">Heizbett</h3>
+                            <p class="text-sm opacity-90 mt-2">Klicken zum Umdrehen!</p>
+                        </div>
+                        <div class="flip-card-back bg-white p-6 border-2 border-red-200">
+                            <h3 class="text-lg font-bold text-red-800 mb-3">Heizbett - Die Basis</h3>
+                            <p class="text-sm text-gray-700 mb-3">Hält das Objekt warm, damit es nicht vom Druckbett abgeht. Wie eine warme Unterlage!</p>
+                            <div class="bg-red-100 p-2 rounded text-xs">
+                                <strong>Temperatur:</strong> 50-100°C für bessere Haftung
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stepper Motoren -->
+                <div class="flip-card h-64 card-hover cursor-pointer" onclick="flipCard(this)">
+                    <div class="flip-card-inner h-full">
+                        <div class="flip-card-front bg-gradient-to-br from-green-400 to-green-600 text-white p-6 flex flex-col items-center justify-center">
+                            <div class="text-5xl mb-4">⚙️</div>
+                            <h3 class="text-xl font-bold">Stepper Motoren</h3>
+                            <p class="text-sm opacity-90 mt-2">Klicken zum Umdrehen!</p>
+                        </div>
+                        <div class="flip-card-back bg-white p-6 border-2 border-green-200">
+                            <h3 class="text-lg font-bold text-green-800 mb-3">Stepper Motoren - Die Muskeln</h3>
+                            <p class="text-sm text-gray-700 mb-3">Bewegen den Druckkopf präzise in X, Y und Z-Richtung. Wie ein Roboterarm!</p>
+                            <div class="bg-green-100 p-2 rounded text-xs">
+                                <strong>Genauigkeit:</strong> Bis zu 0.1mm präzise Bewegungen
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mainboard -->
+                <div class="flip-card h-64 card-hover cursor-pointer" onclick="flipCard(this)">
+                    <div class="flip-card-inner h-full">
+                        <div class="flip-card-front bg-gradient-to-br from-purple-400 to-purple-600 text-white p-6 flex flex-col items-center justify-center">
+                            <div class="text-5xl mb-4">🧠</div>
+                            <h3 class="text-xl font-bold">Mainboard</h3>
+                            <p class="text-sm opacity-90 mt-2">Klicken zum Umdrehen!</p>
+                        </div>
+                        <div class="flip-card-back bg-white p-6 border-2 border-purple-200">
+                            <h3 class="text-lg font-bold text-purple-800 mb-3">Mainboard - Das Gehirn</h3>
+                            <p class="text-sm text-gray-700 mb-3">Steuert alle Komponenten und interpretiert die G-Code Befehle. Wie ein Computer!</p>
+                            <div class="bg-purple-100 p-2 rounded text-xs">
+                                <strong>Aufgabe:</strong> Koordiniert alle Bewegungen und Temperaturen
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filament -->
+                <div class="flip-card h-64 card-hover cursor-pointer" onclick="flipCard(this)">
+                    <div class="flip-card-inner h-full">
+                        <div class="flip-card-front bg-gradient-to-br from-yellow-400 to-orange-500 text-white p-6 flex flex-col items-center justify-center">
+                            <div class="text-5xl mb-4">🧵</div>
+                            <h3 class="text-xl font-bold">Filament</h3>
+                            <p class="text-sm opacity-90 mt-2">Klicken zum Umdrehen!</p>
+                        </div>
+                        <div class="flip-card-back bg-white p-6 border-2 border-orange-200">
+                            <h3 class="text-lg font-bold text-orange-800 mb-3">Filament - Das Material</h3>
+                            <p class="text-sm text-gray-700 mb-3">Kunststoffdraht, der geschmolzen und zu Objekten geformt wird. Wie Plastik-Spaghetti!</p>
+                            <div class="bg-orange-100 p-2 rounded text-xs">
+                                <strong>Typen:</strong> PLA (einfach), ABS (stark), PETG (flexibel)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display -->
+                <div class="flip-card h-64 card-hover cursor-pointer" onclick="flipCard(this)">
+                    <div class="flip-card-inner h-full">
+                        <div class="flip-card-front bg-gradient-to-br from-indigo-400 to-indigo-600 text-white p-6 flex flex-col items-center justify-center">
+                            <div class="text-5xl mb-4">📱</div>
+                            <h3 class="text-xl font-bold">Display</h3>
+                            <p class="text-sm opacity-90 mt-2">Klicken zum Umdrehen!</p>
+                        </div>
+                        <div class="flip-card-back bg-white p-6 border-2 border-indigo-200">
+                            <h3 class="text-lg font-bold text-indigo-800 mb-3">Display - Die Anzeige</h3>
+                            <p class="text-sm text-gray-700 mb-3">Zeigt Temperaturen, Druckfortschritt und Menüs an. Wie ein Smartphone-Display!</p>
+                            <div class="bg-indigo-100 p-2 rounded text-xs">
+                                <strong>Info:</strong> Temperaturen, Zeit, Druckfortschritt
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory Game -->
+            <div class="mt-16 bg-white rounded-2xl p-8 shadow-xl">
+                <h3 class="text-2xl font-bold text-center mb-6 text-gray-800">Memory: Komponenten zuordnen</h3>
+                <div id="memory-game" class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                    <!-- Memory cards will be generated by JavaScript -->
+                </div>
+                <div id="memory-score" class="text-center mt-4 font-semibold"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Vorgehen Section -->
+    <section id="vorgehen" class="py-16 px-4 bg-white">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Der 3D-Druck Prozess</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 text-center card-hover">
+                    <div class="text-5xl mb-4">💡</div>
+                    <h3 class="text-xl font-bold mb-3 text-blue-800">1. Idee entwickeln</h3>
+                    <p class="text-gray-700">Was möchtest du drucken? Ein Spielzeug? Ein nützlicher Gegenstand? Lass deiner Kreativität freien Lauf!</p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 text-center card-hover">
+                    <div class="text-5xl mb-4">🎨</div>
+                    <h3 class="text-xl font-bold mb-3 text-green-800">2. 3D-Modell erstellen</h3>
+                    <p class="text-gray-700">Mit Tinkercad designst du dein Objekt am Computer. Einfach Formen zusammenfügen und anpassen!</p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 text-center card-hover">
+                    <div class="text-5xl mb-4">⚙️</div>
+                    <h3 class="text-xl font-bold mb-3 text-purple-800">3. Slicing</h3>
+                    <p class="text-gray-700">Ein Slicer-Programm zerlegt dein Modell in dünne Schichten und erstellt Druckanweisungen.</p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-red-100 to-red-200 rounded-2xl p-6 text-center card-hover">
+                    <div class="text-5xl mb-4">🖨️</div>
+                    <h3 class="text-xl font-bold mb-3 text-red-800">4. Drucken</h3>
+                    <p class="text-gray-700">Der 3D-Drucker baut dein Objekt Schicht für Schicht auf. Wie Zauberei, aber mit Technik!</p>
+                </div>
+            </div>
+
+            <!-- Interactive Process Simulator -->
+            <div class="mt-16 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-2xl p-8">
+                <h3 class="text-2xl font-bold text-center mb-6 text-indigo-800">Interaktiver Prozess-Simulator</h3>
+                <div class="max-w-2xl mx-auto">
+                    <div id="process-simulator" class="bg-white rounded-lg p-6">
+                        <div class="text-center mb-6">
+                            <div id="current-step" class="text-6xl mb-4">💡</div>
+                            <h4 id="step-title" class="text-xl font-bold mb-2">Schritt 1: Idee entwickeln</h4>
+                            <p id="step-description" class="text-gray-600">Überlege dir, was du drucken möchtest. Vielleicht einen Schlüsselanhänger?</p>
+                        </div>
+                        <div class="flex justify-center space-x-4">
+                            <button id="prev-step" class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold" disabled>← Zurück</button>
+                            <button id="next-step" class="bg-indigo-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-600">Weiter →</button>
+                        </div>
+                        <div class="mt-6">
+                            <div class="bg-gray-200 rounded-full h-2">
+                                <div id="progress-bar" class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: 25%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projekte Section -->
+    <section id="projekte" class="py-16 px-4 bg-gradient-to-br from-yellow-50 to-orange-50">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Deine ersten Projekte mit Tinkercad</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Projekt 1: Schlüsselanhänger -->
+                <div class="bg-white rounded-2xl p-6 shadow-xl card-hover">
+                    <div class="text-center mb-4">
+                        <div class="text-5xl mb-3">🔑</div>
+                        <h3 class="text-xl font-bold text-blue-800">Personalisierter Schlüsselanhänger</h3>
+                    </div>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Rechteck erstellen (20x30x3mm)</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Text hinzufügen (dein Name)</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Loch für Schlüsselring bohren</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Ecken abrunden</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-blue-100 rounded-lg">
+                        <p class="text-xs text-blue-800"><strong>Tipp:</strong> Verwende die Text-Funktion und mache sie zu einem "Loch" um den Namen einzugravieren!</p>
+                    </div>
+                    <button class="w-full mt-4 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 font-semibold" onclick="openTinkercad('keychain')">
+                        🎨 In Tinkercad öffnen
+                    </button>
+                </div>
+
+                <!-- Projekt 2: Handy-Halter -->
+                <div class="bg-white rounded-2xl p-6 shadow-xl card-hover">
+                    <div class="text-center mb-4">
+                        <div class="text-5xl mb-3">📱</div>
+                        <h3 class="text-xl font-bold text-green-800">Handy-Halter</h3>
+                    </div>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Basis erstellen (80x60x10mm)</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Rückwand hinzufügen (schräg)</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Schlitz für Handy ausschneiden</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Kabel-Durchgang hinzufügen</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-green-100 rounded-lg">
+                        <p class="text-xs text-green-800"><strong>Tipp:</strong> Messe dein Handy vorher aus, damit der Halter perfekt passt!</p>
+                    </div>
+                    <button class="w-full mt-4 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 font-semibold" onclick="openTinkercad('phone-holder')">
+                        🎨 In Tinkercad öffnen
+                    </button>
+                </div>
+
+                <!-- Projekt 3: Stiftehalter -->
+                <div class="bg-white rounded-2xl p-6 shadow-xl card-hover">
+                    <div class="text-center mb-4">
+                        <div class="text-5xl mb-3">✏️</div>
+                        <h3 class="text-xl font-bold text-purple-800">Kreativer Stiftehalter</h3>
+                    </div>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Zylinder als Basis (Ø50x80mm)</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Inneren Zylinder ausschneiden</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Verschiedene Fächer hinzufügen</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-500">✓</span>
+                            <span>Dekoration anbringen</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-purple-100 rounded-lg">
+                        <p class="text-xs text-purple-800"><strong>Tipp:</strong> Experimentiere mit verschiedenen Formen - Sterne, Herzen, etc.!</p>
+                    </div>
+                    <button class="w-full mt-4 bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 font-semibold" onclick="openTinkercad('pen-holder')">
+                        🎨 In Tinkercad öffnen
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tinkercad Tutorial -->
+            <div class="mt-16 bg-white rounded-2xl p-8 shadow-xl">
+                <h3 class="text-2xl font-bold text-center mb-6 text-gray-800">Tinkercad Schnellstart</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4 text-blue-800">Grundlagen:</h4>
+                        <ul class="space-y-2 text-sm">
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-500">🖱️</span>
+                                <span><strong>Linke Maustaste:</strong> Objekte auswählen</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-500">🖱️</span>
+                                <span><strong>Rechte Maustaste + Ziehen:</strong> Ansicht drehen</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-500">🖱️</span>
+                                <span><strong>Mausrad:</strong> Zoomen</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-500">⌨️</span>
+                                <span><strong>Strg+C/V:</strong> Kopieren/Einfügen</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-500">⌨️</span>
+                                <span><strong>Entf:</strong> Objekt löschen</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold mb-4 text-green-800">Wichtige Werkzeuge:</h4>
+                        <ul class="space-y-2 text-sm">
+                            <li class="flex items-center space-x-2">
+                                <span class="text-green-500">📦</span>
+                                <span><strong>Grundformen:</strong> Würfel, Zylinder, Kugel</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-green-500">🔤</span>
+                                <span><strong>Text:</strong> Schrift hinzufügen</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-green-500">🕳️</span>
+                                <span><strong>Loch:</strong> Objekt zu "Loch" machen</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-green-500">🔗</span>
+                                <span><strong>Gruppieren:</strong> Objekte verbinden</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-green-500">📏</span>
+                                <span><strong>Größe ändern:</strong> Weiße Würfel ziehen</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <a href="https://www.tinkercad.com" target="_blank" class="bg-orange-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-600 inline-block">
+                        🚀 Tinkercad jetzt starten!
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12 px-4">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="text-4xl mb-4">🎉</div>
+            <h3 class="text-2xl font-bold mb-4">Bereit für deine 3D-Druck Reise?</h3>
+            <p class="text-gray-300 mb-6">Du hast jetzt alle Grundlagen gelernt. Zeit, kreativ zu werden und deine eigenen Projekte zu starten!</p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="#geschichte" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg">Geschichte wiederholen</a>
+                <a href="#komponenten" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg">Komponenten üben</a>
+                <a href="#projekte" class="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg">Projekte starten</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Timeline Animation
+        function animateTimeline() {
+            const timelineItems = document.querySelectorAll('.timeline-item');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            timelineItems.forEach(item => {
+                observer.observe(item);
+            });
+        }
+
+        // Quiz Functionality
+        function initQuiz() {
+            const quizOptions = document.querySelectorAll('.quiz-option');
+            const quizResult = document.getElementById('quiz-result');
+            
+            quizOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    const isCorrect = this.dataset.correct === 'true';
+                    
+                    quizOptions.forEach(opt => {
+                        opt.classList.remove('correct', 'wrong');
+                        if (opt.dataset.correct === 'true') {
+                            opt.classList.add('correct');
+                        } else {
+                            opt.classList.add('wrong');
+                        }
+                        opt.disabled = true;
+                    });
+                    
+                    quizResult.classList.remove('hidden');
+                    if (isCorrect) {
+                        quizResult.innerHTML = '<div class="bg-green-100 text-green-800 p-4 rounded-lg"><strong>🎉 Richtig!</strong> Chuck Hull erfand 1983 die Stereolithographie - das erste 3D-Druckverfahren!</div>';
+                    } else {
+                        quizResult.innerHTML = '<div class="bg-red-100 text-red-800 p-4 rounded-lg"><strong>❌ Nicht ganz!</strong> Die richtige Antwort ist Chuck Hull. Er erfand 1983 die Stereolithographie!</div>';
+                    }
+                });
+            });
+        }
+
+        // Flip Card Functionality
+        function flipCard(card) {
+            card.classList.toggle('flipped');
+        }
+
+        // Memory Game
+        function initMemoryGame() {
+            const memoryCards = [
+                { id: 1, emoji: '🌡️', name: 'Extruder' },
+                { id: 2, emoji: '🔥', name: 'Heizbett' },
+                { id: 3, emoji: '⚙️', name: 'Motor' },
+                { id: 4, emoji: '🧠', name: 'Mainboard' },
+                { id: 5, emoji: '🧵', name: 'Filament' },
+                { id: 6, emoji: '📱', name: 'Display' }
+            ];
+            
+            const gameCards = [...memoryCards, ...memoryCards].sort(() => Math.random() - 0.5);
+            const gameContainer = document.getElementById('memory-game');
+            const scoreElement = document.getElementById('memory-score');
+            
+            let flippedCards = [];
+            let matches = 0;
+            let attempts = 0;
+            
+            gameCards.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'bg-blue-500 text-white rounded-lg p-4 text-center cursor-pointer hover:bg-blue-600 transition-all duration-300 min-h-[100px] flex flex-col justify-center';
+                cardElement.innerHTML = `
+                    <div class="card-front">
+                        <div class="text-2xl">❓</div>
+                    </div>
+                    <div class="card-back hidden">
+                        <div class="text-2xl">${card.emoji}</div>
+                        <div class="text-xs mt-1">${card.name}</div>
+                    </div>
+                `;
+                
+                cardElement.addEventListener('click', () => flipMemoryCard(cardElement, card, index));
+                gameContainer.appendChild(cardElement);
+            });
+            
+            function flipMemoryCard(element, card, index) {
+                if (flippedCards.length < 2 && !element.classList.contains('flipped')) {
+                    element.classList.add('flipped');
+                    element.querySelector('.card-front').classList.add('hidden');
+                    element.querySelector('.card-back').classList.remove('hidden');
+                    element.style.backgroundColor = '#10b981';
+                    
+                    flippedCards.push({ element, card, index });
+                    
+                    if (flippedCards.length === 2) {
+                        attempts++;
+                        setTimeout(() => {
+                            if (flippedCards[0].card.id === flippedCards[1].card.id) {
+                                matches++;
+                                flippedCards.forEach(fc => {
+                                    fc.element.style.backgroundColor = '#059669';
+                                    fc.element.style.cursor = 'default';
+                                });
+                                
+                                if (matches === memoryCards.length) {
+                                    scoreElement.innerHTML = `🎉 Geschafft! Du hast alle Paare in ${attempts} Versuchen gefunden!`;
+                                }
+                            } else {
+                                flippedCards.forEach(fc => {
+                                    fc.element.classList.remove('flipped');
+                                    fc.element.querySelector('.card-front').classList.remove('hidden');
+                                    fc.element.querySelector('.card-back').classList.add('hidden');
+                                    fc.element.style.backgroundColor = '#3b82f6';
+                                });
+                            }
+                            flippedCards = [];
+                            scoreElement.innerHTML = `Versuche: ${attempts} | Gefunden: ${matches}/${memoryCards.length}`;
+                        }, 1000);
+                    }
+                }
+            }
+            
+            scoreElement.innerHTML = `Versuche: ${attempts} | Gefunden: ${matches}/${memoryCards.length}`;
+        }
+
+        // Process Simulator
+        function initProcessSimulator() {
+            const steps = [
+                {
+                    emoji: '💡',
+                    title: 'Schritt 1: Idee entwickeln',
+                    description: 'Überlege dir, was du drucken möchtest. Vielleicht einen Schlüsselanhänger?'
+                },
+                {
+                    emoji: '🎨',
+                    title: 'Schritt 2: 3D-Modell erstellen',
+                    description: 'Mit Tinkercad designst du dein Objekt. Verwende Grundformen und kombiniere sie!'
+                },
+                {
+                    emoji: '⚙️',
+                    title: 'Schritt 3: Slicing',
+                    description: 'Der Slicer zerlegt dein Modell in dünne Schichten und erstellt G-Code für den Drucker.'
+                },
+                {
+                    emoji: '🖨️',
+                    title: 'Schritt 4: Drucken',
+                    description: 'Der 3D-Drucker baut dein Objekt Schicht für Schicht auf. Das kann 30 Minuten bis mehrere Stunden dauern!'
+                }
+            ];
+            
+            let currentStep = 0;
+            
+            const stepEmoji = document.getElementById('current-step');
+            const stepTitle = document.getElementById('step-title');
+            const stepDescription = document.getElementById('step-description');
+            const prevButton = document.getElementById('prev-step');
+            const nextButton = document.getElementById('next-step');
+            const progressBar = document.getElementById('progress-bar');
+            
+            function updateStep() {
+                const step = steps[currentStep];
+                stepEmoji.textContent = step.emoji;
+                stepTitle.textContent = step.title;
+                stepDescription.textContent = step.description;
+                
+                prevButton.disabled = currentStep === 0;
+                nextButton.disabled = currentStep === steps.length - 1;
+                
+                if (currentStep === 0) {
+                    prevButton.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    prevButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                
+                if (currentStep === steps.length - 1) {
+                    nextButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    nextButton.textContent = '🎉 Fertig!';
+                } else {
+                    nextButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    nextButton.textContent = 'Weiter →';
+                }
+                
+                progressBar.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+            }
+            
+            prevButton.addEventListener('click', () => {
+                if (currentStep > 0) {
+                    currentStep--;
+                    updateStep();
+                }
+            });
+            
+            nextButton.addEventListener('click', () => {
+                if (currentStep < steps.length - 1) {
+                    currentStep++;
+                    updateStep();
+                }
+            });
+        }
+
+        // Tinkercad Integration
+        function openTinkercad(project) {
+            const messages = {
+                'keychain': 'Tipp: Starte mit einem Rechteck und füge dann Text hinzu!',
+                'phone-holder': 'Tipp: Miss dein Handy vorher aus für die perfekte Passform!',
+                'pen-holder': 'Tipp: Experimentiere mit verschiedenen Formen für die Dekoration!'
+            };
+            
+            alert(`${messages[project]}\n\nTinkercad wird in einem neuen Tab geöffnet.`);
+            window.open('https://www.tinkercad.com', '_blank');
+        }
+
+        // Smooth Scrolling
+        function initSmoothScrolling() {
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        }
+
+        // SLS Help Toggle
+        function toggleSLSHelp() {
+            const helpBox = document.getElementById('sls-help');
+            helpBox.classList.toggle('hidden');
+        }
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            animateTimeline();
+            initQuiz();
+            initMemoryGame();
+            initProcessSimulator();
+            initSmoothScrolling();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96596c9c33235d3b',t:'MTc1MzU5MDg2NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
