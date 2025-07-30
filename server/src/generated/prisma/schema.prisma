@@ -19,6 +19,7 @@ model User {
   notes          Note[]
   subjects       Subject[]
   learningGroups LearningGroup[] @relation("StudentGroups")
+  quizzes        Quiz[]
 }
 
 model GradingSchema {
@@ -92,15 +93,16 @@ model Topic {
 }
 
 model Lesson {
-  id          String           @id @default(uuid())
-  name        String
-  description String?
-  order       Int              @default(0)
-  topicId     String
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  topic       Topic            @relation(fields: [topicId], references: [id])
-  materials   LessonMaterial[]
+  id            String           @id @default(uuid())
+  name          String
+  description   String?
+  order         Int              @default(0)
+  topicId       String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  topic         Topic            @relation(fields: [topicId], references: [id])
+  materials     LessonMaterial[]
+  lessonQuizzes LessonQuiz[]
 }
 
 model GroupAssignment {
@@ -142,4 +144,43 @@ model LessonMaterial {
   createdAt  DateTime @default(now())
   lesson     Lesson   @relation(fields: [lessonId], references: [id])
   material   Material @relation(fields: [materialId], references: [id])
+}
+
+model Quiz {
+  id               String         @id @default(uuid())
+  title            String
+  description      String?
+  sourceFile       String
+  shuffleQuestions Boolean        @default(true)
+  shuffleAnswers   Boolean        @default(true)
+  timeLimit        Int            @default(30)
+  teacherId        String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  teacher          User           @relation(fields: [teacherId], references: [id])
+  questions        QuizQuestion[]
+  lessonQuizzes    LessonQuiz[]
+}
+
+model QuizQuestion {
+  id            String   @id @default(uuid())
+  question      String
+  correctAnswer String
+  options       String
+  order         Int
+  quizId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model LessonQuiz {
+  id        String   @id @default(uuid())
+  lessonId  String
+  quizId    String
+  createdAt DateTime @default(now())
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, quizId])
 }

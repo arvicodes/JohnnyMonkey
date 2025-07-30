@@ -98,6 +98,29 @@ router.post('/upload', upload.array('files'), (req, res) => {
         res.status(500).json({ error: 'Failed to upload files' });
     }
 });
+// Upload Word file for quiz creation
+router.post('/word-upload', upload.single('wordFile'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        // Check if the uploaded file is a supported document
+        const fileExt = path_1.default.extname(req.file.originalname).toLowerCase();
+        if (!['.doc', '.docx', '.txt'].includes(fileExt)) {
+            return res.status(400).json({ error: 'Only Word documents (.doc, .docx) and text files (.txt) are allowed' });
+        }
+        const sourceFile = `/material/${req.file.filename}`;
+        res.json({
+            message: 'File uploaded successfully',
+            sourceFile: sourceFile,
+            fileName: req.file.originalname
+        });
+    }
+    catch (error) {
+        console.error('Error uploading file:', error);
+        res.status(500).json({ error: 'Failed to upload file' });
+    }
+});
 // Delete a file
 router.delete('/files/:filename', (req, res) => {
     try {

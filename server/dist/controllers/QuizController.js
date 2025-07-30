@@ -9,8 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteQuiz = exports.updateQuiz = exports.getQuiz = exports.getQuizzes = exports.createQuiz = void 0;
+exports.getQuizzesByTeacher = exports.deleteQuiz = exports.updateQuiz = exports.getQuiz = exports.getQuizzes = exports.createQuiz = void 0;
 const prisma_1 = require("../generated/prisma");
+const wordParser_1 = require("../utils/wordParser");
 const prisma = new prisma_1.PrismaClient();
 const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -18,8 +19,13 @@ const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (!teacherId || !sourceFile || !title) {
             return res.status(400).json({ error: 'Lehrer-ID, Quelldatei und Titel sind erforderlich' });
         }
-        // For now, create a basic quiz without parsing the Word file
-        // In a real implementation, you would parse the Word file here
+        // Parse the Word file to extract questions
+        console.log('Parsing Word file for quiz creation:', sourceFile);
+        const parsedQuestions = yield (0, wordParser_1.parseWordFile)(sourceFile);
+        if (parsedQuestions.length === 0) {
+            return res.status(400).json({ error: 'Keine Fragen in der Word-Datei gefunden. Bitte überprüfen Sie das Format.' });
+        }
+        // Create the quiz with questions
         const quiz = yield prisma.quiz.create({
             data: {
                 title,
@@ -28,12 +34,21 @@ const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 timeLimit: timeLimit || 30,
                 shuffleQuestions: shuffleQuestions !== undefined ? shuffleQuestions : true,
                 shuffleAnswers: shuffleAnswers !== undefined ? shuffleAnswers : true,
-                teacherId
+                teacherId,
+                questions: {
+                    create: parsedQuestions.map((q, index) => ({
+                        question: q.question,
+                        correctAnswer: q.correctAnswer,
+                        options: JSON.stringify(q.options),
+                        order: index + 1
+                    }))
+                }
             },
             include: {
                 questions: true
             }
         });
+        console.log(`Quiz created successfully with ${parsedQuestions.length} questions`);
         res.json(quiz);
     }
     catch (error) {
@@ -44,26 +59,22 @@ const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 exports.createQuiz = createQuiz;
 const getQuizzes = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { teacherId } = req.query;
-        if (!teacherId) {
-            return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
-        }
         const quizzes = yield prisma.quiz.findMany({
-            where: {
-                teacherId: teacherId
-            },
             include: {
-                questions: true
-            },
-            orderBy: {
-                createdAt: 'desc'
+                questions: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
             }
         });
-        res.json(quizzes);
+        // Deserialize options for each question
+        const quizzesWithParsedOptions = quizzes.map(quiz => (Object.assign(Object.assign({}, quiz), { questions: quiz.questions.map(q => (Object.assign(Object.assign({}, q), { options: JSON.parse(q.options) }))) })));
+        res.json(quizzesWithParsedOptions);
     }
     catch (error) {
         console.error('Error fetching quizzes:', error);
-        res.status(500).json({ error: 'Fehler beim Laden der Quizze' });
+        res.status(500).json({ error: 'Fehler beim Abrufen der Quizzes' });
     }
 });
 exports.getQuizzes = getQuizzes;
@@ -83,11 +94,13 @@ const getQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         if (!quiz) {
             return res.status(404).json({ error: 'Quiz nicht gefunden' });
         }
-        res.json(quiz);
+        // Deserialize options for each question
+        const quizWithParsedOptions = Object.assign(Object.assign({}, quiz), { questions: quiz.questions.map(q => (Object.assign(Object.assign({}, q), { options: JSON.parse(q.options) }))) });
+        res.json(quizWithParsedOptions);
     }
     catch (error) {
         console.error('Error fetching quiz:', error);
-        res.status(500).json({ error: 'Fehler beim Laden des Quiz' });
+        res.status(500).json({ error: 'Fehler beim Abrufen des Quiz' });
     }
 });
 exports.getQuiz = getQuiz;
@@ -130,3 +143,26 @@ const deleteQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.deleteQuiz = deleteQuiz;
+const getQuizzesByTeacher = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { teacherId } = req.params;
+        const quizzes = yield prisma.quiz.findMany({
+            where: { teacherId },
+            include: {
+                questions: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
+            }
+        });
+        // Deserialize options for each question
+        const quizzesWithParsedOptions = quizzes.map(quiz => (Object.assign(Object.assign({}, quiz), { questions: quiz.questions.map(q => (Object.assign(Object.assign({}, q), { options: JSON.parse(q.options) }))) })));
+        res.json(quizzesWithParsedOptions);
+    }
+    catch (error) {
+        console.error('Error fetching teacher quizzes:', error);
+        res.status(500).json({ error: 'Fehler beim Abrufen der Lehrer-Quizzes' });
+    }
+});
+exports.getQuizzesByTeacher = getQuizzesByTeacher;

@@ -18,6 +18,7 @@ const topics_1 = __importDefault(require("./routes/topics"));
 const lessons_1 = __importDefault(require("./routes/lessons"));
 const notes_1 = __importDefault(require("./routes/notes"));
 const materials_1 = __importDefault(require("./routes/materials"));
+const quizzes_1 = __importDefault(require("./routes/quizzes"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const prisma = new prisma_1.PrismaClient();
@@ -37,6 +38,7 @@ app.use('/api/topics', topics_1.default);
 app.use('/api/lessons', lessons_1.default);
 app.use('/api/notes', notes_1.default);
 app.use('/api/materials', materials_1.default);
+app.use('/api/quizzes', quizzes_1.default);
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
 // Health check endpoint
 app.get('/health', (req, res) => {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -26,7 +26,8 @@ import {
   FormHelperText,
   Paper,
   Divider,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -95,6 +96,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   
   // Quiz states
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [quizzesLoading, setQuizzesLoading] = useState(false);
   const [uploadedWordFile, setUploadedWordFile] = useState<File | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('Eine neue Frage beginnt immer mit einem Listenpunkt. Die möglichen Antworten darunter sind mit a), b) etc. bezeichnet. Die erste Antwort ist immer die richtige.');
@@ -202,6 +204,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   // Quiz Funktionen
   const fetchQuizzes = useCallback(async () => {
     try {
+      setQuizzesLoading(true);
       const response = await fetch(`/api/quizzes/teacher/${teacherId}`);
       if (response.ok) {
         const data = await response.json();
@@ -209,14 +212,21 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
       }
     } catch (error) {
       console.error('Error fetching quizzes:', error);
+    } finally {
+      setQuizzesLoading(false);
     }
   }, [teacherId]);
+
+  // Load quizzes on component mount
+  useEffect(() => {
+    fetchQuizzes();
+  }, [fetchQuizzes]);
 
   const handleQuizDialogOpen = () => {
     setQuizDialogOpen(true);
     setUploadedWordFile(null);
     setQuizTitle('');
-    setQuizDescription('Eine neue Frage beginnt immer mit einem Listenpunkt. Die möglichen Antworten darunter sind mit a), b) etc. bezeichnet. Die erste Antwort ist immer die richtige.');
+    setQuizDescription('Eine neue Frage beginnt immer mit einem Listenpunkt (•, -, *, oder 1.). Die möglichen Antworten darunter sind mit a), b) etc. bezeichnet. Die erste Antwort ist immer die richtige. Unterstützte Dateiformate: .docx, .doc, .txt');
     setQuizTimeLimit(30);
     setShuffleQuestions(true);
     setShuffleAnswers(true);
@@ -238,8 +248,10 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
 
   const handleCreateQuiz = async () => {
     try {
+      console.log('Creating quiz with teacherId:', teacherId);
+      
       if (!uploadedWordFile) {
-        showSnackbar('Bitte wählen Sie eine Word-Datei aus', 'error');
+        showSnackbar('Bitte wählen Sie eine Datei aus (.docx, .doc, oder .txt)', 'error');
         return;
       }
 
@@ -247,43 +259,55 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
       const formData = new FormData();
       formData.append('wordFile', uploadedWordFile);
 
+      console.log('Uploading Word file:', uploadedWordFile.name);
       const uploadResponse = await fetch('/api/materials/word-upload', {
         method: 'POST',
         body: formData
       });
 
+      console.log('Upload response status:', uploadResponse.status);
       if (!uploadResponse.ok) {
         const error = await uploadResponse.json();
-        showSnackbar(error.error || 'Fehler beim Hochladen der Word-Datei', 'error');
+        console.error('Upload error:', error);
+        showSnackbar(error.error || 'Fehler beim Hochladen der Datei', 'error');
         return;
       }
 
       const uploadResult = await uploadResponse.json();
+      console.log('Upload result:', uploadResult);
 
       // 2. Quiz erstellen
+      const quizData = {
+        teacherId,
+        sourceFile: uploadResult.sourceFile,
+        title: quizTitle,
+        description: quizDescription,
+        timeLimit: quizTimeLimit,
+        shuffleQuestions,
+        shuffleAnswers
+      };
+      
+      console.log('Creating quiz with data:', quizData);
       const quizResponse = await fetch('/api/quizzes/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teacherId,
-          sourceFile: uploadResult.sourceFile,
-          title: quizTitle,
-          description: quizDescription,
-          timeLimit: quizTimeLimit,
-          shuffleQuestions,
-          shuffleAnswers
-        })
+        body: JSON.stringify(quizData)
       });
 
+      console.log('Quiz response status:', quizResponse.status);
       if (quizResponse.ok) {
+        const quizResult = await quizResponse.json();
+        console.log('Quiz created successfully:', quizResult);
         showSnackbar('Quiz erfolgreich erstellt', 'success');
         handleQuizDialogClose();
         fetchQuizzes(); // Aktualisiere die Quiz-Liste
       } else {
         const error = await quizResponse.json();
+        console.error('Quiz creation error:', error);
         showSnackbar(error.error || 'Fehler beim Erstellen des Quiz', 'error');
       }
     } catch (error) {
+      console.error('Exception in handleCreateQuiz:', error);
       showSnackbar('Fehler beim Erstellen des Quiz', 'error');
     }
   };
@@ -961,6 +985,11 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#ff9800' }}>
                   Erstellte Quizze ({quizzes.length})
                 </Typography>
+                {quizzesLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                    <CircularProgress size={24} sx={{ color: '#ff9800' }} />
+                  </Box>
+                ) : (
                 <List dense>
                   {quizzes.map((quiz) => (
                     <ListItem key={quiz.id} sx={{ 
@@ -985,12 +1014,25 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           </Typography>
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        gap: 0.5,
+                        alignItems: 'flex-start',
+                        pt: 0.5
+                      }}>
                         <IconButton
                           size="small"
                           onClick={() => handleEditQuiz(quiz)}
                           color="primary"
                           title="Quiz bearbeiten"
+                          sx={{ 
+                            p: 1,
+                            '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                            '&:hover': {
+                              backgroundColor: '#e3f2fd'
+                            }
+                          }}
                         >
                           <EditIcon />
                         </IconButton>
@@ -999,6 +1041,13 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           onClick={() => handleDeleteQuiz(quiz.id)}
                           color="error"
                           title="Quiz löschen"
+                          sx={{ 
+                            p: 1,
+                            '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                            '&:hover': {
+                              backgroundColor: '#ffebee'
+                            }
+                          }}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -1006,6 +1055,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                     </ListItem>
                   ))}
                 </List>
+                )}
               </CardContent>
             </Card>
           )}
