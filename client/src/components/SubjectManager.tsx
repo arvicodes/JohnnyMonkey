@@ -1914,6 +1914,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             value={name}
             onChange={(e) => setName(e.target.value)}
             inputRef={nameInputRef}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSave();
+              }
+            }}
           />
           <TextField
             margin="dense"
@@ -1924,6 +1930,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSave();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -1963,6 +1975,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             value={blockName}
             onChange={(e) => setBlockName(e.target.value)}
             inputRef={blockNameInputRef}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveBlock();
+              }
+            }}
           />
           <TextField
             margin="dense"
@@ -1973,6 +1991,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             rows={3}
             value={blockDescription}
             onChange={(e) => setBlockDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveBlock();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -2012,6 +2036,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             value={unitName}
             onChange={(e) => setUnitName(e.target.value)}
             inputRef={unitNameInputRef}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveUnit();
+              }
+            }}
           />
           <TextField
             margin="dense"
@@ -2022,6 +2052,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             rows={3}
             value={unitDescription}
             onChange={(e) => setUnitDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveUnit();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -2061,6 +2097,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             value={topicName}
             onChange={(e) => setTopicName(e.target.value)}
             inputRef={topicNameInputRef}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveTopic();
+              }
+            }}
           />
           <TextField
             margin="dense"
@@ -2071,11 +2113,36 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             rows={3}
             value={topicDescription}
             onChange={(e) => setTopicDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveTopic();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseTopicDialog}>Abbrechen</Button>
-          <Button onClick={handleSaveTopic} variant="contained">Speichern</Button>
+          <Button 
+            onClick={handleCloseTopicDialog}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCloseTopicDialog();
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSaveTopic} 
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSaveTopic();
+              }
+            }}
+          >
+            Speichern
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -2091,6 +2158,12 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             value={lessonName}
             onChange={(e) => setLessonName(e.target.value)}
             inputRef={lessonNameInputRef}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveLesson();
+              }
+            }}
           />
           <TextField
             margin="dense"
@@ -2101,11 +2174,36 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
             rows={3}
             value={lessonDescription}
             onChange={(e) => setLessonDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSaveLesson();
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseLessonDialog}>Abbrechen</Button>
-          <Button onClick={handleSaveLesson} variant="contained">Speichern</Button>
+          <Button 
+            onClick={handleCloseLessonDialog}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCloseLessonDialog();
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSaveLesson} 
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSaveLesson();
+              }
+            }}
+          >
+            Speichern
+          </Button>
         </DialogActions>
       </Dialog>
 

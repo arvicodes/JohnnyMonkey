@@ -1176,7 +1176,15 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleMaterialDialogClose} color="inherit">
+          <Button 
+            onClick={handleMaterialDialogClose} 
+            color="inherit"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleMaterialDialogClose();
+              }
+            }}
+          >
             Abbrechen
           </Button>
           <Button 
@@ -1184,6 +1192,11 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
             variant="contained"
             disabled={selectedFiles.length === 0}
             sx={{ bgcolor: '#1976d2' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && selectedFiles.length > 0) {
+                handleAddMaterial();
+              }
+            }}
           >
             Hochladen
           </Button>
@@ -1256,6 +1269,14 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 value={quizTitle}
                 onChange={(e) => setQuizTitle(e.target.value)}
                 sx={{ mb: 2 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (uploadedWordFile && quizTitle) {
+                      handleCreateQuiz();
+                    }
+                  }
+                }}
               />
             </Grid>
 
@@ -1279,6 +1300,14 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 value={quizDescription}
                 onChange={(e) => setQuizDescription(e.target.value)}
                 sx={{ mb: 2 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (uploadedWordFile && quizTitle) {
+                      handleCreateQuiz();
+                    }
+                  }
+                }}
               />
             </Grid>
 
@@ -1312,7 +1341,15 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleQuizDialogClose} color="inherit">
+          <Button 
+            onClick={handleQuizDialogClose} 
+            color="inherit"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleQuizDialogClose();
+              }
+            }}
+          >
             Abbrechen
           </Button>
           <Button 
@@ -1320,6 +1357,11 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
             variant="contained" 
             sx={{ bgcolor: '#ff9800', '&:hover': { bgcolor: '#f57c00' } }}
             disabled={!uploadedWordFile || !quizTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && uploadedWordFile && quizTitle) {
+                handleCreateQuiz();
+              }
+            }}
           >
             Quiz erstellen
           </Button>
@@ -1348,6 +1390,12 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 value={editingQuiz?.title || ''}
                 onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, title: e.target.value } : null)}
                 sx={{ mb: 2 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleUpdateQuiz();
+                  }
+                }}
               />
             </Grid>
 
@@ -1371,6 +1419,12 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 value={editingQuiz?.description || ''}
                 onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, description: e.target.value } : null)}
                 sx={{ mb: 2 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleUpdateQuiz();
+                  }
+                }}
               />
             </Grid>
 
@@ -1433,13 +1487,26 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleEditDialogClose} color="inherit">
+          <Button 
+            onClick={handleEditDialogClose} 
+            color="inherit"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleEditDialogClose();
+              }
+            }}
+          >
             Abbrechen
           </Button>
           <Button 
             onClick={handleUpdateQuiz} 
             variant="contained" 
             sx={{ bgcolor: '#ff9800', '&:hover': { bgcolor: '#f57c00' } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleUpdateQuiz();
+              }
+            }}
           >
             Speichern
           </Button>
@@ -1468,6 +1535,12 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 value={editingNote?.title || ''}
                 onChange={(e) => setEditingNote(prev => prev ? { ...prev, title: e.target.value } : null)}
                 sx={{ mb: 2 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleUpdateNote();
+                  }
+                }}
               />
             </Grid>
 
@@ -1497,18 +1570,37 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 multiline
                 rows={3}
                 sx={{ mb: 2 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleUpdateNote();
+                  }
+                }}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleEditNoteDialogClose} color="inherit">
+          <Button 
+            onClick={handleEditNoteDialogClose} 
+            color="inherit"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleEditNoteDialogClose();
+              }
+            }}
+          >
             Abbrechen
           </Button>
           <Button 
             onClick={handleUpdateNote} 
             variant="contained" 
             sx={{ bgcolor: '#ff9800', '&:hover': { bgcolor: '#f57c00' } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleUpdateNote();
+              }
+            }}
           >
             Speichern
           </Button>
@@ -1544,14 +1636,33 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteNoteDialogOpen(false)} color="primary">
+          <Button 
+            onClick={() => setDeleteNoteDialogOpen(false)} 
+            color="primary"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setDeleteNoteDialogOpen(false);
+              }
+            }}
+          >
             Abbrechen
           </Button>
-          <Button onClick={() => {
-            if (noteToDelete) {
-              deleteNote(noteToDelete.id);
-            }
-          }} color="error" variant="contained">
+          <Button 
+            onClick={() => {
+              if (noteToDelete) {
+                deleteNote(noteToDelete.id);
+              }
+            }} 
+            color="error" 
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (noteToDelete) {
+                  deleteNote(noteToDelete.id);
+                }
+              }
+            }}
+          >
             Löschen
           </Button>
         </DialogActions>
