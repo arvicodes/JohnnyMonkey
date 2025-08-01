@@ -41,7 +41,8 @@ import {
   PlayArrow as PlayIcon,
   Edit as EditIcon,
   Note as NoteIcon,
-  DragIndicator as DragIcon
+  DragIndicator as DragIcon,
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 
 interface MaterialCreatorProps {
@@ -634,6 +635,17 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     });
   };
 
+  // Funktion zum Kopieren des Notiz-Inhalts in die Zwischenablage
+  const handleCopyNoteContent = async (note: Note) => {
+    try {
+      await navigator.clipboard.writeText(note.content);
+      showSnackbar('Inhalt in die Zwischenablage kopiert!', 'success');
+    } catch (error) {
+      console.error('Fehler beim Kopieren:', error);
+      showSnackbar('Fehler beim Kopieren in die Zwischenablage', 'error');
+    }
+  };
+
   return (
     <Box sx={{ p: 1.4 }}>
       <Typography variant="h5" component="h2" sx={{ 
@@ -932,6 +944,21 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           alignItems: 'flex-start',
                           pt: 0.5
                         }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleCopyNoteContent(note)}
+                            color="info"
+                            title="Inhalt kopieren"
+                            sx={{ 
+                              p: 1,
+                              '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                              '&:hover': {
+                                backgroundColor: '#e3f2fd'
+                              }
+                            }}
+                          >
+                            <CopyIcon />
+                          </IconButton>
                           <IconButton
                             size="small"
                             onClick={() => handleEditNote(note)}
