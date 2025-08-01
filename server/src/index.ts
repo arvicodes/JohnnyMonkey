@@ -14,6 +14,7 @@ import lessonRoutes from './routes/lessons';
 import notesRoutes from './routes/notes';
 import materialsRoutes from './routes/materials';
 import quizRoutes from './routes/quizzes';
+import lessonQuizRoutes from './routes/lessonQuizzes';
 import path from 'path';
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/lessons', lessonRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/quizzes', quizRoutes);
+app.use('/api/lesson-quizzes', lessonQuizRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
 // Health check endpoint

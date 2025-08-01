@@ -187,6 +187,11 @@ router.post('/lesson', async (req, res) => {
   try {
     const { lessonId, fileName, filePath } = req.body;
 
+    // Remove all existing quizzes from this lesson first
+    await prisma.lessonQuiz.deleteMany({
+      where: { lessonId }
+    });
+
     // First, create or find the material
     let material = await prisma.material.findFirst({
       where: { fileName }

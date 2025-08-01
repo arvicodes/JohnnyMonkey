@@ -156,9 +156,19 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       if (currentQuestion) {
-        const selectedOption = currentQuestion.options[focusedOptionIndex];
-        if (selectedOption) {
-          handleAnswerSelect(selectedOption);
+        // Wenn bereits eine Antwort ausgewählt wurde, gehe zur nächsten Frage
+        if (answers[currentQuestion.id]) {
+          if (currentQuestionIndex < questions.length - 1) {
+            handleNextQuestion();
+          } else {
+            finishQuiz();
+          }
+        } else {
+          // Ansonsten wähle die fokussierte Antwort aus
+          const selectedOption = currentQuestion.options[focusedOptionIndex];
+          if (selectedOption) {
+            handleAnswerSelect(selectedOption);
+          }
         }
       }
     } else if (e.key === 'ArrowRight' && currentQuestionIndex < questions.length - 1) {
@@ -345,6 +355,24 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
               }}>
                 {currentQuestion.question}
               </Typography>
+              
+              {answers[currentQuestion.id] && (
+                <Box sx={{ 
+                  mb: 2, 
+                  p: 1, 
+                  bgcolor: '#e8f5e8', 
+                  borderRadius: 1, 
+                  border: '1px solid #4caf50',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5
+                }}>
+                  <CheckIcon sx={{ fontSize: '1rem', color: '#4caf50' }} />
+                  <Typography variant="body2" sx={{ color: '#2e7d32', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    Antwort ausgewählt: "{answers[currentQuestion.id]}"
+                  </Typography>
+                </Box>
+              )}
 
               <FormControl component="fieldset" fullWidth>
                 <RadioGroup
@@ -482,6 +510,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
               <Button
                 variant="contained"
                 onClick={handleNextQuestion}
+                disabled={!answers[currentQuestion.id]}
                 size="small"
                 sx={{
                   minWidth: 100,
@@ -511,10 +540,22 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                   },
                   '&:active': {
                     transform: 'translateY(0px) scale(0.98)'
+                  },
+                  '&:disabled': {
+                    opacity: 0.5,
+                    background: '#e0e0e0',
+                    color: '#666',
+                    transform: 'none',
+                    boxShadow: 'none'
                   }
                 }}
               >
                 {currentQuestionIndex === questions.length - 1 ? 'Beenden' : 'Weiter'}
+                {answers[currentQuestion.id] && (
+                  <Typography component="span" sx={{ ml: 0.5, fontSize: '0.6rem', opacity: 0.8 }}>
+                    (Enter)
+                  </Typography>
+                )}
               </Button>
             </Box>
           </Box>
@@ -522,7 +563,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
         
         <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0' }}>
           <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
-            Tastatur: Pfeiltasten zum Navigieren, Enter zum Auswählen, ESC zum Abbrechen, ←/→ für Fragen
+            ⌨️ Tastatur: ↑↓ Antworten navigieren • Enter Antwort auswählen/Weiter • ←→ Fragen wechseln • ESC abbrechen
           </Typography>
         </Box>
       </div>

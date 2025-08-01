@@ -61,7 +61,18 @@ export const QuizPlayerPage: React.FC = () => {
   }, [quizId]);
 
   const handleClose = () => {
-    navigate(-1);
+    // Versuche den Tab zu schließen, falls er von JavaScript geöffnet wurde
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.close();
+      } else {
+        // Fallback: Navigiere zur Dashboard-Seite
+        window.location.href = '/dashboard';
+      }
+    } catch (error) {
+      // Falls window.close() nicht erlaubt ist, navigiere zur Dashboard-Seite
+      window.location.href = '/dashboard';
+    }
   };
 
   if (loading) {

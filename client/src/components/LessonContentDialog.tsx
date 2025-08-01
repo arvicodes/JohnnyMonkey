@@ -151,11 +151,6 @@ const LessonContentDialog: React.FC<LessonContentDialogProps> = ({
   const addMaterialToLesson = async (material: MaterialFile) => {
     setLoading(true);
     try {
-      // Entferne zuerst alle Quizze von dieser Stunde
-      await fetch(`/api/lesson-quizzes/lesson/${lessonId}`, {
-        method: 'DELETE'
-      });
-
       const response = await fetch('/api/materials/lesson', {
         method: 'POST',
         headers: {
@@ -216,12 +211,7 @@ const LessonContentDialog: React.FC<LessonContentDialogProps> = ({
   const addQuizToLesson = async (quiz: Quiz) => {
     setLoading(true);
     try {
-      // Entferne zuerst alle Materialien von dieser Stunde
-      await fetch(`/api/materials/lesson/${lessonId}`, {
-        method: 'DELETE'
-      });
-
-      const response = await fetch('/api/lesson-quizzes', {
+      const response = await fetch('/api/lesson-quizzes/assign', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -305,11 +295,20 @@ const LessonContentDialog: React.FC<LessonContentDialogProps> = ({
     setShowQuizPlayer(true);
   };
 
-  // Keyboard Handler für Enter-Taste
+  // Keyboard Handler für Enter-Taste und ESC
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (selectedMaterial || selectedQuiz)) {
       handleAddSelected();
+    } else if (e.key === 'Escape') {
+      handleClose();
     }
+  };
+
+  // Close Handler
+  const handleClose = () => {
+    setSelectedMaterial(null);
+    setSelectedQuiz(null);
+    onClose();
   };
 
   // Lade Daten beim Öffnen des Dialogs
@@ -336,7 +335,7 @@ const LessonContentDialog: React.FC<LessonContentDialogProps> = ({
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth onKeyDown={handleKeyDown}>
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth onKeyDown={handleKeyDown}>
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <DescriptionIcon color="primary" />
@@ -549,14 +548,16 @@ const LessonContentDialog: React.FC<LessonContentDialogProps> = ({
 
           {(lessonQuiz || lessonMaterials.length > 0) && (
             <Alert severity="info" sx={{ mt: 1, py: 0.5 }}>
-              Sie können einer Stunde genau ein Material ODER genau ein Quiz zuordnen.
+              <strong>Wichtig:</strong> Eine Stunde kann nur entweder ein Material ODER ein Quiz haben. 
+              {lessonQuiz && ' Wenn Sie ein Material hinzufügen, wird das aktuelle Quiz automatisch entfernt.'}
+              {lessonMaterials.length > 0 && ' Wenn Sie ein Quiz hinzufügen, werden die aktuellen Materialien automatisch entfernt.'}
             </Alert>
           )}
         </DialogContent>
 
         <DialogActions>
           <Button 
-            onClick={onClose} 
+            onClick={handleClose} 
             color="inherit"
             startIcon={<CloseIcon />}
           >
@@ -564,12 +565,14 @@ const LessonContentDialog: React.FC<LessonContentDialogProps> = ({
           </Button>
           <Button
             onClick={handleAddSelected}
-            disabled={loading || (!selectedMaterial && !selectedQuiz) || (lessonMaterials.length > 0 || !!lessonQuiz)}
+            disabled={loading || (!selectedMaterial && !selectedQuiz)}
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
           >
-            Hinzufügen
+            {lessonQuiz && selectedMaterial ? 'Material hinzufügen (Quiz ersetzen)' :
+             lessonMaterials.length > 0 && selectedQuiz ? 'Quiz hinzufügen (Material ersetzen)' :
+             'Hinzufügen'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -584,7 +587,7 @@ const LessonContentDialog: React.FC<LessonContentDialogProps> = ({
       />
 
       {/* Quiz-Player */}
-      {lessonQuiz && (
+      {showQuizPlayer && lessonQuiz && (
         <QuizPlayer
           quiz={lessonQuiz.quiz}
           onClose={() => setShowQuizPlayer(false)}
