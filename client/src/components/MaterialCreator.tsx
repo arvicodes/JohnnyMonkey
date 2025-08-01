@@ -647,38 +647,38 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   };
 
   return (
-    <Box sx={{ p: 1.4 }}>
+    <Box sx={{ p: 0.8 }}>
       <Typography variant="h5" component="h2" sx={{ 
         fontWeight: 'bold', 
-        color: '#1976d2',
-        mb: 2.1,
-        fontSize: '1.12rem'
+        color: '#2C3E50',
+        mb: 1.2,
+        fontSize: '0.9rem'
       }}>
         Material & Quiz erstellen
       </Typography>
 
-      <Grid container spacing={2.1}>
+      <Grid container spacing={1.2}>
         {/* Material hinzufügen Box */}
         <Grid item xs={12} md={6}>
           <Card sx={{ 
-            borderRadius: 2.8,
-            boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
+            borderRadius: 1.5,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
             bgcolor: '#ffffff',
             height: '100%'
           }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
-                <DescriptionIcon sx={{ mr: 1.4, color: '#1976d2', fontSize: 28 }} />
+            <CardContent sx={{ p: 1.2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.2 }}>
+                <DescriptionIcon sx={{ mr: 0.8, color: '#1976D2', fontSize: 20 }} />
                 <Typography variant="h6" component="h3" sx={{ 
                   fontWeight: 'bold', 
-                  color: '#1976d2',
-                  fontSize: '1rem'
+                  color: '#1976D2',
+                  fontSize: '0.8rem'
                 }}>
                   Material hinzufügen
                 </Typography>
               </Box>
               
-              <Typography variant="body2" sx={{ mb: 2.1, color: '#666' }}>
+              <Typography variant="body2" sx={{ mb: 1.2, color: '#7F8C8D', fontSize: '0.75rem' }}>
                 Laden Sie Dateien aus der Dateistruktur und speichern Sie diese im Material-Ordner.
               </Typography>
 
@@ -687,11 +687,14 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 startIcon={<AddIcon />}
                 onClick={handleMaterialDialogOpen}
                 sx={{
-                  bgcolor: '#1976d2',
+                  bgcolor: '#1976D2',
                   '&:hover': { bgcolor: '#1565c0' },
-                  borderRadius: 1.4,
+                  borderRadius: 1.2,
                   textTransform: 'none',
-                  fontWeight: 500
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  py: 0.4,
+                  px: 1
                 }}
               >
                 Material hinzufügen
@@ -703,24 +706,24 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
         {/* Quiz erstellen Box */}
         <Grid item xs={12} md={6}>
           <Card sx={{ 
-            borderRadius: 2.8,
-            boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
+            borderRadius: 1.5,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
             bgcolor: '#ffffff',
             height: '100%'
           }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
-                <QuizIcon sx={{ mr: 1.4, color: '#ff9800', fontSize: 28 }} />
+            <CardContent sx={{ p: 1.2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.2 }}>
+                <QuizIcon sx={{ mr: 0.8, color: '#F57C00', fontSize: 20 }} />
                 <Typography variant="h6" component="h3" sx={{ 
                   fontWeight: 'bold', 
-                  color: '#ff9800',
-                  fontSize: '1rem'
+                  color: '#F57C00',
+                  fontSize: '0.8rem'
                 }}>
                   Quiz erstellen
                 </Typography>
               </Box>
               
-              <Typography variant="body2" sx={{ mb: 2.1, color: '#666' }}>
+              <Typography variant="body2" sx={{ mb: 1.2, color: '#7F8C8D', fontSize: '0.75rem' }}>
                 Erstellen Sie Quizze aus Word-Dateien mit automatischer Fragen-Generierung.
               </Typography>
 
@@ -729,11 +732,14 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 startIcon={<AddIcon />}
                 onClick={handleQuizDialogOpen}
                 sx={{
-                  bgcolor: '#ff9800',
-                  '&:hover': { bgcolor: '#f57c00' },
-                  borderRadius: 1.4,
+                  bgcolor: '#F57C00',
+                  '&:hover': { bgcolor: '#E65100' },
+                  borderRadius: 1.2,
                   textTransform: 'none',
-                  fontWeight: 500
+                  fontWeight: 500,
+                  fontSize: '0.75rem',
+                  py: 0.4,
+                  px: 1
                 }}
               >
                 Quiz erstellen
@@ -744,28 +750,28 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
       </Grid>
 
       {/* Quiz-Liste und Notizzettel */}
-        <Grid container spacing={2.1} sx={{ mt: 1 }}>
+        <Grid container spacing={1.2} sx={{ mt: 0.3 }}>
         {/* Notizzettel-Pinwand */}
           <Grid item xs={12} md={6}>
           <Card sx={{ 
-            borderRadius: 2.8,
-            boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
+            borderRadius: 1.5,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
             bgcolor: '#ffffff',
             height: '100%'
           }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
-                <NoteIcon sx={{ mr: 1.4, color: '#4CAF50', fontSize: 28 }} />
+            <CardContent sx={{ p: 1.2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.2 }}>
+                <NoteIcon sx={{ mr: 0.8, color: '#2E7D32', fontSize: 20 }} />
                 <Typography variant="h6" component="h3" sx={{ 
                   fontWeight: 'bold', 
-                  color: '#4CAF50',
-                  fontSize: '1rem'
+                  color: '#2E7D32',
+                  fontSize: '0.8rem'
                 }}>
                   Notizzettel ({notes.length})
                 </Typography>
               </Box>
               
-              <Typography variant="body2" sx={{ mb: 2.1, color: '#666' }}>
+              <Typography variant="body2" sx={{ mb: 1.2, color: '#7F8C8D', fontSize: '0.75rem' }}>
                 Fügen Sie kurze Notizen hinzu, um wichtige Informationen zu notieren.
               </Typography>
 
@@ -774,12 +780,15 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 startIcon={<AddIcon />}
                 onClick={() => setShowNoteForm(!showNoteForm)}
                 sx={{
-                  bgcolor: '#4CAF50',
-                  '&:hover': { bgcolor: '#388E3C' },
-                  borderRadius: 1.4,
+                  bgcolor: '#2E7D32',
+                  '&:hover': { bgcolor: '#1B5E20' },
+                  borderRadius: 1,
                   textTransform: 'none',
                   fontWeight: 500,
-                  mb: 2.1
+                  mb: 1.2,
+                  fontSize: '0.7rem',
+                  py: 0.3,
+                  px: 1
                 }}
               >
                 {showNoteForm ? 'Abbrechen' : 'Notiz hinzufügen'}
@@ -788,10 +797,10 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
               {/* Formular für neue Notiz */}
               {showNoteForm && (
                 <Paper sx={{ 
-                  p: 2.1, 
-                  mb: 2.1, 
+                  p: 1.2, 
+                  mb: 1.2, 
                   bgcolor: '#f8f9fa', 
-                  borderRadius: 1.4,
+                  borderRadius: 1,
                   border: '1px solid #e0e0e0'
                 }}>
                   <TextField
@@ -800,7 +809,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                     value={newNoteTitle}
                     onChange={(e) => setNewNoteTitle(e.target.value)}
                     size="small"
-                    sx={{ mb: 2.1 }}
+                    sx={{ mb: 1.2 }}
                     placeholder="Kurze Überschrift..."
                   />
                   <TextField
@@ -809,26 +818,27 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                     value={newNoteContent}
                     onChange={(e) => setNewNoteContent(e.target.value)}
                     multiline
-                    rows={3}
+                    rows={2}
                     size="small"
-                    sx={{ mb: 2.1 }}
+                    sx={{ mb: 1.2 }}
                     placeholder="Deine Notiz hier..."
                   />
-                  <FormControl fullWidth sx={{ mb: 2 }}>
+                  <FormControl fullWidth sx={{ mb: 1.2 }}>
                     <InputLabel>Farbe</InputLabel>
                     <Select
                       value={newNoteColor}
                       label="Farbe"
                       onChange={(e) => setNewNoteColor(e.target.value as string)}
+                      size="small"
                     >
                       {noteColors.map((color) => (
                         <MenuItem key={color.value} value={color.value}>
-                          <Chip label={color.name} sx={{ backgroundColor: color.value }} />
+                          <Chip label={color.name} sx={{ backgroundColor: color.value, fontSize: '0.65rem' }} />
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                  <Box sx={{ display: 'flex', gap: 0.6, justifyContent: 'flex-end' }}>
                     <Button
                       size="small"
                       onClick={() => {
@@ -837,7 +847,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                         setNewNoteContent('');
                         setNewNoteColor('#4CAF50'); // Zurücksetzen auf Standardfarbe
                       }}
-                      sx={{ borderRadius: 1.4, textTransform: 'none' }}
+                      sx={{ borderRadius: 1, textTransform: 'none', fontSize: '0.7rem' }}
                     >
                       Abbrechen
                     </Button>
@@ -849,8 +859,9 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                       sx={{ 
                         bgcolor: '#4CAF50',
                         '&:hover': { bgcolor: '#388E3C' },
-                        borderRadius: 1.4,
-                        textTransform: 'none'
+                        borderRadius: 1,
+                        textTransform: 'none',
+                        fontSize: '0.7rem'
                       }}
                     >
                       Hinzufügen
@@ -860,9 +871,9 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
               )}
 
               {/* Anzeige der Notizen */}
-              <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+              <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
                 {notes.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 4 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 3, fontSize: '0.75rem' }}>
                     Noch keine Notizen vorhanden. Füge deine erste Notiz hinzu!
                   </Typography>
                 ) : (
@@ -872,19 +883,19 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                         key={note.id}
                         sx={{ 
                           background: `linear-gradient(135deg, ${note.tags || '#4CAF50'}15 0%, ${note.tags || '#4CAF50'}25 100%)`,
-                          border: `2px solid ${note.tags || '#4CAF50'}40`,
-                          mb: 1, 
-                          borderRadius: 1,
+                          border: `1px solid ${note.tags || '#4CAF50'}40`,
+                          mb: 0.8, 
+                          borderRadius: 0.8,
                           position: 'relative',
-                          pr: 1, // Weniger Padding rechts für Icons
-                          pl: 2, // Mehr Padding links für Text
+                          pr: 0.8, // Weniger Padding rechts für Icons
+                          pl: 1.5, // Mehr Padding links für Text
                           cursor: 'grab',
                           '&:active': {
                             cursor: 'grabbing'
                           },
                           '&:hover': {
                             background: `linear-gradient(135deg, ${note.tags || '#4CAF50'}25 0%, ${note.tags || '#4CAF50'}35 100%)`,
-                            border: `2px solid ${note.tags || '#4CAF50'}60`
+                            border: `1px solid ${note.tags || '#4CAF50'}60`
                           }
                         }}
                         draggable
@@ -892,30 +903,30 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                         onDragOver={handleNoteDragOver}
                         onDrop={(e) => handleNoteDrop(e, index)}
                       >
-                        <ListItemIcon sx={{ minWidth: 32, mr: 1 }}>
-                          <DragIcon sx={{ color: note.tags || '#4CAF50', fontSize: 20 }} />
+                        <ListItemIcon sx={{ minWidth: 28, mr: 0.8 }}>
+                          <DragIcon sx={{ color: note.tags || '#4CAF50', fontSize: 16 }} />
                         </ListItemIcon>
                         <Box sx={{ 
                           flex: 1,
-                          mr: 1 // Abstand zu den Icons
+                          mr: 0.8 // Abstand zu den Icons
                         }}>
                           {/* Primary content */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, mb: 0.4 }}>
                             <Typography variant="subtitle2" component="div" sx={{ 
                               fontWeight: 'bold', 
                               color: note.tags || '#4CAF50',
-                              fontSize: '0.9rem'
+                              fontSize: '0.8rem'
                             }}>
                               {note.title}
                             </Typography>
                             <Box
                               sx={{
-                                width: 12,
-                                height: 12,
+                                width: 10,
+                                height: 10,
                                 borderRadius: '50%',
                                 backgroundColor: note.tags || '#4CAF50',
                                 border: '1px solid #fff',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
                               }}
                             />
                           </Box>
@@ -923,15 +934,16 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           <Box>
                             <Typography variant="body2" component="div" sx={{ 
                               color: '#333', 
-                              mb: 0.5,
-                              lineHeight: 1.4,
-                              whiteSpace: 'pre-wrap'
+                              mb: 0.4,
+                              lineHeight: 1.3,
+                              whiteSpace: 'pre-wrap',
+                              fontSize: '0.75rem'
                             }}>
                               {note.content}
                             </Typography>
                             <Typography variant="caption" component="div" sx={{ 
                               color: '#666',
-                              fontSize: '0.75rem'
+                              fontSize: '0.65rem'
                             }}>
                               {new Date(note.createdAt).toLocaleDateString('de-DE')} {new Date(note.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                             </Typography>
@@ -940,9 +952,9 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                         <Box sx={{ 
                           display: 'flex', 
                           flexDirection: 'column',
-                          gap: 0.5,
+                          gap: 0.3,
                           alignItems: 'flex-start',
-                          pt: 0.5
+                          pt: 0.3
                         }}>
                           <IconButton
                             size="small"
@@ -950,8 +962,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                             color="info"
                             title="Inhalt kopieren"
                             sx={{ 
-                              p: 1,
-                              '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                              p: 0.6,
+                              '& .MuiSvgIcon-root': { fontSize: '1rem' },
                               '&:hover': {
                                 backgroundColor: '#e3f2fd'
                               }
@@ -965,8 +977,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                             color="primary"
                             title="Notiz bearbeiten"
                             sx={{ 
-                              p: 1,
-                              '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                              p: 0.6,
+                              '& .MuiSvgIcon-root': { fontSize: '1rem' },
                               '&:hover': {
                                 backgroundColor: `${note.tags || '#4CAF50'}20`
                               }
@@ -980,8 +992,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                             color="error"
                             title="Notiz löschen"
                             sx={{ 
-                              p: 1,
-                              '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                              p: 0.6,
+                              '& .MuiSvgIcon-root': { fontSize: '1rem' },
                               '&:hover': {
                                 backgroundColor: '#ffebee'
                               }
@@ -1003,40 +1015,41 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
           <Grid item xs={12} md={6}>
           {quizzes.length > 0 && (
             <Card sx={{ 
-              borderRadius: 2.8,
-              boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
+              borderRadius: 1.5,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
               bgcolor: '#fff3e0',
               height: '100%'
             }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#ff9800' }}>
+              <CardContent sx={{ p: 1.2 }}>
+                <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 'bold', color: '#ff9800', fontSize: '0.8rem' }}>
                   Erstellte Quizze ({quizzes.length})
                 </Typography>
                 {quizzesLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                    <CircularProgress size={24} sx={{ color: '#ff9800' }} />
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 1.5 }}>
+                    <CircularProgress size={20} sx={{ color: '#ff9800' }} />
                   </Box>
                 ) : (
                 <List dense>
                   {quizzes.map((quiz) => (
                     <ListItem key={quiz.id} sx={{ 
                       bgcolor: '#fff', 
-                      mb: 1, 
-                      borderRadius: 1,
-                      border: '1px solid #ffcc80'
+                      mb: 0.8, 
+                      borderRadius: 0.8,
+                      border: '1px solid #ffcc80',
+                      p: 0.8
                     }}>
-                      <ListItemIcon>
-                        <QuizIcon sx={{ color: '#ff9800' }} />
+                      <ListItemIcon sx={{ minWidth: 28 }}>
+                        <QuizIcon sx={{ color: '#ff9800', fontSize: 18 }} />
                       </ListItemIcon>
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle2" component="div" sx={{ fontWeight: 'bold', color: '#333' }}>
+                        <Typography variant="subtitle2" component="div" sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.8rem' }}>
                           {quiz.title}
                         </Typography>
                         <Box>
-                          <Typography variant="body2" component="div" sx={{ color: '#666' }}>
+                          <Typography variant="body2" component="div" sx={{ color: '#666', fontSize: '0.75rem' }}>
                             {quiz.description}
                           </Typography>
-                          <Typography variant="caption" component="div" sx={{ color: '#666' }}>
+                          <Typography variant="caption" component="div" sx={{ color: '#666', fontSize: '0.65rem' }}>
                             Fragen: {quiz.questions.length} | Zeit: {quiz.timeLimit} Min.
                           </Typography>
                         </Box>
@@ -1044,9 +1057,9 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                       <Box sx={{ 
                         display: 'flex', 
                         flexDirection: 'column',
-                        gap: 0.5,
+                        gap: 0.3,
                         alignItems: 'flex-start',
-                        pt: 0.5
+                        pt: 0.3
                       }}>
                         <IconButton
                           size="small"
@@ -1054,8 +1067,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           color="primary"
                           title="Quiz bearbeiten"
                           sx={{ 
-                            p: 1,
-                            '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                            p: 0.6,
+                            '& .MuiSvgIcon-root': { fontSize: '1rem' },
                             '&:hover': {
                               backgroundColor: '#e3f2fd'
                             }
@@ -1069,8 +1082,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           color="error"
                           title="Quiz löschen"
                           sx={{ 
-                            p: 1,
-                            '& .MuiSvgIcon-root': { fontSize: '1.2rem' },
+                            p: 0.6,
+                            '& .MuiSvgIcon-root': { fontSize: '1rem' },
                             '&:hover': {
                               backgroundColor: '#ffebee'
                             }

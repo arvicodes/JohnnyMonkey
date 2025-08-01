@@ -134,13 +134,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Spielerische Farbpalette
   const colors = {
-    primary: '#4CAF50', // Freundliches Grün
-    secondary: '#FF9800', // Warmes Orange
-    accent1: '#2196F3', // Helles Blau
-    accent2: '#E91E63', // Fröhliches Pink
-    background: '#F5F9FD', // Helles, freundliches Blau
+    primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
+    secondary: '#F57C00', // Dunkleres Orange
+    accent1: '#1976D2', // Dunkleres Blau
+    accent2: '#C2185B', // Dunkleres Pink
+    background: '#F8FAFC', // Helleres, moderneres Blau
     cardBg: '#FFFFFF',
-    success: '#8BC34A',
+    success: '#4CAF50',
+    textPrimary: '#2C3E50', // Dunkler Text für bessere Lesbarkeit
+    textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
   };
 
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -524,10 +526,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <Grid item xs={12}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 1.4 }}>
             <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
-              <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0.7 }} />
-              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0.7 }} />
-              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0.7 }} />
-              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Material & Quiz</span>} sx={{ minHeight: 28, px: 0.7 }} />
+              <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Material & Quiz</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
             </Tabs>
           </Box>
         </Grid>
@@ -630,25 +632,33 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             {group.students.map((student) => (
                               <Grid item xs={12} sm={6} md={6} lg={4} key={student.id}>
                                 <Card variant="outlined" sx={{ 
-                                  borderRadius: 2.1,
-                                  border: 'none',
-                                  bgcolor: '#f8f9fa',
-                                  transition: 'transform 0.14s',
+                                  borderRadius: 2.8,
+                                  border: '1px solid #e0e0e0',
+                                  bgcolor: '#ffffff',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                  transition: 'all 0.2s ease-in-out',
                                   '&:hover': {
-                                    transform: 'translateY(-2.8px)',
-                                    boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)'
+                                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                                    transform: 'translateY(-1px)'
                                   }
                                 }}>
-                                  <CardContent>
+                                  <CardContent sx={{ p: 2.1 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.4 }}>
-                                      <Avatar sx={{ bgcolor: colors.accent1, mr: 1.4, width: 22, height: 22 }}>
+                                      <Avatar sx={{ bgcolor: colors.accent1, mr: 1.4, width: 24, height: 24 }}>
                                         {student.name.charAt(0)}
                                       </Avatar>
                                       <Box>
-                                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
+                                        <Typography variant="subtitle1" sx={{ 
+                                          fontWeight: 'bold', 
+                                          fontSize: '0.75rem',
+                                          color: colors.textPrimary
+                                        }}>
                                           {student.name}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                        <Typography variant="body2" sx={{ 
+                                          fontSize: '0.7rem',
+                                          color: colors.textSecondary
+                                        }}>
                                           Code: {student.loginCode}
                                         </Typography>
                                       </Box>
@@ -689,54 +699,116 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           </Grid>
                         </Grid>
                         <Grid item xs={12} md={4}>
-                          <Box sx={{ p: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                          <Box sx={{ 
+                            p: 2.1, 
+                            bgcolor: '#fff', 
+                            borderRadius: 2.8, 
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                            border: '1px solid #e0e0e0'
+                          }}>
+                            <Typography variant="subtitle2" sx={{ 
+                              fontWeight: 'bold', 
+                              mb: 1.4,
+                              color: colors.textPrimary,
+                              fontSize: '0.85rem'
+                            }}>
                               Zugeordnete Inhalte
                             </Typography>
                             {/* Verschachtelte Darstellung */}
-                            <Box sx={{ ml: 1 }}>
+                            <Box sx={{ 
+                              ml: 1,
+                              p: 1.4,
+                              bgcolor: '#fafbfc',
+                              borderRadius: 1.4,
+                              border: '1px solid #f0f0f0'
+                            }}>
                               {subjects
                                 .filter(subject => (subjectAssignments[subject.id] || []).includes(group.id))
                                 .map(subject => (
-                                  <Box key={subject.id} sx={{ mb: 1 }}>
-                                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: colors.accent1 }}>
-                                      Fach: {subject.name}
+                                  <Box key={subject.id} sx={{ mb: 1.4 }}>
+                                    <Typography variant="body2" sx={{ 
+                                      fontWeight: 'bold', 
+                                      color: colors.accent1, 
+                                      fontSize: '0.8rem',
+                                      mb: 0.7,
+                                      pb: 0.3,
+                                      borderBottom: `2px solid ${colors.accent1}30`
+                                    }}>
+                                      📚 {subject.name}
                                     </Typography>
                                     {/* Blöcke */}
                                     {blocks
                                       .filter(block => block.subjectId === subject.id && (blockAssignments[block.id] || []).includes(group.id))
                                       .map(block => (
-                                        <Box key={block.id} sx={{ ml: 2, mb: 0.5 }}>
-                                          <Typography variant="body2" sx={{ color: colors.primary }}>
-                                            Block: {block.name}
+                                        <Box key={block.id} sx={{ ml: 2, mb: 0.7 }}>
+                                          <Typography variant="body2" sx={{ 
+                                            color: colors.primary, 
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 0.5
+                                          }}>
+                                            📦 {block.name}
                                           </Typography>
                                           {/* Units */}
                                           {units
                                             .filter(unit => unit.blockId === block.id && (unitAssignments[unit.id] || []).includes(group.id))
                                             .map(unit => (
-                                              <Box key={unit.id} sx={{ ml: 2, mb: 0.5 }}>
-                                                <Typography variant="body2" sx={{ color: colors.secondary }}>
-                                                  Reihe: {unit.name}
+                                              <Box key={unit.id} sx={{ ml: 2, mb: 0.7 }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: colors.secondary, 
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 600,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: 0.5
+                                                }}>
+                                                  📋 {unit.name}
                                                 </Typography>
                                                 {/* Themen */}
                                                 {topics
                                                   .filter(topic => topic.unitId === unit.id && (topicAssignments[topic.id] || []).includes(group.id))
                                                   .map(topic => (
-                                                    <Box key={topic.id} sx={{ ml: 2, mb: 0.5 }}>
-                                                      <Typography variant="body2" sx={{ color: colors.accent2 }}>
-                                                        Thema: {topic.name}
+                                                    <Box key={topic.id} sx={{ ml: 2, mb: 0.7 }}>
+                                                      <Typography variant="body2" sx={{ 
+                                                        color: colors.accent2, 
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 0.5
+                                                      }}>
+                                                        💡 {topic.name}
                                                       </Typography>
                                                       {/* Stunden */}
                                                       {lessons
                                                         .filter(lesson => lesson.topicId === topic.id && (lessonAssignments[lesson.id] || []).includes(group.id))
                                                         .map(lesson => (
-                                                          <Box key={lesson.id} sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            <Typography 
-                                                              variant="body2" 
-                                                              sx={{ 
-                                                                color: '#888',
-                                                                cursor: (lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? 'pointer' : 'default'
-                                                              }}
+                                                                                                                  <Box key={lesson.id} sx={{ 
+                                                          ml: 2, 
+                                                          display: 'flex', 
+                                                          alignItems: 'center', 
+                                                          gap: '6px',
+                                                          p: 0.5,
+                                                          borderRadius: 1,
+                                                          bgcolor: (lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? '#f0f8ff' : 'transparent',
+                                                          transition: 'all 0.2s ease',
+                                                          '&:hover': {
+                                                            bgcolor: (lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? '#e3f2fd' : 'transparent'
+                                                          }
+                                                        }}>
+                                                          <Typography 
+                                                            variant="body2" 
+                                                            sx={{ 
+                                                              color: colors.textSecondary,
+                                                              cursor: (lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? 'pointer' : 'default',
+                                                              fontSize: '0.75rem',
+                                                              fontWeight: 500,
+                                                              '&:hover': {
+                                                                color: (lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? colors.primary : colors.textSecondary
+                                                              }
+                                                            }}
                                                               onClick={e => {
                                                                 e.stopPropagation();
                                                                 if ((lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id]) {
@@ -745,15 +817,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                               }}
                                                               title={(lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id] ? "Material/Quiz öffnen" : ""}
                                                             >
-                                                              Stunde: {lesson.name}
+                                                              📖 {lesson.name}
                                                             </Typography>
                                                             {((lessonMaterials[lesson.id] && lessonMaterials[lesson.id].length > 0) || lessonQuizzes[lesson.id]) && (
                                                               <span 
                                                                 style={{ 
-                                                                  color: '#ff9800', 
+                                                                  color: colors.secondary, 
                                                                   fontSize: '0.8em', 
                                                                   cursor: 'pointer',
-                                                                  marginLeft: '4px'
+                                                                  marginLeft: '4px',
+                                                                  transition: 'all 0.2s ease'
                                                                 }}
                                                                 onClick={e => {
                                                                   e.stopPropagation();
@@ -780,7 +853,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 units.some(unit => (unitAssignments[unit.id] || []).includes(group.id)) ||
                                 topics.some(topic => (topicAssignments[topic.id] || []).includes(group.id)) ||
                                 lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(group.id))) && (
-                                <Typography variant="body2" color="text.secondary">Noch keine Inhalte zugeordnet.</Typography>
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  py: 2,
+                                  color: colors.textSecondary,
+                                  fontStyle: 'italic'
+                                }}>
+                                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                    📝 Noch keine Inhalte zugeordnet
+                                  </Typography>
+                                </Box>
                               )}
                             </Box>
                           </Box>

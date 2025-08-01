@@ -208,18 +208,23 @@ const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, o
       sx={{
         mb: 1,
         borderRadius: 2,
-        background: '#e8f4fd',
-        border: 'none',
-        boxShadow: '0 2px 4px rgba(51,153,255,0.15)',
+        background: '#ffffff',
+        border: '1px solid #e0e0e0',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
         display: 'flex',
         alignItems: 'center',
-        minHeight: 44,
-        px: 2,
-        py: 0.5,
-        borderLeft: '4px solid #0066cc',
+        minHeight: 36,
+        px: 1.5,
+        py: 0.7,
+        borderLeft: '3px solid #1976D2',
         fontWeight: 600,
         position: 'relative',
-        '&:hover .plus-btn': { display: 'inline-flex' }
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          transform: 'translateY(-1px)',
+          '& .plus-btn': { display: 'inline-flex' }
+        }
       }}
     >
       <IconButton
@@ -371,20 +376,25 @@ const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onTogg
       ref={setNodeRef}
       style={style}
       sx={{
-        mb: 1,
-        borderRadius: 2,
-        background: '#f6f9fc',
-        border: 'none',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+        mb: 0.8,
+        borderRadius: 1.8,
+        background: '#ffffff',
+        border: '1px solid #e8e8e8',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
         display: 'flex',
         alignItems: 'center',
-        minHeight: 40,
-        px: 2,
-        py: 0.5,
-        borderLeft: '4px solid #3399ff',
+        minHeight: 32,
+        px: 1.3,
+        py: 0.6,
+        borderLeft: '2px solid #2E7D32',
         fontWeight: 600,
         position: 'relative',
-        '&:hover .plus-btn': { display: 'inline-flex' }
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+          transform: 'translateY(-1px)',
+          '& .plus-btn': { display: 'inline-flex' }
+        }
       }}
     >
       <IconButton
@@ -536,21 +546,25 @@ const SortableUnit = ({ unit, onEdit, onDelete, onAddTopic, isCollapsed, onToggl
       ref={setNodeRef}
       style={style}
       sx={{
-        mb: 1,
-        borderRadius: 2,
+        mb: 0.7,
+        borderRadius: 1.6,
         background: '#fafdff',
-        border: 'none',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+        border: '1px solid #e8e8e8',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         display: 'flex',
         alignItems: 'center',
-        minHeight: 36,
-        px: 2,
-        py: 0.3,
-        borderLeft: '4px solid #b3cef6',
+        minHeight: 28,
+        px: 1.2,
+        py: 0.4,
+        borderLeft: '2px solid #F57C00',
         fontStyle: 'italic',
         color: '#3a4a5d',
         position: 'relative',
-        '&:hover .plus-btn': { display: 'inline-flex' }
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          '& .plus-btn': { display: 'inline-flex' }
+        }
       }}
     >
       <IconButton
@@ -702,21 +716,25 @@ const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onTo
       ref={setNodeRef}
       style={style}
       sx={{
-        mb: 1,
-        borderRadius: 2,
+        mb: 0.6,
+        borderRadius: 1.4,
         background: '#fefeff',
-        border: 'none',
+        border: '1px solid #e8e8e8',
         boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
         display: 'flex',
         alignItems: 'center',
-        minHeight: 34,
-        px: 2,
-        py: 0.2,
-        borderLeft: '4px solid #d0e6f7',
+        minHeight: 26,
+        px: 1,
+        py: 0.3,
+        borderLeft: '2px solid #C2185B',
         fontWeight: 500,
         color: '#4a5a6d',
         position: 'relative',
-        '&:hover .plus-btn': { display: 'inline-flex' }
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          '& .plus-btn': { display: 'inline-flex' }
+        }
       }}
     >
       <IconButton
@@ -951,23 +969,26 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
       ref={setNodeRef}
       style={style}
       sx={{
-        mb: 1,
-        borderRadius: 2,
+        mb: 0.5,
+        borderRadius: 1.2,
         background: '#fefeff',
-        border: 'none',
+        border: '1px solid #e8e8e8',
         boxShadow: '0 1px 2px rgba(0,0,0,0.01)',
         display: 'flex',
         alignItems: 'center',
-        minHeight: 32,
-        px: 2,
+        minHeight: 24,
+        px: 0.8,
         py: 0.2,
-        borderLeft: '4px solid #e0e7ef',
+        borderLeft: '2px solid #7F8C8D',
         fontWeight: 400,
         color: '#5a6a7d',
         position: 'relative',
         cursor: (lessonMaterials.length > 0 || lessonQuiz) ? 'pointer' : 'default',
-        transition: 'background 0.2s',
-        '&:hover': (lessonMaterials.length > 0 || lessonQuiz) ? { background: '#e3f0fc' } : {},
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': (lessonMaterials.length > 0 || lessonQuiz) ? { 
+          background: '#e3f0fc',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+        } : {},
       }}
       onClick={handleLessonClick}
       onContextMenu={handleLessonRightClick}
@@ -1015,14 +1036,14 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, position: 'relative' }}>
         <IconButton 
           size="small" 
-          sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} 
+          sx={{ color: '#3399ff', borderRadius: 1, width: 22, height: 22, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} 
           onClick={e => { e.stopPropagation(); props.onEdit(lesson); }}
         >
           ✏️
         </IconButton>
         <IconButton 
           size="small" 
-          sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} 
+          sx={{ color: '#3399ff', borderRadius: 1, width: 22, height: 22, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} 
           onClick={e => { e.stopPropagation(); props.onDelete(lesson.id); }}
         >
           🗑️
@@ -1088,6 +1109,18 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
   setTopics: setTopicsProp,
   setLessons: setLessonsProp,
 }) => {
+  // Spielerische Farbpalette
+  const colors = {
+    primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
+    secondary: '#F57C00', // Dunkleres Orange
+    accent1: '#1976D2', // Dunkleres Blau
+    accent2: '#C2185B', // Dunkleres Pink
+    background: '#F8FAFC', // Helleres, moderneres Blau
+    cardBg: '#FFFFFF',
+    success: '#4CAF50',
+    textPrimary: '#2C3E50', // Dunkler Text für bessere Lesbarkeit
+    textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
+  };
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [blocks, setBlocks] = useState<{ [subjectId: string]: Block[] }>({});
   const [units, setUnits] = useState<{ [blockId: string]: Unit[] }>({});

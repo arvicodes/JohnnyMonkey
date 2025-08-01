@@ -56,7 +56,7 @@ export default function BottomNavigation({ currentTab, onTabChange }: BottomNavi
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                'flex-1 flex flex-col items-center py-2 px-1',
+                'w-16 flex flex-col items-center py-2 px-1',
                 isActive 
                   ? 'text-blue-600 bg-blue-50' 
                   : 'text-gray-500 hover:text-gray-700',
