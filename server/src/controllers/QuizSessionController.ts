@@ -211,4 +211,44 @@ export const getSessionResults = async (req: Request, res: Response) => {
     console.error('Error getting session results:', error);
     res.status(500).json({ error: 'Fehler beim Abrufen der Session-Ergebnisse' });
   }
+};
+
+// Stop quiz session
+export const stopQuizSession = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const { teacherId } = req.body;
+
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+    }
+
+    const session = await prisma.quizSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        quiz: true
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session nicht gefunden' });
+    }
+
+    if (session.quiz.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Nur der Quiz-Ersteller kann die Session beenden' });
+    }
+
+    await prisma.quizSession.update({
+      where: { id: sessionId },
+      data: { 
+        isActive: false,
+        endedAt: new Date()
+      }
+    });
+
+    res.json({ message: 'Session erfolgreich beendet' });
+  } catch (error) {
+    console.error('Error stopping quiz session:', error);
+    res.status(500).json({ error: 'Fehler beim Beenden der Session' });
+  }
 }; 

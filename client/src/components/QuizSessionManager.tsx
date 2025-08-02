@@ -20,7 +20,8 @@ import {
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
   Refresh as ResetIcon,
-  Visibility as ViewIcon
+  Visibility as ViewIcon,
+  Stop as StopIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 
@@ -152,6 +153,38 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
     }
   };
 
+  const handleStopSession = async () => {
+    if (!activeSession) return;
+    
+    if (!window.confirm('Möchten Sie die Quiz-Session wirklich beenden? Schüler können dann nicht mehr teilnehmen.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/quiz-sessions/${activeSession.id}/stop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teacherId }),
+      });
+
+      if (response.ok) {
+        // Session ist beendet, setze activeSession auf null
+        setActiveSession(null);
+        setError(null);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Fehler beim Beenden der Session');
+      }
+    } catch (err) {
+      setError('Fehler beim Beenden der Session');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleViewResults = async (participationId: string, studentName: string) => {
     setLoading(true);
     try {
@@ -217,20 +250,35 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Quiz-Session starten
+              Quiz: {quiz?.title}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Starten Sie eine Session, damit Ihre Schüler das Quiz bearbeiten können.
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              {quiz?.description}
             </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<StartIcon />}
-              onClick={handleStartSession}
-              disabled={loading}
-            >
-              Session starten
-            </Button>
+            
+            <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<StartIcon />}
+                onClick={handleStartSession}
+                disabled={loading || !!activeSession}
+              >
+                Session starten
+              </Button>
+              
+              {activeSession && (
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={<StopIcon />}
+                  onClick={handleStopSession}
+                  disabled={loading}
+                >
+                  Session beenden
+                </Button>
+              )}
+            </Box>
           </CardContent>
         </Card>
       ) : (
