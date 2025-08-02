@@ -182,6 +182,10 @@ router.get('/lesson/:lessonId', (req, res) => __awaiter(void 0, void 0, void 0, 
 router.post('/lesson', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { lessonId, fileName, filePath } = req.body;
+        // Remove all existing quizzes from this lesson first
+        yield prisma.lessonQuiz.deleteMany({
+            where: { lessonId }
+        });
         // First, create or find the material
         let material = yield prisma.material.findFirst({
             where: { fileName }

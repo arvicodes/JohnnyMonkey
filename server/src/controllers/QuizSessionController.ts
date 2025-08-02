@@ -100,6 +100,57 @@ export const getActiveSession = async (req: Request, res: Response) => {
   }
 };
 
+// Get quiz data for a session (student only)
+export const getQuizForSession = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+
+    const session = await prisma.quizSession.findFirst({
+      where: {
+        id: sessionId,
+        isActive: true
+      },
+      include: {
+        quiz: {
+          include: {
+            questions: {
+              orderBy: {
+                order: 'asc'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session nicht gefunden oder nicht aktiv' });
+    }
+
+    // Prepare quiz data for student (without correct answers)
+    const quizForStudent = {
+      id: session.quiz.id,
+      title: session.quiz.title,
+      description: session.quiz.description,
+      timeLimit: session.quiz.timeLimit,
+      shuffleQuestions: session.quiz.shuffleQuestions,
+      shuffleAnswers: session.quiz.shuffleAnswers,
+      questions: session.quiz.questions.map((q: any) => ({
+        id: q.id,
+        question: q.question,
+        options: JSON.parse(q.options),
+        order: q.order
+      }))
+    };
+
+    res.json(quizForStudent);
+  } catch (error) {
+    console.error('Error getting quiz for session:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Quiz-Daten' });
+  }
+};
+
+// Get session by ID
 export const getSessionById = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;

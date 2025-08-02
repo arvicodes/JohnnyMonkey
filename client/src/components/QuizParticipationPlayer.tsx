@@ -14,12 +14,21 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert
+  Alert,
+  Avatar,
+  Chip,
+  Paper,
+  CircularProgress
 } from '@mui/material';
 import {
   PlayArrow as PlayIcon,
   Check as CheckIcon,
-  Timer as TimerIcon
+  Timer as TimerIcon,
+  ArrowBack as ArrowBackIcon,
+  ArrowForward as ArrowForwardIcon,
+  School as SchoolIcon,
+  EmojiEvents as TrophyIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 
 interface QuizQuestion {
@@ -83,11 +92,11 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
           if (status.participation) {
             // Teilnahme bereits gestartet
             setParticipation(status.participation);
-                         if (status.participation.completedAt) {
-               // Quiz bereits abgeschlossen
-               setShowResults(true);
-               loadResults(status.participation.id);
-             } else {
+            if (status.participation.completedAt) {
+              // Quiz bereits abgeschlossen
+              setShowResults(true);
+              loadResults(status.participation.id);
+            } else {
               // Quiz läuft noch
               loadQuizData();
             }
@@ -108,20 +117,19 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
 
   const loadQuizData = async () => {
     try {
-      const response = await fetch(`/api/quiz-sessions/session/${sessionId}`);
+      const response = await fetch(`/api/quiz-sessions/${sessionId}/quiz`);
       if (response.ok) {
-        const sessionData = await response.json();
-        setQuiz(sessionData.quiz);
-        setTimeLeft(sessionData.quiz.timeLimit * 60);
+        const quizData = await response.json();
+        setQuiz(quizData);
         
         // Fragen mischen wenn gewünscht
-        let shuffledQuestions = [...sessionData.quiz.questions];
-        if (sessionData.quiz.shuffleQuestions) {
+        let shuffledQuestions = [...quizData.questions];
+        if (quizData.shuffleQuestions) {
           shuffledQuestions = shuffledQuestions.sort(() => Math.random() - 0.5);
         }
         
         // Antworten mischen wenn gewünscht
-        if (sessionData.quiz.shuffleAnswers) {
+        if (quizData.shuffleAnswers) {
           shuffledQuestions = shuffledQuestions.map(q => ({
             ...q,
             options: [...q.options].sort(() => Math.random() - 0.5)
@@ -129,11 +137,13 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         }
         
         setQuestions(shuffledQuestions);
+        setTimeLeft(quizData.timeLimit * 60);
+        setLoading(false);
       } else {
-        setError('Quiz-Daten konnten nicht geladen werden');
+        setError('Quiz konnte nicht geladen werden');
       }
     } catch (err) {
-      setError('Fehler beim Laden der Quiz-Daten');
+      setError('Fehler beim Laden des Quiz');
     }
   };
 
@@ -142,17 +152,35 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       const response = await fetch(`/api/quiz-participations/${participationId}/results?studentId=${studentId}`);
       if (response.ok) {
         const results = await response.json();
-        setScore(results.participation.score || 0);
+        setScore(results.participation.score);
+        
+        // Set participation data
+        setParticipation({
+          id: results.participation.id,
+          startedAt: results.participation.startedAt,
+          maxScore: results.participation.maxScore
+        });
+        
+        // Convert answers back to the format expected by the component
+        const answersMap: { [key: string]: string } = {};
+        results.answers.forEach((answer: any) => {
+          // Find the question ID by matching the question text
+          const question = questions.find(q => q.question === answer.question);
+          if (question) {
+            answersMap[question.id] = answer.selectedAnswer;
+          }
+        });
+        setAnswers(answersMap);
+      } else {
+        setError('Ergebnisse konnten nicht geladen werden');
       }
     } catch (err) {
-      console.error('Error loading results:', err);
+      setError('Fehler beim Laden der Ergebnisse');
     }
   };
 
   const handleStartParticipation = async () => {
     setLoading(true);
-    setError(null);
-
     try {
       const response = await fetch(`/api/quiz-participations/${sessionId}/start`, {
         method: 'POST',
@@ -162,33 +190,16 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         body: JSON.stringify({ studentId }),
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        const participationData = await response.json();
+        setParticipation(participationData.participation);
+        await loadQuizData();
+      } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Fehler beim Starten der Teilnahme');
+        setError(errorData.error || 'Teilnahme konnte nicht gestartet werden');
       }
-
-      const data = await response.json();
-      setQuiz(data.quiz);
-      setParticipation(data.participation);
-      setTimeLeft(data.quiz.timeLimit * 60);
-      
-      // Fragen mischen wenn gewünscht
-      let shuffledQuestions = [...data.quiz.questions];
-      if (data.quiz.shuffleQuestions) {
-        shuffledQuestions = shuffledQuestions.sort(() => Math.random() - 0.5);
-      }
-      
-      // Antworten mischen wenn gewünscht
-      if (data.quiz.shuffleAnswers) {
-        shuffledQuestions = shuffledQuestions.map(q => ({
-          ...q,
-          options: [...q.options].sort(() => Math.random() - 0.5)
-        }));
-      }
-      
-      setQuestions(shuffledQuestions);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fehler beim Starten der Teilnahme');
+      setError('Fehler beim Starten der Teilnahme');
     } finally {
       setLoading(false);
     }
@@ -201,13 +212,11 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       return;
     }
 
-    if (timeLeft > 0 && quiz) {
-      const timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
 
-      return () => clearInterval(timer);
-    }
+    return () => clearInterval(timer);
   }, [timeLeft, quiz]);
 
   const handleAnswerSelect = (answer: string) => {
@@ -235,32 +244,44 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   };
 
   const finishQuiz = async () => {
-    if (!participation) return;
+    const correctAnswers = questions.filter(q => answers[q.id] === q.correctAnswer).length;
+    setScore(correctAnswers);
+    setShowResults(true);
+
+    if (!participation?.id) {
+      console.error('Keine participation ID verfügbar');
+      return;
+    }
 
     try {
+      console.log('Sending answers:', { participationId: participation.id, answers });
       const response = await fetch(`/api/quiz-participations/${participation.id}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ 
+          answers
+        }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        setScore(result.score);
-        setShowResults(true);
+        console.log('Quiz submission successful:', result);
       } else {
-        setError('Fehler beim Abschließen des Quiz');
+        const error = await response.text();
+        console.error('Quiz submission failed:', error);
       }
     } catch (err) {
-      setError('Fehler beim Abschließen des Quiz');
+      console.error('Fehler beim Speichern der Ergebnisse:', err);
     }
   };
 
   const handleAbortQuiz = () => {
-    setWasAborted(true);
-    finishQuiz();
+    if (window.confirm('Möchten Sie das Quiz wirklich abbrechen? Alle Antworten gehen verloren.')) {
+      setWasAborted(true);
+      finishQuiz();
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -319,107 +340,353 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
 
   const currentQuestion = questions[currentQuestionIndex];
 
-  // Zeige Start-Button wenn noch keine Teilnahme gestartet wurde
-  if (!quiz && !participation) {
+  if (loading) {
     return (
-      <Dialog open={true} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Typography variant="h6">Quiz-Teilnahme</Typography>
-        </DialogTitle>
-        <DialogContent>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Klicken Sie auf "Teilnahme starten", um mit dem Quiz zu beginnen.
-          </Typography>
-          
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<PlayIcon />}
-            onClick={handleStartParticipation}
-            disabled={loading}
-            fullWidth
-          >
-            {loading ? 'Starte...' : 'Teilnahme starten'}
-          </Button>
+      <Dialog open={true} maxWidth="xs" fullWidth>
+        <DialogContent sx={{ textAlign: 'center', py: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+            <CircularProgress size={40} />
+            <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>Lade Quiz...</Typography>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Abbrechen</Button>
-        </DialogActions>
       </Dialog>
     );
   }
 
-  if (!currentQuestion) {
+  if (error) {
     return (
-      <Dialog open={true} maxWidth="sm" fullWidth>
-        <DialogContent>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
-            <Typography variant="body2">Lade Quiz...</Typography>
+      <Dialog open={true} maxWidth="xs" fullWidth>
+        <DialogContent sx={{ py: 3 }}>
+          <Alert severity="error" sx={{ mb: 2, fontSize: '0.8rem' }}>
+            {error}
+          </Alert>
+          <Button onClick={onClose} variant="contained" fullWidth size="small">
+            Schließen
+          </Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!participation) {
+    return (
+      <Dialog 
+        open={true} 
+        maxWidth="xs" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          pb: 0.5, 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          borderRadius: '8px 8px 0 0',
+          textAlign: 'center'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
+            <Avatar sx={{ 
+              bgcolor: 'rgba(255,255,255,0.2)', 
+              width: 36, 
+              height: 36 
+            }}>
+              <SchoolIcon sx={{ fontSize: 18 }} />
+            </Avatar>
+            <Typography variant="h6" sx={{ 
+              fontWeight: 600,
+              textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              fontSize: '0.9rem'
+            }}>
+              Quiz Teilnahme
+            </Typography>
           </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ pt: 2, pb: 1, textAlign: 'center' }}>
+          <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.85rem' }}>
+            Bereit für das Quiz?
+          </Typography>
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, fontSize: '0.75rem' }}>
+            Klicken Sie auf "Start", um mit dem Quiz zu beginnen.
+          </Typography>
+          
+          <Button
+            variant="contained"
+            size="medium"
+            startIcon={<PlayIcon />}
+            onClick={handleStartParticipation}
+            disabled={loading}
+            sx={{
+              minWidth: 120,
+              height: 36,
+              py: 0.75,
+              px: 2,
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              borderRadius: 2,
+              background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+              boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #45a049 0%, #3d8b40 100%)',
+                boxShadow: '0 6px 16px rgba(76, 175, 80, 0.4)',
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            Quiz starten
+          </Button>
         </DialogContent>
       </Dialog>
     );
   }
 
   if (showResults) {
+    const percentage = Math.round((score / questions.length) * 100);
+    
+    const getPerformanceColor = (percentage: number) => {
+      if (percentage >= 90) return '#4caf50';
+      if (percentage >= 70) return '#ff9800';
+      if (percentage >= 50) return '#ff5722';
+      return '#f44336';
+    };
+
+    const getPerformanceText = (percentage: number) => {
+      if (percentage >= 90) return 'Ausgezeichnet!';
+      if (percentage >= 70) return 'Gut gemacht!';
+      if (percentage >= 50) return 'Befriedigend';
+      return 'Verbesserung nötig';
+    };
+
+    const getPerformanceIcon = (percentage: number) => {
+      if (percentage >= 90) return <TrophyIcon />;
+      if (percentage >= 70) return <CheckIcon />;
+      return <SchoolIcon />;
+    };
+
     return (
-      <Dialog open={true} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography variant="h6" sx={{ textAlign: 'center', fontSize: '1.1rem' }}>
+      <Dialog 
+        open={true} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          pb: 0.5, 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          borderRadius: '8px 8px 0 0'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <Avatar sx={{ 
+              bgcolor: 'rgba(255,255,255,0.2)', 
+              width: 28, 
+              height: 28 
+            }}>
+              {getPerformanceIcon(percentage)}
+            </Avatar>
+            <Typography variant="h6" sx={{ 
+              textAlign: 'center', 
+              fontSize: '1rem',
+              fontWeight: 600,
+              textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+            }}>
               Quiz Ergebnisse
               {wasAborted && (
-                <Typography component="span" variant="body2" sx={{ ml: 1, color: '#f44336', fontSize: '0.8rem' }}>
+                <Typography component="span" variant="body2" sx={{ ml: 1, color: '#ffebee', fontSize: '0.7rem' }}>
                   (Vorzeitig abgebrochen)
                 </Typography>
               )}
             </Typography>
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
-          <Box sx={{ textAlign: 'center', py: 2 }}>
-            <Typography variant="h5" sx={{ mb: 1, color: score === questions.length ? '#4caf50' : '#ff9800', fontSize: '1.3rem' }}>
-              {score} von {questions.length} Fragen richtig
-            </Typography>
-            <Typography variant="h6" sx={{ mb: 2, fontSize: '1rem' }}>
-              {Math.round((score / questions.length) * 100)}% Erfolg
-            </Typography>
-            
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 1, fontSize: '0.9rem' }}>Detaillierte Ergebnisse:</Typography>
-              {questions.map((question, index) => {
-                const userAnswer = answers[question.id];
-                const isCorrect = userAnswer === question.correctAnswer;
-                
-                return (
-                  <Card key={question.id} sx={{ mb: 1, bgcolor: isCorrect ? '#e8f5e8' : '#ffebee' }}>
-                    <CardContent sx={{ p: 1.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 0.5, fontSize: '0.8rem' }}>
-                        Frage {index + 1}: {question.question}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: isCorrect ? '#4caf50' : '#f44336', fontSize: '0.75rem' }}>
-                        Ihre Antwort: {userAnswer || 'Keine Antwort'}
-                        {isCorrect ? ' ✓' : ' ✗'}
-                      </Typography>
-                      {!isCorrect && (
-                        <Typography variant="body2" sx={{ color: '#4caf50', mt: 0.5, fontSize: '0.75rem' }}>
-                          Richtige Antwort: {question.correctAnswer}
-                        </Typography>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </Box>
-          </Box>
+        
+        <DialogContent sx={{ pt: 1.5, pb: 1 }}>
+          {/* Performance Summary */}
+          <Card sx={{ 
+            mb: 1.5, 
+            background: 'rgba(255,255,255,0.9)',
+            borderRadius: 1,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}>
+            <CardContent sx={{ p: 1.5, textAlign: 'center' }}>
+              <Typography variant="h3" sx={{ 
+                mb: 0.5, 
+                color: getPerformanceColor(percentage),
+                fontWeight: 700,
+                fontSize: '1.8rem'
+              }}>
+                {percentage}%
+              </Typography>
+              
+              <Typography variant="subtitle1" sx={{ 
+                mb: 1, 
+                color: getPerformanceColor(percentage),
+                fontWeight: 600,
+                fontSize: '0.8rem'
+              }}>
+                {getPerformanceText(percentage)}
+              </Typography>
+
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600, fontSize: '0.9rem' }}>
+                  {score} von {questions.length} Fragen richtig
+                </Typography>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={percentage} 
+                  sx={{ 
+                    height: 8, 
+                    borderRadius: 4,
+                    backgroundColor: 'rgba(0,0,0,0.1)',
+                    '& .MuiLinearProgress-bar': {
+                      background: `linear-gradient(90deg, ${getPerformanceColor(percentage)} 0%, ${getPerformanceColor(percentage)}dd 100%)`,
+                      borderRadius: 4
+                    }
+                  }} 
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-around', gap: 1 }}>
+                <Chip 
+                  icon={<CheckIcon />}
+                  label={`${score} Richtig`}
+                  color="success"
+                  variant="outlined"
+                  size="small"
+                  sx={{ fontWeight: 600, fontSize: '0.65rem', height: 20 }}
+                />
+                <Chip 
+                  icon={<CancelIcon />}
+                  label={`${questions.length - score} Falsch`}
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                  sx={{ fontWeight: 600, fontSize: '0.65rem', height: 20 }}
+                />
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Detailed Results */}
+          <Card sx={{ 
+            background: 'rgba(255,255,255,0.9)',
+            borderRadius: 1,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}>
+            <CardContent sx={{ p: 1.5 }}>
+              <Typography variant="subtitle2" sx={{ 
+                mb: 1, 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                fontSize: '0.75rem'
+              }}>
+                <SchoolIcon color="primary" sx={{ fontSize: 16 }} />
+                Detaillierte Ergebnisse
+              </Typography>
+              
+              <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+                {questions.map((question, index) => {
+                  const userAnswer = answers[question.id];
+                  const isCorrect = userAnswer === question.correctAnswer;
+                  
+                  return (
+                    <Card 
+                      key={question.id} 
+                      sx={{ 
+                        mb: 1, 
+                        background: isCorrect 
+                          ? 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)'
+                          : 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)',
+                        borderRadius: 1,
+                        border: `1px solid ${isCorrect ? '#4caf50' : '#f44336'}`,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
+                        }
+                      }}
+                    >
+                      <CardContent sx={{ p: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                          <Avatar sx={{ 
+                            bgcolor: isCorrect ? '#4caf50' : '#f44336',
+                            width: 20,
+                            height: 20,
+                            fontSize: '0.6rem',
+                            fontWeight: 600
+                          }}>
+                            {index + 1}
+                          </Avatar>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" sx={{ 
+                              fontWeight: 600, 
+                              mb: 0.5,
+                              color: isCorrect ? '#2e7d32' : '#c62828',
+                              fontSize: '0.7rem',
+                              lineHeight: 1.2
+                            }}>
+                              {question.question}
+                            </Typography>
+                            
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                              <Typography variant="caption" sx={{ 
+                                color: isCorrect ? '#4caf50' : '#f44336',
+                                fontWeight: 600,
+                                fontSize: '0.6rem'
+                              }}>
+                                Ihre Antwort: {userAnswer || 'Keine Antwort'}
+                              </Typography>
+                              {isCorrect ? (
+                                <CheckIcon sx={{ color: '#4caf50', fontSize: 14 }} />
+                              ) : (
+                                <CancelIcon sx={{ color: '#f44336', fontSize: 14 }} />
+                              )}
+                            </Box>
+                            
+                            {!isCorrect && (
+                              <Typography variant="caption" sx={{ 
+                                color: '#4caf50',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                fontSize: '0.6rem'
+                              }}>
+                                <CheckIcon sx={{ fontSize: 12 }} />
+                                Richtige Antwort: {question.correctAnswer}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
+            </CardContent>
+          </Card>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+        
+        <DialogActions sx={{ 
+          justifyContent: 'center', 
+          pb: 1.5,
+          px: 2
+        }}>
           <Button 
             onClick={onClose} 
             variant="contained"
@@ -431,21 +698,21 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
             }}
             sx={{
               minWidth: 80,
-              height: 28,
-              py: 0,
+              height: 32,
+              py: 0.5,
               px: 2,
-              fontSize: '0.8rem',
-              fontWeight: 'bold',
+              fontSize: '0.75rem',
+              fontWeight: 600,
               borderRadius: 1,
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
               border: 'none',
               color: 'white',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'all 0.2s ease',
               '&:hover': {
                 background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
-                boxShadow: '0 4px 16px rgba(102, 126, 234, 0.4)',
-                transform: 'translateY(-2px) scale(1.02)'
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                transform: 'translateY(-1px) scale(1.02)'
               },
               '&:active': {
                 transform: 'translateY(0px) scale(0.98)'
@@ -460,202 +727,347 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   }
 
   return (
-    <Dialog open={true} maxWidth="md" fullWidth onKeyDown={handleKeyDown}>
+    <Dialog 
+      open={true} 
+      maxWidth="sm" 
+      fullWidth 
+      onKeyDown={handleKeyDown}
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+          boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+        }
+      }}
+    >
       <div ref={dialogRef} tabIndex={-1}>
-        <DialogTitle sx={{ pb: 1 }}>
+        <DialogTitle sx={{ 
+          pb: 0.5, 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          borderRadius: '8px 8px 0 0'
+        }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1rem' }}>{quiz?.title}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Avatar sx={{ 
+                bgcolor: 'rgba(255,255,255,0.2)', 
+                width: 32, 
+                height: 32 
+              }}>
+                <SchoolIcon sx={{ fontSize: 16 }} />
+              </Avatar>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600, 
+                fontSize: '1rem',
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+              }}>
+                {quiz?.title}
+              </Typography>
+            </Box>
+            
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center', 
               gap: 1,
-              bgcolor: '#f5f5f5',
+              bgcolor: 'rgba(255,255,255,0.2)',
               px: 1.5,
               py: 0.5,
               borderRadius: 1,
-              border: '1px solid #e0e0e0'
+              border: '1px solid rgba(255,255,255,0.3)'
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <TimerIcon color="primary" sx={{ fontSize: '1rem' }} />
-                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#1976d2', fontSize: '0.9rem' }}>
-                  {formatTime(timeLeft)}
-                </Typography>
-              </Box>
+              <TimerIcon sx={{ fontSize: '1rem' }} />
+              <Typography variant="subtitle2" sx={{ 
+                fontWeight: 700, 
+                fontSize: '0.9rem',
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+              }}>
+                {formatTime(timeLeft)}
+              </Typography>
             </Box>
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#1976d2', fontSize: '0.85rem' }}>
-                Frage {currentQuestionIndex + 1} von {questions.length}
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#666', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                {Math.round((currentQuestionIndex / questions.length) * 100)}% abgeschlossen
-              </Typography>
-            </Box>
-            <LinearProgress 
-              variant="determinate" 
-              value={(currentQuestionIndex / questions.length) * 100}
-              sx={{ 
-                height: 6,
-                borderRadius: 3,
-                bgcolor: '#e0e0e0',
-                '& .MuiLinearProgress-bar': {
+        
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          {/* Progress Bar */}
+          <Card sx={{ 
+            mb: 2, 
+            background: 'rgba(255,255,255,0.9)',
+            borderRadius: 1,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}>
+            <CardContent sx={{ p: 1.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant="subtitle2" sx={{ 
+                  fontWeight: 600, 
+                  color: '#1976d2',
+                  fontSize: '0.8rem'
+                }}>
+                  Frage {currentQuestionIndex + 1} von {questions.length}
+                </Typography>
+                <Chip 
+                  label={`${Math.round((currentQuestionIndex / questions.length) * 100)}% abgeschlossen`}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  sx={{ fontWeight: 600, fontSize: '0.65rem', height: 20 }}
+                />
+              </Box>
+              <LinearProgress 
+                variant="determinate" 
+                value={(currentQuestionIndex / questions.length) * 100}
+                sx={{ 
+                  height: 6,
                   borderRadius: 3,
-                  bgcolor: '#1976d2'
-                }
-              }}
-            />
-          </Box>
+                  backgroundColor: 'rgba(0,0,0,0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: 3
+                  }
+                }}
+              />
+            </CardContent>
+          </Card>
 
+          {/* Question Card */}
           <Card sx={{ 
             mb: 2,
-            borderRadius: 2,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            border: '1px solid #e0e0e0'
+            background: 'rgba(255,255,255,0.9)',
+            borderRadius: 1,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            border: '1px solid rgba(255,255,255,0.2)'
           }}>
             <CardContent sx={{ p: 2 }}>
-              <Typography variant="body1" sx={{ 
+              <Typography variant="subtitle1" sx={{ 
                 mb: 2,
-                fontWeight: 'bold',
-                fontSize: '0.95rem',
-                lineHeight: 1.4,
-                color: '#333'
+                fontWeight: 600,
+                color: '#333',
+                lineHeight: 1.3,
+                fontSize: '0.9rem'
               }}>
                 {currentQuestion.question}
               </Typography>
+              
+              {answers[currentQuestion.id] && (
+                <Box sx={{ 
+                  mb: 2, 
+                  p: 1.5, 
+                  background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)', 
+                  borderRadius: 1, 
+                  border: '1px solid #4caf50',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5
+                }}>
+                  <CheckIcon sx={{ fontSize: '1rem', color: '#4caf50' }} />
+                  <Typography variant="body2" sx={{ 
+                    color: '#2e7d32', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 600 
+                  }}>
+                    Antwort ausgewählt: "{answers[currentQuestion.id]}"
+                  </Typography>
+                </Box>
+              )}
 
-              <FormControl component="fieldset" sx={{ width: '100%' }}>
+              <FormControl component="fieldset" fullWidth>
                 <RadioGroup
                   value={selectedAnswer}
                   onChange={(e) => handleAnswerSelect(e.target.value)}
                 >
                   {currentQuestion.options.map((option, index) => (
-                    <FormControlLabel
+                    <Paper
                       key={index}
-                      value={option}
-                      control={
-                        <Radio 
-                          sx={{
-                            color: '#1976d2',
-                            '&.Mui-checked': {
-                              color: '#1976d2',
-                            },
-                          }}
-                        />
-                      }
-                      label={
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            fontSize: '0.9rem',
-                            color: focusedOptionIndex === index ? '#1976d2' : '#333',
-                            fontWeight: focusedOptionIndex === index ? 'bold' : 'normal'
-                          }}
-                        >
-                          {option}
-                        </Typography>
-                      }
                       sx={{
-                        margin: '8px 0',
-                        padding: '8px 12px',
+                        mb: 1.5,
+                        p: 1.5,
+                        border: '1px solid',
+                        borderColor: focusedOptionIndex === index ? '#1976d2' : '#e0e0e0',
                         borderRadius: 1,
-                        border: focusedOptionIndex === index ? '2px solid #1976d2' : '1px solid #e0e0e0',
-                        bgcolor: focusedOptionIndex === index ? '#f0f8ff' : 'transparent',
+                        background: focusedOptionIndex === index 
+                          ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)'
+                          : 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
                         transition: 'all 0.2s ease',
+                        cursor: 'pointer',
                         '&:hover': {
-                          bgcolor: '#f5f5f5',
-                          borderColor: '#1976d2'
+                          background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                          borderColor: '#1976d2',
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 2px 6px rgba(25,118,210,0.2)'
                         }
                       }}
-                    />
+                      onClick={() => handleAnswerSelect(option)}
+                    >
+                      <FormControlLabel
+                        value={option}
+                        control={
+                          <Radio 
+                            sx={{
+                              color: '#1976d2',
+                              '&.Mui-checked': {
+                                color: '#1976d2',
+                              },
+                              '& .MuiSvgIcon-root': {
+                                fontSize: '1rem'
+                              }
+                            }}
+                          />
+                        }
+                        label={option}
+                        sx={{
+                          width: '100%',
+                          margin: 0,
+                          '& .MuiFormControlLabel-label': {
+                            fontSize: '0.8rem',
+                            fontWeight: 500,
+                            color: '#333'
+                          }
+                        }}
+                        tabIndex={focusedOptionIndex === index ? 0 : -1}
+                      />
+                    </Paper>
                   ))}
                 </RadioGroup>
               </FormControl>
             </CardContent>
           </Card>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Navigation Buttons */}
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            gap: 1.5
+          }}>
             <Button
               variant="outlined"
               onClick={handlePreviousQuestion}
               disabled={currentQuestionIndex === 0}
+              startIcon={<ArrowBackIcon />}
+              size="small"
               sx={{
-                minWidth: 100,
-                height: 36,
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                borderColor: '#1976d2',
-                color: '#1976d2',
+                minWidth: 80,
+                height: 32,
+                py: 0.5,
+                px: 1.5,
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                borderRadius: 1,
+                border: '1px solid #e0e0e0',
+                background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+                color: '#495057',
+                transition: 'all 0.2s ease',
                 '&:hover': {
-                  borderColor: '#1565c0',
-                  bgcolor: '#f0f8ff'
+                  border: '1px solid #6c757d',
+                  background: 'linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%)',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 6px rgba(108, 117, 125, 0.2)'
+                },
+                '&:disabled': {
+                  opacity: 0.4,
+                  background: '#f8f9fa',
+                  border: '1px solid #e9ecef',
+                  color: '#adb5bd',
+                  transform: 'none'
                 }
               }}
             >
               Zurück
             </Button>
-
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {currentQuestionIndex === questions.length - 1 ? (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={finishQuiz}
-                  disabled={Object.keys(answers).length < questions.length}
-                  startIcon={<CheckIcon />}
-                  sx={{
-                    minWidth: 120,
-                    height: 36,
-                    fontSize: '0.8rem',
-                    fontWeight: 'bold',
-                    background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                    boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #45a049 0%, #3d8b40 100%)',
-                      boxShadow: '0 4px 16px rgba(76, 175, 80, 0.4)',
-                      transform: 'translateY(-1px)'
-                    },
-                    '&:disabled': {
-                      background: '#ccc',
-                      boxShadow: 'none',
-                      transform: 'none'
-                    }
-                  }}
-                >
-                  Quiz beenden
-                </Button>
-              ) : (
-                <Button
-                  variant="contained"
-                  onClick={handleNextQuestion}
-                  disabled={!selectedAnswer}
-                  sx={{
-                    minWidth: 100,
-                    height: 36,
-                    fontSize: '0.8rem',
-                    fontWeight: 'bold',
-                    background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-                    boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
-                      boxShadow: '0 4px 16px rgba(25, 118, 210, 0.4)',
-                      transform: 'translateY(-1px)'
-                    },
-                    '&:disabled': {
-                      background: '#ccc',
-                      boxShadow: 'none',
-                      transform: 'none'
-                    }
-                  }}
-                >
-                  Weiter
-                </Button>
-              )}
+            
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleAbortQuiz}
+                size="small"
+                sx={{
+                  minWidth: 80,
+                  height: 32,
+                  py: 0.5,
+                  px: 1.5,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  borderRadius: 1,
+                  border: '1px solid #dc3545',
+                  background: 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)',
+                  color: '#dc3545',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    border: '1px solid #c53030',
+                    background: 'linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%)',
+                    color: '#c53030',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 2px 6px rgba(220, 53, 69, 0.3)'
+                  }
+                }}
+              >
+                Abbrechen
+              </Button>
+              
+              <Button
+                variant="contained"
+                onClick={handleNextQuestion}
+                disabled={!answers[currentQuestion.id]}
+                endIcon={<ArrowForwardIcon />}
+                size="small"
+                sx={{
+                  minWidth: 80,
+                  height: 32,
+                  py: 0.5,
+                  px: 1.5,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  borderRadius: 1,
+                  border: 'none',
+                  background: currentQuestionIndex === questions.length - 1 
+                    ? 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)'
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  boxShadow: currentQuestionIndex === questions.length - 1
+                    ? '0 2px 6px rgba(76, 175, 80, 0.3)'
+                    : '0 2px 6px rgba(102, 126, 234, 0.3)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    background: currentQuestionIndex === questions.length - 1 
+                      ? 'linear-gradient(135deg, #45a049 0%, #3d8b40 100%)'
+                      : 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                    boxShadow: currentQuestionIndex === questions.length - 1
+                      ? '0 4px 12px rgba(76, 175, 80, 0.4)'
+                      : '0 4px 12px rgba(102, 126, 234, 0.4)',
+                    transform: 'translateY(-1px) scale(1.02)'
+                  },
+                  '&:disabled': {
+                    opacity: 0.5,
+                    background: '#e0e0e0',
+                    color: '#666',
+                    transform: 'none',
+                    boxShadow: 'none'
+                  }
+                }}
+              >
+                {currentQuestionIndex === questions.length - 1 ? 'Beenden' : 'Weiter'}
+              </Button>
             </Box>
           </Box>
         </DialogContent>
+        
+        <Box sx={{ 
+          p: 1.5, 
+          background: 'rgba(255,255,255,0.9)', 
+          borderTop: '1px solid rgba(0,0,0,0.1)',
+          borderRadius: '0 0 8px 8px'
+        }}>
+          <Typography variant="caption" sx={{ 
+            color: '#666', 
+            fontSize: '0.65rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 0.5
+          }}>
+            ⌨️ Tastatur: ↑↓ Antworten navigieren • Enter Antwort auswählen/Weiter • ←→ Fragen wechseln • ESC abbrechen
+          </Typography>
+        </Box>
       </div>
     </Dialog>
   );

@@ -5,7 +5,8 @@ import {
   getParticipationResults, 
   getParticipationResultsForTeacher,
   getParticipationStatus,
-  deleteParticipation
+  deleteParticipation,
+  resetParticipation
 } from '../controllers/QuizParticipationController';
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.get('/:sessionId/status', getParticipationStatus);
 
 // Teacher only routes
 router.post('/:participationId/results/teacher', getParticipationResultsForTeacher);
+router.post('/:participationId/reset', resetParticipation);
 router.delete('/:participationId', deleteParticipation);
 
 export default router; 

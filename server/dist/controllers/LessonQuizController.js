@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAvailableQuizzes = exports.getLessonQuiz = exports.assignQuizToLesson = void 0;
+exports.removeQuizFromLesson = exports.getAvailableQuizzes = exports.getLessonQuiz = exports.assignQuizToLesson = void 0;
 const prisma_1 = require("../generated/prisma");
 const prisma = new prisma_1.PrismaClient();
 const assignQuizToLesson = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -30,6 +30,10 @@ const assignQuizToLesson = (req, res) => __awaiter(void 0, void 0, void 0, funct
         if (existingAssignment) {
             return res.status(400).json({ error: 'Quiz ist bereits dieser Stunde zugeordnet' });
         }
+        // Remove all existing materials from this lesson first
+        yield prisma.lessonMaterial.deleteMany({
+            where: { lessonId }
+        });
         const lessonQuiz = yield prisma.lessonQuiz.create({
             data: {
                 lessonId,
@@ -56,11 +60,8 @@ const getLessonQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     try {
         const { lessonId } = req.params;
         const lessonQuiz = yield prisma.lessonQuiz.findFirst({
-            where: {
-                lessonId
-            },
+            where: { lessonId },
             include: {
-                lesson: true,
                 quiz: {
                     include: {
                         questions: {
@@ -75,11 +76,13 @@ const getLessonQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         if (!lessonQuiz) {
             return res.status(404).json({ error: 'Kein Quiz für diese Stunde gefunden' });
         }
-        res.json(lessonQuiz);
+        // Deserialize options for each question
+        const quizWithParsedOptions = Object.assign(Object.assign({}, lessonQuiz), { quiz: Object.assign(Object.assign({}, lessonQuiz.quiz), { questions: lessonQuiz.quiz.questions.map(q => (Object.assign(Object.assign({}, q), { options: JSON.parse(q.options) }))) }) });
+        res.json(quizWithParsedOptions);
     }
     catch (error) {
         console.error('Error fetching lesson quiz:', error);
-        res.status(500).json({ error: 'Fehler beim Laden des Quiz' });
+        res.status(500).json({ error: 'Fehler beim Abrufen des Quiz' });
     }
 });
 exports.getLessonQuiz = getLessonQuiz;
@@ -87,21 +90,42 @@ const getAvailableQuizzes = (req, res) => __awaiter(void 0, void 0, void 0, func
     try {
         const { teacherId } = req.params;
         const quizzes = yield prisma.quiz.findMany({
-            where: {
-                teacherId
-            },
+            where: { teacherId },
             include: {
-                questions: true
-            },
-            orderBy: {
-                createdAt: 'desc'
+                questions: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
             }
         });
-        res.json(quizzes);
+        // Deserialize options for each question
+        const quizzesWithParsedOptions = quizzes.map(quiz => (Object.assign(Object.assign({}, quiz), { questions: quiz.questions.map(q => (Object.assign(Object.assign({}, q), { options: JSON.parse(q.options) }))) })));
+        res.json(quizzesWithParsedOptions);
     }
     catch (error) {
         console.error('Error fetching available quizzes:', error);
-        res.status(500).json({ error: 'Fehler beim Laden der verfügbaren Quizze' });
+        res.status(500).json({ error: 'Fehler beim Abrufen der verfügbaren Quizze' });
     }
 });
 exports.getAvailableQuizzes = getAvailableQuizzes;
+const removeQuizFromLesson = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { lessonId } = req.params;
+        if (!lessonId) {
+            return res.status(400).json({ error: 'Lesson-ID ist erforderlich' });
+        }
+        // Delete all quiz assignments for this lesson
+        const deletedCount = yield prisma.lessonQuiz.deleteMany({
+            where: {
+                lessonId
+            }
+        });
+        res.json({ message: `Quiz erfolgreich von der Stunde entfernt`, deletedCount });
+    }
+    catch (error) {
+        console.error('Error removing quiz from lesson:', error);
+        res.status(500).json({ error: 'Fehler beim Entfernen des Quiz' });
+    }
+});
+exports.removeQuizFromLesson = removeQuizFromLesson;

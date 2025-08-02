@@ -12,4 +12,5 @@ const prisma = new prisma_1.PrismaClient();
 router.post('/assign', LessonQuizController_1.assignQuizToLesson);
 router.get('/lesson/:lessonId', LessonQuizController_1.getLessonQuiz);
 router.get('/available/:teacherId', LessonQuizController_1.getAvailableQuizzes);
+router.delete('/lesson/:lessonId', LessonQuizController_1.removeQuizFromLesson);
 exports.default = router;

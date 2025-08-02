@@ -32,7 +32,7 @@ export const startParticipation = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Keine aktive Quiz-Session gefunden' });
     }
 
-    // Check if student already participated
+    // Check if student already participated and completed
     const existingParticipation = await prisma.quizParticipation.findUnique({
       where: {
         sessionId_studentId: {
@@ -42,8 +42,57 @@ export const startParticipation = async (req: Request, res: Response) => {
       }
     });
 
-    if (existingParticipation) {
+    if (existingParticipation && existingParticipation.completedAt) {
       return res.status(400).json({ error: 'Sie haben bereits an diesem Quiz teilgenommen' });
+    }
+
+    // If participation exists but is not completed (was reset), return existing participation
+    if (existingParticipation && !existingParticipation.completedAt) {
+      // Update the start time to now
+      const updatedParticipation = await prisma.quizParticipation.update({
+        where: {
+          id: existingParticipation.id
+        },
+        data: {
+          startedAt: new Date()
+        },
+        include: {
+          session: {
+            include: {
+              quiz: {
+                include: {
+                  questions: {
+                    orderBy: {
+                      order: 'asc'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Prepare quiz data for student (without correct answers)
+      const quizForStudent = {
+        ...updatedParticipation.session.quiz,
+        questions: updatedParticipation.session.quiz.questions.map((q: any) => ({
+          id: q.id,
+          question: q.question,
+          options: JSON.parse(q.options),
+          order: q.order
+        }))
+      };
+
+      res.json({
+        participation: {
+          id: updatedParticipation.id,
+          startedAt: updatedParticipation.startedAt,
+          maxScore: updatedParticipation.maxScore
+        },
+        quiz: quizForStudent
+      });
+      return;
     }
 
     // Create participation
@@ -369,6 +418,69 @@ export const getParticipationStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error getting participation status:', error);
     res.status(500).json({ error: 'Fehler beim Abrufen des Teilnahme-Status' });
+  }
+};
+
+// Reset student's participation (teacher only) - allows student to retake
+export const resetParticipation = async (req: Request, res: Response) => {
+  try {
+    const { participationId } = req.params;
+    const teacherId = req.body.teacherId as string;
+
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+    }
+
+    // Verify the participation belongs to a session owned by the teacher
+    const participation = await prisma.quizParticipation.findFirst({
+      where: {
+        id: participationId,
+        session: {
+          quiz: {
+            teacherId: teacherId
+          }
+        }
+      },
+      include: {
+        session: {
+          include: {
+            quiz: true
+          }
+        }
+      }
+    });
+
+    if (!participation) {
+      return res.status(404).json({ error: 'Teilnahme nicht gefunden oder Sie haben keine Berechtigung' });
+    }
+
+    // Reset participation by deleting answers and resetting completion status
+    await prisma.$transaction([
+      prisma.quizAnswer.deleteMany({
+        where: {
+          participationId: participationId
+        }
+      }),
+      prisma.quizParticipation.update({
+        where: {
+          id: participationId
+        },
+        data: {
+          score: null,
+          completedAt: null,
+          startedAt: new Date() // Reset start time
+        }
+      })
+    ]);
+
+    res.json({ 
+      message: 'Teilnahme erfolgreich zurückgesetzt',
+      studentId: participation.studentId,
+      sessionId: participation.sessionId
+    });
+  } catch (error) {
+    console.error('Error resetting participation:', error);
+    res.status(500).json({ error: 'Fehler beim Zurücksetzen der Teilnahme' });
   }
 };
 
