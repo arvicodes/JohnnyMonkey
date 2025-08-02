@@ -257,7 +257,12 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                 </Typography>
                 <List dense>
                   {activeSession.participations.map((participation) => (
-                    <ListItem key={participation.id}>
+                    <ListItem key={participation.id} sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      px: 1
+                    }}>
                       <ListItemText
                         primary={participation.student.name}
                         secondary={
@@ -265,13 +270,15 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                             ? `Abgeschlossen: ${participation.score}/${participation.maxScore} Punkte`
                             : 'Noch nicht abgeschlossen'
                         }
+                        sx={{ flex: 1, mr: 2 }}
                       />
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <Chip
                           size="small"
                           label={participation.completedAt ? 'Abgeschlossen' : 'Aktiv'}
                           color={participation.completedAt ? 'success' : 'warning'}
                           icon={participation.completedAt ? <CheckIcon /> : <CancelIcon />}
+                          sx={{ fontSize: '0.7rem', height: 24 }}
                         />
                         {participation.completedAt && (
                           <>
@@ -281,8 +288,16 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                                 color="primary"
                                 onClick={() => handleViewResults(participation.id, participation.student.name)}
                                 disabled={loading}
+                                sx={{ 
+                                  width: 28, 
+                                  height: 28,
+                                  '&:hover': {
+                                    transform: 'scale(1.05)',
+                                    transition: 'transform 0.1s ease'
+                                  }
+                                }}
                               >
-                                <ViewIcon />
+                                <ViewIcon sx={{ fontSize: 16 }} />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Teilnahme zurücksetzen">
@@ -291,8 +306,16 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                                 color="warning"
                                 onClick={() => handleResetParticipation(participation.id, participation.student.name)}
                                 disabled={loading}
+                                sx={{ 
+                                  width: 28, 
+                                  height: 28,
+                                  '&:hover': {
+                                    transform: 'scale(1.05)',
+                                    transition: 'transform 0.1s ease'
+                                  }
+                                }}
                               >
-                                <ResetIcon />
+                                <ResetIcon sx={{ fontSize: 16 }} />
                               </IconButton>
                             </Tooltip>
                           </>
