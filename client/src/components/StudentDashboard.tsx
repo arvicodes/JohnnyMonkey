@@ -1,24 +1,22 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  Typography, 
+import {
+  Box,
+  Typography,
   Grid,
   Card,
   CardContent,
   Button,
-  Chip,
   CircularProgress,
   Avatar
 } from '@mui/material';
-import { 
+import {
   School as SchoolIcon,
   QuestionAnswer as QuizIcon,
-  Person as PersonIcon,
   EmojiEvents as TrophyIcon,
   Stars as StarsIcon,
-  Map as MapIcon,
 } from '@mui/icons-material';
+import { QuizResultsModal } from './QuizResultsModal';
 
 interface Teacher {
   id: string;
@@ -84,7 +82,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [lerngruppen, setLerngruppen] = useState<LearningGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [studentName, setStudentName] = useState("Anna Schmidt");
+  const [studentName] = useState("Anna Schmidt");
   
   // States für Inhalte
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -94,6 +92,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [topics, setTopics] = useState<Topic[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [materialsMap, setMaterialsMap] = useState<{[key: string]: any[]}>({});
+  const [quizResults, setQuizResults] = useState<any>(null);
+  const [showQuizResults, setShowQuizResults] = useState(false);
   const [quizzesMap, setQuizzesMap] = useState<{[key: string]: any}>({});
   
   // Assignment Maps wie im TeacherDashboard
@@ -218,13 +218,70 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     // Prüfe zuerst auf Quiz
     const quiz = await fetchLessonQuiz(lessonId);
     if (quiz) {
-      // Bestätigung für Quiz-Start anzeigen
-      if (window.confirm(`Prüfung "${quiz.quiz.title}" starten?`)) {
-        // Öffne den Quiz-Player in einem neuen Tab
-        const quizUrl = `/quiz-player/${quiz.quiz.id}`;
-        window.open(quizUrl, '_blank');
+      console.log('Quiz gefunden:', quiz);
+      
+      // Prüfe zuerst, ob der Schüler das Quiz bereits absolviert hat
+      try {
+        const studentId = localStorage.getItem('studentId');
+        if (!studentId) {
+          alert('Schüler-ID nicht gefunden. Bitte melden Sie sich erneut an.');
+          return;
+        }
+
+        // Prüfe alle Sessions für dieses Quiz
+        const sessionsResponse = await fetch(`/api/quiz-sessions/${quiz.quiz.id}/sessions`);
+        if (sessionsResponse.ok) {
+          const sessions = await sessionsResponse.json();
+          
+          // Prüfe, ob der Schüler bereits an einer Session teilgenommen hat
+          for (const session of sessions) {
+            const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
+            if (participationResponse.ok) {
+              const participation = await participationResponse.json();
+              if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
+                // Schüler hat das Quiz bereits absolviert - zeige Auswertung
+                const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
+                if (resultsResponse.ok) {
+                  const results = await resultsResponse.json();
+                  setQuizResults(results);
+                  setShowQuizResults(true);
+                  return;
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Fehler beim Prüfen der Quiz-Teilnahme:', error);
       }
-      return;
+
+      // Prüfe, ob eine aktive Session läuft
+      try {
+        const sessionResponse = await fetch(`/api/quiz-sessions/${quiz.quiz.id}/active`);
+        console.log('Session Response Status:', sessionResponse.status);
+        
+        if (sessionResponse.ok) {
+          const session = await sessionResponse.json();
+          console.log('Aktive Session gefunden:', session);
+          
+          if (session && session.id) {
+            // Navigiere zur Quiz-Teilnahme
+            const participationUrl = `/quiz-participation/${session.id}`;
+            navigate(participationUrl);
+            return;
+          } else {
+            alert('Keine aktive Quiz-Session. Bitte warten Sie, bis der Lehrer das Quiz startet.');
+            return;
+          }
+        } else {
+          alert('Keine aktive Quiz-Session. Bitte warten Sie, bis der Lehrer das Quiz startet.');
+          return;
+        }
+      } catch (error) {
+        console.error('Fehler beim Prüfen der Quiz-Session:', error);
+        alert('Fehler beim Prüfen der Quiz-Session.');
+        return;
+      }
     }
 
     // Falls kein Quiz, prüfe auf Material
@@ -779,6 +836,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
 
       </Grid>
+
+      {/* Quiz Results Modal */}
+      <QuizResultsModal
+        open={showQuizResults}
+        onClose={() => setShowQuizResults(false)}
+        results={quizResults}
+      />
     </Box>
   );
 };

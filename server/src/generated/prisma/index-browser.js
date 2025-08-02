@@ -260,6 +260,38 @@ exports.Prisma.LessonQuizScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.QuizSessionScalarFieldEnum = {
+  id: 'id',
+  quizId: 'quizId',
+  isActive: 'isActive',
+  startedAt: 'startedAt',
+  endedAt: 'endedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.QuizParticipationScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  studentId: 'studentId',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  score: 'score',
+  maxScore: 'maxScore',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.QuizAnswerScalarFieldEnum = {
+  id: 'id',
+  participationId: 'participationId',
+  questionId: 'questionId',
+  selectedAnswer: 'selectedAnswer',
+  isCorrect: 'isCorrect',
+  points: 'points',
+  answeredAt: 'answeredAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -286,7 +318,10 @@ exports.Prisma.ModelName = {
   LessonMaterial: 'LessonMaterial',
   Quiz: 'Quiz',
   QuizQuestion: 'QuizQuestion',
-  LessonQuiz: 'LessonQuiz'
+  LessonQuiz: 'LessonQuiz',
+  QuizSession: 'QuizSession',
+  QuizParticipation: 'QuizParticipation',
+  QuizAnswer: 'QuizAnswer'
 };
 
 /**

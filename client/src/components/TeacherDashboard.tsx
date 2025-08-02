@@ -48,6 +48,7 @@ import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
 import MaterialCreator from './MaterialCreator';
+import { QuizSessionManager } from './QuizSessionManager';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -332,12 +333,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // Prüfe zuerst auf Quiz
     const quiz = await fetchLessonQuiz(lessonId);
     if (quiz) {
-      // Bestätigung für Quiz-Start anzeigen
-      if (window.confirm(`Prüfung "${quiz.quiz.title}" starten?`)) {
-        // Öffne den Quiz-Player in einem neuen Tab
-        const quizUrl = `/quiz-player/${quiz.quiz.id}`;
-        window.open(quizUrl, '_blank');
-      }
+      // Zeige Quiz-Session-Manager für Lehrer
+      const quizUrl = `/quiz-session/${quiz.quiz.id}`;
+      navigate(quizUrl);
       return;
     }
 

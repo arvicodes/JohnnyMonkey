@@ -6,6 +6,8 @@ import StudentDashboard from './components/StudentDashboard';
 import { LearningGroupPage } from './pages/LearningGroupPage';
 import GeoCodingQuest from './pages/GeoCodingQuest';
 import { QuizPlayerPage } from './pages/QuizPlayerPage';
+import { QuizSessionPage } from './pages/QuizSessionPage';
+import { QuizParticipationPage } from './pages/QuizParticipationPage';
 
 import { Snackbar, Alert } from '@mui/material';
 
@@ -39,6 +41,14 @@ function AppContent() {
       if (response.ok) {
         console.log('Login successful, user data:', data.user);
         setUser(data.user);
+        
+        // Store user ID in localStorage based on role
+        if (data.user.role === 'TEACHER') {
+          localStorage.setItem('teacherId', data.user.id);
+        } else {
+          localStorage.setItem('studentId', data.user.id);
+        }
+        
         setShowSuccessMessage(true);
         setTimeout(() => setShowSuccessMessage(false), 3000); // Hide after 3 seconds
       } else {
@@ -53,6 +63,9 @@ function AppContent() {
 
   const handleLogout = () => {
     setUser(null);
+    // Clear stored user IDs
+    localStorage.removeItem('teacherId');
+    localStorage.removeItem('studentId');
     navigate('/');
   };
 
@@ -118,6 +131,8 @@ function AppContent() {
         <Route path="/learning-group/:id" element={<LearningGroupPage />} />
         <Route path="/geocoding-quest" element={<GeoCodingQuest />} />
         <Route path="/quiz-player/:quizId" element={<QuizPlayerPage />} />
+        <Route path="/quiz-session/:quizId" element={<QuizSessionPage />} />
+        <Route path="/quiz-participation/:sessionId" element={<QuizParticipationPage />} />
 
       </Routes>
       <Snackbar
