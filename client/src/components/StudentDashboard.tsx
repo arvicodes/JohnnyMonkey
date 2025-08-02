@@ -82,7 +82,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [lerngruppen, setLerngruppen] = useState<LearningGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [studentName] = useState("Anna Schmidt");
+  const [studentName, setStudentName] = useState<string>("");
   
   // States für Inhalte
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -114,6 +114,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     success: '#4CAF50',
     textPrimary: '#2C3E50', // Dunkler Text für bessere Lesbarkeit
     textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
+  };
+
+  // Hilfsfunktion zum Laden des Student-Namens
+  const fetchStudentName = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        setStudentName(userData.name);
+      }
+    } catch (error) {
+      console.error('Error fetching student name:', error);
+      setStudentName("Schüler"); // Fallback
+    }
   };
 
   // Hilfsfunktion zum Laden der Zuweisungen
@@ -400,6 +414,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   useEffect(() => {
     const fetchLerngruppen = async () => {
       try {
+        // Lade zuerst den Student-Namen
+        await fetchStudentName(userId);
+        
         const response = await fetch(`/api/learning-groups/student/${userId}`);
         if (!response.ok) {
           throw new Error('Lerngruppen konnten nicht geladen werden');

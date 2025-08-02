@@ -13,6 +13,27 @@ const express_1 = require("express");
 const prisma_1 = require("../generated/prisma");
 const router = (0, express_1.Router)();
 const prisma = new prisma_1.PrismaClient();
+// Get a single user by ID
+const getUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const user = yield prisma.user.findUnique({
+            where: { id: req.params.id },
+            select: {
+                id: true,
+                name: true,
+                role: true,
+                loginCode: true
+            }
+        });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user);
+    }
+    catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 // Get all learning groups for a teacher
 const getTeacherGroups = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -46,6 +67,7 @@ const getStudentGroups = (req, res) => __awaiter(void 0, void 0, void 0, functio
         res.status(500).json({ error: 'Server error' });
     }
 });
+router.get('/:id', getUserById);
 router.get('/teacher/:id/groups', getTeacherGroups);
 router.get('/student/:id/groups', getStudentGroups);
 exports.default = router;

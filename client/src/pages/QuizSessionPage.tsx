@@ -77,6 +77,7 @@ export const QuizSessionPage: React.FC = () => {
         justifyContent="center"
         alignItems="center"
         minHeight="100vh"
+        width="100%"
       >
         <CircularProgress />
       </Box>
@@ -91,6 +92,7 @@ export const QuizSessionPage: React.FC = () => {
         justifyContent="center"
         alignItems="center"
         minHeight="100vh"
+        width="100%"
         gap={2}
       >
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -115,6 +117,7 @@ export const QuizSessionPage: React.FC = () => {
         justifyContent="center"
         alignItems="center"
         minHeight="100vh"
+        width="100%"
         gap={2}
       >
         <Typography variant="h6" color="text.secondary">
@@ -132,30 +135,46 @@ export const QuizSessionPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+    <Box sx={{ width: '100%', minHeight: '100vh' }}>
+      {/* Back Button - Top Left */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 16, 
+        left: 16, 
+        zIndex: 1000 
+      }}>
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
           onClick={handleBack}
+          sx={{
+            bgcolor: 'rgba(255,255,255,0.9)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: 2,
+            px: 2,
+            py: 1,
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            '&:hover': {
+              bgcolor: 'rgba(255,255,255,0.95)',
+              transform: 'translateY(-1px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }
+          }}
         >
           Zurück
         </Button>
-        <Typography variant="h4">
-          {quiz.title}
-        </Typography>
       </Box>
       
-      {quiz.description && (
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          {quiz.description}
-        </Typography>
-      )}
-      
-      <QuizSessionManager
-        quizId={quizId!}
-        teacherId={teacherId}
-      />
+      {/* Full Width Quiz Session Manager */}
+      <Box sx={{ width: '100%', pt: 2 }}>
+        <QuizSessionManager
+          quizId={quizId!}
+          teacherId={teacherId}
+        />
+      </Box>
     </Box>
   );
 }; 
