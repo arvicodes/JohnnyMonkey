@@ -19,8 +19,10 @@ import {
   People as PeopleIcon,
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
-  Refresh as ResetIcon
+  Refresh as ResetIcon,
+  Visibility as ViewIcon
 } from '@mui/icons-material';
+import { QuizResultsModal } from './QuizResultsModal';
 
 interface QuizSessionManagerProps {
   quizId: string;
@@ -52,6 +54,8 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
   const [activeSession, setActiveSession] = useState<QuizSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showResults, setShowResults] = useState(false);
+  const [selectedResults, setSelectedResults] = useState<any>(null);
 
   useEffect(() => {
     fetchQuizData();
@@ -143,6 +147,27 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       }
     } catch (err) {
       setError('Fehler beim Zurücksetzen der Teilnahme');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewResults = async (participationId: string, studentName: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/quiz-participations/${participationId}/results`);
+      if (response.ok) {
+        const results = await response.json();
+        setSelectedResults({
+          ...results,
+          studentName: studentName
+        });
+        setShowResults(true);
+      } else {
+        setError('Auswertung konnte nicht geladen werden');
+      }
+    } catch (err) {
+      setError('Fehler beim Laden der Auswertung');
     } finally {
       setLoading(false);
     }
@@ -249,16 +274,28 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                           icon={participation.completedAt ? <CheckIcon /> : <CancelIcon />}
                         />
                         {participation.completedAt && (
-                          <Tooltip title="Teilnahme zurücksetzen">
-                            <IconButton
-                              size="small"
-                              color="warning"
-                              onClick={() => handleResetParticipation(participation.id, participation.student.name)}
-                              disabled={loading}
-                            >
-                              <ResetIcon />
-                            </IconButton>
-                          </Tooltip>
+                          <>
+                            <Tooltip title="Auswertung anzeigen">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleViewResults(participation.id, participation.student.name)}
+                                disabled={loading}
+                              >
+                                <ViewIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Teilnahme zurücksetzen">
+                              <IconButton
+                                size="small"
+                                color="warning"
+                                onClick={() => handleResetParticipation(participation.id, participation.student.name)}
+                                disabled={loading}
+                              >
+                                <ResetIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </>
                         )}
                       </Box>
                     </ListItem>
@@ -272,6 +309,18 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
             </Typography>
           </CardContent>
         </Card>
+      )}
+
+      {/* Auswertungs-Modal */}
+      {showResults && selectedResults && (
+        <QuizResultsModal
+          open={showResults}
+          onClose={() => {
+            setShowResults(false);
+            setSelectedResults(null);
+          }}
+          results={selectedResults}
+        />
       )}
     </Box>
   );
