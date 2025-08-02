@@ -220,6 +220,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     if (quiz) {
       console.log('Quiz gefunden:', quiz);
       
+      const studentId = localStorage.getItem('studentId');
+      if (!studentId) {
+        alert('Schüler-ID nicht gefunden. Bitte melden Sie sich erneut an.');
+        return;
+      }
+
       // Prüfe zuerst, ob eine aktive Session läuft
       try {
         const sessionResponse = await fetch(`/api/quiz-sessions/${quiz.quiz.id}/active`);
@@ -231,27 +237,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           
           if (session && session.id) {
             // Prüfe, ob der Schüler bereits teilgenommen hat
-            const studentId = localStorage.getItem('studentId');
-            if (studentId) {
-              const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
-              if (participationResponse.ok) {
-                const participation = await participationResponse.json();
-                
-                // Wenn der Schüler bereits abgeschlossen hat, zeige Auswertung
-                if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
-                  const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
-                  if (resultsResponse.ok) {
-                    const results = await resultsResponse.json();
-                    setQuizResults(results);
-                    setShowQuizResults(true);
-                    return;
-                  }
-                } else {
-                  // Schüler hat noch nicht teilgenommen oder nicht abgeschlossen - kann starten
-                  const participationUrl = `/quiz-participation/${session.id}`;
-                  navigate(participationUrl);
+            const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
+            if (participationResponse.ok) {
+              const participation = await participationResponse.json();
+              
+              // Wenn der Schüler bereits abgeschlossen hat, zeige Auswertung
+              if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
+                const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
+                if (resultsResponse.ok) {
+                  const results = await resultsResponse.json();
+                  setQuizResults(results);
+                  setShowQuizResults(true);
                   return;
                 }
+              } else {
+                // Schüler hat noch nicht teilgenommen oder nicht abgeschlossen - kann starten
+                const participationUrl = `/quiz-participation/${session.id}`;
+                navigate(participationUrl);
+                return;
               }
             }
             
@@ -259,14 +262,39 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             const participationUrl = `/quiz-participation/${session.id}`;
             navigate(participationUrl);
             return;
-          } else {
-            alert('Keine aktive Quiz-Session. Bitte warten Sie, bis der Lehrer das Quiz startet.');
-            return;
           }
-        } else {
-          alert('Keine aktive Quiz-Session. Bitte warten Sie, bis der Lehrer das Quiz startet.');
-          return;
         }
+        
+        // Keine aktive Session - prüfe auf letzte Ergebnisse
+        console.log('Keine aktive Session, prüfe auf letzte Ergebnisse...');
+        const sessionsResponse = await fetch(`/api/quiz-sessions/${quiz.quiz.id}/sessions`);
+        if (sessionsResponse.ok) {
+          const sessions = await sessionsResponse.json();
+          
+          // Suche nach der letzten Session mit Teilnahme des Schülers
+          for (const session of sessions.reverse()) { // Neueste zuerst
+            const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
+            if (participationResponse.ok) {
+              const participation = await participationResponse.json();
+              
+              if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
+                // Schüler hat an dieser Session teilgenommen - zeige Auswertung
+                const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
+                if (resultsResponse.ok) {
+                  const results = await resultsResponse.json();
+                  setQuizResults(results);
+                  setShowQuizResults(true);
+                  return;
+                }
+              }
+            }
+          }
+        }
+        
+        // Keine Ergebnisse gefunden - zeige Meldung
+        alert('Keine aktive Quiz-Session und keine vorherigen Ergebnisse gefunden. Bitte warten Sie, bis der Lehrer das Quiz startet.');
+        return;
+        
       } catch (error) {
         console.error('Fehler beim Prüfen der Quiz-Session:', error);
         alert('Fehler beim Prüfen der Quiz-Session.');

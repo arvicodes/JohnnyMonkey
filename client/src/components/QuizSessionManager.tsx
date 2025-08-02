@@ -63,7 +63,14 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
   }, [quizId]);
 
   useEffect(() => {
-    if (activeSession) {
+    if (!activeSession) {
+      // Wenn keine aktive Session, lade die letzten Ergebnisse
+      fetchLastSessionResults();
+    }
+  }, [activeSession]);
+
+  useEffect(() => {
+    if (activeSession && activeSession.isActive) {
       const interval = setInterval(fetchActiveSession, 5000); // Alle 5 Sekunden aktualisieren
       return () => clearInterval(interval);
     }
@@ -95,8 +102,28 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       } else {
         setActiveSession(null);
       }
-    } catch (err) {
-      console.error('Error fetching active session:', err);
+    } catch (error) {
+      console.error('Error fetching active session:', error);
+      setActiveSession(null);
+    }
+  };
+
+  const fetchLastSessionResults = async () => {
+    try {
+      const response = await fetch(`/api/quiz-sessions/${quizId}/sessions`);
+      if (response.ok) {
+        const sessions = await response.json();
+        
+        // Finde die letzte Session mit Teilnahmen
+        for (const session of sessions.reverse()) { // Neueste zuerst
+          if (session.participations && session.participations.length > 0) {
+            setActiveSession(session);
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching last session results:', error);
     }
   };
 
@@ -274,17 +301,17 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
               <Typography variant="h6">
-                Aktive Session
+                {activeSession.isActive ? 'Aktive Session' : 'Letzte Ergebnisse'}
               </Typography>
               <Chip 
-                label="Aktiv" 
-                color="success" 
-                icon={<CheckIcon />}
+                label={activeSession.isActive ? "Aktiv" : "Beendet"} 
+                color={activeSession.isActive ? "success" : "default"}
+                icon={activeSession.isActive ? <CheckIcon /> : <CancelIcon />}
               />
             </Box>
             
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Gestartet: {new Date(activeSession.startedAt).toLocaleString('de-DE')}
+              {activeSession.isActive ? 'Gestartet' : 'Beendet'}: {new Date(activeSession.isActive ? activeSession.startedAt : (activeSession.endedAt || activeSession.startedAt)).toLocaleString('de-DE')}
             </Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -294,17 +321,19 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
               </Typography>
             </Box>
 
-            <Box sx={{ mb: 2 }}>
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<StopIcon />}
-                onClick={handleStopSession}
-                disabled={loading}
-              >
-                Session beenden
-              </Button>
-            </Box>
+            {activeSession.isActive && (
+              <Box sx={{ mb: 2 }}>
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={<StopIcon />}
+                  onClick={handleStopSession}
+                  disabled={loading}
+                >
+                  Session beenden
+                </Button>
+              </Box>
+            )}
 
             {activeSession.participations && activeSession.participations.length > 0 && (
               <Box>
