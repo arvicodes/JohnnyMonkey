@@ -82,6 +82,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [error, setError] = useState<string | null>(null);
   const [studentName, setStudentName] = useState<string>("");
   
+  // Charakterbild-System
+  const [characterProfile, setCharacterProfile] = useState<any>(null);
+  
   // States für Inhalte
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -114,7 +117,82 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
   };
 
-  // Hilfsfunktion zum Laden des Student-Namens
+  // Charakterbild-Generierung basierend auf User-ID
+  const generateCharacterProfile = (userId: string) => {
+    // Hash der User-ID für konsistente, aber zufällige Werte
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      const char = userId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    // Charaktertypen
+    const characterTypes = [
+      { emoji: '🧙‍♂️', role: 'MAGIER', description: 'Ein weiser Zauberer, der die Geheimnisse der Sterne studiert und mächtige Zauber wirken kann.' },
+      { emoji: '⚔️', role: 'KRIEGER', description: 'Ein tapferer Krieger, der mit Schwert und Schild für Gerechtigkeit kämpft und Herausforderungen meistert.' },
+      { emoji: '🏹', role: 'JÄGER', description: 'Ein geschickter Jäger, der mit Pfeil und Bogen zielt und die Natur versteht.' },
+      { emoji: '🔮', role: 'HEXER', description: 'Ein mystischer Hexer, der die Kräfte der Magie beherrscht und in die Zukunft blickt.' },
+      { emoji: '🛡️', role: 'PALADIN', description: 'Ein edler Paladin, der für das Gute kämpft und andere mit Heilung und Schutz unterstützt.' },
+      { emoji: '🎭', role: 'BARD', description: 'Ein charismatischer Barde, der mit Musik und Geschichten die Herzen der Menschen berührt.' },
+      { emoji: '🔧', role: 'INGENIEUR', description: 'Ein genialer Ingenieur, der komplexe Maschinen baut und Rätsel löst.' },
+      { emoji: '🌿', role: 'DRUIDE', description: 'Ein naturverbundener Druide, der die Kräfte der Erde und des Lebens versteht.' },
+      { emoji: '⚡', role: 'ELEMENTARIST', description: 'Ein mächtiger Elementarist, der Feuer, Wasser, Erde und Luft beherrscht.' },
+      { emoji: '🎨', role: 'KÜNSTLER', description: 'Ein kreativer Künstler, der die Welt durch Farben und Formen neu erschafft.' }
+    ];
+    
+    // Fähigkeiten
+    const skills = [
+      { name: 'Mathematik', color: '#E3F2FD', bgColor: '#1976d2' },
+      { name: 'Sprachen', color: '#E8F5E8', bgColor: '#2E7D32' },
+      { name: 'Naturwissenschaften', color: '#FFF3E0', bgColor: '#F57C00' },
+      { name: 'Geschichte', color: '#F3E5F5', bgColor: '#7B1FA2' },
+      { name: 'Kunst', color: '#FFEBEE', bgColor: '#D32F2F' },
+      { name: 'Musik', color: '#E0F2F1', bgColor: '#00695C' },
+      { name: 'Sport', color: '#E8F5E8', bgColor: '#388E3C' },
+      { name: 'Informatik', color: '#E1F5FE', bgColor: '#0277BD' },
+      { name: 'Philosophie', color: '#F1F8E9', bgColor: '#689F38' },
+      { name: 'Geographie', color: '#FFF8E1', bgColor: '#FF8F00' }
+    ];
+    
+    // Zufällige Auswahl basierend auf Hash
+    const characterIndex = Math.abs(hash) % characterTypes.length;
+    const character = characterTypes[characterIndex];
+    
+    // Zufällige Fähigkeiten (3-5 Stück)
+    const numSkills = 3 + (Math.abs(hash) % 3); // 3-5 Fähigkeiten
+    const selectedSkills = [];
+    const usedIndices = new Set();
+    
+    for (let i = 0; i < numSkills; i++) {
+      let skillIndex;
+      do {
+        skillIndex = Math.abs(hash + i * 1000) % skills.length;
+      } while (usedIndices.has(skillIndex));
+      
+      usedIndices.add(skillIndex);
+      selectedSkills.push(skills[skillIndex]);
+    }
+    
+    // Zufällige Statistiken (basierend auf Hash)
+    const baseStats = {
+      intelligence: 50 + (Math.abs(hash) % 50), // 50-99
+      creativity: 50 + (Math.abs(hash + 1000) % 50),
+      determination: 50 + (Math.abs(hash + 2000) % 50),
+      teamwork: 50 + (Math.abs(hash + 3000) % 50),
+      curiosity: 50 + (Math.abs(hash + 4000) % 50)
+    };
+    
+    return {
+      ...character,
+      skills: selectedSkills,
+      stats: baseStats,
+      level: 1 + (Math.abs(hash) % 20), // Level 1-20
+      experience: Math.abs(hash) % 1000 // 0-999 XP
+    };
+  };
+
+  // Hilfsfunktion zum Laden des Student-Namens und Generierung des Charakterbilds
   const fetchStudentName = async (userId: string) => {
     try {
       const response = await fetch(`/api/users/${userId}`);
@@ -126,6 +204,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       console.error('Error fetching student name:', error);
       setStudentName("Schüler"); // Fallback
     }
+    
+    // Charakterbild generieren
+    const profile = generateCharacterProfile(userId);
+    setCharacterProfile(profile);
   };
 
   // Hilfsfunktion zum Laden der Zuweisungen
@@ -548,7 +630,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               }
             }}>
               <CardContent>
-                {/* Character Header with Wizard Emoji */}
+                {/* Character Header with Dynamic Emoji */}
                 <Box sx={{ 
                   background: 'linear-gradient(135deg, #87CEEB 0%, #B0E0E6 100%)',
                   borderRadius: 2.1,
@@ -557,7 +639,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   textAlign: 'center'
                 }}>
                   <Typography variant="h1" sx={{ fontSize: '3rem', mb: 1 }}>
-                    🧙‍♂️
+                    {characterProfile?.emoji || '🧙‍♂️'}
                   </Typography>
                 </Box>
 
@@ -578,7 +660,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px'
                   }}>
-                    Schüler
+                    {characterProfile?.role || 'SCHÜLER'}
                   </Typography>
                   <Typography variant="body2" sx={{ 
                     color: 'text.secondary', 
@@ -586,7 +668,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     mt: 1,
                     fontStyle: 'italic'
                   }}>
-                    Ein fleißiger Schüler, der neues Wissen erobert und Herausforderungen meistert.
+                    {characterProfile?.description || 'Ein fleißiger Schüler, der neues Wissen erobert und Herausforderungen meistert.'}
                   </Typography>
                 </Box>
 
@@ -605,7 +687,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         fontSize: '1.5rem',
                         mb: 0.35
                       }}>
-                        {assignments.length}
+                        {characterProfile?.level || 1}
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         color: '#333',
@@ -613,7 +695,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         fontWeight: 600,
                         textTransform: 'uppercase'
                       }}>
-                        Aufgaben
+                        Level
                       </Typography>
                     </Box>
                   </Grid>
@@ -630,7 +712,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         fontSize: '1.5rem',
                         mb: 0.35
                       }}>
-                        {lerngruppen.length}
+                        {characterProfile?.stats?.intelligence || 75}
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         color: '#333',
@@ -638,7 +720,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         fontWeight: 600,
                         textTransform: 'uppercase'
                       }}>
-                        Gruppen
+                        Intelligenz
                       </Typography>
                     </Box>
                   </Grid>
@@ -655,7 +737,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         fontSize: '1.5rem',
                         mb: 0.35
                       }}>
-                        {lessons.length}
+                        {characterProfile?.experience || 0}
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         color: '#333',
@@ -663,7 +745,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         fontWeight: 600,
                         textTransform: 'uppercase'
                       }}>
-                        Lektionen
+                        XP
                       </Typography>
                     </Box>
                   </Grid>
@@ -680,39 +762,55 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     Fähigkeiten:
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 0.7, flexWrap: 'wrap' }}>
-                    <Box sx={{ 
-                      bgcolor: '#E3F2FD',
-                      color: '#1976d2',
-                      px: 1.4,
-                      py: 0.35,
-                      borderRadius: 2.1,
-                      fontSize: '0.65rem',
-                      fontWeight: 600
-                    }}>
-                      Mathematik
-                    </Box>
-                    <Box sx={{ 
-                      bgcolor: '#E8F5E8',
-                      color: '#2E7D32',
-                      px: 1.4,
-                      py: 0.35,
-                      borderRadius: 2.1,
-                      fontSize: '0.65rem',
-                      fontWeight: 600
-                    }}>
-                      Sprachen
-                    </Box>
-                    <Box sx={{ 
-                      bgcolor: '#FFF3E0',
-                      color: '#F57C00',
-                      px: 1.4,
-                      py: 0.35,
-                      borderRadius: 2.1,
-                      fontSize: '0.65rem',
-                      fontWeight: 600
-                    }}>
-                      Naturwissenschaften
-                    </Box>
+                    {characterProfile?.skills?.map((skill: any, index: number) => (
+                      <Box key={index} sx={{ 
+                        bgcolor: skill.color,
+                        color: skill.bgColor,
+                        px: 1.4,
+                        py: 0.35,
+                        borderRadius: 2.1,
+                        fontSize: '0.65rem',
+                        fontWeight: 600
+                      }}>
+                        {skill.name}
+                      </Box>
+                    )) || (
+                      <>
+                        <Box sx={{ 
+                          bgcolor: '#E3F2FD',
+                          color: '#1976d2',
+                          px: 1.4,
+                          py: 0.35,
+                          borderRadius: 2.1,
+                          fontSize: '0.65rem',
+                          fontWeight: 600
+                        }}>
+                          Mathematik
+                        </Box>
+                        <Box sx={{ 
+                          bgcolor: '#E8F5E8',
+                          color: '#2E7D32',
+                          px: 1.4,
+                          py: 0.35,
+                          borderRadius: 2.1,
+                          fontSize: '0.65rem',
+                          fontWeight: 600
+                        }}>
+                          Sprachen
+                        </Box>
+                        <Box sx={{ 
+                          bgcolor: '#FFF3E0',
+                          color: '#F57C00',
+                          px: 1.4,
+                          py: 0.35,
+                          borderRadius: 2.1,
+                          fontSize: '0.65rem',
+                          fontWeight: 600
+                        }}>
+                          Naturwissenschaften
+                        </Box>
+                      </>
+                    )}
                   </Box>
                 </Box>
               </CardContent>
