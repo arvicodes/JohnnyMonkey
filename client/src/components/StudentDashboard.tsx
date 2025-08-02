@@ -13,8 +13,6 @@ import {
 import {
   School as SchoolIcon,
   QuestionAnswer as QuizIcon,
-  EmojiEvents as TrophyIcon,
-  Stars as StarsIcon,
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 
@@ -537,7 +535,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           </Box>
         </Grid>
 
-        {/* Available Quizzes Section */}
+        {/* Character Profile Section */}
         <Grid item xs={12} md={6}>
           <Box sx={{ p: 1.4 }}>
             <Card sx={{ 
@@ -550,54 +548,173 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               }
             }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
-                  <StarsIcon sx={{ mr: 1.4, color: colors.secondary, fontSize: 28 }} />
-                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.secondary, fontSize: '1.12rem' }}>
-                    Deine Quizze
+                {/* Character Header with Wizard Emoji */}
+                <Box sx={{ 
+                  background: 'linear-gradient(135deg, #87CEEB 0%, #B0E0E6 100%)',
+                  borderRadius: 2.1,
+                  p: 2.1,
+                  mb: 2.1,
+                  textAlign: 'center'
+                }}>
+                  <Typography variant="h1" sx={{ fontSize: '3rem', mb: 1 }}>
+                    🧙‍♂️
                   </Typography>
                 </Box>
-                <Typography variant="body1" sx={{ mb: 2.1, color: 'text.secondary', fontSize: '0.84rem' }}>
-                  Bereit für eine neue Herausforderung? 🎯
-                </Typography>
-                <Grid container spacing={1.4}>
-                  <Grid item xs={12}>
-                    <Card variant="outlined" sx={{ 
-                      borderRadius: 2.1,
-                      border: 'none',
-                      bgcolor: '#f8f9fa',
-                      position: 'relative',
-                      overflow: 'visible'
+
+                {/* Character Name and Role */}
+                <Box sx={{ textAlign: 'center', mb: 2.1 }}>
+                  <Typography variant="h5" component="h2" sx={{ 
+                    fontWeight: 'bold', 
+                    color: '#1976d2', 
+                    fontSize: '1.12rem',
+                    mb: 0.7
+                  }}>
+                    {studentName || "Schüler"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: '#333',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Schüler
+                  </Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: 'text.secondary', 
+                    fontSize: '0.75rem',
+                    mt: 1,
+                    fontStyle: 'italic'
+                  }}>
+                    Ein fleißiger Schüler, der neues Wissen erobert und Herausforderungen meistert.
+                  </Typography>
+                </Box>
+
+                {/* Character Stats */}
+                <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
+                  <Grid item xs={4}>
+                    <Box sx={{ 
+                      bgcolor: '#f5f5f5',
+                      borderRadius: 1.4,
+                      p: 1.4,
+                      textAlign: 'center'
                     }}>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.4 }}>
-                          <TrophyIcon sx={{ color: colors.accent2, mr: 0.7, fontSize: 21 }} />
-                          <Typography variant="h6" sx={{ color: colors.accent2, fontSize: '0.84rem' }}>
-                            Mathematik Quiz
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ mb: 1.4, color: 'text.secondary', fontSize: '0.7rem' }}>
-                          Grundlagen der Algebra - Teste dein Wissen! 🧮
-                        </Typography>
-                        <Button 
-                          variant="contained" 
-                          sx={{ 
-                            bgcolor: colors.accent2,
-                            '&:hover': {
-                              bgcolor: colors.accent2,
-                              filter: 'brightness(1.1)'
-                            },
-                            borderRadius: 2.1,
-                            px: 2.8,
-                            fontSize: '0.7rem',
-                            py: 0.35
-                          }}
-                        >
-                          Quiz starten 🚀
-                        </Button>
-                      </CardContent>
-                    </Card>
+                      <Typography variant="h4" sx={{ 
+                        color: '#1976d2',
+                        fontWeight: 'bold',
+                        fontSize: '1.5rem',
+                        mb: 0.35
+                      }}>
+                        {assignments.length}
+                      </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: '#333',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        textTransform: 'uppercase'
+                      }}>
+                        Aufgaben
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Box sx={{ 
+                      bgcolor: '#f5f5f5',
+                      borderRadius: 1.4,
+                      p: 1.4,
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="h4" sx={{ 
+                        color: '#1976d2',
+                        fontWeight: 'bold',
+                        fontSize: '1.5rem',
+                        mb: 0.35
+                      }}>
+                        {lerngruppen.length}
+                      </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: '#333',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        textTransform: 'uppercase'
+                      }}>
+                        Gruppen
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Box sx={{ 
+                      bgcolor: '#f5f5f5',
+                      borderRadius: 1.4,
+                      p: 1.4,
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="h4" sx={{ 
+                        color: '#1976d2',
+                        fontWeight: 'bold',
+                        fontSize: '1.5rem',
+                        mb: 0.35
+                      }}>
+                        {lessons.length}
+                      </Typography>
+                      <Typography variant="caption" sx={{ 
+                        color: '#333',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        textTransform: 'uppercase'
+                      }}>
+                        Lektionen
+                      </Typography>
+                    </Box>
                   </Grid>
                 </Grid>
+
+                {/* Character Skills */}
+                <Box>
+                  <Typography variant="body2" sx={{ 
+                    color: 'text.secondary',
+                    fontSize: '0.7rem',
+                    mb: 1,
+                    fontWeight: 600
+                  }}>
+                    Fähigkeiten:
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.7, flexWrap: 'wrap' }}>
+                    <Box sx={{ 
+                      bgcolor: '#E3F2FD',
+                      color: '#1976d2',
+                      px: 1.4,
+                      py: 0.35,
+                      borderRadius: 2.1,
+                      fontSize: '0.65rem',
+                      fontWeight: 600
+                    }}>
+                      Mathematik
+                    </Box>
+                    <Box sx={{ 
+                      bgcolor: '#E8F5E8',
+                      color: '#2E7D32',
+                      px: 1.4,
+                      py: 0.35,
+                      borderRadius: 2.1,
+                      fontSize: '0.65rem',
+                      fontWeight: 600
+                    }}>
+                      Sprachen
+                    </Box>
+                    <Box sx={{ 
+                      bgcolor: '#FFF3E0',
+                      color: '#F57C00',
+                      px: 1.4,
+                      py: 0.35,
+                      borderRadius: 2.1,
+                      fontSize: '0.65rem',
+                      fontWeight: 600
+                    }}>
+                      Naturwissenschaften
+                    </Box>
+                  </Box>
+                </Box>
               </CardContent>
             </Card>
           </Box>
