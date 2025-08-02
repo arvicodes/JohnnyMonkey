@@ -517,10 +517,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           );
           setAssignments(assignmentsWithNames);
           
-          // Lade alle Inhalte für die Lehrer der Lerngruppen
-          for (const group of data) {
-            await fetchAllContent(group.teacher.id);
-          }
+          // Temporär deaktiviert für schnelleres Laden
+          // if (data.length > 0) {
+          //   await fetchAllContent(data[0].teacher.id);
+          // }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
