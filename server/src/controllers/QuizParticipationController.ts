@@ -183,7 +183,7 @@ export const submitAnswers = async (req: Request, res: Response) => {
       participation: updatedParticipation,
       score: totalScore,
       maxScore: participation.maxScore,
-      percentage: participation.maxScore ? Math.round((totalScore / participation.maxScore) * 100) : 0
+      percentage: participation.maxScore ? Math.round((totalScore / (participation.maxScore || 0)) * 100) : 0
     });
   } catch (error) {
     console.error('Error submitting answers:', error);
@@ -262,7 +262,7 @@ export const getParticipationResults = async (req: Request, res: Response) => {
 export const getParticipationResultsForTeacher = async (req: Request, res: Response) => {
   try {
     const { participationId } = req.params;
-    const { teacherId } = req.body;
+    const teacherId = req.body.teacherId as string;
 
     if (!teacherId) {
       return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
@@ -376,7 +376,7 @@ export const getParticipationStatus = async (req: Request, res: Response) => {
 export const deleteParticipation = async (req: Request, res: Response) => {
   try {
     const { participationId } = req.params;
-    const { teacherId } = req.body;
+    const teacherId = req.body.teacherId as string;
 
     if (!teacherId) {
       return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });

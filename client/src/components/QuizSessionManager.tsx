@@ -20,8 +20,7 @@ import {
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
   Refresh as ResetIcon,
-  Visibility as ViewIcon,
-  Stop as StopIcon
+  Visibility as ViewIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 
@@ -180,37 +179,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
     }
   };
 
-  const handleStopSession = async () => {
-    if (!activeSession) return;
-    
-    if (!window.confirm('Möchten Sie die Quiz-Session wirklich beenden? Schüler können dann nicht mehr teilnehmen.')) {
-      return;
-    }
 
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/quiz-sessions/${activeSession.id}/stop`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ teacherId }),
-      });
-
-      if (response.ok) {
-        // Session ist beendet, setze activeSession auf null
-        setActiveSession(null);
-        setError(null);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Fehler beim Beenden der Session');
-      }
-    } catch (err) {
-      setError('Fehler beim Beenden der Session');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleViewResults = async (participationId: string, studentName: string) => {
     setLoading(true);
@@ -321,19 +290,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
               </Typography>
             </Box>
 
-            {activeSession.isActive && (
-              <Box sx={{ mb: 2 }}>
-                <Button
-                  variant="contained"
-                  color="error"
-                  startIcon={<StopIcon />}
-                  onClick={handleStopSession}
-                  disabled={loading}
-                >
-                  Session beenden
-                </Button>
-              </Box>
-            )}
+
 
             {activeSession.participations && activeSession.participations.length > 0 && (
               <Box>

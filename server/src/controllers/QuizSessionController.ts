@@ -136,7 +136,7 @@ export const getSessionById = async (req: Request, res: Response) => {
 // Get all sessions for a quiz
 export const getSessionsForQuiz = async (req: Request, res: Response) => {
   try {
-    const { quizId } = req.params;
+    const quizId = req.params.quizId as string;
 
     const sessions = await prisma.quizSession.findMany({
       where: {
@@ -180,7 +180,7 @@ export const getSessionResults = async (req: Request, res: Response) => {
       where: {
         id: sessionId,
         quiz: {
-          teacherId: teacherId as string
+          teacherId: teacherId
         }
       },
       include: {
