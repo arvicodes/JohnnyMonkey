@@ -258,6 +258,82 @@ export const getParticipationResults = async (req: Request, res: Response) => {
   }
 };
 
+// Get participation results for teacher (no studentId check)
+export const getParticipationResultsForTeacher = async (req: Request, res: Response) => {
+  try {
+    const { participationId } = req.params;
+    const { teacherId } = req.body;
+
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+    }
+
+    const participation = await prisma.quizParticipation.findFirst({
+      where: {
+        id: participationId,
+        session: {
+          quiz: {
+            teacherId: teacherId
+          }
+        }
+      },
+      include: {
+        answers: {
+          include: {
+            question: true
+          }
+        },
+        student: true,
+        session: {
+          include: {
+            quiz: {
+              include: {
+                questions: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!participation) {
+      return res.status(404).json({ error: 'Teilnahme nicht gefunden oder Sie haben keine Berechtigung' });
+    }
+
+    if (!participation.completedAt) {
+      return res.status(400).json({ error: 'Quiz noch nicht abgeschlossen' });
+    }
+
+    // Prepare results with correct answers
+    const results = {
+      participation: {
+        id: participation.id,
+        score: participation.score,
+        maxScore: participation.maxScore,
+        percentage: participation.maxScore && participation.score ? Math.round((participation.score / participation.maxScore) * 100) : 0,
+        startedAt: participation.startedAt,
+        completedAt: participation.completedAt
+      },
+      student: {
+        id: participation.student.id,
+        name: participation.student.name
+      },
+      answers: participation.answers.map((answer: any) => ({
+        question: answer.question.question,
+        selectedAnswer: answer.selectedAnswer,
+        correctAnswer: answer.question.correctAnswer,
+        isCorrect: answer.isCorrect,
+        points: answer.points
+      }))
+    };
+
+    res.json(results);
+  } catch (error) {
+    console.error('Error getting participation results for teacher:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Teilnahme-Ergebnisse' });
+  }
+};
+
 // Get student's participation status
 export const getParticipationStatus = async (req: Request, res: Response) => {
   try {

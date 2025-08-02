@@ -155,7 +155,14 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
   const handleViewResults = async (participationId: string, studentName: string) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/quiz-participations/${participationId}/results`);
+      const response = await fetch(`/api/quiz-participations/${participationId}/results/teacher`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teacherId }),
+      });
+
       if (response.ok) {
         const results = await response.json();
         setSelectedResults({
@@ -164,7 +171,8 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
         });
         setShowResults(true);
       } else {
-        setError('Auswertung konnte nicht geladen werden');
+        const errorData = await response.json();
+        setError(errorData.error || 'Auswertung konnte nicht geladen werden');
       }
     } catch (err) {
       setError('Fehler beim Laden der Auswertung');

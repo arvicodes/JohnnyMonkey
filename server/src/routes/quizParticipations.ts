@@ -3,6 +3,7 @@ import {
   startParticipation, 
   submitAnswers, 
   getParticipationResults, 
+  getParticipationResultsForTeacher,
   getParticipationStatus,
   deleteParticipation
 } from '../controllers/QuizParticipationController';
@@ -15,7 +16,8 @@ router.post('/:participationId/submit', submitAnswers);
 router.get('/:participationId/results', getParticipationResults);
 router.get('/:sessionId/status', getParticipationStatus);
 
-// Teacher only route
+// Teacher only routes
+router.post('/:participationId/results/teacher', getParticipationResultsForTeacher);
 router.delete('/:participationId', deleteParticipation);
 
 export default router; 

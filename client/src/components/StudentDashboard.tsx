@@ -238,6 +238,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
             if (participationResponse.ok) {
               const participation = await participationResponse.json();
+              // Nur anzeigen wenn wirklich abgeschlossen (nicht nur gestartet)
               if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
                 // Schüler hat das Quiz bereits absolviert - zeige Auswertung
                 const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
@@ -265,7 +266,32 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           console.log('Aktive Session gefunden:', session);
           
           if (session && session.id) {
-            // Navigiere zur Quiz-Teilnahme
+            // Prüfe nochmal explizit, ob der Schüler bereits teilgenommen hat
+            const studentId = localStorage.getItem('studentId');
+            if (studentId) {
+              const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
+              if (participationResponse.ok) {
+                const participation = await participationResponse.json();
+                // Wenn keine Teilnahme oder nicht abgeschlossen, dann kann der Schüler starten
+                if (!participation.hasParticipated || !participation.isCompleted) {
+                  // Navigiere zur Quiz-Teilnahme
+                  const participationUrl = `/quiz-participation/${session.id}`;
+                  navigate(participationUrl);
+                  return;
+                } else {
+                  // Schüler hat bereits abgeschlossen - zeige Auswertung
+                  const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
+                  if (resultsResponse.ok) {
+                    const results = await resultsResponse.json();
+                    setQuizResults(results);
+                    setShowQuizResults(true);
+                    return;
+                  }
+                }
+              }
+            }
+            
+            // Fallback: Navigiere zur Quiz-Teilnahme
             const participationUrl = `/quiz-participation/${session.id}`;
             navigate(participationUrl);
             return;
