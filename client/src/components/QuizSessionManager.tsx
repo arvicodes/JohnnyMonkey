@@ -284,13 +284,13 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
               }}>
                 <SchoolIcon />
               </Avatar>
-              <Box>
+    <Box>
                 <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem' }}>
-                  {quiz?.title}
-                </Typography>
+            {quiz?.title}
+          </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.8rem' }}>
-                  {quiz?.description}
-                </Typography>
+            {quiz?.description}
+          </Typography>
               </Box>
             </Box>
             
@@ -351,12 +351,12 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
               Starten Sie eine neue Quiz-Session für Ihre Schüler
             </Typography>
             
-            <Button
-              variant="contained"
+              <Button
+                variant="contained"
               size="medium"
-              startIcon={<StartIcon />}
-              onClick={handleStartSession}
-              disabled={loading}
+                startIcon={<StartIcon />}
+                onClick={handleStartSession}
+                disabled={loading}
               sx={{
                 minWidth: 140,
                 height: 40,
@@ -374,9 +374,9 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                   transform: 'translateY(-1px)'
                 }
               }}
-            >
-              Session starten
-            </Button>
+              >
+                Session starten
+              </Button>
           </CardContent>
         </Card>
       ) : (
@@ -404,7 +404,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                     {activeSession.isActive ? 'Gestartet' : 'Beendet'}: {new Date(activeSession.isActive ? activeSession.startedAt : (activeSession.endedAt || activeSession.startedAt)).toLocaleString('de-DE')}
-                  </Typography>
+              </Typography>
                 </Box>
               </Box>
               
@@ -437,14 +437,14 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                 </Tooltip>
               )}
             </Box>
-
+            
             {/* Participation Stats */}
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                 <PeopleIcon color="primary" sx={{ fontSize: 20 }} />
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
                   Teilnehmer: {totalParticipations}
-                </Typography>
+            </Typography>
               </Box>
               
               <Box sx={{ mb: 1.5 }}>
@@ -454,7 +454,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.65rem' }}>
                     {completionRate}%
-                  </Typography>
+              </Typography>
                 </Box>
                 <LinearProgress 
                   variant="determinate" 
@@ -572,9 +572,9 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                             </Box>
                           </Box>
                           
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Chip
-                              size="small"
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Chip
+                          size="small"
                               label={isCompleted ? 'Abgeschlossen' : 'Aktiv'}
                               color={isCompleted ? 'success' : 'warning'}
                               icon={isCompleted ? <CheckIcon /> : <TimerIcon />}
@@ -586,54 +586,54 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                             />
                             
                             {isCompleted && (
-                              <>
-                                <Tooltip title="Auswertung anzeigen">
-                                  <IconButton
-                                    size="small"
-                                    color="primary"
-                                    onClick={() => handleViewResults(participation.id, participation.student.name)}
-                                    disabled={loading}
-                                    sx={{ 
+                          <>
+                            <Tooltip title="Auswertung anzeigen">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleViewResults(participation.id, participation.student.name)}
+                                disabled={loading}
+                                sx={{ 
                                       width: 24, 
                                       height: 24,
                                       bgcolor: 'primary.main',
                                       color: 'white',
-                                      '&:hover': {
+                                  '&:hover': {
                                         bgcolor: 'primary.dark',
-                                        transform: 'scale(1.05)',
+                                    transform: 'scale(1.05)',
                                         transition: 'all 0.2s ease'
-                                      }
-                                    }}
-                                  >
+                                  }
+                                }}
+                              >
                                     <ViewIcon sx={{ fontSize: 14 }} />
-                                  </IconButton>
-                                </Tooltip>
+                              </IconButton>
+                            </Tooltip>
                                 
-                                <Tooltip title="Teilnahme zurücksetzen">
-                                  <IconButton
-                                    size="small"
-                                    color="warning"
-                                    onClick={() => handleResetParticipation(participation.id, participation.student.name)}
-                                    disabled={loading}
-                                    sx={{ 
+                            <Tooltip title="Teilnahme zurücksetzen">
+                              <IconButton
+                                size="small"
+                                color="warning"
+                                onClick={() => handleResetParticipation(participation.id, participation.student.name)}
+                                disabled={loading}
+                                sx={{ 
                                       width: 24, 
                                       height: 24,
                                       bgcolor: 'warning.main',
                                       color: 'white',
-                                      '&:hover': {
+                                  '&:hover': {
                                         bgcolor: 'warning.dark',
-                                        transform: 'scale(1.05)',
+                                    transform: 'scale(1.05)',
                                         transition: 'all 0.2s ease'
-                                      }
-                                    }}
-                                  >
+                                  }
+                                }}
+                              >
                                     <ResetIcon sx={{ fontSize: 14 }} />
-                                  </IconButton>
-                                </Tooltip>
-                              </>
-                            )}
-                          </Box>
-                        </ListItem>
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+                      </Box>
+                    </ListItem>
                       </Paper>
                     );
                   })}
