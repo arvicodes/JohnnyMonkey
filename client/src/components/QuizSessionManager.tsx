@@ -262,22 +262,10 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                 color="primary"
                 startIcon={<StartIcon />}
                 onClick={handleStartSession}
-                disabled={loading || !!activeSession}
+                disabled={loading}
               >
                 Session starten
               </Button>
-              
-              {activeSession && (
-                <Button
-                  variant="contained"
-                  color="error"
-                  startIcon={<StopIcon />}
-                  onClick={handleStopSession}
-                  disabled={loading}
-                >
-                  Session beenden
-                </Button>
-              )}
             </Box>
           </CardContent>
         </Card>
@@ -304,6 +292,18 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
               <Typography variant="body2">
                 {activeSession.participations?.length || 0} Teilnehmer
               </Typography>
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<StopIcon />}
+                onClick={handleStopSession}
+                disabled={loading}
+              >
+                Session beenden
+              </Button>
             </Box>
 
             {activeSession.participations && activeSession.participations.length > 0 && (
