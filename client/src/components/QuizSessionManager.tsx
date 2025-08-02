@@ -26,9 +26,11 @@ import {
   Visibility as ViewIcon,
   Timer as TimerIcon,
   School as SchoolIcon,
-  Stop as StopIcon
+  Stop as StopIcon,
+  Analytics as AnalyticsIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
+import { QuizStatisticsModal } from './QuizStatisticsModal';
 
 interface QuizSessionManagerProps {
   quizId: string;
@@ -62,6 +64,8 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [selectedResults, setSelectedResults] = useState<any>(null);
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [selectedStatistics, setSelectedStatistics] = useState<any>(null);
 
   useEffect(() => {
     fetchQuizData();
@@ -102,25 +106,27 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
     try {
       const response = await fetch(`/api/quiz-sessions/${quizId}/active`);
       if (response.ok) {
-        const session = await response.json();
-        setActiveSession(session);
-      } else if (response.status === 404) {
-        setActiveSession(null);
+        const sessionData = await response.json();
+        setActiveSession(sessionData);
       }
     } catch (err) {
-      console.error('Fehler beim Laden der aktiven Session:', err);
+      console.error('Error fetching active session:', err);
     }
   };
 
   const fetchLastSessionResults = async () => {
     try {
-      const response = await fetch(`/api/quiz-sessions/${quizId}/last`);
+      const response = await fetch(`/api/quiz-sessions/${quizId}/sessions`);
       if (response.ok) {
-        const session = await response.json();
-        setActiveSession(session);
+        const sessionsData = await response.json();
+        // Get the most recent session
+        if (sessionsData.length > 0) {
+          const lastSession = sessionsData[sessionsData.length - 1];
+          setActiveSession(lastSession);
+        }
       }
     } catch (err) {
-      console.error('Fehler beim Laden der letzten Session:', err);
+      console.error('Error fetching last session:', err);
     }
   };
 
@@ -136,7 +142,9 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       });
 
       if (response.ok) {
-        await fetchActiveSession();
+        const sessionData = await response.json();
+        setActiveSession(sessionData);
+        setError(null);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Session konnte nicht gestartet werden');
@@ -149,7 +157,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
   };
 
   const handleResetParticipation = async (participationId: string, studentName: string) => {
-    if (!window.confirm(`Möchten Sie die Teilnahme von ${studentName} wirklich zurücksetzen?`)) {
+    if (!window.confirm(`Teilnahme von ${studentName} wirklich zurücksetzen?`)) {
       return;
     }
 
@@ -164,10 +172,12 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       });
 
       if (response.ok) {
+        // Aktualisiere die Session-Daten
         await fetchActiveSession();
+        setError(null);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || 'Teilnahme konnte nicht zurückgesetzt werden');
+        setError(errorData.error || 'Fehler beim Zurücksetzen der Teilnahme');
       }
     } catch (err) {
       setError('Fehler beim Zurücksetzen der Teilnahme');
@@ -197,6 +207,32 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       }
     } catch (err) {
       setError('Fehler beim Laden der Auswertung');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewStatistics = async (sessionId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/quiz-participations/${sessionId}/statistics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teacherId }),
+      });
+
+      if (response.ok) {
+        const stats = await response.json();
+        setSelectedStatistics(stats);
+        setShowStatistics(true);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Statistiken konnten nicht geladen werden');
+      }
+    } catch (err) {
+      setError('Fehler beim Laden der Statistiken');
     } finally {
       setLoading(false);
     }
@@ -236,52 +272,54 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         color: 'white',
         borderRadius: 2,
-        boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)'
+        boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
       }}>
         <CardContent sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-            <Avatar sx={{ 
-              bgcolor: 'rgba(255,255,255,0.2)', 
-              width: 40, 
-              height: 40 
-            }}>
-              <SchoolIcon sx={{ fontSize: 20 }} />
-            </Avatar>
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.25, fontSize: '1.1rem' }}>
-                {quiz?.title}
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.75rem' }}>
-                {quiz?.description}
-              </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Avatar sx={{ 
+                bgcolor: 'rgba(255,255,255,0.2)',
+                width: 40,
+                height: 40
+              }}>
+                <SchoolIcon />
+              </Avatar>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem' }}>
+                  {quiz?.title}
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.8rem' }}>
+                  {quiz?.description}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Chip 
-              icon={<SchoolIcon />}
-              label={`${quiz?.questions?.length || 0} Fragen`}
-              size="small"
-              sx={{ 
-                bgcolor: 'rgba(255,255,255,0.2)', 
-                color: 'white',
-                fontWeight: 600,
-                fontSize: '0.65rem',
-                height: 24
-              }}
-            />
-            <Chip 
-              icon={<TimerIcon />}
-              label={`${quiz?.timeLimit || 0} Min.`}
-              size="small"
-              sx={{ 
-                bgcolor: 'rgba(255,255,255,0.2)', 
-                color: 'white',
-                fontWeight: 600,
-                fontSize: '0.65rem',
-                height: 24
-              }}
-            />
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip 
+                icon={<PeopleIcon />}
+                label={`${quiz?.questions?.length || 0} Fragen`}
+                size="small"
+                sx={{ 
+                  bgcolor: 'rgba(255,255,255,0.2)', 
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.65rem',
+                  height: 24
+                }}
+              />
+              <Chip 
+                icon={<TimerIcon />}
+                label={`${quiz?.timeLimit || 0} Min.`}
+                size="small"
+                sx={{ 
+                  bgcolor: 'rgba(255,255,255,0.2)', 
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.65rem',
+                  height: 24
+                }}
+              />
+            </Box>
           </Box>
         </CardContent>
       </Card>
@@ -370,17 +408,34 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                 </Box>
               </Box>
               
-              <Chip 
-                label={activeSession.isActive ? "Aktiv" : "Beendet"} 
-                color={activeSession.isActive ? "success" : "default"}
-                icon={activeSession.isActive ? <CheckIcon /> : <CancelIcon />}
-                size="small"
-                sx={{ 
-                  fontWeight: 600,
-                  fontSize: '0.65rem',
-                  height: 24
-                }}
-              />
+              {/* Statistics Button */}
+              {completedParticipations.length > 0 && (
+                <Tooltip title="Quiz-Statistik anzeigen">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AnalyticsIcon />}
+                    onClick={() => handleViewStatistics(activeSession.id)}
+                    disabled={loading}
+                    sx={{
+                      minWidth: 120,
+                      height: 32,
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      borderRadius: 1.5,
+                      borderColor: 'primary.main',
+                      color: 'primary.main',
+                      '&:hover': {
+                        borderColor: 'primary.dark',
+                        bgcolor: 'primary.main',
+                        color: 'white'
+                      }
+                    }}
+                  >
+                    Statistik
+                  </Button>
+                </Tooltip>
+              )}
             </Box>
 
             {/* Participation Stats */}
@@ -477,32 +532,33 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                               width: 28,
                               height: 28
                             }}>
-                              {participation.student.name.charAt(0).toUpperCase()}
+                              {participation.student.name.charAt(0)}
                             </Avatar>
                             
                             <Box sx={{ flex: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.25, fontSize: '0.75rem' }}>
+                              <Typography variant="subtitle2" sx={{ 
+                                fontWeight: 600, 
+                                fontSize: '0.75rem',
+                                color: '#333'
+                              }}>
                                 {participation.student.name}
                               </Typography>
                               
                               {isCompleted ? (
-                                <Box>
-                                  <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, fontSize: '0.65rem' }}>
-                                    {participation.score}/{participation.maxScore} Punkte ({percentage}%)
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#666' }}>
+                                    {participation.score} von {participation.maxScore} Punkten
                                   </Typography>
                                   <LinearProgress 
                                     variant="determinate" 
                                     value={percentage} 
                                     sx={{ 
+                                      width: 60, 
                                       height: 4, 
                                       borderRadius: 2,
                                       backgroundColor: 'rgba(0,0,0,0.1)',
                                       '& .MuiLinearProgress-bar': {
-                                        background: percentage >= 70 
-                                          ? 'linear-gradient(90deg, #4caf50 0%, #45a049 100%)'
-                                          : percentage >= 50
-                                          ? 'linear-gradient(90deg, #ff9800 0%, #f57c00 100%)'
-                                          : 'linear-gradient(90deg, #f44336 0%, #d32f2f 100%)',
+                                        background: `linear-gradient(90deg, ${percentage >= 80 ? '#4caf50' : percentage >= 60 ? '#ff9800' : '#f44336'} 0%, ${percentage >= 80 ? '#45a049' : percentage >= 60 ? '#f57c00' : '#d32f2f'} 100%)`,
                                         borderRadius: 2
                                       }
                                     }} 
@@ -601,6 +657,18 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
             setSelectedResults(null);
           }}
           results={selectedResults}
+        />
+      )}
+
+      {/* Statistics Modal */}
+      {showStatistics && selectedStatistics && (
+        <QuizStatisticsModal
+          open={showStatistics}
+          onClose={() => {
+            setShowStatistics(false);
+            setSelectedStatistics(null);
+          }}
+          statistics={selectedStatistics}
         />
       )}
     </Box>

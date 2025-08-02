@@ -15,4 +15,5 @@ router.get('/:sessionId/status', QuizParticipationController_1.getParticipationS
 router.post('/:participationId/results/teacher', QuizParticipationController_1.getParticipationResultsForTeacher);
 router.post('/:participationId/reset', QuizParticipationController_1.resetParticipation);
 router.delete('/:participationId', QuizParticipationController_1.deleteParticipation);
+router.post('/:sessionId/statistics', QuizParticipationController_1.getQuizStatistics);
 exports.default = router;

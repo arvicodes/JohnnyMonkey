@@ -484,6 +484,103 @@ export const resetParticipation = async (req: Request, res: Response) => {
   }
 };
 
+// Get quiz statistics for all questions
+export const getQuizStatistics = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const teacherId = req.body.teacherId as string;
+
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+    }
+
+    // Get all completed participations for this session
+    const participations = await prisma.quizParticipation.findMany({
+      where: {
+        sessionId: sessionId,
+        completedAt: { not: null },
+        session: {
+          quiz: {
+            teacherId: teacherId
+          }
+        }
+      },
+      include: {
+        answers: {
+          include: {
+            question: true
+          }
+        },
+        session: {
+          include: {
+            quiz: {
+              include: {
+                questions: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (participations.length === 0) {
+      return res.status(404).json({ error: 'Keine abgeschlossenen Teilnahmen gefunden' });
+    }
+
+    // Get all questions from the quiz
+    const quiz = participations[0].session.quiz;
+    const questions = quiz.questions;
+
+    // Calculate statistics for each question
+    const questionStats = questions.map((question: any) => {
+      const questionAnswers = participations.flatMap(p => 
+        p.answers.filter(a => a.questionId === question.id)
+      );
+
+      const totalAnswers = questionAnswers.length;
+      const correctAnswers = questionAnswers.filter(a => a.isCorrect).length;
+      const incorrectAnswers = totalAnswers - correctAnswers;
+      const correctPercentage = totalAnswers > 0 ? Math.round((correctAnswers / totalAnswers) * 100) : 0;
+
+      // Get answer distribution
+      const answerDistribution: { [key: string]: number } = {};
+      questionAnswers.forEach(answer => {
+        const selected = answer.selectedAnswer;
+        answerDistribution[selected] = (answerDistribution[selected] || 0) + 1;
+      });
+
+      return {
+        questionId: question.id,
+        question: question.question,
+        correctAnswer: question.correctAnswer,
+        totalAnswers,
+        correctAnswers,
+        incorrectAnswers,
+        correctPercentage,
+        answerDistribution
+      };
+    });
+
+    // Calculate overall statistics
+    const totalParticipations = participations.length;
+    const averageScore = participations.reduce((sum, p) => sum + (p.score || 0), 0) / totalParticipations;
+    const averagePercentage = Math.round((averageScore / (quiz.questions.length || 1)) * 100);
+
+    const statistics = {
+      quizTitle: quiz.title,
+      totalParticipations,
+      averageScore: Math.round(averageScore * 100) / 100,
+      averagePercentage,
+      questionStats
+    };
+
+    res.json(statistics);
+  } catch (error) {
+    console.error('Error getting quiz statistics:', error);
+    res.status(500).json({ error: 'Fehler beim Abrufen der Quiz-Statistik' });
+  }
+};
+
 // Delete student's participation (teacher only)
 export const deleteParticipation = async (req: Request, res: Response) => {
   try {
