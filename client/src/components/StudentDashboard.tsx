@@ -220,43 +220,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     if (quiz) {
       console.log('Quiz gefunden:', quiz);
       
-      // Prüfe zuerst, ob der Schüler das Quiz bereits absolviert hat
-      try {
-        const studentId = localStorage.getItem('studentId');
-        if (!studentId) {
-          alert('Schüler-ID nicht gefunden. Bitte melden Sie sich erneut an.');
-          return;
-        }
-
-        // Prüfe alle Sessions für dieses Quiz
-        const sessionsResponse = await fetch(`/api/quiz-sessions/${quiz.quiz.id}/sessions`);
-        if (sessionsResponse.ok) {
-          const sessions = await sessionsResponse.json();
-          
-          // Prüfe, ob der Schüler bereits an einer Session teilgenommen hat
-          for (const session of sessions) {
-            const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
-            if (participationResponse.ok) {
-              const participation = await participationResponse.json();
-              // Nur anzeigen wenn wirklich abgeschlossen (nicht nur gestartet)
-              if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
-                // Schüler hat das Quiz bereits absolviert - zeige Auswertung
-                const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
-                if (resultsResponse.ok) {
-                  const results = await resultsResponse.json();
-                  setQuizResults(results);
-                  setShowQuizResults(true);
-                  return;
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Fehler beim Prüfen der Quiz-Teilnahme:', error);
-      }
-
-      // Prüfe, ob eine aktive Session läuft
+      // Prüfe zuerst, ob eine aktive Session läuft
       try {
         const sessionResponse = await fetch(`/api/quiz-sessions/${quiz.quiz.id}/active`);
         console.log('Session Response Status:', sessionResponse.status);
@@ -266,20 +230,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           console.log('Aktive Session gefunden:', session);
           
           if (session && session.id) {
-            // Prüfe nochmal explizit, ob der Schüler bereits teilgenommen hat
+            // Prüfe, ob der Schüler bereits teilgenommen hat
             const studentId = localStorage.getItem('studentId');
             if (studentId) {
               const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${studentId}`);
               if (participationResponse.ok) {
                 const participation = await participationResponse.json();
-                // Wenn keine Teilnahme oder nicht abgeschlossen, dann kann der Schüler starten
-                if (!participation.hasParticipated || !participation.isCompleted) {
-                  // Navigiere zur Quiz-Teilnahme
-                  const participationUrl = `/quiz-participation/${session.id}`;
-                  navigate(participationUrl);
-                  return;
-                } else {
-                  // Schüler hat bereits abgeschlossen - zeige Auswertung
+                
+                // Wenn der Schüler bereits abgeschlossen hat, zeige Auswertung
+                if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
                   const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${studentId}`);
                   if (resultsResponse.ok) {
                     const results = await resultsResponse.json();
@@ -287,6 +246,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     setShowQuizResults(true);
                     return;
                   }
+                } else {
+                  // Schüler hat noch nicht teilgenommen oder nicht abgeschlossen - kann starten
+                  const participationUrl = `/quiz-participation/${session.id}`;
+                  navigate(participationUrl);
+                  return;
                 }
               }
             }
