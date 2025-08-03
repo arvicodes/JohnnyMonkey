@@ -225,7 +225,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const response = await fetch(`/api/learning-groups/teacher/${userId}`);
       if (response.ok) {
         const data = await response.json();
-        setGroups(data);
+        
+        // Sortiere Gruppen: Klasse 7a zuerst, dann alphabetisch
+        const sortedGroups = data.sort((a: LearningGroup, b: LearningGroup) => {
+          // Klasse 7a immer an erster Stelle
+          if (a.name === 'Klasse 7a') return -1;
+          if (b.name === 'Klasse 7a') return 1;
+          
+          // Alle anderen Gruppen alphabetisch sortieren
+          return a.name.localeCompare(b.name);
+        });
+        
+        setGroups(sortedGroups);
       }
     } catch (error) {
       console.error('Fehler beim Laden der Lerngruppen:', error);
@@ -240,7 +251,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         body: JSON.stringify({ name: newGroupName, teacherId: userId }),
       });
       if (!response.ok) throw new Error('Fehler beim Erstellen der Gruppe');
-      await fetchGroups();
+      await fetchGroups(); // fetchGroups sortiert bereits korrekt
       setNewGroupName('');
       setOpenNewGroupDialog(false);
       showSnackbar('Lerngruppe erfolgreich erstellt', 'success');

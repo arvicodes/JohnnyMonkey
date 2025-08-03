@@ -18,9 +18,21 @@ router.get('/teacher/:id', (req, res) => __awaiter(void 0, void 0, void 0, funct
     try {
         const groups = yield prisma.learningGroup.findMany({
             where: { teacherId: req.params.id },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
+            }
         });
-        res.json(groups);
+        // Sort students by last name within each group
+        const sortedGroups = groups.map(group => (Object.assign(Object.assign({}, group), { students: group.students.sort((a, b) => {
+                const lastNameA = a.name.split(' ').pop() || '';
+                const lastNameB = b.name.split(' ').pop() || '';
+                return lastNameA.localeCompare(lastNameB);
+            }) })));
+        res.json(sortedGroups);
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -39,10 +51,20 @@ router.get('/student/:id', (req, res) => __awaiter(void 0, void 0, void 0, funct
             },
             include: {
                 teacher: true,
-                students: true
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
             }
         });
-        res.json(groups);
+        // Sort students by last name within each group
+        const sortedGroups = groups.map(group => (Object.assign(Object.assign({}, group), { students: group.students.sort((a, b) => {
+                const lastNameA = a.name.split(' ').pop() || '';
+                const lastNameB = b.name.split(' ').pop() || '';
+                return lastNameA.localeCompare(lastNameB);
+            }) })));
+        res.json(sortedGroups);
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -55,13 +77,23 @@ router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             where: { id: req.params.id },
             include: {
                 teacher: true,
-                students: true
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
             }
         });
         if (!group) {
             return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
         }
-        res.json(group);
+        // Sort students by last name
+        const sortedGroup = Object.assign(Object.assign({}, group), { students: group.students.sort((a, b) => {
+                const lastNameA = a.name.split(' ').pop() || '';
+                const lastNameB = b.name.split(' ').pop() || '';
+                return lastNameA.localeCompare(lastNameB);
+            }) });
+        res.json(sortedGroup);
     }
     catch (error) {
         console.error('Error fetching learning group:', error);
@@ -80,10 +112,20 @@ router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             data: { name: name.trim() },
             include: {
                 teacher: true,
-                students: true
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
             }
         });
-        res.json(group);
+        // Sort students by last name
+        const sortedGroup = Object.assign(Object.assign({}, group), { students: group.students.sort((a, b) => {
+                const lastNameA = a.name.split(' ').pop() || '';
+                const lastNameB = b.name.split(' ').pop() || '';
+                return lastNameA.localeCompare(lastNameB);
+            }) });
+        res.json(sortedGroup);
     }
     catch (error) {
         console.error('Error updating learning group:', error);
@@ -101,9 +143,21 @@ router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                     connect: { id: teacherId }
                 }
             },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
+            }
         });
-        res.json(group);
+        // Sort students by last name
+        const sortedGroup = Object.assign(Object.assign({}, group), { students: group.students.sort((a, b) => {
+                const lastNameA = a.name.split(' ').pop() || '';
+                const lastNameB = b.name.split(' ').pop() || '';
+                return lastNameA.localeCompare(lastNameB);
+            }) });
+        res.json(sortedGroup);
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -120,9 +174,21 @@ router.post('/:id/students', (req, res) => __awaiter(void 0, void 0, void 0, fun
                     connect: studentIds.map((id) => ({ id }))
                 }
             },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
+            }
         });
-        res.json(group);
+        // Sort students by last name
+        const sortedGroup = Object.assign(Object.assign({}, group), { students: group.students.sort((a, b) => {
+                const lastNameA = a.name.split(' ').pop() || '';
+                const lastNameB = b.name.split(' ').pop() || '';
+                return lastNameA.localeCompare(lastNameB);
+            }) });
+        res.json(sortedGroup);
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -138,9 +204,21 @@ router.delete('/:groupId/students/:studentId', (req, res) => __awaiter(void 0, v
                     disconnect: { id: req.params.studentId }
                 }
             },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
+            }
         });
-        res.json(group);
+        // Sort students by last name
+        const sortedGroup = Object.assign(Object.assign({}, group), { students: group.students.sort((a, b) => {
+                const lastNameA = a.name.split(' ').pop() || '';
+                const lastNameB = b.name.split(' ').pop() || '';
+                return lastNameA.localeCompare(lastNameB);
+            }) });
+        res.json(sortedGroup);
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -153,7 +231,13 @@ router.get('/:groupId/available-students', (req, res) => __awaiter(void 0, void 
         // Get the current group's students
         const currentGroup = yield prisma.learningGroup.findUnique({
             where: { id: groupId },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                }
+            }
         });
         if (!currentGroup) {
             return res.status(404).json({ message: 'Lerngruppe nicht gefunden' });
@@ -167,9 +251,18 @@ router.get('/:groupId/available-students', (req, res) => __awaiter(void 0, void 
                         notIn: currentGroup.students.map(student => student.id)
                     }
                 }
+            },
+            orderBy: {
+                name: 'asc'
             }
         });
-        res.json(availableStudents);
+        // Sort available students by last name
+        const sortedAvailableStudents = availableStudents.sort((a, b) => {
+            const lastNameA = a.name.split(' ').pop() || '';
+            const lastNameB = b.name.split(' ').pop() || '';
+            return lastNameA.localeCompare(lastNameB);
+        });
+        res.json(sortedAvailableStudents);
     }
     catch (error) {
         console.error('Error fetching available students:', error);
