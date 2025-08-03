@@ -202,6 +202,35 @@ async function main() {
     });
   }
 
+  // Ursprüngliche Schüler für andere Lerngruppen
+  const originalStudents = [
+    { name: 'Laura Braun', loginCode: 'STUD019_ORIG', role: 'STUDENT' },
+    { name: 'Lea Bauer', loginCode: 'STUD013_ORIG', role: 'STUDENT' }
+  ];
+
+  const originalCreatedStudents: any[] = [];
+  for (const studentData of originalStudents) {
+    let student = await prisma.user.findUnique({ where: { loginCode: studentData.loginCode } });
+    if (!student) {
+      student = await prisma.user.create({
+        data: studentData
+      });
+    }
+    originalCreatedStudents.push(student);
+  }
+
+  // Informatik GK 12: Laura Braun und Lea Bauer
+  for (const student of originalCreatedStudents) {
+    await prisma.learningGroup.update({
+      where: { id: informatikGK12.id },
+      data: {
+        students: {
+          connect: { id: student.id }
+        }
+      }
+    });
+  }
+
   // --- ASSIGNMENTS für Klasse 7a ---
   // Subject Assignment
   let subjectAssignment = await prisma.groupAssignment.findFirst({
