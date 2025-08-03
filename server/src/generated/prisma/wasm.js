@@ -122,9 +122,9 @@ exports.Prisma.UserScalarFieldEnum = {
   name: 'name',
   loginCode: 'loginCode',
   role: 'role',
-  avatarEmoji: 'avatarEmoji',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  avatarEmoji: 'avatarEmoji'
 };
 
 exports.Prisma.GradingSchemaScalarFieldEnum = {

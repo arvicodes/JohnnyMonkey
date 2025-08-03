@@ -13,9 +13,9 @@ model User {
   name           String
   loginCode      String              @unique
   role           String              @default("STUDENT")
-  avatarEmoji    String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
+  avatarEmoji    String?
   teacherGroups  LearningGroup[]     @relation("TeacherGroups")
   notes          Note[]
   quizzes        Quiz[]

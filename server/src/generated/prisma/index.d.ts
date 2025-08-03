@@ -2892,9 +2892,9 @@ export namespace Prisma {
     name: string | null
     loginCode: string | null
     role: string | null
-    avatarEmoji: string | null
     createdAt: Date | null
     updatedAt: Date | null
+    avatarEmoji: string | null
   }
 
   export type UserMaxAggregateOutputType = {
@@ -2902,9 +2902,9 @@ export namespace Prisma {
     name: string | null
     loginCode: string | null
     role: string | null
-    avatarEmoji: string | null
     createdAt: Date | null
     updatedAt: Date | null
+    avatarEmoji: string | null
   }
 
   export type UserCountAggregateOutputType = {
@@ -2912,9 +2912,9 @@ export namespace Prisma {
     name: number
     loginCode: number
     role: number
-    avatarEmoji: number
     createdAt: number
     updatedAt: number
+    avatarEmoji: number
     _all: number
   }
 
@@ -2924,9 +2924,9 @@ export namespace Prisma {
     name?: true
     loginCode?: true
     role?: true
-    avatarEmoji?: true
     createdAt?: true
     updatedAt?: true
+    avatarEmoji?: true
   }
 
   export type UserMaxAggregateInputType = {
@@ -2934,9 +2934,9 @@ export namespace Prisma {
     name?: true
     loginCode?: true
     role?: true
-    avatarEmoji?: true
     createdAt?: true
     updatedAt?: true
+    avatarEmoji?: true
   }
 
   export type UserCountAggregateInputType = {
@@ -2944,9 +2944,9 @@ export namespace Prisma {
     name?: true
     loginCode?: true
     role?: true
-    avatarEmoji?: true
     createdAt?: true
     updatedAt?: true
+    avatarEmoji?: true
     _all?: true
   }
 
@@ -3027,9 +3027,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role: string
-    avatarEmoji: string | null
     createdAt: Date
     updatedAt: Date
+    avatarEmoji: string | null
     _count: UserCountAggregateOutputType | null
     _min: UserMinAggregateOutputType | null
     _max: UserMaxAggregateOutputType | null
@@ -3054,9 +3054,9 @@ export namespace Prisma {
     name?: boolean
     loginCode?: boolean
     role?: boolean
-    avatarEmoji?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    avatarEmoji?: boolean
     teacherGroups?: boolean | User$teacherGroupsArgs<ExtArgs>
     notes?: boolean | User$notesArgs<ExtArgs>
     quizzes?: boolean | User$quizzesArgs<ExtArgs>
@@ -3071,9 +3071,9 @@ export namespace Prisma {
     name?: boolean
     loginCode?: boolean
     role?: boolean
-    avatarEmoji?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    avatarEmoji?: boolean
   }, ExtArgs["result"]["user"]>
 
   export type UserSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -3081,9 +3081,9 @@ export namespace Prisma {
     name?: boolean
     loginCode?: boolean
     role?: boolean
-    avatarEmoji?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    avatarEmoji?: boolean
   }, ExtArgs["result"]["user"]>
 
   export type UserSelectScalar = {
@@ -3091,12 +3091,12 @@ export namespace Prisma {
     name?: boolean
     loginCode?: boolean
     role?: boolean
-    avatarEmoji?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    avatarEmoji?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "loginCode" | "role" | "avatarEmoji" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "loginCode" | "role" | "createdAt" | "updatedAt" | "avatarEmoji", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     teacherGroups?: boolean | User$teacherGroupsArgs<ExtArgs>
     notes?: boolean | User$notesArgs<ExtArgs>
@@ -3124,9 +3124,9 @@ export namespace Prisma {
       name: string
       loginCode: string
       role: string
-      avatarEmoji: string | null
       createdAt: Date
       updatedAt: Date
+      avatarEmoji: string | null
     }, ExtArgs["result"]["user"]>
     composites: {}
   }
@@ -3560,9 +3560,9 @@ export namespace Prisma {
     readonly name: FieldRef<"User", 'String'>
     readonly loginCode: FieldRef<"User", 'String'>
     readonly role: FieldRef<"User", 'String'>
-    readonly avatarEmoji: FieldRef<"User", 'String'>
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
+    readonly avatarEmoji: FieldRef<"User", 'String'>
   }
     
 
@@ -23297,9 +23297,9 @@ export namespace Prisma {
     name: 'name',
     loginCode: 'loginCode',
     role: 'role',
-    avatarEmoji: 'avatarEmoji',
     createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
+    updatedAt: 'updatedAt',
+    avatarEmoji: 'avatarEmoji'
   };
 
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -23589,9 +23589,9 @@ export namespace Prisma {
     name?: StringFilter<"User"> | string
     loginCode?: StringFilter<"User"> | string
     role?: StringFilter<"User"> | string
-    avatarEmoji?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
+    avatarEmoji?: StringNullableFilter<"User"> | string | null
     teacherGroups?: LearningGroupListRelationFilter
     notes?: NoteListRelationFilter
     quizzes?: QuizListRelationFilter
@@ -23605,9 +23605,9 @@ export namespace Prisma {
     name?: SortOrder
     loginCode?: SortOrder
     role?: SortOrder
-    avatarEmoji?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    avatarEmoji?: SortOrderInput | SortOrder
     teacherGroups?: LearningGroupOrderByRelationAggregateInput
     notes?: NoteOrderByRelationAggregateInput
     quizzes?: QuizOrderByRelationAggregateInput
@@ -23624,9 +23624,9 @@ export namespace Prisma {
     NOT?: UserWhereInput | UserWhereInput[]
     name?: StringFilter<"User"> | string
     role?: StringFilter<"User"> | string
-    avatarEmoji?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
+    avatarEmoji?: StringNullableFilter<"User"> | string | null
     teacherGroups?: LearningGroupListRelationFilter
     notes?: NoteListRelationFilter
     quizzes?: QuizListRelationFilter
@@ -23640,9 +23640,9 @@ export namespace Prisma {
     name?: SortOrder
     loginCode?: SortOrder
     role?: SortOrder
-    avatarEmoji?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    avatarEmoji?: SortOrderInput | SortOrder
     _count?: UserCountOrderByAggregateInput
     _max?: UserMaxOrderByAggregateInput
     _min?: UserMinOrderByAggregateInput
@@ -23656,9 +23656,9 @@ export namespace Prisma {
     name?: StringWithAggregatesFilter<"User"> | string
     loginCode?: StringWithAggregatesFilter<"User"> | string
     role?: StringWithAggregatesFilter<"User"> | string
-    avatarEmoji?: StringNullableWithAggregatesFilter<"User"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
+    avatarEmoji?: StringNullableWithAggregatesFilter<"User"> | string | null
   }
 
   export type GradingSchemaWhereInput = {
@@ -24831,9 +24831,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
     notes?: NoteCreateNestedManyWithoutAuthorInput
     quizzes?: QuizCreateNestedManyWithoutTeacherInput
@@ -24847,9 +24847,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
     notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
     quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
@@ -24863,9 +24863,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
     notes?: NoteUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUpdateManyWithoutTeacherNestedInput
@@ -24879,9 +24879,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
     notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
@@ -24895,9 +24895,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
   }
 
   export type UserUpdateManyMutationInput = {
@@ -24905,9 +24905,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type UserUncheckedUpdateManyInput = {
@@ -24915,9 +24915,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type GradingSchemaCreateInput = {
@@ -26140,6 +26140,17 @@ export namespace Prisma {
     not?: NestedStringFilter<$PrismaModel> | string
   }
 
+  export type DateTimeFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[]
+    notIn?: Date[] | string[]
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeFilter<$PrismaModel> | Date | string
+  }
+
   export type StringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | null
@@ -26152,17 +26163,6 @@ export namespace Prisma {
     startsWith?: string | StringFieldRefInput<$PrismaModel>
     endsWith?: string | StringFieldRefInput<$PrismaModel>
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
-  }
-
-  export type DateTimeFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[]
-    notIn?: Date[] | string[]
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeFilter<$PrismaModel> | Date | string
   }
 
   export type LearningGroupListRelationFilter = {
@@ -26225,9 +26225,9 @@ export namespace Prisma {
     name?: SortOrder
     loginCode?: SortOrder
     role?: SortOrder
-    avatarEmoji?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    avatarEmoji?: SortOrder
   }
 
   export type UserMaxOrderByAggregateInput = {
@@ -26235,9 +26235,9 @@ export namespace Prisma {
     name?: SortOrder
     loginCode?: SortOrder
     role?: SortOrder
-    avatarEmoji?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    avatarEmoji?: SortOrder
   }
 
   export type UserMinOrderByAggregateInput = {
@@ -26245,9 +26245,9 @@ export namespace Prisma {
     name?: SortOrder
     loginCode?: SortOrder
     role?: SortOrder
-    avatarEmoji?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    avatarEmoji?: SortOrder
   }
 
   export type StringWithAggregatesFilter<$PrismaModel = never> = {
@@ -26267,6 +26267,20 @@ export namespace Prisma {
     _max?: NestedStringFilter<$PrismaModel>
   }
 
+  export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[]
+    notIn?: Date[] | string[]
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedDateTimeFilter<$PrismaModel>
+    _max?: NestedDateTimeFilter<$PrismaModel>
+  }
+
   export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | null
@@ -26282,20 +26296,6 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
-  export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[]
-    notIn?: Date[] | string[]
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedDateTimeFilter<$PrismaModel>
-    _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
   export type LearningGroupScalarRelationFilter = {
@@ -27251,12 +27251,12 @@ export namespace Prisma {
     set?: string
   }
 
-  export type NullableStringFieldUpdateOperationsInput = {
-    set?: string | null
-  }
-
   export type DateTimeFieldUpdateOperationsInput = {
     set?: Date | string
+  }
+
+  export type NullableStringFieldUpdateOperationsInput = {
+    set?: string | null
   }
 
   export type LearningGroupUpdateManyWithoutTeacherNestedInput = {
@@ -28411,6 +28411,17 @@ export namespace Prisma {
     not?: NestedStringFilter<$PrismaModel> | string
   }
 
+  export type NestedDateTimeFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[]
+    notIn?: Date[] | string[]
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeFilter<$PrismaModel> | Date | string
+  }
+
   export type NestedStringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | null
@@ -28423,17 +28434,6 @@ export namespace Prisma {
     startsWith?: string | StringFieldRefInput<$PrismaModel>
     endsWith?: string | StringFieldRefInput<$PrismaModel>
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
-  }
-
-  export type NestedDateTimeFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[]
-    notIn?: Date[] | string[]
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeFilter<$PrismaModel> | Date | string
   }
 
   export type NestedStringWithAggregatesFilter<$PrismaModel = never> = {
@@ -28464,6 +28464,20 @@ export namespace Prisma {
     not?: NestedIntFilter<$PrismaModel> | number
   }
 
+  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[]
+    notIn?: Date[] | string[]
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedDateTimeFilter<$PrismaModel>
+    _max?: NestedDateTimeFilter<$PrismaModel>
+  }
+
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | null
@@ -28490,20 +28504,6 @@ export namespace Prisma {
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
-  }
-
-  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[]
-    notIn?: Date[] | string[]
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedDateTimeFilter<$PrismaModel>
-    _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
   export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
@@ -29059,9 +29059,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     notes?: NoteCreateNestedManyWithoutAuthorInput
     quizzes?: QuizCreateNestedManyWithoutTeacherInput
     participations?: QuizParticipationCreateNestedManyWithoutStudentInput
@@ -29074,9 +29074,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
     quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
     participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
@@ -29094,9 +29094,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
     notes?: NoteCreateNestedManyWithoutAuthorInput
     quizzes?: QuizCreateNestedManyWithoutTeacherInput
@@ -29109,9 +29109,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
     notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
     quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
@@ -29195,9 +29195,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NoteUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUpdateManyWithoutTeacherNestedInput
     participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
@@ -29210,9 +29210,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
     participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
@@ -29244,9 +29244,9 @@ export namespace Prisma {
     name?: StringFilter<"User"> | string
     loginCode?: StringFilter<"User"> | string
     role?: StringFilter<"User"> | string
-    avatarEmoji?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
+    avatarEmoji?: StringNullableFilter<"User"> | string | null
   }
 
   export type BlockCreateWithoutSubjectInput = {
@@ -29283,9 +29283,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
     notes?: NoteCreateNestedManyWithoutAuthorInput
     quizzes?: QuizCreateNestedManyWithoutTeacherInput
@@ -29298,9 +29298,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
     notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
     quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
@@ -29358,9 +29358,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
     notes?: NoteUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUpdateManyWithoutTeacherNestedInput
@@ -29373,9 +29373,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
     notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
@@ -29938,9 +29938,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
     quizzes?: QuizCreateNestedManyWithoutTeacherInput
     participations?: QuizParticipationCreateNestedManyWithoutStudentInput
@@ -29953,9 +29953,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
     quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
     participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
@@ -29984,9 +29984,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
     quizzes?: QuizUpdateManyWithoutTeacherNestedInput
     participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
@@ -29999,9 +29999,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
     quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
     participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
@@ -30184,9 +30184,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
     notes?: NoteCreateNestedManyWithoutAuthorInput
     participations?: QuizParticipationCreateNestedManyWithoutStudentInput
@@ -30199,9 +30199,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
     notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
     participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
@@ -30306,9 +30306,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
     notes?: NoteUpdateManyWithoutAuthorNestedInput
     participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
@@ -30321,9 +30321,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
     notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
     participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
@@ -30815,9 +30815,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
     notes?: NoteCreateNestedManyWithoutAuthorInput
     quizzes?: QuizCreateNestedManyWithoutTeacherInput
@@ -30830,9 +30830,9 @@ export namespace Prisma {
     name: string
     loginCode: string
     role?: string
-    avatarEmoji?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    avatarEmoji?: string | null
     teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
     notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
     quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
@@ -30902,9 +30902,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
     notes?: NoteUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUpdateManyWithoutTeacherNestedInput
@@ -30917,9 +30917,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
     notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
@@ -31391,9 +31391,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
     notes?: NoteUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUpdateManyWithoutTeacherNestedInput
@@ -31406,9 +31406,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
     notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
     quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
@@ -31421,9 +31421,9 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     loginCode?: StringFieldUpdateOperationsInput | string
     role?: StringFieldUpdateOperationsInput | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type BlockCreateManySubjectInput = {
