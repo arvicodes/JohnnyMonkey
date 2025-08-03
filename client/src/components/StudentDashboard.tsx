@@ -8,13 +8,17 @@ import {
   CardContent,
   Button,
   CircularProgress,
-  Avatar
+  Avatar,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
   School as SchoolIcon,
   QuestionAnswer as QuizIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
+import EmojiSelector from './EmojiSelector';
 
 interface Teacher {
   id: string;
@@ -101,6 +105,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [topicAssignments, setTopicAssignments] = useState<{ [topicId: string]: string[] }>({});
   const [lessonAssignments, setLessonAssignments] = useState<{ [lessonId: string]: string[] }>({});
 
+  // Emoji-Auswahl States
+  const [selectedEmoji, setSelectedEmoji] = useState<string>('🧙‍♂️');
+  const [showEmojiSelector, setShowEmojiSelector] = useState(false);
+
   // Spielerische Farbpalette
   const colors = {
     primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
@@ -112,6 +120,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     success: '#4CAF50',
     textPrimary: '#2C3E50', // Dunkler Text für bessere Lesbarkeit
     textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
+  };
+
+  // Emoji-Auswahl Handler
+  const handleEmojiSelect = (emoji: string) => {
+    setSelectedEmoji(emoji);
+    // Hier könnte man das Emoji auch in der Datenbank speichern
+    console.log('Selected emoji:', emoji);
+  };
+
+  const handleOpenEmojiSelector = () => {
+    setShowEmojiSelector(true);
+  };
+
+  const handleCloseEmojiSelector = () => {
+    setShowEmojiSelector(false);
   };
 
   // Hilfsfunktion zum Laden des Student-Namens
@@ -554,12 +577,40 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   borderRadius: 2.1,
                   p: 2.1,
                   mb: 2.1,
-                  textAlign: 'center'
-                }}>
-                  <Typography variant="h1" sx={{ fontSize: '3rem', mb: 1 }}>
-                    🧙‍♂️
-                  </Typography>
-                </Box>
+                  textAlign: 'center',
+                  position: 'relative',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                  }
+                }}
+                onClick={handleOpenEmojiSelector}
+              >
+                <Typography variant="h1" sx={{ fontSize: '4rem', mb: 1 }}>
+                  {selectedEmoji}
+                </Typography>
+                <Tooltip title="Avatar ändern" placement="top">
+                  <IconButton
+                    sx={{
+                      position: 'absolute',
+                      bottom: 8,
+                      right: 8,
+                      bgcolor: 'rgba(255,255,255,0.8)',
+                      width: 28,
+                      height: 28,
+                      '&:hover': {
+                        bgcolor: 'rgba(255,255,255,0.95)',
+                        transform: 'scale(1.05)'
+                      }
+                    }}
+                    size="small"
+                  >
+                    <EditIcon sx={{ fontSize: '0.9rem' }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
 
                 {/* Character Name and Role */}
                 <Box sx={{ textAlign: 'center', mb: 2.1 }}>
@@ -994,6 +1045,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         open={showQuizResults}
         onClose={() => setShowQuizResults(false)}
         results={quizResults}
+      />
+
+      {/* Emoji Selector Modal */}
+      <EmojiSelector
+        open={showEmojiSelector}
+        onClose={handleCloseEmojiSelector}
+        onSelect={handleEmojiSelect}
+        currentEmoji={selectedEmoji}
       />
     </Box>
   );
