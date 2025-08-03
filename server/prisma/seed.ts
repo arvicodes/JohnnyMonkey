@@ -61,6 +61,19 @@ async function main() {
     console.log('Alte Klasse 7a wurde gelöscht')
   }
 
+  // --- CLEAR ALL STUDENTS FROM KLASSE 6A ---
+  if (klasse6a) {
+    await prisma.learningGroup.update({
+      where: { id: klasse6a.id },
+      data: {
+        students: {
+          set: [] // Disconnect all students
+        }
+      }
+    })
+    console.log('Alle Schüler aus Klasse 6a entfernt')
+  }
+
   // --- STUDENTS ---
   // Klasse 6a - Echte Schüler von Frau Christ
   const students = [
