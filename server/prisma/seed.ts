@@ -18,8 +18,203 @@ async function main() {
   }
 
   // --- SUBJECTS ---
-  // Fächer werden jetzt über die UI erstellt, nicht mehr über Seeds
-  // Dies verhindert, dass alte Test-Daten die aktuellen Fächer überschreiben
+  // Mathematik für Klasse 6a
+  let mathematik = await prisma.subject.findFirst({ where: { name: 'Mathematik', teacherId: teacher1.id } })
+  if (!mathematik) {
+    mathematik = await prisma.subject.create({
+      data: {
+        name: 'Mathematik',
+        description: 'Mathematik für Klasse 6a',
+        teacherId: teacher1.id,
+        order: 0
+      }
+    })
+  }
+
+  // Informatik für GK11
+  let informatik = await prisma.subject.findFirst({ where: { name: 'Informatik', teacherId: teacher1.id } })
+  if (!informatik) {
+    informatik = await prisma.subject.create({
+      data: {
+        name: 'Informatik',
+        description: 'Informatik für GK11',
+        teacherId: teacher1.id,
+        order: 1
+      }
+    })
+  }
+
+  // --- BLOCKS für Mathematik ---
+  let matheBlock1 = await prisma.block.findFirst({ where: { name: 'Grundlagen', subjectId: mathematik.id } })
+  if (!matheBlock1) {
+    matheBlock1 = await prisma.block.create({
+      data: {
+        name: 'Grundlagen',
+        description: 'Mathematische Grundlagen',
+        subjectId: mathematik.id,
+        order: 0
+      }
+    })
+  }
+
+  let matheBlock2 = await prisma.block.findFirst({ where: { name: 'Geometrie', subjectId: mathematik.id } })
+  if (!matheBlock2) {
+    matheBlock2 = await prisma.block.create({
+      data: {
+        name: 'Geometrie',
+        description: 'Geometrische Formen und Berechnungen',
+        subjectId: mathematik.id,
+        order: 1
+      }
+    })
+  }
+
+  let matheBlock3 = await prisma.block.findFirst({ where: { name: 'Algebra', subjectId: mathematik.id } })
+  if (!matheBlock3) {
+    matheBlock3 = await prisma.block.create({
+      data: {
+        name: 'Algebra',
+        description: 'Algebraische Ausdrücke und Gleichungen',
+        subjectId: mathematik.id,
+        order: 2
+      }
+    })
+  }
+
+  // --- UNITS für Mathematik ---
+  let matheUnit1 = await prisma.unit.findFirst({ where: { name: 'Zahlen und Operationen', blockId: matheBlock1.id } })
+  if (!matheUnit1) {
+    matheUnit1 = await prisma.unit.create({
+      data: {
+        name: 'Zahlen und Operationen',
+        description: 'Grundlegende Zahlenoperationen',
+        blockId: matheBlock1.id,
+        order: 0
+      }
+    })
+  }
+
+  let matheUnit2 = await prisma.unit.findFirst({ where: { name: 'Brüche und Dezimalzahlen', blockId: matheBlock1.id } })
+  if (!matheUnit2) {
+    matheUnit2 = await prisma.unit.create({
+      data: {
+        name: 'Brüche und Dezimalzahlen',
+        description: 'Arbeiten mit Brüchen und Dezimalzahlen',
+        blockId: matheBlock1.id,
+        order: 1
+      }
+    })
+  }
+
+  let matheUnit3 = await prisma.unit.findFirst({ where: { name: 'Prozentrechnung', blockId: matheBlock1.id } })
+  if (!matheUnit3) {
+    matheUnit3 = await prisma.unit.create({
+      data: {
+        name: 'Prozentrechnung',
+        description: 'Prozentrechnung und Zinsrechnung',
+        blockId: matheBlock1.id,
+        order: 2
+      }
+    })
+  }
+
+  let matheUnit4 = await prisma.unit.findFirst({ where: { name: 'Dreiecke', blockId: matheBlock2.id } })
+  if (!matheUnit4) {
+    matheUnit4 = await prisma.unit.create({
+      data: {
+        name: 'Dreiecke',
+        description: 'Eigenschaften und Berechnungen von Dreiecken',
+        blockId: matheBlock2.id,
+        order: 0
+      }
+    })
+  }
+
+  let matheUnit5 = await prisma.unit.findFirst({ where: { name: 'Kreise', blockId: matheBlock2.id } })
+  if (!matheUnit5) {
+    matheUnit5 = await prisma.unit.create({
+      data: {
+        name: 'Kreise',
+        description: 'Kreisberechnungen und Flächen',
+        blockId: matheBlock2.id,
+        order: 1
+      }
+    })
+  }
+
+  let matheUnit6 = await prisma.unit.findFirst({ where: { name: 'Gleichungen', blockId: matheBlock3.id } })
+  if (!matheUnit6) {
+    matheUnit6 = await prisma.unit.create({
+      data: {
+        name: 'Gleichungen',
+        description: 'Lineare Gleichungen lösen',
+        blockId: matheBlock3.id,
+        order: 0
+      }
+    })
+  }
+
+  // --- TOPICS für Mathematik ---
+  let matheTopics = [
+    { name: 'Addition und Subtraktion', unitId: matheUnit1.id, order: 0 },
+    { name: 'Multiplikation und Division', unitId: matheUnit1.id, order: 1 },
+    { name: 'Gemischte Zahlen', unitId: matheUnit2.id, order: 0 },
+    { name: 'Dezimalzahlen', unitId: matheUnit2.id, order: 1 },
+    { name: 'Prozentrechnung Grundlagen', unitId: matheUnit3.id, order: 0 },
+    { name: 'Zinsrechnung', unitId: matheUnit3.id, order: 1 },
+    { name: 'Dreiecksarten', unitId: matheUnit4.id, order: 0 },
+    { name: 'Satz des Pythagoras', unitId: matheUnit4.id, order: 1 },
+    { name: 'Kreisumfang', unitId: matheUnit5.id, order: 0 },
+    { name: 'Kreisfläche', unitId: matheUnit5.id, order: 1 },
+    { name: 'Einfache Gleichungen', unitId: matheUnit6.id, order: 0 },
+    { name: 'Gleichungen mit Klammern', unitId: matheUnit6.id, order: 1 }
+  ]
+
+  for (const topicData of matheTopics) {
+    let topic = await prisma.topic.findFirst({ where: { name: topicData.name, unitId: topicData.unitId } })
+    if (!topic) {
+      topic = await prisma.topic.create({
+        data: topicData
+      })
+    }
+  }
+
+  // --- LESSONS für Mathematik ---
+  let matheLessons = [
+    { name: 'Addition von natürlichen Zahlen', topicId: (await prisma.topic.findFirst({ where: { name: 'Addition und Subtraktion' } }))!.id, order: 0 },
+    { name: 'Subtraktion von natürlichen Zahlen', topicId: (await prisma.topic.findFirst({ where: { name: 'Addition und Subtraktion' } }))!.id, order: 1 },
+    { name: 'Multiplikation von natürlichen Zahlen', topicId: (await prisma.topic.findFirst({ where: { name: 'Multiplikation und Division' } }))!.id, order: 0 },
+    { name: 'Division von natürlichen Zahlen', topicId: (await prisma.topic.findFirst({ where: { name: 'Multiplikation und Division' } }))!.id, order: 1 },
+    { name: 'Gemischte Zahlen addieren', topicId: (await prisma.topic.findFirst({ where: { name: 'Gemischte Zahlen' } }))!.id, order: 0 },
+    { name: 'Gemischte Zahlen subtrahieren', topicId: (await prisma.topic.findFirst({ where: { name: 'Gemischte Zahlen' } }))!.id, order: 1 },
+    { name: 'Dezimalzahlen addieren', topicId: (await prisma.topic.findFirst({ where: { name: 'Dezimalzahlen' } }))!.id, order: 0 },
+    { name: 'Dezimalzahlen multiplizieren', topicId: (await prisma.topic.findFirst({ where: { name: 'Dezimalzahlen' } }))!.id, order: 1 },
+    { name: 'Prozentrechnung Grundlagen', topicId: (await prisma.topic.findFirst({ where: { name: 'Prozentrechnung Grundlagen' } }))!.id, order: 0 },
+    { name: 'Prozentrechnung Aufgaben', topicId: (await prisma.topic.findFirst({ where: { name: 'Prozentrechnung Grundlagen' } }))!.id, order: 1 },
+    { name: 'Einfache Zinsrechnung', topicId: (await prisma.topic.findFirst({ where: { name: 'Zinsrechnung' } }))!.id, order: 0 },
+    { name: 'Zinseszinsrechnung', topicId: (await prisma.topic.findFirst({ where: { name: 'Zinsrechnung' } }))!.id, order: 1 },
+    { name: 'Dreiecksarten kennenlernen', topicId: (await prisma.topic.findFirst({ where: { name: 'Dreiecksarten' } }))!.id, order: 0 },
+    { name: 'Dreiecksarten bestimmen', topicId: (await prisma.topic.findFirst({ where: { name: 'Dreiecksarten' } }))!.id, order: 1 },
+    { name: 'Satz des Pythagoras', topicId: (await prisma.topic.findFirst({ where: { name: 'Satz des Pythagoras' } }))!.id, order: 0 },
+    { name: 'Pythagoras Aufgaben', topicId: (await prisma.topic.findFirst({ where: { name: 'Satz des Pythagoras' } }))!.id, order: 1 },
+    { name: 'Kreisumfang berechnen', topicId: (await prisma.topic.findFirst({ where: { name: 'Kreisumfang' } }))!.id, order: 0 },
+    { name: 'Kreisumfang Aufgaben', topicId: (await prisma.topic.findFirst({ where: { name: 'Kreisumfang' } }))!.id, order: 1 },
+    { name: 'Kreisfläche berechnen', topicId: (await prisma.topic.findFirst({ where: { name: 'Kreisfläche' } }))!.id, order: 0 },
+    { name: 'Kreisfläche Aufgaben', topicId: (await prisma.topic.findFirst({ where: { name: 'Kreisfläche' } }))!.id, order: 1 },
+    { name: 'Einfache Gleichungen lösen', topicId: (await prisma.topic.findFirst({ where: { name: 'Einfache Gleichungen' } }))!.id, order: 0 },
+    { name: 'Gleichungen mit einer Unbekannten', topicId: (await prisma.topic.findFirst({ where: { name: 'Einfache Gleichungen' } }))!.id, order: 1 },
+    { name: 'Gleichungen mit Klammern', topicId: (await prisma.topic.findFirst({ where: { name: 'Gleichungen mit Klammern' } }))!.id, order: 0 },
+    { name: 'Klammern auflösen', topicId: (await prisma.topic.findFirst({ where: { name: 'Gleichungen mit Klammern' } }))!.id, order: 1 }
+  ]
+
+  for (const lessonData of matheLessons) {
+    let lesson = await prisma.lesson.findFirst({ where: { name: lessonData.name, topicId: lessonData.topicId } })
+    if (!lesson) {
+      lesson = await prisma.lesson.create({
+        data: lessonData
+      })
+    }
+  }
 
   // --- LEARNING GROUPS ---
   let klasse6a = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 6a', teacherId: teacher1.id } })
@@ -125,7 +320,114 @@ async function main() {
     });
   }
 
-  console.log('Database has been seeded! 🌱')
+  // --- ASSIGNMENTS für Klasse 6a ---
+  // Subject Assignment
+  let subjectAssignment = await prisma.groupAssignment.findFirst({
+    where: {
+      groupId: klasse6a.id,
+      type: 'subject',
+      refId: mathematik.id
+    }
+  });
+  if (!subjectAssignment) {
+    await prisma.groupAssignment.create({
+      data: {
+        groupId: klasse6a.id,
+        type: 'subject',
+        refId: mathematik.id
+      }
+    });
+  }
+
+  // Block Assignments
+  const matheBlocks = [matheBlock1, matheBlock2, matheBlock3];
+  for (const block of matheBlocks) {
+    let blockAssignment = await prisma.groupAssignment.findFirst({
+      where: {
+        groupId: klasse6a.id,
+        type: 'block',
+        refId: block.id
+      }
+    });
+    if (!blockAssignment) {
+      await prisma.groupAssignment.create({
+        data: {
+          groupId: klasse6a.id,
+          type: 'block',
+          refId: block.id
+        }
+      });
+    }
+  }
+
+  // Unit Assignments
+  const matheUnits = [matheUnit1, matheUnit2, matheUnit3, matheUnit4, matheUnit5, matheUnit6];
+  for (const unit of matheUnits) {
+    let unitAssignment = await prisma.groupAssignment.findFirst({
+      where: {
+        groupId: klasse6a.id,
+        type: 'unit',
+        refId: unit.id
+      }
+    });
+    if (!unitAssignment) {
+      await prisma.groupAssignment.create({
+        data: {
+          groupId: klasse6a.id,
+          type: 'unit',
+          refId: unit.id
+        }
+      });
+    }
+  }
+
+  // Topic Assignments
+  for (const topicData of matheTopics) {
+    const topic = await prisma.topic.findFirst({ where: { name: topicData.name, unitId: topicData.unitId } });
+    if (topic) {
+      let topicAssignment = await prisma.groupAssignment.findFirst({
+        where: {
+          groupId: klasse6a.id,
+          type: 'topic',
+          refId: topic.id
+        }
+      });
+      if (!topicAssignment) {
+        await prisma.groupAssignment.create({
+          data: {
+            groupId: klasse6a.id,
+            type: 'topic',
+            refId: topic.id
+          }
+        });
+      }
+    }
+  }
+
+  // Lesson Assignments
+  for (const lessonData of matheLessons) {
+    const lesson = await prisma.lesson.findFirst({ where: { name: lessonData.name, topicId: lessonData.topicId } });
+    if (lesson) {
+      let lessonAssignment = await prisma.groupAssignment.findFirst({
+        where: {
+          groupId: klasse6a.id,
+          type: 'lesson',
+          refId: lesson.id
+        }
+      });
+      if (!lessonAssignment) {
+        await prisma.groupAssignment.create({
+          data: {
+            groupId: klasse6a.id,
+            type: 'lesson',
+            refId: lesson.id
+          }
+        });
+      }
+    }
+  }
+
+  console.log('Database has been seeded with complete content structure! 🌱')
 }
 
 main()
