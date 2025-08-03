@@ -45,110 +45,38 @@ async function main() {
   }
 
   // --- BLOCKS für Mathematik ---
-  let matheBlock1 = await prisma.block.findFirst({ where: { name: 'Grundlagen', subjectId: mathematik.id } })
+  let matheBlock1 = await prisma.block.findFirst({ where: { name: 'Klasse 7', subjectId: mathematik.id } })
   if (!matheBlock1) {
     matheBlock1 = await prisma.block.create({
       data: {
-        name: 'Grundlagen',
-        description: 'Mathematische Grundlagen',
+        name: 'Klasse 7',
+        description: '',
         subjectId: mathematik.id,
         order: 0
-      }
-    })
-  }
-
-  let matheBlock2 = await prisma.block.findFirst({ where: { name: 'Geometrie', subjectId: mathematik.id } })
-  if (!matheBlock2) {
-    matheBlock2 = await prisma.block.create({
-      data: {
-        name: 'Geometrie',
-        description: 'Geometrische Formen und Berechnungen',
-        subjectId: mathematik.id,
-        order: 1
-      }
-    })
-  }
-
-  let matheBlock3 = await prisma.block.findFirst({ where: { name: 'Algebra', subjectId: mathematik.id } })
-  if (!matheBlock3) {
-    matheBlock3 = await prisma.block.create({
-      data: {
-        name: 'Algebra',
-        description: 'Algebraische Ausdrücke und Gleichungen',
-        subjectId: mathematik.id,
-        order: 2
       }
     })
   }
 
   // --- UNITS für Mathematik ---
-  let matheUnit1 = await prisma.unit.findFirst({ where: { name: 'Zahlen und Operationen', blockId: matheBlock1.id } })
+  let matheUnit1 = await prisma.unit.findFirst({ where: { name: 'Ganze und rationale Zahlen (Kapitel 5)', blockId: matheBlock1.id } })
   if (!matheUnit1) {
     matheUnit1 = await prisma.unit.create({
       data: {
-        name: 'Zahlen und Operationen',
-        description: 'Grundlegende Zahlenoperationen',
+        name: 'Ganze und rationale Zahlen (Kapitel 5)',
+        description: '',
         blockId: matheBlock1.id,
         order: 0
       }
     })
   }
 
-  let matheUnit2 = await prisma.unit.findFirst({ where: { name: 'Brüche und Dezimalzahlen', blockId: matheBlock1.id } })
+  let matheUnit2 = await prisma.unit.findFirst({ where: { name: 'Daten und Zufall (Kapitel 4)', blockId: matheBlock1.id } })
   if (!matheUnit2) {
     matheUnit2 = await prisma.unit.create({
       data: {
-        name: 'Brüche und Dezimalzahlen',
-        description: 'Arbeiten mit Brüchen und Dezimalzahlen',
+        name: 'Daten und Zufall (Kapitel 4)',
+        description: '',
         blockId: matheBlock1.id,
-        order: 1
-      }
-    })
-  }
-
-  let matheUnit3 = await prisma.unit.findFirst({ where: { name: 'Prozentrechnung', blockId: matheBlock1.id } })
-  if (!matheUnit3) {
-    matheUnit3 = await prisma.unit.create({
-      data: {
-        name: 'Prozentrechnung',
-        description: 'Prozentrechnung und Zinsrechnung',
-        blockId: matheBlock1.id,
-        order: 2
-      }
-    })
-  }
-
-  let matheUnit4 = await prisma.unit.findFirst({ where: { name: 'Dreiecke', blockId: matheBlock2.id } })
-  if (!matheUnit4) {
-    matheUnit4 = await prisma.unit.create({
-      data: {
-        name: 'Dreiecke',
-        description: 'Eigenschaften und Berechnungen von Dreiecken',
-        blockId: matheBlock2.id,
-        order: 0
-      }
-    })
-  }
-
-  let matheUnit5 = await prisma.unit.findFirst({ where: { name: 'Kreise', blockId: matheBlock2.id } })
-  if (!matheUnit5) {
-    matheUnit5 = await prisma.unit.create({
-      data: {
-        name: 'Kreise',
-        description: 'Kreisberechnungen und Flächen',
-        blockId: matheBlock2.id,
-        order: 1
-      }
-    })
-  }
-
-  let matheUnit6 = await prisma.unit.findFirst({ where: { name: 'Gleichungen', blockId: matheBlock3.id } })
-  if (!matheUnit6) {
-    matheUnit6 = await prisma.unit.create({
-      data: {
-        name: 'Gleichungen',
-        description: 'Lineare Gleichungen lösen',
-        blockId: matheBlock3.id,
         order: 0
       }
     })
@@ -158,16 +86,20 @@ async function main() {
   let matheTopics = [
     { name: 'Addition und Subtraktion', unitId: matheUnit1.id, order: 0 },
     { name: 'Multiplikation und Division', unitId: matheUnit1.id, order: 1 },
-    { name: 'Gemischte Zahlen', unitId: matheUnit2.id, order: 0 },
-    { name: 'Dezimalzahlen', unitId: matheUnit2.id, order: 1 },
-    { name: 'Prozentrechnung Grundlagen', unitId: matheUnit3.id, order: 0 },
-    { name: 'Zinsrechnung', unitId: matheUnit3.id, order: 1 },
-    { name: 'Dreiecksarten', unitId: matheUnit4.id, order: 0 },
-    { name: 'Satz des Pythagoras', unitId: matheUnit4.id, order: 1 },
-    { name: 'Kreisumfang', unitId: matheUnit5.id, order: 0 },
-    { name: 'Kreisfläche', unitId: matheUnit5.id, order: 1 },
-    { name: 'Einfache Gleichungen', unitId: matheUnit6.id, order: 0 },
-    { name: 'Gleichungen mit Klammern', unitId: matheUnit6.id, order: 1 }
+    { name: 'Gemischte Zahlen', unitId: matheUnit1.id, order: 2 },
+    { name: 'Dezimalzahlen', unitId: matheUnit1.id, order: 3 },
+    { name: 'Prozentrechnung Grundlagen', unitId: matheUnit1.id, order: 4 },
+    { name: 'Zinsrechnung', unitId: matheUnit1.id, order: 5 },
+    { name: 'Dreiecksarten', unitId: matheUnit1.id, order: 6 },
+    { name: 'Satz des Pythagoras', unitId: matheUnit1.id, order: 7 },
+    { name: 'Kreisumfang', unitId: matheUnit1.id, order: 8 },
+    { name: 'Kreisfläche', unitId: matheUnit1.id, order: 9 },
+    { name: 'Einfache Gleichungen', unitId: matheUnit1.id, order: 10 },
+    { name: 'Gleichungen mit Klammern', unitId: matheUnit1.id, order: 11 },
+    { name: 'Daten sammeln und darstellen', unitId: matheUnit2.id, order: 0 },
+    { name: 'Mittelwert und Median', unitId: matheUnit2.id, order: 1 },
+    { name: 'Wahrscheinlichkeit', unitId: matheUnit2.id, order: 2 },
+    { name: 'Zufallsexperimente', unitId: matheUnit2.id, order: 3 }
   ]
 
   for (const topicData of matheTopics) {
@@ -204,7 +136,15 @@ async function main() {
     { name: 'Einfache Gleichungen lösen', topicId: (await prisma.topic.findFirst({ where: { name: 'Einfache Gleichungen' } }))!.id, order: 0 },
     { name: 'Gleichungen mit einer Unbekannten', topicId: (await prisma.topic.findFirst({ where: { name: 'Einfache Gleichungen' } }))!.id, order: 1 },
     { name: 'Gleichungen mit Klammern', topicId: (await prisma.topic.findFirst({ where: { name: 'Gleichungen mit Klammern' } }))!.id, order: 0 },
-    { name: 'Klammern auflösen', topicId: (await prisma.topic.findFirst({ where: { name: 'Gleichungen mit Klammern' } }))!.id, order: 1 }
+    { name: 'Klammern auflösen', topicId: (await prisma.topic.findFirst({ where: { name: 'Gleichungen mit Klammern' } }))!.id, order: 1 },
+    { name: 'Daten sammeln', topicId: (await prisma.topic.findFirst({ where: { name: 'Daten sammeln und darstellen' } }))!.id, order: 0 },
+    { name: 'Daten darstellen', topicId: (await prisma.topic.findFirst({ where: { name: 'Daten sammeln und darstellen' } }))!.id, order: 1 },
+    { name: 'Mittelwert berechnen', topicId: (await prisma.topic.findFirst({ where: { name: 'Mittelwert und Median' } }))!.id, order: 0 },
+    { name: 'Median bestimmen', topicId: (await prisma.topic.findFirst({ where: { name: 'Mittelwert und Median' } }))!.id, order: 1 },
+    { name: 'Wahrscheinlichkeit Grundlagen', topicId: (await prisma.topic.findFirst({ where: { name: 'Wahrscheinlichkeit' } }))!.id, order: 0 },
+    { name: 'Wahrscheinlichkeit berechnen', topicId: (await prisma.topic.findFirst({ where: { name: 'Wahrscheinlichkeit' } }))!.id, order: 1 },
+    { name: 'Zufallsexperimente durchführen', topicId: (await prisma.topic.findFirst({ where: { name: 'Zufallsexperimente' } }))!.id, order: 0 },
+    { name: 'Zufallsexperimente auswerten', topicId: (await prisma.topic.findFirst({ where: { name: 'Zufallsexperimente' } }))!.id, order: 1 }
   ]
 
   for (const lessonData of matheLessons) {
@@ -217,21 +157,21 @@ async function main() {
   }
 
   // --- LEARNING GROUPS ---
-  let klasse6a = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 6a', teacherId: teacher1.id } })
-  if (!klasse6a) {
-    klasse6a = await prisma.learningGroup.create({
+  let klasse7a = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 7a', teacherId: teacher1.id } })
+  if (!klasse7a) {
+    klasse7a = await prisma.learningGroup.create({
       data: { 
-        name: 'Klasse 6a', 
+        name: 'Klasse 7a', 
         teacherId: teacher1.id 
       },
     })
   }
 
-  let gk11 = await prisma.learningGroup.findFirst({ where: { name: 'GK11', teacherId: teacher1.id } })
-  if (!gk11) {
-    gk11 = await prisma.learningGroup.create({
+  let informatikGK12 = await prisma.learningGroup.findFirst({ where: { name: 'Informatik GK 12', teacherId: teacher1.id } })
+  if (!informatikGK12) {
+    informatikGK12 = await prisma.learningGroup.create({
       data: { 
-        name: 'GK11', 
+        name: 'Informatik GK 12', 
         teacherId: teacher1.id 
       },
     })
@@ -249,26 +189,9 @@ async function main() {
 
   // --- STUDENTS ---
   const students = [
-    { name: 'Anna Schmidt', loginCode: 'STUD001', role: 'STUDENT' },
-    { name: 'Max Müller', loginCode: 'STUD002', role: 'STUDENT' },
-    { name: 'Lisa Weber', loginCode: 'STUD003', role: 'STUDENT' },
-    { name: 'Tom Fischer', loginCode: 'STUD004', role: 'STUDENT' },
-    { name: 'Sarah Klein', loginCode: 'STUD005', role: 'STUDENT' },
-    { name: 'Felix Wagner', loginCode: 'STUD006', role: 'STUDENT' },
-    { name: 'Emma Schulz', loginCode: 'STUD007', role: 'STUDENT' },
-    { name: 'Lucas Becker', loginCode: 'STUD008', role: 'STUDENT' },
-    { name: 'Mia Hoffmann', loginCode: 'STUD009', role: 'STUDENT' },
-    { name: 'Noah Schäfer', loginCode: 'STUD010', role: 'STUDENT' },
-    { name: 'Hannah Meyer', loginCode: 'STUD011', role: 'STUDENT' },
-    { name: 'Jonas Koch', loginCode: 'STUD012', role: 'STUDENT' },
-    { name: 'Lea Bauer', loginCode: 'STUD013', role: 'STUDENT' },
-    { name: 'Paul Richter', loginCode: 'STUD014', role: 'STUDENT' },
-    { name: 'Sophie Werner', loginCode: 'STUD015', role: 'STUDENT' },
-    { name: 'Tim Neumann', loginCode: 'STUD016', role: 'STUDENT' },
-    { name: 'Nina Schwarz', loginCode: 'STUD017', role: 'STUDENT' },
-    { name: 'David Zimmermann', loginCode: 'STUD018', role: 'STUDENT' },
+    { name: 'Anna Schmidt', loginCode: 's1', role: 'STUDENT' },
     { name: 'Laura Braun', loginCode: 'STUD019', role: 'STUDENT' },
-    { name: 'Jan Krüger', loginCode: 'STUD020', role: 'STUDENT' }
+    { name: 'Lea Bauer', loginCode: 'STUD013', role: 'STUDENT' }
   ];
 
   const createdStudents: any[] = [];
@@ -283,48 +206,40 @@ async function main() {
   }
 
   // --- ADD STUDENTS TO LEARNING GROUPS ---
-  // Klasse 6a: Students 1-10
-  for (let i = 0; i < 10; i++) {
-    await prisma.learningGroup.update({
-      where: { id: klasse6a.id },
-      data: {
-        students: {
-          connect: { id: createdStudents[i].id }
-        }
+  // Klasse 7a: Anna Schmidt
+  await prisma.learningGroup.update({
+    where: { id: klasse7a.id },
+    data: {
+      students: {
+        connect: { id: createdStudents[0].id }
       }
-    });
-  }
+    }
+  });
 
-  // GK11: Students 11-20
-  for (let i = 10; i < 20; i++) {
-    await prisma.learningGroup.update({
-      where: { id: gk11.id },
-      data: {
-        students: {
-          connect: { id: createdStudents[i].id }
-        }
+  // Informatik GK 12: Laura Braun und Lea Bauer
+  await prisma.learningGroup.update({
+    where: { id: informatikGK12.id },
+    data: {
+      students: {
+        connect: { id: createdStudents[1].id }
       }
-    });
-  }
+    }
+  });
 
-  // Klasse 7b: Students 1-5, 11-15 (mixed)
-  const klasse7bStudents = [0, 1, 2, 3, 4, 10, 11, 12, 13, 14];
-  for (const studentIndex of klasse7bStudents) {
-    await prisma.learningGroup.update({
-      where: { id: klasse7b.id },
-      data: {
-        students: {
-          connect: { id: createdStudents[studentIndex].id }
-        }
+  await prisma.learningGroup.update({
+    where: { id: informatikGK12.id },
+    data: {
+      students: {
+        connect: { id: createdStudents[2].id }
       }
-    });
-  }
+    }
+  });
 
-  // --- ASSIGNMENTS für Klasse 6a ---
+  // --- ASSIGNMENTS für Klasse 7a ---
   // Subject Assignment
   let subjectAssignment = await prisma.groupAssignment.findFirst({
     where: {
-      groupId: klasse6a.id,
+      groupId: klasse7a.id,
       type: 'subject',
       refId: mathematik.id
     }
@@ -332,7 +247,7 @@ async function main() {
   if (!subjectAssignment) {
     await prisma.groupAssignment.create({
       data: {
-        groupId: klasse6a.id,
+        groupId: klasse7a.id,
         type: 'subject',
         refId: mathematik.id
       }
@@ -340,32 +255,29 @@ async function main() {
   }
 
   // Block Assignments
-  const matheBlocks = [matheBlock1, matheBlock2, matheBlock3];
-  for (const block of matheBlocks) {
-    let blockAssignment = await prisma.groupAssignment.findFirst({
-      where: {
-        groupId: klasse6a.id,
+  let blockAssignment = await prisma.groupAssignment.findFirst({
+    where: {
+      groupId: klasse7a.id,
+      type: 'block',
+      refId: matheBlock1.id
+    }
+  });
+  if (!blockAssignment) {
+    await prisma.groupAssignment.create({
+      data: {
+        groupId: klasse7a.id,
         type: 'block',
-        refId: block.id
+        refId: matheBlock1.id
       }
     });
-    if (!blockAssignment) {
-      await prisma.groupAssignment.create({
-        data: {
-          groupId: klasse6a.id,
-          type: 'block',
-          refId: block.id
-        }
-      });
-    }
   }
 
   // Unit Assignments
-  const matheUnits = [matheUnit1, matheUnit2, matheUnit3, matheUnit4, matheUnit5, matheUnit6];
+  const matheUnits = [matheUnit1, matheUnit2];
   for (const unit of matheUnits) {
     let unitAssignment = await prisma.groupAssignment.findFirst({
       where: {
-        groupId: klasse6a.id,
+        groupId: klasse7a.id,
         type: 'unit',
         refId: unit.id
       }
@@ -373,7 +285,7 @@ async function main() {
     if (!unitAssignment) {
       await prisma.groupAssignment.create({
         data: {
-          groupId: klasse6a.id,
+          groupId: klasse7a.id,
           type: 'unit',
           refId: unit.id
         }
@@ -387,7 +299,7 @@ async function main() {
     if (topic) {
       let topicAssignment = await prisma.groupAssignment.findFirst({
         where: {
-          groupId: klasse6a.id,
+          groupId: klasse7a.id,
           type: 'topic',
           refId: topic.id
         }
@@ -395,7 +307,7 @@ async function main() {
       if (!topicAssignment) {
         await prisma.groupAssignment.create({
           data: {
-            groupId: klasse6a.id,
+            groupId: klasse7a.id,
             type: 'topic',
             refId: topic.id
           }
@@ -410,7 +322,7 @@ async function main() {
     if (lesson) {
       let lessonAssignment = await prisma.groupAssignment.findFirst({
         where: {
-          groupId: klasse6a.id,
+          groupId: klasse7a.id,
           type: 'lesson',
           refId: lesson.id
         }
@@ -418,7 +330,7 @@ async function main() {
       if (!lessonAssignment) {
         await prisma.groupAssignment.create({
           data: {
-            groupId: klasse6a.id,
+            groupId: klasse7a.id,
             type: 'lesson',
             refId: lesson.id
           }
@@ -427,7 +339,7 @@ async function main() {
     }
   }
 
-  console.log('Database has been seeded with complete content structure! 🌱')
+  console.log('Database has been seeded with current structure! 🌱')
 }
 
 main()
