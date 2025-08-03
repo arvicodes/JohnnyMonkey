@@ -13,6 +13,7 @@ model User {
   name           String
   loginCode      String              @unique
   role           String              @default("STUDENT")
+  avatarEmoji    String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   teacherGroups  LearningGroup[]     @relation("TeacherGroups")
