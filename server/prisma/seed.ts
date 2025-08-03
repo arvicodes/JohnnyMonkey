@@ -42,6 +42,16 @@ async function main() {
     })
   }
 
+  let klasse7a = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 7a', teacherId: teacher1.id } })
+  if (!klasse7a) {
+    klasse7a = await prisma.learningGroup.create({
+      data: { 
+        name: 'Klasse 7a', 
+        teacherId: teacher1.id 
+      },
+    })
+  }
+
   let klasse7b = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 7b', teacherId: teacher2.id } })
   if (!klasse7b) {
     klasse7b = await prisma.learningGroup.create({
@@ -53,27 +63,39 @@ async function main() {
   }
 
   // --- STUDENTS ---
+  // Klasse 7a - Echte Schüler von Frau Christ
   const students = [
-    { name: 'Anna Schmidt', loginCode: 'STUD001', role: 'STUDENT' },
-    { name: 'Max Müller', loginCode: 'STUD002', role: 'STUDENT' },
-    { name: 'Lisa Weber', loginCode: 'STUD003', role: 'STUDENT' },
-    { name: 'Tom Fischer', loginCode: 'STUD004', role: 'STUDENT' },
-    { name: 'Sarah Klein', loginCode: 'STUD005', role: 'STUDENT' },
-    { name: 'Felix Wagner', loginCode: 'STUD006', role: 'STUDENT' },
-    { name: 'Emma Schulz', loginCode: 'STUD007', role: 'STUDENT' },
-    { name: 'Lucas Becker', loginCode: 'STUD008', role: 'STUDENT' },
-    { name: 'Mia Hoffmann', loginCode: 'STUD009', role: 'STUDENT' },
-    { name: 'Noah Schäfer', loginCode: 'STUD010', role: 'STUDENT' },
-    { name: 'Hannah Meyer', loginCode: 'STUD011', role: 'STUDENT' },
-    { name: 'Jonas Koch', loginCode: 'STUD012', role: 'STUDENT' },
-    { name: 'Lea Bauer', loginCode: 'STUD013', role: 'STUDENT' },
-    { name: 'Paul Richter', loginCode: 'STUD014', role: 'STUDENT' },
-    { name: 'Sophie Werner', loginCode: 'STUD015', role: 'STUDENT' },
-    { name: 'Tim Neumann', loginCode: 'STUD016', role: 'STUDENT' },
-    { name: 'Nina Schwarz', loginCode: 'STUD017', role: 'STUDENT' },
-    { name: 'David Zimmermann', loginCode: 'STUD018', role: 'STUDENT' },
-    { name: 'Laura Braun', loginCode: 'STUD019', role: 'STUDENT' },
-    { name: 'Jan Krüger', loginCode: 'STUD020', role: 'STUDENT' }
+    { name: 'Jakob Ackermann', loginCode: 'STUD001', role: 'STUDENT' },
+    { name: 'Josefine Baierl', loginCode: 'STUD002', role: 'STUDENT' },
+    { name: 'Friederike Bremser', loginCode: 'STUD003', role: 'STUDENT' },
+    { name: 'Jonathan Dillmann', loginCode: 'STUD004', role: 'STUDENT' },
+    { name: 'Jasmin Farnung', loginCode: 'STUD005', role: 'STUDENT' },
+    { name: 'Marlene Geis', loginCode: 'STUD006', role: 'STUDENT' },
+    { name: 'Louis Gerharz', loginCode: 'STUD007', role: 'STUDENT' },
+    { name: 'Luise Habach', loginCode: 'STUD008', role: 'STUDENT' },
+    { name: 'Hannah Hagedorn', loginCode: 'STUD009', role: 'STUDENT' },
+    { name: 'Kilian Jahnke', loginCode: 'STUD010', role: 'STUDENT' },
+    { name: 'Marlene Krall', loginCode: 'STUD011', role: 'STUDENT' },
+    { name: 'Robin Maas', loginCode: 'STUD012', role: 'STUDENT' },
+    { name: 'Jonas Maxeiner', loginCode: 'STUD013', role: 'STUDENT' },
+    { name: 'Samuel May', loginCode: 'STUD014', role: 'STUDENT' },
+    { name: 'Dennis Miller', loginCode: 'STUD015', role: 'STUDENT' },
+    { name: 'Miró Mohr', loginCode: 'STUD016', role: 'STUDENT' },
+    { name: 'Adela Mureşan', loginCode: 'STUD017', role: 'STUDENT' },
+    { name: 'Paul Pfeifer', loginCode: 'STUD018', role: 'STUDENT' },
+    { name: 'Louisa Plattes', loginCode: 'STUD019', role: 'STUDENT' },
+    { name: 'Arthur Potemkin', loginCode: 'STUD020', role: 'STUDENT' },
+    { name: 'Julia Reiners', loginCode: 'STUD021', role: 'STUDENT' },
+    { name: 'Bruno Scavio', loginCode: 'STUD022', role: 'STUDENT' },
+    { name: 'Vincent Schlag', loginCode: 'STUD023', role: 'STUDENT' },
+    { name: 'Felix Schmelzlin', loginCode: 'STUD024', role: 'STUDENT' },
+    { name: 'Niklas Schmitz', loginCode: 'STUD025', role: 'STUDENT' },
+    { name: 'Andreas Thielen', loginCode: 'STUD026', role: 'STUDENT' },
+    { name: 'Fabio Urso', loginCode: 'STUD027', role: 'STUDENT' },
+    { name: 'Lennas Weinem', loginCode: 'STUD028', role: 'STUDENT' },
+    { name: 'Nils Weiß', loginCode: 'STUD029', role: 'STUDENT' },
+    { name: 'Jan Wimmershoff', loginCode: 'STUD030', role: 'STUDENT' },
+    { name: 'Freya Zipper', loginCode: 'STUD031', role: 'STUDENT' }
   ];
 
   const createdStudents: any[] = [];
@@ -88,10 +110,10 @@ async function main() {
   }
 
   // --- ADD STUDENTS TO LEARNING GROUPS ---
-  // Klasse 6a: Students 1-10
-  for (let i = 0; i < 10; i++) {
+  // Klasse 7a: Alle 31 Schüler von Frau Christ
+  for (let i = 0; i < createdStudents.length; i++) {
     await prisma.learningGroup.update({
-      where: { id: klasse6a.id },
+      where: { id: klasse7a.id },
       data: {
         students: {
           connect: { id: createdStudents[i].id }
@@ -100,30 +122,9 @@ async function main() {
     });
   }
 
-  // GK11: Students 11-20
-  for (let i = 10; i < 20; i++) {
-    await prisma.learningGroup.update({
-      where: { id: gk11.id },
-      data: {
-        students: {
-          connect: { id: createdStudents[i].id }
-        }
-      }
-    });
-  }
-
-  // Klasse 7b: Students 1-5, 11-15 (mixed)
-  const klasse7bStudents = [0, 1, 2, 3, 4, 10, 11, 12, 13, 14];
-  for (const studentIndex of klasse7bStudents) {
-    await prisma.learningGroup.update({
-      where: { id: klasse7b.id },
-      data: {
-        students: {
-          connect: { id: createdStudents[studentIndex].id }
-        }
-      }
-    });
-  }
+  // Klasse 6a: Leer lassen oder separate Schüler hinzufügen falls benötigt
+  // GK11: Leer lassen oder separate Schüler hinzufügen falls benötigt
+  // Klasse 7b: Leer lassen oder separate Schüler hinzufügen falls benötigt
 
   console.log('Database has been seeded! 🌱')
 }
