@@ -13,7 +13,8 @@ const getUserById: RequestHandler = async (req, res) => {
         id: true,
         name: true,
         role: true,
-        loginCode: true
+        loginCode: true,
+        avatarEmoji: true
       }
     });
     
@@ -60,7 +61,36 @@ const getStudentGroups: RequestHandler = async (req, res) => {
   }
 };
 
+// Update user avatar emoji
+const updateUserAvatarEmoji: RequestHandler = async (req, res) => {
+  try {
+    const { avatarEmoji } = req.body;
+    
+    if (!avatarEmoji) {
+      return res.status(400).json({ error: 'Avatar emoji is required' });
+    }
+    
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { avatarEmoji },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        loginCode: true,
+        avatarEmoji: true
+      }
+    });
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Error updating user avatar emoji:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 router.get('/:id', getUserById);
+router.put('/:id/avatar-emoji', updateUserAvatarEmoji);
 router.get('/teacher/:id/groups', getTeacherGroups);
 router.get('/student/:id/groups', getStudentGroups);
 

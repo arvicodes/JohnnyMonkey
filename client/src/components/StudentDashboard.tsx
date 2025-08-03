@@ -108,6 +108,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Emoji-Auswahl States
   const [selectedEmoji, setSelectedEmoji] = useState<string>('🧙‍♂️');
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
+  const [isUpdatingEmoji, setIsUpdatingEmoji] = useState(false);
 
   // Spielerische Farbpalette
   const colors = {
@@ -123,10 +124,33 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   };
 
   // Emoji-Auswahl Handler
-  const handleEmojiSelect = (emoji: string) => {
+  const handleEmojiSelect = async (emoji: string) => {
     setSelectedEmoji(emoji);
-    // Hier könnte man das Emoji auch in der Datenbank speichern
-    console.log('Selected emoji:', emoji);
+    setIsUpdatingEmoji(true);
+    
+    try {
+      const response = await fetch(`/api/users/${userId}/avatar-emoji`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ avatarEmoji: emoji }),
+      });
+      
+      if (response.ok) {
+        console.log('Avatar emoji saved successfully:', emoji);
+      } else {
+        console.error('Failed to save avatar emoji');
+        // Fallback: Emoji zurücksetzen
+        setSelectedEmoji('🧙‍♂️');
+      }
+    } catch (error) {
+      console.error('Error saving avatar emoji:', error);
+      // Fallback: Emoji zurücksetzen
+      setSelectedEmoji('🧙‍♂️');
+    } finally {
+      setIsUpdatingEmoji(false);
+    }
   };
 
   const handleOpenEmojiSelector = () => {
@@ -137,16 +161,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     setShowEmojiSelector(false);
   };
 
-  // Hilfsfunktion zum Laden des Student-Namens
-  const fetchStudentName = async (userId: string) => {
+  // Hilfsfunktion zum Laden des Student-Namens und Avatar-Emojis
+  const fetchStudentData = async (userId: string) => {
     try {
       const response = await fetch(`/api/users/${userId}`);
       if (response.ok) {
         const userData = await response.json();
         setStudentName(userData.name);
+        // Lade gespeichertes Emoji oder verwende Standard
+        if (userData.avatarEmoji) {
+          setSelectedEmoji(userData.avatarEmoji);
+        }
       }
     } catch (error) {
-      console.error('Error fetching student name:', error);
+      console.error('Error fetching student data:', error);
       setStudentName("Schüler"); // Fallback
     }
   };
@@ -436,7 +464,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const fetchLerngruppen = async () => {
       try {
         // Lade zuerst den Student-Namen
-        await fetchStudentName(userId);
+        await fetchStudentData(userId);
         
         const response = await fetch(`/api/learning-groups/student/${userId}`);
         if (!response.ok) {
@@ -589,7 +617,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 onClick={handleOpenEmojiSelector}
               >
                 <Typography variant="h1" sx={{ fontSize: '4rem', mb: 1 }}>
-                  {selectedEmoji}
+                  {isUpdatingEmoji ? '⏳' : selectedEmoji}
                 </Typography>
                 <Tooltip title="Avatar ändern" placement="top">
                   <IconButton
