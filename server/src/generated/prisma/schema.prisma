@@ -17,10 +17,10 @@ model User {
   updatedAt      DateTime            @updatedAt
   teacherGroups  LearningGroup[]     @relation("TeacherGroups")
   notes          Note[]
-  subjects       Subject[]
-  learningGroups LearningGroup[]     @relation("StudentGroups")
   quizzes        Quiz[]
   participations QuizParticipation[]
+  subjects       Subject[]
+  learningGroups LearningGroup[]     @relation("StudentGroups")
 }
 
 model GradingSchema {
@@ -143,8 +143,8 @@ model LessonMaterial {
   lessonId   String
   materialId String
   createdAt  DateTime @default(now())
-  lesson     Lesson   @relation(fields: [lessonId], references: [id])
   material   Material @relation(fields: [materialId], references: [id])
+  lesson     Lesson   @relation(fields: [lessonId], references: [id])
 }
 
 model Quiz {
@@ -158,9 +158,9 @@ model Quiz {
   teacherId        String
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+  lessonQuizzes    LessonQuiz[]
   teacher          User           @relation(fields: [teacherId], references: [id])
   questions        QuizQuestion[]
-  lessonQuizzes    LessonQuiz[]
   sessions         QuizSession[]
 }
 
@@ -173,8 +173,8 @@ model QuizQuestion {
   quizId        String
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
-  quiz          Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
   answers       QuizAnswer[]
+  quiz          Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }
 
 model LessonQuiz {
@@ -182,8 +182,8 @@ model LessonQuiz {
   lessonId  String
   quizId    String
   createdAt DateTime @default(now())
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([lessonId, quizId])
 }
@@ -196,8 +196,8 @@ model QuizSession {
   endedAt        DateTime?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
-  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
   participations QuizParticipation[]
+  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }
 
 model QuizParticipation {
@@ -210,9 +210,9 @@ model QuizParticipation {
   maxScore    Int?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  session     QuizSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
   answers     QuizAnswer[]
+  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session     QuizSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
 }
@@ -225,8 +225,8 @@ model QuizAnswer {
   isCorrect       Boolean
   points          Int               @default(0)
   answeredAt      DateTime          @default(now())
-  participation   QuizParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
   question        QuizQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  participation   QuizParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
 
   @@unique([participationId, questionId])
 }

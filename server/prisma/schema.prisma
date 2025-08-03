@@ -9,18 +9,18 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(uuid())
+  id             String              @id @default(uuid())
   name           String
-  loginCode      String          @unique
-  role           String          @default("STUDENT")
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  teacherGroups  LearningGroup[] @relation("TeacherGroups")
+  loginCode      String              @unique
+  role           String              @default("STUDENT")
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  teacherGroups  LearningGroup[]     @relation("TeacherGroups")
   notes          Note[]
-  subjects       Subject[]
-  learningGroups LearningGroup[] @relation("StudentGroups")
   quizzes        Quiz[]
   participations QuizParticipation[]
+  subjects       Subject[]
+  learningGroups LearningGroup[]     @relation("StudentGroups")
 }
 
 model GradingSchema {
@@ -94,15 +94,15 @@ model Topic {
 }
 
 model Lesson {
-  id          String           @id @default(uuid())
-  name        String
-  description String?
-  order       Int      @default(0)
-  topicId     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  topic       Topic    @relation(fields: [topicId], references: [id])
-  materials   LessonMaterial[]
+  id            String           @id @default(uuid())
+  name          String
+  description   String?
+  order         Int              @default(0)
+  topicId       String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  topic         Topic            @relation(fields: [topicId], references: [id])
+  materials     LessonMaterial[]
   lessonQuizzes LessonQuiz[]
 }
 
@@ -129,104 +129,104 @@ model Note {
 }
 
 model Material {
-  id             String           @id @default(uuid())
-  fileName       String
-  filePath       String
-  type           String
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id              String           @id @default(uuid())
+  fileName        String
+  filePath        String
+  type            String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   lessonMaterials LessonMaterial[]
 }
 
 model LessonMaterial {
-  id        String   @id @default(uuid())
-  lessonId  String
+  id         String   @id @default(uuid())
+  lessonId   String
   materialId String
-  createdAt DateTime @default(now())
-  lesson    Lesson   @relation(fields: [lessonId], references: [id])
-  material  Material @relation(fields: [materialId], references: [id])
+  createdAt  DateTime @default(now())
+  material   Material @relation(fields: [materialId], references: [id])
+  lesson     Lesson   @relation(fields: [lessonId], references: [id])
 }
 
 model Quiz {
-  id              String        @id @default(uuid())
-  title           String
-  description     String?
-  sourceFile      String
-  shuffleQuestions Boolean       @default(true)
-  shuffleAnswers  Boolean       @default(true)
-  timeLimit       Int           @default(30)
-  teacherId       String
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  teacher         User          @relation(fields: [teacherId], references: [id])
-  questions       QuizQuestion[]
-  lessonQuizzes   LessonQuiz[]
-  sessions        QuizSession[]
+  id               String         @id @default(uuid())
+  title            String
+  description      String?
+  sourceFile       String
+  shuffleQuestions Boolean        @default(true)
+  shuffleAnswers   Boolean        @default(true)
+  timeLimit        Int            @default(30)
+  teacherId        String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  lessonQuizzes    LessonQuiz[]
+  teacher          User           @relation(fields: [teacherId], references: [id])
+  questions        QuizQuestion[]
+  sessions         QuizSession[]
 }
 
 model QuizQuestion {
-  id            String @id @default(uuid())
+  id            String       @id @default(uuid())
   question      String
   correctAnswer String
   options       String
   order         Int
   quizId        String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  quiz          Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   answers       QuizAnswer[]
+  quiz          Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }
 
 model LessonQuiz {
-  id        String @id @default(uuid())
+  id        String   @id @default(uuid())
   lessonId  String
   quizId    String
   createdAt DateTime @default(now())
-  lesson    Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  quiz      Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([lessonId, quizId])
 }
 
 model QuizSession {
-  id            String           @id @default(uuid())
-  quizId        String
-  isActive      Boolean          @default(false)
-  startedAt     DateTime?
-  endedAt       DateTime?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  quiz          Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  id             String              @id @default(uuid())
+  quizId         String
+  isActive       Boolean             @default(false)
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
   participations QuizParticipation[]
+  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }
 
 model QuizParticipation {
-  id            String           @id @default(uuid())
-  sessionId     String
-  studentId     String
-  startedAt     DateTime?
-  completedAt   DateTime?
-  score         Int?
-  maxScore      Int?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  session       QuizSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student       User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  answers       QuizAnswer[]
+  id          String       @id @default(uuid())
+  sessionId   String
+  studentId   String
+  startedAt   DateTime?
+  completedAt DateTime?
+  score       Int?
+  maxScore    Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  answers     QuizAnswer[]
+  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session     QuizSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
 }
 
 model QuizAnswer {
-  id              String           @id @default(uuid())
+  id              String            @id @default(uuid())
   participationId String
   questionId      String
   selectedAnswer  String
   isCorrect       Boolean
-  points          Int              @default(0)
-  answeredAt      DateTime         @default(now())
+  points          Int               @default(0)
+  answeredAt      DateTime          @default(now())
+  question        QuizQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
   participation   QuizParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
-  question        QuizQuestion     @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([participationId, questionId])
 }
