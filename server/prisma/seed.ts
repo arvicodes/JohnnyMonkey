@@ -237,38 +237,65 @@ async function main() {
   // --- STUDENTS ---
   // Schüler in der exakten Reihenfolge der Datenbank
   const students = [
-    { name: 'Adela Mureşan', loginCode: 'STUD017', role: 'STUDENT' },
-    { name: 'Andreas Thielen', loginCode: 'STUD026', role: 'STUDENT' },
-    { name: 'Arthur Potemkin', loginCode: 'STUD020', role: 'STUDENT' },
-    { name: 'Bruno Scavio', loginCode: 'STUD022', role: 'STUDENT' },
-    { name: 'Dennis Miller', loginCode: 'STUD015', role: 'STUDENT' },
-    { name: 'Fabio Urso', loginCode: 'STUD027', role: 'STUDENT' },
-    { name: 'Felix Schmelzlin', loginCode: 'STUD024', role: 'STUDENT' },
-    { name: 'Freya Zipper', loginCode: 'STUD031', role: 'STUDENT' },
-    { name: 'Friederike Bremser', loginCode: 'STUD003', role: 'STUDENT' },
-    { name: 'Hannah Hagedorn', loginCode: 'STUD009', role: 'STUDENT' },
+    // Klasse 7a Schüler (31 Schüler)
     { name: 'Jakob Ackermann', loginCode: 'STUD001', role: 'STUDENT' },
-    { name: 'Jan Wimmershoff', loginCode: 'STUD030', role: 'STUDENT' },
-    { name: 'Jasmin Farnung', loginCode: 'STUD005', role: 'STUDENT' },
-    { name: 'Jonas Maxeiner', loginCode: 'STUD013', role: 'STUDENT' },
-    { name: 'Jonathan Dillmann', loginCode: 'STUD004', role: 'STUDENT' },
     { name: 'Josefine Baierl', loginCode: 'STUD002', role: 'STUDENT' },
-    { name: 'Julia Reiners', loginCode: 'STUD021', role: 'STUDENT' },
-    { name: 'Kilian Jahnke', loginCode: 'STUD010', role: 'STUDENT' },
-    { name: 'Lennas Weinem', loginCode: 'STUD028', role: 'STUDENT' },
-    { name: 'Louis Gerharz', loginCode: 'STUD007', role: 'STUDENT' },
-    { name: 'Louisa Plattes', loginCode: 'STUD019', role: 'STUDENT' },
-    { name: 'Luise Habach', loginCode: 'STUD008', role: 'STUDENT' },
+    { name: 'Friederike Bremser', loginCode: 'STUD003', role: 'STUDENT' },
+    { name: 'Jonathan Dillmann', loginCode: 'STUD004', role: 'STUDENT' },
+    { name: 'Jasmin Farnung', loginCode: 'STUD005', role: 'STUDENT' },
     { name: 'Marlene Geis', loginCode: 'STUD006', role: 'STUDENT' },
+    { name: 'Louis Gerharz', loginCode: 'STUD007', role: 'STUDENT' },
+    { name: 'Luise Habach', loginCode: 'STUD008', role: 'STUDENT' },
+    { name: 'Hannah Hagedorn', loginCode: 'STUD009', role: 'STUDENT' },
+    { name: 'Kilian Jahnke', loginCode: 'STUD010', role: 'STUDENT' },
     { name: 'Marlene Krall', loginCode: 'STUD011', role: 'STUDENT' },
-    { name: 'Miró Mohr', loginCode: 'STUD016', role: 'STUDENT' },
-    { name: 'Niklas Schmitz', loginCode: 'STUD025', role: 'STUDENT' },
-    { name: 'Nils Weiß', loginCode: 'STUD029', role: 'STUDENT' },
-    { name: 'Paul Pfeifer', loginCode: 'STUD018', role: 'STUDENT' },
     { name: 'Robin Maas', loginCode: 'STUD012', role: 'STUDENT' },
+    { name: 'Jonas Maxeiner', loginCode: 'STUD013', role: 'STUDENT' },
     { name: 'Samuel May', loginCode: 'STUD014', role: 'STUDENT' },
+    { name: 'Dennis Miller', loginCode: 'STUD015', role: 'STUDENT' },
+    { name: 'Miró Mohr', loginCode: 'STUD016', role: 'STUDENT' },
+    { name: 'Adela Mureşan', loginCode: 'STUD017', role: 'STUDENT' },
+    { name: 'Paul Pfeifer', loginCode: 'STUD018', role: 'STUDENT' },
+    { name: 'Louisa Plattes', loginCode: 'STUD019', role: 'STUDENT' },
+    { name: 'Arthur Potemkin', loginCode: 'STUD020', role: 'STUDENT' },
+    { name: 'Julia Reiners', loginCode: 'STUD021', role: 'STUDENT' },
+    { name: 'Bruno Scavio', loginCode: 'STUD022', role: 'STUDENT' },
     { name: 'Vincent Schlag', loginCode: 'STUD023', role: 'STUDENT' },
-    { name: 'Laura Braun', loginCode: 'STUD019_ORIG', role: 'STUDENT' },
+    { name: 'Felix Schmelzlin', loginCode: 'STUD024', role: 'STUDENT' },
+    { name: 'Niklas Schmitz', loginCode: 'STUD025', role: 'STUDENT' },
+    { name: 'Andreas Thielen', loginCode: 'STUD026', role: 'STUDENT' },
+    { name: 'Fabio Urso', loginCode: 'STUD027', role: 'STUDENT' },
+    { name: 'Lennas Weinem', loginCode: 'STUD028', role: 'STUDENT' },
+    { name: 'Nils Weiß', loginCode: 'STUD029', role: 'STUDENT' },
+    { name: 'Jan Wimmershoff', loginCode: 'STUD030', role: 'STUDENT' },
+    { name: 'Freya Zipper', loginCode: 'STUD031', role: 'STUDENT' },
+    
+    // Informatik GK 12 Schüler (23 Schüler)
+    { name: 'Martin Gabriel Arnau Bindewald', loginCode: 'STUD032', role: 'STUDENT' },
+    { name: 'Laureen Eva Budka', loginCode: 'STUD033', role: 'STUDENT' },
+    { name: 'Benjamin Clos', loginCode: 'STUD034', role: 'STUDENT' },
+    { name: 'Justus Damm', loginCode: 'STUD035', role: 'STUDENT' },
+    { name: 'Stipe Drmic', loginCode: 'STUD036', role: 'STUDENT' },
+    { name: 'Aaron Herrenkind', loginCode: 'STUD037', role: 'STUDENT' },
+    { name: 'Nikita Kilian Kling', loginCode: 'STUD038', role: 'STUDENT' },
+    { name: 'Alex Koch', loginCode: 'STUD039', role: 'STUDENT' },
+    { name: 'Erich Maximilian König', loginCode: 'STUD040', role: 'STUDENT' },
+    { name: 'Tom Kup', loginCode: 'STUD041', role: 'STUDENT' },
+    { name: 'Helge Nebendahl', loginCode: 'STUD042', role: 'STUDENT' },
+    { name: 'Janic Schaaf', loginCode: 'STUD043', role: 'STUDENT' },
+    { name: 'Sophie Schaaf', loginCode: 'STUD044', role: 'STUDENT' },
+    { name: 'Louis Scheerer', loginCode: 'STUD045', role: 'STUDENT' },
+    { name: 'Jana Schiffer', loginCode: 'STUD046', role: 'STUDENT' },
+    { name: 'Wiebke Frederike Schmidt', loginCode: 'STUD047', role: 'STUDENT' },
+    { name: 'Julius Michael Schöning', loginCode: 'STUD048', role: 'STUDENT' },
+    { name: 'Duy Anh Trân', loginCode: 'STUD049', role: 'STUDENT' },
+    { name: 'Paul Ulrich', loginCode: 'STUD050', role: 'STUDENT' },
+    { name: 'Jasper Wagner', loginCode: 'STUD051', role: 'STUDENT' },
+    { name: 'Julian Weitz', loginCode: 'STUD052', role: 'STUDENT' },
+    { name: 'Lukas Wetzlar', loginCode: 'STUD053', role: 'STUDENT' },
+    { name: 'Jakob Martin Weyerhäuser', loginCode: 'STUD054', role: 'STUDENT' },
+    
+    // Klasse 10c Schüler (1 Schüler)
     { name: 'Lea Bauer', loginCode: 'STUD013_ORIG', role: 'STUDENT' }
   ];
 
@@ -284,8 +311,8 @@ async function main() {
   }
 
   // --- ADD STUDENTS TO LEARNING GROUPS ---
-  // Klasse 7a: Alle 31 Schüler aus Screenshots
-  const klasse7aStudents = students.slice(0, 31); // Erste 31 Schüler
+  // Klasse 7a: Erste 31 Schüler (STUD001-STUD031)
+  const klasse7aStudents = students.slice(0, 31);
   for (const studentData of klasse7aStudents) {
     await prisma.learningGroup.update({
       where: { id: klasse7a.id },
@@ -297,11 +324,24 @@ async function main() {
     });
   }
 
-  // Informatik GK 12: Laura Braun und Lea Bauer
-  const informatikStudents = students.slice(31); // Letzte 2 Schüler
+  // Informatik GK 12: Nächste 23 Schüler (STUD032-STUD054)
+  const informatikStudents = students.slice(31, 54);
   for (const studentData of informatikStudents) {
     await prisma.learningGroup.update({
       where: { id: informatikgk12.id },
+      data: {
+        students: {
+          connect: { id: createdStudents.find(s => s.loginCode === studentData.loginCode).id }
+        }
+      }
+    });
+  }
+
+  // Klasse 10c: Letzter Schüler (STUD013_ORIG)
+  const klasse10cStudents = students.slice(54);
+  for (const studentData of klasse10cStudents) {
+    await prisma.learningGroup.update({
+      where: { id: klasse10c.id },
       data: {
         students: {
           connect: { id: createdStudents.find(s => s.loginCode === studentData.loginCode).id }
