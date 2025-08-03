@@ -42,16 +42,6 @@ async function main() {
     })
   }
 
-  let klasse7a = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 7a', teacherId: teacher1.id } })
-  if (!klasse7a) {
-    klasse7a = await prisma.learningGroup.create({
-      data: { 
-        name: 'Klasse 7a', 
-        teacherId: teacher1.id 
-      },
-    })
-  }
-
   let klasse7b = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 7b', teacherId: teacher2.id } })
   if (!klasse7b) {
     klasse7b = await prisma.learningGroup.create({
@@ -62,8 +52,17 @@ async function main() {
     })
   }
 
+  // --- DELETE OLD KLASSE 7A IF EXISTS ---
+  const oldKlasse7a = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 7a', teacherId: teacher1.id } })
+  if (oldKlasse7a) {
+    await prisma.learningGroup.delete({
+      where: { id: oldKlasse7a.id }
+    })
+    console.log('Alte Klasse 7a wurde gelöscht')
+  }
+
   // --- STUDENTS ---
-  // Klasse 7a - Echte Schüler von Frau Christ
+  // Klasse 6a - Echte Schüler von Frau Christ
   const students = [
     { name: 'Jakob Ackermann', loginCode: 'STUD001', role: 'STUDENT' },
     { name: 'Josefine Baierl', loginCode: 'STUD002', role: 'STUDENT' },
@@ -110,10 +109,10 @@ async function main() {
   }
 
   // --- ADD STUDENTS TO LEARNING GROUPS ---
-  // Klasse 7a: Alle 31 Schüler von Frau Christ
+  // Klasse 6a: Alle 31 Schüler von Frau Christ
   for (let i = 0; i < createdStudents.length; i++) {
     await prisma.learningGroup.update({
-      where: { id: klasse7a.id },
+      where: { id: klasse6a.id },
       data: {
         students: {
           connect: { id: createdStudents[i].id }
@@ -122,7 +121,6 @@ async function main() {
     });
   }
 
-  // Klasse 6a: Leer lassen oder separate Schüler hinzufügen falls benötigt
   // GK11: Leer lassen oder separate Schüler hinzufügen falls benötigt
   // Klasse 7b: Leer lassen oder separate Schüler hinzufügen falls benötigt
 
