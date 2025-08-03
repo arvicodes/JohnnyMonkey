@@ -65,6 +65,7 @@ interface Student {
   id: string;
   name: string;
   loginCode: string;
+  avatarEmoji?: string;
 }
 
 interface TabPanelProps {
@@ -642,8 +643,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 }}>
                                   <CardContent sx={{ p: 2.1 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.4 }}>
-                                      <Avatar sx={{ bgcolor: colors.accent1, mr: 1.4, width: 24, height: 24 }}>
-                                        {student.name.charAt(0)}
+                                      <Avatar sx={{ 
+                                        bgcolor: student.avatarEmoji ? 'transparent' : colors.accent1, 
+                                        mr: 1.4, 
+                                        width: 24, 
+                                        height: 24,
+                                        fontSize: student.avatarEmoji ? '1rem' : '0.75rem'
+                                      }}>
+                                        {student.avatarEmoji || student.name.charAt(0)}
                                       </Avatar>
                                       <Box>
                                         <Typography variant="subtitle1" sx={{ 

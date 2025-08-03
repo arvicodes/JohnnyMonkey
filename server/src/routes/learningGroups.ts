@@ -11,7 +11,13 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
       where: { teacherId: req.params.id },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -35,7 +41,13 @@ router.get('/student/:id', async (req: Request, res: Response) => {
       include: {
         teacher: true,
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -53,7 +65,13 @@ router.get('/:id', async (req: Request, res: Response) => {
       include: {
         teacher: true,
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -84,7 +102,13 @@ router.put('/:id', async (req: Request, res: Response) => {
       include: {
         teacher: true,
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -109,7 +133,13 @@ router.post('/', async (req: Request, res: Response) => {
       },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -132,7 +162,13 @@ router.post('/:id/students', async (req: Request, res: Response) => {
       },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -154,7 +190,13 @@ router.delete('/:groupId/students/:studentId', async (req: Request, res: Respons
       },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -174,7 +216,13 @@ router.get('/:groupId/available-students', async (req: Request, res: Response) =
       where: { id: groupId },
       include: { 
         students: {
-          orderBy: { loginCode: 'asc' }
+          orderBy: { loginCode: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true
+          }
         }
       }
     });
@@ -192,6 +240,12 @@ router.get('/:groupId/available-students', async (req: Request, res: Response) =
             notIn: currentGroup.students.map(student => student.id)
           }
         }
+      },
+      select: {
+        id: true,
+        name: true,
+        loginCode: true,
+        avatarEmoji: true
       }
     });
 
