@@ -9,7 +9,11 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
   try {
     const groups = await prisma.learningGroup.findMany({
       where: { teacherId: req.params.id },
-      include: { students: true }
+      include: { 
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
+      }
     });
     res.json(groups);
   } catch (error) {
@@ -30,7 +34,9 @@ router.get('/student/:id', async (req: Request, res: Response) => {
       },
       include: {
         teacher: true,
-        students: true
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
       }
     });
     res.json(groups);
@@ -46,7 +52,9 @@ router.get('/:id', async (req: Request, res: Response) => {
       where: { id: req.params.id },
       include: {
         teacher: true,
-        students: true
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
       }
     });
 
@@ -75,7 +83,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       data: { name: name.trim() },
       include: {
         teacher: true,
-        students: true
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
       }
     });
 
@@ -97,7 +107,11 @@ router.post('/', async (req: Request, res: Response) => {
           connect: { id: teacherId }
         }
       },
-      include: { students: true }
+      include: { 
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
+      }
     });
     res.json(group);
   } catch (error) {
@@ -116,7 +130,11 @@ router.post('/:id/students', async (req: Request, res: Response) => {
           connect: studentIds.map((id: string) => ({ id }))
         }
       },
-      include: { students: true }
+      include: { 
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
+      }
     });
     res.json(group);
   } catch (error) {
@@ -134,7 +152,11 @@ router.delete('/:groupId/students/:studentId', async (req: Request, res: Respons
           disconnect: { id: req.params.studentId }
         }
       },
-      include: { students: true }
+      include: { 
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
+      }
     });
     res.json(group);
   } catch (error) {
@@ -150,7 +172,11 @@ router.get('/:groupId/available-students', async (req: Request, res: Response) =
     // Get the current group's students
     const currentGroup = await prisma.learningGroup.findUnique({
       where: { id: groupId },
-      include: { students: true }
+      include: { 
+        students: {
+          orderBy: { loginCode: 'asc' }
+        }
+      }
     });
 
     if (!currentGroup) {
