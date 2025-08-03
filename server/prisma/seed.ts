@@ -468,7 +468,7 @@ async function main() {
   })
   if (!cssstyling) {
     cssstyling = await prisma.lesson.create({
-      data: {
+      data: { 
         name: 'CSS Styling',
         description: '',
         topicId: htmlundcss.id,
