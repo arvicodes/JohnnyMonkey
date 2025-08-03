@@ -143,39 +143,39 @@ async function main() {
   }
 
   // --- STUDENTS ---
-  // 31 Schüler aus den Screenshots, alphabetisch sortiert nach Nachnamen
+  // 31 Schüler aus den Screenshots in der exakten Reihenfolge (1-31)
   const students = [
-    { name: 'Jakob Ackermann', loginCode: 'STUD001', role: 'STUDENT' },
-    { name: 'Josefine Baierl', loginCode: 'STUD002', role: 'STUDENT' },
-    { name: 'Friederike Bremser', loginCode: 'STUD003', role: 'STUDENT' },
-    { name: 'Jonathan Dillmann', loginCode: 'STUD004', role: 'STUDENT' },
-    { name: 'Jasmin Farnung', loginCode: 'STUD005', role: 'STUDENT' },
-    { name: 'Marlene Geis', loginCode: 'STUD006', role: 'STUDENT' },
-    { name: 'Louis Gerharz', loginCode: 'STUD007', role: 'STUDENT' },
-    { name: 'Luise Habach', loginCode: 'STUD008', role: 'STUDENT' },
-    { name: 'Hannah Hagedorn', loginCode: 'STUD009', role: 'STUDENT' },
-    { name: 'Kilian Jahnke', loginCode: 'STUD010', role: 'STUDENT' },
-    { name: 'Marlene Krall', loginCode: 'STUD011', role: 'STUDENT' },
-    { name: 'Robin Maas', loginCode: 'STUD012', role: 'STUDENT' },
-    { name: 'Jonas Maxeiner', loginCode: 'STUD013', role: 'STUDENT' },
-    { name: 'Samuel May', loginCode: 'STUD014', role: 'STUDENT' },
-    { name: 'Dennis Miller', loginCode: 'STUD015', role: 'STUDENT' },
-    { name: 'Miró Mohr', loginCode: 'STUD016', role: 'STUDENT' },
-    { name: 'Adela Mureşan', loginCode: 'STUD017', role: 'STUDENT' },
-    { name: 'Paul Pfeifer', loginCode: 'STUD018', role: 'STUDENT' },
-    { name: 'Louisa Plattes', loginCode: 'STUD019', role: 'STUDENT' },
-    { name: 'Arthur Potemkin', loginCode: 'STUD020', role: 'STUDENT' },
-    { name: 'Julia Reiners', loginCode: 'STUD021', role: 'STUDENT' },
-    { name: 'Bruno Scavio', loginCode: 'STUD022', role: 'STUDENT' },
-    { name: 'Vincent Schlag', loginCode: 'STUD023', role: 'STUDENT' },
-    { name: 'Felix Schmelzlin', loginCode: 'STUD024', role: 'STUDENT' },
-    { name: 'Niklas Schmitz', loginCode: 'STUD025', role: 'STUDENT' },
-    { name: 'Andreas Thielen', loginCode: 'STUD026', role: 'STUDENT' },
-    { name: 'Fabio Urso', loginCode: 'STUD027', role: 'STUDENT' },
-    { name: 'Lennas Weinem', loginCode: 'STUD028', role: 'STUDENT' },
-    { name: 'Nils Weiß', loginCode: 'STUD029', role: 'STUDENT' },
-    { name: 'Jan Wimmershoff', loginCode: 'STUD030', role: 'STUDENT' },
-    { name: 'Freya Zipper', loginCode: 'STUD031', role: 'STUDENT' }
+    { name: 'Jakob Ackermann', loginCode: 'STUD001', role: 'STUDENT' }, // 1
+    { name: 'Josefine Baierl', loginCode: 'STUD002', role: 'STUDENT' }, // 2
+    { name: 'Friederike Bremser', loginCode: 'STUD003', role: 'STUDENT' }, // 3
+    { name: 'Jonathan Dillmann', loginCode: 'STUD004', role: 'STUDENT' }, // 4
+    { name: 'Jasmin Farnung', loginCode: 'STUD005', role: 'STUDENT' }, // 5
+    { name: 'Marlene Geis', loginCode: 'STUD006', role: 'STUDENT' }, // 6
+    { name: 'Louis Gerharz', loginCode: 'STUD007', role: 'STUDENT' }, // 7
+    { name: 'Luise Habach', loginCode: 'STUD008', role: 'STUDENT' }, // 8
+    { name: 'Hannah Hagedorn', loginCode: 'STUD009', role: 'STUDENT' }, // 9
+    { name: 'Kilian Jahnke', loginCode: 'STUD010', role: 'STUDENT' }, // 10
+    { name: 'Marlene Krall', loginCode: 'STUD011', role: 'STUDENT' }, // 11
+    { name: 'Robin Maas', loginCode: 'STUD012', role: 'STUDENT' }, // 12
+    { name: 'Jonas Maxeiner', loginCode: 'STUD013', role: 'STUDENT' }, // 13
+    { name: 'Samuel May', loginCode: 'STUD014', role: 'STUDENT' }, // 14
+    { name: 'Dennis Miller', loginCode: 'STUD015', role: 'STUDENT' }, // 15
+    { name: 'Miró Mohr', loginCode: 'STUD016', role: 'STUDENT' }, // 16
+    { name: 'Adela Mureşan', loginCode: 'STUD017', role: 'STUDENT' }, // 17
+    { name: 'Paul Pfeifer', loginCode: 'STUD018', role: 'STUDENT' }, // 18
+    { name: 'Louisa Plattes', loginCode: 'STUD019', role: 'STUDENT' }, // 19
+    { name: 'Arthur Potemkin', loginCode: 'STUD020', role: 'STUDENT' }, // 20
+    { name: 'Julia Reiners', loginCode: 'STUD021', role: 'STUDENT' }, // 21
+    { name: 'Bruno Scavio', loginCode: 'STUD022', role: 'STUDENT' }, // 22
+    { name: 'Vincent Schlag', loginCode: 'STUD023', role: 'STUDENT' }, // 23
+    { name: 'Felix Schmelzlin', loginCode: 'STUD024', role: 'STUDENT' }, // 24
+    { name: 'Niklas Schmitz', loginCode: 'STUD025', role: 'STUDENT' }, // 25
+    { name: 'Andreas Thielen', loginCode: 'STUD026', role: 'STUDENT' }, // 26
+    { name: 'Fabio Urso', loginCode: 'STUD027', role: 'STUDENT' }, // 27
+    { name: 'Lennas Weinem', loginCode: 'STUD028', role: 'STUDENT' }, // 28
+    { name: 'Nils Weiß', loginCode: 'STUD029', role: 'STUDENT' }, // 29
+    { name: 'Jan Wimmershoff', loginCode: 'STUD030', role: 'STUDENT' }, // 30
+    { name: 'Freya Zipper', loginCode: 'STUD031', role: 'STUDENT' } // 31
   ];
 
   const createdStudents: any[] = [];
