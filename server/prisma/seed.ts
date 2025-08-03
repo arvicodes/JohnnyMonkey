@@ -132,15 +132,7 @@ async function main() {
     })
   }
 
-  let klasse7b = await prisma.learningGroup.findFirst({ where: { name: 'Klasse 7b', teacherId: teacher2.id } })
-  if (!klasse7b) {
-    klasse7b = await prisma.learningGroup.create({
-      data: { 
-        name: 'Klasse 7b', 
-        teacherId: teacher2.id 
-      },
-    })
-  }
+
 
   // --- STUDENTS ---
   // 31 Schüler aus den Screenshots in der exakten Reihenfolge (1-31)
