@@ -478,6 +478,44 @@ async function main() {
     console.log('Created lesson: CSS Styling')
   }
 
+  // --- LEARNING GROUPS ---
+  let klasse7a = await prisma.learningGroup.findFirst({ 
+    where: { name: 'Klasse 7a' } 
+  })
+  if (!klasse7a) {
+    klasse7a = await prisma.learningGroup.create({
+      data: {
+        name: 'Klasse 7a',
+        teacherId: teacher1.id
+      }
+    })
+    console.log('Created learning group: Klasse 7a')
+  }
+
+  // --- GRADING SCHEMAS ---
+  let mittelstufeSchema = await prisma.gradingSchema.findFirst({ 
+    where: { name: 'Mittelstufe', groupId: klasse7a.id } 
+  })
+  if (!mittelstufeSchema) {
+    mittelstufeSchema = await prisma.gradingSchema.create({
+      data: {
+        name: 'Mittelstufe',
+        structure: `Mittelstufe (100%)
+  Klassenarbeiten (50%)
+    Erste Klassenarbeit (50%)
+    Zweite Klassenarbeit (50%)
+  Sonstige Leistungen (50%)
+    Mündliche Noten (33.3%)
+      EPO 1 (50%)
+      EPO 2 (50%)
+    Quizze/Hüs (33.3%)
+    Projekte, Mappen, Referate (33.4%)`,
+        groupId: klasse7a.id
+      }
+    })
+    console.log('Created grading schema: Mittelstufe for Klasse 7a')
+  }
+
   console.log('Database seeding completed successfully!')
 }
 

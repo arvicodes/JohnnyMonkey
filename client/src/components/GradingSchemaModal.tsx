@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,7 +10,6 @@ import {
   Box,
   IconButton,
   Chip,
-  Divider,
   Alert,
   Paper,
   Grid,
@@ -20,7 +19,6 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
-  Collapse,
   Tooltip,
   LinearProgress,
   Avatar
@@ -93,13 +91,6 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      fetchExistingSchemas();
-      resetForm();
-    }
-  }, [open, groupId]);
-
   const resetForm = () => {
     setSchemaName('');
     setGradeNodes([]);
@@ -109,7 +100,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     setShowPreview(false);
   };
 
-  const fetchExistingSchemas = async () => {
+  const fetchExistingSchemas = useCallback(async () => {
     try {
       const response = await fetch(`/api/grading-schemas/${groupId}`);
       if (response.ok) {
@@ -119,7 +110,14 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     } catch (error) {
       console.error('Error fetching schemas:', error);
     }
-  };
+  }, [groupId]);
+
+  useEffect(() => {
+    if (open) {
+      fetchExistingSchemas();
+      resetForm();
+    }
+  }, [open, groupId, fetchExistingSchemas]);
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -534,6 +532,24 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                     </IconButton>
                   </Tooltip>
                   
+                  {hasChildren && (
+                    <Tooltip title={node.isExpanded ? "Einklappen" : "Aufklappen"}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => toggleExpanded(node.id)}
+                        sx={{ 
+                          bgcolor: colors.accent1,
+                          color: 'white',
+                          width: 24,
+                          height: 24,
+                          '&:hover': { bgcolor: colors.accent1, filter: 'brightness(1.1)' }
+                        }}
+                      >
+                        {node.isExpanded ? <ExpandLessIcon sx={{ fontSize: 14 }} /> : <ExpandMoreIcon sx={{ fontSize: 14 }} />}
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  
                   <Tooltip title="Kategorie löschen">
                     <IconButton 
                       size="small" 
@@ -598,8 +614,8 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
           </CardContent>
         </Card>
         
-        {/* Rekursiv alle Kinder rendern - immer sichtbar */}
-        {hasChildren && (
+        {/* Rekursiv alle Kinder rendern - nur wenn expanded */}
+        {hasChildren && node.isExpanded && (
           <Box sx={{ mt: 0.35 }}>
             {node.children.map(child => renderCategoryCard(child, level + 1))}
           </Box>
