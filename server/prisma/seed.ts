@@ -559,14 +559,12 @@ async function main() {
     console.log('Created grading schema: Informatik Bewertung GK11')
   }
 
+  // Immer das korrekte Schema wiederherstellen (auch wenn es bereits existiert)
   let mittelstufeSchema = await prisma.gradingSchema.findFirst({ 
     where: { name: 'Mittelstufe', groupId: klasse7a.id } 
   })
-  if (!mittelstufeSchema) {
-    mittelstufeSchema = await prisma.gradingSchema.create({
-      data: {
-        name: 'Mittelstufe',
-        structure: `Mittelstufe (100%)
+  
+  const correctMittelstufeStructure = `Mittelstufe (100%)
   Klassenarbeiten (50%)
     Erste Klassenarbeit (50%)
     Zweite Klassenarbeit (50%)
@@ -575,11 +573,28 @@ async function main() {
       EPO 1 (50%)
       EPO 2 (50%)
     Quizze/Hüs (33.3%)
-    Projekte, Mappen, Referate (33.4%)`,
+    Projekte, Mappen, Referate (33.4%)
+      Aufgabenfuchs (10%)
+      Rest (90%)`
+
+  if (!mittelstufeSchema) {
+    mittelstufeSchema = await prisma.gradingSchema.create({
+      data: {
+        name: 'Mittelstufe',
+        structure: correctMittelstufeStructure,
         groupId: klasse7a.id
       }
     })
     console.log('Created grading schema: Mittelstufe for Klasse 7a')
+  } else {
+    // Schema existiert bereits - aktualisiere es auf die korrekte Struktur
+    mittelstufeSchema = await prisma.gradingSchema.update({
+      where: { id: mittelstufeSchema.id },
+      data: {
+        structure: correctMittelstufeStructure
+      }
+    })
+    console.log('Updated grading schema: Mittelstufe for Klasse 7a')
   }
 
   console.log('Database seeding completed successfully!')

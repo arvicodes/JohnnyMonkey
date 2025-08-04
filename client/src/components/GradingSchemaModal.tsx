@@ -314,38 +314,19 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
   };
 
   const formatSchemaToString = (nodes: GradeNode[], indent: number = 0): string => {
-    if (indent === 0) {
-      const rootLine = `${schemaName} (100%)`;
+    const lines: string[] = [];
+    
+    nodes.forEach(node => {
+      const line = ' '.repeat(indent) + `${node.name} (${node.weight}%)`;
+      lines.push(line);
       
-      if (nodes.length === 0) {
-        return rootLine;
+      if (node.children.length > 0) {
+        const childLines = formatSchemaToString(node.children, indent + 2);
+        lines.push(childLines);
       }
-      
-      const childLines = nodes.map(node => {
-        const line = ' '.repeat(indent + 2) + `${node.name} (${node.weight}%)`;
-        if (node.children.length > 0) {
-          const nestedLines = node.children.map(child => {
-            const childLine = ' '.repeat(indent + 4) + `${child.name} (${child.weight}%)`;
-            if (child.children.length > 0) {
-              return childLine + '\n' + formatSchemaToString(child.children, indent + 4);
-            }
-            return childLine;
-          }).join('\n');
-          return line + '\n' + nestedLines;
-        }
-        return line;
-      }).join('\n');
-      
-      return rootLine + '\n' + childLines;
-    } else {
-      return nodes.map(node => {
-        const line = ' '.repeat(indent) + `${node.name} (${node.weight}%)`;
-        if (node.children.length > 0) {
-          return line + '\n' + formatSchemaToString(node.children, indent + 2);
-        }
-        return line;
-      }).join('\n');
-    }
+    });
+    
+    return lines.join('\n');
   };
 
   const handleSave = async () => {
@@ -366,7 +347,10 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
 
     setLoading(true);
     try {
-      const schemaString = formatSchemaToString(gradeNodes);
+      // Füge den Root-Namen hinzu
+      const rootLine = `${schemaName} (100%)`;
+      const childLines = formatSchemaToString(gradeNodes, 2); // Starte mit 2 Leerzeichen Einrückung
+      const schemaString = rootLine + '\n' + childLines;
       
       const method = isEditing && selectedSchema ? 'PUT' : 'POST';
       const url = isEditing && selectedSchema 
