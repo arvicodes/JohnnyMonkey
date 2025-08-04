@@ -36,4 +36,4 @@ yarn-error.log*
 .env.production.local
 
 # Prisma
-prisma/*.db 
+prisma/*.db server/prisma/dev.db
