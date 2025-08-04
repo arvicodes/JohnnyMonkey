@@ -41,6 +41,7 @@ import {
   Build as BuildIcon,
   Grade as GradeIcon
 } from '@mui/icons-material';
+import { Tooltip } from '@mui/material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
@@ -731,22 +732,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     </Box>
                                     <Divider sx={{ my: 1 }} />
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <IconButton 
-                                        size="small"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleGradesDialogOpen(group.id, group.name, student);
-                                        }}
-                                        sx={{ 
-                                          color: colors.secondary,
-                                          '&:hover': {
-                                            bgcolor: `${colors.secondary}10`
-                                          },
-                                          fontSize: '1.1rem'
-                                        }}
-                                      >
-                                        <GradeIcon />
-                                      </IconButton>
+                                      <Tooltip title="Noten eintragen" placement="top">
+                                        <IconButton 
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleGradesDialogOpen(group.id, group.name, student);
+                                          }}
+                                          sx={{ 
+                                            color: colors.secondary,
+                                            '&:hover': {
+                                              bgcolor: `${colors.secondary}10`
+                                            },
+                                            fontSize: '1.1rem'
+                                          }}
+                                        >
+                                          <GradeIcon />
+                                        </IconButton>
+                                      </Tooltip>
                                     </Box>
                                   </CardContent>
                                 </Card>

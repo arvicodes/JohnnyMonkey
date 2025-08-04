@@ -33,7 +33,7 @@ export const createSchema = async (req: Request, res: Response) => {
     const schema = await prisma.gradingSchema.create({
       data: {
         name,
-        structure: JSON.stringify(schemaNode),
+        structure: structure, // Speichere als String, nicht als JSON
         groupId
       }
     });
@@ -59,7 +59,7 @@ export const getSchemas = async (req: Request, res: Response) => {
     // Format the schemas for display
     const formattedSchemas = schemas.map(schema => ({
       ...schema,
-      structure: schemaService.formatSchemaToString(JSON.parse(schema.structure))
+      structure: schema.structure // Bereits als String gespeichert
     }));
 
     res.json(formattedSchemas);
@@ -99,7 +99,7 @@ export const updateSchema = async (req: Request, res: Response) => {
       where: { id },
       data: {
         name,
-        structure: JSON.stringify(schemaNode),
+        structure: structure, // Speichere als String, nicht als JSON
         groupId
       }
     });

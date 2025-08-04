@@ -143,7 +143,9 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     }
 
     // Handle text format (new format)
-    const lines = schemaStr.split('\n').filter(line => line.trim());
+    // Entferne escaped newlines und teile dann auf
+    const cleanStructure = schemaStr.replace(/\\n/g, '\n');
+    const lines = cleanStructure.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
 
     const result: GradeNode[] = [];

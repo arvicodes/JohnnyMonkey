@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -15,16 +15,12 @@ import {
   Avatar,
   Chip,
   Alert,
-  LinearProgress,
-  Divider
+  LinearProgress
 } from '@mui/material';
 import {
   Save as SaveIcon,
   Grade as GradeIcon,
-  Person as PersonIcon,
-  Assessment as AssessmentIcon,
-  CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 
 interface GradeNode {
@@ -83,18 +79,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Don't render if no student is selected
-  if (!student) {
-    return null;
-  }
-
-  useEffect(() => {
-    if (open) {
-      fetchGradingSchema();
-    }
-  }, [open, groupId]);
-
-  const fetchGradingSchema = async () => {
+  const fetchGradingSchema = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/grading-schemas/${groupId}`);
@@ -115,7 +100,18 @@ const GradesModal: React.FC<GradesModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [groupId]);
+
+  useEffect(() => {
+    if (open && student) {
+      fetchGradingSchema();
+    }
+  }, [open, groupId, student, fetchGradingSchema]);
+
+  // Don't render if no student is selected
+  if (!student) {
+    return null;
+  }
 
   const loadExistingGrades = async (nodes: GradeNode[]) => {
     try {
@@ -126,7 +122,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
         setGradeNodes(updatedNodes);
       }
     } catch (error) {
-      console.log('No existing grades found');
+      console.log('No existing grades found or grades table not yet implemented');
+      // Für jetzt: Setze die Nodes ohne bestehende Noten
+      setGradeNodes(nodes);
     }
   };
 
@@ -149,7 +147,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
   const parseSchemaString = (schemaStr: string): GradeNode[] => {
-    const lines = schemaStr.split('\n').filter(line => line.trim());
+    // Entferne escaped newlines und teile dann auf
+    const cleanStructure = schemaStr.replace(/\\n/g, '\n');
+    const lines = cleanStructure.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
 
     const result: GradeNode[] = [];
@@ -250,6 +250,21 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
       const grades = collectAllGrades(gradeNodes);
       
+      // Für jetzt: Zeige eine Vorschau der zu speichernden Noten
+      console.log('Noten zum Speichern:', {
+        studentId: student.id,
+        schemaId: gradingSchema?.id,
+        grades
+      });
+      
+      // Simuliere erfolgreiches Speichern
+      setSuccess('Noten-Vorschau erstellt! (Backend-Integration folgt später)');
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+      
+      /* 
+      // Backend-Integration (später zu aktivieren):
       const response = await fetch('/api/grades', {
         method: 'POST',
         headers: {
@@ -271,6 +286,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
         const errorData = await response.json();
         setError(errorData.error || 'Fehler beim Speichern der Noten');
       }
+      */
     } catch (error) {
       setError('Fehler beim Speichern der Noten');
     } finally {
@@ -461,6 +477,10 @@ const GradesModal: React.FC<GradesModalProps> = ({
         )}
 
         <Box sx={{ mb: 1.4 }}>
+          <Alert severity="info" sx={{ mb: 1.4, borderRadius: 0.7, fontSize: '0.6rem' }}>
+            💡 Frontend-Vorschau: Noten können eingegeben werden, aber werden noch nicht in der Datenbank gespeichert.
+          </Alert>
+          
           <Typography variant="h6" sx={{ 
             fontSize: '0.75rem',
             fontWeight: 'bold',
@@ -533,7 +553,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
             '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
           }}
         >
-          {saving ? 'Speichern...' : 'Speichern'}
+          {saving ? 'Vorschau...' : 'Vorschau erstellen'}
         </Button>
       </DialogActions>
     </Dialog>
