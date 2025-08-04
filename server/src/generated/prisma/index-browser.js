@@ -136,6 +136,17 @@ exports.Prisma.GradingSchemaScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.GradeScalarFieldEnum = {
+  id: 'id',
+  studentId: 'studentId',
+  schemaId: 'schemaId',
+  categoryName: 'categoryName',
+  grade: 'grade',
+  weight: 'weight',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.LearningGroupScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -307,6 +318,7 @@ exports.Prisma.NullsOrder = {
 exports.Prisma.ModelName = {
   User: 'User',
   GradingSchema: 'GradingSchema',
+  Grade: 'Grade',
   LearningGroup: 'LearningGroup',
   Subject: 'Subject',
   Block: 'Block',

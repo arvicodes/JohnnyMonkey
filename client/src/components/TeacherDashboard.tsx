@@ -25,7 +25,8 @@ import {
   Tab,
   Tabs,
   Menu,
-  MenuItem
+  MenuItem,
+  Divider
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -37,13 +38,15 @@ import {
   Edit as EditIcon,
   Storage as StorageIcon,
   MoreVert as MoreVertIcon,
-  Build as BuildIcon
+  Build as BuildIcon,
+  Grade as GradeIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
 import MaterialCreator from './MaterialCreator';
 import GradingSchemaModal from './GradingSchemaModal';
+import GradesModal from './GradesModal';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -130,6 +133,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [gradingModalOpen, setGradingModalOpen] = useState(false);
   const [gradingGroupId, setGradingGroupId] = useState<string | null>(null);
   const [gradingGroupName, setGradingGroupName] = useState('');
+  const [gradesModalOpen, setGradesModalOpen] = useState(false);
+  const [gradesGroupId, setGradesGroupId] = useState<string | null>(null);
+  const [gradesGroupName, setGradesGroupName] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   // Spielerische Farbpalette
   const colors = {
@@ -449,6 +456,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setGradingGroupName('');
   };
 
+  const handleGradesDialogOpen = (groupId: string, groupName: string, student: Student) => {
+    setGradesGroupId(groupId);
+    setGradesGroupName(groupName);
+    setSelectedStudent(student);
+    setGradesModalOpen(true);
+    handleMenuClose();
+  };
+
+  const handleGradesDialogClose = () => {
+    setGradesModalOpen(false);
+    setGradesGroupId(null);
+    setGradesGroupName('');
+    setSelectedStudent(null);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onLogout();
@@ -705,6 +727,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                         }}
                                       >
                                         <DeleteIcon />
+                                      </IconButton>
+                                    </Box>
+                                    <Divider sx={{ my: 1 }} />
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <IconButton 
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleGradesDialogOpen(group.id, group.name, student);
+                                        }}
+                                        sx={{ 
+                                          color: colors.secondary,
+                                          '&:hover': {
+                                            bgcolor: `${colors.secondary}10`
+                                          },
+                                          fontSize: '1.1rem'
+                                        }}
+                                      >
+                                        <GradeIcon />
                                       </IconButton>
                                     </Box>
                                   </CardContent>
@@ -1050,6 +1091,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <MenuItem onClick={() => handleGradingDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
           <AssessmentIcon fontSize="small" sx={{ mr: 1 }} /> Benotung festlegen
         </MenuItem>
+        <MenuItem onClick={() => {
+          const group = groups.find(g => g.id === menuGroupId!);
+          if (group && group.students.length > 0) {
+            handleGradesDialogOpen(menuGroupId!, group.name, group.students[0]);
+          }
+        }}>
+          <GradeIcon fontSize="small" sx={{ mr: 1 }} /> Noten anzeigen
+        </MenuItem>
         <MenuItem onClick={() => handleDeleteDialogOpen(menuGroupId!)}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Löschen
         </MenuItem>
@@ -1124,6 +1173,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         onClose={handleGradingDialogClose}
         groupId={gradingGroupId || ''}
         groupName={gradingGroupName}
+      />
+
+      {/* Grades Modal */}
+      <GradesModal
+        open={gradesModalOpen}
+        onClose={handleGradesDialogClose}
+        groupId={gradesGroupId || ''}
+        groupName={gradesGroupName}
+        student={selectedStudent!}
       />
 
       <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', mt: 2 }}>
