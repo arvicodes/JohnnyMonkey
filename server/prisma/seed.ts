@@ -479,6 +479,19 @@ async function main() {
   }
 
   // --- LEARNING GROUPS ---
+  let klasse6a = await prisma.learningGroup.findFirst({ 
+    where: { name: 'Klasse 6a', teacherId: teacher1.id } 
+  })
+  if (!klasse6a) {
+    klasse6a = await prisma.learningGroup.create({
+      data: {
+        name: 'Klasse 6a',
+        teacherId: teacher1.id
+      }
+    })
+    console.log('Created learning group: Klasse 6a')
+  }
+
   let klasse7a = await prisma.learningGroup.findFirst({ 
     where: { name: 'Klasse 7a' } 
   })
@@ -492,7 +505,60 @@ async function main() {
     console.log('Created learning group: Klasse 7a')
   }
 
+  let gk11 = await prisma.learningGroup.findFirst({ 
+    where: { name: 'GK11', teacherId: teacher1.id } 
+  })
+  if (!gk11) {
+    gk11 = await prisma.learningGroup.create({
+      data: {
+        name: 'GK11',
+        teacherId: teacher1.id
+      }
+    })
+    console.log('Created learning group: GK11')
+  }
+
   // --- GRADING SCHEMAS ---
+  let mathematikSchema = await prisma.gradingSchema.findFirst({ 
+    where: { name: 'Mathematik Bewertung 2024', groupId: klasse6a.id } 
+  })
+  if (!mathematikSchema) {
+    mathematikSchema = await prisma.gradingSchema.create({
+      data: {
+        name: 'Mathematik Bewertung 2024',
+        structure: `Mathematik Bewertung 2024 (100%)
+  Mündliche Leistungen (50%)
+    EPO1 (25%)
+    EPO2 (25%)
+  Schriftliche Leistungen (50%)
+    Klassenarbeit 1 (25%)
+    Klassenarbeit 2 (25%)`,
+        groupId: klasse6a.id
+      }
+    })
+    console.log('Created grading schema: Mathematik Bewertung 2024')
+  }
+
+  let informatikSchema = await prisma.gradingSchema.findFirst({ 
+    where: { name: 'Informatik Bewertung GK11', groupId: gk11.id } 
+  })
+  if (!informatikSchema) {
+    informatikSchema = await prisma.gradingSchema.create({
+      data: {
+        name: 'Informatik Bewertung GK11',
+        structure: `Informatik Bewertung GK11 (100%)
+  Theorie (40%)
+    Tests (20%)
+    Hausaufgaben (20%)
+  Praxis (60%)
+    Projekte (30%)
+    Präsentationen (30%)`,
+        groupId: gk11.id
+      }
+    })
+    console.log('Created grading schema: Informatik Bewertung GK11')
+  }
+
   let mittelstufeSchema = await prisma.gradingSchema.findFirst({ 
     where: { name: 'Mittelstufe', groupId: klasse7a.id } 
   })
