@@ -25,14 +25,10 @@ import {
   Tab,
   Tabs,
   Menu,
-  MenuItem,
-  Paper
+  MenuItem
 } from '@mui/material';
 import {
-  AccessTime as TimeIcon,
   School as SchoolIcon,
-  Visibility as VisibilityIcon,
-  Create as CreateIcon,
   Assessment as AssessmentIcon,
   Add as AddIcon,
   Group as GroupIcon,
@@ -41,14 +37,13 @@ import {
   Edit as EditIcon,
   Storage as StorageIcon,
   MoreVert as MoreVertIcon,
-  Build as BuildIcon,
-  Quiz as QuizIcon
+  Build as BuildIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
 import MaterialCreator from './MaterialCreator';
-import { QuizSessionManager } from './QuizSessionManager';
+import GradingSchemaModal from './GradingSchemaModal';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -110,8 +105,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [mainTabValue, setMainTabValue] = useState(0);
   const [lessonMaterials, setLessonMaterials] = useState<{[key: string]: any[]}>({});
   const [lessonQuizzes, setLessonQuizzes] = useState<{[key: string]: any}>({});
-  const [groupContents, setGroupContents] = useState<{ [groupId: string]: string[] }>({});
-  const [contentInputs, setContentInputs] = useState<{ [groupId: string]: string }>({});
+
   // Im TeacherDashboard State:
   const [subjectAssignments, setSubjectAssignments] = useState<{ [subjectId: string]: string[] }>({});
   const [blockAssignments, setBlockAssignments] = useState<{ [blockId: string]: string[] }>({});
@@ -133,6 +127,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editGroupName, setEditGroupName] = useState('');
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
+  const [gradingModalOpen, setGradingModalOpen] = useState(false);
+  const [gradingGroupId, setGradingGroupId] = useState<string | null>(null);
+  const [gradingGroupName, setGradingGroupName] = useState('');
 
   // Spielerische Farbpalette
   const colors = {
@@ -437,6 +434,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     } catch (error) {
       showSnackbar('Fehler beim Bearbeiten der Lerngruppe', 'error');
     }
+  };
+
+  const handleGradingDialogOpen = (groupId: string, groupName: string) => {
+    setGradingGroupId(groupId);
+    setGradingGroupName(groupName);
+    setGradingModalOpen(true);
+    handleMenuClose();
+  };
+
+  const handleGradingDialogClose = () => {
+    setGradingModalOpen(false);
+    setGradingGroupId(null);
+    setGradingGroupName('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1037,6 +1047,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <MenuItem onClick={() => handleEditDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} /> Bearbeiten
         </MenuItem>
+        <MenuItem onClick={() => handleGradingDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
+          <AssessmentIcon fontSize="small" sx={{ mr: 1 }} /> Benotung festlegen
+        </MenuItem>
         <MenuItem onClick={() => handleDeleteDialogOpen(menuGroupId!)}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Löschen
         </MenuItem>
@@ -1104,6 +1117,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           <Button onClick={handleDeleteGroup} color="error" variant="contained" disabled={!(confirmDelete1 && confirmDelete2)}>Löschen</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Grading Schema Modal */}
+      <GradingSchemaModal
+        open={gradingModalOpen}
+        onClose={handleGradingDialogClose}
+        groupId={gradingGroupId || ''}
+        groupName={gradingGroupName}
+      />
 
       <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', mt: 2 }}>
         <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>

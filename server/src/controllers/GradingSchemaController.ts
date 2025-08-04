@@ -9,10 +9,25 @@ export const createSchema = async (req: Request, res: Response) => {
   try {
     const { name, structure, groupId } = req.body;
 
+    if (!name || !structure || !groupId) {
+      return res.status(400).json({ error: 'Missing required fields: name, structure, groupId' });
+    }
+
+    // Check if the learning group exists
+    const learningGroup = await prisma.learningGroup.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!learningGroup) {
+      return res.status(400).json({ error: `Learning group with ID ${groupId} not found` });
+    }
+
     // Parse and validate the schema
     const schemaNode = schemaService.parseSchemaString(structure);
-    if (!schemaService.validateSchema(schemaNode)) {
-      return res.status(400).json({ error: 'Invalid schema: Weights must sum to 1 at each level' });
+    const isValid = schemaService.validateSchema(schemaNode);
+    
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid schema: Root level weights must sum to 100%' });
     }
 
     const schema = await prisma.gradingSchema.create({
@@ -26,7 +41,11 @@ export const createSchema = async (req: Request, res: Response) => {
     res.json(schema);
   } catch (error) {
     console.error('Error creating grading schema:', error);
-    res.status(500).json({ error: 'Failed to create grading schema' });
+    if (error instanceof Error) {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to create grading schema' });
+    }
   }
 };
 
@@ -47,6 +66,52 @@ export const getSchemas = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching grading schemas:', error);
     res.status(500).json({ error: 'Failed to fetch grading schemas' });
+  }
+};
+
+export const updateSchema = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, structure, groupId } = req.body;
+
+    if (!name || !structure || !groupId) {
+      return res.status(400).json({ error: 'Missing required fields: name, structure, groupId' });
+    }
+
+    // Check if the learning group exists
+    const learningGroup = await prisma.learningGroup.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!learningGroup) {
+      return res.status(400).json({ error: `Learning group with ID ${groupId} not found` });
+    }
+
+    // Parse and validate the schema
+    const schemaNode = schemaService.parseSchemaString(structure);
+    const isValid = schemaService.validateSchema(schemaNode);
+    
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid schema: Root level weights must sum to 100%' });
+    }
+
+    const schema = await prisma.gradingSchema.update({
+      where: { id },
+      data: {
+        name,
+        structure: JSON.stringify(schemaNode),
+        groupId
+      }
+    });
+
+    res.json(schema);
+  } catch (error) {
+    console.error('Error updating grading schema:', error);
+    if (error instanceof Error) {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: 'Failed to update grading schema' });
+    }
   }
 };
 
