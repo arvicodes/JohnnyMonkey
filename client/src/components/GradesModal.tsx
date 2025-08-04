@@ -83,6 +83,11 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Don't render if no student is selected
+  if (!student) {
+    return null;
+  }
+
   useEffect(() => {
     if (open) {
       fetchGradingSchema();

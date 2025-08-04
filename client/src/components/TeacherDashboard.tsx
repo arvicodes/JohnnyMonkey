@@ -1091,14 +1091,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <MenuItem onClick={() => handleGradingDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
           <AssessmentIcon fontSize="small" sx={{ mr: 1 }} /> Benotung festlegen
         </MenuItem>
-        <MenuItem onClick={() => {
+        {(() => {
           const group = groups.find(g => g.id === menuGroupId!);
-          if (group && group.students.length > 0) {
-            handleGradesDialogOpen(menuGroupId!, group.name, group.students[0]);
-          }
-        }}>
-          <GradeIcon fontSize="small" sx={{ mr: 1 }} /> Noten anzeigen
-        </MenuItem>
+          return group && group.students.length > 0 ? (
+            <MenuItem onClick={() => handleGradesDialogOpen(menuGroupId!, group.name, group.students[0])}>
+              <GradeIcon fontSize="small" sx={{ mr: 1 }} /> Noten anzeigen
+            </MenuItem>
+          ) : null;
+        })()}
         <MenuItem onClick={() => handleDeleteDialogOpen(menuGroupId!)}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Löschen
         </MenuItem>
@@ -1176,13 +1176,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       />
 
       {/* Grades Modal */}
-      <GradesModal
-        open={gradesModalOpen}
-        onClose={handleGradesDialogClose}
-        groupId={gradesGroupId || ''}
-        groupName={gradesGroupName}
-        student={selectedStudent!}
-      />
+      {selectedStudent && (
+        <GradesModal
+          open={gradesModalOpen}
+          onClose={handleGradesDialogClose}
+          groupId={gradesGroupId || ''}
+          groupName={gradesGroupName}
+          student={selectedStudent}
+        />
+      )}
 
       <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', mt: 2 }}>
         <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
