@@ -452,10 +452,39 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     return schemaStructure.map(processNode);
   };
 
+  // Funktion zum Berechnen der gewichteten Note aus Kindern
+  const calculateWeightedGrade = (node: any): number | null => {
+    if (!node.children || node.children.length === 0) {
+      return node.grade !== undefined ? node.grade : null;
+    }
+
+    const validChildren = node.children.filter((child: any) => {
+      const childGrade = calculateWeightedGrade(child);
+      return childGrade !== null;
+    });
+
+    if (validChildren.length === 0) {
+      return null;
+    }
+
+    const totalWeight = validChildren.reduce((sum: number, child: any) => sum + child.weight, 0);
+    if (totalWeight === 0) {
+      return null;
+    }
+
+    const weightedSum = validChildren.reduce((sum: number, child: any) => {
+      const childGrade = calculateWeightedGrade(child);
+      return sum + (childGrade! * child.weight);
+    }, 0);
+
+    return weightedSum / totalWeight;
+  };
+
   // Rekursive Komponente für hierarchische Noten-Anzeige
   const renderGradeNode = (node: any, schema: GradingSchema, level: number = 0) => {
     const hasChildren = node.children && node.children.length > 0;
     const isLeafNode = !hasChildren;
+    const calculatedGrade = hasChildren ? calculateWeightedGrade(node) : null;
     
     return (
       <Box key={node.name} sx={{ mb: 0.5 }}>
@@ -463,17 +492,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          p: 0.7,
-          bgcolor: level === 0 ? '#f0f8ff' : 'white',
+          p: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+          bgcolor: level === 0 ? '#f0f8ff' : level === 1 ? '#f8f9fa' : 'white',
           borderRadius: 0.7,
           border: '1px solid #e0e0e0',
-          ml: level * 2, // Einrückung basierend auf Level
+          ml: level * 2.5, // Einrückung basierend auf Level
           borderLeft: level > 0 ? `3px solid ${level === 1 ? '#1976d2' : level === 2 ? '#2E7D32' : '#F57C00'}` : '1px solid #e0e0e0'
         }}>
           <Typography variant="caption" sx={{ 
             color: colors.textPrimary,
-            fontSize: '0.65rem',
-            fontWeight: level === 0 ? 600 : 500,
+            fontSize: level === 0 ? '0.75rem' : level === 1 ? '0.7rem' : '0.6rem',
+            fontWeight: level === 0 ? 700 : level === 1 ? 600 : 500,
             fontStyle: level === 0 ? 'italic' : 'normal'
           }}>
             {level === 0 ? '📚 ' : level === 1 ? '📝 ' : '• '}{node.name}
@@ -484,12 +513,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               <Box sx={{ 
                 bgcolor: getGradeColor(node.grade, schema?.gradingSystem),
                 color: 'white',
-                px: 0.8,
-                py: 0.2,
+                px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+                py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
                 borderRadius: 1,
-                fontSize: '0.6rem',
+                fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
                 fontWeight: 'bold',
-                minWidth: '24px',
+                minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
                 textAlign: 'center'
               }}>
                 {schema?.gradingSystem === 'MSS' ? 
@@ -499,18 +528,45 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               </Box>
               <Typography variant="caption" sx={{ 
                 color: colors.textSecondary,
-                fontSize: '0.55rem'
+                fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem'
               }}>
                 ({node.weight}%)
+              </Typography>
+            </Box>
+          ) : calculatedGrade !== null ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ 
+                bgcolor: getGradeColor(calculatedGrade, schema?.gradingSystem),
+                color: 'white',
+                px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+                py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
+                borderRadius: 1,
+                fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+                fontWeight: 'bold',
+                minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
+                textAlign: 'center',
+                opacity: 0.8
+              }}>
+                {schema?.gradingSystem === 'MSS' ? 
+                  calculatedGrade.toFixed(0) : 
+                  formatGermanGrade(calculatedGrade)
+                }
+              </Box>
+              <Typography variant="caption" sx={{ 
+                color: colors.textSecondary,
+                fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
+                fontStyle: 'italic'
+              }}>
+                berechnet
               </Typography>
             </Box>
           ) : (
             <Typography variant="caption" sx={{ 
               color: colors.textSecondary,
-              fontSize: '0.55rem',
+              fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
               fontStyle: 'italic'
             }}>
-              {isLeafNode ? 'Keine Note' : 'Berechnet'}
+              {isLeafNode ? 'Keine Note' : 'Keine Daten'}
             </Typography>
           )}
         </Box>
