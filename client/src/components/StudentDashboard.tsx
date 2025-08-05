@@ -606,6 +606,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // Funktion zum Umbenennen von "Unter- und Mittelstufe" zu "Gesamtnote"
+  const getDisplayName = (originalName: string): string => {
+    if (originalName === "Unter- und Mittelstufe") {
+      return "Gesamtnote";
+    }
+    return originalName;
+  };
+
   // Hilfsfunktion zum Parsen des Schemas
   const parseSchemaStructure = (schemaStr: string) => {
     const lines = schemaStr.split('\n').filter(line => line.trim());
@@ -1136,14 +1144,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                     borderRadius: 1.4,
                                     border: '1px solid #e0e0e0'
                                   }}>
-                                    <Typography variant="body2" sx={{ 
-                                      color: colors.primary,
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600,
-                                      mb: 0.7
-                                    }}>
-                                      📚 {gruppe.name}
-                                    </Typography>
+                                                                      <Typography variant="body2" sx={{ 
+                                    color: colors.primary,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    mb: 0.7
+                                  }}>
+                                    📚 {getDisplayName(gruppe.name)}
+                                  </Typography>
                                     <Typography variant="caption" sx={{ 
                                       color: colors.textSecondary,
                                       fontSize: '0.65rem',
@@ -1173,7 +1181,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                     pb: 0.5,
                                     borderBottom: `2px solid ${colors.primary}30`
                                   }}>
-                                    📚 {gruppe.name}
+                                    📚 {getDisplayName(gruppe.name)}
                                   </Typography>
                                   
                                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
@@ -1214,7 +1222,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 </Box>
 
                 <Grid container spacing={1.4}>
-                  {lerngruppen.map((gruppe) => (
+                  {lerngruppen
+                    .filter(gruppe => gruppe.name !== "Unter- und Mittelstufe")
+                    .map((gruppe) => (
                     <Grid item xs={12} key={gruppe.id}>
                       <Card variant="outlined" sx={{ 
                         borderRadius: 2.8,
