@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
+  Save as SaveIcon,
+  Grade as GradeIcon,
+  Assessment as AssessmentIcon,
+  Lock as LockIcon,
+  LockOpen as LockOpenIcon
+} from '@mui/icons-material';
+import {
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,13 +25,9 @@ import {
   LinearProgress,
   FormControl,
   Select,
-  MenuItem
+  MenuItem,
+  IconButton
 } from '@mui/material';
-import {
-  Save as SaveIcon,
-  Grade as GradeIcon,
-  Assessment as AssessmentIcon
-} from '@mui/icons-material';
 
 interface GradeNode {
   id: string;
@@ -32,6 +35,7 @@ interface GradeNode {
   weight: number;
   children: GradeNode[];
   grade?: number;
+  locked?: boolean; // Neu: ob die Note gesperrt ist
 }
 
 interface GradingSchema {
@@ -82,6 +86,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [lockedGrades, setLockedGrades] = useState<Set<string>>(new Set()); // Neu: Set der gesperrten Noten-IDs
 
   const fetchGradingSchema = useCallback(async () => {
     try {
@@ -94,7 +99,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
           setGradingSchema(schema);
           const parsedNodes = parseSchemaString(schema.structure);
           setGradeNodes(parsedNodes);
-          await loadExistingGrades(parsedNodes);
+          // Lade bestehende Noten nachdem das Schema gesetzt wurde
+          await loadExistingGrades(parsedNodes, schema);
         } else {
           setError('Kein Bewertungsschema für diese Lerngruppe gefunden.');
         }
@@ -117,16 +123,17 @@ const GradesModal: React.FC<GradesModalProps> = ({
     return null;
   }
 
-  const loadExistingGrades = async (nodes: GradeNode[]) => {
+  const loadExistingGrades = async (nodes: GradeNode[], schema?: GradingSchema) => {
     try {
-      if (!gradingSchema?.id) {
+      const currentSchema = schema || gradingSchema;
+      if (!currentSchema?.id) {
         console.log('Debug - No schema ID, setting nodes directly');
         setGradeNodes(nodes);
         return;
       }
       
-      console.log('Debug - Loading grades for student:', student.id, 'schema:', gradingSchema.id);
-      const response = await fetch(`/api/grades/${student.id}/${gradingSchema.id}`);
+      console.log('Debug - Loading grades for student:', student.id, 'schema:', currentSchema.id);
+      const response = await fetch(`/api/grades/${student.id}/${currentSchema.id}`);
       console.log('Debug - Load response status:', response.status);
       
       if (response.ok) {
@@ -147,19 +154,49 @@ const GradesModal: React.FC<GradesModalProps> = ({
   };
 
   const updateNodesWithGrades = (nodes: GradeNode[], grades: any[]): GradeNode[] => {
-    return nodes.map(node => {
-      const gradeData = grades.find(g => g.categoryName === node.name);
-      const updatedNode = {
-        ...node,
-        grade: gradeData?.grade || undefined
-      };
-      
-      if (node.children.length > 0) {
-        updatedNode.children = updateNodesWithGrades(node.children, grades);
+    const newLockedGrades = new Set<string>();
+    
+    const updateNodes = (nodeList: GradeNode[]): GradeNode[] => {
+      return nodeList.map(node => {
+        const gradeData = grades.find(g => g.categoryName === node.name);
+        const updatedNode = {
+          ...node,
+          grade: gradeData?.grade || undefined,
+          locked: false // Neue Noten sind nicht gesperrt
+        };
+        
+        // Nur Noten sperren, die bereits in der Datenbank existieren
+        if (gradeData?.grade !== undefined) {
+          newLockedGrades.add(node.id);
+        }
+        
+        if (node.children.length > 0) {
+          updatedNode.children = updateNodes(node.children);
+        }
+        
+        return updatedNode;
+      });
+    };
+    
+    const updatedNodes = updateNodes(nodes);
+    setLockedGrades(newLockedGrades);
+    return updatedNodes;
+  };
+
+  const toggleGradeLock = (nodeId: string) => {
+    setLockedGrades(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
       }
-      
-      return updatedNode;
+      return newSet;
     });
+  };
+
+  const isGradeLocked = (nodeId: string): boolean => {
+    return lockedGrades.has(nodeId);
   };
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -218,6 +255,12 @@ const GradesModal: React.FC<GradesModalProps> = ({
   };
 
   const updateGrade = (nodeId: string, grade: number | undefined) => {
+    // Prüfe ob die Note gesperrt ist
+    if (isGradeLocked(nodeId)) {
+      console.log('Grade is locked, cannot update');
+      return;
+    }
+
     const updateNodes = (nodes: GradeNode[]): GradeNode[] => {
       return nodes.map(node => {
         if (node.id === nodeId) {
@@ -229,7 +272,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
         };
       });
     };
-    setGradeNodes(updateNodes(gradeNodes));
+    
+    const updatedNodes = updateNodes(gradeNodes);
+    setGradeNodes(updatedNodes);
   };
 
   const calculateWeightedGrade = (nodes: GradeNode[]): number => {
@@ -448,127 +493,170 @@ const GradesModal: React.FC<GradesModalProps> = ({
     const hasChildren = node.children.length > 0;
 
     return (
-      <Box key={node.id} sx={{ mb: 0.7 }}>
+      <Box key={node.id} sx={{ mb: 0.4 }}>
         <Card 
           variant="outlined" 
           sx={{ 
-            borderRadius: 1.4,
-            ml: level * 3.5,
-            borderLeft: level > 0 ? `4px solid ${isTopLevel ? colors.primary : colors.accent1}` : '1px solid #e0e0e0',
-            bgcolor: level === 0 ? colors.cardBg : 
-                     level === 1 ? '#fafafa' : 
-                     level === 2 ? '#f5f5f5' : '#f0f0f0'
+            borderRadius: 1,
+            ml: level * 4, // Kompaktere Einrückung
+            borderLeft: level > 0 ? `3px solid ${isTopLevel ? colors.primary : 
+                              level === 1 ? colors.accent1 : 
+                              level === 2 ? colors.secondary : colors.accent2}` : '1px solid #e0e0e0',
+            bgcolor: level === 0 ? '#ffffff' : 
+                     level === 1 ? '#f8fbff' : 
+                     level === 2 ? '#fff8f5' : '#f5f8ff',
+            borderColor: level === 0 ? '#e0e0e0' : 
+                        level === 1 ? '#d0e0f0' : 
+                        level === 2 ? '#f0d0c0' : '#e0d0f0'
           }}
         >
-          <CardContent sx={{ p: 1.4, '&:last-child': { pb: 1.4 } }}>
-            <Grid container spacing={0.7} alignItems="center">
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
-                  <Avatar 
-                    sx={{ 
-                      bgcolor: isTopLevel ? colors.primary : 
-                              level === 1 ? colors.accent1 : 
-                              level === 2 ? colors.secondary : colors.accent2,
-                      width: 20,
-                      height: 20,
-                      fontSize: '0.6rem'
-                    }}
-                  >
-                    <GradeIcon sx={{ fontSize: 12 }} />
-                  </Avatar>
+          <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'nowrap' }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontSize: '0.6rem',
+                  fontWeight: 'bold',
+                  color: colors.textPrimary,
+                  minWidth: '100px'
+                }}
+              >
+                {node.name}
+              </Typography>
+              
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  fontSize: '0.55rem',
+                  color: colors.textSecondary,
+                  minWidth: '60px'
+                }}
+              >
+                {node.weight}%
+              </Typography>
+              
+              {!hasChildren ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
                   <Typography 
-                    variant="body2" 
+                    variant="caption" 
                     sx={{ 
-                      fontSize: '0.65rem',
-                      fontWeight: 'bold',
-                      color: colors.textPrimary
+                      fontSize: '0.5rem',
+                      color: colors.textSecondary,
+                      fontStyle: 'italic',
+                      minWidth: '50px'
                     }}
                   >
-                    {node.name}
+                    Eingabe
                   </Typography>
-                </Box>
-              </Grid>
-              
-              <Grid item xs={12} sm={3}>
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    fontSize: '0.6rem',
-                    color: colors.textSecondary
-                  }}
-                >
-                  Gewichtung: {node.weight}%
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={12} sm={3}>
-                {!hasChildren ? (
-                  <>
-                    <TextField
-                      size="small"
-                      value={node.grade !== undefined ? 
-                        (gradingSchema?.gradingSystem === 'MSS' ? 
-                          node.grade.toString() : 
-                          formatGermanGrade(node.grade)
-                        ) : ''
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === '') {
-                          updateGrade(node.id, undefined);
+                  <TextField
+                    size="small"
+                    value={node.grade !== undefined ? 
+                      (gradingSchema?.gradingSystem === 'MSS' ? 
+                        node.grade.toString() : 
+                        formatGermanGrade(node.grade)
+                      ) : ''
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        updateGrade(node.id, undefined);
+                      } else {
+                        // Für MSS: Nur Zahlen 0-15
+                        if (gradingSchema?.gradingSystem === 'MSS') {
+                          const numValue = Number(value);
+                          if (!isNaN(numValue) && numValue >= 0 && numValue <= 15) {
+                            updateGrade(node.id, numValue);
+                          }
                         } else {
-                          // Für MSS: Nur Zahlen 0-15
-                          if (gradingSchema?.gradingSystem === 'MSS') {
-                            const numValue = Number(value);
-                            if (!isNaN(numValue) && numValue >= 0 && numValue <= 15) {
-                              updateGrade(node.id, numValue);
-                            }
-                          } else {
-                            // Für deutsche Noten: Konvertiere Text zu numerischem Wert
-                            const germanGrade = convertGermanGradeTextToNumber(value);
-                            if (germanGrade !== null) {
-                              updateGrade(node.id, germanGrade);
-                            }
+                          // Für deutsche Noten: Konvertiere Text zu numerischem Wert
+                          const germanGrade = convertGermanGradeTextToNumber(value);
+                          if (germanGrade !== null) {
+                            updateGrade(node.id, germanGrade);
                           }
                         }
-                      }}
-                      placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
-                      sx={{ 
-                        fontSize: '0.65rem',
-                        '& .MuiInputBase-input': { fontSize: '0.65rem' },
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 0.7,
-                          minHeight: '32px'
-                        }
-                      }}
-                      helperText={gradingSchema?.gradingSystem === 'MSS' ? 
-                        'Punkte (0-15)' : 
-                        'Deutsche Noten: 1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'
                       }
-                      FormHelperTextProps={{ sx: { fontSize: '0.5rem' } }}
+                    }}
+                    placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
+                    disabled={isGradeLocked(node.id)}
+                    sx={{ 
+                      fontSize: '0.6rem',
+                      flex: 1,
+                      maxWidth: '100px',
+                      '& .MuiInputBase-input': { 
+                        fontSize: '0.6rem',
+                        padding: '4px 8px'
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 0.6,
+                        minHeight: '28px',
+                        ...(isGradeLocked(node.id) && {
+                          bgcolor: '#f8f8f8',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: colors.accent2,
+                            borderWidth: '1.5px'
+                          }
+                        })
+                      }
+                    }}
+                  />
+                  {node.grade !== undefined && (
+                    <Chip
+                      label={gradingSchema?.gradingSystem === 'MSS' ? 
+                        `${node.grade} Punkte` : 
+                        formatGermanGrade(node.grade)
+                      }
+                      size="small"
+                      sx={{
+                        bgcolor: getGradeColor(node.grade, gradingSchema?.gradingSystem),
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '0.55rem',
+                        height: 20,
+                        px: 0.6
+                      }}
                     />
-                    {node.grade !== undefined && (
-                      <Chip
-                        label={gradingSchema?.gradingSystem === 'MSS' ? 
-                          `${node.grade} Punkte` : 
-                          formatGermanGrade(node.grade)
-                        }
-                        size="small"
-                        sx={{
-                          bgcolor: getGradeColor(node.grade, gradingSchema?.gradingSystem),
+                  )}
+                  {node.grade !== undefined && (
+                    <IconButton
+                      size="small"
+                      onClick={() => toggleGradeLock(node.id)}
+                      sx={{ 
+                        p: 0.3,
+                        bgcolor: isGradeLocked(node.id) ? colors.accent2 : 'transparent',
+                        color: isGradeLocked(node.id) ? 'white' : colors.textSecondary,
+                        border: `1px solid ${isGradeLocked(node.id) ? colors.accent2 : '#ddd'}`,
+                        borderRadius: 0.6,
+                        width: '24px',
+                        height: '24px',
+                        '&:hover': {
+                          bgcolor: isGradeLocked(node.id) ? colors.accent2 : colors.primary,
                           color: 'white',
-                          fontWeight: 'bold',
-                          fontSize: '0.6rem',
-                          height: 24,
-                          mt: 0.5
+                          borderColor: isGradeLocked(node.id) ? colors.accent2 : colors.primary
+                        },
+                        transition: 'all 0.2s ease'
+                      }}
+                      title={isGradeLocked(node.id) ? 'Note entsperren' : 'Note sperren'}
+                    >
+                      {isGradeLocked(node.id) ? <LockIcon sx={{ fontSize: 12 }} /> : <LockOpenIcon sx={{ fontSize: 12 }} />}
+                    </IconButton>
+                  )}
+                </Box>
+              ) : (
+                (() => {
+                  const intermediateGrade = calculateIntermediateGrade(node);
+                  return intermediateGrade !== null ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          fontSize: '0.5rem',
+                          color: colors.textSecondary,
+                          fontStyle: 'italic',
+                          minWidth: '50px'
                         }}
-                      />
-                    )}
-                  </>
-                ) : (
-                  (() => {
-                    const intermediateGrade = calculateIntermediateGrade(node);
-                    return intermediateGrade !== null ? (
+                      >
+                        Berechnet
+                      </Typography>
                       <Chip 
                         label={`${gradingSchema?.gradingSystem === 'MSS' ? 
                           `${intermediateGrade.toFixed(0)} Punkte` : 
@@ -579,31 +667,45 @@ const GradesModal: React.FC<GradesModalProps> = ({
                           bgcolor: getGradeColor(intermediateGrade, gradingSchema?.gradingSystem),
                           color: 'white',
                           fontWeight: 'bold',
-                          fontSize: '0.6rem',
-                          height: 24
+                          fontSize: '0.55rem',
+                          height: 20,
+                          opacity: 0.8
                         }}
                       />
-                    ) : (
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
                       <Typography 
                         variant="caption" 
                         sx={{ 
-                          fontSize: '0.6rem',
+                          fontSize: '0.5rem',
+                          color: colors.textSecondary,
+                          fontStyle: 'italic',
+                          minWidth: '50px'
+                        }}
+                      >
+                        Berechnet
+                      </Typography>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          fontSize: '0.55rem',
                           color: colors.textSecondary,
                           fontStyle: 'italic'
                         }}
                       >
                         Keine Noten
                       </Typography>
-                    );
-                  })()
-                )}
-              </Grid>
-            </Grid>
+                    </Box>
+                  );
+                })()
+              )}
+            </Box>
           </CardContent>
         </Card>
         
         {hasChildren && (
-          <Box sx={{ mt: 0.35 }}>
+          <Box sx={{ mt: 0.2 }}>
             {node.children.map(child => renderGradeInput(child, level + 1))}
           </Box>
         )}
@@ -631,62 +733,62 @@ const GradesModal: React.FC<GradesModalProps> = ({
       maxWidth="md"
       fullWidth
     >
-      <DialogTitle sx={{ pb: 0.7 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
-          <GradeIcon sx={{ color: colors.primary, fontSize: 16 }} />
+      <DialogTitle sx={{ pb: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <GradeIcon sx={{ color: colors.primary, fontSize: 14 }} />
           <Typography variant="h6" sx={{ 
             fontWeight: 600, 
-            fontSize: '0.75rem',
+            fontSize: '0.7rem',
             color: colors.textPrimary
           }}>
             Noten eintragen - {student.name}
           </Typography>
         </Box>
-        <Typography variant="caption" sx={{ fontSize: '0.6rem', color: colors.textSecondary }}>
+        <Typography variant="caption" sx={{ fontSize: '0.55rem', color: colors.textSecondary }}>
           {groupName} • {gradingSchema?.name}
         </Typography>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 1.4 }}>
+      <DialogContent sx={{ p: 1 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 1.4, borderRadius: 0.7, fontSize: '0.6rem' }}>
+          <Alert severity="error" sx={{ mb: 1, borderRadius: 0.6, fontSize: '0.55rem' }}>
             {error}
           </Alert>
         )}
         
         {success && (
-          <Alert severity="success" sx={{ mb: 1.4, borderRadius: 0.7, fontSize: '0.6rem' }}>
+          <Alert severity="success" sx={{ mb: 1, borderRadius: 0.6, fontSize: '0.55rem' }}>
             {success}
           </Alert>
         )}
 
-        <Box sx={{ mb: 1.4 }}>
+        <Box sx={{ mb: 1 }}>
           
           <Typography variant="h6" sx={{ 
-            fontSize: '0.75rem',
+            fontSize: '0.7rem',
             fontWeight: 'bold',
             color: colors.textPrimary,
-            mb: 0.7
+            mb: 0.5
           }}>
             Bewertungskategorien
           </Typography>
           
-          <Box sx={{ maxHeight: 400, overflowY: 'auto', pr: 0.35 }}>
+          <Box sx={{ maxHeight: 350, overflowY: 'auto', pr: 0.3 }}>
             {gradeNodes.map(node => renderGradeInput(node))}
           </Box>
         </Box>
         
         {finalGrade > 0 && (
-          <Paper elevation={1} sx={{ p: 1.4, bgcolor: '#f8f9fa', borderRadius: 1.4 }}>
+          <Paper elevation={1} sx={{ p: 1, bgcolor: '#f8f9fa', borderRadius: 1 }}>
             <Typography variant="h6" sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 0.7,
-              fontSize: '0.75rem',
+              gap: 0.5,
+              fontSize: '0.7rem',
               fontWeight: 'bold',
               color: colors.textPrimary
             }}>
-              <AssessmentIcon sx={{ fontSize: 14, color: colors.primary }} />
+              <AssessmentIcon sx={{ fontSize: 12, color: colors.primary }} />
               Gesamtnote: {gradingSchema?.gradingSystem === 'MSS' ? 
                 `${finalGrade.toFixed(0)} Punkte` : 
                 formatGermanGrade(finalGrade)
@@ -701,25 +803,25 @@ const GradesModal: React.FC<GradesModalProps> = ({
                 bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
                 color: 'white',
                 fontWeight: 'bold',
-                fontSize: '0.7rem',
-                height: 28,
-                mt: 0.7
+                fontSize: '0.65rem',
+                height: 24,
+                mt: 0.5
               }}
             />
           </Paper>
         )}
       </DialogContent>
       
-      <DialogActions sx={{ p: 1.4 }}>
+      <DialogActions sx={{ p: 1 }}>
         <Button 
           onClick={onClose}
           variant="outlined"
           sx={{ 
-            borderRadius: 0.7, 
-            px: 0.7,
-            py: 0.2,
-            fontSize: '0.6rem',
-            height: '24px'
+            borderRadius: 0.6, 
+            px: 0.6,
+            py: 0.15,
+            fontSize: '0.55rem',
+            height: '20px'
           }}
         >
           Abbrechen
@@ -728,13 +830,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
           onClick={handleSave} 
           variant="contained" 
           disabled={saving}
-          startIcon={saving ? undefined : <SaveIcon sx={{ fontSize: 14 }} />}
+          startIcon={saving ? undefined : <SaveIcon sx={{ fontSize: 12 }} />}
           sx={{ 
-            borderRadius: 0.7, 
-            px: 0.7,
-            py: 0.2,
-            fontSize: '0.6rem',
-            height: '24px',
+            borderRadius: 0.6, 
+            px: 0.6,
+            py: 0.15,
+            fontSize: '0.55rem',
+            height: '20px',
             fontWeight: 'bold',
             bgcolor: colors.primary,
             '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
@@ -747,4 +849,4 @@ const GradesModal: React.FC<GradesModalProps> = ({
   );
 };
 
-export default GradesModal; 
+export default GradesModal;

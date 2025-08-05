@@ -11,19 +11,22 @@ export const saveGrades = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Ungültige Daten' });
     }
 
-    // Lösche bestehende Noten für diesen Schüler und dieses Schema
-    await prisma.grade.deleteMany({
-      where: {
-        studentId,
-        schemaId
-      }
-    });
-
-    // Erstelle neue Noten
+    // Verwende upsert für jede Note (erstellt neue oder aktualisiert bestehende)
     const createdGrades = await Promise.all(
       grades.map((gradeData: any) =>
-        prisma.grade.create({
-          data: {
+        prisma.grade.upsert({
+          where: {
+            studentId_schemaId_categoryName: {
+              studentId,
+              schemaId,
+              categoryName: gradeData.categoryName
+            }
+          },
+          update: {
+            grade: gradeData.grade,
+            weight: gradeData.weight
+          },
+          create: {
             studentId,
             schemaId,
             categoryName: gradeData.categoryName,
