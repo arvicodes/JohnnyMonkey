@@ -15,7 +15,8 @@ import {
 import {
   School as SchoolIcon,
   QuestionAnswer as QuizIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Grade as GradeIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
@@ -74,6 +75,20 @@ interface Lesson {
   lessonQuizzes?: any[];
 }
 
+interface GradingSchema {
+  id: string;
+  name: string;
+  structure: string;
+  gradingSystem?: string;
+}
+
+interface Grade {
+  id: string;
+  categoryName: string;
+  grade: number;
+  weight: number;
+}
+
 interface StudentDashboardProps {
   userId: string;
   onLogout: () => void;
@@ -97,6 +112,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [quizResults, setQuizResults] = useState<any>(null);
   const [showQuizResults, setShowQuizResults] = useState(false);
   const [quizzesMap, setQuizzesMap] = useState<{[key: string]: any}>({});
+  
+  // States für Noten
+  const [gradingSchemas, setGradingSchemas] = useState<{[groupId: string]: GradingSchema}>({});
+  const [grades, setGrades] = useState<{[groupId: string]: Grade[]}>({});
+  const [gradesLoading, setGradesLoading] = useState(false);
   
   // Assignment Maps wie im TeacherDashboard
   const [subjectAssignments, setSubjectAssignments] = useState<{ [subjectId: string]: string[] }>({});
@@ -394,6 +414,71 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   };
 
   // Hilfsfunktion zum Laden aller Inhalte
+  // Hilfsfunktionen für Notenformatierung
+  const formatGermanGrade = (grade: number): string => {
+    if (grade === 1.0) return '1';
+    if (grade === 1.3) return '1-';
+    if (grade === 1.7) return '2+';
+    if (grade === 2.0) return '2';
+    if (grade === 2.3) return '2-';
+    if (grade === 2.7) return '3+';
+    if (grade === 3.0) return '3';
+    if (grade === 3.3) return '3-';
+    if (grade === 3.7) return '4+';
+    if (grade === 4.0) return '4';
+    if (grade === 4.3) return '4-';
+    if (grade === 4.7) return '5+';
+    if (grade === 5.0) return '5';
+    if (grade === 5.3) return '5-';
+    if (grade === 6.0) return '6';
+    return grade.toFixed(1);
+  };
+
+  const getGradeColor = (grade: number, gradingSystem: string = 'GERMAN'): string => {
+    if (gradingSystem === 'MSS') {
+      if (grade >= 13) return '#4CAF50';
+      if (grade >= 10) return '#8BC34A';
+      if (grade >= 7) return '#FF9800';
+      if (grade >= 4) return '#F57C00';
+      if (grade >= 1) return '#FF5722';
+      return '#C2185B';
+    } else {
+      if (grade >= 1.0 && grade <= 1.7) return '#4CAF50';
+      if (grade >= 2.0 && grade <= 2.7) return '#8BC34A';
+      if (grade >= 3.0 && grade <= 3.7) return '#FF9800';
+      if (grade >= 4.0 && grade <= 4.7) return '#F57C00';
+      if (grade >= 5.0 && grade <= 6.0) return '#C2185B';
+      return '#9E9E9E';
+    }
+  };
+
+  const fetchGrades = async (groupId: string) => {
+    try {
+      setGradesLoading(true);
+      
+      // Lade Bewertungsschema für die Lerngruppe
+      const schemaResponse = await fetch(`/api/grading-schemas/${groupId}`);
+      if (schemaResponse.ok) {
+        const schemas = await schemaResponse.json();
+        if (schemas.length > 0) {
+          const schema = schemas[0];
+          setGradingSchemas(prev => ({ ...prev, [groupId]: schema }));
+          
+          // Lade Noten für den Schüler
+          const gradesResponse = await fetch(`/api/grades/${userId}/${schema.id}`);
+          if (gradesResponse.ok) {
+            const studentGrades = await gradesResponse.json();
+            setGrades(prev => ({ ...prev, [groupId]: studentGrades }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Noten:', error);
+    } finally {
+      setGradesLoading(false);
+    }
+  };
+
   const fetchAllContent = async (teacherId: string) => {
     try {
       // Subjects
@@ -489,6 +574,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           // Lade alle Inhalte für die Lehrer der Lerngruppen
           for (const group of data) {
             await fetchAllContent(group.teacher.id);
+            // Lade Noten für jede Lerngruppe
+            await fetchGrades(group.id);
           }
         }
       } catch (err) {
@@ -794,6 +881,120 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Box>
                   </Box>
                 </Box>
+
+                {/* Noten Anzeige */}
+                {lerngruppen.length > 0 && (
+                  <Box sx={{ mt: 2.1 }}>
+                    <Typography variant="body2" sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.7rem',
+                      mb: 1,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5
+                    }}>
+                      <GradeIcon sx={{ fontSize: 16 }} />
+                      Deine Noten:
+                    </Typography>
+                    
+                    {gradesLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                        <CircularProgress size={20} />
+                      </Box>
+                    ) : (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {lerngruppen.map((gruppe) => {
+                          const groupGrades = grades[gruppe.id] || [];
+                          const schema = gradingSchemas[gruppe.id];
+                          
+                          if (groupGrades.length === 0) {
+                            return (
+                              <Box key={gruppe.id} sx={{ 
+                                p: 1,
+                                bgcolor: '#f8f9fa',
+                                borderRadius: 1,
+                                border: '1px solid #e0e0e0'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: colors.textSecondary,
+                                  fontSize: '0.65rem',
+                                  fontWeight: 500
+                                }}>
+                                  {gruppe.name}: Noch keine Noten vorhanden
+                                </Typography>
+                              </Box>
+                            );
+                          }
+
+                          return (
+                            <Box key={gruppe.id} sx={{ 
+                              p: 1.4,
+                              bgcolor: '#f8f9fa',
+                              borderRadius: 1.4,
+                              border: '1px solid #e0e0e0'
+                            }}>
+                              <Typography variant="body2" sx={{ 
+                                color: colors.primary,
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                mb: 0.7
+                              }}>
+                                📚 {gruppe.name}
+                              </Typography>
+                              
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                {groupGrades.map((grade) => (
+                                  <Box key={grade.id} sx={{ 
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    p: 0.7,
+                                    bgcolor: 'white',
+                                    borderRadius: 0.7,
+                                    border: '1px solid #f0f0f0'
+                                  }}>
+                                    <Typography variant="caption" sx={{ 
+                                      color: colors.textPrimary,
+                                      fontSize: '0.65rem',
+                                      fontWeight: 500
+                                    }}>
+                                      {grade.categoryName}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <Box sx={{ 
+                                        bgcolor: getGradeColor(grade.grade, schema?.gradingSystem),
+                                        color: 'white',
+                                        px: 0.8,
+                                        py: 0.2,
+                                        borderRadius: 1,
+                                        fontSize: '0.6rem',
+                                        fontWeight: 'bold',
+                                        minWidth: '24px',
+                                        textAlign: 'center'
+                                      }}>
+                                        {schema?.gradingSystem === 'MSS' ? 
+                                          grade.grade.toFixed(0) : 
+                                          formatGermanGrade(grade.grade)
+                                        }
+                                      </Box>
+                                      <Typography variant="caption" sx={{ 
+                                        color: colors.textSecondary,
+                                        fontSize: '0.55rem'
+                                      }}>
+                                        ({grade.weight}%)
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                ))}
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Box>
