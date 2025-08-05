@@ -491,6 +491,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const isLeafNode = !hasChildren;
     const calculatedGrade = hasChildren ? calculateWeightedGrade(node) : null;
     
+    // Blende die oberste Ebene aus, wenn es "Unter- und Mittelstufe" ist
+    if (level === 0 && node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe")) {
+      return (
+        <Box key={node.name}>
+          {hasChildren && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+              {node.children.map((child: any) => renderGradeNode(child, schema, level + 1))}
+            </Box>
+          )}
+        </Box>
+      );
+    }
+    
     return (
       <Box key={node.name} sx={{ mb: 0.5 }}>
         <Box sx={{ 
