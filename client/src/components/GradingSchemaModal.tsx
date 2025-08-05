@@ -21,7 +21,11 @@ import {
   ListItemSecondaryAction,
   Tooltip,
   LinearProgress,
-  Avatar
+  Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -53,6 +57,7 @@ interface GradingSchema {
   id?: string;
   name: string;
   structure: string;
+  gradingSystem?: string;
   createdAt?: string;
 }
 
@@ -83,6 +88,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
   groupName
 }) => {
   const [schemaName, setSchemaName] = useState('');
+  const [gradingSystem, setGradingSystem] = useState('GERMAN');
   const [gradeNodes, setGradeNodes] = useState<GradeNode[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -93,6 +99,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
 
   const resetForm = () => {
     setSchemaName('');
+    setGradingSystem('GERMAN');
     setGradeNodes([]);
     setError('');
     setSelectedSchema(null);
@@ -212,6 +219,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     try {
       setSelectedSchema(schema);
       setSchemaName(schema.name);
+      setGradingSystem(schema.gradingSystem || 'GERMAN');
       console.log('Loading schema structure:', schema.structure);
       const parsedNodes = parseSchemaString(schema.structure);
       console.log('Parsed nodes:', parsedNodes);
@@ -360,6 +368,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
       const requestBody = {
         name: schemaName,
         structure: schemaString,
+        gradingSystem: gradingSystem,
         groupId
       };
 
@@ -710,6 +719,9 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                             <Typography variant="body2" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
                               {schema.createdAt ? new Date(schema.createdAt).toLocaleDateString('de-DE') : ''}
                             </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.disabled' }}>
+                              {schema.gradingSystem === 'GERMAN' ? 'Deutsches Notensystem' : 'MSS-Punktesystem'}
+                            </Typography>
                             <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.disabled', fontFamily: 'monospace' }}>
                               {schema.structure.substring(0, 100)}...
                             </Typography>
@@ -832,6 +844,29 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   }
                 }}
               />
+              
+              <FormControl fullWidth size="small" sx={{ mb: 1.4 }}>
+                <InputLabel sx={{ fontSize: '0.65rem' }}>Notensystem</InputLabel>
+                <Select
+                  value={gradingSystem}
+                  onChange={(e) => setGradingSystem(e.target.value)}
+                  label="Notensystem"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 0.7,
+                      fontSize: '0.65rem',
+                      minHeight: '32px'
+                    }
+                  }}
+                >
+                  <MenuItem value="GERMAN" sx={{ fontSize: '0.65rem' }}>
+                    Deutsches Schulnotensystem (1-6)
+                  </MenuItem>
+                  <MenuItem value="MSS" sx={{ fontSize: '0.65rem' }}>
+                    MSS-Punktesystem (0-15)
+                  </MenuItem>
+                </Select>
+              </FormControl>
               
               {renderPreview()}
               

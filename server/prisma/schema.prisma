@@ -30,6 +30,7 @@ model GradingSchema {
   name          String
   structure     String
   groupId       String
+  gradingSystem String        @default("GERMAN") // GERMAN oder MSS
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   learningGroup LearningGroup @relation(fields: [groupId], references: [id])
