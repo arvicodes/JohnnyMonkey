@@ -1,84 +1,62 @@
-# Schnellstart & Tech-Stack
+# JohnnyMonkey - Fullstack Learning Platform
 
-## Tech-Stack Übersicht
+A comprehensive learning management system built with React, Node.js, and Prisma.
 
-### Frontend (client)
-- React 18
-- React Router DOM
-- Material UI (MUI)
-- Tailwind CSS
-- Radix UI
-- Leaflet (Karten)
-- TanStack React Query
-- Diverse UI/UX Libraries (z.B. dnd-kit, embla-carousel, recharts)
-- Build: react-scripts
+## Tech Stack
 
-### Backend (server)
-- Node.js mit Express
-- TypeScript
-- Prisma ORM & Drizzle ORM
-- PostgreSQL (Datenbank, via .env konfigurierbar)
-- Nodemon (Entwicklung)
+- **Frontend**: React, Material-UI, React Router
+- **Backend**: Node.js, Express, TypeScript
+- **Database**: SQLite with Prisma ORM
+- **Development**: Nodemon, Concurrently
 
-### GeoCodingQuest (Mono-Repo mit eigenem Server & Client)
-- Express (API)
-- React 18 (Client)
-- Tailwind CSS
-- Drizzle ORM
-- Passport (Auth)
-- Leaflet, recharts, Radix UI, uvm.
-- Build: Vite, esbuild
+## Getting Started
 
----
+1. Install dependencies:
+   ```bash
+   npm install
+   npm install --prefix client
+   npm install --prefix server
+   ```
 
-## Startanleitung (immer aktuell)
+2. Start the application:
+   ```bash
+   npm start
+   ```
 
-### 1. Voraussetzungen
-- Node.js & npm installiert
-- `.env`-Dateien in `server/.env` und `GeoCodingQuest/server/.env` mit gültiger `DATABASE_URL` (PostgreSQL)
+## Database Management
 
-Beispiel `.env`:
+**⚠️ Wichtig: Keine Seed-Datei mehr erforderlich!**
+
+Die Anwendung verwendet echte Daten aus der Datenbank. Für eine saubere Installation:
+
+1. **Datenbank wiederherstellen:**
+   ```bash
+   cp server/prisma/basis2_backup_20250805_112847.db server/prisma/dev.db
+   ```
+
+2. **Oder neuestes Backup verwenden:**
+   ```bash
+   cp server/prisma/backup_ohne_seed_20250805_121702.db server/prisma/dev.db
+   ```
+
+**Warum kein Seed-Script:**
+- Komplexe Beziehungen zwischen Tabellen
+- TypeScript-Kompatibilitätsprobleme
+- Backups sind einfacher und zuverlässiger
+- Echte Daten sind bereits vorhanden
+
+## Available Scripts
+
+- `npm start` - Start both client and server
+- `npm run dev` - Start in development mode
+- `npm run build` - Build for production
+
+## Project Structure
+
 ```
-DATABASE_URL=postgres://user:pass@host:port/dbname
-```
-
-### 2. Starten (empfohlen)
-
-Im Hauptverzeichnis:
-```sh
-sudo pkill -f node && npm start
-```
-- Beendet alle laufenden Node-Prozesse (verhindert Port-Konflikte)
-- Startet alle Services (GeoCodingQuest, client, server) parallel
-
-### 3. Einzelne Services manuell starten (optional)
-
-- **Frontend:**
-  ```sh
-  cd client && npm start
-  ```
-- **Backend:**
-  ```sh
-  cd server && npm run dev
-  ```
-- **GeoCodingQuest:**
-  ```sh
-  cd GeoCodingQuest && npm run dev
-  ```
-
-### 4. Troubleshooting
-- Prüfe die Konsolenausgabe aller Server
-- Kontrolliere die `.env`-Dateien und die Datenbank-URL
-- Wiederhole ggf. den obigen Befehl
-
----
-
-## Proxy-Konfiguration (Frontend)
-In `client/package.json` ist das Proxy-Feld bereits korrekt gesetzt:
-```
-"proxy": "http://localhost:3005"
-```
-
----
-
-# ... bestehender Inhalt ... 
+├── client/          # React frontend
+├── server/          # Node.js backend
+│   ├── prisma/      # Database schema and backups
+│   └── src/         # Server source code
+└── README.md
+``` 
