@@ -510,7 +510,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             fontWeight: level === 0 ? 700 : level === 1 ? 600 : 500,
             fontStyle: level === 0 ? 'italic' : 'normal'
           }}>
-            {level === 0 ? '📚 ' : level === 1 ? '📝 ' : '• '}{node.name}
+            {level === 0 ? '📚 ' : level === 1 ? '📝 ' : '• '}{node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe") ? "Gesamtnote" : node.name}
           </Typography>
           
           {node.grade !== undefined && !hasChildren ? (
