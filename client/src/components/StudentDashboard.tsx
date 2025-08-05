@@ -608,7 +608,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   // Funktion zum Umbenennen von "Unter- und Mittelstufe" zu "Gesamtnote"
   const getDisplayName = (originalName: string): string => {
-    if (originalName === "Unter- und Mittelstufe") {
+    // Flexiblere Suche für verschiedene Schreibweisen
+    if (originalName.toLowerCase().includes("unter") && originalName.toLowerCase().includes("mittelstufe")) {
       return "Gesamtnote";
     }
     return originalName;
@@ -1223,7 +1224,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
                 <Grid container spacing={1.4}>
                   {lerngruppen
-                    .filter(gruppe => gruppe.name !== "Unter- und Mittelstufe")
+                    .filter(gruppe => !gruppe.name.toLowerCase().includes("unter") || !gruppe.name.toLowerCase().includes("mittelstufe"))
                     .map((gruppe) => (
                     <Grid item xs={12} key={gruppe.id}>
                       <Card variant="outlined" sx={{ 
