@@ -16,7 +16,9 @@ import {
   School as SchoolIcon,
   QuestionAnswer as QuizIcon,
   Edit as EditIcon,
-  Grade as GradeIcon
+  Grade as GradeIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
@@ -129,6 +131,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [selectedEmoji, setSelectedEmoji] = useState<string>('🧙‍♂️');
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
   const [isUpdatingEmoji, setIsUpdatingEmoji] = useState(false);
+  
+  // Noten-Sektion aufklappbar
+  const [gradesExpanded, setGradesExpanded] = useState(false);
 
   // Spielerische Farbpalette
   const colors = {
@@ -1077,84 +1082,109 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 {/* Noten Anzeige */}
                 {lerngruppen.length > 0 && (
                   <Box sx={{ mt: 2.1 }}>
-                    <Typography variant="body2" sx={{ 
-                      color: 'text.secondary',
-                      fontSize: '0.7rem',
-                      mb: 1,
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5
-                    }}>
-                      <GradeIcon sx={{ fontSize: 16 }} />
-                      Deine Noten:
-                    </Typography>
+                    <Box 
+                      sx={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        p: 1,
+                        borderRadius: 1,
+                        bgcolor: gradesExpanded ? '#f0f8ff' : 'transparent',
+                        transition: 'background-color 0.2s',
+                        '&:hover': {
+                          bgcolor: '#f0f8ff'
+                        }
+                      }}
+                      onClick={() => setGradesExpanded(!gradesExpanded)}
+                    >
+                      <Typography variant="body2" sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                      }}>
+                        <GradeIcon sx={{ fontSize: 16 }} />
+                        Noten
+                      </Typography>
+                      {gradesExpanded ? (
+                        <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      ) : (
+                        <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      )}
+                    </Box>
                     
-                    {gradesLoading ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-                        <CircularProgress size={20} />
-                      </Box>
-                    ) : (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
-                        {lerngruppen.map((gruppe) => {
-                          const groupGrades = grades[gruppe.id] || [];
-                          const schema = gradingSchemas[gruppe.id];
-                          
-                          if (groupGrades.length === 0) {
-                            return (
-                              <Box key={gruppe.id} sx={{ 
-                                p: 1.4,
-                                bgcolor: '#f8f9fa',
-                                borderRadius: 1.4,
-                                border: '1px solid #e0e0e0'
-                              }}>
-                                <Typography variant="body2" sx={{ 
-                                  color: colors.primary,
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  mb: 0.7
-                                }}>
-                                  📚 {gruppe.name}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: colors.textSecondary,
-                                  fontSize: '0.65rem',
-                                  fontStyle: 'italic'
-                                }}>
-                                  Noch keine Noten vorhanden
-                                </Typography>
-                              </Box>
-                            );
-                          }
-
-                          // Kombiniere Schema mit Noten für hierarchische Anzeige
-                          const hierarchicalGrades = combineSchemaWithGrades(schema, groupGrades);
-
-                          return (
-                            <Box key={gruppe.id} sx={{ 
-                              p: 1.4,
-                              bgcolor: '#f8f9fa',
-                              borderRadius: 1.4,
-                              border: '1px solid #e0e0e0'
-                            }}>
-                              <Typography variant="body2" sx={{ 
-                                color: colors.primary,
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                mb: 1,
-                                pb: 0.5,
-                                borderBottom: `2px solid ${colors.primary}30`
-                              }}>
-                                📚 {gruppe.name}
-                              </Typography>
+                    {gradesExpanded && (
+                      <>
+                        {gradesLoading ? (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                            <CircularProgress size={20} />
+                          </Box>
+                        ) : (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
+                            {lerngruppen.map((gruppe) => {
+                              const groupGrades = grades[gruppe.id] || [];
+                              const schema = gradingSchemas[gruppe.id];
                               
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
-                                {hierarchicalGrades.map((node) => renderGradeNode(node, schema))}
-                              </Box>
-                            </Box>
-                          );
-                        })}
-                      </Box>
+                              if (groupGrades.length === 0) {
+                                return (
+                                  <Box key={gruppe.id} sx={{ 
+                                    p: 1.4,
+                                    bgcolor: '#f8f9fa',
+                                    borderRadius: 1.4,
+                                    border: '1px solid #e0e0e0'
+                                  }}>
+                                    <Typography variant="body2" sx={{ 
+                                      color: colors.primary,
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      mb: 0.7
+                                    }}>
+                                      📚 {gruppe.name}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ 
+                                      color: colors.textSecondary,
+                                      fontSize: '0.65rem',
+                                      fontStyle: 'italic'
+                                    }}>
+                                      Noch keine Noten vorhanden
+                                    </Typography>
+                                  </Box>
+                                );
+                              }
+
+                              // Kombiniere Schema mit Noten für hierarchische Anzeige
+                              const hierarchicalGrades = combineSchemaWithGrades(schema, groupGrades);
+
+                              return (
+                                <Box key={gruppe.id} sx={{ 
+                                  p: 1.4,
+                                  bgcolor: '#f8f9fa',
+                                  borderRadius: 1.4,
+                                  border: '1px solid #e0e0e0'
+                                }}>
+                                  <Typography variant="body2" sx={{ 
+                                    color: colors.primary,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    mb: 1,
+                                    pb: 0.5,
+                                    borderBottom: `2px solid ${colors.primary}30`
+                                  }}>
+                                    📚 {gruppe.name}
+                                  </Typography>
+                                  
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                                    {hierarchicalGrades.map((node) => renderGradeNode(node, schema))}
+                                  </Box>
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                        )}
+                      </>
                     )}
                   </Box>
                 )}
