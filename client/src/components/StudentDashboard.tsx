@@ -508,7 +508,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             {level === 0 ? '📚 ' : level === 1 ? '📝 ' : '• '}{node.name}
           </Typography>
           
-          {node.grade !== undefined ? (
+          {node.grade !== undefined && !hasChildren ? (
+            // Nur für Blattknoten - eingegebene Noten
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Box sx={{ 
                 bgcolor: getGradeColor(node.grade, schema?.gradingSystem),
@@ -533,10 +534,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 ({node.weight}%)
               </Typography>
             </Box>
-          ) : calculatedGrade !== null ? (
+          ) : (node.grade !== undefined || calculatedGrade !== null) ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Box sx={{ 
-                bgcolor: getGradeColor(calculatedGrade, schema?.gradingSystem),
+                bgcolor: getGradeColor((node.grade !== undefined ? node.grade : calculatedGrade)!, schema?.gradingSystem),
                 color: 'white',
                 px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
                 py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
@@ -548,8 +549,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 opacity: 0.8
               }}>
                 {schema?.gradingSystem === 'MSS' ? 
-                  calculatedGrade.toFixed(0) : 
-                  formatGermanGrade(calculatedGrade)
+                  (node.grade !== undefined ? node.grade : calculatedGrade)!.toFixed(0) : 
+                  formatGermanGrade((node.grade !== undefined ? node.grade : calculatedGrade)!)
                 }
               </Box>
               <Typography variant="caption" sx={{ 
