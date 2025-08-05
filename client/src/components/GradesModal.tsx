@@ -233,6 +233,28 @@ const GradesModal: React.FC<GradesModalProps> = ({
     return totalWeight > 0 ? weightedSum / totalWeight : 0;
   };
 
+  // Neue Funktion: Berechnet Zwischensummen für Kategorien mit Kindern
+  const calculateIntermediateGrade = (node: GradeNode): number | null => {
+    if (node.children.length === 0) {
+      return node.grade !== undefined ? node.grade : null;
+    }
+
+    let totalWeight = 0;
+    let weightedSum = 0;
+    let hasValidGrades = false;
+
+    node.children.forEach(child => {
+      const childGrade = calculateIntermediateGrade(child);
+      if (childGrade !== null) {
+        totalWeight += child.weight;
+        weightedSum += (childGrade * child.weight);
+        hasValidGrades = true;
+      }
+    });
+
+    return hasValidGrades && totalWeight > 0 ? weightedSum / totalWeight : null;
+  };
+
   const getGradeColor = (grade: number): string => {
     if (grade >= 1.0 && grade <= 1.5) return colors.success;
     if (grade >= 1.6 && grade <= 2.5) return '#4CAF50';
@@ -400,18 +422,34 @@ const GradesModal: React.FC<GradesModalProps> = ({
                     }}
                   />
                 )}
-                {hasChildren && node.grade !== undefined && (
-                  <Chip 
-                    label={`${node.grade.toFixed(1)}`}
-                    size="small"
-                    sx={{ 
-                      bgcolor: getGradeColor(node.grade),
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: '0.6rem',
-                      height: 24
-                    }}
-                  />
+                {hasChildren && (
+                  (() => {
+                    const intermediateGrade = calculateIntermediateGrade(node);
+                    return intermediateGrade !== null ? (
+                      <Chip 
+                        label={`${intermediateGrade.toFixed(1)}`}
+                        size="small"
+                        sx={{ 
+                          bgcolor: getGradeColor(intermediateGrade),
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '0.6rem',
+                          height: 24
+                        }}
+                      />
+                    ) : (
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          fontSize: '0.6rem',
+                          color: colors.textSecondary,
+                          fontStyle: 'italic'
+                        }}
+                      >
+                        Keine Noten
+                      </Typography>
+                    );
+                  })()
                 )}
               </Grid>
             </Grid>
