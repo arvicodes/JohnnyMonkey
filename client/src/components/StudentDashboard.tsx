@@ -546,7 +546,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 fontWeight: 'bold',
                 minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
                 textAlign: 'center',
-                opacity: 0.8
+                opacity: 0.8,
+                border: '2px solid #1976d2',
+                boxShadow: '0 2px 4px rgba(25, 118, 210, 0.3)'
               }}>
                 {schema?.gradingSystem === 'MSS' ? 
                   (node.grade !== undefined ? node.grade : calculatedGrade)!.toFixed(0) : 
