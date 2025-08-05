@@ -203,7 +203,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
     return result;
   };
 
-  const updateGrade = (nodeId: string, grade: number) => {
+  const updateGrade = (nodeId: string, grade: number | undefined) => {
     const updateNodes = (nodes: GradeNode[]): GradeNode[] => {
       return nodes.map(node => {
         if (node.id === nodeId) {
@@ -273,14 +273,59 @@ const GradesModal: React.FC<GradesModalProps> = ({
   // Deutsche Notenwerte als Array (für Dropdown)
   const getGermanGradeOptions = () => {
     return [
-      1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 
-      4.0, 4.25, 4.5, 4.75, 5.0, 5.25, 5.5, 5.75, 6.0
+      1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0
     ];
   };
 
   // MSS Notenwerte als Array (für Dropdown)
   const getMSSGradeOptions = () => {
     return Array.from({ length: 16 }, (_, i) => i); // 0 bis 15
+  };
+
+  // Funktion zur Formatierung der deutschen Notenanzeige
+  const formatGermanGrade = (grade: number): string => {
+    if (grade === 1.0) return '1';
+    if (grade === 1.3) return '1-';
+    if (grade === 1.7) return '2+';
+    if (grade === 2.0) return '2';
+    if (grade === 2.3) return '2-';
+    if (grade === 2.7) return '3+';
+    if (grade === 3.0) return '3';
+    if (grade === 3.3) return '3-';
+    if (grade === 3.7) return '4+';
+    if (grade === 4.0) return '4';
+    if (grade === 4.3) return '4-';
+    if (grade === 4.7) return '5+';
+    if (grade === 5.0) return '5';
+    if (grade === 5.3) return '5-';
+    if (grade === 6.0) return '6';
+    return grade.toFixed(1);
+  };
+
+  // Funktion zur Konvertierung von deutschen Notentexten zu numerischen Werten
+  const convertGermanGradeTextToNumber = (text: string): number | null => {
+    const cleanText = text.trim().toLowerCase();
+    
+    // Direkte Zuordnung
+    const gradeMap: { [key: string]: number } = {
+      '1': 1.0,
+      '1-': 1.3,
+      '2+': 1.7,
+      '2': 2.0,
+      '2-': 2.3,
+      '3+': 2.7,
+      '3': 3.0,
+      '3-': 3.3,
+      '4+': 3.7,
+      '4': 4.0,
+      '4-': 4.3,
+      '5+': 4.7,
+      '5': 5.0,
+      '5-': 5.3,
+      '6': 6.0
+    };
+    
+    return gradeMap[cleanText] || null;
   };
 
   const getGradeColor = (grade: number, gradingSystem: string = 'GERMAN'): string => {
@@ -293,12 +338,12 @@ const GradesModal: React.FC<GradesModalProps> = ({
       if (grade >= 1) return '#FF5722';
       return colors.accent2; // 0 = ungenügend
     } else {
-      // Deutsches Schulnotensystem
-      if (grade >= 1.0 && grade <= 1.5) return colors.success;
-      if (grade >= 1.6 && grade <= 2.5) return '#4CAF50';
-      if (grade >= 2.6 && grade <= 3.5) return '#FF9800';
-      if (grade >= 3.6 && grade <= 4.5) return '#F57C00';
-      if (grade >= 4.6 && grade <= 6.0) return colors.accent2;
+      // Deutsches Schulnotensystem (korrigierte Werte)
+      if (grade >= 1.0 && grade <= 1.7) return colors.success; // 1, 1-, 2+
+      if (grade >= 2.0 && grade <= 2.7) return '#4CAF50'; // 2, 2-, 3+
+      if (grade >= 3.0 && grade <= 3.7) return '#FF9800'; // 3, 3-, 4+
+      if (grade >= 4.0 && grade <= 4.7) return '#F57C00'; // 4, 4-, 5+
+      if (grade >= 5.0 && grade <= 6.0) return colors.accent2; // 5, 5-, 6
       return colors.textSecondary;
     }
   };
@@ -437,78 +482,54 @@ const GradesModal: React.FC<GradesModalProps> = ({
               <Grid item xs={12} sm={3}>
                 {!hasChildren ? (
                   <>
-                    <FormControl fullWidth size="small">
-                      <Select
-                        value={node.grade || ''}
-                        onChange={(e) => updateGrade(node.id, e.target.value as number)}
-                        displayEmpty
-                        placeholder="Note auswählen"
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: 0.7,
-                            minHeight: '32px',
-                            fontSize: '0.65rem'
-                          }
-                        }}
-                      >
-                        <MenuItem value="" sx={{ fontSize: '0.65rem' }}>
-                          <em>Note auswählen</em>
-                        </MenuItem>
-                        {(gradingSchema?.gradingSystem === 'MSS' ? getMSSGradeOptions() : getGermanGradeOptions()).map((grade) => (
-                          <MenuItem key={grade} value={grade} sx={{ fontSize: '0.65rem' }}>
-                            {gradingSchema?.gradingSystem === 'MSS' ? 
-                              `${grade} Punkte` : 
-                              grade === 1.0 ? '1' :
-                              grade === 1.25 ? '1-' :
-                              grade === 1.5 ? '1-2' :
-                              grade === 1.75 ? '2+' :
-                              grade === 2.0 ? '2' :
-                              grade === 2.25 ? '2-' :
-                              grade === 2.5 ? '2-3' :
-                              grade === 2.75 ? '3+' :
-                              grade === 3.0 ? '3' :
-                              grade === 3.25 ? '3-' :
-                              grade === 3.5 ? '3-4' :
-                              grade === 3.75 ? '4+' :
-                              grade === 4.0 ? '4' :
-                              grade === 4.25 ? '4-' :
-                              grade === 4.5 ? '4-5' :
-                              grade === 4.75 ? '5+' :
-                              grade === 5.0 ? '5' :
-                              grade === 5.25 ? '5-' :
-                              grade === 5.5 ? '5-6' :
-                              grade === 5.75 ? '6-' :
-                              grade === 6.0 ? '6' : grade.toString()
+                    <TextField
+                      size="small"
+                      value={node.grade !== undefined ? 
+                        (gradingSchema?.gradingSystem === 'MSS' ? 
+                          node.grade.toString() : 
+                          formatGermanGrade(node.grade)
+                        ) : ''
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          updateGrade(node.id, undefined);
+                        } else {
+                          // Für MSS: Nur Zahlen 0-15
+                          if (gradingSchema?.gradingSystem === 'MSS') {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue) && numValue >= 0 && numValue <= 15) {
+                              updateGrade(node.id, numValue);
                             }
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                          } else {
+                            // Für deutsche Noten: Konvertiere Text zu numerischem Wert
+                            const germanGrade = convertGermanGradeTextToNumber(value);
+                            if (germanGrade !== null) {
+                              updateGrade(node.id, germanGrade);
+                            }
+                          }
+                        }
+                      }}
+                      placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
+                      sx={{ 
+                        fontSize: '0.65rem',
+                        '& .MuiInputBase-input': { fontSize: '0.65rem' },
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 0.7,
+                          minHeight: '32px'
+                        }
+                      }}
+                      helperText={gradingSchema?.gradingSystem === 'MSS' ? 
+                        'Punkte (0-15)' : 
+                        'Deutsche Noten: 1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'
+                      }
+                      FormHelperTextProps={{ sx: { fontSize: '0.5rem' } }}
+                    />
                     {node.grade !== undefined && (
                       <Chip
                         label={gradingSchema?.gradingSystem === 'MSS' ? 
                           `${node.grade} Punkte` : 
-                          node.grade === 1.0 ? '1' :
-                          node.grade === 1.25 ? '1-' :
-                          node.grade === 1.5 ? '1-2' :
-                          node.grade === 1.75 ? '2+' :
-                          node.grade === 2.0 ? '2' :
-                          node.grade === 2.25 ? '2-' :
-                          node.grade === 2.5 ? '2-3' :
-                          node.grade === 2.75 ? '3+' :
-                          node.grade === 3.0 ? '3' :
-                          node.grade === 3.25 ? '3-' :
-                          node.grade === 3.5 ? '3-4' :
-                          node.grade === 3.75 ? '4+' :
-                          node.grade === 4.0 ? '4' :
-                          node.grade === 4.25 ? '4-' :
-                          node.grade === 4.5 ? '4-5' :
-                          node.grade === 4.75 ? '5+' :
-                          node.grade === 5.0 ? '5' :
-                          node.grade === 5.25 ? '5-' :
-                          node.grade === 5.5 ? '5-6' :
-                          node.grade === 5.75 ? '6-' :
-                          node.grade === 6.0 ? '6' : node.grade.toString()
+                          formatGermanGrade(node.grade)
                         }
                         size="small"
                         sx={{
@@ -527,9 +548,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
                     const intermediateGrade = calculateIntermediateGrade(node);
                     return intermediateGrade !== null ? (
                       <Chip 
-                        label={`Zwischensumme: ${gradingSchema?.gradingSystem === 'MSS' ? 
+                        label={`${gradingSchema?.gradingSystem === 'MSS' ? 
                           `${intermediateGrade.toFixed(0)} Punkte` : 
-                          intermediateGrade.toFixed(1)
+                          formatGermanGrade(intermediateGrade)
                         }`}
                         size="small"
                         sx={{ 
@@ -649,13 +670,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
               <AssessmentIcon sx={{ fontSize: 14, color: colors.primary }} />
               Gesamtnote: {gradingSchema?.gradingSystem === 'MSS' ? 
                 `${finalGrade.toFixed(0)} Punkte` : 
-                finalGrade.toFixed(1)
+                formatGermanGrade(finalGrade)
               }
             </Typography>
             <Chip 
               label={gradingSchema?.gradingSystem === 'MSS' ? 
                 `${finalGrade.toFixed(0)} Punkte` : 
-                finalGrade.toFixed(1)
+                formatGermanGrade(finalGrade)
               }
               sx={{ 
                 bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
