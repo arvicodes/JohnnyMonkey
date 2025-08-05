@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "concurrently \"npm run dev --prefix GeoCodingQuest\" \"npm start --prefix client\" \"npm run dev --prefix server\""
+    "start": "concurrently \"npm start --prefix client\" \"npm run dev --prefix server\""
   },
   "dependencies": {
     "@mui/icons-material": "^7.1.0",
