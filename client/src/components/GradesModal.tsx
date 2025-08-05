@@ -119,15 +119,29 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
   const loadExistingGrades = async (nodes: GradeNode[]) => {
     try {
-      const response = await fetch(`/api/grades/${student.id}/${gradingSchema?.id}`);
+      if (!gradingSchema?.id) {
+        console.log('Debug - No schema ID, setting nodes directly');
+        setGradeNodes(nodes);
+        return;
+      }
+      
+      console.log('Debug - Loading grades for student:', student.id, 'schema:', gradingSchema.id);
+      const response = await fetch(`/api/grades/${student.id}/${gradingSchema.id}`);
+      console.log('Debug - Load response status:', response.status);
+      
       if (response.ok) {
         const grades = await response.json();
+        console.log('Debug - Loaded grades:', grades);
         const updatedNodes = updateNodesWithGrades(nodes, grades);
+        console.log('Debug - Updated nodes:', updatedNodes);
         setGradeNodes(updatedNodes);
+      } else {
+        console.log('Debug - No existing grades found, setting nodes directly');
+        setGradeNodes(nodes);
       }
     } catch (error) {
-      console.log('No existing grades found or grades table not yet implemented');
-      // Für jetzt: Setze die Nodes ohne bestehende Noten
+      console.log('Debug - Error loading grades:', error);
+      console.log('Debug - Setting nodes directly due to error');
       setGradeNodes(nodes);
     }
   };
@@ -356,30 +370,48 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
       const grades = collectAllGrades(gradeNodes);
       
+      console.log('Debug - Grades to save:', grades);
+      console.log('Debug - Student ID:', student.id);
+      console.log('Debug - Schema ID:', gradingSchema?.id);
+      
       if (!gradingSchema?.id) {
         setError('Kein Bewertungsschema gefunden');
         return;
       }
+
+      if (grades.length === 0) {
+        setError('Keine Noten zum Speichern vorhanden');
+        return;
+      }
+
+      const requestBody = {
+        studentId: student.id,
+        schemaId: gradingSchema.id,
+        grades
+      };
+      
+      console.log('Debug - Request body:', requestBody);
 
       const response = await fetch('/api/grades', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          studentId: student.id,
-          schemaId: gradingSchema.id,
-          grades
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('Debug - Response status:', response.status);
+
       if (response.ok) {
+        const result = await response.json();
+        console.log('Debug - Success result:', result);
         setSuccess('Noten erfolgreich gespeichert!');
         setTimeout(() => {
           onClose();
         }, 1500);
       } else {
         const errorData = await response.json();
+        console.log('Debug - Error data:', errorData);
         setError(errorData.error || 'Fehler beim Speichern der Noten');
       }
     } catch (error) {
