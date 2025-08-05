@@ -434,6 +434,96 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     return grade.toFixed(1);
   };
 
+  // Funktion zum Kombinieren von Schema und Noten
+  const combineSchemaWithGrades = (schema: GradingSchema, grades: Grade[]) => {
+    const schemaStructure = parseSchemaStructure(schema.structure);
+    const gradesMap = new Map(grades.map(g => [g.categoryName, g]));
+    
+    const processNode = (node: any): any => {
+      const grade = gradesMap.get(node.name);
+      return {
+        ...node,
+        grade: grade?.grade,
+        weight: grade?.weight || node.weight,
+        children: node.children.map(processNode)
+      };
+    };
+    
+    return schemaStructure.map(processNode);
+  };
+
+  // Rekursive Komponente für hierarchische Noten-Anzeige
+  const renderGradeNode = (node: any, schema: GradingSchema, level: number = 0) => {
+    const hasChildren = node.children && node.children.length > 0;
+    const isLeafNode = !hasChildren;
+    
+    return (
+      <Box key={node.name} sx={{ mb: 0.5 }}>
+        <Box sx={{ 
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          p: 0.7,
+          bgcolor: level === 0 ? '#f0f8ff' : 'white',
+          borderRadius: 0.7,
+          border: '1px solid #e0e0e0',
+          ml: level * 2, // Einrückung basierend auf Level
+          borderLeft: level > 0 ? `3px solid ${level === 1 ? '#1976d2' : level === 2 ? '#2E7D32' : '#F57C00'}` : '1px solid #e0e0e0'
+        }}>
+          <Typography variant="caption" sx={{ 
+            color: colors.textPrimary,
+            fontSize: '0.65rem',
+            fontWeight: level === 0 ? 600 : 500,
+            fontStyle: level === 0 ? 'italic' : 'normal'
+          }}>
+            {level === 0 ? '📚 ' : level === 1 ? '📝 ' : '• '}{node.name}
+          </Typography>
+          
+          {node.grade !== undefined ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ 
+                bgcolor: getGradeColor(node.grade, schema?.gradingSystem),
+                color: 'white',
+                px: 0.8,
+                py: 0.2,
+                borderRadius: 1,
+                fontSize: '0.6rem',
+                fontWeight: 'bold',
+                minWidth: '24px',
+                textAlign: 'center'
+              }}>
+                {schema?.gradingSystem === 'MSS' ? 
+                  node.grade.toFixed(0) : 
+                  formatGermanGrade(node.grade)
+                }
+              </Box>
+              <Typography variant="caption" sx={{ 
+                color: colors.textSecondary,
+                fontSize: '0.55rem'
+              }}>
+                ({node.weight}%)
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="caption" sx={{ 
+              color: colors.textSecondary,
+              fontSize: '0.55rem',
+              fontStyle: 'italic'
+            }}>
+              {isLeafNode ? 'Keine Note' : 'Berechnet'}
+            </Typography>
+          )}
+        </Box>
+        
+        {hasChildren && (
+          <Box sx={{ mt: 0.3 }}>
+            {node.children.map((child: any) => renderGradeNode(child, schema, level + 1))}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
   const getGradeColor = (grade: number, gradingSystem: string = 'GERMAN'): string => {
     if (gradingSystem === 'MSS') {
       if (grade >= 13) return '#4CAF50';
@@ -450,6 +540,49 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       if (grade >= 5.0 && grade <= 6.0) return '#C2185B';
       return '#9E9E9E';
     }
+  };
+
+  // Hilfsfunktion zum Parsen des Schemas
+  const parseSchemaStructure = (schemaStr: string) => {
+    const lines = schemaStr.split('\n').filter(line => line.trim());
+    const result: any[] = [];
+    const stack: { node: any; indent: number }[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+
+      const indent = line.search(/\S/);
+      const match = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
+      
+      if (!match) continue;
+
+      const [, name, weightStr] = match;
+      const weight = parseFloat(weightStr);
+
+      if (isNaN(weight)) continue;
+
+      const node = {
+        name: name.trim(),
+        weight: weight,
+        level: Math.floor(indent / 2),
+        children: []
+      };
+
+      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+        stack.pop();
+      }
+
+      if (stack.length === 0) {
+        result.push(node);
+      } else {
+        stack[stack.length - 1].node.children.push(node);
+      }
+
+      stack.push({ node, indent });
+    }
+
+    return result;
   };
 
   const fetchGrades = async (groupId: string) => {
@@ -903,7 +1036,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         <CircularProgress size={20} />
                       </Box>
                     ) : (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
                         {lerngruppen.map((gruppe) => {
                           const groupGrades = grades[gruppe.id] || [];
                           const schema = gradingSchemas[gruppe.id];
@@ -911,21 +1044,32 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           if (groupGrades.length === 0) {
                             return (
                               <Box key={gruppe.id} sx={{ 
-                                p: 1,
+                                p: 1.4,
                                 bgcolor: '#f8f9fa',
-                                borderRadius: 1,
+                                borderRadius: 1.4,
                                 border: '1px solid #e0e0e0'
                               }}>
+                                <Typography variant="body2" sx={{ 
+                                  color: colors.primary,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  mb: 0.7
+                                }}>
+                                  📚 {gruppe.name}
+                                </Typography>
                                 <Typography variant="caption" sx={{ 
                                   color: colors.textSecondary,
                                   fontSize: '0.65rem',
-                                  fontWeight: 500
+                                  fontStyle: 'italic'
                                 }}>
-                                  {gruppe.name}: Noch keine Noten vorhanden
+                                  Noch keine Noten vorhanden
                                 </Typography>
                               </Box>
                             );
                           }
+
+                          // Kombiniere Schema mit Noten für hierarchische Anzeige
+                          const hierarchicalGrades = combineSchemaWithGrades(schema, groupGrades);
 
                           return (
                             <Box key={gruppe.id} sx={{ 
@@ -938,55 +1082,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                 color: colors.primary,
                                 fontSize: '0.75rem',
                                 fontWeight: 600,
-                                mb: 0.7
+                                mb: 1,
+                                pb: 0.5,
+                                borderBottom: `2px solid ${colors.primary}30`
                               }}>
                                 📚 {gruppe.name}
                               </Typography>
                               
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                {groupGrades.map((grade) => (
-                                  <Box key={grade.id} sx={{ 
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    p: 0.7,
-                                    bgcolor: 'white',
-                                    borderRadius: 0.7,
-                                    border: '1px solid #f0f0f0'
-                                  }}>
-                                    <Typography variant="caption" sx={{ 
-                                      color: colors.textPrimary,
-                                      fontSize: '0.65rem',
-                                      fontWeight: 500
-                                    }}>
-                                      {grade.categoryName}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                      <Box sx={{ 
-                                        bgcolor: getGradeColor(grade.grade, schema?.gradingSystem),
-                                        color: 'white',
-                                        px: 0.8,
-                                        py: 0.2,
-                                        borderRadius: 1,
-                                        fontSize: '0.6rem',
-                                        fontWeight: 'bold',
-                                        minWidth: '24px',
-                                        textAlign: 'center'
-                                      }}>
-                                        {schema?.gradingSystem === 'MSS' ? 
-                                          grade.grade.toFixed(0) : 
-                                          formatGermanGrade(grade.grade)
-                                        }
-                                      </Box>
-                                      <Typography variant="caption" sx={{ 
-                                        color: colors.textSecondary,
-                                        fontSize: '0.55rem'
-                                      }}>
-                                        ({grade.weight}%)
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                ))}
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                                {hierarchicalGrades.map((node) => renderGradeNode(node, schema))}
                               </Box>
                             </Box>
                           );
