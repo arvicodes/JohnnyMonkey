@@ -176,8 +176,26 @@ const GradesModal: React.FC<GradesModalProps> = ({
     };
     
     const updatedNodes = updateNodes(nodes);
+    
+    // Berechne Zwischennoten für alle Kategorien mit Kindern
+    const updateCalculatedGrades = (nodeList: GradeNode[]): GradeNode[] => {
+      return nodeList.map(node => {
+        if (node.children.length > 0) {
+          const updatedChildren = updateCalculatedGrades(node.children);
+          const calculatedGrade = calculateIntermediateGrade({ ...node, children: updatedChildren });
+          return {
+            ...node,
+            children: updatedChildren,
+            grade: calculatedGrade !== null ? calculatedGrade : node.grade
+          };
+        }
+        return node;
+      });
+    };
+
+    const finalNodes = updateCalculatedGrades(updatedNodes);
     setLockedGrades(newLockedGrades);
-    return updatedNodes;
+    return finalNodes;
   };
 
   const toggleGradeLock = (nodeId: string) => {
@@ -274,7 +292,25 @@ const GradesModal: React.FC<GradesModalProps> = ({
     };
     
     const updatedNodes = updateNodes(gradeNodes);
-    setGradeNodes(updatedNodes);
+    
+    // Aktualisiere berechnete Noten für alle Zwischenkategorien
+    const updateCalculatedGrades = (nodeList: GradeNode[]): GradeNode[] => {
+      return nodeList.map(node => {
+        if (node.children.length > 0) {
+          const updatedChildren = updateCalculatedGrades(node.children);
+          const calculatedGrade = calculateIntermediateGrade({ ...node, children: updatedChildren });
+          return {
+            ...node,
+            children: updatedChildren,
+            grade: calculatedGrade !== null ? calculatedGrade : node.grade
+          };
+        }
+        return node;
+      });
+    };
+
+    const finalNodes = updateCalculatedGrades(updatedNodes);
+    setGradeNodes(finalNodes);
   };
 
   const calculateWeightedGrade = (nodes: GradeNode[]): number => {
@@ -453,8 +489,16 @@ const GradesModal: React.FC<GradesModalProps> = ({
     
     const collect = (nodeList: GradeNode[]) => {
       nodeList.forEach(node => {
-        // Sammle nur Noten von Blattknoten (ohne Kinder) - diese sind manuell eingegeben
+        // Sammle Noten von Blattknoten (ohne Kinder) - diese sind manuell eingegeben
         if (node.children.length === 0 && node.grade !== undefined) {
+          grades.push({
+            categoryName: node.name,
+            grade: node.grade,
+            weight: node.weight
+          });
+        }
+        // Sammle auch berechnete Noten von Zwischenkategorien, wenn sie vorhanden sind
+        else if (node.children.length > 0 && node.grade !== undefined) {
           grades.push({
             categoryName: node.name,
             grade: node.grade,
