@@ -15,7 +15,10 @@ import {
   Avatar,
   Chip,
   Alert,
-  LinearProgress
+  LinearProgress,
+  FormControl,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -35,6 +38,7 @@ interface GradingSchema {
   id: string;
   name: string;
   structure: string;
+  gradingSystem?: string;
 }
 
 interface Student {
@@ -256,13 +260,47 @@ const GradesModal: React.FC<GradesModalProps> = ({
     return hasValidGrades && totalWeight > 0 ? weightedSum / totalWeight : null;
   };
 
-  const getGradeColor = (grade: number): string => {
-    if (grade >= 1.0 && grade <= 1.5) return colors.success;
-    if (grade >= 1.6 && grade <= 2.5) return '#4CAF50';
-    if (grade >= 2.6 && grade <= 3.5) return '#FF9800';
-    if (grade >= 3.6 && grade <= 4.5) return '#F57C00';
-    if (grade >= 4.6 && grade <= 6.0) return colors.accent2;
-    return colors.textSecondary;
+  // Gültige Notenwerte basierend auf dem Notensystem
+  const getValidGradeRange = (gradingSystem: string = 'GERMAN') => {
+    if (gradingSystem === 'MSS') {
+      return { min: 0, max: 15, step: 1 };
+    } else {
+      // Deutsches Schulnotensystem: 1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6
+      return { min: 1, max: 6, step: 0.25 };
+    }
+  };
+
+  // Deutsche Notenwerte als Array (für Dropdown)
+  const getGermanGradeOptions = () => {
+    return [
+      1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 
+      4.0, 4.25, 4.5, 4.75, 5.0, 5.25, 5.5, 5.75, 6.0
+    ];
+  };
+
+  // MSS Notenwerte als Array (für Dropdown)
+  const getMSSGradeOptions = () => {
+    return Array.from({ length: 16 }, (_, i) => i); // 0 bis 15
+  };
+
+  const getGradeColor = (grade: number, gradingSystem: string = 'GERMAN'): string => {
+    if (gradingSystem === 'MSS') {
+      // MSS-Farben: 15-13 = sehr gut, 12-10 = gut, 9-7 = befriedigend, 6-4 = ausreichend, 3-1 = mangelhaft, 0 = ungenügend
+      if (grade >= 13) return colors.success;
+      if (grade >= 10) return '#4CAF50';
+      if (grade >= 7) return '#FF9800';
+      if (grade >= 4) return '#F57C00';
+      if (grade >= 1) return '#FF5722';
+      return colors.accent2; // 0 = ungenügend
+    } else {
+      // Deutsches Schulnotensystem
+      if (grade >= 1.0 && grade <= 1.5) return colors.success;
+      if (grade >= 1.6 && grade <= 2.5) return '#4CAF50';
+      if (grade >= 2.6 && grade <= 3.5) return '#FF9800';
+      if (grade >= 3.6 && grade <= 4.5) return '#F57C00';
+      if (grade >= 4.6 && grade <= 6.0) return colors.accent2;
+      return colors.textSecondary;
+    }
   };
 
   const handleSave = async () => {
@@ -399,36 +437,82 @@ const GradesModal: React.FC<GradesModalProps> = ({
               <Grid item xs={12} sm={3}>
                 {!hasChildren ? (
                   <>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      type="number"
-                      placeholder="Note"
-                      value={node.grade || ''}
-                      onChange={(e) => updateGrade(node.id, parseFloat(e.target.value) || 0)}
-                      variant="outlined"
-                      inputProps={{ 
-                        min: 1, 
-                        max: 6, 
-                        step: 0.1,
-                        style: { 
-                          fontSize: '0.65rem',
-                          color: node.grade ? getGradeColor(node.grade) : colors.textPrimary
-                        }
-                      }}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 0.7,
-                          minHeight: '32px'
-                        }
-                      }}
-                    />
+                    <FormControl fullWidth size="small">
+                      <Select
+                        value={node.grade || ''}
+                        onChange={(e) => updateGrade(node.id, e.target.value as number)}
+                        displayEmpty
+                        placeholder="Note auswählen"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 0.7,
+                            minHeight: '32px',
+                            fontSize: '0.65rem'
+                          }
+                        }}
+                      >
+                        <MenuItem value="" sx={{ fontSize: '0.65rem' }}>
+                          <em>Note auswählen</em>
+                        </MenuItem>
+                        {(gradingSchema?.gradingSystem === 'MSS' ? getMSSGradeOptions() : getGermanGradeOptions()).map((grade) => (
+                          <MenuItem key={grade} value={grade} sx={{ fontSize: '0.65rem' }}>
+                            {gradingSchema?.gradingSystem === 'MSS' ? 
+                              `${grade} Punkte` : 
+                              grade === 1.0 ? '1' :
+                              grade === 1.25 ? '1-' :
+                              grade === 1.5 ? '1-2' :
+                              grade === 1.75 ? '2+' :
+                              grade === 2.0 ? '2' :
+                              grade === 2.25 ? '2-' :
+                              grade === 2.5 ? '2-3' :
+                              grade === 2.75 ? '3+' :
+                              grade === 3.0 ? '3' :
+                              grade === 3.25 ? '3-' :
+                              grade === 3.5 ? '3-4' :
+                              grade === 3.75 ? '4+' :
+                              grade === 4.0 ? '4' :
+                              grade === 4.25 ? '4-' :
+                              grade === 4.5 ? '4-5' :
+                              grade === 4.75 ? '5+' :
+                              grade === 5.0 ? '5' :
+                              grade === 5.25 ? '5-' :
+                              grade === 5.5 ? '5-6' :
+                              grade === 5.75 ? '6-' :
+                              grade === 6.0 ? '6' : grade.toString()
+                            }
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                     {node.grade !== undefined && (
                       <Chip
-                        label={`${node.grade.toFixed(1)}`}
+                        label={gradingSchema?.gradingSystem === 'MSS' ? 
+                          `${node.grade} Punkte` : 
+                          node.grade === 1.0 ? '1' :
+                          node.grade === 1.25 ? '1-' :
+                          node.grade === 1.5 ? '1-2' :
+                          node.grade === 1.75 ? '2+' :
+                          node.grade === 2.0 ? '2' :
+                          node.grade === 2.25 ? '2-' :
+                          node.grade === 2.5 ? '2-3' :
+                          node.grade === 2.75 ? '3+' :
+                          node.grade === 3.0 ? '3' :
+                          node.grade === 3.25 ? '3-' :
+                          node.grade === 3.5 ? '3-4' :
+                          node.grade === 3.75 ? '4+' :
+                          node.grade === 4.0 ? '4' :
+                          node.grade === 4.25 ? '4-' :
+                          node.grade === 4.5 ? '4-5' :
+                          node.grade === 4.75 ? '5+' :
+                          node.grade === 5.0 ? '5' :
+                          node.grade === 5.25 ? '5-' :
+                          node.grade === 5.5 ? '5-6' :
+                          node.grade === 5.75 ? '6-' :
+                          node.grade === 6.0 ? '6' : node.grade.toString()
+                        }
                         size="small"
                         sx={{
-                          bgcolor: getGradeColor(node.grade),
+                          bgcolor: getGradeColor(node.grade, gradingSchema?.gradingSystem),
                           color: 'white',
                           fontWeight: 'bold',
                           fontSize: '0.6rem',
@@ -443,10 +527,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
                     const intermediateGrade = calculateIntermediateGrade(node);
                     return intermediateGrade !== null ? (
                       <Chip 
-                        label={`Zwischensumme: ${intermediateGrade.toFixed(1)}`}
+                        label={`Zwischensumme: ${gradingSchema?.gradingSystem === 'MSS' ? 
+                          `${intermediateGrade.toFixed(0)} Punkte` : 
+                          intermediateGrade.toFixed(1)
+                        }`}
                         size="small"
                         sx={{ 
-                          bgcolor: getGradeColor(intermediateGrade),
+                          bgcolor: getGradeColor(intermediateGrade, gradingSchema?.gradingSystem),
                           color: 'white',
                           fontWeight: 'bold',
                           fontSize: '0.6rem',
@@ -560,12 +647,18 @@ const GradesModal: React.FC<GradesModalProps> = ({
               color: colors.textPrimary
             }}>
               <AssessmentIcon sx={{ fontSize: 14, color: colors.primary }} />
-              Gesamtnote: {finalGrade.toFixed(1)}
+              Gesamtnote: {gradingSchema?.gradingSystem === 'MSS' ? 
+                `${finalGrade.toFixed(0)} Punkte` : 
+                finalGrade.toFixed(1)
+              }
             </Typography>
             <Chip 
-              label={`${finalGrade.toFixed(1)}`}
+              label={gradingSchema?.gradingSystem === 'MSS' ? 
+                `${finalGrade.toFixed(0)} Punkte` : 
+                finalGrade.toFixed(1)
+              }
               sx={{ 
-                bgcolor: getGradeColor(finalGrade),
+                bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: '0.7rem',
