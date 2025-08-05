@@ -16,16 +16,11 @@ import {
   Typography,
   Box,
   Paper,
-  Grid,
   Card,
   CardContent,
-  Avatar,
   Chip,
   Alert,
   LinearProgress,
-  FormControl,
-  Select,
-  MenuItem,
   IconButton
 } from '@mui/material';
 
@@ -36,6 +31,7 @@ interface GradeNode {
   children: GradeNode[];
   grade?: number;
   locked?: boolean; // Neu: ob die Note gesperrt ist
+  originalLevel?: number; // Neu: ursprüngliches Level für Einrückung
 }
 
 interface GradingSchema {
@@ -98,6 +94,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
           const schema = schemas[0]; // Verwende das erste Schema
           setGradingSchema(schema);
           const parsedNodes = parseSchemaString(schema.structure);
+          // Verwende die vollständige Hierarchie ohne Filterung
           setGradeNodes(parsedNodes);
           // Lade bestehende Noten nachdem das Schema gesetzt wurde
           await loadExistingGrades(parsedNodes, schema);
@@ -235,7 +232,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
         id: generateId(),
         name: name.trim(),
         weight: weight,
-        children: []
+        children: [],
+        originalLevel: Math.floor(indent / 2) // Speichere das ursprüngliche Level basierend auf Einrückung
       };
 
       while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
@@ -253,6 +251,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
     return result;
   };
+
+
 
   const updateGrade = (nodeId: string, grade: number | undefined) => {
     // Prüfe ob die Note gesperrt ist
@@ -320,26 +320,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
   };
 
   // Gültige Notenwerte basierend auf dem Notensystem
-  const getValidGradeRange = (gradingSystem: string = 'GERMAN') => {
-    if (gradingSystem === 'MSS') {
-      return { min: 0, max: 15, step: 1 };
-    } else {
-      // Deutsches Schulnotensystem: 1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6
-      return { min: 1, max: 6, step: 0.25 };
-    }
-  };
 
-  // Deutsche Notenwerte als Array (für Dropdown)
-  const getGermanGradeOptions = () => {
-    return [
-      1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0
-    ];
-  };
-
-  // MSS Notenwerte als Array (für Dropdown)
-  const getMSSGradeOptions = () => {
-    return Array.from({ length: 16 }, (_, i) => i); // 0 bis 15
-  };
 
   // Funktion zur Formatierung der deutschen Notenanzeige
   const formatGermanGrade = (grade: number): string => {
@@ -472,13 +453,16 @@ const GradesModal: React.FC<GradesModalProps> = ({
     
     const collect = (nodeList: GradeNode[]) => {
       nodeList.forEach(node => {
+        // Sammle nur Noten von Blattknoten (ohne Kinder) - diese sind manuell eingegeben
         if (node.children.length === 0 && node.grade !== undefined) {
           grades.push({
             categoryName: node.name,
             grade: node.grade,
             weight: node.weight
           });
-        } else if (node.children.length > 0) {
+        }
+        // Rekursiv durch alle Kinder gehen
+        if (node.children.length > 0) {
           collect(node.children);
         }
       });
@@ -491,6 +475,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const renderGradeInput = (node: GradeNode, level: number = 0) => {
     const isTopLevel = level === 0;
     const hasChildren = node.children.length > 0;
+    // Verwende originalLevel falls verfügbar, sonst das übergebene level
+    const displayLevel = node.originalLevel !== undefined ? node.originalLevel : level;
 
     return (
       <Box key={node.id} sx={{ mb: 0.4 }}>
@@ -498,16 +484,16 @@ const GradesModal: React.FC<GradesModalProps> = ({
           variant="outlined" 
           sx={{ 
             borderRadius: 1,
-            ml: level * 4, // Kompaktere Einrückung
-            borderLeft: level > 0 ? `3px solid ${isTopLevel ? colors.primary : 
-                              level === 1 ? colors.accent1 : 
-                              level === 2 ? colors.secondary : colors.accent2}` : '1px solid #e0e0e0',
-            bgcolor: level === 0 ? '#ffffff' : 
-                     level === 1 ? '#f8fbff' : 
-                     level === 2 ? '#fff8f5' : '#f5f8ff',
-            borderColor: level === 0 ? '#e0e0e0' : 
-                        level === 1 ? '#d0e0f0' : 
-                        level === 2 ? '#f0d0c0' : '#e0d0f0'
+            ml: displayLevel * 4, // Kompaktere Einrückung
+            borderLeft: displayLevel > 0 ? `3px solid ${isTopLevel ? colors.primary : 
+                              displayLevel === 1 ? colors.accent1 : 
+                              displayLevel === 2 ? colors.secondary : colors.accent2}` : '1px solid #e0e0e0',
+            bgcolor: displayLevel === 0 ? '#ffffff' : 
+                     displayLevel === 1 ? '#f8fbff' : 
+                     displayLevel === 2 ? '#fff8f5' : '#f5f8ff',
+            borderColor: displayLevel === 0 ? '#e0e0e0' : 
+                        displayLevel === 1 ? '#d0e0f0' : 
+                        displayLevel === 2 ? '#f0d0c0' : '#e0d0f0'
           }}
         >
           <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
@@ -536,6 +522,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
               </Typography>
               
               {!hasChildren ? (
+                // Nur für Blattknoten (ohne Kinder) - manuelle Eingabe
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
                   <Typography 
                     variant="caption" 
@@ -642,6 +629,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
                   )}
                 </Box>
               ) : (
+                // Für Kategorien mit Kindern - automatisch berechnete Note
                 (() => {
                   const intermediateGrade = calculateIntermediateGrade(node);
                   return intermediateGrade !== null ? (
@@ -700,6 +688,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
                   );
                 })()
               )}
+              
+
             </Box>
           </CardContent>
         </Card>
