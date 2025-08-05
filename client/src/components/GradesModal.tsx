@@ -233,7 +233,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
     return totalWeight > 0 ? weightedSum / totalWeight : 0;
   };
 
-  // Neue Funktion: Berechnet Zwischensummen für Kategorien mit Kindern
+  // Berechnet Zwischensummen für ALLE Kategorien mit Kindern (rekursiv)
   const calculateIntermediateGrade = (node: GradeNode): number | null => {
     if (node.children.length === 0) {
       return node.grade !== undefined ? node.grade : null;
@@ -243,6 +243,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
     let weightedSum = 0;
     let hasValidGrades = false;
 
+    // Rekursiv alle Kinder durchgehen
     node.children.forEach(child => {
       const childGrade = calculateIntermediateGrade(child);
       if (childGrade !== null) {
@@ -396,38 +397,53 @@ const GradesModal: React.FC<GradesModalProps> = ({
               </Grid>
               
               <Grid item xs={12} sm={3}>
-                {!hasChildren && (
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    placeholder="Note"
-                    value={node.grade || ''}
-                    onChange={(e) => updateGrade(node.id, parseFloat(e.target.value) || 0)}
-                    variant="outlined"
-                    inputProps={{ 
-                      min: 1, 
-                      max: 6, 
-                      step: 0.1,
-                      style: { 
-                        fontSize: '0.65rem',
-                        color: node.grade ? getGradeColor(node.grade) : colors.textPrimary
-                      }
-                    }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 0.7,
-                        minHeight: '32px'
-                      }
-                    }}
-                  />
-                )}
-                {hasChildren && (
+                {!hasChildren ? (
+                  <>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      placeholder="Note"
+                      value={node.grade || ''}
+                      onChange={(e) => updateGrade(node.id, parseFloat(e.target.value) || 0)}
+                      variant="outlined"
+                      inputProps={{ 
+                        min: 1, 
+                        max: 6, 
+                        step: 0.1,
+                        style: { 
+                          fontSize: '0.65rem',
+                          color: node.grade ? getGradeColor(node.grade) : colors.textPrimary
+                        }
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 0.7,
+                          minHeight: '32px'
+                        }
+                      }}
+                    />
+                    {node.grade !== undefined && (
+                      <Chip
+                        label={`${node.grade.toFixed(1)}`}
+                        size="small"
+                        sx={{
+                          bgcolor: getGradeColor(node.grade),
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '0.6rem',
+                          height: 24,
+                          mt: 0.5
+                        }}
+                      />
+                    )}
+                  </>
+                ) : (
                   (() => {
                     const intermediateGrade = calculateIntermediateGrade(node);
                     return intermediateGrade !== null ? (
                       <Chip 
-                        label={`${intermediateGrade.toFixed(1)}`}
+                        label={`Zwischensumme: ${intermediateGrade.toFixed(1)}`}
                         size="small"
                         sx={{ 
                           bgcolor: getGradeColor(intermediateGrade),
