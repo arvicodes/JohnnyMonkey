@@ -356,21 +356,11 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
       const grades = collectAllGrades(gradeNodes);
       
-      // Für jetzt: Zeige eine Vorschau der zu speichernden Noten
-      console.log('Noten zum Speichern:', {
-        studentId: student.id,
-        schemaId: gradingSchema?.id,
-        grades
-      });
-      
-      // Simuliere erfolgreiches Speichern
-      setSuccess('Noten-Vorschau erstellt! (Backend-Integration folgt später)');
-      setTimeout(() => {
-        onClose();
-      }, 2000);
-      
-      /* 
-      // Backend-Integration (später zu aktivieren):
+      if (!gradingSchema?.id) {
+        setError('Kein Bewertungsschema gefunden');
+        return;
+      }
+
       const response = await fetch('/api/grades', {
         method: 'POST',
         headers: {
@@ -378,7 +368,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
         },
         body: JSON.stringify({
           studentId: student.id,
-          schemaId: gradingSchema?.id,
+          schemaId: gradingSchema.id,
           grades
         }),
       });
@@ -392,8 +382,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
         const errorData = await response.json();
         setError(errorData.error || 'Fehler beim Speichern der Noten');
       }
-      */
     } catch (error) {
+      console.error('Fehler beim Speichern der Noten:', error);
       setError('Fehler beim Speichern der Noten');
     } finally {
       setSaving(false);
@@ -639,9 +629,6 @@ const GradesModal: React.FC<GradesModalProps> = ({
         )}
 
         <Box sx={{ mb: 1.4 }}>
-          <Alert severity="info" sx={{ mb: 1.4, borderRadius: 0.7, fontSize: '0.6rem' }}>
-            💡 Frontend-Vorschau: Noten können eingegeben werden, aber werden noch nicht in der Datenbank gespeichert.
-          </Alert>
           
           <Typography variant="h6" sx={{ 
             fontSize: '0.75rem',
@@ -721,7 +708,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
             '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
           }}
         >
-          {saving ? 'Vorschau...' : 'Vorschau erstellen'}
+          {saving ? 'Speichern...' : 'Noten speichern'}
         </Button>
       </DialogActions>
     </Dialog>

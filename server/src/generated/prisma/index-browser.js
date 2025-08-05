@@ -132,6 +132,7 @@ exports.Prisma.GradingSchemaScalarFieldEnum = {
   name: 'name',
   structure: 'structure',
   groupId: 'groupId',
+  gradingSystem: 'gradingSystem',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

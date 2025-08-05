@@ -4285,6 +4285,7 @@ export namespace Prisma {
     name: string | null
     structure: string | null
     groupId: string | null
+    gradingSystem: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -4294,6 +4295,7 @@ export namespace Prisma {
     name: string | null
     structure: string | null
     groupId: string | null
+    gradingSystem: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -4303,6 +4305,7 @@ export namespace Prisma {
     name: number
     structure: number
     groupId: number
+    gradingSystem: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -4314,6 +4317,7 @@ export namespace Prisma {
     name?: true
     structure?: true
     groupId?: true
+    gradingSystem?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -4323,6 +4327,7 @@ export namespace Prisma {
     name?: true
     structure?: true
     groupId?: true
+    gradingSystem?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -4332,6 +4337,7 @@ export namespace Prisma {
     name?: true
     structure?: true
     groupId?: true
+    gradingSystem?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -4414,6 +4420,7 @@ export namespace Prisma {
     name: string
     structure: string
     groupId: string
+    gradingSystem: string
     createdAt: Date
     updatedAt: Date
     _count: GradingSchemaCountAggregateOutputType | null
@@ -4440,6 +4447,7 @@ export namespace Prisma {
     name?: boolean
     structure?: boolean
     groupId?: boolean
+    gradingSystem?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     learningGroup?: boolean | LearningGroupDefaultArgs<ExtArgs>
@@ -4452,6 +4460,7 @@ export namespace Prisma {
     name?: boolean
     structure?: boolean
     groupId?: boolean
+    gradingSystem?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     learningGroup?: boolean | LearningGroupDefaultArgs<ExtArgs>
@@ -4462,6 +4471,7 @@ export namespace Prisma {
     name?: boolean
     structure?: boolean
     groupId?: boolean
+    gradingSystem?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     learningGroup?: boolean | LearningGroupDefaultArgs<ExtArgs>
@@ -4472,11 +4482,12 @@ export namespace Prisma {
     name?: boolean
     structure?: boolean
     groupId?: boolean
+    gradingSystem?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type GradingSchemaOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "structure" | "groupId" | "createdAt" | "updatedAt", ExtArgs["result"]["gradingSchema"]>
+  export type GradingSchemaOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "structure" | "groupId" | "gradingSystem" | "createdAt" | "updatedAt", ExtArgs["result"]["gradingSchema"]>
   export type GradingSchemaInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     learningGroup?: boolean | LearningGroupDefaultArgs<ExtArgs>
     grades?: boolean | GradingSchema$gradesArgs<ExtArgs>
@@ -4500,6 +4511,7 @@ export namespace Prisma {
       name: string
       structure: string
       groupId: string
+      gradingSystem: string
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["gradingSchema"]>
@@ -4931,6 +4943,7 @@ export namespace Prisma {
     readonly name: FieldRef<"GradingSchema", 'String'>
     readonly structure: FieldRef<"GradingSchema", 'String'>
     readonly groupId: FieldRef<"GradingSchema", 'String'>
+    readonly gradingSystem: FieldRef<"GradingSchema", 'String'>
     readonly createdAt: FieldRef<"GradingSchema", 'DateTime'>
     readonly updatedAt: FieldRef<"GradingSchema", 'DateTime'>
   }
@@ -24640,6 +24653,7 @@ export namespace Prisma {
     name: 'name',
     structure: 'structure',
     groupId: 'groupId',
+    gradingSystem: 'gradingSystem',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -25016,6 +25030,7 @@ export namespace Prisma {
     name?: StringFilter<"GradingSchema"> | string
     structure?: StringFilter<"GradingSchema"> | string
     groupId?: StringFilter<"GradingSchema"> | string
+    gradingSystem?: StringFilter<"GradingSchema"> | string
     createdAt?: DateTimeFilter<"GradingSchema"> | Date | string
     updatedAt?: DateTimeFilter<"GradingSchema"> | Date | string
     learningGroup?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
@@ -25027,6 +25042,7 @@ export namespace Prisma {
     name?: SortOrder
     structure?: SortOrder
     groupId?: SortOrder
+    gradingSystem?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     learningGroup?: LearningGroupOrderByWithRelationInput
@@ -25041,6 +25057,7 @@ export namespace Prisma {
     name?: StringFilter<"GradingSchema"> | string
     structure?: StringFilter<"GradingSchema"> | string
     groupId?: StringFilter<"GradingSchema"> | string
+    gradingSystem?: StringFilter<"GradingSchema"> | string
     createdAt?: DateTimeFilter<"GradingSchema"> | Date | string
     updatedAt?: DateTimeFilter<"GradingSchema"> | Date | string
     learningGroup?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
@@ -25052,6 +25069,7 @@ export namespace Prisma {
     name?: SortOrder
     structure?: SortOrder
     groupId?: SortOrder
+    gradingSystem?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: GradingSchemaCountOrderByAggregateInput
@@ -25067,6 +25085,7 @@ export namespace Prisma {
     name?: StringWithAggregatesFilter<"GradingSchema"> | string
     structure?: StringWithAggregatesFilter<"GradingSchema"> | string
     groupId?: StringWithAggregatesFilter<"GradingSchema"> | string
+    gradingSystem?: StringWithAggregatesFilter<"GradingSchema"> | string
     createdAt?: DateTimeWithAggregatesFilter<"GradingSchema"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"GradingSchema"> | Date | string
   }
@@ -26354,6 +26373,7 @@ export namespace Prisma {
     id?: string
     name: string
     structure: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     learningGroup: LearningGroupCreateNestedOneWithoutGradingSchemasInput
@@ -26365,6 +26385,7 @@ export namespace Prisma {
     name: string
     structure: string
     groupId: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     grades?: GradeUncheckedCreateNestedManyWithoutSchemaInput
@@ -26374,6 +26395,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     learningGroup?: LearningGroupUpdateOneRequiredWithoutGradingSchemasNestedInput
@@ -26385,6 +26407,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
     groupId?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     grades?: GradeUncheckedUpdateManyWithoutSchemaNestedInput
@@ -26395,6 +26418,7 @@ export namespace Prisma {
     name: string
     structure: string
     groupId: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -26403,6 +26427,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -26412,6 +26437,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
     groupId?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -27827,6 +27853,7 @@ export namespace Prisma {
     name?: SortOrder
     structure?: SortOrder
     groupId?: SortOrder
+    gradingSystem?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -27836,6 +27863,7 @@ export namespace Prisma {
     name?: SortOrder
     structure?: SortOrder
     groupId?: SortOrder
+    gradingSystem?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -27845,6 +27873,7 @@ export namespace Prisma {
     name?: SortOrder
     structure?: SortOrder
     groupId?: SortOrder
+    gradingSystem?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -30887,6 +30916,7 @@ export namespace Prisma {
     id?: string
     name: string
     structure: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     learningGroup: LearningGroupCreateNestedOneWithoutGradingSchemasInput
@@ -30897,6 +30927,7 @@ export namespace Prisma {
     name: string
     structure: string
     groupId: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -30964,6 +30995,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     learningGroup?: LearningGroupUpdateOneRequiredWithoutGradingSchemasNestedInput
@@ -30974,6 +31006,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
     groupId?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -30982,6 +31015,7 @@ export namespace Prisma {
     id?: string
     name: string
     structure: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     grades?: GradeCreateNestedManyWithoutSchemaInput
@@ -30991,6 +31025,7 @@ export namespace Prisma {
     id?: string
     name: string
     structure: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     grades?: GradeUncheckedCreateNestedManyWithoutSchemaInput
@@ -31126,6 +31161,7 @@ export namespace Prisma {
     name?: StringFilter<"GradingSchema"> | string
     structure?: StringFilter<"GradingSchema"> | string
     groupId?: StringFilter<"GradingSchema"> | string
+    gradingSystem?: StringFilter<"GradingSchema"> | string
     createdAt?: DateTimeFilter<"GradingSchema"> | Date | string
     updatedAt?: DateTimeFilter<"GradingSchema"> | Date | string
   }
@@ -33406,6 +33442,7 @@ export namespace Prisma {
     id?: string
     name: string
     structure: string
+    gradingSystem?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -33421,6 +33458,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     grades?: GradeUpdateManyWithoutSchemaNestedInput
@@ -33430,6 +33468,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     grades?: GradeUncheckedUpdateManyWithoutSchemaNestedInput
@@ -33439,6 +33478,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     structure?: StringFieldUpdateOperationsInput | string
+    gradingSystem?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
