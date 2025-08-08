@@ -147,6 +147,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
   const [confirmDelete1, setConfirmDelete1] = useState(false);
   const [confirmDelete2, setConfirmDelete2] = useState(false);
+  const [confirmDeleteWord, setConfirmDeleteWord] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editGroupName, setEditGroupName] = useState('');
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
@@ -161,6 +162,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Menü pro Schüler
   const [studentMenuAnchorEl, setStudentMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [studentMenuCtx, setStudentMenuCtx] = useState<null | { groupId: string; student: Student }>(null);
+  
+  // Student removal confirmation
+  const [removeStudentDialogOpen, setRemoveStudentDialogOpen] = useState(false);
+  const [removeStudentCtx, setRemoveStudentCtx] = useState<{ groupId: string; student: Student } | null>(null);
+  const [confirmRemoveStudent1, setConfirmRemoveStudent1] = useState(false);
+  const [confirmRemoveStudent2, setConfirmRemoveStudent2] = useState(false);
+  const [confirmRemoveStudentWord, setConfirmRemoveStudentWord] = useState('');
 
   // Mini-Noten Cache: key = `${groupId}:${studentId}`
   const [miniGradesMap, setMiniGradesMap] = useState<{ [key: string]: { loading: boolean; gradingSystem: string; overall?: number | null; nodes: MiniGradeNode[] } }>({});
@@ -435,6 +443,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setDeleteGroupId(null);
     setConfirmDelete1(false);
     setConfirmDelete2(false);
+    setConfirmDeleteWord('');
   };
   const handleDeleteGroup = async () => {
     if (!deleteGroupId) return;
@@ -599,10 +608,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const getGradeStats = (nodes: MiniGradeNode[], gradingSystem: string) => {
     const stats = {
-      klassenarbeiten: { values: [] as number[], label: 'KLASSENARBEITEN' },
-      epo: { values: [] as number[], label: 'EPO NOTEN' },
-      quizze: { values: [] as number[], label: 'QUIZZNOTEN' },
-      sonstiges: { values: [] as number[], label: 'SONSTIGE NOTEN' }
+      klassenarbeiten: { values: [] as number[], label: 'KAs', individualGrades: [] as { name: string; grade: number }[] },
+      epo: { values: [] as number[], label: 'EPO', individualGrades: [] as { name: string; grade: number }[] },
+      quizze: { values: [] as number[], label: 'Quizze', individualGrades: [] as { name: string; grade: number }[] },
+      sonstiges: { values: [] as number[], label: 'Sonstige', individualGrades: [] as { name: string; grade: number }[] }
     };
 
     // Sammle alle Blatt-Noten und gruppiere sie
@@ -614,12 +623,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const name = leaf.name.toLowerCase();
       if (name.includes('ka') || name.includes('klassenarbeit') || name.includes('schrift')) {
         stats.klassenarbeiten.values.push(leaf.grade);
+        stats.klassenarbeiten.individualGrades.push({ name: leaf.name, grade: leaf.grade });
       } else if (name.includes('epo')) {
         stats.epo.values.push(leaf.grade);
-      } else if (name.includes('quiz')) {
+        stats.epo.individualGrades.push({ name: leaf.name, grade: leaf.grade });
+      } else if (name.includes('quiz') || name.includes('quizz') || name.includes('test')) {
         stats.quizze.values.push(leaf.grade);
+        stats.quizze.individualGrades.push({ name: leaf.name, grade: leaf.grade });
       } else {
         stats.sonstiges.values.push(leaf.grade);
+        stats.sonstiges.individualGrades.push({ name: leaf.name, grade: leaf.grade });
       }
     }
 
@@ -702,12 +715,40 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
 
   const handleStudentCardClick = (groupId: string, student: Student) => {
-    setStudentMenuAnchorEl(document.body);
+    const cardElement = document.querySelector(`[data-student-id="${student.id}"]`);
+    setStudentMenuAnchorEl(cardElement as HTMLElement);
     setStudentMenuCtx({ groupId, student });
   };
   const handleStudentMenuClose = () => {
     setStudentMenuAnchorEl(null);
     setStudentMenuCtx(null);
+  };
+
+  const handleRemoveStudentDialogOpen = (groupId: string, student: Student) => {
+    setRemoveStudentCtx({ groupId, student });
+    setRemoveStudentDialogOpen(true);
+    setConfirmRemoveStudent1(false);
+    setConfirmRemoveStudent2(false);
+    setConfirmRemoveStudentWord('');
+    handleStudentMenuClose();
+  };
+
+  const handleRemoveStudentDialogClose = () => {
+    setRemoveStudentDialogOpen(false);
+    setRemoveStudentCtx(null);
+    setConfirmRemoveStudent1(false);
+    setConfirmRemoveStudent2(false);
+    setConfirmRemoveStudentWord('');
+  };
+
+  const handleRemoveStudentConfirm = async () => {
+    if (!removeStudentCtx) return;
+    try {
+      await handleRemoveStudent(removeStudentCtx.groupId, removeStudentCtx.student.id);
+      handleRemoveStudentDialogClose();
+    } catch (error) {
+      // Error handling is already in handleRemoveStudent
+    }
   };
 
   return (
@@ -881,7 +922,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         <Grid item xs={12} md={8}>
                           <Grid container spacing={1.4}>
                             {group.students.map((student) => (
-                              <Grid item xs={12} sm={6} md={6} lg={4} key={student.id}>
+                              <Grid item xs={12} sm={6} md={6} lg={3} key={student.id}>
                                 <Card 
                                   variant="outlined" 
                                   sx={{ 
@@ -891,6 +932,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                                     transition: 'all 0.2s ease-in-out',
                                     cursor: 'pointer',
+                                    p: 0,
                                     '&:hover': {
                                       boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
                                       transform: 'translateY(-1px)'
@@ -898,45 +940,42 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                   }}
                                   onMouseEnter={() => ensureMiniGrades(group.id, student.id)}
                                   onClick={() => handleStudentCardClick(group.id, student)}
+                                  data-student-id={student.id}
                                 >
-                                  <CardContent sx={{ p: 0, overflow: 'hidden' }}>
+                                  <CardContent sx={{ p: 0, pb: 0, pt: 0, pl: 0, pr: 0, overflow: 'hidden' }}>
                                     {/* Top Section - Avatar and Name */}
                                     <Box sx={{ 
                                       background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-                                      p: 2.1,
+                                      p: 1,
                                       textAlign: 'center',
                                       position: 'relative'
                                     }}>
                                       <Avatar sx={{ 
                                         bgcolor: student.avatarEmoji ? 'transparent' : colors.accent1, 
-                                        width: 48, 
-                                        height: 48,
-                                        fontSize: student.avatarEmoji ? '1.5rem' : '1.2rem',
+                                        width: 36, 
+                                        height: 36,
+                                        fontSize: student.avatarEmoji ? '1.2rem' : '1rem',
                                         mx: 'auto',
-                                        mb: 1,
+                                        mb: 0.7,
                                         boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                                       }}>
                                         {student.avatarEmoji || student.name.charAt(0)}
                                       </Avatar>
                                       <Typography variant="h6" sx={{ 
                                         fontWeight: 'bold', 
-                                        fontSize: '0.9rem',
+                                        fontSize: '0.8rem',
                                         color: colors.textPrimary,
-                                        mb: 0.5
-                                      }}>
+                                        mb: 0.3,
+                                        cursor: 'help'
+                                      }}
+                                      title={`Code: ${student.loginCode}`}
+                                      >
                                         {student.name}
-                                      </Typography>
-                                      <Typography variant="body2" sx={{ 
-                                        fontSize: '0.7rem',
-                                        color: colors.textSecondary,
-                                        fontWeight: 500
-                                      }}>
-                                        Code: {student.loginCode}
                                       </Typography>
                                     </Box>
 
                                     {/* Bottom Section - Grade Stats */}
-                                    <Box sx={{ p: 2.1 }}>
+                                    <Box sx={{ p: 1, pb: 0 }}>
                                       {(() => {
                                         const key = `${group.id}:${student.id}`;
                                         const mini = miniGradesMap[key];
@@ -953,22 +992,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                         const stats = getGradeStats(mini.nodes, mini.gradingSystem);
                                         
                                         return (
-                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
+                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                             {/* Grade Stat Boxes */}
-                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
                                               {/* Klassenarbeiten */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 1.4, 
+                                                p: 0.7, 
                                                 borderRadius: 1.4,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1.2rem', 
+                                                  fontSize: '1rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.5
+                                                  mb: 0.3
                                                 }}>
                                                   {formatGradeValue(stats.klassenarbeiten.values, mini.gradingSystem)}
                                                 </Typography>
@@ -979,21 +1018,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 }}>
                                                   {stats.klassenarbeiten.label}
                                                 </Typography>
+                                                {stats.klassenarbeiten.individualGrades.map((item, index) => (
+                                                  <Typography key={index} variant="body2" sx={{ 
+                                                    fontSize: '0.5rem', 
+                                                    color: index % 2 === 0 ? '#666666' : '#999999', 
+                                                    display: 'inline', 
+                                                    mr: 0.5 
+                                                  }}>
+                                                    {formatGermanMini(item.grade)}
+                                                  </Typography>
+                                                ))}
                                               </Box>
 
                                               {/* EPO Noten */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 1.4, 
+                                                p: 0.7, 
                                                 borderRadius: 1.4,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1.2rem', 
+                                                  fontSize: '1rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.5
+                                                  mb: 0.3
                                                 }}>
                                                   {formatGradeValue(stats.epo.values, mini.gradingSystem)}
                                                 </Typography>
@@ -1004,21 +1053,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 }}>
                                                   {stats.epo.label}
                                                 </Typography>
+                                                {stats.epo.individualGrades.map((item, index) => (
+                                                  <Typography key={index} variant="body2" sx={{ 
+                                                    fontSize: '0.5rem', 
+                                                    color: index % 2 === 0 ? '#666666' : '#999999', 
+                                                    display: 'inline', 
+                                                    mr: 0.5 
+                                                  }}>
+                                                    {formatGermanMini(item.grade)}
+                                                  </Typography>
+                                                ))}
                                               </Box>
 
                                               {/* Quizze */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 1.4, 
+                                                p: 0.7, 
                                                 borderRadius: 1.4,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1.2rem', 
+                                                  fontSize: '1rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.5
+                                                  mb: 0.3
                                                 }}>
                                                   {formatGradeValue(stats.quizze.values, mini.gradingSystem)}
                                                 </Typography>
@@ -1029,21 +1088,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 }}>
                                                   {stats.quizze.label}
                                                 </Typography>
+                                                {stats.quizze.individualGrades.map((item, index) => (
+                                                  <Typography key={index} variant="body2" sx={{ 
+                                                    fontSize: '0.5rem', 
+                                                    color: index % 2 === 0 ? '#666666' : '#999999', 
+                                                    display: 'inline', 
+                                                    mr: 0.5 
+                                                  }}>
+                                                    {formatGermanMini(item.grade)}
+                                                  </Typography>
+                                                ))}
                                               </Box>
 
                                               {/* Sonstiges */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 1.4, 
+                                                p: 0.7, 
                                                 borderRadius: 1.4,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1.2rem', 
+                                                  fontSize: '1rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.5
+                                                  mb: 0.3
                                                 }}>
                                                   {formatGradeValue(stats.sonstiges.values, mini.gradingSystem)}
                                                 </Typography>
@@ -1054,6 +1123,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 }}>
                                                   {stats.sonstiges.label}
                                                 </Typography>
+                                                {stats.sonstiges.individualGrades.map((item, index) => (
+                                                  <Typography key={index} variant="body2" sx={{ 
+                                                    fontSize: '0.5rem', 
+                                                    color: index % 2 === 0 ? '#666666' : '#999999', 
+                                                    display: 'inline', 
+                                                    mr: 0.5 
+                                                  }}>
+                                                    {formatGermanMini(item.grade)}
+                                                  </Typography>
+                                                ))}
                                               </Box>
                                             </Box>
 
@@ -1061,22 +1140,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                             {mini.overall !== null && mini.overall !== undefined && (
                                               <Box sx={{ 
                                                 textAlign: 'center', 
-                                                mt: 1,
-                                                p: 1,
-                                                bgcolor: `${getGradeColorMini(mini.overall, mini.gradingSystem)}20`,
-                                                borderRadius: 1,
-                                                border: `2px solid ${getGradeColorMini(mini.overall, mini.gradingSystem)}`
+                                                mt: 0,
+                                                p: 0.3,
+                                                bgcolor: `${getGradeColorMini(mini.overall, mini.gradingSystem)}15`,
+                                                borderRadius: 0.7,
+                                                border: `1px solid ${getGradeColorMini(mini.overall, mini.gradingSystem)}30`
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '0.7rem', 
-                                                  color: colors.textPrimary,
-                                                  fontWeight: 600,
-                                                  mb: 0.5
-                                                }}>
-                                                  Gesamt-Note
-                                                </Typography>
-                                                <Typography sx={{ 
-                                                  fontSize: '1.1rem', 
+                                                  fontSize: '0.8rem', 
                                                   fontWeight: 'bold', 
                                                   color: getGradeColorMini(mini.overall, mini.gradingSystem)
                                                 }}>
@@ -1499,11 +1570,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               <input type="checkbox" checked={confirmDelete2} onChange={e => setConfirmDelete2(e.target.checked)} style={{ marginRight: 8 }} />
               Ich möchte diese Gruppe wirklich unwiderruflich löschen.
             </label>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: 'error.main', fontWeight: 'bold' }}>
+                Zur Bestätigung: Gib "ENTFERNEN" ein
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={confirmDeleteWord}
+                onChange={(e) => setConfirmDeleteWord(e.target.value)}
+                placeholder="ENTFERNEN eingeben"
+                sx={{ mb: 1 }}
+              />
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDeleteDialogClose}>Abbrechen</Button>
-          <Button onClick={handleDeleteGroup} color="error" variant="contained" disabled={!(confirmDelete1 && confirmDelete2)}>Löschen</Button>
+          <Button onClick={handleDeleteGroup} color="error" variant="contained" disabled={!(confirmDelete1 && confirmDelete2 && confirmDeleteWord === 'ENTFERNEN')} onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleDeleteGroup();
+              }
+            }}>Löschen</Button>
         </DialogActions>
       </Dialog>
 
@@ -1531,10 +1619,55 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <MenuItem onClick={() => { if (studentMenuCtx) handleGradesDialogOpen(studentMenuCtx.groupId, groups.find(g=>g.id===studentMenuCtx.groupId)?.name || '', studentMenuCtx.student); handleStudentMenuClose(); }}>
           <GradeIcon fontSize="small" style={{ marginRight: 8 }} /> Noten eintragen
         </MenuItem>
-        <MenuItem onClick={() => { if (studentMenuCtx) handleRemoveStudent(studentMenuCtx.groupId, studentMenuCtx.student.id); handleStudentMenuClose(); }}>
+        <MenuItem onClick={() => { if (studentMenuCtx) handleRemoveStudentDialogOpen(studentMenuCtx.groupId, studentMenuCtx.student); handleStudentMenuClose(); }}>
           <DeleteIcon fontSize="small" style={{ marginRight: 8 }} /> Entfernen
         </MenuItem>
       </Menu>
+
+      {/* Schüler Entfernung Bestätigungsdialog */}
+      <Dialog open={removeStudentDialogOpen} onClose={handleRemoveStudentDialogClose}>
+        <DialogTitle>Schüler entfernen</DialogTitle>
+        <DialogContent>
+          <Typography>Möchtest du diesen Schüler wirklich aus der Lerngruppe entfernen?</Typography>
+          <Typography sx={{ color: 'error.main', mt: 2, fontWeight: 'bold' }}>
+            Achtung: Diese Aktion kann nicht rückgängig gemacht werden.
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <label style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <input type="checkbox" checked={confirmRemoveStudent1} onChange={e => setConfirmRemoveStudent1(e.target.checked)} style={{ marginRight: 8 }} />
+              Ich habe verstanden, dass dieser Schüler unwiderruflich entfernt wird.
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <input type="checkbox" checked={confirmRemoveStudent2} onChange={e => setConfirmRemoveStudent2(e.target.checked)} style={{ marginRight: 8 }} />
+              Ich möchte diesen Schüler wirklich unwiderruflich entfernen.
+            </label>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: 'error.main', fontWeight: 'bold' }}>
+                Zur Bestätigung: Gib "ENTFERNEN" ein
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={confirmRemoveStudentWord}
+                onChange={(e) => setConfirmRemoveStudentWord(e.target.value)}
+                placeholder="ENTFERNEN eingeben"
+                sx={{ mb: 1 }}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleRemoveStudentDialogClose}>Abbrechen</Button>
+          <Button 
+            onClick={handleRemoveStudentConfirm} 
+            color="error" 
+            variant="contained" 
+            disabled={!(confirmRemoveStudent1 && confirmRemoveStudent2 && confirmRemoveStudentWord === 'ENTFERNEN')}
+          >
+            Entfernen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', mt: 2 }}>
         <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
