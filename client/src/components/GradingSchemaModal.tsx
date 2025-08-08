@@ -302,23 +302,15 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     if (nodes.length === 0) return false;
     
     // Only validate the top-level nodes (they should sum to 100%)
+    // Subcategories can have arbitrary weights
     const topLevelSum = nodes.reduce((sum, node) => sum + node.weight, 0);
     
     if (Math.abs(topLevelSum - 100) > 0.01) {
       return false;
     }
     
-    return nodes.every(node => {
-      if (node.children.length > 0) {
-        return node.children.every(child => {
-          if (child.children.length > 0) {
-            return validateSchema(child.children);
-          }
-          return true;
-        });
-      }
-      return true;
-    });
+    // Don't validate subcategories - they can have arbitrary weights
+    return true;
   };
 
   const formatSchemaToString = (nodes: GradeNode[], indent: number = 0): string => {

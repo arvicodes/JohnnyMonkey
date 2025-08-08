@@ -25,8 +25,7 @@ import {
   Tab,
   Tabs,
   Menu,
-  MenuItem,
-  Divider
+  MenuItem
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -41,7 +40,6 @@ import {
   Build as BuildIcon,
   Grade as GradeIcon
 } from '@mui/icons-material';
-import { Tooltip } from '@mui/material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
@@ -65,6 +63,27 @@ interface Student {
   name: string;
   loginCode: string;
   avatarEmoji?: string;
+}
+
+// Mini-Noten: Schema/Grade Typen
+interface GradingSchemaMini {
+  id: string;
+  name: string;
+  structure: string;
+  gradingSystem?: string;
+}
+interface GradeMini {
+  id: string;
+  categoryName: string;
+  grade: number;
+  weight: number;
+}
+
+// Kompakte Mini-Noten-Knoten für hierarchische Anzeige
+interface MiniGradeNode {
+  name: string;
+  grade: number | null;
+  children: MiniGradeNode[];
 }
 
 interface TabPanelProps {
@@ -138,6 +157,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [gradesGroupId, setGradesGroupId] = useState<string | null>(null);
   const [gradesGroupName, setGradesGroupName] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  // Menü pro Schüler
+  const [studentMenuAnchorEl, setStudentMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [studentMenuCtx, setStudentMenuCtx] = useState<null | { groupId: string; student: Student }>(null);
+
+  // Mini-Noten Cache: key = `${groupId}:${studentId}`
+  const [miniGradesMap, setMiniGradesMap] = useState<{ [key: string]: { loading: boolean; gradingSystem: string; overall?: number | null; nodes: MiniGradeNode[] } }>({});
 
   // Spielerische Farbpalette
   const colors = {
@@ -225,6 +251,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     };
     fetchAll();
   }, [groups, userId]);
+
+  // Mini-Noten für alle Schüler pro Gruppe vorab laden, damit alles sofort sichtbar ist
+  useEffect(() => {
+    if (!groups || groups.length === 0) return;
+    for (const group of groups) {
+      for (const student of group.students) {
+        ensureMiniGrades(group.id, student.id);
+      }
+    }
+  }, [groups]);
 
   const fetchGroups = async () => {
     try {
@@ -491,6 +527,189 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     dashboardRef.current?.focus();
   }, []);
 
+  // Helfer: Schema parsen -> Hierarchie
+  const parseSchemaStructureMini = (schemaStr: string) => {
+    const lines = schemaStr.split('\n').filter(l => l.trim());
+    const result: any[] = [];
+    const stack: { node: any; indent: number }[] = [];
+    for (const line of lines) {
+      const indent = line.search(/\S/);
+      const m = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
+      if (!m) continue;
+      const name = m[1].trim();
+      const weight = parseFloat(m[2]);
+      const node = { name, weight, children: [] as any[] };
+      while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+      if (stack.length === 0) result.push(node); else stack[stack.length - 1].node.children.push(node);
+      stack.push({ node, indent });
+    }
+    return result;
+  };
+
+  const calculateWeightedMini = (node: any, gradesByName: Map<string, GradeMini>): number | null => {
+    if (!node.children || node.children.length === 0) {
+      const g = gradesByName.get(node.name);
+      return g ? g.grade : null;
+    }
+    const childGrades: { grade: number; weight: number }[] = [];
+    for (const child of node.children) {
+      const cg = calculateWeightedMini(child, gradesByName);
+      if (cg !== null) childGrades.push({ grade: cg, weight: child.weight });
+    }
+    if (childGrades.length === 0) return null;
+    const totalW = childGrades.reduce((s, c) => s + c.weight, 0);
+    if (totalW === 0) return null;
+    const sum = childGrades.reduce((s, c) => s + c.grade * c.weight, 0);
+    return sum / totalW;
+  };
+
+  const computeNodeWithGrade = (node: any, gradesByName: Map<string, GradeMini>): MiniGradeNode => {
+    const gradeValue = calculateWeightedMini(node, gradesByName);
+    const children: MiniGradeNode[] = (node.children || []).map((c: any) => computeNodeWithGrade(c, gradesByName));
+    return { name: node.name, grade: gradeValue, children };
+  };
+
+  const collectLeaves = (node: MiniGradeNode): MiniGradeNode[] => {
+    if (!node.children || node.children.length === 0) return [node];
+    return node.children.flatMap(collectLeaves);
+  };
+
+  const groupLeavesBySecondLevel = (root: MiniGradeNode): { group: string; leaves: MiniGradeNode[] }[] => {
+    // Gruppiere nach unmittelbaren Kindern von root
+    return (root.children || []).map(second => ({ group: second.name, leaves: collectLeaves(second) }));
+  };
+
+  const shouldHideRoot = (name: string): boolean => {
+    const n = name.toLowerCase();
+    // Anzeige für Unter- und Mittelstufe weglassen
+    return n.includes('unter') || n.includes('mittel');
+  };
+
+  const sortNodesByPriority = (nodes: MiniGradeNode[]): MiniGradeNode[] => {
+    const priority = (name: string) => {
+      const n = name.toLowerCase();
+      if (n.includes('schrift') || n.includes('kursarbeit')) return 1; // Schriftlich/Klassenarbeiten zuerst
+      if (n.includes('epo') || n.includes('epo')) return 2; // EPO danach
+      if (n.includes('quiz') || n.includes('quiz')) return 3; // Quizze danach
+      if (n.includes('sonstig')) return 4; // Sonstiges zuletzt
+      return 99;
+    };
+    return [...nodes].sort((a, b) => priority(a.name) - priority(b.name));
+  };
+
+  const getGradeStats = (nodes: MiniGradeNode[], gradingSystem: string) => {
+    const stats = {
+      klassenarbeiten: { values: [] as number[], label: 'KLASSENARBEITEN' },
+      epo: { values: [] as number[], label: 'EPO NOTEN' },
+      quizze: { values: [] as number[], label: 'QUIZZNOTEN' },
+      sonstiges: { values: [] as number[], label: 'SONSTIGE NOTEN' }
+    };
+
+    // Sammle alle Blatt-Noten und gruppiere sie
+    const allLeaves = nodes.flatMap(root => collectLeaves(root));
+    
+    for (const leaf of allLeaves) {
+      if (leaf.grade === null || leaf.grade === undefined) continue;
+      
+      const name = leaf.name.toLowerCase();
+      if (name.includes('ka') || name.includes('klassenarbeit') || name.includes('schrift')) {
+        stats.klassenarbeiten.values.push(leaf.grade);
+      } else if (name.includes('epo')) {
+        stats.epo.values.push(leaf.grade);
+      } else if (name.includes('quiz')) {
+        stats.quizze.values.push(leaf.grade);
+      } else {
+        stats.sonstiges.values.push(leaf.grade);
+      }
+    }
+
+    return stats;
+  };
+
+  const formatGradeValue = (values: number[], gradingSystem: string) => {
+    if (values.length === 0) return '–';
+    if (values.length === 1) {
+      return gradingSystem === 'MSS' ? values[0].toFixed(0) : formatGermanMini(values[0]);
+    }
+    // Bei mehreren Werten: Durchschnitt
+    const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+    return gradingSystem === 'MSS' ? avg.toFixed(0) : formatGermanMini(avg);
+  };
+
+  const formatGermanMini = (grade: number) => {
+    // gleiche Logik wie StudentDashboard, kurz gefasst
+    return grade.toFixed(1).replace('.', ',');
+  };
+
+  const getGradeColorMini = (grade: number, gradingSystem: string = 'GERMAN'): string => {
+    if (gradingSystem === 'MSS') {
+      if (grade >= 13) return '#4CAF50';
+      if (grade >= 10) return '#8BC34A';
+      if (grade >= 7) return '#FF9800';
+      if (grade >= 4) return '#F57C00';
+      if (grade >= 1) return '#FF5722';
+      return '#C2185B';
+    }
+    if (grade <= 1.7) return '#4CAF50';
+    if (grade <= 2.7) return '#8BC34A';
+    if (grade <= 3.7) return '#FF9800';
+    if (grade <= 4.7) return '#F57C00';
+    if (grade <= 6.0) return '#C2185B';
+    return '#9E9E9E';
+  };
+
+  const ensureMiniGrades = async (groupId: string, studentId: string) => {
+    const key = `${groupId}:${studentId}`;
+    if (miniGradesMap[key]?.loading || miniGradesMap[key]?.overall !== undefined) return;
+    setMiniGradesMap(prev => ({ ...prev, [key]: { loading: true, gradingSystem: 'GERMAN', overall: undefined, nodes: [] } }));
+    try {
+      const schemaRes = await fetch(`/api/grading-schemas/${groupId}`);
+      if (!schemaRes.ok) throw new Error('schema');
+      const schemas: GradingSchemaMini[] = await schemaRes.json();
+      if (schemas.length === 0) throw new Error('no schema');
+      const schema = schemas[0];
+      const gradesRes = await fetch(`/api/grades/${studentId}/${schema.id}`);
+      const studentGrades: GradeMini[] = gradesRes.ok ? await gradesRes.json() : [];
+      const gradesMap = new Map(studentGrades.map(g => [g.categoryName, g] as const));
+      const roots = parseSchemaStructureMini(schema.structure);
+      // overall: gewichtetes Mittel der Root-Knoten
+      const rootWithCalc = roots.map((r: any) => ({ name: r.name, grade: calculateWeightedMini(r, gradesMap) }));
+      const validRoots = rootWithCalc.filter(r => r.grade !== null) as { name: string; grade: number }[];
+      let overall: number | null = null;
+      if (validRoots.length > 0) {
+        // benutze Root-Gewichte aus Struktur
+        const totalW = roots.reduce((s: number, r: any) => s + r.weight, 0);
+        if (totalW > 0) {
+          const sum = roots.reduce((s: number, r: any) => {
+            const g = rootWithCalc.find(x => x.name === r.name)?.grade;
+            return g !== null && g !== undefined ? s + (g as number) * r.weight : s;
+          }, 0);
+          overall = sum / totalW;
+        }
+      }
+      // Hierarchische Knoten für Anzeige berechnen
+      const nodes: MiniGradeNode[] = roots.map((r: any) => computeNodeWithGrade(r, gradesMap));
+      setMiniGradesMap(prev => ({ ...prev, [key]: { loading: false, gradingSystem: schema.gradingSystem || 'GERMAN', overall, nodes } }));
+    } catch (e) {
+      setMiniGradesMap(prev => ({ ...prev, [key]: { loading: false, gradingSystem: 'GERMAN', overall: null, nodes: [] } }));
+    }
+  };
+
+  const handleStudentMenuOpen = (e: React.MouseEvent<HTMLElement>, groupId: string, student: Student) => {
+    e.stopPropagation();
+    setStudentMenuAnchorEl(e.currentTarget);
+    setStudentMenuCtx({ groupId, student });
+  };
+
+  const handleStudentCardClick = (groupId: string, student: Student) => {
+    setStudentMenuAnchorEl(document.body);
+    setStudentMenuCtx({ groupId, student });
+  };
+  const handleStudentMenuClose = () => {
+    setStudentMenuAnchorEl(null);
+    setStudentMenuCtx(null);
+  };
+
   return (
     <Box 
       sx={{ width: '100%', bgcolor: colors.background, p: 0 }}
@@ -663,93 +882,211 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           <Grid container spacing={1.4}>
                             {group.students.map((student) => (
                               <Grid item xs={12} sm={6} md={6} lg={4} key={student.id}>
-                                <Card variant="outlined" sx={{ 
-                                  borderRadius: 2.8,
-                                  border: '1px solid #e0e0e0',
-                                  bgcolor: '#ffffff',
-                                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                                  transition: 'all 0.2s ease-in-out',
-                                  '&:hover': {
-                                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                                    transform: 'translateY(-1px)'
-                                  }
-                                }}>
-                                  <CardContent sx={{ p: 2.1 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.4 }}>
+                                <Card 
+                                  variant="outlined" 
+                                  sx={{ 
+                                    borderRadius: 2.8,
+                                    border: '1px solid #e0e0e0',
+                                    bgcolor: '#ffffff',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                    transition: 'all 0.2s ease-in-out',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                      boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                                      transform: 'translateY(-1px)'
+                                    }
+                                  }}
+                                  onMouseEnter={() => ensureMiniGrades(group.id, student.id)}
+                                  onClick={() => handleStudentCardClick(group.id, student)}
+                                >
+                                  <CardContent sx={{ p: 0, overflow: 'hidden' }}>
+                                    {/* Top Section - Avatar and Name */}
+                                    <Box sx={{ 
+                                      background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                                      p: 2.1,
+                                      textAlign: 'center',
+                                      position: 'relative'
+                                    }}>
                                       <Avatar sx={{ 
                                         bgcolor: student.avatarEmoji ? 'transparent' : colors.accent1, 
-                                        mr: 1.4, 
-                                        width: 24, 
-                                        height: 24,
-                                        fontSize: student.avatarEmoji ? '1rem' : '0.75rem'
+                                        width: 48, 
+                                        height: 48,
+                                        fontSize: student.avatarEmoji ? '1.5rem' : '1.2rem',
+                                        mx: 'auto',
+                                        mb: 1,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                                       }}>
                                         {student.avatarEmoji || student.name.charAt(0)}
                                       </Avatar>
-                                      <Box>
-                                        <Typography variant="subtitle1" sx={{ 
-                                          fontWeight: 'bold', 
-                                          fontSize: '0.75rem',
-                                          color: colors.textPrimary
-                                        }}>
-                                          {student.name}
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ 
-                                          fontSize: '0.7rem',
-                                          color: colors.textSecondary
-                                        }}>
-                                          Code: {student.loginCode}
-                                        </Typography>
-                                      </Box>
+                                      <Typography variant="h6" sx={{ 
+                                        fontWeight: 'bold', 
+                                        fontSize: '0.9rem',
+                                        color: colors.textPrimary,
+                                        mb: 0.5
+                                      }}>
+                                        {student.name}
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ 
+                                        fontSize: '0.7rem',
+                                        color: colors.textSecondary,
+                                        fontWeight: 500
+                                      }}>
+                                        Code: {student.loginCode}
+                                      </Typography>
                                     </Box>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <Chip 
-                                        label="Aktiv" 
-                                        size="small" 
-                                        sx={{ 
-                                          bgcolor: colors.success,
-                                          color: 'white',
-                                          fontWeight: 'bold',
-                                          fontSize: '0.7rem',
-                                          height: 18
-                                        }} 
-                                      />
-                                      <IconButton 
-                                        size="small"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRemoveStudent(group.id, student.id);
-                                        }}
-                                        sx={{ 
-                                          color: colors.accent2,
-                                          '&:hover': {
-                                            bgcolor: `${colors.accent2}10`
-                                          },
-                                          fontSize: '1.1rem'
-                                        }}
-                                      >
-                                        <DeleteIcon />
-                                      </IconButton>
-                                    </Box>
-                                    <Divider sx={{ my: 1 }} />
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <Tooltip title="Noten eintragen" placement="top">
-                                        <IconButton 
-                                          size="small"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleGradesDialogOpen(group.id, group.name, student);
-                                          }}
-                                          sx={{ 
-                                            color: colors.secondary,
-                                            '&:hover': {
-                                              bgcolor: `${colors.secondary}10`
-                                            },
-                                            fontSize: '1.1rem'
-                                          }}
-                                        >
-                                          <GradeIcon />
-                                        </IconButton>
-                                      </Tooltip>
+
+                                    {/* Bottom Section - Grade Stats */}
+                                    <Box sx={{ p: 2.1 }}>
+                                      {(() => {
+                                        const key = `${group.id}:${student.id}`;
+                                        const mini = miniGradesMap[key];
+                                        if (!mini || mini.loading) {
+                                          return (
+                                            <Box sx={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                              <Typography variant="body2" sx={{ color: colors.textSecondary }}>
+                                                Lade Noten...
+                                              </Typography>
+                                            </Box>
+                                          );
+                                        }
+
+                                        const stats = getGradeStats(mini.nodes, mini.gradingSystem);
+                                        
+                                        return (
+                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
+                                            {/* Grade Stat Boxes */}
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                              {/* Klassenarbeiten */}
+                                              <Box sx={{ 
+                                                bgcolor: '#f5f5f5', 
+                                                p: 1.4, 
+                                                borderRadius: 1.4,
+                                                textAlign: 'center',
+                                                border: '1px solid #e0e0e0'
+                                              }}>
+                                                <Typography sx={{ 
+                                                  fontSize: '1.2rem', 
+                                                  fontWeight: 'bold', 
+                                                  color: colors.primary,
+                                                  mb: 0.5
+                                                }}>
+                                                  {formatGradeValue(stats.klassenarbeiten.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.6rem', 
+                                                  color: colors.textSecondary,
+                                                  fontWeight: 600
+                                                }}>
+                                                  {stats.klassenarbeiten.label}
+                                                </Typography>
+                                              </Box>
+
+                                              {/* EPO Noten */}
+                                              <Box sx={{ 
+                                                bgcolor: '#f5f5f5', 
+                                                p: 1.4, 
+                                                borderRadius: 1.4,
+                                                textAlign: 'center',
+                                                border: '1px solid #e0e0e0'
+                                              }}>
+                                                <Typography sx={{ 
+                                                  fontSize: '1.2rem', 
+                                                  fontWeight: 'bold', 
+                                                  color: colors.primary,
+                                                  mb: 0.5
+                                                }}>
+                                                  {formatGradeValue(stats.epo.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.6rem', 
+                                                  color: colors.textSecondary,
+                                                  fontWeight: 600
+                                                }}>
+                                                  {stats.epo.label}
+                                                </Typography>
+                                              </Box>
+
+                                              {/* Quizze */}
+                                              <Box sx={{ 
+                                                bgcolor: '#f5f5f5', 
+                                                p: 1.4, 
+                                                borderRadius: 1.4,
+                                                textAlign: 'center',
+                                                border: '1px solid #e0e0e0'
+                                              }}>
+                                                <Typography sx={{ 
+                                                  fontSize: '1.2rem', 
+                                                  fontWeight: 'bold', 
+                                                  color: colors.primary,
+                                                  mb: 0.5
+                                                }}>
+                                                  {formatGradeValue(stats.quizze.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.6rem', 
+                                                  color: colors.textSecondary,
+                                                  fontWeight: 600
+                                                }}>
+                                                  {stats.quizze.label}
+                                                </Typography>
+                                              </Box>
+
+                                              {/* Sonstiges */}
+                                              <Box sx={{ 
+                                                bgcolor: '#f5f5f5', 
+                                                p: 1.4, 
+                                                borderRadius: 1.4,
+                                                textAlign: 'center',
+                                                border: '1px solid #e0e0e0'
+                                              }}>
+                                                <Typography sx={{ 
+                                                  fontSize: '1.2rem', 
+                                                  fontWeight: 'bold', 
+                                                  color: colors.primary,
+                                                  mb: 0.5
+                                                }}>
+                                                  {formatGradeValue(stats.sonstiges.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.6rem', 
+                                                  color: colors.textSecondary,
+                                                  fontWeight: 600
+                                                }}>
+                                                  {stats.sonstiges.label}
+                                                </Typography>
+                                              </Box>
+                                            </Box>
+
+                                            {/* Overall Grade if available */}
+                                            {mini.overall !== null && mini.overall !== undefined && (
+                                              <Box sx={{ 
+                                                textAlign: 'center', 
+                                                mt: 1,
+                                                p: 1,
+                                                bgcolor: `${getGradeColorMini(mini.overall, mini.gradingSystem)}20`,
+                                                borderRadius: 1,
+                                                border: `2px solid ${getGradeColorMini(mini.overall, mini.gradingSystem)}`
+                                              }}>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.7rem', 
+                                                  color: colors.textPrimary,
+                                                  fontWeight: 600,
+                                                  mb: 0.5
+                                                }}>
+                                                  Gesamt-Note
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '1.1rem', 
+                                                  fontWeight: 'bold', 
+                                                  color: getGradeColorMini(mini.overall, mini.gradingSystem)
+                                                }}>
+                                                  {mini.gradingSystem === 'MSS' ? mini.overall.toFixed(0) : formatGermanMini(mini.overall)}
+                                                </Typography>
+                                              </Box>
+                                            )}
+                                          </Box>
+                                        );
+                                      })()}
                                     </Box>
                                   </CardContent>
                                 </Card>
@@ -1188,6 +1525,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           student={selectedStudent}
         />
       )}
+
+      {/* Schüler Menü */}
+      <Menu anchorEl={studentMenuAnchorEl} open={Boolean(studentMenuAnchorEl)} onClose={handleStudentMenuClose}>
+        <MenuItem onClick={() => { if (studentMenuCtx) handleGradesDialogOpen(studentMenuCtx.groupId, groups.find(g=>g.id===studentMenuCtx.groupId)?.name || '', studentMenuCtx.student); handleStudentMenuClose(); }}>
+          <GradeIcon fontSize="small" style={{ marginRight: 8 }} /> Noten eintragen
+        </MenuItem>
+        <MenuItem onClick={() => { if (studentMenuCtx) handleRemoveStudent(studentMenuCtx.groupId, studentMenuCtx.student.id); handleStudentMenuClose(); }}>
+          <DeleteIcon fontSize="small" style={{ marginRight: 8 }} /> Entfernen
+        </MenuItem>
+      </Menu>
 
       <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', mt: 2 }}>
         <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
