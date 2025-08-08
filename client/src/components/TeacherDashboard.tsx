@@ -627,7 +627,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       } else if (name.includes('epo')) {
         stats.epo.values.push(leaf.grade);
         stats.epo.individualGrades.push({ name: leaf.name, grade: leaf.grade });
-      } else if (name.includes('quiz') || name.includes('quizz') || name.includes('test')) {
+      } else if (name.includes('quiz') || name.includes('quiz') || name.includes('test')) {
         stats.quizze.values.push(leaf.grade);
         stats.quizze.individualGrades.push({ name: leaf.name, grade: leaf.grade });
       } else {

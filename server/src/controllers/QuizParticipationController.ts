@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '../generated/prisma';
+import { percentageToGrade } from '../utils/gradeConverter';
 
 const prisma = new PrismaClient();
 
@@ -216,6 +217,62 @@ export const submitAnswers = async (req: Request, res: Response) => {
       })
     ]);
 
+    // Calculate percentage and create grade if quiz has a gradeCategory
+    const percentage = participation.maxScore ? Math.round((totalScore / participation.maxScore) * 100) : 0;
+    
+    if (participation.session.quiz.gradeCategory) {
+      try {
+        // Get the student's learning group and grading schema
+        const student = await prisma.user.findUnique({
+          where: { id: participation.studentId },
+          include: {
+            learningGroups: {
+              include: {
+                gradingSchemas: true
+              }
+            }
+          }
+        });
+
+        if (student && student.learningGroups.length > 0) {
+          const group = student.learningGroups[0]; // Assuming student is in one group
+          const gradingSchema = group.gradingSchemas[0]; // Assuming one schema per group
+
+          if (gradingSchema) {
+            // Convert percentage to grade
+            const grade = percentageToGrade(percentage);
+
+            // Create or update the grade
+            await prisma.grade.upsert({
+              where: {
+                studentId_schemaId_categoryName: {
+                  studentId: participation.studentId,
+                  schemaId: gradingSchema.id,
+                  categoryName: participation.session.quiz.gradeCategory
+                }
+              },
+              update: {
+                grade: grade,
+                weight: 1.0 // Default weight
+              },
+              create: {
+                studentId: participation.studentId,
+                schemaId: gradingSchema.id,
+                categoryName: participation.session.quiz.gradeCategory,
+                grade: grade,
+                weight: 1.0 // Default weight
+              }
+            });
+
+            console.log(`Grade ${grade} created for student ${participation.studentId} in category ${participation.session.quiz.gradeCategory}`);
+          }
+        }
+      } catch (gradeError) {
+        console.error('Error creating grade:', gradeError);
+        // Don't fail the quiz submission if grade creation fails
+      }
+    }
+
     // Get updated participation with answers
     const updatedParticipation = await prisma.quizParticipation.findUnique({
       where: { id: participationId },
@@ -232,7 +289,7 @@ export const submitAnswers = async (req: Request, res: Response) => {
       participation: updatedParticipation,
       score: totalScore,
       maxScore: participation.maxScore,
-      percentage: participation.maxScore ? Math.round((totalScore / (participation.maxScore || 0)) * 100) : 0
+      percentage: percentage
     });
   } catch (error) {
     console.error('Error submitting answers:', error);

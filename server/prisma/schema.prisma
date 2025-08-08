@@ -175,6 +175,7 @@ model Quiz {
   shuffleAnswers   Boolean        @default(true)
   timeLimit        Int            @default(30)
   teacherId        String
+  gradeCategory    String?        // New field for grade category
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   lessonQuizzes    LessonQuiz[]

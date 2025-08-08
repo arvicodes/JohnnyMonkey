@@ -32,6 +32,25 @@ import {
 import { QuizResultsModal } from './QuizResultsModal';
 import { QuizStatisticsModal } from './QuizStatisticsModal';
 
+// Grade conversion function (same as backend)
+const percentageToGrade = (percentage: number): number => {
+  if (percentage >= 95.0) return 1.0;
+  if (percentage >= 90.0) return 1.3;
+  if (percentage >= 85.0) return 1.7;
+  if (percentage >= 80.0) return 2.0;
+  if (percentage >= 75.0) return 2.3;
+  if (percentage >= 70.0) return 2.7;
+  if (percentage >= 65.0) return 3.0;
+  if (percentage >= 60.0) return 3.3;
+  if (percentage >= 55.0) return 3.7;
+  if (percentage >= 50.0) return 4.0;
+  if (percentage >= 45.0) return 4.3;
+  if (percentage >= 40.0) return 4.7;
+  if (percentage >= 35.0) return 5.0;
+  if (percentage >= 20.0) return 5.3;
+  return 6.0; // unter 20.0%
+};
+
 interface QuizSessionManagerProps {
   quizId: string;
   teacherId: string;
@@ -548,6 +567,12 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#666' }}>
                                     {participation.score} von {participation.maxScore} Punkten
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#ff9800', fontWeight: 'bold' }}>
+                                    ({percentage}%)
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#1976d2', fontWeight: 'bold' }}>
+                                    Note: {percentageToGrade(percentage)}
                                   </Typography>
                                   <LinearProgress 
                                     variant="determinate" 

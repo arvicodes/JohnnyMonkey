@@ -251,6 +251,7 @@ exports.Prisma.QuizScalarFieldEnum = {
   shuffleAnswers: 'shuffleAnswers',
   timeLimit: 'timeLimit',
   teacherId: 'teacherId',
+  gradeCategory: 'gradeCategory',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

@@ -17782,6 +17782,7 @@ export namespace Prisma {
     shuffleAnswers: boolean | null
     timeLimit: number | null
     teacherId: string | null
+    gradeCategory: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -17795,6 +17796,7 @@ export namespace Prisma {
     shuffleAnswers: boolean | null
     timeLimit: number | null
     teacherId: string | null
+    gradeCategory: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -17808,6 +17810,7 @@ export namespace Prisma {
     shuffleAnswers: number
     timeLimit: number
     teacherId: number
+    gradeCategory: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -17831,6 +17834,7 @@ export namespace Prisma {
     shuffleAnswers?: true
     timeLimit?: true
     teacherId?: true
+    gradeCategory?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -17844,6 +17848,7 @@ export namespace Prisma {
     shuffleAnswers?: true
     timeLimit?: true
     teacherId?: true
+    gradeCategory?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -17857,6 +17862,7 @@ export namespace Prisma {
     shuffleAnswers?: true
     timeLimit?: true
     teacherId?: true
+    gradeCategory?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -17957,6 +17963,7 @@ export namespace Prisma {
     shuffleAnswers: boolean
     timeLimit: number
     teacherId: string
+    gradeCategory: string | null
     createdAt: Date
     updatedAt: Date
     _count: QuizCountAggregateOutputType | null
@@ -17989,6 +17996,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: boolean
     teacherId?: boolean
+    gradeCategory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     lessonQuizzes?: boolean | Quiz$lessonQuizzesArgs<ExtArgs>
@@ -18007,6 +18015,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: boolean
     teacherId?: boolean
+    gradeCategory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     teacher?: boolean | UserDefaultArgs<ExtArgs>
@@ -18021,6 +18030,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: boolean
     teacherId?: boolean
+    gradeCategory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     teacher?: boolean | UserDefaultArgs<ExtArgs>
@@ -18035,11 +18045,12 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: boolean
     teacherId?: boolean
+    gradeCategory?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type QuizOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "description" | "sourceFile" | "shuffleQuestions" | "shuffleAnswers" | "timeLimit" | "teacherId" | "createdAt" | "updatedAt", ExtArgs["result"]["quiz"]>
+  export type QuizOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "description" | "sourceFile" | "shuffleQuestions" | "shuffleAnswers" | "timeLimit" | "teacherId" | "gradeCategory" | "createdAt" | "updatedAt", ExtArgs["result"]["quiz"]>
   export type QuizInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     lessonQuizzes?: boolean | Quiz$lessonQuizzesArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
@@ -18071,6 +18082,7 @@ export namespace Prisma {
       shuffleAnswers: boolean
       timeLimit: number
       teacherId: string
+      gradeCategory: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["quiz"]>
@@ -18508,6 +18520,7 @@ export namespace Prisma {
     readonly shuffleAnswers: FieldRef<"Quiz", 'Boolean'>
     readonly timeLimit: FieldRef<"Quiz", 'Int'>
     readonly teacherId: FieldRef<"Quiz", 'String'>
+    readonly gradeCategory: FieldRef<"Quiz", 'String'>
     readonly createdAt: FieldRef<"Quiz", 'DateTime'>
     readonly updatedAt: FieldRef<"Quiz", 'DateTime'>
   }
@@ -24808,6 +24821,7 @@ export namespace Prisma {
     shuffleAnswers: 'shuffleAnswers',
     timeLimit: 'timeLimit',
     teacherId: 'teacherId',
+    gradeCategory: 'gradeCategory',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -25840,6 +25854,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFilter<"Quiz"> | boolean
     timeLimit?: IntFilter<"Quiz"> | number
     teacherId?: StringFilter<"Quiz"> | string
+    gradeCategory?: StringNullableFilter<"Quiz"> | string | null
     createdAt?: DateTimeFilter<"Quiz"> | Date | string
     updatedAt?: DateTimeFilter<"Quiz"> | Date | string
     lessonQuizzes?: LessonQuizListRelationFilter
@@ -25857,6 +25872,7 @@ export namespace Prisma {
     shuffleAnswers?: SortOrder
     timeLimit?: SortOrder
     teacherId?: SortOrder
+    gradeCategory?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     lessonQuizzes?: LessonQuizOrderByRelationAggregateInput
@@ -25877,6 +25893,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFilter<"Quiz"> | boolean
     timeLimit?: IntFilter<"Quiz"> | number
     teacherId?: StringFilter<"Quiz"> | string
+    gradeCategory?: StringNullableFilter<"Quiz"> | string | null
     createdAt?: DateTimeFilter<"Quiz"> | Date | string
     updatedAt?: DateTimeFilter<"Quiz"> | Date | string
     lessonQuizzes?: LessonQuizListRelationFilter
@@ -25894,6 +25911,7 @@ export namespace Prisma {
     shuffleAnswers?: SortOrder
     timeLimit?: SortOrder
     teacherId?: SortOrder
+    gradeCategory?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: QuizCountOrderByAggregateInput
@@ -25915,6 +25933,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolWithAggregatesFilter<"Quiz"> | boolean
     timeLimit?: IntWithAggregatesFilter<"Quiz"> | number
     teacherId?: StringWithAggregatesFilter<"Quiz"> | string
+    gradeCategory?: StringNullableWithAggregatesFilter<"Quiz"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Quiz"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Quiz"> | Date | string
   }
@@ -27213,6 +27232,7 @@ export namespace Prisma {
     shuffleQuestions?: boolean
     shuffleAnswers?: boolean
     timeLimit?: number
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizCreateNestedManyWithoutQuizInput
@@ -27230,6 +27250,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: number
     teacherId: string
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizUncheckedCreateNestedManyWithoutQuizInput
@@ -27245,6 +27266,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUpdateManyWithoutQuizNestedInput
@@ -27262,6 +27284,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
     teacherId?: StringFieldUpdateOperationsInput | string
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUncheckedUpdateManyWithoutQuizNestedInput
@@ -27278,6 +27301,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: number
     teacherId: string
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -27290,6 +27314,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -27303,6 +27328,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
     teacherId?: StringFieldUpdateOperationsInput | string
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -28483,6 +28509,7 @@ export namespace Prisma {
     shuffleAnswers?: SortOrder
     timeLimit?: SortOrder
     teacherId?: SortOrder
+    gradeCategory?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -28500,6 +28527,7 @@ export namespace Prisma {
     shuffleAnswers?: SortOrder
     timeLimit?: SortOrder
     teacherId?: SortOrder
+    gradeCategory?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -28513,6 +28541,7 @@ export namespace Prisma {
     shuffleAnswers?: SortOrder
     timeLimit?: SortOrder
     teacherId?: SortOrder
+    gradeCategory?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -30431,6 +30460,7 @@ export namespace Prisma {
     shuffleQuestions?: boolean
     shuffleAnswers?: boolean
     timeLimit?: number
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizCreateNestedManyWithoutQuizInput
@@ -30446,6 +30476,7 @@ export namespace Prisma {
     shuffleQuestions?: boolean
     shuffleAnswers?: boolean
     timeLimit?: number
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizUncheckedCreateNestedManyWithoutQuizInput
@@ -30664,6 +30695,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFilter<"Quiz"> | boolean
     timeLimit?: IntFilter<"Quiz"> | number
     teacherId?: StringFilter<"Quiz"> | string
+    gradeCategory?: StringNullableFilter<"Quiz"> | string | null
     createdAt?: DateTimeFilter<"Quiz"> | Date | string
     updatedAt?: DateTimeFilter<"Quiz"> | Date | string
   }
@@ -32453,6 +32485,7 @@ export namespace Prisma {
     shuffleQuestions?: boolean
     shuffleAnswers?: boolean
     timeLimit?: number
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizCreateNestedManyWithoutQuizInput
@@ -32469,6 +32502,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: number
     teacherId: string
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizUncheckedCreateNestedManyWithoutQuizInput
@@ -32528,6 +32562,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUpdateManyWithoutQuizNestedInput
@@ -32544,6 +32579,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
     teacherId?: StringFieldUpdateOperationsInput | string
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUncheckedUpdateManyWithoutQuizNestedInput
@@ -32558,6 +32594,7 @@ export namespace Prisma {
     shuffleQuestions?: boolean
     shuffleAnswers?: boolean
     timeLimit?: number
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     teacher: UserCreateNestedOneWithoutQuizzesInput
@@ -32574,6 +32611,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: number
     teacherId: string
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     questions?: QuizQuestionUncheckedCreateNestedManyWithoutQuizInput
@@ -32631,6 +32669,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacher?: UserUpdateOneRequiredWithoutQuizzesNestedInput
@@ -32647,6 +32686,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
     teacherId?: StringFieldUpdateOperationsInput | string
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     questions?: QuizQuestionUncheckedUpdateManyWithoutQuizNestedInput
@@ -32727,6 +32767,7 @@ export namespace Prisma {
     shuffleQuestions?: boolean
     shuffleAnswers?: boolean
     timeLimit?: number
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizCreateNestedManyWithoutQuizInput
@@ -32743,6 +32784,7 @@ export namespace Prisma {
     shuffleAnswers?: boolean
     timeLimit?: number
     teacherId: string
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     lessonQuizzes?: LessonQuizUncheckedCreateNestedManyWithoutQuizInput
@@ -32789,6 +32831,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUpdateManyWithoutQuizNestedInput
@@ -32805,6 +32848,7 @@ export namespace Prisma {
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
     teacherId?: StringFieldUpdateOperationsInput | string
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUncheckedUpdateManyWithoutQuizNestedInput
@@ -33140,6 +33184,7 @@ export namespace Prisma {
     shuffleQuestions?: boolean
     shuffleAnswers?: boolean
     timeLimit?: number
+    gradeCategory?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -33242,6 +33287,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUpdateManyWithoutQuizNestedInput
@@ -33257,6 +33303,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     lessonQuizzes?: LessonQuizUncheckedUpdateManyWithoutQuizNestedInput
@@ -33272,6 +33319,7 @@ export namespace Prisma {
     shuffleQuestions?: BoolFieldUpdateOperationsInput | boolean
     shuffleAnswers?: BoolFieldUpdateOperationsInput | boolean
     timeLimit?: IntFieldUpdateOperationsInput | number
+    gradeCategory?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

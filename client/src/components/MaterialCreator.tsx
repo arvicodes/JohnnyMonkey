@@ -64,6 +64,7 @@ interface Quiz {
   shuffleQuestions: boolean;
   shuffleAnswers: boolean;
   timeLimit: number;
+  gradeCategory?: string;
   questions: QuizQuestion[];
   createdAt: string;
 }
@@ -104,6 +105,21 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const [quizTimeLimit, setQuizTimeLimit] = useState(30);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
   const [shuffleAnswers, setShuffleAnswers] = useState(true);
+  const [gradeCategory, setGradeCategory] = useState<string>('');
+  
+  // Available grade categories
+  const availableGradeCategories = [
+    'Quiz 1',
+    'Quiz 2', 
+    'Quiz 3',
+    'Quiz 4',
+    'Quiz 5',
+    'Quiz 6',
+    'Quiz 7',
+    'Quiz 8',
+    'Quiz 9',
+    'Quiz 10'
+  ];
   
   // Quiz editing states
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
@@ -231,6 +247,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     setQuizTimeLimit(30);
     setShuffleQuestions(true);
     setShuffleAnswers(true);
+    setGradeCategory('');
   };
 
   const handleQuizDialogClose = () => {
@@ -285,7 +302,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
         description: quizDescription,
         timeLimit: quizTimeLimit,
         shuffleQuestions,
-        shuffleAnswers
+        shuffleAnswers,
+        gradeCategory: gradeCategory || null
       };
       
       console.log('Creating quiz with data:', quizData);
@@ -1051,6 +1069,11 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           </Typography>
                           <Typography variant="caption" component="div" sx={{ color: '#666', fontSize: '0.65rem' }}>
                             Fragen: {quiz.questions.length} | Zeit: {quiz.timeLimit} Min.
+                            {quiz.gradeCategory && (
+                              <span style={{ marginLeft: '8px', color: '#ff9800', fontWeight: 'bold' }}>
+                                | Note: {quiz.gradeCategory}
+                              </span>
+                            )}
                           </Typography>
                         </Box>
                       </Box>
@@ -1351,6 +1374,26 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 >
                   <MenuItem value="true">Ja</MenuItem>
                   <MenuItem value="false">Nein</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Zu welcher Note gehört dieses Quiz?</InputLabel>
+                <Select
+                  value={gradeCategory}
+                  label="Zu welcher Note gehört dieses Quiz?"
+                  onChange={(e) => setGradeCategory(e.target.value)}
+                >
+                  <MenuItem value="">
+                    <em>Keine Note zuordnen</em>
+                  </MenuItem>
+                  {availableGradeCategories.map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {category}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>
