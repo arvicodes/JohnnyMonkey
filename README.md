@@ -39,6 +39,35 @@ Die Anwendung verwendet echte Daten aus der Datenbank. Für eine saubere Install
    cp server/prisma/backup_ohne_seed_20250805_121702.db server/prisma/dev.db
    ```
 
+### Aktuelle DB-Konfiguration
+
+- Provider: SQLite (Datei-basierte DB)
+- ORM: Prisma Client
+- Schema/Config: `server/prisma/schema.prisma`
+  - `datasource db { provider = "sqlite"; url = "file:./dev.db" }`
+- Laufzeit-Datei: `server/prisma/dev.db`
+- Generierter Prisma-Client: `server/src/generated/prisma/`
+- Backups: im Repo (z. B. `db-backup-full_YYYYMMDD_HHMMSS.sqlite3`)
+
+### Häufige DB-Befehle
+
+```bash
+# Prisma Schema-Änderungen ohne Datenverlust synchronisieren (dev)
+cd server && npx prisma db push
+
+# Prisma Client neu generieren (falls nötig)
+cd server && npx prisma generate
+
+# SQLite inspizieren (Beispiel)
+cd server && sqlite3 prisma/dev.db ".tables"
+cd server && sqlite3 prisma/dev.db "SELECT * FROM Subject;"
+```
+
+### Wichtige Hinweise
+- Keine destructive Resets/Migrations ohne Absprache (keine `prisma migrate reset`).
+- Vor größeren Änderungen ein Backup erstellen und committen.
+- Prod/Dev unterscheiden: aktuell nutzen wir eine lokale Datei `dev.db`.
+
 **Warum kein Seed-Script:**
 - Komplexe Beziehungen zwischen Tabellen
 - TypeScript-Kompatibilitätsprobleme
