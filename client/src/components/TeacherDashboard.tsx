@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -120,6 +120,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Debug: Log userId
   console.log('TeacherDashboard received userId:', userId);
   const [groups, setGroups] = useState<LearningGroup[]>([]);
+  const [subjectTabValue, setSubjectTabValue] = useState(0);
+  const [blockTabValue, setBlockTabValue] = useState(0);
+  useEffect(() => {
+    setBlockTabValue(0);
+  }, [subjectTabValue]);
+
+  // Wenn genau 2 Fächer vorhanden sind, automatisch mit rechtem (Informatik) starten
+  useEffect(() => {
+    // Warten bis subjects-State existiert (weiter unten deklariert)
+    // Dieser Effekt wird nach der Erst-Initialisierung erneut getriggert
+  }, []);
   // Track which groups are expanded (default: expanded)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
@@ -230,6 +241,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const resSubjects = await fetch(`/api/subjects?teacherId=${userId}`);
       const subjectsData = resSubjects.ok ? await resSubjects.json() : [];
       setSubjects(subjectsData);
+      if (subjectsData.length === 2) {
+        setSubjectTabValue(1);
+      }
       // Blocks
       let allBlocks: any[] = [];
       for (const subj of subjectsData) {
@@ -856,7 +870,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 bgcolor: colors.cardBg
               }}>
                 <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
                       <GroupIcon sx={{ mr: 1.4, color: colors.primary, fontSize: 28 }} />
                       <Typography variant="h5" component="h2" sx={{ 
@@ -877,12 +891,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       sx={{ 
                         bgcolor: colors.primary,
                         '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' },
-                        ml: 1.4,
-                        py: 0.35,
-                        px: 1.4,
-                        fontSize: '0.525rem',
-                        height: '22.4px',
-                        width: '14%'
+                        ml: 1.0,
+                        py: 0.25,
+                        px: 1.0,
+                        fontSize: '0.48rem',
+                        height: '20px',
+                        width: '12%'
                       }}
                     >
                       Neue Gruppe
@@ -890,13 +904,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   </Box>
 
                   {groups.map((group) => (
-                    <Box key={group.id} sx={{ mb: 2.8 }}>
+                    <Box key={group.id} sx={{ mb: 1.4 }}>
                       <Box sx={{ 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'space-between',
-                        mb: 1.4,
-                        p: 1.4,
+                        mb: 0.8,
+                        p: 1.0,
                         bgcolor: `${colors.primary}10`,
                         borderRadius: 1.4,
                         cursor: 'pointer',
@@ -911,7 +925,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            fontSize: '0.84rem'
+                            fontSize: '0.72rem'
                           }}>
                             {group.name}
                           </Typography>
@@ -919,12 +933,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             label={`${group.students.length} Schüler`}
                             size="small" 
                             sx={{ 
-                              ml: 1.4, 
+                              ml: 1.0, 
                               bgcolor: colors.primary,
                               color: 'white',
                               fontWeight: 'bold',
-                              fontSize: '0.7rem',
-                              height: 18
+                              fontSize: '0.6rem',
+                              height: 16
                             }} 
                           />
                         </Box>
@@ -951,9 +965,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           </IconButton>
                         </Box>
                       </Box>
-                      <Grid container spacing={1.4} sx={{ display: expandedGroups[group.id] === false ? 'none' : 'flex' }}>
+                      <Grid container spacing={0.8} sx={{ display: expandedGroups[group.id] === false ? 'none' : 'flex' }}>
                         <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Grid container spacing={1.4}>
+                          <Grid container spacing={0.8}>
                             {group.students.map((student) => (
                               <Grid item xs={12} sm={6} md={6} lg={3} key={student.id}>
                                 <Card 
@@ -1380,6 +1394,157 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={2}>
+            {/* Subtabs: Fächer als Tabs */}
+            <Box sx={{ mb: 0.15 }}>
+              <Tabs
+                value={subjectTabValue}
+                onChange={(_, v) => setSubjectTabValue(v)}
+                variant={subjects.length === 2 ? 'fullWidth' : 'scrollable'}
+                scrollButtons={subjects.length === 2 ? false : 'auto'}
+                aria-label="subjects tabs"
+                sx={{
+                  minHeight: subjects.length === 2 ? 32 : 24,
+                  '& .MuiTabs-flexContainer': { gap: subjects.length === 2 ? 0.5 : 0.25 },
+                  '& .MuiTabs-indicator': { display: 'none' },
+                  '& .MuiTab-root': {
+                    minHeight: subjects.length === 2 ? 30 : 22,
+                    textTransform: 'none',
+                    padding: subjects.length === 2 ? '6px 10px' : '1px 8px',
+                    borderRadius: subjects.length === 2 ? '16px' : '14px',
+                    fontSize: subjects.length === 2 ? '0.82rem' : '0.64rem',
+                    color: '#2C3E50',
+                    opacity: 1,
+                    ...(subjects.length === 2 ? { flex: 1, maxWidth: '50%' } : {}),
+                  },
+                  '& .MuiTab-root.Mui-selected': {
+                    backgroundColor: '#e3f0fc',
+                    color: '#1976D2',
+                    fontWeight: 600,
+                  },
+                }}
+              >
+                {subjects.map((s, i) => (
+                  <Tab key={s.id} label={s.name} value={i} />
+                ))}
+              </Tabs>
+            </Box>
+
+            {/* Unter-Tabs: Blöcke direkt unterhalb der jeweiligen Obertabs (bei genau 2 Fächern links/rechts 50%) */}
+            {subjects.length === 2 ? (
+              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.15, mb: 0.6 }}>
+                <Box sx={{ width: '50%' }}>
+                  {subjectTabValue === 0 && (
+                    <Tabs
+                      value={blockTabValue}
+                      onChange={(_, v) => setBlockTabValue(v)}
+                      variant="standard"
+                      aria-label="blocks tabs left"
+                      sx={{
+                        minHeight: 20,
+                        width: '100%',
+                        '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap' },
+                        '& .MuiTabs-indicator': { display: 'none' },
+                        '& .MuiTab-root': {
+                          minHeight: 18,
+                          textTransform: 'none',
+                          padding: '1px 4px',
+                          borderRadius: '10px',
+                          fontSize: '0.6rem',
+                          color: '#2C3E50',
+                          opacity: 1,
+                          backgroundColor: '#f1f5f9',
+                          width: '20%',
+                          minWidth: 0,
+                        },
+                        '& .MuiTab-root.Mui-selected': {
+                          backgroundColor: '#e8f5e9',
+                          color: '#2E7D32',
+                          fontWeight: 600,
+                        },
+                      }}
+                    >
+                      {(blocks.filter(b => b.subjectId === subjects[0]?.id) || []).map((b, i) => (
+                        <Tab key={b.id} label={b.name} value={i} />
+                      ))}
+                    </Tabs>
+                  )}
+                </Box>
+                <Box sx={{ width: '50%', display: 'flex', justifyContent: 'flex-end' }}>
+                  {subjectTabValue === 1 && (
+                    <Tabs
+                      value={blockTabValue}
+                      onChange={(_, v) => setBlockTabValue(v)}
+                      variant="standard"
+                      aria-label="blocks tabs right"
+                      sx={{
+                        minHeight: 20,
+                        width: '100%',
+                        '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end' },
+                        '& .MuiTabs-indicator': { display: 'none' },
+                        '& .MuiTab-root': {
+                          minHeight: 18,
+                          textTransform: 'none',
+                          padding: '1px 4px',
+                          borderRadius: '10px',
+                          fontSize: '0.6rem',
+                          color: '#2C3E50',
+                          opacity: 1,
+                          backgroundColor: '#f1f5f9',
+                          width: '20%',
+                          minWidth: 0,
+                        },
+                        '& .MuiTab-root.Mui-selected': {
+                          backgroundColor: '#e8f5e9',
+                          color: '#2E7D32',
+                          fontWeight: 600,
+                        },
+                      }}
+                    >
+                      {(blocks.filter(b => b.subjectId === subjects[1]?.id) || []).map((b, i) => (
+                        <Tab key={b.id} label={b.name} value={i} />
+                      ))}
+                    </Tabs>
+                  )}
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ mt: 0.15, mb: 0.6 }}>
+                <Tabs
+                  value={blockTabValue}
+                  onChange={(_, v) => setBlockTabValue(v)}
+                  variant="standard"
+                  aria-label="blocks tabs"
+                  sx={{
+                    minHeight: 20,
+                    width: '100%',
+                    '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap' },
+                    '& .MuiTabs-indicator': { display: 'none' },
+                    '& .MuiTab-root': {
+                      minHeight: 18,
+                      textTransform: 'none',
+                      padding: '1px 4px',
+                      borderRadius: '10px',
+                      fontSize: '0.6rem',
+                      color: '#2C3E50',
+                      opacity: 1,
+                      backgroundColor: '#f1f5f9',
+                      width: '20%',
+                      minWidth: 0,
+                    },
+                    '& .MuiTab-root.Mui-selected': {
+                      backgroundColor: '#e8f5e9',
+                      color: '#2E7D32',
+                      fontWeight: 600,
+                    },
+                  }}
+               >
+                  {(blocks.filter(b => b.subjectId === subjects[subjectTabValue]?.id) || []).map((b, i) => (
+                    <Tab key={b.id} label={b.name} value={i} />
+                  ))}
+                </Tabs>
+              </Box>
+            )}
+
             <SubjectManager
               teacherId={userId}
               subjectAssignments={subjectAssignments}
@@ -1397,6 +1562,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               setUnits={setUnits}
               setTopics={setTopics}
               setLessons={setLessons}
+              visibleSubjectId={subjects[subjectTabValue]?.id}
+                visibleBlockId={(blocks.filter(b => b.subjectId === subjects[subjectTabValue]?.id) || [])[blockTabValue]?.id}
             />
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>
