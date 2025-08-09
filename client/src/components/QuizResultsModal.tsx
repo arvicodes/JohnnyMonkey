@@ -217,6 +217,13 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
             <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
               {answers.map((answer: any, index: number) => {
                 const isCorrect = answer.isCorrect;
+                const selected = answer.selectedAnswer;
+                const correct = answer.correctAnswer;
+                const opts: string[] = answer.questionOptions || [];
+                const findText = (key: string) => {
+                  const opt = opts.find((o: string) => o.startsWith(key + ')'));
+                  return opt ? opt.replace(/^[a-d]\)\s*/, '') : '';
+                };
                 
                 return (
                   <Card 
@@ -263,7 +270,7 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                               fontWeight: 600,
                               fontSize: '0.6rem'
                             }}>
-                              Ihre Antwort: {answer.selectedAnswer || 'Keine Antwort'}
+                              Deine Antwort: {selected ? `${selected}: ${findText(selected)}` : 'Keine Antwort'}
                             </Typography>
                             {isCorrect ? (
                               <CheckIcon sx={{ color: '#4caf50', fontSize: 14 }} />
@@ -282,7 +289,7 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                               fontSize: '0.6rem'
                             }}>
                               <CheckIcon sx={{ fontSize: 12 }} />
-                              Richtige Antwort: {answer.correctAnswer}
+                              Richtige Antwort: {correct}: {findText(correct)}
                             </Typography>
                           )}
                         </Box>

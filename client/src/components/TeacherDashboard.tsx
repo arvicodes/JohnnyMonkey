@@ -38,7 +38,9 @@ import {
   Storage as StorageIcon,
   MoreVert as MoreVertIcon,
   Build as BuildIcon,
-  Grade as GradeIcon
+  Grade as GradeIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -118,6 +120,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Debug: Log userId
   console.log('TeacherDashboard received userId:', userId);
   const [groups, setGroups] = useState<LearningGroup[]>([]);
+  // Track which groups are expanded (default: expanded)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  // Ensure newly loaded groups get a default expanded state
+  useEffect(() => {
+    if (!groups || groups.length === 0) return;
+    setExpandedGroups(prev => {
+      const next: Record<string, boolean> = { ...prev };
+      for (const g of groups) {
+        if (next[g.id] === undefined) next[g.id] = false; // default collapsed
+      }
+      return next;
+    });
+  }, [groups]);
+
+  const toggleGroupExpanded = (groupId: string) => {
+    setExpandedGroups(prev => ({ ...prev, [groupId]: !(prev[groupId] ?? false) }));
+  };
   const [openNewGroupDialog, setOpenNewGroupDialog] = useState(false);
   const [openAddStudentsDialog, setOpenAddStudentsDialog] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
@@ -883,7 +903,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         '&:hover': {
                           bgcolor: `${colors.primary}20`,
                         }
-                      }} onClick={() => handleGroupClick(group.id)}>
+                      }} onClick={() => toggleGroupExpanded(group.id)}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <Typography variant="h6" sx={{ 
                             color: colors.primary, 
@@ -908,18 +928,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }} 
                           />
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, transform: 'translateX(-10%)' }}>
+                          <IconButton
+                            aria-label={expandedGroups[group.id] === false ? 'Aufklappen' : 'Zuklappen'}
+                            onClick={e => { e.stopPropagation(); toggleGroupExpanded(group.id); }}
+                            size="small"
+                            sx={{ width: 24, height: 24, p: 0.25 }}
+                          >
+                            {expandedGroups[group.id] === false ? (
+                              <ExpandMoreIcon />
+                            ) : (
+                              <ExpandLessIcon />
+                            )}
+                          </IconButton>
                           <IconButton
                             aria-label="Mehr"
                             onClick={e => { e.stopPropagation(); handleMenuOpen(e, group.id); }}
-                            sx={{ ml: 1 }}
+                            size="small"
+                            sx={{ width: 24, height: 24, p: 0.25 }}
                           >
                             <MoreVertIcon />
                           </IconButton>
                         </Box>
                       </Box>
-                      <Grid container spacing={1.4}>
-                        <Grid item xs={12} md={8}>
+                      <Grid container spacing={1.4} sx={{ display: expandedGroups[group.id] === false ? 'none' : 'flex' }}>
+                        <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Grid container spacing={1.4}>
                             {group.students.map((student) => (
                               <Grid item xs={12} sm={6} md={6} lg={3} key={student.id}>
@@ -1165,7 +1198,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             ))}
                           </Grid>
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
                           <Box sx={{ 
                             p: 2.1, 
                             bgcolor: '#fff', 
@@ -1492,6 +1525,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         anchorEl={menuAnchorEl}
         open={Boolean(menuAnchorEl)}
         onClose={handleMenuClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        keepMounted
+        PaperProps={{
+          sx: {
+            mt: 0.5,
+            transform: 'translateX(-12px)'
+          }
+        }}
       >
         <MenuItem onClick={() => { handleOpenAddStudents(menuGroupId!); handleMenuClose(); }}>
           <PersonAddIcon fontSize="small" sx={{ mr: 1 }} /> Schüler hinzufügen

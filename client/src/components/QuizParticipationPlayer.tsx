@@ -74,6 +74,8 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   const [timeLeft, setTimeLeft] = useState(0);
 
   const [showResults, setShowResults] = useState(false);
+  const [finalPercentage, setFinalPercentage] = useState<number | null>(null);
+  const [resultAnswersByQuestionId, setResultAnswersByQuestionId] = useState<Record<string, { selected: string; correct: string; isCorrect: boolean }>>({});
   const [score, setScore] = useState(0);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [wasAborted, setWasAborted] = useState(false);
@@ -161,16 +163,22 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
           maxScore: results.participation.maxScore
         });
         
-        // Convert answers back to the format expected by the component
+        // Map results to current question ids
         const answersMap: { [key: string]: string } = {};
+        const resultsMap: Record<string, { selected: string; correct: string; isCorrect: boolean }> = {};
         results.answers.forEach((answer: any) => {
-          // Find the question ID by matching the question text
           const question = questions.find(q => q.question === answer.question);
           if (question) {
             answersMap[question.id] = answer.selectedAnswer;
+            resultsMap[question.id] = {
+              selected: answer.selectedAnswer,
+              correct: answer.correctAnswer,
+              isCorrect: !!answer.isCorrect,
+            };
           }
         });
         setAnswers(answersMap);
+        setResultAnswersByQuestionId(resultsMap);
       } else {
         setError('Ergebnisse konnten nicht geladen werden');
       }
@@ -246,7 +254,8 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   const finishQuiz = async () => {
     const correctAnswers = questions.filter(q => answers[q.id] === q.correctAnswer).length;
     setScore(correctAnswers);
-    setShowResults(true);
+    // Pre-fill participation.maxScore if missing so percentage fallback works immediately
+    setParticipation(prev => prev ? { ...prev, maxScore: prev.maxScore || questions.length } : prev);
 
     if (!participation?.id) {
       console.error('Keine participation ID verfügbar');
@@ -267,7 +276,12 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Quiz submission successful:', result);
+        if (typeof result.percentage === 'number') {
+          setFinalPercentage(result.percentage);
+        }
+        // Ensure we have authoritative answers/correctness before showing
+        await loadResults(participation.id);
+        setShowResults(true);
       } else {
         const error = await response.text();
         console.error('Quiz submission failed:', error);
@@ -448,7 +462,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   }
 
   if (showResults) {
-    const percentage = Math.round((score / questions.length) * 100);
+    const percentage = finalPercentage ?? Math.round((score / questions.length) * 100);
     
     const getPerformanceColor = (percentage: number) => {
       if (percentage >= 90) return '#4caf50';
@@ -601,8 +615,12 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
               
               <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
                 {questions.map((question, index) => {
-                  const userAnswer = answers[question.id];
-                  const isCorrect = userAnswer === question.correctAnswer;
+                  const resultForQ = resultAnswersByQuestionId[question.id];
+                  const userAnswer = resultForQ?.selected ?? answers[question.id];
+                  const isCorrect = resultForQ ? resultForQ.isCorrect : userAnswer === question.correctAnswer;
+                  const userAnswerText = userAnswer ? `${userAnswer}: ${question.options.find((opt: string) => opt.startsWith(userAnswer + ')'))?.replace(/^[a-d]\)\s*/, '') || ''}` : 'Keine Antwort';
+                  const correctKey = resultForQ?.correct ?? question.correctAnswer;
+                  const correctAnswerText = `${correctKey}: ${question.options.find((opt: string) => opt.startsWith(correctKey + ')'))?.replace(/^[a-d]\)\s*/, '') || ''}`;
                   
                   return (
                     <Card 
@@ -643,14 +661,14 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                               {question.question}
                             </Typography>
                             
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                              <Typography variant="caption" sx={{ 
-                                color: isCorrect ? '#4caf50' : '#f44336',
-                                fontWeight: 600,
-                                fontSize: '0.6rem'
-                              }}>
-                                Ihre Antwort: {userAnswer || 'Keine Antwort'}
-                              </Typography>
+                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                               <Typography variant="caption" sx={{ 
+                                 color: isCorrect ? '#4caf50' : '#f44336',
+                                 fontWeight: 600,
+                                 fontSize: '0.6rem'
+                               }}>
+                                 Deine Antwort: {userAnswerText}
+                               </Typography>
                               {isCorrect ? (
                                 <CheckIcon sx={{ color: '#4caf50', fontSize: 14 }} />
                               ) : (
@@ -658,7 +676,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                               )}
                             </Box>
                             
-                            {!isCorrect && (
+                             {!isCorrect && (
                               <Typography variant="caption" sx={{ 
                                 color: '#4caf50',
                                 fontWeight: 600,
@@ -668,7 +686,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                                 fontSize: '0.6rem'
                               }}>
                                 <CheckIcon sx={{ fontSize: 12 }} />
-                                Richtige Antwort: {question.correctAnswer}
+                                Richtige Antwort: {correctAnswerText}
                               </Typography>
                             )}
                           </Box>
