@@ -116,6 +116,7 @@ function TabPanel(props: TabPanelProps) {
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
+  const subjectManagerRef = useRef<any>(null);
   
   // Debug: Log userId
   console.log('TeacherDashboard received userId:', userId);
@@ -453,6 +454,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const handleMainTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setMainTabValue(newValue);
+  };
+
+  const handleSubjectTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    if (newValue === -1) {
+      // "+" tab clicked - open subject dialog
+      handleOpenSubjectDialog();
+      return;
+    }
+    setSubjectTabValue(newValue);
+    setBlockTabValue(0); // Reset block tab when subject changes
+  };
+
+  const handleOpenSubjectDialog = () => {
+    // Call the SubjectManager's handleOpenDialog function
+    if (subjectManagerRef.current?.handleOpenDialog) {
+      subjectManagerRef.current.handleOpenDialog();
+    }
   };
 
   const handleGroupClick = (groupId: string) => {
@@ -1398,31 +1416,51 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             <Box sx={{ mb: 0.15 }}>
               <Tabs
                 value={subjectTabValue}
-                onChange={(_, v) => setSubjectTabValue(v)}
-                variant={subjects.length === 2 ? 'fullWidth' : 'scrollable'}
-                scrollButtons={subjects.length === 2 ? false : 'auto'}
+                onChange={handleSubjectTabChange}
+                variant="scrollable"
+                scrollButtons={false}
                 aria-label="subjects tabs"
                 sx={{
-                  minHeight: subjects.length === 2 ? 32 : 24,
-                  '& .MuiTabs-flexContainer': { gap: subjects.length === 2 ? 0.5 : 0.25 },
+                  minHeight: 32,
+                  '& .MuiTabs-flexContainer': { gap: 0.5 },
                   '& .MuiTabs-indicator': { display: 'none' },
                   '& .MuiTab-root': {
-                    minHeight: subjects.length === 2 ? 30 : 22,
+                    minHeight: 30,
                     textTransform: 'none',
-                    padding: subjects.length === 2 ? '6px 10px' : '1px 8px',
-                    borderRadius: subjects.length === 2 ? '16px' : '14px',
-                    fontSize: subjects.length === 2 ? '0.82rem' : '0.64rem',
+                    padding: '6px 10px',
+                    borderRadius: '16px',
+                    fontSize: '0.82rem',
                     color: '#2C3E50',
                     opacity: 1,
-                    ...(subjects.length === 2 ? { flex: 1, maxWidth: '50%' } : {}),
                   },
                   '& .MuiTab-root.Mui-selected': {
                     backgroundColor: '#e3f0fc',
                     color: '#1976D2',
                     fontWeight: 600,
                   },
+                  '& .MuiTab-root:first-of-type': {
+                    width: '7%',
+                    minWidth: '56px',
+                    maxWidth: '70px',
+                  },
+                  '& .MuiTab-root:not(:first-of-type)': {
+                    flex: 1,
+                    maxWidth: subjects.length === 1 ? '90%' : '45%',
+                  },
                 }}
               >
+                {/* + Tab für "Fach hinzufügen" */}
+                <Tab 
+                  label="➕" 
+                  value={-1} 
+                  sx={{ 
+                    fontSize: '1.2rem',
+                    color: '#1976D2',
+                    '&:hover': {
+                      backgroundColor: '#e3f0fc',
+                    }
+                  }}
+                />
                 {subjects.map((s, i) => (
                   <Tab key={s.id} label={s.name} value={i} />
                 ))}
@@ -1431,8 +1469,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
             {/* Unter-Tabs: Blöcke direkt unterhalb der jeweiligen Obertabs (bei genau 2 Fächern links/rechts 50%) */}
             {subjects.length === 2 ? (
-              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.15, mb: 0.6 }}>
-                <Box sx={{ width: '50%' }}>
+              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.15, mb: 2.5 }}>
+                <Box sx={{ width: '50%', ml: '6%' }}>
                   {subjectTabValue === 0 && (
                     <Tabs
                       value={blockTabValue}
@@ -1469,7 +1507,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     </Tabs>
                   )}
                 </Box>
-                <Box sx={{ width: '50%', display: 'flex', justifyContent: 'flex-end' }}>
+                <Box sx={{ width: '50%', display: 'flex', justifyContent: 'flex-start' }}>
                   {subjectTabValue === 1 && (
                     <Tabs
                       value={blockTabValue}
@@ -1479,7 +1517,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       sx={{
                         minHeight: 20,
                         width: '100%',
-                        '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end' },
+                        '& .MuiTabs-flexContainer': { gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-start' },
                         '& .MuiTabs-indicator': { display: 'none' },
                         '& .MuiTab-root': {
                           minHeight: 18,
@@ -1508,7 +1546,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 </Box>
               </Box>
             ) : (
-              <Box sx={{ mt: 0.15, mb: 0.6 }}>
+              <Box sx={{ mt: 0.15, mb: 2.5 }}>
                 <Tabs
                   value={blockTabValue}
                   onChange={(_, v) => setBlockTabValue(v)}
@@ -1546,6 +1584,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             )}
 
             <SubjectManager
+              ref={subjectManagerRef}
               teacherId={userId}
               subjectAssignments={subjectAssignments}
               setSubjectAssignments={setSubjectAssignments}
@@ -1563,7 +1602,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               setTopics={setTopics}
               setLessons={setLessons}
               visibleSubjectId={subjects[subjectTabValue]?.id}
-                visibleBlockId={(blocks.filter(b => b.subjectId === subjects[subjectTabValue]?.id) || [])[blockTabValue]?.id}
+              visibleBlockId={(blocks.filter(b => b.subjectId === subjects[subjectTabValue]?.id) || [])[blockTabValue]?.id}
+              onOpenSubjectDialog={handleOpenSubjectDialog}
             />
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>

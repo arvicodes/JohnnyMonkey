@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Box, Typography, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar, Alert } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon, GroupAdd as GroupAddIcon, Group as GroupIcon, Close as CloseIcon, Description as DescriptionIcon } from '@mui/icons-material';
 import { Menu, MenuItem, Chip, Tooltip } from '@mui/material';
@@ -83,6 +83,8 @@ interface SubjectManagerProps {
   visibleSubjectId?: string;
   // Optional: Zeige nur diesen Block (für Untertabs-Ansicht)
   visibleBlockId?: string;
+  // Optional: Callback für das Öffnen des Fach-Dialogs
+  onOpenSubjectDialog?: () => void;
 }
 
 // Hilfsfunktion für Chips
@@ -1095,7 +1097,7 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
   );
 };
 
-const SubjectManager: React.FC<SubjectManagerProps> = ({
+const SubjectManager = forwardRef<any, SubjectManagerProps>(({
   teacherId,
   subjectAssignments: subjectAssignmentsProp,
   setSubjectAssignments: setSubjectAssignmentsProp,
@@ -1114,7 +1116,8 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
   setLessons: setLessonsProp,
   visibleSubjectId,
   visibleBlockId,
-}) => {
+  onOpenSubjectDialog,
+}, ref) => {
   // Spielerische Farbpalette
   const colors = {
     primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
@@ -1631,6 +1634,11 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
     setSnackbar({ open: true, message, severity });
   };
 
+  // Expose handleOpenDialog to parent component via ref
+  useImperativeHandle(ref, () => ({
+    handleOpenDialog: () => handleOpenDialog()
+  }));
+
   // Drag & Drop Sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1770,14 +1778,6 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', mb: 2, minHeight: 40 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => handleOpenDialog()}>
-            ➕
-          </IconButton>
-        </Box>
-      </Box>
-      
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -2313,6 +2313,6 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
       </Snackbar>
     </Box>
   );
-};
+});
 
 export default SubjectManager; 
