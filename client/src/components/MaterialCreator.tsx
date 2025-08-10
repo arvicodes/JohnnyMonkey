@@ -42,8 +42,11 @@ import {
   Edit as EditIcon,
   Note as NoteIcon,
   DragIndicator as DragIcon,
-  ContentCopy as CopyIcon
+  ContentCopy as CopyIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon
 } from '@mui/icons-material';
+import { FormControlLabel, Radio } from '@mui/material';
 
 interface MaterialCreatorProps {
   teacherId: string;
@@ -365,8 +368,21 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const handleUpdateQuiz = async () => {
     if (!editingQuiz) return;
 
+    // Validierung der Fragen
+    const invalidQuestions = editingQuiz.questions.filter(q => 
+      !q.question.trim() || 
+      !q.correctAnswer.trim() || 
+      q.options.some(opt => !opt.trim())
+    );
+
+    if (invalidQuestions.length > 0) {
+      showSnackbar('Bitte füllen Sie alle Fragen und Antwortoptionen vollständig aus', 'error');
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/quizzes/${editingQuiz.id}/settings`, {
+      // Zuerst Quiz-Einstellungen aktualisieren
+      const settingsResponse = await fetch(`/api/quizzes/${editingQuiz.id}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -378,15 +394,34 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
         })
       });
 
-      if (response.ok) {
-        showSnackbar('Quiz erfolgreich aktualisiert', 'success');
+      if (!settingsResponse.ok) {
+        const error = await settingsResponse.json();
+        showSnackbar(error.error || 'Fehler beim Aktualisieren der Quiz-Einstellungen', 'error');
+        return;
+      }
+
+      // Dann Quiz-Fragen aktualisieren
+      const questionsResponse = await fetch(`/api/quizzes/${editingQuiz.id}/questions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questions: editingQuiz.questions.map((q, index) => ({
+            ...q,
+            order: index
+          }))
+        })
+      });
+
+      if (questionsResponse.ok) {
+        showSnackbar('Quiz und Fragen erfolgreich aktualisiert', 'success');
         handleEditDialogClose();
         fetchQuizzes(); // Aktualisiere die Quiz-Liste
       } else {
-        const error = await response.json();
-        showSnackbar(error.error || 'Fehler beim Aktualisieren', 'error');
+        const error = await questionsResponse.json();
+        showSnackbar(error.error || 'Fehler beim Aktualisieren der Fragen', 'error');
       }
     } catch (error) {
+      console.error('Error updating quiz:', error);
       showSnackbar('Fehler beim Aktualisieren des Quiz', 'error');
     }
   };
@@ -1515,30 +1550,171 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
               </FormControl>
             </Grid>
 
-            {/* Quiz-Fragen anzeigen */}
+            {/* Quiz-Fragen bearbeiten */}
             <Grid item xs={12}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#ff9800' }}>
-                Quiz-Fragen ({editingQuiz?.questions.length || 0})
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#ff9800' }}>
+                  Quiz-Fragen ({editingQuiz?.questions.length || 0})
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    if (editingQuiz) {
+                      const newQuestion: QuizQuestion = {
+                        id: `temp-${Date.now()}`,
+                        question: '',
+                        correctAnswer: '',
+                        options: ['', '', '', ''],
+                        order: editingQuiz.questions.length
+                      };
+                      setEditingQuiz({
+                        ...editingQuiz,
+                        questions: [...editingQuiz.questions, newQuestion]
+                      });
+                    }
+                  }}
+                  sx={{ color: '#ff9800', borderColor: '#ff9800' }}
+                >
+                  Frage hinzufügen
+                </Button>
+              </Box>
+              
               {editingQuiz?.questions.map((question, index) => (
-                <Paper key={question.id} sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                    Frage {index + 1}: {question.question}
+                <Paper key={question.id} sx={{ p: 2, mb: 2, bgcolor: '#f8f9fa', border: '1px solid #e0e0e0' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#ff9800' }}>
+                      Frage {index + 1}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          if (editingQuiz && index > 0) {
+                            const updatedQuestions = [...editingQuiz.questions];
+                            [updatedQuestions[index], updatedQuestions[index - 1]] = [updatedQuestions[index - 1], updatedQuestions[index]];
+                            setEditingQuiz({
+                              ...editingQuiz,
+                              questions: updatedQuestions
+                            });
+                          }
+                        }}
+                        disabled={index === 0}
+                        sx={{ p: 0.5 }}
+                      >
+                        <KeyboardArrowUpIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          if (editingQuiz && index < editingQuiz.questions.length - 1) {
+                            const updatedQuestions = [...editingQuiz.questions];
+                            [updatedQuestions[index], updatedQuestions[index + 1]] = [updatedQuestions[index + 1], updatedQuestions[index]];
+                            setEditingQuiz({
+                              ...editingQuiz,
+                              questions: updatedQuestions
+                            });
+                          }
+                        }}
+                        disabled={index === editingQuiz.questions.length - 1}
+                        sx={{ p: 0.5 }}
+                      >
+                        <KeyboardArrowDownIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          if (editingQuiz) {
+                            const updatedQuestions = editingQuiz.questions
+                              .filter((_, i) => i !== index)
+                              .map((q, newIndex) => ({ ...q, order: newIndex }));
+                            setEditingQuiz({
+                              ...editingQuiz,
+                              questions: updatedQuestions
+                            });
+                          }
+                        }}
+                        color="error"
+                        sx={{ p: 0.5 }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  
+                  <TextField
+                    fullWidth
+                    label="Frage"
+                    value={question.question}
+                    onChange={(e) => {
+                      if (editingQuiz) {
+                        const updatedQuestions = [...editingQuiz.questions];
+                        updatedQuestions[index] = { ...question, question: e.target.value };
+                        setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                      }
+                    }}
+                    sx={{ mb: 2 }}
+                    multiline
+                    rows={2}
+                  />
+                  
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                    Antwortoptionen:
                   </Typography>
-                  <Box sx={{ ml: 2 }}>
-                    {question.options.map((option, optIndex) => (
+                  
+                  {question.options.map((option, optIndex) => (
+                    <Box key={optIndex} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                       <Typography 
-                        key={optIndex} 
                         variant="body2" 
                         sx={{ 
-                          color: option === question.correctAnswer ? '#4caf50' : '#666',
-                          fontWeight: option === question.correctAnswer ? 'bold' : 'normal'
+                          minWidth: '30px',
+                          fontWeight: 'bold',
+                          color: '#666'
                         }}
                       >
-                        {String.fromCharCode(97 + optIndex)}) {option}
-                        {option === question.correctAnswer && ' ✓'}
+                        {String.fromCharCode(97 + optIndex)})
                       </Typography>
-                    ))}
+                      <TextField
+                        fullWidth
+                        size="small"
+                        value={option}
+                        onChange={(e) => {
+                          if (editingQuiz) {
+                            const updatedQuestions = [...editingQuiz.questions];
+                            const updatedOptions = [...updatedQuestions[index].options];
+                            updatedOptions[optIndex] = e.target.value;
+                            updatedQuestions[index] = { ...question, options: updatedOptions };
+                            setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                          }
+                        }}
+                        sx={{ ml: 1 }}
+                        placeholder={`Option ${optIndex + 1}`}
+                      />
+                      <FormControlLabel
+                        control={
+                          <Radio
+                            checked={option === question.correctAnswer}
+                            onChange={() => {
+                              if (editingQuiz) {
+                                const updatedQuestions = [...editingQuiz.questions];
+                                updatedQuestions[index] = { ...question, correctAnswer: option };
+                                setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                              }
+                            }}
+                            value={option}
+                            color="primary"
+                          />
+                        }
+                        label="Richtig"
+                        sx={{ ml: 1 }}
+                      />
+                    </Box>
+                  ))}
+                  
+                  <Box sx={{ mt: 2, p: 1, bgcolor: '#e8f5e8', borderRadius: 1 }}>
+                    <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                      Richtige Antwort: {question.correctAnswer || 'Nicht gesetzt'}
+                    </Typography>
                   </Box>
                 </Paper>
               ))}

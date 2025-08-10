@@ -186,3 +186,60 @@ export const getQuizzesByTeacher = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Fehler beim Abrufen der Lehrer-Quizzes' });
   }
 }; 
+
+export const updateQuizQuestions = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { questions } = req.body;
+    
+    if (!questions || !Array.isArray(questions)) {
+      return res.status(400).json({ error: 'Fragen sind erforderlich und müssen ein Array sein' });
+    }
+
+    // Alle bestehenden Fragen für dieses Quiz löschen
+    await prisma.quizQuestion.deleteMany({
+      where: { quizId: id }
+    });
+
+    // Neue Fragen erstellen
+    const createdQuestions = await prisma.quizQuestion.createMany({
+      data: questions.map((q: any, index: number) => ({
+        question: q.question,
+        correctAnswer: q.correctAnswer,
+        options: JSON.stringify(q.options),
+        order: index + 1,
+        quizId: id
+      }))
+    });
+
+    // Aktualisiertes Quiz mit Fragen zurückgeben
+    const updatedQuiz = await prisma.quiz.findUnique({
+      where: { id },
+      include: {
+        questions: {
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      }
+    });
+
+    if (!updatedQuiz) {
+      return res.status(404).json({ error: 'Quiz nicht gefunden' });
+    }
+
+    // Deserialize options for each question
+    const quizWithParsedOptions = {
+      ...updatedQuiz,
+      questions: updatedQuiz.questions.map(q => ({
+        ...q,
+        options: JSON.parse(q.options)
+      }))
+    };
+    
+    res.json(quizWithParsedOptions);
+  } catch (error) {
+    console.error('Error updating quiz questions:', error);
+    res.status(500).json({ error: 'Fehler beim Aktualisieren der Quiz-Fragen' });
+  }
+}; 
