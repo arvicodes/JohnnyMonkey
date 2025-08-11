@@ -19032,6 +19032,8 @@ export namespace Prisma {
     question: string | null
     correctAnswer: string | null
     options: string | null
+    tip: string | null
+    explanation: string | null
     order: number | null
     quizId: string | null
     createdAt: Date | null
@@ -19043,6 +19045,8 @@ export namespace Prisma {
     question: string | null
     correctAnswer: string | null
     options: string | null
+    tip: string | null
+    explanation: string | null
     order: number | null
     quizId: string | null
     createdAt: Date | null
@@ -19054,6 +19058,8 @@ export namespace Prisma {
     question: number
     correctAnswer: number
     options: number
+    tip: number
+    explanation: number
     order: number
     quizId: number
     createdAt: number
@@ -19075,6 +19081,8 @@ export namespace Prisma {
     question?: true
     correctAnswer?: true
     options?: true
+    tip?: true
+    explanation?: true
     order?: true
     quizId?: true
     createdAt?: true
@@ -19086,6 +19094,8 @@ export namespace Prisma {
     question?: true
     correctAnswer?: true
     options?: true
+    tip?: true
+    explanation?: true
     order?: true
     quizId?: true
     createdAt?: true
@@ -19097,6 +19107,8 @@ export namespace Prisma {
     question?: true
     correctAnswer?: true
     options?: true
+    tip?: true
+    explanation?: true
     order?: true
     quizId?: true
     createdAt?: true
@@ -19195,6 +19207,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip: string
+    explanation: string
     order: number
     quizId: string
     createdAt: Date
@@ -19225,6 +19239,8 @@ export namespace Prisma {
     question?: boolean
     correctAnswer?: boolean
     options?: boolean
+    tip?: boolean
+    explanation?: boolean
     order?: boolean
     quizId?: boolean
     createdAt?: boolean
@@ -19239,6 +19255,8 @@ export namespace Prisma {
     question?: boolean
     correctAnswer?: boolean
     options?: boolean
+    tip?: boolean
+    explanation?: boolean
     order?: boolean
     quizId?: boolean
     createdAt?: boolean
@@ -19251,6 +19269,8 @@ export namespace Prisma {
     question?: boolean
     correctAnswer?: boolean
     options?: boolean
+    tip?: boolean
+    explanation?: boolean
     order?: boolean
     quizId?: boolean
     createdAt?: boolean
@@ -19263,13 +19283,15 @@ export namespace Prisma {
     question?: boolean
     correctAnswer?: boolean
     options?: boolean
+    tip?: boolean
+    explanation?: boolean
     order?: boolean
     quizId?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type QuizQuestionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "question" | "correctAnswer" | "options" | "order" | "quizId" | "createdAt" | "updatedAt", ExtArgs["result"]["quizQuestion"]>
+  export type QuizQuestionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "question" | "correctAnswer" | "options" | "tip" | "explanation" | "order" | "quizId" | "createdAt" | "updatedAt", ExtArgs["result"]["quizQuestion"]>
   export type QuizQuestionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     answers?: boolean | QuizQuestion$answersArgs<ExtArgs>
     quiz?: boolean | QuizDefaultArgs<ExtArgs>
@@ -19293,6 +19315,8 @@ export namespace Prisma {
       question: string
       correctAnswer: string
       options: string
+      tip: string
+      explanation: string
       order: number
       quizId: string
       createdAt: Date
@@ -19726,6 +19750,8 @@ export namespace Prisma {
     readonly question: FieldRef<"QuizQuestion", 'String'>
     readonly correctAnswer: FieldRef<"QuizQuestion", 'String'>
     readonly options: FieldRef<"QuizQuestion", 'String'>
+    readonly tip: FieldRef<"QuizQuestion", 'String'>
+    readonly explanation: FieldRef<"QuizQuestion", 'String'>
     readonly order: FieldRef<"QuizQuestion", 'Int'>
     readonly quizId: FieldRef<"QuizQuestion", 'String'>
     readonly createdAt: FieldRef<"QuizQuestion", 'DateTime'>
@@ -24834,6 +24860,8 @@ export namespace Prisma {
     question: 'question',
     correctAnswer: 'correctAnswer',
     options: 'options',
+    tip: 'tip',
+    explanation: 'explanation',
     order: 'order',
     quizId: 'quizId',
     createdAt: 'createdAt',
@@ -25946,6 +25974,8 @@ export namespace Prisma {
     question?: StringFilter<"QuizQuestion"> | string
     correctAnswer?: StringFilter<"QuizQuestion"> | string
     options?: StringFilter<"QuizQuestion"> | string
+    tip?: StringFilter<"QuizQuestion"> | string
+    explanation?: StringFilter<"QuizQuestion"> | string
     order?: IntFilter<"QuizQuestion"> | number
     quizId?: StringFilter<"QuizQuestion"> | string
     createdAt?: DateTimeFilter<"QuizQuestion"> | Date | string
@@ -25959,6 +25989,8 @@ export namespace Prisma {
     question?: SortOrder
     correctAnswer?: SortOrder
     options?: SortOrder
+    tip?: SortOrder
+    explanation?: SortOrder
     order?: SortOrder
     quizId?: SortOrder
     createdAt?: SortOrder
@@ -25975,6 +26007,8 @@ export namespace Prisma {
     question?: StringFilter<"QuizQuestion"> | string
     correctAnswer?: StringFilter<"QuizQuestion"> | string
     options?: StringFilter<"QuizQuestion"> | string
+    tip?: StringFilter<"QuizQuestion"> | string
+    explanation?: StringFilter<"QuizQuestion"> | string
     order?: IntFilter<"QuizQuestion"> | number
     quizId?: StringFilter<"QuizQuestion"> | string
     createdAt?: DateTimeFilter<"QuizQuestion"> | Date | string
@@ -25988,6 +26022,8 @@ export namespace Prisma {
     question?: SortOrder
     correctAnswer?: SortOrder
     options?: SortOrder
+    tip?: SortOrder
+    explanation?: SortOrder
     order?: SortOrder
     quizId?: SortOrder
     createdAt?: SortOrder
@@ -26007,6 +26043,8 @@ export namespace Prisma {
     question?: StringWithAggregatesFilter<"QuizQuestion"> | string
     correctAnswer?: StringWithAggregatesFilter<"QuizQuestion"> | string
     options?: StringWithAggregatesFilter<"QuizQuestion"> | string
+    tip?: StringWithAggregatesFilter<"QuizQuestion"> | string
+    explanation?: StringWithAggregatesFilter<"QuizQuestion"> | string
     order?: IntWithAggregatesFilter<"QuizQuestion"> | number
     quizId?: StringWithAggregatesFilter<"QuizQuestion"> | string
     createdAt?: DateTimeWithAggregatesFilter<"QuizQuestion"> | Date | string
@@ -27338,6 +27376,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -27350,6 +27390,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     quizId: string
     createdAt?: Date | string
@@ -27362,6 +27404,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -27374,6 +27418,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     quizId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -27386,6 +27432,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     quizId: string
     createdAt?: Date | string
@@ -27397,6 +27445,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -27407,6 +27457,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     quizId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -28570,6 +28622,8 @@ export namespace Prisma {
     question?: SortOrder
     correctAnswer?: SortOrder
     options?: SortOrder
+    tip?: SortOrder
+    explanation?: SortOrder
     order?: SortOrder
     quizId?: SortOrder
     createdAt?: SortOrder
@@ -28585,6 +28639,8 @@ export namespace Prisma {
     question?: SortOrder
     correctAnswer?: SortOrder
     options?: SortOrder
+    tip?: SortOrder
+    explanation?: SortOrder
     order?: SortOrder
     quizId?: SortOrder
     createdAt?: SortOrder
@@ -28596,6 +28652,8 @@ export namespace Prisma {
     question?: SortOrder
     correctAnswer?: SortOrder
     options?: SortOrder
+    tip?: SortOrder
+    explanation?: SortOrder
     order?: SortOrder
     quizId?: SortOrder
     createdAt?: SortOrder
@@ -32277,6 +32335,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -32288,6 +32348,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -32415,6 +32477,8 @@ export namespace Prisma {
     question?: StringFilter<"QuizQuestion"> | string
     correctAnswer?: StringFilter<"QuizQuestion"> | string
     options?: StringFilter<"QuizQuestion"> | string
+    tip?: StringFilter<"QuizQuestion"> | string
+    explanation?: StringFilter<"QuizQuestion"> | string
     order?: IntFilter<"QuizQuestion"> | number
     quizId?: StringFilter<"QuizQuestion"> | string
     createdAt?: DateTimeFilter<"QuizQuestion"> | Date | string
@@ -33039,6 +33103,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -33050,6 +33116,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     quizId: string
     createdAt?: Date | string
@@ -33106,6 +33174,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -33117,6 +33187,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     quizId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -33831,6 +33903,8 @@ export namespace Prisma {
     question: string
     correctAnswer: string
     options: string
+    tip?: string
+    explanation?: string
     order: number
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -33868,6 +33942,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -33879,6 +33955,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -33890,6 +33968,8 @@ export namespace Prisma {
     question?: StringFieldUpdateOperationsInput | string
     correctAnswer?: StringFieldUpdateOperationsInput | string
     options?: StringFieldUpdateOperationsInput | string
+    tip?: StringFieldUpdateOperationsInput | string
+    explanation?: StringFieldUpdateOperationsInput | string
     order?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string

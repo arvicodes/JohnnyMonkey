@@ -36,6 +36,8 @@ export const createQuiz = async (req: Request, res: Response) => {
             question: q.question,
             correctAnswer: q.correctAnswer,
             options: JSON.stringify(q.options),
+            tip: q.tip || '',
+            explanation: q.explanation || '',
             order: index + 1
           }))
         }

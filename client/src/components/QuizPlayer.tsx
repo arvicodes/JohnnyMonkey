@@ -33,6 +33,8 @@ interface QuizQuestion {
   question: string;
   correctAnswer: string;
   options: string[];
+  tip: string;
+  explanation: string;
   order: number;
 }
 
@@ -61,6 +63,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [wasAborted, setWasAborted] = useState(false);
   const [focusedOptionIndex, setFocusedOptionIndex] = useState(0);
+  const [showTip, setShowTip] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -108,6 +111,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex + 1].id] || '');
       setFocusedOptionIndex(0);
+      setShowTip(false);
     }
   };
 
@@ -116,6 +120,7 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex - 1].id] || '');
       setFocusedOptionIndex(0);
+      setShowTip(false);
     }
   };
 
@@ -415,6 +420,25 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                                 Richtige Antwort: {question.correctAnswer}
                               </Typography>
                             )}
+                            
+                            {/* Erklärung anzeigen */}
+                            {question.explanation && (
+                              <Box sx={{ 
+                                mt: 2, 
+                                p: 2, 
+                                background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
+                                borderRadius: 2, 
+                                border: '2px solid #2196f3'
+                              }}>
+                                <Typography variant="body2" sx={{ 
+                                  color: '#1565c0', 
+                                  fontWeight: 500,
+                                  fontStyle: 'italic'
+                                }}>
+                                  📚 <strong>Erklärung:</strong> {question.explanation}
+                                </Typography>
+                              </Box>
+                            )}
                           </Box>
                         </Box>
                       </CardContent>
@@ -590,6 +614,45 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                 {currentQuestion.question}
               </Typography>
               
+              {/* Tip-Button */}
+              {currentQuestion.tip && (
+                <Box sx={{ mb: 3 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setShowTip(!showTip)}
+                    sx={{
+                      color: '#ff9800',
+                      borderColor: '#ff9800',
+                      '&:hover': {
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
+                  </Button>
+                  
+                  {showTip && (
+                    <Box sx={{ 
+                      mt: 2, 
+                      p: 2, 
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                      borderRadius: 2, 
+                      border: '2px solid #ff9800'
+                    }}>
+                      <Typography variant="body1" sx={{ 
+                        color: '#e65100', 
+                        fontWeight: 500,
+                        fontStyle: 'italic'
+                      }}>
+                        💡 <strong>Tip:</strong> {currentQuestion.tip}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
               {answers[currentQuestion.id] && (
                 <Box sx={{ 
                   mb: 3, 

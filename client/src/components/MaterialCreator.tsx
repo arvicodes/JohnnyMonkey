@@ -77,6 +77,8 @@ interface QuizQuestion {
   question: string;
   correctAnswer: string;
   options: string[];
+  tip: string;
+  explanation: string;
   order: number;
 }
 
@@ -104,25 +106,20 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const [quizzesLoading, setQuizzesLoading] = useState(false);
   const [uploadedWordFile, setUploadedWordFile] = useState<File | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
-  const [quizDescription, setQuizDescription] = useState('Eine neue Frage beginnt immer mit einem Listenpunkt. Die möglichen Antworten darunter sind mit a), b) etc. bezeichnet. Die erste Antwort ist immer die richtige.');
+  const [quizDescription, setQuizDescription] = useState('');
   const [quizTimeLimit, setQuizTimeLimit] = useState(30);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
   const [shuffleAnswers, setShuffleAnswers] = useState(true);
   const [gradeCategory, setGradeCategory] = useState<string>('');
+  const [selectedGradeSchema, setSelectedGradeSchema] = useState<string>('');
   
-  // Available grade categories
-  const availableGradeCategories = [
-    'Quiz 1',
-    'Quiz 2', 
-    'Quiz 3',
-    'Quiz 4',
-    'Quiz 5',
-    'Quiz 6',
-    'Quiz 7',
-    'Quiz 8',
-    'Quiz 9',
-    'Quiz 10'
-  ];
+  // Available grade categories with schemas
+  const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{
+    category: string;
+    schemaName: string;
+    schemaId: string;
+  }>>([]);
+
   
   // Quiz editing states
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
@@ -240,21 +237,75 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   // Load quizzes on component mount
   useEffect(() => {
     fetchQuizzes();
+    loadGradeSchemas(); // Load grade schemas when component mounts
   }, [fetchQuizzes]);
+
+  const loadGradeSchemas = async () => {
+    try {
+      const response = await fetch('/api/grading-schemas/all');
+      if (!response.ok) {
+        throw new Error('Failed to fetch grading schemas');
+      }
+      
+      const schemas = await response.json();
+      
+      // Extract ONLY quiz-related grade categories from all schemas
+      const quizCategories: Array<{category: string, schemaName: string, schemaId: string}> = [];
+      
+      schemas.forEach((schema: any) => {
+        const structure = schema.structure;
+        const lines = structure.split('\n');
+        
+        lines.forEach((line: string) => {
+          const trimmedLine = line.trim();
+          // ONLY look for lines that contain the word "Quiz" (case insensitive) AND exclude "Hüs"
+          if (trimmedLine.toLowerCase().includes('quiz') && !trimmedLine.toLowerCase().includes('hüs')) {
+            
+            // Extract the category name (remove percentages and extra info)
+            const categoryMatch = trimmedLine.match(/^([^(]+)/);
+            if (categoryMatch) {
+              const category = categoryMatch[1].trim();
+              quizCategories.push({
+                category,
+                schemaName: schema.name,
+                schemaId: schema.id
+              });
+            }
+          }
+        });
+      });
+      
+      setAvailableGradeCategories(quizCategories);
+      
+    } catch (error) {
+      console.error('Error loading grade schemas:', error);
+      showSnackbar('Fehler beim Laden der Notenschemata', 'error');
+    }
+  };
 
   const handleQuizDialogOpen = () => {
     setQuizDialogOpen(true);
     setUploadedWordFile(null);
     setQuizTitle('');
-    setQuizDescription('Eine neue Frage beginnt immer mit einem Listenpunkt (•, -, *, oder 1.). Die möglichen Antworten darunter sind mit a), b) etc. bezeichnet. Die erste Antwort ist immer die richtige. Unterstützte Dateiformate: .docx, .doc, .txt');
+    setQuizDescription('');
     setQuizTimeLimit(30);
     setShuffleQuestions(true);
     setShuffleAnswers(true);
     setGradeCategory('');
+    loadGradeSchemas(); // Load grade schemas when opening quiz dialog
   };
 
   const handleQuizDialogClose = () => {
     setQuizDialogOpen(false);
+    // Reset all quiz fields to empty/default values
+    setUploadedWordFile(null);
+    setQuizTitle('');
+    setQuizDescription('');
+    setQuizTimeLimit(30);
+    setShuffleQuestions(true);
+    setShuffleAnswers(true);
+    setGradeCategory('');
+    setSelectedGradeSchema('');
   };
 
   const handleWordFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,7 +357,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
         timeLimit: quizTimeLimit,
         shuffleQuestions,
         shuffleAnswers,
-        gradeCategory: gradeCategory || null
+        gradeCategory: gradeCategory || null,
+        gradeSchemaId: selectedGradeSchema || null
       };
       
       console.log('Creating quiz with data:', quizData);
@@ -1415,20 +1467,32 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
 
             <Grid item xs={12}>
               <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Zu welcher Note gehört dieses Quiz?</InputLabel>
+                <InputLabel>Quiz-Note auswählen</InputLabel>
                 <Select
                   value={gradeCategory}
-                  label="Zu welcher Note gehört dieses Quiz?"
-                  onChange={(e) => setGradeCategory(e.target.value)}
+                  onChange={(e) => {
+                    setGradeCategory(e.target.value);
+                    // Find the corresponding schema for the selected category
+                    const selectedItem = availableGradeCategories.find(item => item.category === e.target.value);
+                    setSelectedGradeSchema(selectedItem?.schemaId || '');
+                  }}
                 >
                   <MenuItem value="">
                     <em>Keine Note zuordnen</em>
                   </MenuItem>
-                  {availableGradeCategories.map((category) => (
-                    <MenuItem key={category} value={category}>
-                      {category}
+                  {availableGradeCategories.length > 0 ? (
+                    availableGradeCategories.map((item) => (
+                      <MenuItem key={`${item.schemaId}-${item.category}`} value={item.category}>
+                        {item.category} ({item.schemaName})
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                        Keine Quiz-Noten verfügbar
+                      </Typography>
                     </MenuItem>
-                  ))}
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -1566,6 +1630,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                         question: '',
                         correctAnswer: '',
                         options: ['', '', '', ''],
+                        tip: '',
+                        explanation: '',
                         order: editingQuiz.questions.length
                       };
                       setEditingQuiz({
@@ -1715,6 +1781,51 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                     <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
                       Richtige Antwort: {question.correctAnswer || 'Nicht gesetzt'}
                     </Typography>
+                  </Box>
+                  
+                  {/* Tip-Feld */}
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold', color: '#ff9800' }}>
+                      Tip für diese Frage:
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      label="Tip"
+                      value={question.tip || ''}
+                      onChange={(e) => {
+                        if (editingQuiz) {
+                          const updatedQuestions = [...editingQuiz.questions];
+                          updatedQuestions[index] = { ...question, tip: e.target.value };
+                          setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                        }
+                      }}
+                      multiline
+                      rows={2}
+                      placeholder="Geben Sie einen Tip für diese Frage ein..."
+                      sx={{ mb: 2 }}
+                    />
+                  </Box>
+                  
+                  {/* Erklärungs-Feld */}
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold', color: '#ff9800' }}>
+                      Erklärung (wird nach der Beantwortung angezeigt):
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      label="Erklärung"
+                      value={question.explanation || ''}
+                      onChange={(e) => {
+                        if (editingQuiz) {
+                          const updatedQuestions = [...editingQuiz.questions];
+                          updatedQuestions[index] = { ...question, explanation: e.target.value };
+                          setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                        }
+                      }}
+                      multiline
+                      rows={3}
+                      placeholder="Geben Sie eine Erklärung für diese Frage ein..."
+                    />
                   </Box>
                 </Paper>
               ))}

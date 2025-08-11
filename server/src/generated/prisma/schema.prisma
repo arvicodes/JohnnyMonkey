@@ -189,6 +189,8 @@ model QuizQuestion {
   question      String
   correctAnswer String
   options       String
+  tip           String       @default("")
+  explanation   String       @default("")
   order         Int
   quizId        String
   createdAt     DateTime     @default(now())

@@ -69,6 +69,32 @@ export const getSchemas = async (req: Request, res: Response) => {
   }
 };
 
+export const getAllSchemas = async (req: Request, res: Response) => {
+  try {
+    const schemas = await prisma.gradingSchema.findMany({
+      include: {
+        learningGroup: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    // Format the schemas for display
+    const formattedSchemas = schemas.map(schema => ({
+      ...schema,
+      structure: schema.structure // Bereits als String gespeichert
+    }));
+
+    res.json(formattedSchemas);
+  } catch (error) {
+    console.error('Error fetching all grading schemas:', error);
+    res.status(500).json({ error: 'Failed to fetch grading schemas' });
+  }
+};
+
 export const updateSchema = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

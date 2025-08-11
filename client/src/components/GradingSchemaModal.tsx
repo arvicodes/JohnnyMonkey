@@ -59,6 +59,11 @@ interface GradingSchema {
   structure: string;
   gradingSystem?: string;
   createdAt?: string;
+  isActive?: boolean;
+  learningGroup?: {
+    id: string;
+    name: string;
+  };
 }
 
 interface GradingSchemaModalProps {
@@ -109,10 +114,18 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
 
   const fetchExistingSchemas = useCallback(async () => {
     try {
-      const response = await fetch(`/api/grading-schemas/${groupId}`);
+      // Load all available grading schemas
+      const response = await fetch('/api/grading-schemas/all');
       if (response.ok) {
-        const schemas = await response.json();
-        setExistingSchemas(schemas);
+        const allSchemas = await response.json();
+        
+        // Mark the active schema (the one that belongs to the current group)
+        const schemasWithActiveStatus = allSchemas.map((schema: any) => ({
+          ...schema,
+          isActive: schema.groupId === groupId
+        }));
+        
+        setExistingSchemas(schemasWithActiveStatus);
       }
     } catch (error) {
       console.error('Error fetching schemas:', error);
@@ -693,19 +706,37 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                     <ListItem 
                       key={schema.id}
                       sx={{ 
-                        border: selectedSchema?.id === schema.id ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                        border: schema.isActive ? '2px solid #4caf50' : (selectedSchema?.id === schema.id ? '2px solid #1976d2' : '1px solid #e0e0e0'),
                         borderRadius: 0.7,
                         mb: 0.35,
-                        bgcolor: selectedSchema?.id === schema.id ? '#e3f2fd' : 'white',
+                        bgcolor: schema.isActive ? '#e8f5e8' : (selectedSchema?.id === schema.id ? '#e3f2fd' : 'white'),
                         transition: 'all 0.2s ease',
                         '&:hover': {
-                          bgcolor: selectedSchema?.id === schema.id ? '#e3f2fd' : '#f5f5f5',
+                          bgcolor: schema.isActive ? '#e8f5e8' : (selectedSchema?.id === schema.id ? '#e3f2fd' : '#f5f5f5'),
                           transform: 'translateX(1px)'
                         }
                       }}
                     >
                       <ListItemText
-                        primary={schema.name}
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
+                              {schema.name}
+                            </Typography>
+                            {schema.isActive && (
+                              <Chip 
+                                label="Aktiv" 
+                                size="small" 
+                                sx={{ 
+                                  height: 16, 
+                                  fontSize: '0.5rem',
+                                  bgcolor: '#4caf50',
+                                  color: 'white'
+                                }} 
+                              />
+                            )}
+                          </Box>
+                        }
                         secondary={
                           <Box>
                             <Typography variant="body2" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
@@ -717,6 +748,11 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                             <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.disabled', fontFamily: 'monospace' }}>
                               {schema.structure.substring(0, 100)}...
                             </Typography>
+                            {schema.learningGroup && (
+                              <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.disabled', fontStyle: 'italic' }}>
+                                Lerngruppe: {schema.learningGroup.name}
+                              </Typography>
+                            )}
                           </Box>
                         }
                         sx={{

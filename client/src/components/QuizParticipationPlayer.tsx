@@ -36,6 +36,8 @@ interface QuizQuestion {
   question: string;
   correctAnswer: string;
   options: string[];
+  tip: string;
+  explanation: string;
   order: number;
 }
 
@@ -80,6 +82,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [wasAborted, setWasAborted] = useState(false);
   const [focusedOptionIndex, setFocusedOptionIndex] = useState(0);
+  const [showTip, setShowTip] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -240,6 +243,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex + 1].id] || '');
       setFocusedOptionIndex(0);
+      setShowTip(false);
     }
   };
 
@@ -248,6 +252,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       setCurrentQuestionIndex(currentQuestionIndex - 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex - 1].id] || '');
       setFocusedOptionIndex(0);
+      setShowTip(false);
     }
   };
 
@@ -689,6 +694,26 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                                 Richtige Antwort: {correctAnswerText}
                               </Typography>
                             )}
+                            
+                            {/* Erklärung anzeigen */}
+                            {question.explanation && (
+                              <Box sx={{ 
+                                mt: 1, 
+                                p: 1, 
+                                background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
+                                borderRadius: 0.5, 
+                                border: '1px solid #2196f3'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#1565c0', 
+                                  fontWeight: 500,
+                                  fontStyle: 'italic',
+                                  fontSize: '0.6rem'
+                                }}>
+                                  📚 <strong>Erklärung:</strong> {question.explanation}
+                                </Typography>
+                              </Box>
+                            )}
                           </Box>
                         </Box>
                       </CardContent>
@@ -865,6 +890,49 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                 {currentQuestion.question}
               </Typography>
               
+              {/* Tip-Button */}
+              {currentQuestion.tip && (
+                <Box sx={{ mb: 2 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setShowTip(!showTip)}
+                    sx={{
+                      color: '#ff9800',
+                      borderColor: '#ff9800',
+                      fontSize: '0.7rem',
+                      py: 0.5,
+                      px: 1.5,
+                      '&:hover': {
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
+                  </Button>
+                  
+                  {showTip && (
+                    <Box sx={{ 
+                      mt: 1, 
+                      p: 1.5, 
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                      borderRadius: 1, 
+                      border: '1px solid #ff9800'
+                    }}>
+                      <Typography variant="body2" sx={{ 
+                        color: '#e65100', 
+                        fontWeight: 500,
+                        fontStyle: 'italic',
+                        fontSize: '0.75rem'
+                      }}>
+                        💡 <strong>Tip:</strong> {currentQuestion.tip}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
               {answers[currentQuestion.id] && (
                 <Box sx={{ 
                   mb: 2, 

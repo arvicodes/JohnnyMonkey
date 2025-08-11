@@ -261,6 +261,8 @@ exports.Prisma.QuizQuestionScalarFieldEnum = {
   question: 'question',
   correctAnswer: 'correctAnswer',
   options: 'options',
+  tip: 'tip',
+  explanation: 'explanation',
   order: 'order',
   quizId: 'quizId',
   createdAt: 'createdAt',
