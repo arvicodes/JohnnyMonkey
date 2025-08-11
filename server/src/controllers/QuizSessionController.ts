@@ -139,6 +139,8 @@ export const getQuizForSession = async (req: Request, res: Response) => {
         id: q.id,
         question: q.question,
         options: JSON.parse(q.options),
+        tip: q.tip,
+        explanation: q.explanation,
         order: q.order
       }))
     };

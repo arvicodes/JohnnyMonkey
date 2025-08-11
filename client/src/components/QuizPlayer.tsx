@@ -614,45 +614,6 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                 {currentQuestion.question}
               </Typography>
               
-              {/* Tip-Button */}
-              {currentQuestion.tip && (
-                <Box sx={{ mb: 3 }}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => setShowTip(!showTip)}
-                    sx={{
-                      color: '#ff9800',
-                      borderColor: '#ff9800',
-                      '&:hover': {
-                        borderColor: '#f57c00',
-                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
-                      }
-                    }}
-                  >
-                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
-                  </Button>
-                  
-                  {showTip && (
-                    <Box sx={{ 
-                      mt: 2, 
-                      p: 2, 
-                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
-                      borderRadius: 2, 
-                      border: '2px solid #ff9800'
-                    }}>
-                      <Typography variant="body1" sx={{ 
-                        color: '#e65100', 
-                        fontWeight: 500,
-                        fontStyle: 'italic'
-                      }}>
-                        💡 <strong>Tip:</strong> {currentQuestion.tip}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              )}
-
               {answers[currentQuestion.id] && (
                 <Box sx={{ 
                   mb: 3, 
@@ -734,6 +695,68 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                   ))}
                 </RadioGroup>
               </FormControl>
+
+              {/* Tip-Button - nach unten verschoben und kleiner */}
+              {currentQuestion.tip && (
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setShowTip(!showTip)}
+                    sx={{
+                      color: '#ff9800',
+                      borderColor: '#ff9800',
+                      fontSize: '0.7rem',
+                      py: 0.5,
+                      px: 1.5,
+                      minHeight: 'auto',
+                      '&:hover': {
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
+                  </Button>
+                  
+                  {showTip && (
+                    <Box sx={{ 
+                      mt: 2, 
+                      p: 2, 
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                      borderRadius: 2, 
+                      border: '2px solid #ff9800'
+                    }}>
+                      <Typography variant="body1" sx={{ 
+                        color: '#e65100', 
+                        fontWeight: 500,
+                        fontStyle: 'italic'
+                      }}>
+                        💡 <strong>Tip:</strong> {currentQuestion.tip.replace(/^p:\s*/, '')}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
+              {/* Erklärung anzeigen - direkt nach dem Tip */}
+              {currentQuestion.explanation && (
+                <Box sx={{ 
+                  mt: 3, 
+                  p: 2, 
+                  background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
+                  borderRadius: 2, 
+                  border: '2px solid #2196f3'
+                }}>
+                  <Typography variant="body1" sx={{ 
+                    color: '#1565c0', 
+                    fontWeight: 500,
+                    fontStyle: 'italic'
+                  }}>
+                    📚 <strong>Erklärung:</strong> {currentQuestion.explanation}
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
 

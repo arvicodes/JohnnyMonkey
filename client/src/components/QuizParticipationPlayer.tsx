@@ -126,6 +126,13 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       if (response.ok) {
         const quizData = await response.json();
         setQuiz(quizData);
+        setQuestions(quizData.questions);
+        
+        // Debug: Überprüfe die geladenen Fragen
+        console.log('🔍 Quiz-Daten geladen:', quizData);
+        console.log('🔍 Fragen geladen:', quizData.questions.length);
+        console.log('🔍 Fragen mit Erklärungen:', quizData.questions.filter((q: any) => q.explanation).length);
+        console.log('🔍 Beispiel-Frage:', quizData.questions[0]);
         
         // Fragen mischen wenn gewünscht
         let shuffledQuestions = [...quizData.questions];
@@ -144,6 +151,16 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         setQuestions(shuffledQuestions);
         setTimeLeft(quizData.timeLimit * 60);
         setLoading(false);
+        
+        // Überprüfe, ob es bereits eine aktive Teilnahme gibt
+        if (quizData.participations && quizData.participations.length > 0) {
+          const activeParticipation = quizData.participations.find((p: any) => p.studentId === studentId);
+          if (activeParticipation) {
+            console.log('🔍 Aktive Teilnahme gefunden:', activeParticipation);
+            setParticipation(activeParticipation);
+            await loadResults(activeParticipation.id);
+          }
+        }
       } else {
         setError('Quiz konnte nicht geladen werden');
       }
@@ -169,7 +186,10 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         // Map results to current question ids
         const answersMap: { [key: string]: string } = {};
         const resultsMap: Record<string, { selected: string; correct: string; isCorrect: boolean }> = {};
+        
+        // Verwende die bereits geladenen Quiz-Fragen mit Tips und Erklärungen
         results.answers.forEach((answer: any) => {
+          // Suche nach der Frage basierend auf dem Fragetext
           const question = questions.find(q => q.question === answer.question);
           if (question) {
             answersMap[question.id] = answer.selectedAnswer;
@@ -180,8 +200,14 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
             };
           }
         });
+        
         setAnswers(answersMap);
         setResultAnswersByQuestionId(resultsMap);
+        
+        // Debug: Überprüfe, ob Fragen mit Erklärungen geladen wurden
+        console.log('Quiz-Fragen geladen:', questions.length);
+        console.log('Fragen mit Erklärungen:', questions.filter(q => q.explanation).length);
+        console.log('Beispiel-Frage mit Erklärung:', questions.find(q => q.explanation));
       } else {
         setError('Ergebnisse konnten nicht geladen werden');
       }
@@ -619,6 +645,24 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
               </Typography>
               
               <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+                {/* Debug-Info */}
+                <Box sx={{ 
+                  mb: 1, 
+                  p: 1, 
+                  background: 'rgba(255,255,0,0.1)', 
+                  border: '1px solid orange',
+                  borderRadius: 1
+                }}>
+                  <Typography variant="caption" sx={{ color: 'orange', fontSize: '0.6rem' }}>
+                    🔍 DEBUG: {questions.length} Fragen geladen, {questions.filter(q => q.explanation).length} mit Erklärungen
+                  </Typography>
+                  {questions.length > 0 && (
+                    <Typography variant="caption" sx={{ color: 'orange', fontSize: '0.6rem', display: 'block', mt: 0.5 }}>
+                      Beispiel: explanation = "{questions[0].explanation || 'UNDEFINED'}"
+                    </Typography>
+                  )}
+                </Box>
+                
                 {questions.map((question, index) => {
                   const resultForQ = resultAnswersByQuestionId[question.id];
                   const userAnswer = resultForQ?.selected ?? answers[question.id];
@@ -696,7 +740,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                             )}
                             
                             {/* Erklärung anzeigen */}
-                            {question.explanation && (
+                            {question.explanation ? (
                               <Box sx={{ 
                                 mt: 1, 
                                 p: 1, 
@@ -713,6 +757,16 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                                   📚 <strong>Erklärung:</strong> {question.explanation}
                                 </Typography>
                               </Box>
+                            ) : (
+                              <Typography variant="caption" sx={{ 
+                                color: 'orange', 
+                                fontStyle: 'italic',
+                                fontSize: '0.6rem',
+                                mt: 1,
+                                display: 'block'
+                              }}>
+                                ⚠️ Keine Erklärung verfügbar (Debug: explanation = "{question.explanation}")
+                              </Typography>
                             )}
                           </Box>
                         </Box>
@@ -890,49 +944,6 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                 {currentQuestion.question}
               </Typography>
               
-              {/* Tip-Button */}
-              {currentQuestion.tip && (
-                <Box sx={{ mb: 2 }}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => setShowTip(!showTip)}
-                    sx={{
-                      color: '#ff9800',
-                      borderColor: '#ff9800',
-                      fontSize: '0.7rem',
-                      py: 0.5,
-                      px: 1.5,
-                      '&:hover': {
-                        borderColor: '#f57c00',
-                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
-                      }
-                    }}
-                  >
-                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
-                  </Button>
-                  
-                  {showTip && (
-                    <Box sx={{ 
-                      mt: 1, 
-                      p: 1.5, 
-                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
-                      borderRadius: 1, 
-                      border: '1px solid #ff9800'
-                    }}>
-                      <Typography variant="body2" sx={{ 
-                        color: '#e65100', 
-                        fontWeight: 500,
-                        fontStyle: 'italic',
-                        fontSize: '0.75rem'
-                      }}>
-                        💡 <strong>Tip:</strong> {currentQuestion.tip}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              )}
-
               {answers[currentQuestion.id] && (
                 <Box sx={{ 
                   mb: 2, 
@@ -1014,6 +1025,70 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                   ))}
                 </RadioGroup>
               </FormControl>
+
+              {/* Tip-Button - nach unten verschoben und kleiner */}
+              {currentQuestion.tip && (
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setShowTip(!showTip)}
+                    sx={{
+                      color: '#ff9800',
+                      borderColor: '#ff9800',
+                      fontSize: '0.65rem',
+                      py: 0.25,
+                      px: 1,
+                      minHeight: 'auto',
+                      '&:hover': {
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
+                  </Button>
+                  
+                  {showTip && (
+                    <Box sx={{ 
+                      mt: 1, 
+                      p: 1, 
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                      borderRadius: 1, 
+                      border: '1px solid #ff9800'
+                    }}>
+                      <Typography variant="body2" sx={{ 
+                        color: '#e65100', 
+                        fontWeight: 500,
+                        fontStyle: 'italic',
+                        fontSize: '0.7rem'
+                      }}>
+                        💡 <strong>Tip:</strong> {currentQuestion.tip.replace(/^p:\s*/, '')}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
+              {/* Erklärung anzeigen - direkt nach dem Tip */}
+              {currentQuestion.explanation && (
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 1.5, 
+                  background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
+                  borderRadius: 1, 
+                  border: '1px solid #2196f3'
+                }}>
+                  <Typography variant="body2" sx={{ 
+                    color: '#1565c0', 
+                    fontWeight: 500,
+                    fontStyle: 'italic',
+                    fontSize: '0.7rem'
+                  }}>
+                    📚 <strong>Erklärung:</strong> {currentQuestion.explanation}
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
 
