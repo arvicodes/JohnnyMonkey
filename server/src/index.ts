@@ -18,6 +18,7 @@ import lessonQuizRoutes from './routes/lessonQuizzes';
 import quizSessionRoutes from './routes/quizSessions';
 import quizParticipationRoutes from './routes/quizParticipations';
 import gradesRoutes from './routes/grades.routes';
+import teacherSettingsRoutes from './routes/teacherSettings';
 import path from 'path';
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/lesson-quizzes', lessonQuizRoutes);
 app.use('/api/quiz-sessions', quizSessionRoutes);
 app.use('/api/quiz-participations', quizParticipationRoutes);
 app.use('/api/grades', gradesRoutes);
+app.use('/api/teacher-settings', teacherSettingsRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
 // Health check endpoint

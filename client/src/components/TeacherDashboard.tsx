@@ -46,6 +46,7 @@ import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
 import MaterialCreator from './MaterialCreator';
+import MaterialPathManager from './MaterialPathManager';
 import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 
@@ -1608,6 +1609,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {/* Materialpfad-Verwaltung */}
+              <Box sx={{ mb: 2 }}>
+                <MaterialPathManager teacherId={userId} />
+              </Box>
+              
               {/* Hauptbereich - MaterialCreator */}
               <Box>
                 <MaterialCreator teacherId={userId} />

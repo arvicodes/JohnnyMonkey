@@ -124,7 +124,8 @@ exports.Prisma.UserScalarFieldEnum = {
   role: 'role',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  avatarEmoji: 'avatarEmoji'
+  avatarEmoji: 'avatarEmoji',
+  materialPath: 'materialPath'
 };
 
 exports.Prisma.GradingSchemaScalarFieldEnum = {

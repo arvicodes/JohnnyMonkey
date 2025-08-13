@@ -16,6 +16,7 @@ model User {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   avatarEmoji    String?
+  materialPath   String?
   teacherGroups  LearningGroup[]     @relation("TeacherGroups")
   notes          Note[]
   quizzes        Quiz[]
