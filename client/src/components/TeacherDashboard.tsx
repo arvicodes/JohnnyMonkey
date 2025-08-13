@@ -765,6 +765,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // State für Loading-Status der Ordner-Aktualisierung
+  const [refreshingGroups, setRefreshingGroups] = useState<{ [groupId: string]: boolean }>({});
+
   // Neue Funktion: Live-Ordner-Inhalt für alle Lerngruppen laden
   const fetchLiveFolderStructures = async () => {
     try {
@@ -809,9 +812,40 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  // Funktion zum manuellen Neuladen der Ordner-Inhalte
-  const refreshFolderContents = () => {
-    fetchLiveFolderStructures();
+  // Funktion zum manuellen Neuladen der Ordner-Inhalte für eine spezifische Lerngruppe
+  const refreshFolderContents = async (groupId: string) => {
+    try {
+      console.log(`Aktualisiere Ordner-Inhalte für Lerngruppe ${groupId}...`);
+      
+      // Loading-State setzen
+      setRefreshingGroups(prev => ({ ...prev, [groupId]: true }));
+      
+      const liveResponse = await fetch(`/api/jm-reihen/${groupId}/live`);
+      if (liveResponse.ok) {
+        const liveFolders = await liveResponse.json();
+        setGroupFolders(prev => ({
+          ...prev,
+          [groupId]: liveFolders
+        }));
+        console.log('Ordner-Inhalte erfolgreich aktualisiert');
+      } else {
+        console.warn(`Fehler beim Laden der Live-Ordner für Gruppe ${groupId}`);
+        // Fallback: Gespeicherte Struktur verwenden
+        const fallbackResponse = await fetch(`/api/jm-reihen/${groupId}`);
+        if (fallbackResponse.ok) {
+          const fallbackFolders = await fallbackResponse.json();
+          setGroupFolders(prev => ({
+            ...prev,
+            [groupId]: fallbackFolders
+          }));
+        }
+      }
+    } catch (error) {
+      console.error(`Fehler beim Aktualisieren der Ordner für Gruppe ${groupId}:`, error);
+    } finally {
+      // Loading-State zurücksetzen
+      setRefreshingGroups(prev => ({ ...prev, [groupId]: false }));
+    }
   };
 
   // Ordner in der Datenbank speichern
@@ -1822,21 +1856,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                   </IconButton>
                                   <IconButton
                                     size="small"
-                                    onClick={refreshFolderContents}
+                                    onClick={() => refreshFolderContents(group.id)}
+                                    disabled={refreshingGroups[group.id]}
                                     sx={{ 
                                       width: 24, 
                                       height: 24, 
                                       p: 0.25,
-                                      bgcolor: colors.secondary,
-                                      color: 'white',
+                                      color: refreshingGroups[group.id] ? colors.textSecondary : colors.secondary,
                                       '&:hover': { 
-                                        bgcolor: colors.secondary, 
-                                        filter: 'brightness(1.1)' 
+                                        bgcolor: colors.secondary + '20',
+                                        color: colors.secondary
+                                      },
+                                      '&:disabled': {
+                                        color: colors.textSecondary,
+                                        cursor: 'not-allowed'
                                       }
                                     }}
-                                    title="Ordner-Inhalte aktualisieren"
+                                    title={refreshingGroups[group.id] ? "Wird aktualisiert..." : "Ordner-Inhalte aktualisieren"}
                                   >
-                                    🔄
+                                    {refreshingGroups[group.id] ? '⏳' : '🔄'}
                                   </IconButton>
                                 </Box>
                               </Box>
