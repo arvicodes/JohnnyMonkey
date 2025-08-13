@@ -61,6 +61,7 @@ model LearningGroup {
   teacherId      String
   gradingSchemas GradingSchema[]
   assignments    GroupAssignment[]
+  jmReihen       JMReihen[]
   teacher        User              @relation("TeacherGroups", fields: [teacherId], references: [id])
   students       User[]            @relation("StudentGroups")
 }
@@ -252,4 +253,23 @@ model QuizAnswer {
   participation   QuizParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
 
   @@unique([participationId, questionId])
+}
+
+model JMReihen {
+  id          String   @id @default(uuid())
+  groupId     String   // Lerngruppe, der der Pfad zugeordnet ist
+  path        String   // Der tatsächliche Dateisystem-Pfad
+  name        String   // Anzeigename (z.B. "Projekt-Ordner")
+  type        String   // "folder" oder "file"
+  parentId    String?  // Referenz auf übergeordneten Ordner (für Hierarchie)
+  order       Int      @default(0) // Reihenfolge innerhalb des Ordners
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  group       LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  parent      JMReihen?     @relation("FolderHierarchy", fields: [parentId], references: [id])
+  children    JMReihen[]    @relation("FolderHierarchy")
+  
+  @@unique([groupId, path])
+  @@index([groupId, parentId])
 }

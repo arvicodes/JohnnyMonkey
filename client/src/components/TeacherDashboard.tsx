@@ -40,7 +40,10 @@ import {
   Build as BuildIcon,
   Grade as GradeIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
+  ExpandLess as ExpandLessIcon,
+  Folder as FolderIcon,
+  FolderOpen as FolderOpenIcon,
+  CloudUpload as CloudUploadIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -87,6 +90,27 @@ interface MiniGradeNode {
   name: string;
   grade: number | null;
   children: MiniGradeNode[];
+}
+
+// Ordner-Struktur
+interface FolderFile {
+  name: string;
+  path: string;
+  type: string;
+}
+
+interface FolderSubfolder {
+  name: string;
+  path: string;
+  files: FolderFile[];
+  subfolders: FolderSubfolder[];
+}
+
+interface Folder {
+  name: string;
+  path: string;
+  subfolders: FolderSubfolder[];
+  files: FolderFile[];
 }
 
 interface TabPanelProps {
@@ -205,6 +229,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Mini-Noten Cache: key = `${groupId}:${studentId}`
   const [miniGradesMap, setMiniGradesMap] = useState<{ [key: string]: { loading: boolean; gradingSystem: string; overall?: number | null; nodes: MiniGradeNode[] } }>({});
+
+  // Ordner für Lerngruppen
+  const [groupFolders, setGroupFolders] = useState<{ [groupId: string]: Folder[] }>({});
+  
+  // Ordner-Dialog State
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [selectedGroupIdForFolder, setSelectedGroupIdForFolder] = useState<string>('');
+  const [dragOver, setDragOver] = useState(false);
 
   // Spielerische Farbpalette
   const colors = {
@@ -457,6 +489,301 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setMainTabValue(newValue);
   };
 
+  // Ordner-Handler-Funktionen
+  const handleFolderSelect = (groupId: string) => {
+    setSelectedGroupIdForFolder(groupId);
+    setFolderDialogOpen(true);
+  };
+
+  const handleFolderDialogClose = () => {
+    setFolderDialogOpen(false);
+    setSelectedGroupIdForFolder('');
+    setDragOver(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      // Ordner-Struktur aus den Dateipfaden aufbauen
+      const newFolder = buildFolderStructure(files);
+      
+      // Ordner in der Datenbank speichern
+      saveFolderToDatabase(selectedGroupIdForFolder, newFolder);
+      
+      setGroupFolders(prev => ({
+        ...prev,
+        [selectedGroupIdForFolder]: [...(prev[selectedGroupIdForFolder] || []), newFolder]
+      }));
+
+      showSnackbar(`Ordner "${newFolder.name}" erfolgreich hinzugefügt`, 'success');
+      handleFolderDialogClose();
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      // Ordner-Struktur aus den Dateipfaden aufbauen
+      const newFolder = buildFolderStructure(files);
+      
+      // Ordner in der Datenbank speichern
+      saveFolderToDatabase(selectedGroupIdForFolder, newFolder);
+      
+      setGroupFolders(prev => ({
+        ...prev,
+        [selectedGroupIdForFolder]: [...(prev[selectedGroupIdForFolder] || []), newFolder]
+      }));
+
+      showSnackbar(`Ordner "${newFolder.name}" erfolgreich hinzugefügt`, 'success');
+      handleFolderDialogClose();
+    }
+  };
+
+  // Funktion zum Aufbau der Ordner-Struktur aus Dateipfaden
+  const buildFolderStructure = (files: File[]): Folder => {
+    if (files.length === 0) {
+      return { name: 'Leerer Ordner', path: '/uploads/empty', subfolders: [], files: [] };
+    }
+
+    // Hauptordner-Name aus dem ersten Dateipfad extrahieren
+    const firstFile = files[0];
+    const pathParts = firstFile.webkitRelativePath?.split('/') || [firstFile.name];
+    const rootFolderName = pathParts[0];
+    
+    // Ordner-Struktur aufbauen
+    const folderStructure: { [path: string]: Folder | FolderSubfolder } = {};
+    const rootFolder: Folder = {
+      name: rootFolderName,
+      path: `/uploads/${rootFolderName}`,
+      subfolders: [],
+      files: []
+    };
+    folderStructure[`/uploads/${rootFolderName}`] = rootFolder;
+
+    files.forEach(file => {
+      if (file.webkitRelativePath) {
+        const pathParts = file.webkitRelativePath.split('/');
+        const fileName = pathParts[pathParts.length - 1];
+        const filePath = `/uploads/${file.webkitRelativePath}`;
+        
+        // Datei-Objekt erstellen
+        const fileObj: FolderFile = {
+          name: fileName,
+          path: filePath,
+          type: file.type || 'unknown'
+        };
+
+        if (pathParts.length === 2) {
+          // Datei direkt im Hauptordner
+          rootFolder.files.push(fileObj);
+        } else if (pathParts.length > 2) {
+          // Datei in einem Unterordner
+          let currentPath = `/uploads/${rootFolderName}`;
+          let currentFolder: Folder | FolderSubfolder = rootFolder;
+          
+          // Unterordner-Pfad aufbauen
+          for (let i = 1; i < pathParts.length - 1; i++) {
+            const subfolderName = pathParts[i];
+            const subfolderPath = `${currentPath}/${subfolderName}`;
+            
+            // Unterordner erstellen oder finden
+            if (!folderStructure[subfolderPath]) {
+              const newSubfolder: FolderSubfolder = {
+                name: subfolderName,
+                path: subfolderPath,
+                subfolders: [],
+                files: []
+              };
+              folderStructure[subfolderPath] = newSubfolder;
+              currentFolder.subfolders.push(newSubfolder);
+            }
+            
+            currentPath = subfolderPath;
+            currentFolder = folderStructure[subfolderPath];
+          }
+          
+          // Datei zum aktuellen Ordner hinzufügen
+          currentFolder.files.push(fileObj);
+        }
+      } else {
+        // Fallback für Dateien ohne webkitRelativePath
+        rootFolder.files.push({
+          name: file.name,
+          path: `/uploads/${rootFolderName}/${file.name}`,
+          type: file.type || 'unknown'
+        });
+      }
+    });
+
+    return rootFolder;
+  };
+
+  // Rekursive Funktion zur Anzeige aller Ordner-Inhalte (ohne versteckte Dateien)
+  const renderFolderContents = (folder: Folder, level: number): React.ReactNode => {
+    const indent = level * 1.0; // Noch kleinere Einrückungen
+    
+    // Farben und Icons basierend auf der Ebene (wie bei den oberhalb stehenden Inhalten)
+    const getLevelStyle = (level: number) => {
+      switch (level) {
+        case 0: // Hauptordner
+          return { color: colors.accent1, icon: '📚' };
+        case 1: // 1. Unterebene
+          return { color: colors.primary, icon: '📦' };
+        case 2: // 2. Unterebene
+          return { color: colors.secondary, icon: '📋' };
+        case 3: // 3. Unterebene
+          return { color: colors.accent2, icon: '💡' };
+        default: // Weitere Ebenen (falls nötig)
+          return { color: colors.textSecondary, icon: '📁' };
+      }
+    };
+    
+    const levelStyle = getLevelStyle(level);
+    
+    return (
+      <>
+        {/* Unterordner */}
+        {folder.subfolders && folder.subfolders.length > 0 && (
+          <Box sx={{ ml: indent, mb: 0.7 }}>
+            {folder.subfolders.map((subfolder, subIndex) => (
+              <Box key={subIndex} sx={{ mb: 0.7 }}>
+                <Typography variant="body2" sx={{ 
+                  color: levelStyle.color, // Farbe basierend auf der Ebene
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  cursor: 'pointer'
+                }}
+                onClick={() => handleFolderOpen(subfolder.path)}
+                title="Unterordner öffnen"
+                >
+                  {levelStyle.icon} {subfolder.name}
+                </Typography>
+                
+                {/* Rekursiver Aufruf für Unterordner-Inhalte */}
+                {renderFolderContents(subfolder, level + 1)}
+              </Box>
+            ))}
+          </Box>
+        )}
+        
+        {/* Dateien (ohne versteckte Dateien) */}
+        {folder.files && folder.files.length > 0 && (
+          <Box sx={{ ml: indent, mb: 0.7 }}>
+            {folder.files
+              .filter(file => !file.name.startsWith('.')) // Versteckte Dateien ausblenden
+              .map((file, fileIndex) => (
+                <Box key={fileIndex} sx={{ 
+                  ml: 0.5, // Noch kleinere Einrückung für Dateien auf unterster Ebene
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px',
+                  p: 0.5,
+                  borderRadius: 1,
+                  bgcolor: '#f0f8ff', // Gleiche Hintergrundfarbe wie bei den Stunden
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    bgcolor: '#e3f2fd' // Gleiche Hover-Farbe wie bei den Stunden
+                  },
+                  cursor: 'pointer'
+                }}
+                onClick={() => handleFileOpen(file.path)}
+                title="Datei öffnen"
+                >
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      color: colors.textSecondary, // Gleiche Textfarbe wie bei den Stunden
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      '&:hover': {
+                        color: colors.primary // Gleiche Hover-Textfarbe wie bei den Stunden
+                      }
+                    }}
+                  >
+                    📄 {file.name}
+                  </Typography>
+                </Box>
+              ))}
+          </Box>
+        )}
+      </>
+    );
+  };
+
+  const handleFolderOpen = (folderPath: string) => {
+    // Hier würde der Ordner im Dateisystem geöffnet werden
+    console.log('Öffne Ordner:', folderPath);
+    showSnackbar(`Ordner geöffnet: ${folderPath}`, 'success');
+  };
+
+  const handleFileOpen = (filePath: string) => {
+    // Hier würde die Datei geöffnet werden
+    console.log('Öffne Datei:', filePath);
+    showSnackbar(`Datei geöffnet: ${filePath}`, 'success');
+  };
+
+  // Alle Ordner-Strukturen aus der Datenbank laden
+  const fetchAllFolderStructures = async () => {
+    try {
+      console.log('Lade Ordner-Strukturen aus Datenbank...');
+      const response = await fetch('/api/jm-reihen/all');
+      console.log('API-Antwort Status:', response.status);
+      
+      if (response.ok) {
+        const folderData = await response.json();
+        console.log('Geladene Ordner-Daten:', folderData);
+        setGroupFolders(folderData);
+      } else {
+        console.error('Fehler beim Laden der Ordner-Strukturen');
+        const errorText = await response.text();
+        console.error('Fehler-Details:', errorText);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Ordner-Strukturen:', error);
+    }
+  };
+
+  // Ordner in der Datenbank speichern
+  const saveFolderToDatabase = async (groupId: string, folder: Folder) => {
+    try {
+      console.log('Speichere Ordner in Datenbank:', { groupId, folder });
+      
+      const response = await fetch(`/api/jm-reihen/${groupId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(folder)
+      });
+      
+      if (response.ok) {
+        console.log('Ordner erfolgreich in Datenbank gespeichert');
+        const result = await response.json();
+        console.log('Server-Antwort:', result);
+      } else {
+        console.error('Fehler beim Speichern des Ordners in der Datenbank');
+        const errorText = await response.text();
+        console.error('Fehler-Details:', errorText);
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern des Ordners:', error);
+    }
+  };
+
   const handleSubjectTabChange = (event: React.SyntheticEvent, newValue: number) => {
     if (newValue === -1) {
       // "+" tab clicked - open subject dialog
@@ -587,6 +914,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   useEffect(() => {
     dashboardRef.current?.focus();
+    fetchAllFolderStructures(); // Ordner-Strukturen beim Laden der Seite abrufen
   }, []);
 
   // Helfer: Schema parsen -> Hierarchie
@@ -1398,13 +1726,109 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 </Box>
                               )}
                             </Box>
+                            
+                            {/* Ordner-Sektion in der "Zugeordnete Inhalte" Box */}
+                            <Box sx={{ 
+                              mt: 2.1,
+                              pt: 2.1,
+                              borderTop: '1px solid #e0e0e0'
+                            }}>
+                              <Box sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                mb: 1.4
+                              }}>
+                                <Typography variant="subtitle2" sx={{ 
+                                  fontWeight: 'bold',
+                                  color: colors.textPrimary,
+                                  fontSize: '0.85rem'
+                                }}>
+                                  📁 Ordner
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleFolderSelect(group.id)}
+                                  sx={{ 
+                                    width: 24, 
+                                    height: 24, 
+                                    p: 0.25,
+                                    bgcolor: colors.primary,
+                                    color: 'white',
+                                    '&:hover': { 
+                                      bgcolor: colors.primary, 
+                                      filter: 'brightness(1.1)' 
+                                    }
+                                  }}
+                                  title="Ordner hinzufügen"
+                                >
+                                  <FolderIcon sx={{ fontSize: '0.8rem' }} />
+                                </IconButton>
+                              </Box>
+                              
+                              {/* Ordner-Inhalte mit vollständiger Vorschau */}
+                              <Box sx={{ 
+                                ml: 1,
+                                p: 1.4,
+                                bgcolor: '#fafbfc',
+                                borderRadius: 1.4,
+                                border: '1px solid #f0f0f0'
+                              }}>
+                                {groupFolders[group.id] && groupFolders[group.id].length > 0 ? (
+                                  groupFolders[group.id].map((folder, index) => (
+                                    <Box key={index} sx={{ mb: 1.4 }}>
+                                      <Typography variant="body2" sx={{ 
+                                        fontWeight: 'bold', 
+                                        color: colors.accent1, 
+                                        fontSize: '0.8rem',
+                                        mb: 0.7,
+                                        pb: 0.3,
+                                        borderBottom: `2px solid ${colors.accent1}30`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        cursor: 'pointer'
+                                      }}
+                                      onClick={() => handleFolderOpen(folder.path)}
+                                      title="Ordner öffnen"
+                                      >
+                                        📁 {folder.name}
+                                      </Typography>
+                                      
+                                      {/* Rekursive Funktion für alle Unterordner und Dateien */}
+                                      {renderFolderContents(folder, 1)}
+                                    </Box>
+                                  ))
+                                ) : (
+                                  <Box sx={{ 
+                                    textAlign: 'center', 
+                                    py: 2,
+                                    color: colors.textSecondary,
+                                    fontStyle: 'italic'
+                                  }}>
+                                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                      📝 Noch keine Ordner hinzugefügt
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontSize: '0.7rem', mt: 0.5 }}>
+                                      Klicke auf das Ordner-Icon, um einen Ordner hinzuzufügen
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            </Box>
                           </Box>
+                          
+
                         </Grid>
                       </Grid>
+                      
+
                     </Box>
                   ))}
                 </CardContent>
               </Card>
+              
+
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={1}>
@@ -1920,6 +2344,89 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             disabled={!(confirmRemoveStudent1 && confirmRemoveStudent2 && confirmRemoveStudentWord === 'ENTFERNEN')}
           >
             Entfernen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Ordner-Auswahl Dialog */}
+      <Dialog 
+        open={folderDialogOpen} 
+        onClose={handleFolderDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FolderIcon sx={{ color: colors.primary }} />
+            Ordner hinzufügen
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ textAlign: 'center', py: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, color: colors.textPrimary }}>
+              Ordner per Drag & Drop hinzufügen
+            </Typography>
+            
+            {/* Drag & Drop Zone */}
+            <Box
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              sx={{
+                border: `2px dashed ${dragOver ? colors.primary : '#ccc'}`,
+                borderRadius: 2,
+                p: 4,
+                mb: 3,
+                bgcolor: dragOver ? `${colors.primary}10` : '#fafafa',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
+                '&:hover': {
+                  borderColor: colors.primary,
+                  bgcolor: `${colors.primary}05`
+                }
+              }}
+            >
+              <CloudUploadIcon sx={{ fontSize: 48, color: dragOver ? colors.primary : '#999', mb: 2 }} />
+              <Typography variant="body1" sx={{ color: dragOver ? colors.primary : '#666', mb: 1 }}>
+                {dragOver ? 'Ordner hier ablegen' : 'Ordner hier hineinziehen'}
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#999', fontSize: '0.9rem' }}>
+                Ziehe einen Ordner aus dem Dateisystem hierher
+              </Typography>
+            </Box>
+
+            {/* Oder Datei-Auswahl */}
+            <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>
+              Oder wähle Dateien aus:
+            </Typography>
+            
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<FolderIcon />}
+              sx={{ 
+                borderColor: colors.primary,
+                color: colors.primary,
+                '&:hover': {
+                  borderColor: colors.primary,
+                  bgcolor: `${colors.primary}10`
+                }
+              }}
+            >
+              Ordner auswählen
+              <input
+                type="file"
+                multiple
+                {...({ webkitdirectory: '', directory: '' } as any)}
+                style={{ display: 'none' }}
+                onChange={handleFileInputChange}
+              />
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleFolderDialogClose}>
+            Abbrechen
           </Button>
         </DialogActions>
       </Dialog>

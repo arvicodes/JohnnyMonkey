@@ -19,6 +19,7 @@ import quizSessionRoutes from './routes/quizSessions';
 import quizParticipationRoutes from './routes/quizParticipations';
 import gradesRoutes from './routes/grades.routes';
 import teacherSettingsRoutes from './routes/teacherSettings';
+import jmReihenRoutes from './routes/jmReihen';
 import path from 'path';
 
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api/quiz-sessions', quizSessionRoutes);
 app.use('/api/quiz-participations', quizParticipationRoutes);
 app.use('/api/grades', gradesRoutes);
 app.use('/api/teacher-settings', teacherSettingsRoutes);
+app.use('/api/jm-reihen', jmReihenRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
 // Health check endpoint
