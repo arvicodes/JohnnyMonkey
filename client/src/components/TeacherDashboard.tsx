@@ -820,28 +820,50 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       // Loading-State setzen
       setRefreshingGroups(prev => ({ ...prev, [groupId]: true }));
       
+      // Aktuelle Ordner-Struktur beibehalten
+      const currentFolders = groupFolders[groupId] || [];
+      
+      if (currentFolders.length === 0) {
+        console.log('Keine Ordner zum Aktualisieren vorhanden');
+        return;
+      }
+      
+      // Live-Inhalt für die gesamte Lerngruppe abrufen
       const liveResponse = await fetch(`/api/jm-reihen/${groupId}/live`);
       if (liveResponse.ok) {
         const liveFolders = await liveResponse.json();
+        
+        // Bestehende Ordner-Struktur mit Live-Inhalten aktualisieren
+        const updatedFolders = currentFolders.map(currentFolder => {
+          // Entsprechenden Live-Ordner finden
+          const liveFolder = liveFolders.find((lf: any) => lf.path === currentFolder.path);
+          if (liveFolder) {
+            // Live-Inhalt verwenden, aber bestehende Struktur beibehalten
+            return {
+              ...currentFolder,
+              subfolders: liveFolder.subfolders || currentFolder.subfolders,
+              files: liveFolder.files || currentFolder.files
+            };
+          }
+          // Fallback: Bestehenden Ordner beibehalten
+          return currentFolder;
+        });
+        
+        // Aktualisierte Ordner setzen
         setGroupFolders(prev => ({
           ...prev,
-          [groupId]: liveFolders
+          [groupId]: updatedFolders
         }));
+        
         console.log('Ordner-Inhalte erfolgreich aktualisiert');
       } else {
         console.warn(`Fehler beim Laden der Live-Ordner für Gruppe ${groupId}`);
-        // Fallback: Gespeicherte Struktur verwenden
-        const fallbackResponse = await fetch(`/api/jm-reihen/${groupId}`);
-        if (fallbackResponse.ok) {
-          const fallbackFolders = await fallbackResponse.json();
-          setGroupFolders(prev => ({
-            ...prev,
-            [groupId]: fallbackFolders
-          }));
-        }
+        // Bei Fehler: Bestehende Struktur beibehalten
       }
+      
     } catch (error) {
       console.error(`Fehler beim Aktualisieren der Ordner für Gruppe ${groupId}:`, error);
+      // Bei Fehler: Bestehende Struktur beibehalten
     } finally {
       // Loading-State zurücksetzen
       setRefreshingGroups(prev => ({ ...prev, [groupId]: false }));
