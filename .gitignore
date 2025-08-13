@@ -36,6 +36,6 @@ yarn-error.log*
 .env.production.local
 
 # Prisma
-prisma/*.db
-server/backup_*.db
-server/backup_*.sql
+# prisma/*.db  # Datenbank soll mit hochgeladen werden
+# server/backup_*.db  # Backups sollen mit hochgeladen werden
+# server/backup_*.sql  # SQL-Backups sollen mit hochgeladen werden
