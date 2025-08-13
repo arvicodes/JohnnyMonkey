@@ -665,9 +665,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   fontSize: '0.75rem',
                   fontWeight: 600,
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   gap: 0.5,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'normal',
+                  lineHeight: 1.2
                 }}
                 onClick={() => handleFolderOpen(subfolder.path)}
                 title="Unterordner öffnen"
@@ -711,6 +714,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       color: colors.textSecondary, // Gleiche Textfarbe wie bei den Stunden
                       fontSize: '0.75rem',
                       fontWeight: 500,
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal',
+                      lineHeight: 1.2,
                       '&:hover': {
                         color: colors.primary // Gleiche Hover-Textfarbe wie bei den Stunden
                       }
@@ -757,6 +763,55 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     } catch (error) {
       console.error('Fehler beim Laden der Ordner-Strukturen:', error);
     }
+  };
+
+  // Neue Funktion: Live-Ordner-Inhalt für alle Lerngruppen laden
+  const fetchLiveFolderStructures = async () => {
+    try {
+      console.log('Lade Live-Ordner-Inhalt für alle Lerngruppen...');
+      
+      // Alle Lerngruppen abrufen
+      const groupsResponse = await fetch('/api/learning-groups');
+      if (!groupsResponse.ok) {
+        throw new Error('Fehler beim Laden der Lerngruppen');
+      }
+      
+      const groups = await groupsResponse.json();
+      const liveFolderData: { [groupId: string]: any[] } = {};
+
+      // Für jede Lerngruppe den Live-Ordner-Inhalt laden
+      for (const group of groups) {
+        try {
+          const liveResponse = await fetch(`/api/jm-reihen/${group.id}/live`);
+          if (liveResponse.ok) {
+            const liveFolders = await liveResponse.json();
+            liveFolderData[group.id] = liveFolders;
+          } else {
+            console.warn(`Fehler beim Laden der Live-Ordner für Gruppe ${group.id}`);
+            // Fallback: Gespeicherte Struktur verwenden
+            const fallbackResponse = await fetch(`/api/jm-reihen/${group.id}`);
+            if (fallbackResponse.ok) {
+              const fallbackFolders = await fallbackResponse.json();
+              liveFolderData[group.id] = fallbackFolders;
+            }
+          }
+        } catch (error) {
+          console.error(`Fehler beim Laden der Live-Ordner für Gruppe ${group.id}:`, error);
+        }
+      }
+
+      console.log('Live-Ordner-Daten geladen:', liveFolderData);
+      setGroupFolders(liveFolderData);
+    } catch (error) {
+      console.error('Fehler beim Laden der Live-Ordner-Strukturen:', error);
+      // Fallback: Normale Ordner-Strukturen laden
+      fetchAllFolderStructures();
+    }
+  };
+
+  // Funktion zum manuellen Neuladen der Ordner-Inhalte
+  const refreshFolderContents = () => {
+    fetchLiveFolderStructures();
   };
 
   // Ordner in der Datenbank speichern
@@ -914,7 +969,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   useEffect(() => {
     dashboardRef.current?.focus();
-    fetchAllFolderStructures(); // Ordner-Strukturen beim Laden der Seite abrufen
+    fetchLiveFolderStructures(); // Live-Ordner-Inhalt beim Laden der Seite abrufen
   }, []);
 
   // Helfer: Schema parsen -> Hierarchie
@@ -1746,24 +1801,44 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 }}>
                                   📁 Ordner
                                 </Typography>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleFolderSelect(group.id)}
-                                  sx={{ 
-                                    width: 24, 
-                                    height: 24, 
-                                    p: 0.25,
-                                    bgcolor: colors.primary,
-                                    color: 'white',
-                                    '&:hover': { 
-                                      bgcolor: colors.primary, 
-                                      filter: 'brightness(1.1)' 
-                                    }
-                                  }}
-                                  title="Ordner hinzufügen"
-                                >
-                                  <FolderIcon sx={{ fontSize: '0.8rem' }} />
-                                </IconButton>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleFolderSelect(group.id)}
+                                    sx={{ 
+                                      width: 24, 
+                                      height: 24, 
+                                      p: 0.25,
+                                      bgcolor: colors.primary,
+                                      color: 'white',
+                                      '&:hover': { 
+                                        bgcolor: colors.primary, 
+                                        filter: 'brightness(1.1)' 
+                                      }
+                                    }}
+                                    title="Ordner hinzufügen"
+                                  >
+                                    <FolderIcon sx={{ fontSize: '0.8rem' }} />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    onClick={refreshFolderContents}
+                                    sx={{ 
+                                      width: 24, 
+                                      height: 24, 
+                                      p: 0.25,
+                                      bgcolor: colors.secondary,
+                                      color: 'white',
+                                      '&:hover': { 
+                                        bgcolor: colors.secondary, 
+                                        filter: 'brightness(1.1)' 
+                                      }
+                                    }}
+                                    title="Ordner-Inhalte aktualisieren"
+                                  >
+                                    🔄
+                                  </IconButton>
+                                </Box>
                               </Box>
                               
                               {/* Ordner-Inhalte mit vollständiger Vorschau */}
@@ -1776,7 +1851,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               }}>
                                 {groupFolders[group.id] && groupFolders[group.id].length > 0 ? (
                                   groupFolders[group.id].map((folder, index) => (
-                                    <Box key={index} sx={{ mb: 1.4 }}>
+                                    <Box key={index} sx={{ mb: 1.4, maxWidth: '100%' }}>
                                       <Typography variant="body2" sx={{ 
                                         fontWeight: 'bold', 
                                         color: colors.accent1, 
@@ -1785,9 +1860,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                         pb: 0.3,
                                         borderBottom: `2px solid ${colors.accent1}30`,
                                         display: 'flex',
-                                        alignItems: 'center',
+                                        alignItems: 'flex-start',
                                         gap: 0.5,
-                                        cursor: 'pointer'
+                                        cursor: 'pointer',
+                                        wordBreak: 'break-word',
+                                        whiteSpace: 'normal',
+                                        lineHeight: 1.2
                                       }}
                                       onClick={() => handleFolderOpen(folder.path)}
                                       title="Ordner öffnen"

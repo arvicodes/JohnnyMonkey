@@ -13,6 +13,7 @@ router.post('/create', QuizController_1.createQuiz);
 router.get('/', QuizController_1.getQuizzes);
 router.get('/:id', QuizController_1.getQuiz);
 router.put('/:id/settings', QuizController_1.updateQuiz);
+router.put('/:id/questions', QuizController_1.updateQuizQuestions);
 router.delete('/:id', QuizController_1.deleteQuiz);
 // Teacher-specific quiz operations
 router.get('/teacher/:teacherId', QuizController_1.getQuizzesByTeacher);

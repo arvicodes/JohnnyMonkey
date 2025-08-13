@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteParticipation = exports.getQuizStatistics = exports.resetParticipation = exports.getParticipationStatus = exports.getParticipationResultsForTeacher = exports.getParticipationResults = exports.submitAnswers = exports.startParticipation = void 0;
 const prisma_1 = require("../generated/prisma");
+const gradeConverter_1 = require("../utils/gradeConverter");
 const prisma = new prisma_1.PrismaClient();
 // Start participation in a quiz session (student only)
 const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -199,6 +200,57 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 }
             })
         ]);
+        // Calculate percentage and create grade if quiz has a gradeCategory
+        const percentage = participation.maxScore ? Math.round((totalScore / participation.maxScore) * 100) : 0;
+        if (participation.session.quiz.gradeCategory) {
+            try {
+                // Get the student's learning group and grading schema
+                const student = yield prisma.user.findUnique({
+                    where: { id: participation.studentId },
+                    include: {
+                        learningGroups: {
+                            include: {
+                                gradingSchemas: true
+                            }
+                        }
+                    }
+                });
+                if (student && student.learningGroups.length > 0) {
+                    const group = student.learningGroups[0]; // Assuming student is in one group
+                    const gradingSchema = group.gradingSchemas[0]; // Assuming one schema per group
+                    if (gradingSchema) {
+                        // Convert percentage to grade
+                        const grade = (0, gradeConverter_1.percentageToGrade)(percentage);
+                        // Create or update the grade
+                        yield prisma.grade.upsert({
+                            where: {
+                                studentId_schemaId_categoryName: {
+                                    studentId: participation.studentId,
+                                    schemaId: gradingSchema.id,
+                                    categoryName: participation.session.quiz.gradeCategory
+                                }
+                            },
+                            update: {
+                                grade: grade,
+                                weight: 1.0 // Default weight
+                            },
+                            create: {
+                                studentId: participation.studentId,
+                                schemaId: gradingSchema.id,
+                                categoryName: participation.session.quiz.gradeCategory,
+                                grade: grade,
+                                weight: 1.0 // Default weight
+                            }
+                        });
+                        console.log(`Grade ${grade} created for student ${participation.studentId} in category ${participation.session.quiz.gradeCategory}`);
+                    }
+                }
+            }
+            catch (gradeError) {
+                console.error('Error creating grade:', gradeError);
+                // Don't fail the quiz submission if grade creation fails
+            }
+        }
         // Get updated participation with answers
         const updatedParticipation = yield prisma.quizParticipation.findUnique({
             where: { id: participationId },
@@ -214,7 +266,7 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             participation: updatedParticipation,
             score: totalScore,
             maxScore: participation.maxScore,
-            percentage: participation.maxScore ? Math.round((totalScore / (participation.maxScore || 0)) * 100) : 0
+            percentage: percentage
         });
     }
     catch (error) {

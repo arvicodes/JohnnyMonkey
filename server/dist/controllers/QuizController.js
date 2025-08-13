@@ -9,13 +9,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getQuizzesByTeacher = exports.deleteQuiz = exports.updateQuiz = exports.getQuiz = exports.getQuizzes = exports.createQuiz = void 0;
+exports.updateQuizQuestions = exports.getQuizzesByTeacher = exports.deleteQuiz = exports.updateQuiz = exports.getQuiz = exports.getQuizzes = exports.createQuiz = void 0;
 const prisma_1 = require("../generated/prisma");
 const wordParser_1 = require("../utils/wordParser");
 const prisma = new prisma_1.PrismaClient();
 const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { teacherId, sourceFile, title, description, timeLimit, shuffleQuestions, shuffleAnswers } = req.body;
+        const { teacherId, sourceFile, title, description, timeLimit, shuffleQuestions, shuffleAnswers, gradeCategory } = req.body;
         if (!teacherId || !sourceFile || !title) {
             return res.status(400).json({ error: 'Lehrer-ID, Quelldatei und Titel sind erforderlich' });
         }
@@ -35,11 +35,14 @@ const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 shuffleQuestions: shuffleQuestions !== undefined ? shuffleQuestions : true,
                 shuffleAnswers: shuffleAnswers !== undefined ? shuffleAnswers : true,
                 teacherId,
+                gradeCategory: gradeCategory || null,
                 questions: {
                     create: parsedQuestions.map((q, index) => ({
                         question: q.question,
                         correctAnswer: q.correctAnswer,
                         options: JSON.stringify(q.options),
+                        tip: q.tip || '',
+                        explanation: q.explanation || '',
                         order: index + 1
                     }))
                 }
@@ -166,3 +169,48 @@ const getQuizzesByTeacher = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.getQuizzesByTeacher = getQuizzesByTeacher;
+const updateQuizQuestions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const { questions } = req.body;
+        if (!questions || !Array.isArray(questions)) {
+            return res.status(400).json({ error: 'Fragen sind erforderlich und müssen ein Array sein' });
+        }
+        // Alle bestehenden Fragen für dieses Quiz löschen
+        yield prisma.quizQuestion.deleteMany({
+            where: { quizId: id }
+        });
+        // Neue Fragen erstellen
+        const createdQuestions = yield prisma.quizQuestion.createMany({
+            data: questions.map((q, index) => ({
+                question: q.question,
+                correctAnswer: q.correctAnswer,
+                options: JSON.stringify(q.options),
+                order: index + 1,
+                quizId: id
+            }))
+        });
+        // Aktualisiertes Quiz mit Fragen zurückgeben
+        const updatedQuiz = yield prisma.quiz.findUnique({
+            where: { id },
+            include: {
+                questions: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
+            }
+        });
+        if (!updatedQuiz) {
+            return res.status(404).json({ error: 'Quiz nicht gefunden' });
+        }
+        // Deserialize options for each question
+        const quizWithParsedOptions = Object.assign(Object.assign({}, updatedQuiz), { questions: updatedQuiz.questions.map(q => (Object.assign(Object.assign({}, q), { options: JSON.parse(q.options) }))) });
+        res.json(quizWithParsedOptions);
+    }
+    catch (error) {
+        console.error('Error updating quiz questions:', error);
+        res.status(500).json({ error: 'Fehler beim Aktualisieren der Quiz-Fragen' });
+    }
+});
+exports.updateQuizQuestions = updateQuizQuestions;

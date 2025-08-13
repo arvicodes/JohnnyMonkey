@@ -18,7 +18,17 @@ router.get('/teacher/:id', (req, res) => __awaiter(void 0, void 0, void 0, funct
     try {
         const groups = yield prisma.learningGroup.findMany({
             where: { teacherId: req.params.id },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
+            }
         });
         res.json(groups);
     }
@@ -39,7 +49,15 @@ router.get('/student/:id', (req, res) => __awaiter(void 0, void 0, void 0, funct
             },
             include: {
                 teacher: true,
-                students: true
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
             }
         });
         res.json(groups);
@@ -55,7 +73,15 @@ router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             where: { id: req.params.id },
             include: {
                 teacher: true,
-                students: true
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
             }
         });
         if (!group) {
@@ -80,7 +106,15 @@ router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             data: { name: name.trim() },
             include: {
                 teacher: true,
-                students: true
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
             }
         });
         res.json(group);
@@ -101,7 +135,17 @@ router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                     connect: { id: teacherId }
                 }
             },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
+            }
         });
         res.json(group);
     }
@@ -120,7 +164,17 @@ router.post('/:id/students', (req, res) => __awaiter(void 0, void 0, void 0, fun
                     connect: studentIds.map((id) => ({ id }))
                 }
             },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
+            }
         });
         res.json(group);
     }
@@ -138,7 +192,17 @@ router.delete('/:groupId/students/:studentId', (req, res) => __awaiter(void 0, v
                     disconnect: { id: req.params.studentId }
                 }
             },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
+            }
         });
         res.json(group);
     }
@@ -153,7 +217,17 @@ router.get('/:groupId/available-students', (req, res) => __awaiter(void 0, void 
         // Get the current group's students
         const currentGroup = yield prisma.learningGroup.findUnique({
             where: { id: groupId },
-            include: { students: true }
+            include: {
+                students: {
+                    orderBy: { loginCode: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true
+                    }
+                }
+            }
         });
         if (!currentGroup) {
             return res.status(404).json({ message: 'Lerngruppe nicht gefunden' });
@@ -167,6 +241,12 @@ router.get('/:groupId/available-students', (req, res) => __awaiter(void 0, void 
                         notIn: currentGroup.students.map(student => student.id)
                     }
                 }
+            },
+            select: {
+                id: true,
+                name: true,
+                loginCode: true,
+                avatarEmoji: true
             }
         });
         res.json(availableStudents);

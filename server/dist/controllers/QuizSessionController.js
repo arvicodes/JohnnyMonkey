@@ -137,6 +137,8 @@ const getQuizForSession = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 id: q.id,
                 question: q.question,
                 options: JSON.parse(q.options),
+                tip: q.tip,
+                explanation: q.explanation,
                 order: q.order
             }))
         };

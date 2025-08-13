@@ -108,6 +108,11 @@ export type QuizParticipation = $Result.DefaultSelection<Prisma.$QuizParticipati
  * 
  */
 export type QuizAnswer = $Result.DefaultSelection<Prisma.$QuizAnswerPayload>
+/**
+ * Model JMReihen
+ * 
+ */
+export type JMReihen = $Result.DefaultSelection<Prisma.$JMReihenPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -423,6 +428,16 @@ export class PrismaClient<
     * ```
     */
   get quizAnswer(): Prisma.QuizAnswerDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.jMReihen`: Exposes CRUD operations for the **JMReihen** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more JMReihens
+    * const jMReihens = await prisma.jMReihen.findMany()
+    * ```
+    */
+  get jMReihen(): Prisma.JMReihenDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -881,7 +896,8 @@ export namespace Prisma {
     LessonQuiz: 'LessonQuiz',
     QuizSession: 'QuizSession',
     QuizParticipation: 'QuizParticipation',
-    QuizAnswer: 'QuizAnswer'
+    QuizAnswer: 'QuizAnswer',
+    JMReihen: 'JMReihen'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -900,7 +916,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer"
+      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "jMReihen"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2310,6 +2326,80 @@ export namespace Prisma {
           }
         }
       }
+      JMReihen: {
+        payload: Prisma.$JMReihenPayload<ExtArgs>
+        fields: Prisma.JMReihenFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.JMReihenFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.JMReihenFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>
+          }
+          findFirst: {
+            args: Prisma.JMReihenFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.JMReihenFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>
+          }
+          findMany: {
+            args: Prisma.JMReihenFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>[]
+          }
+          create: {
+            args: Prisma.JMReihenCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>
+          }
+          createMany: {
+            args: Prisma.JMReihenCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.JMReihenCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>[]
+          }
+          delete: {
+            args: Prisma.JMReihenDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>
+          }
+          update: {
+            args: Prisma.JMReihenUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>
+          }
+          deleteMany: {
+            args: Prisma.JMReihenDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.JMReihenUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.JMReihenUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>[]
+          }
+          upsert: {
+            args: Prisma.JMReihenUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$JMReihenPayload>
+          }
+          aggregate: {
+            args: Prisma.JMReihenAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateJMReihen>
+          }
+          groupBy: {
+            args: Prisma.JMReihenGroupByArgs<ExtArgs>
+            result: $Utils.Optional<JMReihenGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.JMReihenCountArgs<ExtArgs>
+            result: $Utils.Optional<JMReihenCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -2413,6 +2503,7 @@ export namespace Prisma {
     quizSession?: QuizSessionOmit
     quizParticipation?: QuizParticipationOmit
     quizAnswer?: QuizAnswerOmit
+    jMReihen?: JMReihenOmit
   }
 
   /* Types for Logging */
@@ -2625,12 +2716,14 @@ export namespace Prisma {
   export type LearningGroupCountOutputType = {
     gradingSchemas: number
     assignments: number
+    jmReihen: number
     students: number
   }
 
   export type LearningGroupCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     gradingSchemas?: boolean | LearningGroupCountOutputTypeCountGradingSchemasArgs
     assignments?: boolean | LearningGroupCountOutputTypeCountAssignmentsArgs
+    jmReihen?: boolean | LearningGroupCountOutputTypeCountJmReihenArgs
     students?: boolean | LearningGroupCountOutputTypeCountStudentsArgs
   }
 
@@ -2657,6 +2750,13 @@ export namespace Prisma {
    */
   export type LearningGroupCountOutputTypeCountAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: GroupAssignmentWhereInput
+  }
+
+  /**
+   * LearningGroupCountOutputType without action
+   */
+  export type LearningGroupCountOutputTypeCountJmReihenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JMReihenWhereInput
   }
 
   /**
@@ -3001,6 +3101,37 @@ export namespace Prisma {
    */
   export type QuizParticipationCountOutputTypeCountAnswersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: QuizAnswerWhereInput
+  }
+
+
+  /**
+   * Count Type JMReihenCountOutputType
+   */
+
+  export type JMReihenCountOutputType = {
+    children: number
+  }
+
+  export type JMReihenCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    children?: boolean | JMReihenCountOutputTypeCountChildrenArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * JMReihenCountOutputType without action
+   */
+  export type JMReihenCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihenCountOutputType
+     */
+    select?: JMReihenCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * JMReihenCountOutputType without action
+   */
+  export type JMReihenCountOutputTypeCountChildrenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JMReihenWhereInput
   }
 
 
@@ -6702,6 +6833,7 @@ export namespace Prisma {
     teacherId?: boolean
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
+    jmReihen?: boolean | LearningGroup$jmReihenArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
@@ -6737,6 +6869,7 @@ export namespace Prisma {
   export type LearningGroupInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
+    jmReihen?: boolean | LearningGroup$jmReihenArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
@@ -6753,6 +6886,7 @@ export namespace Prisma {
     objects: {
       gradingSchemas: Prisma.$GradingSchemaPayload<ExtArgs>[]
       assignments: Prisma.$GroupAssignmentPayload<ExtArgs>[]
+      jmReihen: Prisma.$JMReihenPayload<ExtArgs>[]
       teacher: Prisma.$UserPayload<ExtArgs>
       students: Prisma.$UserPayload<ExtArgs>[]
     }
@@ -7158,6 +7292,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     gradingSchemas<T extends LearningGroup$gradingSchemasArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$gradingSchemasArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GradingSchemaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     assignments<T extends LearningGroup$assignmentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    jmReihen<T extends LearningGroup$jmReihenArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$jmReihenArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     students<T extends LearningGroup$studentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$studentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -7633,6 +7768,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: GroupAssignmentScalarFieldEnum | GroupAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * LearningGroup.jmReihen
+   */
+  export type LearningGroup$jmReihenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    where?: JMReihenWhereInput
+    orderBy?: JMReihenOrderByWithRelationInput | JMReihenOrderByWithRelationInput[]
+    cursor?: JMReihenWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: JMReihenScalarFieldEnum | JMReihenScalarFieldEnum[]
   }
 
   /**
@@ -24677,6 +24836,1205 @@ export namespace Prisma {
 
 
   /**
+   * Model JMReihen
+   */
+
+  export type AggregateJMReihen = {
+    _count: JMReihenCountAggregateOutputType | null
+    _avg: JMReihenAvgAggregateOutputType | null
+    _sum: JMReihenSumAggregateOutputType | null
+    _min: JMReihenMinAggregateOutputType | null
+    _max: JMReihenMaxAggregateOutputType | null
+  }
+
+  export type JMReihenAvgAggregateOutputType = {
+    order: number | null
+  }
+
+  export type JMReihenSumAggregateOutputType = {
+    order: number | null
+  }
+
+  export type JMReihenMinAggregateOutputType = {
+    id: string | null
+    groupId: string | null
+    path: string | null
+    name: string | null
+    type: string | null
+    parentId: string | null
+    order: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JMReihenMaxAggregateOutputType = {
+    id: string | null
+    groupId: string | null
+    path: string | null
+    name: string | null
+    type: string | null
+    parentId: string | null
+    order: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type JMReihenCountAggregateOutputType = {
+    id: number
+    groupId: number
+    path: number
+    name: number
+    type: number
+    parentId: number
+    order: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type JMReihenAvgAggregateInputType = {
+    order?: true
+  }
+
+  export type JMReihenSumAggregateInputType = {
+    order?: true
+  }
+
+  export type JMReihenMinAggregateInputType = {
+    id?: true
+    groupId?: true
+    path?: true
+    name?: true
+    type?: true
+    parentId?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JMReihenMaxAggregateInputType = {
+    id?: true
+    groupId?: true
+    path?: true
+    name?: true
+    type?: true
+    parentId?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type JMReihenCountAggregateInputType = {
+    id?: true
+    groupId?: true
+    path?: true
+    name?: true
+    type?: true
+    parentId?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type JMReihenAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JMReihen to aggregate.
+     */
+    where?: JMReihenWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JMReihens to fetch.
+     */
+    orderBy?: JMReihenOrderByWithRelationInput | JMReihenOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: JMReihenWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JMReihens from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JMReihens.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned JMReihens
+    **/
+    _count?: true | JMReihenCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: JMReihenAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: JMReihenSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: JMReihenMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: JMReihenMaxAggregateInputType
+  }
+
+  export type GetJMReihenAggregateType<T extends JMReihenAggregateArgs> = {
+        [P in keyof T & keyof AggregateJMReihen]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateJMReihen[P]>
+      : GetScalarType<T[P], AggregateJMReihen[P]>
+  }
+
+
+
+
+  export type JMReihenGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: JMReihenWhereInput
+    orderBy?: JMReihenOrderByWithAggregationInput | JMReihenOrderByWithAggregationInput[]
+    by: JMReihenScalarFieldEnum[] | JMReihenScalarFieldEnum
+    having?: JMReihenScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: JMReihenCountAggregateInputType | true
+    _avg?: JMReihenAvgAggregateInputType
+    _sum?: JMReihenSumAggregateInputType
+    _min?: JMReihenMinAggregateInputType
+    _max?: JMReihenMaxAggregateInputType
+  }
+
+  export type JMReihenGroupByOutputType = {
+    id: string
+    groupId: string
+    path: string
+    name: string
+    type: string
+    parentId: string | null
+    order: number
+    createdAt: Date
+    updatedAt: Date
+    _count: JMReihenCountAggregateOutputType | null
+    _avg: JMReihenAvgAggregateOutputType | null
+    _sum: JMReihenSumAggregateOutputType | null
+    _min: JMReihenMinAggregateOutputType | null
+    _max: JMReihenMaxAggregateOutputType | null
+  }
+
+  type GetJMReihenGroupByPayload<T extends JMReihenGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<JMReihenGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof JMReihenGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], JMReihenGroupByOutputType[P]>
+            : GetScalarType<T[P], JMReihenGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type JMReihenSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    groupId?: boolean
+    path?: boolean
+    name?: boolean
+    type?: boolean
+    parentId?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+    parent?: boolean | JMReihen$parentArgs<ExtArgs>
+    children?: boolean | JMReihen$childrenArgs<ExtArgs>
+    _count?: boolean | JMReihenCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["jMReihen"]>
+
+  export type JMReihenSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    groupId?: boolean
+    path?: boolean
+    name?: boolean
+    type?: boolean
+    parentId?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+    parent?: boolean | JMReihen$parentArgs<ExtArgs>
+  }, ExtArgs["result"]["jMReihen"]>
+
+  export type JMReihenSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    groupId?: boolean
+    path?: boolean
+    name?: boolean
+    type?: boolean
+    parentId?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+    parent?: boolean | JMReihen$parentArgs<ExtArgs>
+  }, ExtArgs["result"]["jMReihen"]>
+
+  export type JMReihenSelectScalar = {
+    id?: boolean
+    groupId?: boolean
+    path?: boolean
+    name?: boolean
+    type?: boolean
+    parentId?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type JMReihenOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "groupId" | "path" | "name" | "type" | "parentId" | "order" | "createdAt" | "updatedAt", ExtArgs["result"]["jMReihen"]>
+  export type JMReihenInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+    parent?: boolean | JMReihen$parentArgs<ExtArgs>
+    children?: boolean | JMReihen$childrenArgs<ExtArgs>
+    _count?: boolean | JMReihenCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type JMReihenIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+    parent?: boolean | JMReihen$parentArgs<ExtArgs>
+  }
+  export type JMReihenIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+    parent?: boolean | JMReihen$parentArgs<ExtArgs>
+  }
+
+  export type $JMReihenPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "JMReihen"
+    objects: {
+      group: Prisma.$LearningGroupPayload<ExtArgs>
+      parent: Prisma.$JMReihenPayload<ExtArgs> | null
+      children: Prisma.$JMReihenPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      groupId: string
+      path: string
+      name: string
+      type: string
+      parentId: string | null
+      order: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["jMReihen"]>
+    composites: {}
+  }
+
+  type JMReihenGetPayload<S extends boolean | null | undefined | JMReihenDefaultArgs> = $Result.GetResult<Prisma.$JMReihenPayload, S>
+
+  type JMReihenCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<JMReihenFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: JMReihenCountAggregateInputType | true
+    }
+
+  export interface JMReihenDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['JMReihen'], meta: { name: 'JMReihen' } }
+    /**
+     * Find zero or one JMReihen that matches the filter.
+     * @param {JMReihenFindUniqueArgs} args - Arguments to find a JMReihen
+     * @example
+     * // Get one JMReihen
+     * const jMReihen = await prisma.jMReihen.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends JMReihenFindUniqueArgs>(args: SelectSubset<T, JMReihenFindUniqueArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one JMReihen that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {JMReihenFindUniqueOrThrowArgs} args - Arguments to find a JMReihen
+     * @example
+     * // Get one JMReihen
+     * const jMReihen = await prisma.jMReihen.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends JMReihenFindUniqueOrThrowArgs>(args: SelectSubset<T, JMReihenFindUniqueOrThrowArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JMReihen that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JMReihenFindFirstArgs} args - Arguments to find a JMReihen
+     * @example
+     * // Get one JMReihen
+     * const jMReihen = await prisma.jMReihen.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends JMReihenFindFirstArgs>(args?: SelectSubset<T, JMReihenFindFirstArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first JMReihen that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JMReihenFindFirstOrThrowArgs} args - Arguments to find a JMReihen
+     * @example
+     * // Get one JMReihen
+     * const jMReihen = await prisma.jMReihen.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends JMReihenFindFirstOrThrowArgs>(args?: SelectSubset<T, JMReihenFindFirstOrThrowArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more JMReihens that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JMReihenFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all JMReihens
+     * const jMReihens = await prisma.jMReihen.findMany()
+     * 
+     * // Get first 10 JMReihens
+     * const jMReihens = await prisma.jMReihen.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const jMReihenWithIdOnly = await prisma.jMReihen.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends JMReihenFindManyArgs>(args?: SelectSubset<T, JMReihenFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a JMReihen.
+     * @param {JMReihenCreateArgs} args - Arguments to create a JMReihen.
+     * @example
+     * // Create one JMReihen
+     * const JMReihen = await prisma.jMReihen.create({
+     *   data: {
+     *     // ... data to create a JMReihen
+     *   }
+     * })
+     * 
+     */
+    create<T extends JMReihenCreateArgs>(args: SelectSubset<T, JMReihenCreateArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many JMReihens.
+     * @param {JMReihenCreateManyArgs} args - Arguments to create many JMReihens.
+     * @example
+     * // Create many JMReihens
+     * const jMReihen = await prisma.jMReihen.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends JMReihenCreateManyArgs>(args?: SelectSubset<T, JMReihenCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many JMReihens and returns the data saved in the database.
+     * @param {JMReihenCreateManyAndReturnArgs} args - Arguments to create many JMReihens.
+     * @example
+     * // Create many JMReihens
+     * const jMReihen = await prisma.jMReihen.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many JMReihens and only return the `id`
+     * const jMReihenWithIdOnly = await prisma.jMReihen.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends JMReihenCreateManyAndReturnArgs>(args?: SelectSubset<T, JMReihenCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a JMReihen.
+     * @param {JMReihenDeleteArgs} args - Arguments to delete one JMReihen.
+     * @example
+     * // Delete one JMReihen
+     * const JMReihen = await prisma.jMReihen.delete({
+     *   where: {
+     *     // ... filter to delete one JMReihen
+     *   }
+     * })
+     * 
+     */
+    delete<T extends JMReihenDeleteArgs>(args: SelectSubset<T, JMReihenDeleteArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one JMReihen.
+     * @param {JMReihenUpdateArgs} args - Arguments to update one JMReihen.
+     * @example
+     * // Update one JMReihen
+     * const jMReihen = await prisma.jMReihen.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends JMReihenUpdateArgs>(args: SelectSubset<T, JMReihenUpdateArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more JMReihens.
+     * @param {JMReihenDeleteManyArgs} args - Arguments to filter JMReihens to delete.
+     * @example
+     * // Delete a few JMReihens
+     * const { count } = await prisma.jMReihen.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends JMReihenDeleteManyArgs>(args?: SelectSubset<T, JMReihenDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JMReihens.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JMReihenUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many JMReihens
+     * const jMReihen = await prisma.jMReihen.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends JMReihenUpdateManyArgs>(args: SelectSubset<T, JMReihenUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more JMReihens and returns the data updated in the database.
+     * @param {JMReihenUpdateManyAndReturnArgs} args - Arguments to update many JMReihens.
+     * @example
+     * // Update many JMReihens
+     * const jMReihen = await prisma.jMReihen.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more JMReihens and only return the `id`
+     * const jMReihenWithIdOnly = await prisma.jMReihen.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends JMReihenUpdateManyAndReturnArgs>(args: SelectSubset<T, JMReihenUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one JMReihen.
+     * @param {JMReihenUpsertArgs} args - Arguments to update or create a JMReihen.
+     * @example
+     * // Update or create a JMReihen
+     * const jMReihen = await prisma.jMReihen.upsert({
+     *   create: {
+     *     // ... data to create a JMReihen
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the JMReihen we want to update
+     *   }
+     * })
+     */
+    upsert<T extends JMReihenUpsertArgs>(args: SelectSubset<T, JMReihenUpsertArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of JMReihens.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JMReihenCountArgs} args - Arguments to filter JMReihens to count.
+     * @example
+     * // Count the number of JMReihens
+     * const count = await prisma.jMReihen.count({
+     *   where: {
+     *     // ... the filter for the JMReihens we want to count
+     *   }
+     * })
+    **/
+    count<T extends JMReihenCountArgs>(
+      args?: Subset<T, JMReihenCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], JMReihenCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a JMReihen.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JMReihenAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends JMReihenAggregateArgs>(args: Subset<T, JMReihenAggregateArgs>): Prisma.PrismaPromise<GetJMReihenAggregateType<T>>
+
+    /**
+     * Group by JMReihen.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {JMReihenGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends JMReihenGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: JMReihenGroupByArgs['orderBy'] }
+        : { orderBy?: JMReihenGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, JMReihenGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetJMReihenGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the JMReihen model
+   */
+  readonly fields: JMReihenFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for JMReihen.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__JMReihenClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    group<T extends LearningGroupDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroupDefaultArgs<ExtArgs>>): Prisma__LearningGroupClient<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    parent<T extends JMReihen$parentArgs<ExtArgs> = {}>(args?: Subset<T, JMReihen$parentArgs<ExtArgs>>): Prisma__JMReihenClient<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    children<T extends JMReihen$childrenArgs<ExtArgs> = {}>(args?: Subset<T, JMReihen$childrenArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$JMReihenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the JMReihen model
+   */
+  interface JMReihenFieldRefs {
+    readonly id: FieldRef<"JMReihen", 'String'>
+    readonly groupId: FieldRef<"JMReihen", 'String'>
+    readonly path: FieldRef<"JMReihen", 'String'>
+    readonly name: FieldRef<"JMReihen", 'String'>
+    readonly type: FieldRef<"JMReihen", 'String'>
+    readonly parentId: FieldRef<"JMReihen", 'String'>
+    readonly order: FieldRef<"JMReihen", 'Int'>
+    readonly createdAt: FieldRef<"JMReihen", 'DateTime'>
+    readonly updatedAt: FieldRef<"JMReihen", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * JMReihen findUnique
+   */
+  export type JMReihenFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * Filter, which JMReihen to fetch.
+     */
+    where: JMReihenWhereUniqueInput
+  }
+
+  /**
+   * JMReihen findUniqueOrThrow
+   */
+  export type JMReihenFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * Filter, which JMReihen to fetch.
+     */
+    where: JMReihenWhereUniqueInput
+  }
+
+  /**
+   * JMReihen findFirst
+   */
+  export type JMReihenFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * Filter, which JMReihen to fetch.
+     */
+    where?: JMReihenWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JMReihens to fetch.
+     */
+    orderBy?: JMReihenOrderByWithRelationInput | JMReihenOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JMReihens.
+     */
+    cursor?: JMReihenWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JMReihens from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JMReihens.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JMReihens.
+     */
+    distinct?: JMReihenScalarFieldEnum | JMReihenScalarFieldEnum[]
+  }
+
+  /**
+   * JMReihen findFirstOrThrow
+   */
+  export type JMReihenFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * Filter, which JMReihen to fetch.
+     */
+    where?: JMReihenWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JMReihens to fetch.
+     */
+    orderBy?: JMReihenOrderByWithRelationInput | JMReihenOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for JMReihens.
+     */
+    cursor?: JMReihenWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JMReihens from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JMReihens.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of JMReihens.
+     */
+    distinct?: JMReihenScalarFieldEnum | JMReihenScalarFieldEnum[]
+  }
+
+  /**
+   * JMReihen findMany
+   */
+  export type JMReihenFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * Filter, which JMReihens to fetch.
+     */
+    where?: JMReihenWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of JMReihens to fetch.
+     */
+    orderBy?: JMReihenOrderByWithRelationInput | JMReihenOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing JMReihens.
+     */
+    cursor?: JMReihenWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` JMReihens from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` JMReihens.
+     */
+    skip?: number
+    distinct?: JMReihenScalarFieldEnum | JMReihenScalarFieldEnum[]
+  }
+
+  /**
+   * JMReihen create
+   */
+  export type JMReihenCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * The data needed to create a JMReihen.
+     */
+    data: XOR<JMReihenCreateInput, JMReihenUncheckedCreateInput>
+  }
+
+  /**
+   * JMReihen createMany
+   */
+  export type JMReihenCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many JMReihens.
+     */
+    data: JMReihenCreateManyInput | JMReihenCreateManyInput[]
+  }
+
+  /**
+   * JMReihen createManyAndReturn
+   */
+  export type JMReihenCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * The data used to create many JMReihens.
+     */
+    data: JMReihenCreateManyInput | JMReihenCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JMReihen update
+   */
+  export type JMReihenUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * The data needed to update a JMReihen.
+     */
+    data: XOR<JMReihenUpdateInput, JMReihenUncheckedUpdateInput>
+    /**
+     * Choose, which JMReihen to update.
+     */
+    where: JMReihenWhereUniqueInput
+  }
+
+  /**
+   * JMReihen updateMany
+   */
+  export type JMReihenUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update JMReihens.
+     */
+    data: XOR<JMReihenUpdateManyMutationInput, JMReihenUncheckedUpdateManyInput>
+    /**
+     * Filter which JMReihens to update
+     */
+    where?: JMReihenWhereInput
+    /**
+     * Limit how many JMReihens to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * JMReihen updateManyAndReturn
+   */
+  export type JMReihenUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * The data used to update JMReihens.
+     */
+    data: XOR<JMReihenUpdateManyMutationInput, JMReihenUncheckedUpdateManyInput>
+    /**
+     * Filter which JMReihens to update
+     */
+    where?: JMReihenWhereInput
+    /**
+     * Limit how many JMReihens to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * JMReihen upsert
+   */
+  export type JMReihenUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * The filter to search for the JMReihen to update in case it exists.
+     */
+    where: JMReihenWhereUniqueInput
+    /**
+     * In case the JMReihen found by the `where` argument doesn't exist, create a new JMReihen with this data.
+     */
+    create: XOR<JMReihenCreateInput, JMReihenUncheckedCreateInput>
+    /**
+     * In case the JMReihen was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<JMReihenUpdateInput, JMReihenUncheckedUpdateInput>
+  }
+
+  /**
+   * JMReihen delete
+   */
+  export type JMReihenDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    /**
+     * Filter which JMReihen to delete.
+     */
+    where: JMReihenWhereUniqueInput
+  }
+
+  /**
+   * JMReihen deleteMany
+   */
+  export type JMReihenDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which JMReihens to delete
+     */
+    where?: JMReihenWhereInput
+    /**
+     * Limit how many JMReihens to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * JMReihen.parent
+   */
+  export type JMReihen$parentArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    where?: JMReihenWhereInput
+  }
+
+  /**
+   * JMReihen.children
+   */
+  export type JMReihen$childrenArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+    where?: JMReihenWhereInput
+    orderBy?: JMReihenOrderByWithRelationInput | JMReihenOrderByWithRelationInput[]
+    cursor?: JMReihenWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: JMReihenScalarFieldEnum | JMReihenScalarFieldEnum[]
+  }
+
+  /**
+   * JMReihen without action
+   */
+  export type JMReihenDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the JMReihen
+     */
+    select?: JMReihenSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the JMReihen
+     */
+    omit?: JMReihenOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: JMReihenInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -24934,6 +26292,21 @@ export namespace Prisma {
   };
 
   export type QuizAnswerScalarFieldEnum = (typeof QuizAnswerScalarFieldEnum)[keyof typeof QuizAnswerScalarFieldEnum]
+
+
+  export const JMReihenScalarFieldEnum: {
+    id: 'id',
+    groupId: 'groupId',
+    path: 'path',
+    name: 'name',
+    type: 'type',
+    parentId: 'parentId',
+    order: 'order',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type JMReihenScalarFieldEnum = (typeof JMReihenScalarFieldEnum)[keyof typeof JMReihenScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -25238,6 +26611,7 @@ export namespace Prisma {
     teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
+    jmReihen?: JMReihenListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
   }
@@ -25250,6 +26624,7 @@ export namespace Prisma {
     teacherId?: SortOrder
     gradingSchemas?: GradingSchemaOrderByRelationAggregateInput
     assignments?: GroupAssignmentOrderByRelationAggregateInput
+    jmReihen?: JMReihenOrderByRelationAggregateInput
     teacher?: UserOrderByWithRelationInput
     students?: UserOrderByRelationAggregateInput
   }
@@ -25265,6 +26640,7 @@ export namespace Prisma {
     teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
+    jmReihen?: JMReihenListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
   }, "id">
@@ -26347,6 +27723,90 @@ export namespace Prisma {
     answeredAt?: DateTimeWithAggregatesFilter<"QuizAnswer"> | Date | string
   }
 
+  export type JMReihenWhereInput = {
+    AND?: JMReihenWhereInput | JMReihenWhereInput[]
+    OR?: JMReihenWhereInput[]
+    NOT?: JMReihenWhereInput | JMReihenWhereInput[]
+    id?: StringFilter<"JMReihen"> | string
+    groupId?: StringFilter<"JMReihen"> | string
+    path?: StringFilter<"JMReihen"> | string
+    name?: StringFilter<"JMReihen"> | string
+    type?: StringFilter<"JMReihen"> | string
+    parentId?: StringNullableFilter<"JMReihen"> | string | null
+    order?: IntFilter<"JMReihen"> | number
+    createdAt?: DateTimeFilter<"JMReihen"> | Date | string
+    updatedAt?: DateTimeFilter<"JMReihen"> | Date | string
+    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
+    parent?: XOR<JMReihenNullableScalarRelationFilter, JMReihenWhereInput> | null
+    children?: JMReihenListRelationFilter
+  }
+
+  export type JMReihenOrderByWithRelationInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    parentId?: SortOrderInput | SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    group?: LearningGroupOrderByWithRelationInput
+    parent?: JMReihenOrderByWithRelationInput
+    children?: JMReihenOrderByRelationAggregateInput
+  }
+
+  export type JMReihenWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    groupId_path?: JMReihenGroupIdPathCompoundUniqueInput
+    AND?: JMReihenWhereInput | JMReihenWhereInput[]
+    OR?: JMReihenWhereInput[]
+    NOT?: JMReihenWhereInput | JMReihenWhereInput[]
+    groupId?: StringFilter<"JMReihen"> | string
+    path?: StringFilter<"JMReihen"> | string
+    name?: StringFilter<"JMReihen"> | string
+    type?: StringFilter<"JMReihen"> | string
+    parentId?: StringNullableFilter<"JMReihen"> | string | null
+    order?: IntFilter<"JMReihen"> | number
+    createdAt?: DateTimeFilter<"JMReihen"> | Date | string
+    updatedAt?: DateTimeFilter<"JMReihen"> | Date | string
+    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
+    parent?: XOR<JMReihenNullableScalarRelationFilter, JMReihenWhereInput> | null
+    children?: JMReihenListRelationFilter
+  }, "id" | "groupId_path">
+
+  export type JMReihenOrderByWithAggregationInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    parentId?: SortOrderInput | SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: JMReihenCountOrderByAggregateInput
+    _avg?: JMReihenAvgOrderByAggregateInput
+    _max?: JMReihenMaxOrderByAggregateInput
+    _min?: JMReihenMinOrderByAggregateInput
+    _sum?: JMReihenSumOrderByAggregateInput
+  }
+
+  export type JMReihenScalarWhereWithAggregatesInput = {
+    AND?: JMReihenScalarWhereWithAggregatesInput | JMReihenScalarWhereWithAggregatesInput[]
+    OR?: JMReihenScalarWhereWithAggregatesInput[]
+    NOT?: JMReihenScalarWhereWithAggregatesInput | JMReihenScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"JMReihen"> | string
+    groupId?: StringWithAggregatesFilter<"JMReihen"> | string
+    path?: StringWithAggregatesFilter<"JMReihen"> | string
+    name?: StringWithAggregatesFilter<"JMReihen"> | string
+    type?: StringWithAggregatesFilter<"JMReihen"> | string
+    parentId?: StringNullableWithAggregatesFilter<"JMReihen"> | string | null
+    order?: IntWithAggregatesFilter<"JMReihen"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"JMReihen"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"JMReihen"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
@@ -26607,6 +28067,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -26619,6 +28080,7 @@ export namespace Prisma {
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -26629,6 +28091,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -26641,6 +28104,7 @@ export namespace Prisma {
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -27765,6 +29229,92 @@ export namespace Prisma {
     answeredAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type JMReihenCreateInput = {
+    id?: string
+    path: string
+    name: string
+    type: string
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    group: LearningGroupCreateNestedOneWithoutJmReihenInput
+    parent?: JMReihenCreateNestedOneWithoutChildrenInput
+    children?: JMReihenCreateNestedManyWithoutParentInput
+  }
+
+  export type JMReihenUncheckedCreateInput = {
+    id?: string
+    groupId: string
+    path: string
+    name: string
+    type: string
+    parentId?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    children?: JMReihenUncheckedCreateNestedManyWithoutParentInput
+  }
+
+  export type JMReihenUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    group?: LearningGroupUpdateOneRequiredWithoutJmReihenNestedInput
+    parent?: JMReihenUpdateOneWithoutChildrenNestedInput
+    children?: JMReihenUpdateManyWithoutParentNestedInput
+  }
+
+  export type JMReihenUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: JMReihenUncheckedUpdateManyWithoutParentNestedInput
+  }
+
+  export type JMReihenCreateManyInput = {
+    id?: string
+    groupId: string
+    path: string
+    name: string
+    type: string
+    parentId?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JMReihenUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JMReihenUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -28083,6 +29633,12 @@ export namespace Prisma {
     none?: GroupAssignmentWhereInput
   }
 
+  export type JMReihenListRelationFilter = {
+    every?: JMReihenWhereInput
+    some?: JMReihenWhereInput
+    none?: JMReihenWhereInput
+  }
+
   export type UserListRelationFilter = {
     every?: UserWhereInput
     some?: UserWhereInput
@@ -28094,6 +29650,10 @@ export namespace Prisma {
   }
 
   export type GroupAssignmentOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type JMReihenOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -28910,6 +30470,60 @@ export namespace Prisma {
     points?: SortOrder
   }
 
+  export type JMReihenNullableScalarRelationFilter = {
+    is?: JMReihenWhereInput | null
+    isNot?: JMReihenWhereInput | null
+  }
+
+  export type JMReihenGroupIdPathCompoundUniqueInput = {
+    groupId: string
+    path: string
+  }
+
+  export type JMReihenCountOrderByAggregateInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    parentId?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JMReihenAvgOrderByAggregateInput = {
+    order?: SortOrder
+  }
+
+  export type JMReihenMaxOrderByAggregateInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    parentId?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JMReihenMinOrderByAggregateInput = {
+    id?: SortOrder
+    groupId?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    type?: SortOrder
+    parentId?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type JMReihenSumOrderByAggregateInput = {
+    order?: SortOrder
+  }
+
   export type LearningGroupCreateNestedManyWithoutTeacherInput = {
     create?: XOR<LearningGroupCreateWithoutTeacherInput, LearningGroupUncheckedCreateWithoutTeacherInput> | LearningGroupCreateWithoutTeacherInput[] | LearningGroupUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutTeacherInput | LearningGroupCreateOrConnectWithoutTeacherInput[]
@@ -29318,6 +30932,13 @@ export namespace Prisma {
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
   }
 
+  export type JMReihenCreateNestedManyWithoutGroupInput = {
+    create?: XOR<JMReihenCreateWithoutGroupInput, JMReihenUncheckedCreateWithoutGroupInput> | JMReihenCreateWithoutGroupInput[] | JMReihenUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutGroupInput | JMReihenCreateOrConnectWithoutGroupInput[]
+    createMany?: JMReihenCreateManyGroupInputEnvelope
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+  }
+
   export type UserCreateNestedOneWithoutTeacherGroupsInput = {
     create?: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
     connectOrCreate?: UserCreateOrConnectWithoutTeacherGroupsInput
@@ -29342,6 +30963,13 @@ export namespace Prisma {
     connectOrCreate?: GroupAssignmentCreateOrConnectWithoutGroupInput | GroupAssignmentCreateOrConnectWithoutGroupInput[]
     createMany?: GroupAssignmentCreateManyGroupInputEnvelope
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+  }
+
+  export type JMReihenUncheckedCreateNestedManyWithoutGroupInput = {
+    create?: XOR<JMReihenCreateWithoutGroupInput, JMReihenUncheckedCreateWithoutGroupInput> | JMReihenCreateWithoutGroupInput[] | JMReihenUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutGroupInput | JMReihenCreateOrConnectWithoutGroupInput[]
+    createMany?: JMReihenCreateManyGroupInputEnvelope
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
   }
 
   export type UserUncheckedCreateNestedManyWithoutLearningGroupsInput = {
@@ -29376,6 +31004,20 @@ export namespace Prisma {
     update?: GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
     updateMany?: GroupAssignmentUpdateManyWithWhereWithoutGroupInput | GroupAssignmentUpdateManyWithWhereWithoutGroupInput[]
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
+  }
+
+  export type JMReihenUpdateManyWithoutGroupNestedInput = {
+    create?: XOR<JMReihenCreateWithoutGroupInput, JMReihenUncheckedCreateWithoutGroupInput> | JMReihenCreateWithoutGroupInput[] | JMReihenUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutGroupInput | JMReihenCreateOrConnectWithoutGroupInput[]
+    upsert?: JMReihenUpsertWithWhereUniqueWithoutGroupInput | JMReihenUpsertWithWhereUniqueWithoutGroupInput[]
+    createMany?: JMReihenCreateManyGroupInputEnvelope
+    set?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    disconnect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    delete?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    update?: JMReihenUpdateWithWhereUniqueWithoutGroupInput | JMReihenUpdateWithWhereUniqueWithoutGroupInput[]
+    updateMany?: JMReihenUpdateManyWithWhereWithoutGroupInput | JMReihenUpdateManyWithWhereWithoutGroupInput[]
+    deleteMany?: JMReihenScalarWhereInput | JMReihenScalarWhereInput[]
   }
 
   export type UserUpdateOneRequiredWithoutTeacherGroupsNestedInput = {
@@ -29425,6 +31067,20 @@ export namespace Prisma {
     update?: GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
     updateMany?: GroupAssignmentUpdateManyWithWhereWithoutGroupInput | GroupAssignmentUpdateManyWithWhereWithoutGroupInput[]
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
+  }
+
+  export type JMReihenUncheckedUpdateManyWithoutGroupNestedInput = {
+    create?: XOR<JMReihenCreateWithoutGroupInput, JMReihenUncheckedCreateWithoutGroupInput> | JMReihenCreateWithoutGroupInput[] | JMReihenUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutGroupInput | JMReihenCreateOrConnectWithoutGroupInput[]
+    upsert?: JMReihenUpsertWithWhereUniqueWithoutGroupInput | JMReihenUpsertWithWhereUniqueWithoutGroupInput[]
+    createMany?: JMReihenCreateManyGroupInputEnvelope
+    set?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    disconnect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    delete?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    update?: JMReihenUpdateWithWhereUniqueWithoutGroupInput | JMReihenUpdateWithWhereUniqueWithoutGroupInput[]
+    updateMany?: JMReihenUpdateManyWithWhereWithoutGroupInput | JMReihenUpdateManyWithWhereWithoutGroupInput[]
+    deleteMany?: JMReihenScalarWhereInput | JMReihenScalarWhereInput[]
   }
 
   export type UserUncheckedUpdateManyWithoutLearningGroupsNestedInput = {
@@ -30262,6 +31918,78 @@ export namespace Prisma {
     update?: XOR<XOR<QuizParticipationUpdateToOneWithWhereWithoutAnswersInput, QuizParticipationUpdateWithoutAnswersInput>, QuizParticipationUncheckedUpdateWithoutAnswersInput>
   }
 
+  export type LearningGroupCreateNestedOneWithoutJmReihenInput = {
+    create?: XOR<LearningGroupCreateWithoutJmReihenInput, LearningGroupUncheckedCreateWithoutJmReihenInput>
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutJmReihenInput
+    connect?: LearningGroupWhereUniqueInput
+  }
+
+  export type JMReihenCreateNestedOneWithoutChildrenInput = {
+    create?: XOR<JMReihenCreateWithoutChildrenInput, JMReihenUncheckedCreateWithoutChildrenInput>
+    connectOrCreate?: JMReihenCreateOrConnectWithoutChildrenInput
+    connect?: JMReihenWhereUniqueInput
+  }
+
+  export type JMReihenCreateNestedManyWithoutParentInput = {
+    create?: XOR<JMReihenCreateWithoutParentInput, JMReihenUncheckedCreateWithoutParentInput> | JMReihenCreateWithoutParentInput[] | JMReihenUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutParentInput | JMReihenCreateOrConnectWithoutParentInput[]
+    createMany?: JMReihenCreateManyParentInputEnvelope
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+  }
+
+  export type JMReihenUncheckedCreateNestedManyWithoutParentInput = {
+    create?: XOR<JMReihenCreateWithoutParentInput, JMReihenUncheckedCreateWithoutParentInput> | JMReihenCreateWithoutParentInput[] | JMReihenUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutParentInput | JMReihenCreateOrConnectWithoutParentInput[]
+    createMany?: JMReihenCreateManyParentInputEnvelope
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+  }
+
+  export type LearningGroupUpdateOneRequiredWithoutJmReihenNestedInput = {
+    create?: XOR<LearningGroupCreateWithoutJmReihenInput, LearningGroupUncheckedCreateWithoutJmReihenInput>
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutJmReihenInput
+    upsert?: LearningGroupUpsertWithoutJmReihenInput
+    connect?: LearningGroupWhereUniqueInput
+    update?: XOR<XOR<LearningGroupUpdateToOneWithWhereWithoutJmReihenInput, LearningGroupUpdateWithoutJmReihenInput>, LearningGroupUncheckedUpdateWithoutJmReihenInput>
+  }
+
+  export type JMReihenUpdateOneWithoutChildrenNestedInput = {
+    create?: XOR<JMReihenCreateWithoutChildrenInput, JMReihenUncheckedCreateWithoutChildrenInput>
+    connectOrCreate?: JMReihenCreateOrConnectWithoutChildrenInput
+    upsert?: JMReihenUpsertWithoutChildrenInput
+    disconnect?: JMReihenWhereInput | boolean
+    delete?: JMReihenWhereInput | boolean
+    connect?: JMReihenWhereUniqueInput
+    update?: XOR<XOR<JMReihenUpdateToOneWithWhereWithoutChildrenInput, JMReihenUpdateWithoutChildrenInput>, JMReihenUncheckedUpdateWithoutChildrenInput>
+  }
+
+  export type JMReihenUpdateManyWithoutParentNestedInput = {
+    create?: XOR<JMReihenCreateWithoutParentInput, JMReihenUncheckedCreateWithoutParentInput> | JMReihenCreateWithoutParentInput[] | JMReihenUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutParentInput | JMReihenCreateOrConnectWithoutParentInput[]
+    upsert?: JMReihenUpsertWithWhereUniqueWithoutParentInput | JMReihenUpsertWithWhereUniqueWithoutParentInput[]
+    createMany?: JMReihenCreateManyParentInputEnvelope
+    set?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    disconnect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    delete?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    update?: JMReihenUpdateWithWhereUniqueWithoutParentInput | JMReihenUpdateWithWhereUniqueWithoutParentInput[]
+    updateMany?: JMReihenUpdateManyWithWhereWithoutParentInput | JMReihenUpdateManyWithWhereWithoutParentInput[]
+    deleteMany?: JMReihenScalarWhereInput | JMReihenScalarWhereInput[]
+  }
+
+  export type JMReihenUncheckedUpdateManyWithoutParentNestedInput = {
+    create?: XOR<JMReihenCreateWithoutParentInput, JMReihenUncheckedCreateWithoutParentInput> | JMReihenCreateWithoutParentInput[] | JMReihenUncheckedCreateWithoutParentInput[]
+    connectOrCreate?: JMReihenCreateOrConnectWithoutParentInput | JMReihenCreateOrConnectWithoutParentInput[]
+    upsert?: JMReihenUpsertWithWhereUniqueWithoutParentInput | JMReihenUpsertWithWhereUniqueWithoutParentInput[]
+    createMany?: JMReihenCreateManyParentInputEnvelope
+    set?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    disconnect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    delete?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    connect?: JMReihenWhereUniqueInput | JMReihenWhereUniqueInput[]
+    update?: JMReihenUpdateWithWhereUniqueWithoutParentInput | JMReihenUpdateWithWhereUniqueWithoutParentInput[]
+    updateMany?: JMReihenUpdateManyWithWhereWithoutParentInput | JMReihenUpdateManyWithWhereWithoutParentInput[]
+    deleteMany?: JMReihenScalarWhereInput | JMReihenScalarWhereInput[]
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -30486,6 +32214,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenCreateNestedManyWithoutGroupInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -30496,6 +32225,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -30649,6 +32379,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
   }
 
@@ -30660,6 +32391,7 @@ export namespace Prisma {
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenUncheckedCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupCreateOrConnectWithoutStudentsInput = {
@@ -30899,6 +32631,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -30910,6 +32643,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacherId: string
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    jmReihen?: JMReihenUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -30964,6 +32698,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -30975,6 +32710,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacherId?: StringFieldUpdateOperationsInput | string
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -31186,6 +32922,39 @@ export namespace Prisma {
     data: GroupAssignmentCreateManyGroupInput | GroupAssignmentCreateManyGroupInput[]
   }
 
+  export type JMReihenCreateWithoutGroupInput = {
+    id?: string
+    path: string
+    name: string
+    type: string
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    parent?: JMReihenCreateNestedOneWithoutChildrenInput
+    children?: JMReihenCreateNestedManyWithoutParentInput
+  }
+
+  export type JMReihenUncheckedCreateWithoutGroupInput = {
+    id?: string
+    path: string
+    name: string
+    type: string
+    parentId?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    children?: JMReihenUncheckedCreateNestedManyWithoutParentInput
+  }
+
+  export type JMReihenCreateOrConnectWithoutGroupInput = {
+    where: JMReihenWhereUniqueInput
+    create: XOR<JMReihenCreateWithoutGroupInput, JMReihenUncheckedCreateWithoutGroupInput>
+  }
+
+  export type JMReihenCreateManyGroupInputEnvelope = {
+    data: JMReihenCreateManyGroupInput | JMReihenCreateManyGroupInput[]
+  }
+
   export type UserCreateWithoutTeacherGroupsInput = {
     id?: string
     name: string
@@ -31318,6 +33087,37 @@ export namespace Prisma {
     type?: StringFilter<"GroupAssignment"> | string
     refId?: StringFilter<"GroupAssignment"> | string
     createdAt?: DateTimeFilter<"GroupAssignment"> | Date | string
+  }
+
+  export type JMReihenUpsertWithWhereUniqueWithoutGroupInput = {
+    where: JMReihenWhereUniqueInput
+    update: XOR<JMReihenUpdateWithoutGroupInput, JMReihenUncheckedUpdateWithoutGroupInput>
+    create: XOR<JMReihenCreateWithoutGroupInput, JMReihenUncheckedCreateWithoutGroupInput>
+  }
+
+  export type JMReihenUpdateWithWhereUniqueWithoutGroupInput = {
+    where: JMReihenWhereUniqueInput
+    data: XOR<JMReihenUpdateWithoutGroupInput, JMReihenUncheckedUpdateWithoutGroupInput>
+  }
+
+  export type JMReihenUpdateManyWithWhereWithoutGroupInput = {
+    where: JMReihenScalarWhereInput
+    data: XOR<JMReihenUpdateManyMutationInput, JMReihenUncheckedUpdateManyWithoutGroupInput>
+  }
+
+  export type JMReihenScalarWhereInput = {
+    AND?: JMReihenScalarWhereInput | JMReihenScalarWhereInput[]
+    OR?: JMReihenScalarWhereInput[]
+    NOT?: JMReihenScalarWhereInput | JMReihenScalarWhereInput[]
+    id?: StringFilter<"JMReihen"> | string
+    groupId?: StringFilter<"JMReihen"> | string
+    path?: StringFilter<"JMReihen"> | string
+    name?: StringFilter<"JMReihen"> | string
+    type?: StringFilter<"JMReihen"> | string
+    parentId?: StringNullableFilter<"JMReihen"> | string | null
+    order?: IntFilter<"JMReihen"> | number
+    createdAt?: DateTimeFilter<"JMReihen"> | Date | string
+    updatedAt?: DateTimeFilter<"JMReihen"> | Date | string
   }
 
   export type UserUpsertWithoutTeacherGroupsInput = {
@@ -32037,6 +33837,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    jmReihen?: JMReihenCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -32048,6 +33849,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    jmReihen?: JMReihenUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -32073,6 +33875,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    jmReihen?: JMReihenUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -32084,6 +33887,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    jmReihen?: JMReihenUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -33286,6 +35090,179 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type LearningGroupCreateWithoutJmReihenInput = {
+    id?: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
+    students?: UserCreateNestedManyWithoutLearningGroupsInput
+  }
+
+  export type LearningGroupUncheckedCreateWithoutJmReihenInput = {
+    id?: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherId: string
+    gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
+  }
+
+  export type LearningGroupCreateOrConnectWithoutJmReihenInput = {
+    where: LearningGroupWhereUniqueInput
+    create: XOR<LearningGroupCreateWithoutJmReihenInput, LearningGroupUncheckedCreateWithoutJmReihenInput>
+  }
+
+  export type JMReihenCreateWithoutChildrenInput = {
+    id?: string
+    path: string
+    name: string
+    type: string
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    group: LearningGroupCreateNestedOneWithoutJmReihenInput
+    parent?: JMReihenCreateNestedOneWithoutChildrenInput
+  }
+
+  export type JMReihenUncheckedCreateWithoutChildrenInput = {
+    id?: string
+    groupId: string
+    path: string
+    name: string
+    type: string
+    parentId?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JMReihenCreateOrConnectWithoutChildrenInput = {
+    where: JMReihenWhereUniqueInput
+    create: XOR<JMReihenCreateWithoutChildrenInput, JMReihenUncheckedCreateWithoutChildrenInput>
+  }
+
+  export type JMReihenCreateWithoutParentInput = {
+    id?: string
+    path: string
+    name: string
+    type: string
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    group: LearningGroupCreateNestedOneWithoutJmReihenInput
+    children?: JMReihenCreateNestedManyWithoutParentInput
+  }
+
+  export type JMReihenUncheckedCreateWithoutParentInput = {
+    id?: string
+    groupId: string
+    path: string
+    name: string
+    type: string
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    children?: JMReihenUncheckedCreateNestedManyWithoutParentInput
+  }
+
+  export type JMReihenCreateOrConnectWithoutParentInput = {
+    where: JMReihenWhereUniqueInput
+    create: XOR<JMReihenCreateWithoutParentInput, JMReihenUncheckedCreateWithoutParentInput>
+  }
+
+  export type JMReihenCreateManyParentInputEnvelope = {
+    data: JMReihenCreateManyParentInput | JMReihenCreateManyParentInput[]
+  }
+
+  export type LearningGroupUpsertWithoutJmReihenInput = {
+    update: XOR<LearningGroupUpdateWithoutJmReihenInput, LearningGroupUncheckedUpdateWithoutJmReihenInput>
+    create: XOR<LearningGroupCreateWithoutJmReihenInput, LearningGroupUncheckedCreateWithoutJmReihenInput>
+    where?: LearningGroupWhereInput
+  }
+
+  export type LearningGroupUpdateToOneWithWhereWithoutJmReihenInput = {
+    where?: LearningGroupWhereInput
+    data: XOR<LearningGroupUpdateWithoutJmReihenInput, LearningGroupUncheckedUpdateWithoutJmReihenInput>
+  }
+
+  export type LearningGroupUpdateWithoutJmReihenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
+    students?: UserUpdateManyWithoutLearningGroupsNestedInput
+  }
+
+  export type LearningGroupUncheckedUpdateWithoutJmReihenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+  }
+
+  export type JMReihenUpsertWithoutChildrenInput = {
+    update: XOR<JMReihenUpdateWithoutChildrenInput, JMReihenUncheckedUpdateWithoutChildrenInput>
+    create: XOR<JMReihenCreateWithoutChildrenInput, JMReihenUncheckedCreateWithoutChildrenInput>
+    where?: JMReihenWhereInput
+  }
+
+  export type JMReihenUpdateToOneWithWhereWithoutChildrenInput = {
+    where?: JMReihenWhereInput
+    data: XOR<JMReihenUpdateWithoutChildrenInput, JMReihenUncheckedUpdateWithoutChildrenInput>
+  }
+
+  export type JMReihenUpdateWithoutChildrenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    group?: LearningGroupUpdateOneRequiredWithoutJmReihenNestedInput
+    parent?: JMReihenUpdateOneWithoutChildrenNestedInput
+  }
+
+  export type JMReihenUncheckedUpdateWithoutChildrenInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JMReihenUpsertWithWhereUniqueWithoutParentInput = {
+    where: JMReihenWhereUniqueInput
+    update: XOR<JMReihenUpdateWithoutParentInput, JMReihenUncheckedUpdateWithoutParentInput>
+    create: XOR<JMReihenCreateWithoutParentInput, JMReihenUncheckedCreateWithoutParentInput>
+  }
+
+  export type JMReihenUpdateWithWhereUniqueWithoutParentInput = {
+    where: JMReihenWhereUniqueInput
+    data: XOR<JMReihenUpdateWithoutParentInput, JMReihenUncheckedUpdateWithoutParentInput>
+  }
+
+  export type JMReihenUpdateManyWithWhereWithoutParentInput = {
+    where: JMReihenScalarWhereInput
+    data: XOR<JMReihenUpdateManyMutationInput, JMReihenUncheckedUpdateManyWithoutParentInput>
+  }
+
   export type LearningGroupCreateManyTeacherInput = {
     id?: string
     name: string
@@ -33354,6 +35331,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUpdateManyWithoutGroupNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -33364,6 +35342,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -33523,6 +35502,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
   }
 
@@ -33534,6 +35514,7 @@ export namespace Prisma {
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    jmReihen?: JMReihenUncheckedUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateManyWithoutStudentsInput = {
@@ -33630,6 +35611,17 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
+  export type JMReihenCreateManyGroupInput = {
+    id?: string
+    path: string
+    name: string
+    type: string
+    parentId?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type GradingSchemaUpdateWithoutLearningGroupInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
@@ -33678,6 +35670,41 @@ export namespace Prisma {
     type?: StringFieldUpdateOperationsInput | string
     refId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JMReihenUpdateWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    parent?: JMReihenUpdateOneWithoutChildrenNestedInput
+    children?: JMReihenUpdateManyWithoutParentNestedInput
+  }
+
+  export type JMReihenUncheckedUpdateWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: JMReihenUncheckedUpdateManyWithoutParentNestedInput
+  }
+
+  export type JMReihenUncheckedUpdateManyWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    parentId?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type UserUpdateWithoutLearningGroupsInput = {
@@ -34179,6 +36206,52 @@ export namespace Prisma {
     isCorrect?: BoolFieldUpdateOperationsInput | boolean
     points?: IntFieldUpdateOperationsInput | number
     answeredAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type JMReihenCreateManyParentInput = {
+    id?: string
+    groupId: string
+    path: string
+    name: string
+    type: string
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type JMReihenUpdateWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    group?: LearningGroupUpdateOneRequiredWithoutJmReihenNestedInput
+    children?: JMReihenUpdateManyWithoutParentNestedInput
+  }
+
+  export type JMReihenUncheckedUpdateWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    children?: JMReihenUncheckedUpdateManyWithoutParentNestedInput
+  }
+
+  export type JMReihenUncheckedUpdateManyWithoutParentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
 

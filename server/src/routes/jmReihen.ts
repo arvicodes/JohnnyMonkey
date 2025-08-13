@@ -65,4 +65,19 @@ router.delete('/:groupId', async (req, res) => {
   }
 });
 
+// Neue Route: Live-Ordner-Inhalt für eine Lerngruppe
+router.get('/:groupId/live', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const liveFolders = await jmReihenController.getLiveFolderStructureForGroup(groupId);
+    res.json(liveFolders);
+  } catch (error) {
+    console.error('Fehler beim Laden der Live-Ordner-Struktur:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Laden der Live-Ordner-Struktur',
+      details: error instanceof Error ? error.message : 'Unbekannter Fehler'
+    });
+  }
+});
+
 export default router;

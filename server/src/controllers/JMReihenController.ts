@@ -1,4 +1,6 @@
 import { PrismaClient } from '../generated/prisma';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -155,6 +157,97 @@ export class JMReihenController {
     } catch (error) {
       console.error('Fehler beim Löschen der Ordner-Struktur:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unbekannter Fehler' };
+    }
+  }
+
+  // Neue Methode: Live-Ordner-Inhalt laden
+  async getLiveFolderContent(folderPath: string) {
+    try {
+      if (!fs.existsSync(folderPath)) {
+        throw new Error(`Ordner existiert nicht: ${folderPath}`);
+      }
+
+      const items = fs.readdirSync(folderPath, { withFileTypes: true });
+      const folderStructure = {
+        name: path.basename(folderPath),
+        path: folderPath,
+        subfolders: [] as any[],
+        files: [] as any[]
+      };
+
+      for (const item of items) {
+        if (item.isDirectory()) {
+          // Versteckte Ordner überspringen
+          if (!item.name.startsWith('.')) {
+            const subfolderPath = path.join(folderPath, item.name);
+            const subfolder = await this.getLiveFolderContent(subfolderPath);
+            folderStructure.subfolders.push(subfolder);
+          }
+        } else if (item.isFile()) {
+          // Versteckte Dateien überspringen
+          if (!item.name.startsWith('.')) {
+            folderStructure.files.push({
+              name: item.name,
+              path: path.join(folderPath, item.name),
+              type: this.getFileType(item.name)
+            });
+          }
+        }
+      }
+
+      return folderStructure;
+    } catch (error) {
+      console.error('Fehler beim Laden des Live-Ordner-Inhalts:', error);
+      throw error;
+    }
+  }
+
+  // Hilfsmethode: Dateityp bestimmen
+  private getFileType(filename: string): string {
+    const ext = path.extname(filename).toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.gif', '.bmp'].includes(ext)) return 'image';
+    if (['.pdf'].includes(ext)) return 'pdf';
+    if (['.doc', '.docx'].includes(ext)) return 'document';
+    if (['.xls', '.xlsx'].includes(ext)) return 'spreadsheet';
+    if (['.txt', '.md'].includes(ext)) return 'text';
+    if (['.mp4', '.avi', '.mov'].includes(ext)) return 'video';
+    if (['.mp3', '.wav', '.flac'].includes(ext)) return 'audio';
+    return 'unknown';
+  }
+
+  // Neue Methode: Live-Ordner-Inhalt für eine Lerngruppe laden
+  async getLiveFolderStructureForGroup(groupId: string) {
+    try {
+      // Gespeicherte Ordner-Pfade für die Lerngruppe abrufen
+      const savedFolders = await prisma.jMReihen.findMany({
+        where: { 
+          groupId,
+          parentId: null // Nur Hauptordner
+        },
+        orderBy: { order: 'asc' }
+      });
+
+      const liveFolders = [];
+
+      for (const savedFolder of savedFolders) {
+        try {
+          // Live-Inhalt des Ordners laden
+          const liveContent = await this.getLiveFolderContent(savedFolder.path);
+          liveFolders.push(liveContent);
+        } catch (error) {
+          console.error(`Fehler beim Laden des Ordners ${savedFolder.path}:`, error);
+          // Fallback: Gespeicherte Struktur verwenden
+          const fallbackStructure = await this.getFolderStructure(groupId);
+          if (fallbackStructure) {
+            liveFolders.push(fallbackStructure);
+          }
+        }
+      }
+
+      return liveFolders;
+    } catch (error) {
+      console.error('Fehler beim Laden der Live-Ordner-Struktur:', error);
+      throw error;
     }
   }
 }

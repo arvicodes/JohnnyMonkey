@@ -309,6 +309,18 @@ exports.Prisma.QuizAnswerScalarFieldEnum = {
   answeredAt: 'answeredAt'
 };
 
+exports.Prisma.JMReihenScalarFieldEnum = {
+  id: 'id',
+  groupId: 'groupId',
+  path: 'path',
+  name: 'name',
+  type: 'type',
+  parentId: 'parentId',
+  order: 'order',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -339,7 +351,8 @@ exports.Prisma.ModelName = {
   LessonQuiz: 'LessonQuiz',
   QuizSession: 'QuizSession',
   QuizParticipation: 'QuizParticipation',
-  QuizAnswer: 'QuizAnswer'
+  QuizAnswer: 'QuizAnswer',
+  JMReihen: 'JMReihen'
 };
 
 /**
