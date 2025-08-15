@@ -205,6 +205,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     const isExpanded = expandedItems.has(item.path);
     const hasChildren = item.children && item.children.length > 0;
     const canExpand = item.type === 'directory' && hasChildren;
+    const isFile = item.type === 'file';
 
     // Farben basierend auf dem Level und Typ
     const getItemColor = (itemType: string, level: number) => {
@@ -227,6 +228,38 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     const itemColor = getItemColor(item.type, level);
     const itemIcon = getItemIcon(item.type, level);
 
+    // Funktion zum Öffnen von Dateien
+    const handleItemClick = () => {
+      if (isFile) {
+        // Datei öffnen - verschiedene Ansätze je nach Dateityp
+        const fileExtension = item.name.split('.').pop()?.toLowerCase();
+        
+        // Für Dokumente und Bilder: Versuche sie im Browser zu öffnen
+        if (['pdf', 'txt', 'html', 'htm', 'jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileExtension || '')) {
+          // Erstelle einen temporären Download-Link
+          const link = document.createElement('a');
+          link.href = `file://${item.path}`;
+          link.target = '_blank';
+          link.download = item.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          // Für andere Dateitypen: Zeige Info und versuche Download
+          alert(`Datei: ${item.name}\nPfad: ${item.path}\n\nDiese Datei kann nicht direkt im Browser geöffnet werden. Sie wird heruntergeladen.`);
+          const link = document.createElement('a');
+          link.href = `file://${item.path}`;
+          link.download = item.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } else if (canExpand) {
+        // Ordner auf-/zuklappen
+        toggleItemExpanded(item.path);
+      }
+    };
+
     return (
       <Box key={item.path}>
         <Box 
@@ -235,15 +268,15 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
             alignItems: 'center', 
             py: 0.5,
             pl: level * 2,
-            cursor: canExpand ? 'pointer' : 'default',
+            cursor: (canExpand || isFile) ? 'pointer' : 'default',
             borderRadius: 1,
-            '&:hover': canExpand ? { 
+            '&:hover': (canExpand || isFile) ? { 
               bgcolor: 'rgba(0,0,0,0.04)',
               transform: 'translateX(2px)',
               transition: 'all 0.2s ease'
             } : {}
           }}
-          onClick={() => canExpand && toggleItemExpanded(item.path)}
+          onClick={handleItemClick}
         >
           {canExpand && (
             <Box sx={{ 

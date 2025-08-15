@@ -168,7 +168,7 @@ export class FileSystemPathController {
       }
 
       // Funktion zum rekursiven Lesen von Verzeichnissen
-      const readDirectoryRecursive = (dirPath: string, maxDepth: number = 3, currentDepth: number = 0): DirectoryItem => {
+      const readDirectoryRecursive = (dirPath: string, maxDepth: number = 10, currentDepth: number = 0): DirectoryItem => {
         if (currentDepth >= maxDepth) {
           return {
             name: path.basename(dirPath),
@@ -229,12 +229,12 @@ export class FileSystemPathController {
       let result: RecursiveDirectoryContent | DirectoryContent;
       if (recursive === 'true') {
         console.log('Reading directory recursively...');
-        const rootItem = readDirectoryRecursive(normalizedPath, 5, 0);
+        const rootItem = readDirectoryRecursive(normalizedPath, 10, 0);
         result = {
           path: normalizedPath,
           root: rootItem,
           totalItems: FileSystemPathController.countTotalItems(rootItem),
-          maxDepth: 5
+          maxDepth: 10
         };
       } else {
         console.log('Reading directory flat...');
