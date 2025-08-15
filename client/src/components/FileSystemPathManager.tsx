@@ -229,30 +229,128 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     const itemIcon = getItemIcon(item.type, level);
 
     // Funktion zum Öffnen von Dateien
-    const handleItemClick = () => {
+    const handleItemClick = async () => {
       if (isFile) {
         // Datei öffnen - verschiedene Ansätze je nach Dateityp
         const fileExtension = item.name.split('.').pop()?.toLowerCase();
         
-        // Für Dokumente und Bilder: Versuche sie im Browser zu öffnen
-        if (['pdf', 'txt', 'html', 'htm', 'jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileExtension || '')) {
-          // Erstelle einen temporären Download-Link
+        if (fileExtension === 'html' || fileExtension === 'htm') {
+          // HTML-Dateien über den Server laden und im neuen Tab öffnen
+          try {
+            // Lade HTML-Datei über den Server
+            const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
+            
+            if (response.ok) {
+              const htmlContent = await response.text();
+              // Erstelle Blob und öffne im neuen Tab
+              const blob = new Blob([htmlContent], { type: 'text/html' });
+              const url = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              // Cleanup nach dem Öffnen
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } else {
+              // Fallback: Zeige Fehlermeldung
+              console.error('HTML-Datei konnte nicht geladen werden:', response.statusText);
+              alert(`HTML-Datei konnte nicht geladen werden: ${response.statusText}`);
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden der HTML-Datei:', error);
+            alert('Fehler beim Laden der HTML-Datei. Bitte versuchen Sie es erneut.');
+          }
+        } else if (fileExtension === 'pdf') {
+          // PDF-Dateien über den Server laden und im neuen Tab öffnen
+          try {
+            // Lade PDF-Datei über den Server
+            const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}`);
+            
+            if (response.ok) {
+              const pdfBlob = await response.blob();
+              // Erstelle URL für den Blob und öffne im neuen Tab
+              const url = URL.createObjectURL(pdfBlob);
+              window.open(url, '_blank');
+              // Cleanup nach dem Öffnen
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } else {
+              // Fallback: Zeige Fehlermeldung
+              console.error('PDF-Datei konnte nicht geladen werden:', response.statusText);
+              alert(`PDF-Datei konnte nicht geladen werden: ${response.statusText}`);
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden der PDF-Datei:', error);
+            alert('Fehler beim Laden der PDF-Datei. Bitte versuchen Sie es erneut.');
+          }
+        } else if (fileExtension === 'docx') {
+          // DOCX-Dateien über den Server laden und als Vorschau anzeigen
+          try {
+            // Lade DOCX-Vorschau über den Server
+            const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            
+            if (response.ok) {
+              const htmlContent = await response.text();
+              // Erstelle Blob für die HTML-Vorschau und öffne im neuen Tab
+              const blob = new Blob([htmlContent], { type: 'text/html' });
+              const url = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              // Cleanup nach dem Öffnen
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } else {
+              // Fallback: Versuche normale DOCX-Behandlung
+              console.error('DOCX-Vorschau konnte nicht geladen werden:', response.statusText);
+              
+              // Fallback: Download der DOCX-Datei
+              const downloadResponse = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}`);
+              if (downloadResponse.ok) {
+                const docxBlob = await downloadResponse.blob();
+                const url = URL.createObjectURL(docxBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = item.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+              } else {
+                alert(`DOCX-Datei konnte nicht geladen werden: ${downloadResponse.statusText}`);
+              }
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden der DOCX-Datei:', error);
+            alert('Fehler beim Laden der DOCX-Datei. Bitte versuchen Sie es erneut.');
+          }
+        } else if (['txt', 'jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileExtension || '')) {
+          // Andere Browser-kompatible Dateien: Download und öffnen
           const link = document.createElement('a');
           link.href = `file://${item.path}`;
-          link.target = '_blank';
           link.download = item.name;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+          
+          // Kurze Verzögerung, dann versuchen zu öffnen
+          setTimeout(() => {
+            try {
+              window.open(`file://${item.path}`, '_blank');
+            } catch (error) {
+              // Fallback: Datei wurde bereits heruntergeladen
+            }
+          }, 500);
         } else {
-          // Für andere Dateitypen: Zeige Info und versuche Download
-          alert(`Datei: ${item.name}\nPfad: ${item.path}\n\nDiese Datei kann nicht direkt im Browser geöffnet werden. Sie wird heruntergeladen.`);
+          // Andere Dateitypen (Word, Excel, etc.): Download und öffnen
           const link = document.createElement('a');
           link.href = `file://${item.path}`;
           link.download = item.name;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+          
+          // Versuche die Datei nach dem Download zu öffnen
+          setTimeout(() => {
+            try {
+              window.open(`file://${item.path}`, '_blank');
+            } catch (error) {
+              // Fallback: Datei wurde bereits heruntergeladen
+            }
+          }, 1000);
         }
       } else if (canExpand) {
         // Ordner auf-/zuklappen
@@ -555,53 +653,50 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                   Verzeichnisvorschau
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  {/* Steuerung für hierarchische Ansicht */}
-                  <Box sx={{ mb: 1 }}>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => expandedItems.size > 0 ? collapseAllFolders() : expandAllFolders()}
-                      sx={{ 
-                        fontSize: '0.65rem', 
-                        py: 0.25, 
-                        px: 1,
-                        minWidth: 'auto',
-                        height: 24
-                      }}
-                    >
-                      {expandedItems.size > 0 ? 'Einklappen' : 'Aufklappen'}
-                    </Button>
-                    
-                    {selectedPath && (
-                      <IconButton
-                        size="small"
-                        onClick={() => refetchDirectory()}
-                        disabled={directoryLoading}
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {/* Steuerung für hierarchische Ansicht */}
+                    <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Button 
+                        size="small" 
+                        variant="outlined" 
+                        onClick={() => expandedItems.size > 0 ? collapseAllFolders() : expandAllFolders()}
                         sx={{ 
-                          color: 'primary.main',
-                          p: 0,
-                          width: '5%',
-                          height: '100%',
-                          position: 'absolute',
-                          right: '6%',
-                          top: 0,
-                          borderRadius: 0,
-                          '& .MuiIconButton-root': {
-                            width: '100%',
-                            height: '100%'
-                          }
+                          fontSize: '0.65rem', 
+                          py: 0.25, 
+                          px: 1,
+                          minWidth: 'auto',
+                          height: 24
                         }}
                       >
-                        <RefreshIcon sx={{ 
-                          fontSize: '0.7rem',
-                          width: '100%',
-                          height: '100%'
-                        }} />
-                      </IconButton>
-                    )}
+                        {expandedItems.size > 0 ? 'Einklappen' : 'Aufklappen'}
+                      </Button>
+                      
+                      {selectedPath && (
+                        <IconButton
+                          size="small"
+                          onClick={() => refetchDirectory()}
+                          disabled={directoryLoading}
+                          sx={{ 
+                            color: 'primary.main',
+                            p: 0,
+                            width: 24,
+                            height: 24,
+                            borderRadius: 0,
+                            '& .MuiIconButton-root': {
+                              width: '100%',
+                              height: '100%'
+                            }
+                          }}
+                        >
+                          <RefreshIcon sx={{ 
+                            fontSize: '0.7rem',
+                            width: '100%',
+                            height: '100%'
+                          }} />
+                        </IconButton>
+                      )}
+                    </Box>
                   </Box>
-                </Box>
               </Box>
 
               {!selectedPath ? (

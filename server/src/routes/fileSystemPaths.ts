@@ -12,6 +12,15 @@ router.get('/teacher/:teacherId', FileSystemPathController.getPathsByTeacher);
 // Verzeichnisstruktur eines Pfades lesen
 router.get('/read', FileSystemPathController.readDirectory);
 
+// HTML-Datei lesen
+router.get('/read-html', FileSystemPathController.readHtmlFile);
+
+// PDF-Datei lesen
+router.get('/read-pdf', FileSystemPathController.readPdfFile);
+
+// DOCX-Datei lesen
+router.get('/read-docx', FileSystemPathController.readDocxFile);
+
 // Pfad löschen
 router.delete('/:id', FileSystemPathController.deletePath);
 
