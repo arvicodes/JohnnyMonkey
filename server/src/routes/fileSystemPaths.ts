@@ -3,19 +3,16 @@ import { FileSystemPathController } from '../controllers/FileSystemPathControlle
 
 const router = express.Router();
 
+// Pfad speichern
+router.post('/save', FileSystemPathController.savePath);
+
 // Alle Pfade eines Lehrers abrufen
 router.get('/teacher/:teacherId', FileSystemPathController.getPathsByTeacher);
 
-// Neuen Pfad erstellen
-router.post('/', FileSystemPathController.createPath);
-
-// Pfad aktualisieren
-router.put('/:id', FileSystemPathController.updatePath);
+// Verzeichnisstruktur eines Pfades lesen
+router.get('/read', FileSystemPathController.readDirectory);
 
 // Pfad löschen
 router.delete('/:id', FileSystemPathController.deletePath);
-
-// Ordnerstruktur eines Pfads lesen
-router.get('/structure/:path(*)', FileSystemPathController.getFolderStructure);
 
 export default router;

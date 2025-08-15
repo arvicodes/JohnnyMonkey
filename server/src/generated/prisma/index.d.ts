@@ -49,11 +49,6 @@ export type Block = $Result.DefaultSelection<Prisma.$BlockPayload>
  */
 export type Unit = $Result.DefaultSelection<Prisma.$UnitPayload>
 /**
- * Model FileSystemPath
- * 
- */
-export type FileSystemPath = $Result.DefaultSelection<Prisma.$FileSystemPathPayload>
-/**
  * Model Topic
  * 
  */
@@ -113,6 +108,11 @@ export type QuizParticipation = $Result.DefaultSelection<Prisma.$QuizParticipati
  * 
  */
 export type QuizAnswer = $Result.DefaultSelection<Prisma.$QuizAnswerPayload>
+/**
+ * Model FileSystemPath
+ * 
+ */
+export type FileSystemPath = $Result.DefaultSelection<Prisma.$FileSystemPathPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -310,16 +310,6 @@ export class PrismaClient<
   get unit(): Prisma.UnitDelegate<ExtArgs, ClientOptions>;
 
   /**
-   * `prisma.fileSystemPath`: Exposes CRUD operations for the **FileSystemPath** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more FileSystemPaths
-    * const fileSystemPaths = await prisma.fileSystemPath.findMany()
-    * ```
-    */
-  get fileSystemPath(): Prisma.FileSystemPathDelegate<ExtArgs, ClientOptions>;
-
-  /**
    * `prisma.topic`: Exposes CRUD operations for the **Topic** model.
     * Example usage:
     * ```ts
@@ -438,6 +428,16 @@ export class PrismaClient<
     * ```
     */
   get quizAnswer(): Prisma.QuizAnswerDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.fileSystemPath`: Exposes CRUD operations for the **FileSystemPath** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more FileSystemPaths
+    * const fileSystemPaths = await prisma.fileSystemPath.findMany()
+    * ```
+    */
+  get fileSystemPath(): Prisma.FileSystemPathDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -885,7 +885,6 @@ export namespace Prisma {
     Subject: 'Subject',
     Block: 'Block',
     Unit: 'Unit',
-    FileSystemPath: 'FileSystemPath',
     Topic: 'Topic',
     Lesson: 'Lesson',
     GroupAssignment: 'GroupAssignment',
@@ -897,7 +896,8 @@ export namespace Prisma {
     LessonQuiz: 'LessonQuiz',
     QuizSession: 'QuizSession',
     QuizParticipation: 'QuizParticipation',
-    QuizAnswer: 'QuizAnswer'
+    QuizAnswer: 'QuizAnswer',
+    FileSystemPath: 'FileSystemPath'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -916,7 +916,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "fileSystemPath" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer"
+      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "fileSystemPath"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1435,80 +1435,6 @@ export namespace Prisma {
           count: {
             args: Prisma.UnitCountArgs<ExtArgs>
             result: $Utils.Optional<UnitCountAggregateOutputType> | number
-          }
-        }
-      }
-      FileSystemPath: {
-        payload: Prisma.$FileSystemPathPayload<ExtArgs>
-        fields: Prisma.FileSystemPathFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.FileSystemPathFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.FileSystemPathFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
-          }
-          findFirst: {
-            args: Prisma.FileSystemPathFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.FileSystemPathFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
-          }
-          findMany: {
-            args: Prisma.FileSystemPathFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>[]
-          }
-          create: {
-            args: Prisma.FileSystemPathCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
-          }
-          createMany: {
-            args: Prisma.FileSystemPathCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.FileSystemPathCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>[]
-          }
-          delete: {
-            args: Prisma.FileSystemPathDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
-          }
-          update: {
-            args: Prisma.FileSystemPathUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
-          }
-          deleteMany: {
-            args: Prisma.FileSystemPathDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.FileSystemPathUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.FileSystemPathUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>[]
-          }
-          upsert: {
-            args: Prisma.FileSystemPathUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
-          }
-          aggregate: {
-            args: Prisma.FileSystemPathAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateFileSystemPath>
-          }
-          groupBy: {
-            args: Prisma.FileSystemPathGroupByArgs<ExtArgs>
-            result: $Utils.Optional<FileSystemPathGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.FileSystemPathCountArgs<ExtArgs>
-            result: $Utils.Optional<FileSystemPathCountAggregateOutputType> | number
           }
         }
       }
@@ -2400,6 +2326,80 @@ export namespace Prisma {
           }
         }
       }
+      FileSystemPath: {
+        payload: Prisma.$FileSystemPathPayload<ExtArgs>
+        fields: Prisma.FileSystemPathFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FileSystemPathFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FileSystemPathFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
+          }
+          findFirst: {
+            args: Prisma.FileSystemPathFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FileSystemPathFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
+          }
+          findMany: {
+            args: Prisma.FileSystemPathFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>[]
+          }
+          create: {
+            args: Prisma.FileSystemPathCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
+          }
+          createMany: {
+            args: Prisma.FileSystemPathCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FileSystemPathCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>[]
+          }
+          delete: {
+            args: Prisma.FileSystemPathDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
+          }
+          update: {
+            args: Prisma.FileSystemPathUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
+          }
+          deleteMany: {
+            args: Prisma.FileSystemPathDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FileSystemPathUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FileSystemPathUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>[]
+          }
+          upsert: {
+            args: Prisma.FileSystemPathUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FileSystemPathPayload>
+          }
+          aggregate: {
+            args: Prisma.FileSystemPathAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFileSystemPath>
+          }
+          groupBy: {
+            args: Prisma.FileSystemPathGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FileSystemPathGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FileSystemPathCountArgs<ExtArgs>
+            result: $Utils.Optional<FileSystemPathCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -2491,7 +2491,6 @@ export namespace Prisma {
     subject?: SubjectOmit
     block?: BlockOmit
     unit?: UnitOmit
-    fileSystemPath?: FileSystemPathOmit
     topic?: TopicOmit
     lesson?: LessonOmit
     groupAssignment?: GroupAssignmentOmit
@@ -2504,6 +2503,7 @@ export namespace Prisma {
     quizSession?: QuizSessionOmit
     quizParticipation?: QuizParticipationOmit
     quizAnswer?: QuizAnswerOmit
+    fileSystemPath?: FileSystemPathOmit
   }
 
   /* Types for Logging */
@@ -11228,1088 +11228,6 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: UnitInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model FileSystemPath
-   */
-
-  export type AggregateFileSystemPath = {
-    _count: FileSystemPathCountAggregateOutputType | null
-    _min: FileSystemPathMinAggregateOutputType | null
-    _max: FileSystemPathMaxAggregateOutputType | null
-  }
-
-  export type FileSystemPathMinAggregateOutputType = {
-    id: string | null
-    name: string | null
-    path: string | null
-    description: string | null
-    teacherId: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type FileSystemPathMaxAggregateOutputType = {
-    id: string | null
-    name: string | null
-    path: string | null
-    description: string | null
-    teacherId: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type FileSystemPathCountAggregateOutputType = {
-    id: number
-    name: number
-    path: number
-    description: number
-    teacherId: number
-    createdAt: number
-    updatedAt: number
-    _all: number
-  }
-
-
-  export type FileSystemPathMinAggregateInputType = {
-    id?: true
-    name?: true
-    path?: true
-    description?: true
-    teacherId?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type FileSystemPathMaxAggregateInputType = {
-    id?: true
-    name?: true
-    path?: true
-    description?: true
-    teacherId?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type FileSystemPathCountAggregateInputType = {
-    id?: true
-    name?: true
-    path?: true
-    description?: true
-    teacherId?: true
-    createdAt?: true
-    updatedAt?: true
-    _all?: true
-  }
-
-  export type FileSystemPathAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which FileSystemPath to aggregate.
-     */
-    where?: FileSystemPathWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of FileSystemPaths to fetch.
-     */
-    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: FileSystemPathWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` FileSystemPaths from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` FileSystemPaths.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned FileSystemPaths
-    **/
-    _count?: true | FileSystemPathCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: FileSystemPathMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: FileSystemPathMaxAggregateInputType
-  }
-
-  export type GetFileSystemPathAggregateType<T extends FileSystemPathAggregateArgs> = {
-        [P in keyof T & keyof AggregateFileSystemPath]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateFileSystemPath[P]>
-      : GetScalarType<T[P], AggregateFileSystemPath[P]>
-  }
-
-
-
-
-  export type FileSystemPathGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: FileSystemPathWhereInput
-    orderBy?: FileSystemPathOrderByWithAggregationInput | FileSystemPathOrderByWithAggregationInput[]
-    by: FileSystemPathScalarFieldEnum[] | FileSystemPathScalarFieldEnum
-    having?: FileSystemPathScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: FileSystemPathCountAggregateInputType | true
-    _min?: FileSystemPathMinAggregateInputType
-    _max?: FileSystemPathMaxAggregateInputType
-  }
-
-  export type FileSystemPathGroupByOutputType = {
-    id: string
-    name: string
-    path: string
-    description: string | null
-    teacherId: string
-    createdAt: Date
-    updatedAt: Date
-    _count: FileSystemPathCountAggregateOutputType | null
-    _min: FileSystemPathMinAggregateOutputType | null
-    _max: FileSystemPathMaxAggregateOutputType | null
-  }
-
-  type GetFileSystemPathGroupByPayload<T extends FileSystemPathGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<FileSystemPathGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof FileSystemPathGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], FileSystemPathGroupByOutputType[P]>
-            : GetScalarType<T[P], FileSystemPathGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type FileSystemPathSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    path?: boolean
-    description?: boolean
-    teacherId?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["fileSystemPath"]>
-
-  export type FileSystemPathSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    path?: boolean
-    description?: boolean
-    teacherId?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["fileSystemPath"]>
-
-  export type FileSystemPathSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    path?: boolean
-    description?: boolean
-    teacherId?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["fileSystemPath"]>
-
-  export type FileSystemPathSelectScalar = {
-    id?: boolean
-    name?: boolean
-    path?: boolean
-    description?: boolean
-    teacherId?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }
-
-  export type FileSystemPathOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "path" | "description" | "teacherId" | "createdAt" | "updatedAt", ExtArgs["result"]["fileSystemPath"]>
-  export type FileSystemPathInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-  }
-  export type FileSystemPathIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-  }
-  export type FileSystemPathIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    teacher?: boolean | UserDefaultArgs<ExtArgs>
-  }
-
-  export type $FileSystemPathPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "FileSystemPath"
-    objects: {
-      teacher: Prisma.$UserPayload<ExtArgs>
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      name: string
-      path: string
-      description: string | null
-      teacherId: string
-      createdAt: Date
-      updatedAt: Date
-    }, ExtArgs["result"]["fileSystemPath"]>
-    composites: {}
-  }
-
-  type FileSystemPathGetPayload<S extends boolean | null | undefined | FileSystemPathDefaultArgs> = $Result.GetResult<Prisma.$FileSystemPathPayload, S>
-
-  type FileSystemPathCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<FileSystemPathFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: FileSystemPathCountAggregateInputType | true
-    }
-
-  export interface FileSystemPathDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FileSystemPath'], meta: { name: 'FileSystemPath' } }
-    /**
-     * Find zero or one FileSystemPath that matches the filter.
-     * @param {FileSystemPathFindUniqueArgs} args - Arguments to find a FileSystemPath
-     * @example
-     * // Get one FileSystemPath
-     * const fileSystemPath = await prisma.fileSystemPath.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends FileSystemPathFindUniqueArgs>(args: SelectSubset<T, FileSystemPathFindUniqueArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one FileSystemPath that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {FileSystemPathFindUniqueOrThrowArgs} args - Arguments to find a FileSystemPath
-     * @example
-     * // Get one FileSystemPath
-     * const fileSystemPath = await prisma.fileSystemPath.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends FileSystemPathFindUniqueOrThrowArgs>(args: SelectSubset<T, FileSystemPathFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first FileSystemPath that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {FileSystemPathFindFirstArgs} args - Arguments to find a FileSystemPath
-     * @example
-     * // Get one FileSystemPath
-     * const fileSystemPath = await prisma.fileSystemPath.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends FileSystemPathFindFirstArgs>(args?: SelectSubset<T, FileSystemPathFindFirstArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first FileSystemPath that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {FileSystemPathFindFirstOrThrowArgs} args - Arguments to find a FileSystemPath
-     * @example
-     * // Get one FileSystemPath
-     * const fileSystemPath = await prisma.fileSystemPath.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends FileSystemPathFindFirstOrThrowArgs>(args?: SelectSubset<T, FileSystemPathFindFirstOrThrowArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more FileSystemPaths that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {FileSystemPathFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all FileSystemPaths
-     * const fileSystemPaths = await prisma.fileSystemPath.findMany()
-     * 
-     * // Get first 10 FileSystemPaths
-     * const fileSystemPaths = await prisma.fileSystemPath.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const fileSystemPathWithIdOnly = await prisma.fileSystemPath.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends FileSystemPathFindManyArgs>(args?: SelectSubset<T, FileSystemPathFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a FileSystemPath.
-     * @param {FileSystemPathCreateArgs} args - Arguments to create a FileSystemPath.
-     * @example
-     * // Create one FileSystemPath
-     * const FileSystemPath = await prisma.fileSystemPath.create({
-     *   data: {
-     *     // ... data to create a FileSystemPath
-     *   }
-     * })
-     * 
-     */
-    create<T extends FileSystemPathCreateArgs>(args: SelectSubset<T, FileSystemPathCreateArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many FileSystemPaths.
-     * @param {FileSystemPathCreateManyArgs} args - Arguments to create many FileSystemPaths.
-     * @example
-     * // Create many FileSystemPaths
-     * const fileSystemPath = await prisma.fileSystemPath.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends FileSystemPathCreateManyArgs>(args?: SelectSubset<T, FileSystemPathCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many FileSystemPaths and returns the data saved in the database.
-     * @param {FileSystemPathCreateManyAndReturnArgs} args - Arguments to create many FileSystemPaths.
-     * @example
-     * // Create many FileSystemPaths
-     * const fileSystemPath = await prisma.fileSystemPath.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many FileSystemPaths and only return the `id`
-     * const fileSystemPathWithIdOnly = await prisma.fileSystemPath.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends FileSystemPathCreateManyAndReturnArgs>(args?: SelectSubset<T, FileSystemPathCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a FileSystemPath.
-     * @param {FileSystemPathDeleteArgs} args - Arguments to delete one FileSystemPath.
-     * @example
-     * // Delete one FileSystemPath
-     * const FileSystemPath = await prisma.fileSystemPath.delete({
-     *   where: {
-     *     // ... filter to delete one FileSystemPath
-     *   }
-     * })
-     * 
-     */
-    delete<T extends FileSystemPathDeleteArgs>(args: SelectSubset<T, FileSystemPathDeleteArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one FileSystemPath.
-     * @param {FileSystemPathUpdateArgs} args - Arguments to update one FileSystemPath.
-     * @example
-     * // Update one FileSystemPath
-     * const fileSystemPath = await prisma.fileSystemPath.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends FileSystemPathUpdateArgs>(args: SelectSubset<T, FileSystemPathUpdateArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more FileSystemPaths.
-     * @param {FileSystemPathDeleteManyArgs} args - Arguments to filter FileSystemPaths to delete.
-     * @example
-     * // Delete a few FileSystemPaths
-     * const { count } = await prisma.fileSystemPath.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends FileSystemPathDeleteManyArgs>(args?: SelectSubset<T, FileSystemPathDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more FileSystemPaths.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {FileSystemPathUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many FileSystemPaths
-     * const fileSystemPath = await prisma.fileSystemPath.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends FileSystemPathUpdateManyArgs>(args: SelectSubset<T, FileSystemPathUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more FileSystemPaths and returns the data updated in the database.
-     * @param {FileSystemPathUpdateManyAndReturnArgs} args - Arguments to update many FileSystemPaths.
-     * @example
-     * // Update many FileSystemPaths
-     * const fileSystemPath = await prisma.fileSystemPath.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more FileSystemPaths and only return the `id`
-     * const fileSystemPathWithIdOnly = await prisma.fileSystemPath.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends FileSystemPathUpdateManyAndReturnArgs>(args: SelectSubset<T, FileSystemPathUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one FileSystemPath.
-     * @param {FileSystemPathUpsertArgs} args - Arguments to update or create a FileSystemPath.
-     * @example
-     * // Update or create a FileSystemPath
-     * const fileSystemPath = await prisma.fileSystemPath.upsert({
-     *   create: {
-     *     // ... data to create a FileSystemPath
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the FileSystemPath we want to update
-     *   }
-     * })
-     */
-    upsert<T extends FileSystemPathUpsertArgs>(args: SelectSubset<T, FileSystemPathUpsertArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of FileSystemPaths.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {FileSystemPathCountArgs} args - Arguments to filter FileSystemPaths to count.
-     * @example
-     * // Count the number of FileSystemPaths
-     * const count = await prisma.fileSystemPath.count({
-     *   where: {
-     *     // ... the filter for the FileSystemPaths we want to count
-     *   }
-     * })
-    **/
-    count<T extends FileSystemPathCountArgs>(
-      args?: Subset<T, FileSystemPathCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], FileSystemPathCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a FileSystemPath.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {FileSystemPathAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends FileSystemPathAggregateArgs>(args: Subset<T, FileSystemPathAggregateArgs>): Prisma.PrismaPromise<GetFileSystemPathAggregateType<T>>
-
-    /**
-     * Group by FileSystemPath.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {FileSystemPathGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends FileSystemPathGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: FileSystemPathGroupByArgs['orderBy'] }
-        : { orderBy?: FileSystemPathGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, FileSystemPathGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFileSystemPathGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the FileSystemPath model
-   */
-  readonly fields: FileSystemPathFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for FileSystemPath.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__FileSystemPathClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the FileSystemPath model
-   */
-  interface FileSystemPathFieldRefs {
-    readonly id: FieldRef<"FileSystemPath", 'String'>
-    readonly name: FieldRef<"FileSystemPath", 'String'>
-    readonly path: FieldRef<"FileSystemPath", 'String'>
-    readonly description: FieldRef<"FileSystemPath", 'String'>
-    readonly teacherId: FieldRef<"FileSystemPath", 'String'>
-    readonly createdAt: FieldRef<"FileSystemPath", 'DateTime'>
-    readonly updatedAt: FieldRef<"FileSystemPath", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * FileSystemPath findUnique
-   */
-  export type FileSystemPathFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * Filter, which FileSystemPath to fetch.
-     */
-    where: FileSystemPathWhereUniqueInput
-  }
-
-  /**
-   * FileSystemPath findUniqueOrThrow
-   */
-  export type FileSystemPathFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * Filter, which FileSystemPath to fetch.
-     */
-    where: FileSystemPathWhereUniqueInput
-  }
-
-  /**
-   * FileSystemPath findFirst
-   */
-  export type FileSystemPathFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * Filter, which FileSystemPath to fetch.
-     */
-    where?: FileSystemPathWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of FileSystemPaths to fetch.
-     */
-    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for FileSystemPaths.
-     */
-    cursor?: FileSystemPathWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` FileSystemPaths from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` FileSystemPaths.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of FileSystemPaths.
-     */
-    distinct?: FileSystemPathScalarFieldEnum | FileSystemPathScalarFieldEnum[]
-  }
-
-  /**
-   * FileSystemPath findFirstOrThrow
-   */
-  export type FileSystemPathFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * Filter, which FileSystemPath to fetch.
-     */
-    where?: FileSystemPathWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of FileSystemPaths to fetch.
-     */
-    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for FileSystemPaths.
-     */
-    cursor?: FileSystemPathWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` FileSystemPaths from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` FileSystemPaths.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of FileSystemPaths.
-     */
-    distinct?: FileSystemPathScalarFieldEnum | FileSystemPathScalarFieldEnum[]
-  }
-
-  /**
-   * FileSystemPath findMany
-   */
-  export type FileSystemPathFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * Filter, which FileSystemPaths to fetch.
-     */
-    where?: FileSystemPathWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of FileSystemPaths to fetch.
-     */
-    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing FileSystemPaths.
-     */
-    cursor?: FileSystemPathWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` FileSystemPaths from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` FileSystemPaths.
-     */
-    skip?: number
-    distinct?: FileSystemPathScalarFieldEnum | FileSystemPathScalarFieldEnum[]
-  }
-
-  /**
-   * FileSystemPath create
-   */
-  export type FileSystemPathCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * The data needed to create a FileSystemPath.
-     */
-    data: XOR<FileSystemPathCreateInput, FileSystemPathUncheckedCreateInput>
-  }
-
-  /**
-   * FileSystemPath createMany
-   */
-  export type FileSystemPathCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many FileSystemPaths.
-     */
-    data: FileSystemPathCreateManyInput | FileSystemPathCreateManyInput[]
-  }
-
-  /**
-   * FileSystemPath createManyAndReturn
-   */
-  export type FileSystemPathCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * The data used to create many FileSystemPaths.
-     */
-    data: FileSystemPathCreateManyInput | FileSystemPathCreateManyInput[]
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathIncludeCreateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * FileSystemPath update
-   */
-  export type FileSystemPathUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * The data needed to update a FileSystemPath.
-     */
-    data: XOR<FileSystemPathUpdateInput, FileSystemPathUncheckedUpdateInput>
-    /**
-     * Choose, which FileSystemPath to update.
-     */
-    where: FileSystemPathWhereUniqueInput
-  }
-
-  /**
-   * FileSystemPath updateMany
-   */
-  export type FileSystemPathUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update FileSystemPaths.
-     */
-    data: XOR<FileSystemPathUpdateManyMutationInput, FileSystemPathUncheckedUpdateManyInput>
-    /**
-     * Filter which FileSystemPaths to update
-     */
-    where?: FileSystemPathWhereInput
-    /**
-     * Limit how many FileSystemPaths to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * FileSystemPath updateManyAndReturn
-   */
-  export type FileSystemPathUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * The data used to update FileSystemPaths.
-     */
-    data: XOR<FileSystemPathUpdateManyMutationInput, FileSystemPathUncheckedUpdateManyInput>
-    /**
-     * Filter which FileSystemPaths to update
-     */
-    where?: FileSystemPathWhereInput
-    /**
-     * Limit how many FileSystemPaths to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathIncludeUpdateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * FileSystemPath upsert
-   */
-  export type FileSystemPathUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * The filter to search for the FileSystemPath to update in case it exists.
-     */
-    where: FileSystemPathWhereUniqueInput
-    /**
-     * In case the FileSystemPath found by the `where` argument doesn't exist, create a new FileSystemPath with this data.
-     */
-    create: XOR<FileSystemPathCreateInput, FileSystemPathUncheckedCreateInput>
-    /**
-     * In case the FileSystemPath was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<FileSystemPathUpdateInput, FileSystemPathUncheckedUpdateInput>
-  }
-
-  /**
-   * FileSystemPath delete
-   */
-  export type FileSystemPathDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
-    /**
-     * Filter which FileSystemPath to delete.
-     */
-    where: FileSystemPathWhereUniqueInput
-  }
-
-  /**
-   * FileSystemPath deleteMany
-   */
-  export type FileSystemPathDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which FileSystemPaths to delete
-     */
-    where?: FileSystemPathWhereInput
-    /**
-     * Limit how many FileSystemPaths to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * FileSystemPath without action
-   */
-  export type FileSystemPathDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the FileSystemPath
-     */
-    select?: FileSystemPathSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the FileSystemPath
-     */
-    omit?: FileSystemPathOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: FileSystemPathInclude<ExtArgs> | null
   }
 
 
@@ -25874,6 +24792,1075 @@ export namespace Prisma {
 
 
   /**
+   * Model FileSystemPath
+   */
+
+  export type AggregateFileSystemPath = {
+    _count: FileSystemPathCountAggregateOutputType | null
+    _min: FileSystemPathMinAggregateOutputType | null
+    _max: FileSystemPathMaxAggregateOutputType | null
+  }
+
+  export type FileSystemPathMinAggregateOutputType = {
+    id: string | null
+    path: string | null
+    name: string | null
+    teacherId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FileSystemPathMaxAggregateOutputType = {
+    id: string | null
+    path: string | null
+    name: string | null
+    teacherId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FileSystemPathCountAggregateOutputType = {
+    id: number
+    path: number
+    name: number
+    teacherId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type FileSystemPathMinAggregateInputType = {
+    id?: true
+    path?: true
+    name?: true
+    teacherId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FileSystemPathMaxAggregateInputType = {
+    id?: true
+    path?: true
+    name?: true
+    teacherId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FileSystemPathCountAggregateInputType = {
+    id?: true
+    path?: true
+    name?: true
+    teacherId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type FileSystemPathAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FileSystemPath to aggregate.
+     */
+    where?: FileSystemPathWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FileSystemPaths to fetch.
+     */
+    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FileSystemPathWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FileSystemPaths from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FileSystemPaths.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned FileSystemPaths
+    **/
+    _count?: true | FileSystemPathCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FileSystemPathMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FileSystemPathMaxAggregateInputType
+  }
+
+  export type GetFileSystemPathAggregateType<T extends FileSystemPathAggregateArgs> = {
+        [P in keyof T & keyof AggregateFileSystemPath]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFileSystemPath[P]>
+      : GetScalarType<T[P], AggregateFileSystemPath[P]>
+  }
+
+
+
+
+  export type FileSystemPathGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FileSystemPathWhereInput
+    orderBy?: FileSystemPathOrderByWithAggregationInput | FileSystemPathOrderByWithAggregationInput[]
+    by: FileSystemPathScalarFieldEnum[] | FileSystemPathScalarFieldEnum
+    having?: FileSystemPathScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FileSystemPathCountAggregateInputType | true
+    _min?: FileSystemPathMinAggregateInputType
+    _max?: FileSystemPathMaxAggregateInputType
+  }
+
+  export type FileSystemPathGroupByOutputType = {
+    id: string
+    path: string
+    name: string
+    teacherId: string
+    createdAt: Date
+    updatedAt: Date
+    _count: FileSystemPathCountAggregateOutputType | null
+    _min: FileSystemPathMinAggregateOutputType | null
+    _max: FileSystemPathMaxAggregateOutputType | null
+  }
+
+  type GetFileSystemPathGroupByPayload<T extends FileSystemPathGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FileSystemPathGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FileSystemPathGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FileSystemPathGroupByOutputType[P]>
+            : GetScalarType<T[P], FileSystemPathGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FileSystemPathSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    path?: boolean
+    name?: boolean
+    teacherId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["fileSystemPath"]>
+
+  export type FileSystemPathSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    path?: boolean
+    name?: boolean
+    teacherId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["fileSystemPath"]>
+
+  export type FileSystemPathSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    path?: boolean
+    name?: boolean
+    teacherId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["fileSystemPath"]>
+
+  export type FileSystemPathSelectScalar = {
+    id?: boolean
+    path?: boolean
+    name?: boolean
+    teacherId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type FileSystemPathOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "path" | "name" | "teacherId" | "createdAt" | "updatedAt", ExtArgs["result"]["fileSystemPath"]>
+  export type FileSystemPathInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type FileSystemPathIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type FileSystemPathIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $FileSystemPathPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "FileSystemPath"
+    objects: {
+      teacher: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      path: string
+      name: string
+      teacherId: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["fileSystemPath"]>
+    composites: {}
+  }
+
+  type FileSystemPathGetPayload<S extends boolean | null | undefined | FileSystemPathDefaultArgs> = $Result.GetResult<Prisma.$FileSystemPathPayload, S>
+
+  type FileSystemPathCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FileSystemPathFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FileSystemPathCountAggregateInputType | true
+    }
+
+  export interface FileSystemPathDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FileSystemPath'], meta: { name: 'FileSystemPath' } }
+    /**
+     * Find zero or one FileSystemPath that matches the filter.
+     * @param {FileSystemPathFindUniqueArgs} args - Arguments to find a FileSystemPath
+     * @example
+     * // Get one FileSystemPath
+     * const fileSystemPath = await prisma.fileSystemPath.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FileSystemPathFindUniqueArgs>(args: SelectSubset<T, FileSystemPathFindUniqueArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one FileSystemPath that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FileSystemPathFindUniqueOrThrowArgs} args - Arguments to find a FileSystemPath
+     * @example
+     * // Get one FileSystemPath
+     * const fileSystemPath = await prisma.fileSystemPath.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FileSystemPathFindUniqueOrThrowArgs>(args: SelectSubset<T, FileSystemPathFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FileSystemPath that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FileSystemPathFindFirstArgs} args - Arguments to find a FileSystemPath
+     * @example
+     * // Get one FileSystemPath
+     * const fileSystemPath = await prisma.fileSystemPath.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FileSystemPathFindFirstArgs>(args?: SelectSubset<T, FileSystemPathFindFirstArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FileSystemPath that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FileSystemPathFindFirstOrThrowArgs} args - Arguments to find a FileSystemPath
+     * @example
+     * // Get one FileSystemPath
+     * const fileSystemPath = await prisma.fileSystemPath.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FileSystemPathFindFirstOrThrowArgs>(args?: SelectSubset<T, FileSystemPathFindFirstOrThrowArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more FileSystemPaths that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FileSystemPathFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all FileSystemPaths
+     * const fileSystemPaths = await prisma.fileSystemPath.findMany()
+     * 
+     * // Get first 10 FileSystemPaths
+     * const fileSystemPaths = await prisma.fileSystemPath.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const fileSystemPathWithIdOnly = await prisma.fileSystemPath.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FileSystemPathFindManyArgs>(args?: SelectSubset<T, FileSystemPathFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a FileSystemPath.
+     * @param {FileSystemPathCreateArgs} args - Arguments to create a FileSystemPath.
+     * @example
+     * // Create one FileSystemPath
+     * const FileSystemPath = await prisma.fileSystemPath.create({
+     *   data: {
+     *     // ... data to create a FileSystemPath
+     *   }
+     * })
+     * 
+     */
+    create<T extends FileSystemPathCreateArgs>(args: SelectSubset<T, FileSystemPathCreateArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many FileSystemPaths.
+     * @param {FileSystemPathCreateManyArgs} args - Arguments to create many FileSystemPaths.
+     * @example
+     * // Create many FileSystemPaths
+     * const fileSystemPath = await prisma.fileSystemPath.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FileSystemPathCreateManyArgs>(args?: SelectSubset<T, FileSystemPathCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many FileSystemPaths and returns the data saved in the database.
+     * @param {FileSystemPathCreateManyAndReturnArgs} args - Arguments to create many FileSystemPaths.
+     * @example
+     * // Create many FileSystemPaths
+     * const fileSystemPath = await prisma.fileSystemPath.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many FileSystemPaths and only return the `id`
+     * const fileSystemPathWithIdOnly = await prisma.fileSystemPath.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FileSystemPathCreateManyAndReturnArgs>(args?: SelectSubset<T, FileSystemPathCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a FileSystemPath.
+     * @param {FileSystemPathDeleteArgs} args - Arguments to delete one FileSystemPath.
+     * @example
+     * // Delete one FileSystemPath
+     * const FileSystemPath = await prisma.fileSystemPath.delete({
+     *   where: {
+     *     // ... filter to delete one FileSystemPath
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FileSystemPathDeleteArgs>(args: SelectSubset<T, FileSystemPathDeleteArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one FileSystemPath.
+     * @param {FileSystemPathUpdateArgs} args - Arguments to update one FileSystemPath.
+     * @example
+     * // Update one FileSystemPath
+     * const fileSystemPath = await prisma.fileSystemPath.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FileSystemPathUpdateArgs>(args: SelectSubset<T, FileSystemPathUpdateArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more FileSystemPaths.
+     * @param {FileSystemPathDeleteManyArgs} args - Arguments to filter FileSystemPaths to delete.
+     * @example
+     * // Delete a few FileSystemPaths
+     * const { count } = await prisma.fileSystemPath.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FileSystemPathDeleteManyArgs>(args?: SelectSubset<T, FileSystemPathDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FileSystemPaths.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FileSystemPathUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many FileSystemPaths
+     * const fileSystemPath = await prisma.fileSystemPath.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FileSystemPathUpdateManyArgs>(args: SelectSubset<T, FileSystemPathUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FileSystemPaths and returns the data updated in the database.
+     * @param {FileSystemPathUpdateManyAndReturnArgs} args - Arguments to update many FileSystemPaths.
+     * @example
+     * // Update many FileSystemPaths
+     * const fileSystemPath = await prisma.fileSystemPath.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more FileSystemPaths and only return the `id`
+     * const fileSystemPathWithIdOnly = await prisma.fileSystemPath.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FileSystemPathUpdateManyAndReturnArgs>(args: SelectSubset<T, FileSystemPathUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one FileSystemPath.
+     * @param {FileSystemPathUpsertArgs} args - Arguments to update or create a FileSystemPath.
+     * @example
+     * // Update or create a FileSystemPath
+     * const fileSystemPath = await prisma.fileSystemPath.upsert({
+     *   create: {
+     *     // ... data to create a FileSystemPath
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the FileSystemPath we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FileSystemPathUpsertArgs>(args: SelectSubset<T, FileSystemPathUpsertArgs<ExtArgs>>): Prisma__FileSystemPathClient<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of FileSystemPaths.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FileSystemPathCountArgs} args - Arguments to filter FileSystemPaths to count.
+     * @example
+     * // Count the number of FileSystemPaths
+     * const count = await prisma.fileSystemPath.count({
+     *   where: {
+     *     // ... the filter for the FileSystemPaths we want to count
+     *   }
+     * })
+    **/
+    count<T extends FileSystemPathCountArgs>(
+      args?: Subset<T, FileSystemPathCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FileSystemPathCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a FileSystemPath.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FileSystemPathAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FileSystemPathAggregateArgs>(args: Subset<T, FileSystemPathAggregateArgs>): Prisma.PrismaPromise<GetFileSystemPathAggregateType<T>>
+
+    /**
+     * Group by FileSystemPath.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FileSystemPathGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FileSystemPathGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FileSystemPathGroupByArgs['orderBy'] }
+        : { orderBy?: FileSystemPathGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FileSystemPathGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFileSystemPathGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the FileSystemPath model
+   */
+  readonly fields: FileSystemPathFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for FileSystemPath.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FileSystemPathClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the FileSystemPath model
+   */
+  interface FileSystemPathFieldRefs {
+    readonly id: FieldRef<"FileSystemPath", 'String'>
+    readonly path: FieldRef<"FileSystemPath", 'String'>
+    readonly name: FieldRef<"FileSystemPath", 'String'>
+    readonly teacherId: FieldRef<"FileSystemPath", 'String'>
+    readonly createdAt: FieldRef<"FileSystemPath", 'DateTime'>
+    readonly updatedAt: FieldRef<"FileSystemPath", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * FileSystemPath findUnique
+   */
+  export type FileSystemPathFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * Filter, which FileSystemPath to fetch.
+     */
+    where: FileSystemPathWhereUniqueInput
+  }
+
+  /**
+   * FileSystemPath findUniqueOrThrow
+   */
+  export type FileSystemPathFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * Filter, which FileSystemPath to fetch.
+     */
+    where: FileSystemPathWhereUniqueInput
+  }
+
+  /**
+   * FileSystemPath findFirst
+   */
+  export type FileSystemPathFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * Filter, which FileSystemPath to fetch.
+     */
+    where?: FileSystemPathWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FileSystemPaths to fetch.
+     */
+    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FileSystemPaths.
+     */
+    cursor?: FileSystemPathWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FileSystemPaths from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FileSystemPaths.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FileSystemPaths.
+     */
+    distinct?: FileSystemPathScalarFieldEnum | FileSystemPathScalarFieldEnum[]
+  }
+
+  /**
+   * FileSystemPath findFirstOrThrow
+   */
+  export type FileSystemPathFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * Filter, which FileSystemPath to fetch.
+     */
+    where?: FileSystemPathWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FileSystemPaths to fetch.
+     */
+    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FileSystemPaths.
+     */
+    cursor?: FileSystemPathWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FileSystemPaths from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FileSystemPaths.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FileSystemPaths.
+     */
+    distinct?: FileSystemPathScalarFieldEnum | FileSystemPathScalarFieldEnum[]
+  }
+
+  /**
+   * FileSystemPath findMany
+   */
+  export type FileSystemPathFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * Filter, which FileSystemPaths to fetch.
+     */
+    where?: FileSystemPathWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FileSystemPaths to fetch.
+     */
+    orderBy?: FileSystemPathOrderByWithRelationInput | FileSystemPathOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing FileSystemPaths.
+     */
+    cursor?: FileSystemPathWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FileSystemPaths from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FileSystemPaths.
+     */
+    skip?: number
+    distinct?: FileSystemPathScalarFieldEnum | FileSystemPathScalarFieldEnum[]
+  }
+
+  /**
+   * FileSystemPath create
+   */
+  export type FileSystemPathCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * The data needed to create a FileSystemPath.
+     */
+    data: XOR<FileSystemPathCreateInput, FileSystemPathUncheckedCreateInput>
+  }
+
+  /**
+   * FileSystemPath createMany
+   */
+  export type FileSystemPathCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many FileSystemPaths.
+     */
+    data: FileSystemPathCreateManyInput | FileSystemPathCreateManyInput[]
+  }
+
+  /**
+   * FileSystemPath createManyAndReturn
+   */
+  export type FileSystemPathCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * The data used to create many FileSystemPaths.
+     */
+    data: FileSystemPathCreateManyInput | FileSystemPathCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FileSystemPath update
+   */
+  export type FileSystemPathUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * The data needed to update a FileSystemPath.
+     */
+    data: XOR<FileSystemPathUpdateInput, FileSystemPathUncheckedUpdateInput>
+    /**
+     * Choose, which FileSystemPath to update.
+     */
+    where: FileSystemPathWhereUniqueInput
+  }
+
+  /**
+   * FileSystemPath updateMany
+   */
+  export type FileSystemPathUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update FileSystemPaths.
+     */
+    data: XOR<FileSystemPathUpdateManyMutationInput, FileSystemPathUncheckedUpdateManyInput>
+    /**
+     * Filter which FileSystemPaths to update
+     */
+    where?: FileSystemPathWhereInput
+    /**
+     * Limit how many FileSystemPaths to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FileSystemPath updateManyAndReturn
+   */
+  export type FileSystemPathUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * The data used to update FileSystemPaths.
+     */
+    data: XOR<FileSystemPathUpdateManyMutationInput, FileSystemPathUncheckedUpdateManyInput>
+    /**
+     * Filter which FileSystemPaths to update
+     */
+    where?: FileSystemPathWhereInput
+    /**
+     * Limit how many FileSystemPaths to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FileSystemPath upsert
+   */
+  export type FileSystemPathUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * The filter to search for the FileSystemPath to update in case it exists.
+     */
+    where: FileSystemPathWhereUniqueInput
+    /**
+     * In case the FileSystemPath found by the `where` argument doesn't exist, create a new FileSystemPath with this data.
+     */
+    create: XOR<FileSystemPathCreateInput, FileSystemPathUncheckedCreateInput>
+    /**
+     * In case the FileSystemPath was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FileSystemPathUpdateInput, FileSystemPathUncheckedUpdateInput>
+  }
+
+  /**
+   * FileSystemPath delete
+   */
+  export type FileSystemPathDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+    /**
+     * Filter which FileSystemPath to delete.
+     */
+    where: FileSystemPathWhereUniqueInput
+  }
+
+  /**
+   * FileSystemPath deleteMany
+   */
+  export type FileSystemPathDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FileSystemPaths to delete
+     */
+    where?: FileSystemPathWhereInput
+    /**
+     * Limit how many FileSystemPaths to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * FileSystemPath without action
+   */
+  export type FileSystemPathDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FileSystemPath
+     */
+    select?: FileSystemPathSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FileSystemPath
+     */
+    omit?: FileSystemPathOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FileSystemPathInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -25972,19 +25959,6 @@ export namespace Prisma {
   };
 
   export type UnitScalarFieldEnum = (typeof UnitScalarFieldEnum)[keyof typeof UnitScalarFieldEnum]
-
-
-  export const FileSystemPathScalarFieldEnum: {
-    id: 'id',
-    name: 'name',
-    path: 'path',
-    description: 'description',
-    teacherId: 'teacherId',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
-  };
-
-  export type FileSystemPathScalarFieldEnum = (typeof FileSystemPathScalarFieldEnum)[keyof typeof FileSystemPathScalarFieldEnum]
 
 
   export const TopicScalarFieldEnum: {
@@ -26143,6 +26117,18 @@ export namespace Prisma {
   };
 
   export type QuizAnswerScalarFieldEnum = (typeof QuizAnswerScalarFieldEnum)[keyof typeof QuizAnswerScalarFieldEnum]
+
+
+  export const FileSystemPathScalarFieldEnum: {
+    id: 'id',
+    path: 'path',
+    name: 'name',
+    teacherId: 'teacherId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type FileSystemPathScalarFieldEnum = (typeof FileSystemPathScalarFieldEnum)[keyof typeof FileSystemPathScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -26706,71 +26692,6 @@ export namespace Prisma {
     blockId?: StringWithAggregatesFilter<"Unit"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Unit"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Unit"> | Date | string
-  }
-
-  export type FileSystemPathWhereInput = {
-    AND?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
-    OR?: FileSystemPathWhereInput[]
-    NOT?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
-    id?: StringFilter<"FileSystemPath"> | string
-    name?: StringFilter<"FileSystemPath"> | string
-    path?: StringFilter<"FileSystemPath"> | string
-    description?: StringNullableFilter<"FileSystemPath"> | string | null
-    teacherId?: StringFilter<"FileSystemPath"> | string
-    createdAt?: DateTimeFilter<"FileSystemPath"> | Date | string
-    updatedAt?: DateTimeFilter<"FileSystemPath"> | Date | string
-    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
-  }
-
-  export type FileSystemPathOrderByWithRelationInput = {
-    id?: SortOrder
-    name?: SortOrder
-    path?: SortOrder
-    description?: SortOrderInput | SortOrder
-    teacherId?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    teacher?: UserOrderByWithRelationInput
-  }
-
-  export type FileSystemPathWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    path?: string
-    AND?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
-    OR?: FileSystemPathWhereInput[]
-    NOT?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
-    name?: StringFilter<"FileSystemPath"> | string
-    description?: StringNullableFilter<"FileSystemPath"> | string | null
-    teacherId?: StringFilter<"FileSystemPath"> | string
-    createdAt?: DateTimeFilter<"FileSystemPath"> | Date | string
-    updatedAt?: DateTimeFilter<"FileSystemPath"> | Date | string
-    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
-  }, "id" | "path">
-
-  export type FileSystemPathOrderByWithAggregationInput = {
-    id?: SortOrder
-    name?: SortOrder
-    path?: SortOrder
-    description?: SortOrderInput | SortOrder
-    teacherId?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    _count?: FileSystemPathCountOrderByAggregateInput
-    _max?: FileSystemPathMaxOrderByAggregateInput
-    _min?: FileSystemPathMinOrderByAggregateInput
-  }
-
-  export type FileSystemPathScalarWhereWithAggregatesInput = {
-    AND?: FileSystemPathScalarWhereWithAggregatesInput | FileSystemPathScalarWhereWithAggregatesInput[]
-    OR?: FileSystemPathScalarWhereWithAggregatesInput[]
-    NOT?: FileSystemPathScalarWhereWithAggregatesInput | FileSystemPathScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"FileSystemPath"> | string
-    name?: StringWithAggregatesFilter<"FileSystemPath"> | string
-    path?: StringWithAggregatesFilter<"FileSystemPath"> | string
-    description?: StringNullableWithAggregatesFilter<"FileSystemPath"> | string | null
-    teacherId?: StringWithAggregatesFilter<"FileSystemPath"> | string
-    createdAt?: DateTimeWithAggregatesFilter<"FileSystemPath"> | Date | string
-    updatedAt?: DateTimeWithAggregatesFilter<"FileSystemPath"> | Date | string
   }
 
   export type TopicWhereInput = {
@@ -27619,6 +27540,66 @@ export namespace Prisma {
     answeredAt?: DateTimeWithAggregatesFilter<"QuizAnswer"> | Date | string
   }
 
+  export type FileSystemPathWhereInput = {
+    AND?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
+    OR?: FileSystemPathWhereInput[]
+    NOT?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
+    id?: StringFilter<"FileSystemPath"> | string
+    path?: StringFilter<"FileSystemPath"> | string
+    name?: StringFilter<"FileSystemPath"> | string
+    teacherId?: StringFilter<"FileSystemPath"> | string
+    createdAt?: DateTimeFilter<"FileSystemPath"> | Date | string
+    updatedAt?: DateTimeFilter<"FileSystemPath"> | Date | string
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type FileSystemPathOrderByWithRelationInput = {
+    id?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    teacherId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    teacher?: UserOrderByWithRelationInput
+  }
+
+  export type FileSystemPathWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    path?: string
+    AND?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
+    OR?: FileSystemPathWhereInput[]
+    NOT?: FileSystemPathWhereInput | FileSystemPathWhereInput[]
+    name?: StringFilter<"FileSystemPath"> | string
+    teacherId?: StringFilter<"FileSystemPath"> | string
+    createdAt?: DateTimeFilter<"FileSystemPath"> | Date | string
+    updatedAt?: DateTimeFilter<"FileSystemPath"> | Date | string
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "path">
+
+  export type FileSystemPathOrderByWithAggregationInput = {
+    id?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    teacherId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: FileSystemPathCountOrderByAggregateInput
+    _max?: FileSystemPathMaxOrderByAggregateInput
+    _min?: FileSystemPathMinOrderByAggregateInput
+  }
+
+  export type FileSystemPathScalarWhereWithAggregatesInput = {
+    AND?: FileSystemPathScalarWhereWithAggregatesInput | FileSystemPathScalarWhereWithAggregatesInput[]
+    OR?: FileSystemPathScalarWhereWithAggregatesInput[]
+    NOT?: FileSystemPathScalarWhereWithAggregatesInput | FileSystemPathScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"FileSystemPath"> | string
+    path?: StringWithAggregatesFilter<"FileSystemPath"> | string
+    name?: StringWithAggregatesFilter<"FileSystemPath"> | string
+    teacherId?: StringWithAggregatesFilter<"FileSystemPath"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"FileSystemPath"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"FileSystemPath"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
@@ -28151,75 +28132,6 @@ export namespace Prisma {
     description?: NullableStringFieldUpdateOperationsInput | string | null
     order?: IntFieldUpdateOperationsInput | number
     blockId?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type FileSystemPathCreateInput = {
-    id?: string
-    name: string
-    path: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    teacher: UserCreateNestedOneWithoutFileSystemPathsInput
-  }
-
-  export type FileSystemPathUncheckedCreateInput = {
-    id?: string
-    name: string
-    path: string
-    description?: string | null
-    teacherId: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type FileSystemPathUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    path?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    teacher?: UserUpdateOneRequiredWithoutFileSystemPathsNestedInput
-  }
-
-  export type FileSystemPathUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    path?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    teacherId?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type FileSystemPathCreateManyInput = {
-    id?: string
-    name: string
-    path: string
-    description?: string | null
-    teacherId: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type FileSystemPathUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    path?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type FileSystemPathUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    path?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    teacherId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -29103,6 +29015,68 @@ export namespace Prisma {
     answeredAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type FileSystemPathCreateInput = {
+    id?: string
+    path: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacher: UserCreateNestedOneWithoutFileSystemPathsInput
+  }
+
+  export type FileSystemPathUncheckedCreateInput = {
+    id?: string
+    path: string
+    name: string
+    teacherId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FileSystemPathUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacher?: UserUpdateOneRequiredWithoutFileSystemPathsNestedInput
+  }
+
+  export type FileSystemPathUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FileSystemPathCreateManyInput = {
+    id?: string
+    path: string
+    name: string
+    teacherId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FileSystemPathUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FileSystemPathUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    path?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -29649,36 +29623,6 @@ export namespace Prisma {
 
   export type UnitSumOrderByAggregateInput = {
     order?: SortOrder
-  }
-
-  export type FileSystemPathCountOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    path?: SortOrder
-    description?: SortOrder
-    teacherId?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type FileSystemPathMaxOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    path?: SortOrder
-    description?: SortOrder
-    teacherId?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type FileSystemPathMinOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    path?: SortOrder
-    description?: SortOrder
-    teacherId?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
   }
 
   export type LessonListRelationFilter = {
@@ -30283,6 +30227,33 @@ export namespace Prisma {
 
   export type QuizAnswerSumOrderByAggregateInput = {
     points?: SortOrder
+  }
+
+  export type FileSystemPathCountOrderByAggregateInput = {
+    id?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    teacherId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FileSystemPathMaxOrderByAggregateInput = {
+    id?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    teacherId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FileSystemPathMinOrderByAggregateInput = {
+    id?: SortOrder
+    path?: SortOrder
+    name?: SortOrder
+    teacherId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type LearningGroupCreateNestedManyWithoutTeacherInput = {
@@ -31033,20 +31004,6 @@ export namespace Prisma {
     deleteMany?: TopicScalarWhereInput | TopicScalarWhereInput[]
   }
 
-  export type UserCreateNestedOneWithoutFileSystemPathsInput = {
-    create?: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutFileSystemPathsInput
-    connect?: UserWhereUniqueInput
-  }
-
-  export type UserUpdateOneRequiredWithoutFileSystemPathsNestedInput = {
-    create?: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
-    connectOrCreate?: UserCreateOrConnectWithoutFileSystemPathsInput
-    upsert?: UserUpsertWithoutFileSystemPathsInput
-    connect?: UserWhereUniqueInput
-    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutFileSystemPathsInput, UserUpdateWithoutFileSystemPathsInput>, UserUncheckedUpdateWithoutFileSystemPathsInput>
-  }
-
   export type LessonCreateNestedManyWithoutTopicInput = {
     create?: XOR<LessonCreateWithoutTopicInput, LessonUncheckedCreateWithoutTopicInput> | LessonCreateWithoutTopicInput[] | LessonUncheckedCreateWithoutTopicInput[]
     connectOrCreate?: LessonCreateOrConnectWithoutTopicInput | LessonCreateOrConnectWithoutTopicInput[]
@@ -31693,6 +31650,20 @@ export namespace Prisma {
     update?: XOR<XOR<QuizParticipationUpdateToOneWithWhereWithoutAnswersInput, QuizParticipationUpdateWithoutAnswersInput>, QuizParticipationUncheckedUpdateWithoutAnswersInput>
   }
 
+  export type UserCreateNestedOneWithoutFileSystemPathsInput = {
+    create?: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutFileSystemPathsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutFileSystemPathsNestedInput = {
+    create?: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutFileSystemPathsInput
+    upsert?: UserUpsertWithoutFileSystemPathsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutFileSystemPathsInput, UserUpdateWithoutFileSystemPathsInput>, UserUncheckedUpdateWithoutFileSystemPathsInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -32129,18 +32100,16 @@ export namespace Prisma {
 
   export type FileSystemPathCreateWithoutTeacherInput = {
     id?: string
-    name: string
     path: string
-    description?: string | null
+    name: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
 
   export type FileSystemPathUncheckedCreateWithoutTeacherInput = {
     id?: string
-    name: string
     path: string
-    description?: string | null
+    name: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -32372,9 +32341,8 @@ export namespace Prisma {
     OR?: FileSystemPathScalarWhereInput[]
     NOT?: FileSystemPathScalarWhereInput | FileSystemPathScalarWhereInput[]
     id?: StringFilter<"FileSystemPath"> | string
-    name?: StringFilter<"FileSystemPath"> | string
     path?: StringFilter<"FileSystemPath"> | string
-    description?: StringNullableFilter<"FileSystemPath"> | string | null
+    name?: StringFilter<"FileSystemPath"> | string
     teacherId?: StringFilter<"FileSystemPath"> | string
     createdAt?: DateTimeFilter<"FileSystemPath"> | Date | string
     updatedAt?: DateTimeFilter<"FileSystemPath"> | Date | string
@@ -33249,90 +33217,6 @@ export namespace Prisma {
     subjectId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type UserCreateWithoutFileSystemPathsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    avatarEmoji?: string | null
-    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
-    notes?: NoteCreateNestedManyWithoutAuthorInput
-    quizzes?: QuizCreateNestedManyWithoutTeacherInput
-    participations?: QuizParticipationCreateNestedManyWithoutStudentInput
-    subjects?: SubjectCreateNestedManyWithoutTeacherInput
-    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
-    grades?: GradeCreateNestedManyWithoutStudentInput
-  }
-
-  export type UserUncheckedCreateWithoutFileSystemPathsInput = {
-    id?: string
-    name: string
-    loginCode: string
-    role?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    avatarEmoji?: string | null
-    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
-    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
-    quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
-    participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
-    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
-    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
-    grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
-  }
-
-  export type UserCreateOrConnectWithoutFileSystemPathsInput = {
-    where: UserWhereUniqueInput
-    create: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
-  }
-
-  export type UserUpsertWithoutFileSystemPathsInput = {
-    update: XOR<UserUpdateWithoutFileSystemPathsInput, UserUncheckedUpdateWithoutFileSystemPathsInput>
-    create: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
-    where?: UserWhereInput
-  }
-
-  export type UserUpdateToOneWithWhereWithoutFileSystemPathsInput = {
-    where?: UserWhereInput
-    data: XOR<UserUpdateWithoutFileSystemPathsInput, UserUncheckedUpdateWithoutFileSystemPathsInput>
-  }
-
-  export type UserUpdateWithoutFileSystemPathsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
-    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
-    notes?: NoteUpdateManyWithoutAuthorNestedInput
-    quizzes?: QuizUpdateManyWithoutTeacherNestedInput
-    participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
-    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
-    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
-    grades?: GradeUpdateManyWithoutStudentNestedInput
-  }
-
-  export type UserUncheckedUpdateWithoutFileSystemPathsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    loginCode?: StringFieldUpdateOperationsInput | string
-    role?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
-    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
-    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
-    quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
-    participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
-    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
-    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
-    grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type LessonCreateWithoutTopicInput = {
@@ -34856,6 +34740,90 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type UserCreateWithoutFileSystemPathsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationCreateNestedManyWithoutStudentInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+    grades?: GradeCreateNestedManyWithoutStudentInput
+  }
+
+  export type UserUncheckedCreateWithoutFileSystemPathsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+    grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
+  }
+
+  export type UserCreateOrConnectWithoutFileSystemPathsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
+  }
+
+  export type UserUpsertWithoutFileSystemPathsInput = {
+    update: XOR<UserUpdateWithoutFileSystemPathsInput, UserUncheckedUpdateWithoutFileSystemPathsInput>
+    create: XOR<UserCreateWithoutFileSystemPathsInput, UserUncheckedCreateWithoutFileSystemPathsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutFileSystemPathsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutFileSystemPathsInput, UserUncheckedUpdateWithoutFileSystemPathsInput>
+  }
+
+  export type UserUpdateWithoutFileSystemPathsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUpdateManyWithoutStudentNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutFileSystemPathsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
+  }
+
   export type LearningGroupCreateManyTeacherInput = {
     id?: string
     name: string
@@ -34919,9 +34887,8 @@ export namespace Prisma {
 
   export type FileSystemPathCreateManyTeacherInput = {
     id?: string
-    name: string
     path: string
-    description?: string | null
+    name: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -35155,27 +35122,24 @@ export namespace Prisma {
 
   export type FileSystemPathUpdateWithoutTeacherInput = {
     id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
     path?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type FileSystemPathUncheckedUpdateWithoutTeacherInput = {
     id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
     path?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type FileSystemPathUncheckedUpdateManyWithoutTeacherInput = {
     id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
     path?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

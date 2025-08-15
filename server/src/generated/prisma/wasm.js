@@ -186,16 +186,6 @@ exports.Prisma.UnitScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
-exports.Prisma.FileSystemPathScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  path: 'path',
-  description: 'description',
-  teacherId: 'teacherId',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
 exports.Prisma.TopicScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -318,6 +308,15 @@ exports.Prisma.QuizAnswerScalarFieldEnum = {
   answeredAt: 'answeredAt'
 };
 
+exports.Prisma.FileSystemPathScalarFieldEnum = {
+  id: 'id',
+  path: 'path',
+  name: 'name',
+  teacherId: 'teacherId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -337,7 +336,6 @@ exports.Prisma.ModelName = {
   Subject: 'Subject',
   Block: 'Block',
   Unit: 'Unit',
-  FileSystemPath: 'FileSystemPath',
   Topic: 'Topic',
   Lesson: 'Lesson',
   GroupAssignment: 'GroupAssignment',
@@ -349,7 +347,8 @@ exports.Prisma.ModelName = {
   LessonQuiz: 'LessonQuiz',
   QuizSession: 'QuizSession',
   QuizParticipation: 'QuizParticipation',
-  QuizAnswer: 'QuizAnswer'
+  QuizAnswer: 'QuizAnswer',
+  FileSystemPath: 'FileSystemPath'
 };
 
 /**

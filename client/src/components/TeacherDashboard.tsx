@@ -48,7 +48,7 @@ import { fetchAssignments } from './SubjectManager';
 import MaterialCreator from './MaterialCreator';
 import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
-import { FileSystemPathManager } from './FileSystemPathManager';
+import FileSystemPathManager from './FileSystemPathManager';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -1609,7 +1609,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </TabPanel>
           <TabPanel value={mainTabValue} index={3}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {/* Dateisystem-Pfad-Verwaltung */}
+              {/* Dateisystem-Pfade verwalten */}
               <Box sx={{ mb: 2 }}>
                 <FileSystemPathManager teacherId={userId} />
               </Box>

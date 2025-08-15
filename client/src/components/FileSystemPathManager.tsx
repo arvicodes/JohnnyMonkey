@@ -1,411 +1,655 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { FolderOpen, File, Folder, Trash2, Edit, Plus } from 'lucide-react';
-import { useToast } from '../hooks/use-toast';
-
-interface FileSystemPath {
-  id: string;
-  name: string;
-  path: string;
-  description?: string;
-  teacherId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface FolderItem {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  extension?: string;
-  size?: number;
-  children?: FolderItem[];
-}
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Grid,
+  List,
+  ListItem,
+  IconButton,
+  Alert,
+  Snackbar,
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress
+} from '@mui/material';
+import { 
+  Delete as DeleteIcon,
+  Save as SaveIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 
 interface FileSystemPathManagerProps {
   teacherId: string;
 }
 
-export const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId }) => {
-  const [paths, setPaths] = useState<FileSystemPath[]>([]);
-  const [selectedPath, setSelectedPath] = useState<FileSystemPath | null>(null);
-  const [folderStructure, setFolderStructure] = useState<FolderItem | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingPath, setEditingPath] = useState<FileSystemPath | null>(null);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    path: '',
-    description: ''
+interface FileSystemPath {
+  id: string;
+  path: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface DirectoryItem {
+  name: string;
+  type: 'directory' | 'file';
+  path: string;
+  children: DirectoryItem[];
+  size?: number;
+  itemCount?: number;
+  isTruncated?: boolean;
+  error?: string;
+}
+
+interface DirectoryContent {
+  path: string;
+  items: DirectoryItem[];
+  totalItems: number;
+}
+
+interface RecursiveDirectoryContent {
+  path: string;
+  root: DirectoryItem;
+  totalItems: number;
+  maxDepth: number;
+}
+
+const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId }) => {
+  // State für die Verzeichnisvorschau
+  const [newPath, setNewPath] = useState<string>('');
+  const [selectedPath, setSelectedPath] = useState<string>('');
+  const [newPathName, setNewPathName] = useState<string>('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pathToDelete, setPathToDelete] = useState<FileSystemPath | null>(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+
+  // Alle Ordner standardmäßig aufgeklappt
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const queryClient = useQueryClient();
+
+  // Gespeicherte Pfade abrufen
+  const { data: savedPaths, isLoading: pathsLoading } = useQuery({
+    queryKey: ['fileSystemPaths', teacherId],
+    queryFn: async () => {
+      const response = await fetch(`/api/file-system-paths/teacher/${teacherId}`);
+      if (!response.ok) throw new Error('Fehler beim Laden der Pfade');
+      return response.json() as Promise<FileSystemPath[]>;
+    }
   });
 
-  const { toast } = useToast();
+  // Verzeichnisinhalt abrufen
+  const { data: directoryContent, isLoading: directoryLoading, refetch: refetchDirectory } = useQuery({
+    queryKey: ['directoryContent', selectedPath, true], // recursiveView is now always true
+    queryFn: async () => {
+      if (!selectedPath) return null;
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(selectedPath)}&recursive=true`);
+      if (!response.ok) throw new Error('Fehler beim Lesen des Verzeichnisses');
+      return response.json() as Promise<DirectoryContent | RecursiveDirectoryContent>;
+    },
+    enabled: !!selectedPath
+  });
 
-  // Pfade laden
-  const loadPaths = async () => {
-    try {
-      const response = await fetch(`/api/file-system-paths/teacher/${teacherId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPaths(data);
+  // Pfad speichern
+  const savePathMutation = useMutation({
+    mutationFn: async (data: { path: string; name: string; teacherId: string }) => {
+      const response = await fetch('/api/file-system-paths/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Fehler beim Speichern des Pfades');
       }
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Laden der Dateipfade",
-        variant: "destructive"
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
+      setNewPath('');
+      setNewPathName('');
+      setSnackbar({
+        open: true,
+        message: 'Pfad erfolgreich gespeichert',
+        severity: 'success'
+      });
+    },
+    onError: (error: Error) => {
+      setSnackbar({
+        open: true,
+        message: error.message,
+        severity: 'error'
       });
     }
-  };
+  });
 
-  // Ordnerstruktur laden
-  const loadFolderStructure = async (filePath: string) => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/file-system-paths/structure/${encodeURIComponent(filePath)}`);
-      if (response.ok) {
-        const data = await response.json();
-        setFolderStructure(data);
-      } else {
-        toast({
-          title: "Fehler",
-          description: "Fehler beim Laden der Ordnerstruktur",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Laden der Ordnerstruktur",
-        variant: "destructive"
+  // Pfad löschen
+  const deletePathMutation = useMutation({
+    mutationFn: async (pathId: string) => {
+      const response = await fetch(`/api/file-system-paths/${pathId}`, {
+        method: 'DELETE'
       });
-    } finally {
-      setIsLoading(false);
+      if (!response.ok) throw new Error('Fehler beim Löschen des Pfades');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
+      if (selectedPath === pathToDelete?.path) {
+        setSelectedPath('');
+      }
+      setSnackbar({
+        open: true,
+        message: 'Pfad erfolgreich gelöscht',
+        severity: 'success'
+      });
+      setDeleteDialogOpen(false);
+      setPathToDelete(null);
+    },
+    onError: () => {
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Löschen des Pfades',
+        severity: 'error'
+      });
     }
-  };
+  });
 
-  // Neuen Pfad erstellen
-  const createPath = async () => {
-    if (!formData.name || !formData.path) {
-      toast({
-        title: "Fehler",
-        description: "Name und Pfad sind erforderlich",
-        variant: "destructive"
+  const handleSavePath = () => {
+    if (!newPath.trim() || !newPathName.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Bitte füllen Sie alle Felder aus',
+        severity: 'error'
       });
       return;
     }
+    savePathMutation.mutate({ path: newPath.trim(), name: newPathName.trim(), teacherId });
+  };
 
-    try {
-      const response = await fetch('/api/file-system-paths', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          teacherId
-        })
-      });
+  const handleDeletePath = (path: FileSystemPath) => {
+    setPathToDelete(path);
+    setDeleteDialogOpen(true);
+  };
 
-      if (response.ok) {
-        const newPath = await response.json();
-        setPaths([newPath, ...paths]);
-        setFormData({ name: '', path: '', description: '' });
-        toast({
-          title: "Erfolg",
-          description: "Dateipfad erfolgreich erstellt"
-        });
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Fehler",
-          description: error.error || "Fehler beim Erstellen des Dateipfads",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Erstellen des Dateipfads",
-        variant: "destructive"
-      });
+  const confirmDelete = () => {
+    if (pathToDelete) {
+      deletePathMutation.mutate(pathToDelete.id);
     }
   };
 
-  // Pfad aktualisieren
-  const updatePath = async () => {
-    if (!editingPath || !formData.name || !formData.path) return;
-
-    try {
-      const response = await fetch(`/api/file-system-paths/${editingPath.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        const updatedPath = await response.json();
-        setPaths(paths.map(p => p.id === updatedPath.id ? updatedPath : p));
-        setIsEditing(false);
-        setEditingPath(null);
-        setFormData({ name: '', path: '', description: '' });
-        toast({
-          title: "Erfolg",
-          description: "Dateipfad erfolgreich aktualisiert"
-        });
-      } else {
-        const error = await response.json();
-        toast({
-          title: "Fehler",
-          description: error.error || "Fehler beim Aktualisieren des Dateipfads",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Aktualisieren des Dateipfads",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Pfad löschen
-  const deletePath = async (id: string) => {
-    if (!window.confirm('Möchten Sie diesen Dateipfad wirklich löschen?')) return;
-
-    try {
-      const response = await fetch(`/api/file-system-paths/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setPaths(paths.filter(p => p.id !== id));
-        if (selectedPath?.id === id) {
-          setSelectedPath(null);
-          setFolderStructure(null);
-        }
-        toast({
-          title: "Erfolg",
-          description: "Dateipfad erfolgreich gelöscht"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Löschen des Dateipfads",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Bearbeitung starten
-  const startEditing = (path: FileSystemPath) => {
-    setEditingPath(path);
-    setFormData({
-      name: path.name,
-      path: path.path,
-      description: path.description || ''
-    });
-    setIsEditing(true);
-  };
-
-  // Bearbeitung abbrechen
-  const cancelEditing = () => {
-    setIsEditing(false);
-    setEditingPath(null);
-    setFormData({ name: '', path: '', description: '' });
-  };
-
-  // Pfad auswählen
-  const selectPath = (path: FileSystemPath) => {
+  const handlePathSelect = (path: string) => {
     setSelectedPath(path);
-    loadFolderStructure(path.path);
+    setExpandedItems(new Set()); // Reset expanded items when selecting new path
   };
 
-  // Ordnerstruktur rendern
-  const renderFolderItem = (item: FolderItem, depth: number = 0) => {
-    const indent = depth * 20;
-    
+  const toggleItemExpanded = (itemPath: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(itemPath)) {
+      newExpanded.delete(itemPath);
+    } else {
+      newExpanded.add(itemPath);
+    }
+    setExpandedItems(newExpanded);
+  };
+
+  // Rekursive Komponente für hierarchische Anzeige
+  const renderDirectoryItem = (item: DirectoryItem, level: number = 0) => {
+    const isExpanded = expandedItems.has(item.path);
+    const hasChildren = item.children && item.children.length > 0;
+    const canExpand = item.type === 'directory' && hasChildren;
+
+    // Farben basierend auf dem Level und Typ
+    const getItemColor = (itemType: string, level: number) => {
+      if (itemType === 'file') return '#1976d2'; // Blau für Dateien
+      
+      // Verschiedene Farben für Ordner basierend auf Level
+      const colors = ['#2e7d32', '#ed6c02', '#d32f2f', '#7b1fa2', '#1565c0'];
+      return colors[level % colors.length];
+    };
+
+    // Icons basierend auf dem Typ
+    const getItemIcon = (itemType: string, level: number) => {
+      if (itemType === 'file') return '📄'; // Dokument-Icon
+      
+      // Verschiedene Ordner-Icons basierend auf Level
+      const folderIcons = ['📚', '📦', '📁', '🗂️', '📂'];
+      return folderIcons[level % folderIcons.length];
+    };
+
+    const itemColor = getItemColor(item.type, level);
+    const itemIcon = getItemIcon(item.type, level);
+
     return (
-      <div key={item.path} style={{ marginLeft: indent }}>
-        <div className="flex items-center gap-2 py-1 hover:bg-gray-100 rounded px-2">
-          {item.type === 'directory' ? (
-            <Folder className="w-4 h-4 text-blue-500" />
-          ) : (
-            <File className="w-4 h-4 text-gray-500" />
+      <Box key={item.path}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            py: 0.5,
+            pl: level * 2,
+            cursor: canExpand ? 'pointer' : 'default',
+            borderRadius: 1,
+            '&:hover': canExpand ? { 
+              bgcolor: 'rgba(0,0,0,0.04)',
+              transform: 'translateX(2px)',
+              transition: 'all 0.2s ease'
+            } : {}
+          }}
+          onClick={() => canExpand && toggleItemExpanded(item.path)}
+        >
+          {canExpand && (
+            <Box sx={{ 
+              width: 16, 
+              height: 16, 
+              mr: 0.5, 
+              display: 'flex', 
+              alignItems: 'center',
+              color: itemColor,
+              fontWeight: 'bold'
+            }}>
+              {isExpanded ? '▼' : '▶'}
+            </Box>
           )}
-          <span className="text-sm">
+          {!canExpand && <Box sx={{ width: 16, mr: 0.5 }} />}
+          
+          <Box sx={{ 
+            mr: 0.5, 
+            fontSize: '0.9rem',
+            color: itemColor
+          }}>
+            {itemIcon}
+          </Box>
+          
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '0.75rem',
+              color: itemColor,
+              fontWeight: item.type === 'directory' ? 'medium' : 'normal'
+            }}
+          >
             {item.name}
-            {item.type === 'file' && item.extension && (
-              <span className="text-gray-500 ml-1">({item.extension})</span>
-            )}
-            {item.type === 'file' && item.size && (
-              <span className="text-gray-400 ml-2 text-xs">
-                ({(item.size / 1024).toFixed(1)} KB)
-              </span>
-            )}
-          </span>
-        </div>
-        {item.children && item.children.length > 0 && (
-          <div>
-            {item.children.map(child => renderFolderItem(child, depth + 1))}
-          </div>
+          </Typography>
+        </Box>
+
+        {/* Rekursive Anzeige der Kinder */}
+        {canExpand && isExpanded && (
+          <Box>
+            {item.children.map(child => renderDirectoryItem(child, level + 1))}
+          </Box>
         )}
-      </div>
+      </Box>
     );
   };
 
+  // Automatisch den ersten Pfad laden und alle Ordner aufklappen
   useEffect(() => {
-    loadPaths();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherId]);
+    if (savedPaths && savedPaths.length > 0 && !selectedPath) {
+      setSelectedPath(savedPaths[0].path);
+      setNewPathName(savedPaths[0].name);
+    }
+  }, [savedPaths, selectedPath]);
+
+  // Alle Ordner aufklappen
+  const expandAllFolders = () => {
+    if (directoryContent && 'root' in directoryContent) {
+      const newExpandedItems = new Set<string>();
+      
+      const expandRecursive = (item: DirectoryItem) => {
+        if (item.type === 'directory' && item.children && item.children.length > 0) {
+          newExpandedItems.add(item.path);
+          item.children.forEach(expandRecursive);
+        }
+      };
+      
+      expandRecursive(directoryContent.root);
+      setExpandedItems(newExpandedItems);
+    }
+  };
+
+  // Alle Ordner einklappen
+  const collapseAllFolders = () => {
+    setExpandedItems(new Set());
+  };
+
+  // Alle Ordner standardmäßig aufklappen, wenn Verzeichnisinhalt geladen wird
+  useEffect(() => {
+    if (directoryContent && 'root' in directoryContent) {
+      const newExpandedItems = new Set<string>();
+      
+      const expandRecursive = (item: DirectoryItem) => {
+        if (item.type === 'directory' && item.children && item.children.length > 0) {
+          newExpandedItems.add(item.path);
+          item.children.forEach(expandRecursive);
+        }
+      };
+      
+      expandRecursive(directoryContent.root);
+      setExpandedItems(newExpandedItems);
+    }
+  }, [directoryContent]);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5" />
-            Dateisystem-Pfad verwalten
-          </CardTitle>
-        </CardHeader>
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#1976d2' }}>
+        Dateisystem-Pfade verwalten
+      </Typography>
+
+      {/* Neue Pfad-Eingabe */}
+      <Card sx={{ mb: 3, borderRadius: 2 }}>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="z.B. Unterrichtsmaterial Informatik"
+          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+            Neuen Pfad hinzufügen
+          </Typography>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={5}>
+              <TextField
+                fullWidth
+                label="Absoluter Dateipfad"
+                placeholder="/Users/username/Documents"
+                value={newPath}
+                onChange={(e) => setNewPath(e.target.value)}
+                size="small"
               />
-            </div>
-            <div>
-              <Label htmlFor="path">Absoluter Pfad *</Label>
-              <Input
-                id="path"
-                value={formData.path}
-                onChange={(e) => setFormData({ ...formData, path: e.target.value })}
-                placeholder="/Users/username/Documents/Unterricht"
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Anzeigename"
+                placeholder="Meine Dokumente"
+                value={newPathName}
+                onChange={(e) => setNewPathName(e.target.value)}
+                size="small"
               />
-            </div>
-            <div>
-              <Label htmlFor="description">Beschreibung</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optionale Beschreibung"
-              />
-            </div>
-          </div>
-          
-          <div className="flex gap-2 mt-4">
-            {isEditing ? (
-              <>
-                <Button onClick={updatePath} className="flex items-center gap-2">
-                  <Edit className="w-4 h-4" />
-                  Aktualisieren
-                </Button>
-                <Button variant="outline" onClick={cancelEditing}>
-                  Abbrechen
-                </Button>
-              </>
-            ) : (
-              <Button onClick={createPath} className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Pfad hinzufügen
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSavePath}
+                disabled={savePathMutation.isPending}
+                sx={{ height: 40 }}
+              >
+                {savePathMutation.isPending ? <CircularProgress size={20} /> : 'Speichern'}
               </Button>
-            )}
-          </div>
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
 
-      {/* Gespeicherte Pfade */}
-      {paths.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Gespeicherte Pfade</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {paths.map((path) => (
-                <Card key={path.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-semibold text-sm">{path.name}</h4>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => startEditing(path)}
+      <Grid container spacing={3}>
+        {/* Gespeicherte Pfade */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ borderRadius: 2, height: 'fit-content' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                  Gespeicherte Pfade
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] })}
+                  disabled={pathsLoading}
+                  sx={{
+                    p: 0,
+                    width: '5%',
+                    height: '100%',
+                    borderRadius: 0,
+                    '& .MuiIconButton-root': {
+                      width: '100%',
+                      height: '100%'
+                    }
+                  }}
+                >
+                  <RefreshIcon sx={{
+                    fontSize: '0.7rem',
+                    width: '100%',
+                    height: '100%'
+                  }} />
+                </IconButton>
+              </Box>
+              
+              {pathsLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : savedPaths && savedPaths.length > 0 ? (
+                <List dense>
+                  {savedPaths.map((path, index) => (
+                    <React.Fragment key={path.id}>
+                      <ListItem 
+                        sx={{ 
+                          py: 0.25, 
+                          px: 0.5,
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          position: 'relative',
+                          pr: 2, // Platz für das Icon rechts
+                        }}
+                        onClick={() => {
+                          setSelectedPath(path.path);
+                          setNewPathName(path.name);
+                        }}
+                      >
+                        <Box sx={{ 
+                          mr: 0.5, 
+                          fontSize: '0.8rem',
+                          color: ['#2e7d32', '#ed6c02', '#d32f2f', '#7b1fa2', '#1565c0'][index % 5]
+                        }}>
+                          📁
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              fontSize: '0.7rem',
+                              color: ['#2e7d32', '#ed6c02', '#d32f2f', '#7b1fa2', '#1565c0'][index % 5],
+                              fontWeight: 'medium',
+                              lineHeight: 1.2
+                            }}
+                          >
+                            {path.name}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              fontSize: '0.6rem',
+                              color: 'text.secondary',
+                              fontFamily: 'monospace',
+                              wordBreak: 'break-all',
+                              lineHeight: 1.1
+                            }}
+                          >
+                            {path.path}
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPathToDelete(path);
+                            setDeleteDialogOpen(true);
+                          }}
+                          sx={{ 
+                            color: 'error.main',
+                            p: 0,
+                            width: '5%',
+                            height: '100%',
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            borderRadius: 0,
+                            '& .MuiIconButton-root': {
+                              width: '100%',
+                              height: '100%'
+                            }
+                          }}
                         >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deletePath(path.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-2 font-mono break-all">
-                      {path.path}
-                    </p>
-                    {path.description && (
-                      <p className="text-xs text-gray-500 mb-3">{path.description}</p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => selectPath(path)}
-                      className="w-full"
-                    >
-                      <FolderOpen className="w-4 h-4 mr-2" />
-                      Vorschau anzeigen
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                          <DeleteIcon sx={{ 
+                            fontSize: '0.7rem',
+                            width: '100%',
+                            height: '100%'
+                          }} />
+                        </IconButton>
+                      </ListItem>
+                      <Divider sx={{ my: 0.25 }} />
+                    </React.Fragment>
+                  ))}
+                </List>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                  Keine Pfade gespeichert
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* Ordnerstruktur-Vorschau */}
-      {selectedPath && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Folder className="w-5 h-5" />
-              Vorschau: {selectedPath.name}
-            </CardTitle>
-            <p className="text-sm text-gray-600 font-mono">{selectedPath.path}</p>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Lade Ordnerstruktur...</p>
-              </div>
-            ) : folderStructure ? (
-              <div className="border rounded-lg p-4 bg-gray-50 max-h-96 overflow-y-auto">
-                {renderFolderItem(folderStructure)}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-8">
-                Keine Ordnerstruktur verfügbar
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+        {/* Verzeichnisvorschau */}
+        <Grid item xs={12} md={8}>
+          <Card sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                  Verzeichnisvorschau
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {/* Steuerung für hierarchische Ansicht */}
+                  <Box sx={{ mb: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => expandedItems.size > 0 ? collapseAllFolders() : expandAllFolders()}
+                      sx={{ 
+                        fontSize: '0.65rem', 
+                        py: 0.25, 
+                        px: 1,
+                        minWidth: 'auto',
+                        height: 24
+                      }}
+                    >
+                      {expandedItems.size > 0 ? 'Einklappen' : 'Aufklappen'}
+                    </Button>
+                    
+                    {selectedPath && (
+                      <IconButton
+                        size="small"
+                        onClick={() => refetchDirectory()}
+                        disabled={directoryLoading}
+                        sx={{ 
+                          color: 'primary.main',
+                          p: 0,
+                          width: '5%',
+                          height: '100%',
+                          position: 'absolute',
+                          right: '6%',
+                          top: 0,
+                          borderRadius: 0,
+                          '& .MuiIconButton-root': {
+                            width: '100%',
+                            height: '100%'
+                          }
+                        }}
+                      >
+                        <RefreshIcon sx={{ 
+                          fontSize: '0.7rem',
+                          width: '100%',
+                          height: '100%'
+                        }} />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Box>
+              </Box>
+
+              {!selectedPath ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Wählen Sie einen gespeicherten Pfad aus, um den Inhalt anzuzeigen
+                  </Typography>
+                </Box>
+              ) : directoryLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                  <Typography>Lade Verzeichnis...</Typography>
+                </Box>
+              ) : directoryContent ? (
+                <Box>
+                  <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                      {directoryContent.path}
+                    </Typography>
+                  </Box>
+                  
+                  {/* Hierarchische Anzeige */}
+                  {directoryContent && 'root' in directoryContent ? (
+                    <Box>
+                      {renderDirectoryItem(directoryContent.root)}
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                        {directoryContent.totalItems} Elemente
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Keine Verzeichnisdaten verfügbar
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              ) : (
+                <Alert severity="info">
+                  Keine Daten verfügbar
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Lösch-Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Pfad löschen</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Möchten Sie den Pfad "{pathToDelete?.name}" wirklich löschen?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontFamily: 'monospace' }}>
+            {pathToDelete?.path}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Abbrechen</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">
+            Löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar für Benachrichtigungen */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
+
+export default FileSystemPathManager;

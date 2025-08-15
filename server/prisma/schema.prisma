@@ -101,17 +101,6 @@ model Unit {
   block       Block    @relation(fields: [blockId], references: [id])
 }
 
-model FileSystemPath {
-  id          String   @id @default(uuid())
-  name        String
-  path        String   @unique
-  description String?
-  teacherId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  teacher     User     @relation(fields: [teacherId], references: [id])
-}
-
 model Topic {
   id          String   @id @default(uuid())
   name        String
@@ -263,4 +252,14 @@ model QuizAnswer {
   participation   QuizParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
 
   @@unique([participationId, questionId])
+}
+
+model FileSystemPath {
+  id          String   @id @default(uuid())
+  path        String   @unique
+  name        String
+  teacherId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  teacher     User     @relation(fields: [teacherId], references: [id])
 }

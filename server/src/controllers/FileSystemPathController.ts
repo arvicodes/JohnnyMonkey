@@ -5,177 +5,299 @@ import * as path from 'path';
 
 const prisma = new PrismaClient();
 
+// Erweiterte Interfaces für hierarchische Verzeichnisstruktur
+interface DirectoryItem {
+  name: string;
+  type: 'directory' | 'file';
+  path: string;
+  children: DirectoryItem[];
+  size?: number;
+  itemCount?: number;
+  isTruncated?: boolean;
+  error?: string;
+}
+
+interface DirectoryContent {
+  path: string;
+  items: DirectoryItem[];
+  totalItems: number;
+}
+
+interface RecursiveDirectoryContent {
+  path: string;
+  root: DirectoryItem;
+  totalItems: number;
+  maxDepth: number;
+}
+
 export class FileSystemPathController {
+  // Pfad speichern
+  static async savePath(req: Request, res: Response) {
+    try {
+      const { path: filePath, name, teacherId } = req.body;
+
+      console.log('=== SAVE PATH REQUEST ===');
+      console.log('Request body:', req.body);
+      console.log('File path:', filePath);
+      console.log('Name:', name);
+      console.log('Teacher ID:', teacherId);
+
+      if (!filePath || !name || !teacherId) {
+        console.log('Missing required fields');
+        return res.status(400).json({ error: 'Alle Felder sind erforderlich' });
+      }
+
+      // Pfad normalisieren und Leerzeichen behandeln
+      let normalizedPath: string;
+      try {
+        // Entferne Escape-Zeichen und normalisiere den Pfad
+        const cleanPath = filePath.replace(/\\/g, '').replace(/\\ /g, ' ');
+        normalizedPath = path.resolve(cleanPath);
+        console.log('Clean path:', cleanPath);
+        console.log('Normalized path:', normalizedPath);
+      } catch (pathError) {
+        console.log('Path normalization error:', pathError);
+        return res.status(400).json({ error: 'Ungültiger Pfad-Format' });
+      }
+
+      // Prüfen ob der Pfad existiert und lesbar ist
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('Path does not exist:', normalizedPath);
+        
+        // Versuche den übergeordneten Ordner zu finden
+        const parentDir = path.dirname(normalizedPath);
+        if (fs.existsSync(parentDir)) {
+          console.log('Parent directory exists:', parentDir);
+          return res.status(400).json({ 
+            error: 'Der angegebene Pfad existiert nicht',
+            details: `Der Ordner "${path.basename(normalizedPath)}" existiert nicht in "${parentDir}"`,
+            suggestion: 'Überprüfen Sie den Ordnernamen oder erstellen Sie den Ordner zuerst'
+          });
+        } else {
+          return res.status(400).json({ 
+            error: 'Der angegebene Pfad existiert nicht',
+            details: `Weder der Pfad noch der übergeordnete Ordner existieren`,
+            suggestion: 'Überprüfen Sie den vollständigen Pfad'
+          });
+        }
+      }
+
+      // Prüfen ob der Lehrer existiert
+      const teacher = await prisma.user.findUnique({
+        where: { id: teacherId }
+      });
+
+      if (!teacher || teacher.role !== 'TEACHER') {
+        console.log('Invalid teacher:', teacherId);
+        return res.status(400).json({ error: 'Ungültiger Lehrer' });
+      }
+
+      // Pfad speichern oder aktualisieren
+      const savedPath = await prisma.fileSystemPath.upsert({
+        where: { path: normalizedPath },
+        update: { name, updatedAt: new Date() },
+        create: {
+          path: normalizedPath,
+          name,
+          teacherId
+        }
+      });
+
+      console.log('Path saved successfully:', savedPath);
+      res.json(savedPath);
+    } catch (error) {
+      console.error('Fehler beim Speichern des Pfades:', error);
+      res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+  }
+
   // Alle Pfade eines Lehrers abrufen
   static async getPathsByTeacher(req: Request, res: Response) {
     try {
       const { teacherId } = req.params;
-      
+      console.log('Getting paths for teacher:', teacherId);
+
       const paths = await prisma.fileSystemPath.findMany({
         where: { teacherId },
         orderBy: { createdAt: 'desc' }
       });
-      
+
+      console.log('Found paths:', paths.length);
       res.json(paths);
     } catch (error) {
-      console.error('Error fetching file system paths:', error);
-      res.status(500).json({ error: 'Failed to fetch file system paths' });
+      console.error('Fehler beim Abrufen der Pfade:', error);
+      res.status(500).json({ error: 'Interner Serverfehler' });
     }
   }
 
-  // Neuen Pfad erstellen
-  static async createPath(req: Request, res: Response) {
+  // Verzeichnisstruktur eines Pfades lesen
+  static async readDirectory(req: Request, res: Response) {
     try {
-      const { name, path: filePath, description, teacherId } = req.body;
-      
-      // Prüfen ob der Pfad existiert und lesbar ist
-      if (!fs.existsSync(filePath)) {
-        return res.status(400).json({ error: 'Path does not exist' });
+      const { path: filePath, recursive = 'false' } = req.query;
+      console.log('=== READ DIRECTORY REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      console.log('Recursive:', recursive);
+
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('No path provided or invalid type');
+        return res.status(400).json({ error: 'Pfad ist erforderlich' });
       }
-      
-      const stats = fs.statSync(filePath);
+
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+
+      // Sicherheitsprüfung: Nur absolute Pfade erlauben
+      if (!path.isAbsolute(normalizedPath)) {
+        console.log('Path is not absolute:', normalizedPath);
+        return res.status(400).json({ error: 'Nur absolute Pfade sind erlaubt' });
+      }
+
+      // Prüfen ob der Pfad existiert
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('Path does not exist:', normalizedPath);
+        return res.status(400).json({ error: 'Der angegebene Pfad existiert nicht' });
+      }
+
+      // Prüfen ob es ein Verzeichnis ist
+      const stats = fs.statSync(normalizedPath);
       if (!stats.isDirectory()) {
-        return res.status(400).json({ error: 'Path must be a directory' });
+        console.log('Path is not a directory:', normalizedPath);
+        return res.status(400).json({ error: 'Der angegebene Pfad ist kein Verzeichnis' });
       }
-      
-      const newPath = await prisma.fileSystemPath.create({
-        data: {
-          name,
-          path: filePath,
-          description,
-          teacherId
+
+      // Funktion zum rekursiven Lesen von Verzeichnissen
+      const readDirectoryRecursive = (dirPath: string, maxDepth: number = 3, currentDepth: number = 0): DirectoryItem => {
+        if (currentDepth >= maxDepth) {
+          return {
+            name: path.basename(dirPath),
+            type: 'directory',
+            path: dirPath,
+            children: [],
+            isTruncated: true
+          };
         }
-      });
-      
-      res.status(201).json(newPath);
+
+        try {
+          const items = fs.readdirSync(dirPath, { withFileTypes: true });
+          
+          const children = items
+            .filter(item => !item.name.startsWith('.')) // Versteckte Dateien ausfiltern
+            .map(item => {
+              const itemPath = path.join(dirPath, item.name);
+              if (item.isDirectory()) {
+                return readDirectoryRecursive(itemPath, maxDepth, currentDepth + 1);
+              } else {
+                return {
+                  name: item.name,
+                  type: 'file' as const,
+                  path: itemPath,
+                  children: [],
+                  size: fs.statSync(itemPath).size
+                };
+              }
+            })
+            .sort((a, b) => {
+              // Verzeichnisse zuerst, dann Dateien, beide alphabetisch sortiert
+              if (a.type === b.type) {
+                return a.name.localeCompare(b.name);
+              }
+              return a.type === 'directory' ? -1 : 1;
+            });
+
+          return {
+            name: path.basename(dirPath),
+            type: 'directory',
+            path: dirPath,
+            children,
+            itemCount: children.length
+          };
+        } catch (error) {
+          console.log(`Error reading directory ${dirPath}:`, error);
+          return {
+            name: path.basename(dirPath),
+            type: 'directory',
+            path: dirPath,
+            children: [],
+            error: 'Zugriff verweigert'
+          };
+        }
+      };
+
+      // Verzeichnisinhalt lesen (rekursiv oder flach)
+      let result: RecursiveDirectoryContent | DirectoryContent;
+      if (recursive === 'true') {
+        console.log('Reading directory recursively...');
+        const rootItem = readDirectoryRecursive(normalizedPath, 5, 0);
+        result = {
+          path: normalizedPath,
+          root: rootItem,
+          totalItems: FileSystemPathController.countTotalItems(rootItem),
+          maxDepth: 5
+        };
+      } else {
+        console.log('Reading directory flat...');
+        const items = fs.readdirSync(normalizedPath, { withFileTypes: true });
+        
+        const directoryItems = items
+          .filter(item => !item.name.startsWith('.')) // Versteckte Dateien ausfiltern
+          .map(item => ({
+            name: item.name,
+            type: (item.isDirectory() ? 'directory' : 'file') as 'directory' | 'file',
+            path: path.join(normalizedPath, item.name),
+            children: [],
+            size: item.isFile() ? fs.statSync(path.join(normalizedPath, item.name)).size : undefined
+          }))
+          .sort((a, b) => {
+            // Verzeichnisse zuerst, dann Dateien, beide alphabetisch sortiert
+            if (a.type === b.type) {
+              return a.name.localeCompare(b.name);
+            }
+            return a.type === 'directory' ? -1 : 1;
+          });
+
+        result = {
+          path: normalizedPath,
+          items: directoryItems,
+          totalItems: directoryItems.length
+        };
+      }
+
+      console.log('Directory read successfully');
+      res.json(result);
     } catch (error) {
-      console.error('Error creating file system path:', error);
-      res.status(500).json({ error: 'Failed to create file system path' });
+      console.error('Fehler beim Lesen des Verzeichnisses:', error);
+      res.status(500).json({ error: 'Interner Serverfehler' });
     }
   }
 
-  // Pfad aktualisieren
-  static async updatePath(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-      const { name, path: filePath, description } = req.body;
-      
-      // Prüfen ob der neue Pfad existiert und lesbar ist
-      if (filePath && !fs.existsSync(filePath)) {
-        return res.status(400).json({ error: 'Path does not exist' });
+  // Hilfsfunktion zum Zählen der Gesamtanzahl von Elementen
+  private static countTotalItems(item: DirectoryItem): number {
+    let count = 1; // Das aktuelle Element
+    if (item.children) {
+      for (const child of item.children) {
+        count += this.countTotalItems(child);
       }
-      
-      if (filePath) {
-        const stats = fs.statSync(filePath);
-        if (!stats.isDirectory()) {
-          return res.status(400).json({ error: 'Path must be a directory' });
-        }
-      }
-      
-      const updatedPath = await prisma.fileSystemPath.update({
-        where: { id },
-        data: {
-          name,
-          path: filePath,
-          description
-        }
-      });
-      
-      res.json(updatedPath);
-    } catch (error) {
-      console.error('Error updating file system path:', error);
-      res.status(500).json({ error: 'Failed to update file system path' });
     }
+    return count;
   }
 
   // Pfad löschen
   static async deletePath(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
-      await prisma.fileSystemPath.delete({
+      console.log('Deleting path with ID:', id);
+
+      const deletedPath = await prisma.fileSystemPath.delete({
         where: { id }
       });
-      
-      res.status(204).send();
+
+      console.log('Path deleted successfully:', deletedPath);
+      res.json({ message: 'Pfad erfolgreich gelöscht', deletedPath });
     } catch (error) {
-      console.error('Error deleting file system path:', error);
-      res.status(500).json({ error: 'Failed to delete file system path' });
-    }
-  }
-
-  // Ordnerstruktur eines Pfads lesen
-  static async getFolderStructure(req: Request, res: Response) {
-    try {
-      const { path: filePath } = req.params;
-      
-      if (!fs.existsSync(filePath)) {
-        return res.status(400).json({ error: 'Path does not exist' });
-      }
-      
-      const stats = fs.statSync(filePath);
-      if (!stats.isDirectory()) {
-        return res.status(400).json({ error: 'Path must be a directory' });
-      }
-      
-      const structure = this.readDirectoryRecursively(filePath);
-      res.json(structure);
-    } catch (error) {
-      console.error('Error reading folder structure:', error);
-      res.status(500).json({ error: 'Failed to read folder structure' });
-    }
-  }
-
-  // Rekursiv Verzeichnisstruktur lesen (ohne versteckte Dateien)
-  private static readDirectoryRecursively(dirPath: string, maxDepth: number = 3, currentDepth: number = 0): any {
-    if (currentDepth >= maxDepth) {
-      return null;
-    }
-
-    try {
-      const items = fs.readdirSync(dirPath);
-      const structure: any = {
-        name: path.basename(dirPath),
-        path: dirPath,
-        type: 'directory',
-        children: []
-      };
-
-      for (const item of items) {
-        // Versteckte Dateien/Ordner überspringen
-        if (item.startsWith('.')) {
-          continue;
-        }
-
-        const itemPath = path.join(dirPath, item);
-        const itemStats = fs.statSync(itemPath);
-
-        if (itemStats.isDirectory()) {
-          const childStructure = this.readDirectoryRecursively(itemPath, maxDepth, currentDepth + 1);
-          if (childStructure) {
-            structure.children.push(childStructure);
-          }
-        } else {
-          // Nur bestimmte Dateitypen anzeigen
-          const ext = path.extname(item).toLowerCase();
-          const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.html', '.htm', '.jpg', '.jpeg', '.png', '.gif', '.mp4', '.avi', '.mov'];
-          
-          if (allowedExtensions.includes(ext)) {
-            structure.children.push({
-              name: item,
-              path: itemPath,
-              type: 'file',
-              extension: ext,
-              size: itemStats.size
-            });
-          }
-        }
-      }
-
-      return structure;
-    } catch (error) {
-      console.error(`Error reading directory ${dirPath}:`, error);
-      return null;
+      console.error('Fehler beim Löschen des Pfades:', error);
+      res.status(500).json({ error: 'Interner Serverfehler' });
     }
   }
 }
