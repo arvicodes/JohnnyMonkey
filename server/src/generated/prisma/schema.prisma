@@ -9,20 +9,21 @@ datasource db {
 }
 
 model User {
-  id             String              @id @default(uuid())
-  name           String
-  loginCode      String              @unique
-  role           String              @default("STUDENT")
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  avatarEmoji    String?
-  teacherGroups  LearningGroup[]     @relation("TeacherGroups")
-  notes          Note[]
-  quizzes        Quiz[]
-  participations QuizParticipation[]
-  subjects       Subject[]
-  learningGroups LearningGroup[]     @relation("StudentGroups")
-  grades         Grade[]
+  id              String              @id @default(uuid())
+  name            String
+  loginCode       String              @unique
+  role            String              @default("STUDENT")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  avatarEmoji     String?
+  teacherGroups   LearningGroup[]     @relation("TeacherGroups")
+  notes           Note[]
+  quizzes         Quiz[]
+  participations  QuizParticipation[]
+  subjects        Subject[]
+  learningGroups  LearningGroup[]     @relation("StudentGroups")
+  grades          Grade[]
+  fileSystemPaths FileSystemPath[]
 }
 
 model GradingSchema {
@@ -98,6 +99,17 @@ model Unit {
   updatedAt   DateTime @updatedAt
   topics      Topic[]
   block       Block    @relation(fields: [blockId], references: [id])
+}
+
+model FileSystemPath {
+  id          String   @id @default(uuid())
+  name        String
+  path        String   @unique
+  description String?
+  teacherId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  teacher     User     @relation(fields: [teacherId], references: [id])
 }
 
 model Topic {

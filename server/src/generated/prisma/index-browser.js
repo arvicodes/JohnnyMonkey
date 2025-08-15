@@ -186,6 +186,16 @@ exports.Prisma.UnitScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.FileSystemPathScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  path: 'path',
+  description: 'description',
+  teacherId: 'teacherId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.TopicScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -327,6 +337,7 @@ exports.Prisma.ModelName = {
   Subject: 'Subject',
   Block: 'Block',
   Unit: 'Unit',
+  FileSystemPath: 'FileSystemPath',
   Topic: 'Topic',
   Lesson: 'Lesson',
   GroupAssignment: 'GroupAssignment',
