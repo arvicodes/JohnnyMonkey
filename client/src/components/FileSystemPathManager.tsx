@@ -3,7 +3,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Textarea } from './ui/textarea';
 import { FolderOpen, File, Folder, Trash2, Edit, Plus } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 
@@ -176,7 +175,7 @@ export const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ te
 
   // Pfad löschen
   const deletePath = async (id: string) => {
-    if (!confirm('Möchten Sie diesen Dateipfad wirklich löschen?')) return;
+    if (!window.confirm('Möchten Sie diesen Dateipfad wirklich löschen?')) return;
 
     try {
       const response = await fetch(`/api/file-system-paths/${id}`, {
@@ -262,6 +261,7 @@ export const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ te
 
   useEffect(() => {
     loadPaths();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacherId]);
 
   return (
