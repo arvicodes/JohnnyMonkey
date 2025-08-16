@@ -1373,13 +1373,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    const fileName = 'karteikarten_technische_informatik_komplett.docx';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen/1. Ganz verschiedene Arten von Zahlen/karteikarten_technische_informatik_komplett.docx';
+                                                    const ext = filePath.split('.').pop()?.toLowerCase();
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/' + fileName 
-                                                      : window.location.origin + '/' + fileName;
+                                                      ? 'http://localhost:3005' + filePath 
+                                                      : window.location.origin + filePath;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1414,13 +1415,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    const fileName = 'SuSGo.html';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen/1. Ganz verschiedene Arten von Zahlen/SuSGo.html';
+                                                    const ext = filePath.split('.').pop()?.toLowerCase();
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/' + fileName 
-                                                      : window.location.origin + '/' + fileName;
+                                                      ? 'http://localhost:3005' + filePath 
+                                                      : window.location.origin + filePath;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1472,13 +1474,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    const fileName = 'TechnischeInfo-Quiz.docx';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/2. Erstelle ein Merkblatt zu den Rationalen Zahlen/TechnischeInfo-Quiz.docx';
+                                                    const ext = filePath.split('.').pop()?.toLowerCase();
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/' + fileName 
-                                                      : window.location.origin + '/' + fileName;
+                                                      ? 'http://localhost:3005' + filePath 
+                                                      : window.location.origin + filePath;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1530,13 +1533,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    const fileName = 'TechnischeInfo-Quiz.docx';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/3. Übungsaufgaben/TechnischeInfo-Quiz.docx';
+                                                    const ext = filePath.split('.').pop()?.toLowerCase();
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/' + fileName 
-                                                      : window.location.origin + '/' + fileName;
+                                                      ? 'http://localhost:3005' + filePath 
+                                                      : window.location.origin + filePath;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
