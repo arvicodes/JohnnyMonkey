@@ -1375,11 +1375,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
                                                       fontWeight: 500,
-                                                      wordBreak: 'break-word',
-                                                      overflowWrap: 'break-word',
                                                       lineHeight: 1.2
                                                     }}>
-                                                      📄 karteikarten_technische_informatik_komplett.docx
+                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                        📄
+                                                      </span>
+                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                                        karteikarten_technische_informatik_komplett.docx
+                                                      </span>
                                                     </Typography>
                                                   </Box>
                                                   
@@ -1396,11 +1399,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
                                                       fontWeight: 500,
-                                                      wordBreak: 'break-word',
-                                                      overflowWrap: 'break-word',
                                                       lineHeight: 1.2
                                                     }}>
-                                                      📄 SuSGo.html
+                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                        📄
+                                                      </span>
+                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                                        SuSGo.html
+                                                      </span>
                                                     </Typography>
                                                   </Box>
                                                 </Box>
@@ -1434,11 +1440,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
                                                       fontWeight: 500,
-                                                      wordBreak: 'break-word',
-                                                      overflowWrap: 'break-word',
                                                       lineHeight: 1.2
                                                     }}>
-                                                      📄 TechnischeInfo-Quiz.docx
+                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                        📄
+                                                      </span>
+                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                                        TechnischeInfo-Quiz.docx
+                                                      </span>
                                                     </Typography>
                                                   </Box>
                                                 </Box>
@@ -1472,11 +1481,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
                                                       fontWeight: 500,
-                                                      wordBreak: 'break-word',
-                                                      overflowWrap: 'break-word',
                                                       lineHeight: 1.2
                                                     }}>
-                                                      📄 TechnischeInfo-Quiz.docx
+                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                        📄
+                                                      </span>
+                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                                        TechnischeInfo-Quiz.docx
+                                                      </span>
                                                     </Typography>
                                                   </Box>
                                                 </Box>
