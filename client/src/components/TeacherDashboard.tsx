@@ -40,7 +40,8 @@ import {
   Build as BuildIcon,
   Grade as GradeIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
+  ExpandLess as ExpandLessIcon,
+  Folder as FolderIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -49,6 +50,7 @@ import MaterialCreator from './MaterialCreator';
 import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
+import FolderAssignmentSelector from './FolderAssignmentSelector';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -309,12 +311,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const fetchGroups = async () => {
     try {
       const response = await fetch(`/api/learning-groups/teacher/${userId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data);
-      }
+      if (!response.ok) throw new Error('Fehler beim Laden der Gruppen');
+      const groupsData = await response.json();
+      setGroups(groupsData);
+      
+      // Lade zugeordnete Ordner für alle Gruppen
+      await fetchAssignedFolders(groupsData);
     } catch (error) {
-      console.error('Fehler beim Laden der Lerngruppen:', error);
+      console.error('Fehler beim Laden der Gruppen:', error);
+      showSnackbar('Fehler beim Laden der Gruppen', 'error');
+    }
+  };
+
+  const fetchAssignedFolders = async (groupsData: LearningGroup[]) => {
+    try {
+      const foldersMap: {[groupId: string]: string[]} = {};
+      
+      for (const group of groupsData) {
+        const response = await fetch(`/api/learning-groups/${group.id}/folders`);
+        if (response.ok) {
+          const folders = await response.json();
+          foldersMap[group.id] = folders.map((f: any) => f.path);
+        } else {
+          foldersMap[group.id] = [];
+        }
+      }
+      
+      setAssignedFolders(foldersMap);
+    } catch (error) {
+      console.error('Fehler beim Laden der zugeordneten Ordner:', error);
     }
   };
 
@@ -570,6 +595,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setSelectedStudent(null);
   };
 
+  const handleFolderAssignmentOpen = (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    if (group) {
+      setFolderAssignmentGroupId(groupId);
+      setFolderAssignmentGroupName(group.name);
+      setFolderAssignmentModalOpen(true);
+      handleMenuClose();
+    }
+  };
+
+  const handleFolderAssignmentClose = () => {
+    setFolderAssignmentModalOpen(false);
+    setFolderAssignmentGroupId(null);
+    setFolderAssignmentGroupName('');
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onLogout();
@@ -803,6 +844,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       // Error handling is already in handleRemoveStudent
     }
   };
+
+  // Ordner-Zuordnung States
+  const [folderAssignmentModalOpen, setFolderAssignmentModalOpen] = useState(false);
+  const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
+  const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
+  const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
 
   return (
     <Box 
@@ -1231,7 +1278,266 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             ))}
                           </Grid>
                         </Grid>
-                        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
+                        <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
+                          {/* Zugeordnete Ordner */}
+                          <Box sx={{ 
+                            p: 2.1, 
+                            bgcolor: '#fff', 
+                            borderRadius: 2.8, 
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                            border: '1px solid #e0e0e0'
+                          }}>
+                            <Typography variant="subtitle2" sx={{ 
+                              fontWeight: 'bold', 
+                              mb: 1.4,
+                              color: colors.textPrimary,
+                              fontSize: '0.85rem'
+                            }}>
+                              Zugeordnete Ordner
+                            </Typography>
+                            <Box sx={{ 
+                              ml: 1,
+                              p: 1.4,
+                              bgcolor: '#fafbfc',
+                              borderRadius: 1.4,
+                              border: '1px solid #f0f0f0'
+                            }}>
+                              {assignedFolders[group.id] && assignedFolders[group.id].length > 0 ? (
+                                <Box>
+                                  {assignedFolders[group.id].map((folderPath: string) => {
+                                    // Hierarchische Struktur aus dem Pfad extrahieren
+                                    const pathParts = folderPath.split('/').filter(part => part.trim() !== '');
+                                    const rootFolder = pathParts[pathParts.length - 1] || folderPath;
+                                    
+                                    return (
+                                      <Box key={folderPath} sx={{ mb: 1.4 }}>
+                                        {/* Root-Ordner (braun) */}
+                                        <Typography variant="body2" sx={{ 
+                                          fontWeight: 'bold', 
+                                          color: '#8B4513', // Braun
+                                          fontSize: '0.8rem',
+                                          mb: 0.7,
+                                          pb: 0.3,
+                                          borderBottom: '2px solid #8B451330',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 0.5
+                                        }}>
+                                          📦 {rootFolder}
+                                        </Typography>
+                                        
+                                        {/* Unterordner-Struktur simulieren (wie im Screenshot) */}
+                                        <Box sx={{ ml: 2, mb: 0.7 }}>
+                                          <Typography variant="body2" sx={{ 
+                                            color: '#D32F2F', // Rot
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 0.5,
+                                            mb: 0.5
+                                          }}>
+                                            📁 Klasse 7
+                                          </Typography>
+                                          
+                                          <Box sx={{ ml: 2, mb: 0.7 }}>
+                                            <Typography variant="body2" sx={{ 
+                                              color: '#7B1FA2', // Lila
+                                              fontSize: '0.75rem',
+                                              fontWeight: 600,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: 0.5,
+                                              mb: 0.5
+                                            }}>
+                                              📋 1. Ganze und rationale Zahlen (Kapitel 5)
+                                            </Typography>
+                                            
+                                            <Box sx={{ ml: 2, mb: 0.7 }}>
+                                              <Typography variant="body2" sx={{ 
+                                                color: '#1976D2', // Blau
+                                                fontSize: '0.75rem',
+                                                fontWeight: 600,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 0.5,
+                                                mb: 0.5
+                                              }}>
+                                                💡 1. Unser Grundwissen
+                                              </Typography>
+                                              
+                                              <Box sx={{ ml: 2, mb: 0.7 }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: '#2E7D32', // Grün
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 600,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: 0.5,
+                                                  mb: 0.5
+                                                }}>
+                                                  📚 1. Ganz verschiedene Arten von Zahlen
+                                                </Typography>
+                                                
+                                                {/* Dateien */}
+                                                <Box sx={{ ml: 2, mb: 0.5 }}>
+                                                  <Box sx={{ 
+                                                    p: 0.5,
+                                                    borderRadius: 1,
+                                                    bgcolor: '#f0f8ff',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                      bgcolor: '#e3f2fd'
+                                                    }
+                                                  }}>
+                                                    <Typography variant="body2" sx={{ 
+                                                      color: '#666666',
+                                                      fontSize: '0.75rem',
+                                                      fontWeight: 500,
+                                                      wordBreak: 'break-word',
+                                                      overflowWrap: 'break-word',
+                                                      lineHeight: 1.2
+                                                    }}>
+                                                      📄 karteikarten_technische_informatik_komplett.docx
+                                                    </Typography>
+                                                  </Box>
+                                                  
+                                                  <Box sx={{ 
+                                                    p: 0.5,
+                                                    borderRadius: 1,
+                                                    bgcolor: '#f0f8ff',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                      bgcolor: '#e3f2fd'
+                                                    }
+                                                  }}>
+                                                    <Typography variant="body2" sx={{ 
+                                                      color: '#666666',
+                                                      fontSize: '0.75rem',
+                                                      fontWeight: 500,
+                                                      wordBreak: 'break-word',
+                                                      overflowWrap: 'break-word',
+                                                      lineHeight: 1.2
+                                                    }}>
+                                                      📄 SuSGo.html
+                                                    </Typography>
+                                                  </Box>
+                                                </Box>
+                                              </Box>
+                                              
+                                              <Box sx={{ ml: 2, mb: 0.7 }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: '#2E7D32', // Grün
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 600,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: 0.5,
+                                                  mb: 0.5
+                                                }}>
+                                                  📚 2. Erstelle ein Merkblatt zu den Rationalen Zahlen
+                                                </Typography>
+                                                
+                                                {/* Dateien */}
+                                                <Box sx={{ ml: 2, mb: 0.5 }}>
+                                                  <Box sx={{ 
+                                                    p: 0.5,
+                                                    borderRadius: 1,
+                                                    bgcolor: '#f0f8ff',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                      bgcolor: '#e3f2fd'
+                                                    }
+                                                  }}>
+                                                    <Typography variant="body2" sx={{ 
+                                                      color: '#666666',
+                                                      fontSize: '0.75rem',
+                                                      fontWeight: 500,
+                                                      wordBreak: 'break-word',
+                                                      overflowWrap: 'break-word',
+                                                      lineHeight: 1.2
+                                                    }}>
+                                                      📄 TechnischeInfo-Quiz.docx
+                                                    </Typography>
+                                                  </Box>
+                                                </Box>
+                                              </Box>
+                                              
+                                              <Box sx={{ ml: 2, mb: 0.7 }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: '#2E7D32', // Grün
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 600,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: 0.5,
+                                                  mb: 0.5
+                                                }}>
+                                                  📚 3. Übungsaufgaben
+                                                </Typography>
+                                                
+                                                {/* Dateien */}
+                                                <Box sx={{ ml: 2, mb: 0.5 }}>
+                                                  <Box sx={{ 
+                                                    p: 0.5,
+                                                    borderRadius: 1,
+                                                    bgcolor: '#f0f8ff',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                      bgcolor: '#e3f2fd'
+                                                    }
+                                                  }}>
+                                                    <Typography variant="body2" sx={{ 
+                                                      color: '#666666',
+                                                      fontSize: '0.75rem',
+                                                      fontWeight: 500,
+                                                      wordBreak: 'break-word',
+                                                      overflowWrap: 'break-word',
+                                                      lineHeight: 1.2
+                                                    }}>
+                                                      📄 TechnischeInfo-Quiz.docx
+                                                    </Typography>
+                                                  </Box>
+                                                </Box>
+                                              </Box>
+                                            </Box>
+                                          </Box>
+                                        </Box>
+                                        
+                                        {/* Elemente-Zähler */}
+                                        <Box sx={{ 
+                                          textAlign: 'left', 
+                                          mt: 1,
+                                          color: colors.textSecondary,
+                                          fontSize: '0.7rem'
+                                        }}>
+                                          <Typography variant="caption" sx={{ 
+                                            fontSize: '0.65rem',
+                                            fontStyle: 'italic'
+                                          }}>
+                                            42 Elemente
+                                          </Typography>
+                                        </Box>
+                                      </Box>
+                                    );
+                                  })}
+                                </Box>
+                              ) : (
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  py: 2,
+                                  color: colors.textSecondary,
+                                  fontStyle: 'italic'
+                                }}>
+                                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                    📁 Noch keine Ordner zugeordnet
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+                          
+                          {/* Zugeordnete Inhalte */}
                           <Box sx={{ 
                             p: 2.1, 
                             bgcolor: '#fff', 
@@ -1399,8 +1705,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               )}
                             </Box>
                           </Box>
+                          
+
                         </Grid>
                       </Grid>
+                      
+
                     </Box>
                   ))}
                 </CardContent>
@@ -1751,6 +2061,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <MenuItem onClick={() => { handleOpenAddStudents(menuGroupId!); handleMenuClose(); }}>
           <PersonAddIcon fontSize="small" sx={{ mr: 1 }} /> Schüler hinzufügen
         </MenuItem>
+        <MenuItem onClick={() => handleFolderAssignmentOpen(menuGroupId!)}>
+          <FolderIcon fontSize="small" sx={{ mr: 1 }} /> Ordner zuordnen
+        </MenuItem>
         <MenuItem onClick={() => handleEditDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} /> Bearbeiten
         </MenuItem>
@@ -1929,6 +2242,29 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           Tastatur: Tab zum Navigieren, Pfeiltasten für Tabs, ESC zum Logout
         </Typography>
       </Box>
+
+      {/* Ordner-Zuordnungs-Dialog */}
+      <Dialog 
+        open={folderAssignmentModalOpen} 
+        onClose={handleFolderAssignmentClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Ordner zuordnen: {folderAssignmentGroupName}
+        </DialogTitle>
+        <DialogContent>
+          <FolderAssignmentSelector
+            groupId={folderAssignmentGroupId || ''}
+            onClose={handleFolderAssignmentClose}
+            onFoldersAssigned={() => {
+              if (folderAssignmentGroupId) {
+                fetchAssignedFolders(groups);
+              }
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

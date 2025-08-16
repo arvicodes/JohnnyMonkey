@@ -445,7 +445,7 @@ export class FileSystemPathController {
         console.log('Missing or invalid filePath parameter');
         return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
       }
-      
+
       // Pfad normalisieren
       const normalizedPath = path.resolve(filePath);
       console.log('Normalized path:', normalizedPath);
@@ -455,13 +455,13 @@ export class FileSystemPathController {
         console.log('File does not exist:', normalizedPath);
         return res.status(404).json({ error: 'Datei nicht gefunden' });
       }
-      
+
       const stats = fs.statSync(normalizedPath);
       if (!stats.isFile()) {
         console.log('Path is not a file:', normalizedPath);
         return res.status(400).json({ error: 'Pfad ist keine Datei' });
       }
-      
+
       // Datei-Informationen abrufen
       const fileName = path.basename(normalizedPath);
       const fileSize = stats.size;
@@ -523,7 +523,7 @@ export class FileSystemPathController {
         console.log('Missing or invalid filePath parameter');
         return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
       }
-      
+
       // Pfad normalisieren
       const normalizedPath = path.resolve(filePath);
       console.log('Normalized path:', normalizedPath);
@@ -533,13 +533,13 @@ export class FileSystemPathController {
         console.log('File does not exist:', normalizedPath);
         return res.status(404).json({ error: 'Datei nicht gefunden' });
       }
-      
+
       const stats = fs.statSync(normalizedPath);
       if (!stats.isFile()) {
         console.log('Path is not a file:', normalizedPath);
         return res.status(400).json({ error: 'Pfad ist keine Datei' });
       }
-      
+
       // Datei-Informationen abrufen
       const fileName = path.basename(normalizedPath);
       const fileSize = stats.size;
@@ -796,8 +796,8 @@ export class FileSystemPathController {
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
         res.send(fileBuffer);
       }
-      
-    } catch (error) {
+                        
+                      } catch (error) {
       console.error('Error in readTextFile:', error);
       res.status(500).json({ error: 'Fehler beim Lesen der Textdatei' });
     }
@@ -857,23 +857,23 @@ export class FileSystemPathController {
               <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
               <p><strong>Typ:</strong> PDF-Datei</p>
               <p><strong>Pfad:</strong> ${normalizedPath}</p>
-            </div>
+                  </div>
             <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
               <p><strong>Hinweis:</strong> Für eine vollständige PDF-Vorschau wird eine spezielle Bibliothek benötigt.</p>
               <p>Sie können die Datei über den Download-Button herunterladen und in einem PDF-Reader öffnen.</p>
-            </div>
+              </div>
           </div>
         `;
         
         console.log('PDF HTML preview sent successfully');
         res.send(htmlContent);
-      } else {
+                          } else {
         // Für Download: Datei als Blob senden
         const fileBuffer = fs.readFileSync(normalizedPath);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
         res.send(fileBuffer);
-      }
+                    }
       
     } catch (error) {
       console.error('Error in readPdfFile:', error);
@@ -1012,6 +1012,24 @@ export class FileSystemPathController {
     } catch (error) {
       console.error('Error in readDocxFile:', error);
       res.status(500).json({ error: 'Fehler beim Lesen der DOCX-Datei' });
+    }
+  }
+
+  // Alle Pfade abrufen (für die Ordner-Zuordnung)
+  static async getAllPaths(req: Request, res: Response) {
+    try {
+      console.log('=== GET ALL PATHS REQUEST ===');
+      
+      const paths = await prisma.fileSystemPath.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+      
+      console.log('Found paths:', paths.length);
+      res.json(paths);
+      
+    } catch (error) {
+      console.error('Error in getAllPaths:', error);
+      res.status(500).json({ error: 'Fehler beim Laden der Pfade' });
     }
   }
 }

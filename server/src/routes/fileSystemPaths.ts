@@ -3,6 +3,9 @@ import { FileSystemPathController } from '../controllers/FileSystemPathControlle
 
 const router = express.Router();
 
+// Alle Pfade abrufen (für die Ordner-Zuordnung)
+router.get('/', FileSystemPathController.getAllPaths);
+
 // Pfad speichern
 router.post('/save', FileSystemPathController.savePath);
 
