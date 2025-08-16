@@ -1304,41 +1304,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }}>
                               {assignedFolders[group.id] && assignedFolders[group.id].length > 0 ? (
                                 <Box>
-                                  {assignedFolders[group.id].map((folderPath: string) => {
-                                    // Hierarchische Struktur aus dem Pfad extrahieren
-                                    const pathParts = folderPath.split('/').filter(part => part.trim() !== '');
-                                    const rootFolder = pathParts[pathParts.length - 1] || folderPath;
-                                    
-                                    return (
+                                                                  {assignedFolders[group.id].map((folderPath: string) => {
+                                  return (
                                       <Box key={folderPath} sx={{ mb: 1.4 }}>
-                                        {/* Root-Ordner (braun) */}
-                                        <Typography variant="body2" sx={{ 
-                                          fontWeight: 'bold', 
-                                          color: '#8B4513', // Braun
-                                          fontSize: '0.8rem',
-                                          mb: 0.7,
-                                          pb: 0.3,
-                                          borderBottom: '2px solid #8B451330',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 0.5
-                                        }}>
-                                          📦 {rootFolder}
-                                        </Typography>
-                                        
-                                        {/* Unterordner-Struktur simulieren (wie im Screenshot) */}
-                                        <Box sx={{ ml: 2, mb: 0.7 }}>
-                                          <Typography variant="body2" sx={{ 
-                                            color: '#D32F2F', // Rot
-                                            fontSize: '0.75rem',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 0.5,
-                                            mb: 0.5
-                                          }}>
-                                            📁 Klasse 7
-                                          </Typography>
+                                                                            {/* Unterordner-Struktur simulieren (wie im Screenshot) */}
+                                    <Box sx={{ mb: 0.7 }}>
+                                      <Typography variant="body2" sx={{ 
+                                        color: '#D32F2F', // Rot
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        mb: 0.5
+                                      }}>
+                                        📁 Klasse 7
+                                      </Typography>
                                           
                                           <Box sx={{ ml: 2, mb: 0.7 }}>
                                             <Typography variant="body2" sx={{ 
