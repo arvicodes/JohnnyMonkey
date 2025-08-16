@@ -1367,10 +1367,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     borderRadius: 1,
                                                     bgcolor: '#f0f8ff',
                                                     transition: 'all 0.2s ease',
+                                                    cursor: 'pointer',
                                                     '&:hover': {
                                                       bgcolor: '#e3f2fd'
                                                     }
-                                                  }}>
+                                                  }}
+                                                  onClick={() => {
+                                                    const fileName = 'karteikarten_technische_informatik_komplett.docx';
+                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    
+                                                    // Verwende den Server-Port (3005) für HTML-Dateien
+                                                    const fullUrl = ext === 'html' 
+                                                      ? 'http://localhost:3005' + fileName 
+                                                      : window.location.origin + fileName;
+                                                    
+                                                    const newWindow = window.open(fullUrl, '_blank');
+                                                    
+                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
+                                                    }
+                                                  }}
+                                                  >
                                                     <Typography variant="body2" sx={{ 
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
@@ -1391,10 +1408,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     borderRadius: 1,
                                                     bgcolor: '#f0f8ff',
                                                     transition: 'all 0.2s ease',
+                                                    cursor: 'pointer',
                                                     '&:hover': {
                                                       bgcolor: '#e3f2fd'
                                                     }
-                                                  }}>
+                                                  }}
+                                                  onClick={() => {
+                                                    const fileName = 'SuSGo.html';
+                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    
+                                                    // Verwende den Server-Port (3005) für HTML-Dateien
+                                                    const fullUrl = ext === 'html' 
+                                                      ? 'http://localhost:3005' + fileName 
+                                                      : window.location.origin + fileName;
+                                                    
+                                                    const newWindow = window.open(fullUrl, '_blank');
+                                                    
+                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
+                                                    }
+                                                  }}
+                                                  >
                                                     <Typography variant="body2" sx={{ 
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
@@ -1432,10 +1466,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     borderRadius: 1,
                                                     bgcolor: '#f0f8ff',
                                                     transition: 'all 0.2s ease',
+                                                    cursor: 'pointer',
                                                     '&:hover': {
                                                       bgcolor: '#e3f2fd'
                                                     }
-                                                  }}>
+                                                  }}
+                                                  onClick={() => {
+                                                    const fileName = 'TechnischeInfo-Quiz.docx';
+                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    
+                                                    // Verwende den Server-Port (3005) für HTML-Dateien
+                                                    const fullUrl = ext === 'html' 
+                                                      ? 'http://localhost:3005' + fileName 
+                                                      : window.location.origin + fileName;
+                                                    
+                                                    const newWindow = window.open(fullUrl, '_blank');
+                                                    
+                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
+                                                    }
+                                                  }}
+                                                  >
                                                     <Typography variant="body2" sx={{ 
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
@@ -1473,10 +1524,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     borderRadius: 1,
                                                     bgcolor: '#f0f8ff',
                                                     transition: 'all 0.2s ease',
+                                                    cursor: 'pointer',
                                                     '&:hover': {
                                                       bgcolor: '#e3f2fd'
                                                     }
-                                                  }}>
+                                                  }}
+                                                  onClick={() => {
+                                                    const fileName = 'TechnischeInfo-Quiz.docx';
+                                                    const ext = fileName.split('.').pop()?.toLowerCase();
+                                                    
+                                                    // Verwende den Server-Port (3005) für HTML-Dateien
+                                                    const fullUrl = ext === 'html' 
+                                                      ? 'http://localhost:3005' + fileName 
+                                                      : window.location.origin + fileName;
+                                                    
+                                                    const newWindow = window.open(fullUrl, '_blank');
+                                                    
+                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
+                                                    }
+                                                  }}
+                                                  >
                                                     <Typography variant="body2" sx={{ 
                                                       color: '#666666',
                                                       fontSize: '0.75rem',
