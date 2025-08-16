@@ -54,15 +54,16 @@ model Grade {
 }
 
 model LearningGroup {
-  id             String            @id @default(uuid())
-  name           String
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  teacherId      String
-  gradingSchemas GradingSchema[]
-  assignments    GroupAssignment[]
-  teacher        User              @relation("TeacherGroups", fields: [teacherId], references: [id])
-  students       User[]            @relation("StudentGroups")
+  id                String                  @id @default(uuid())
+  name              String
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  teacherId         String
+  gradingSchemas    GradingSchema[]
+  assignments       GroupAssignment[]
+  folderAssignments GroupFolderAssignment[]
+  teacher           User                    @relation("TeacherGroups", fields: [teacherId], references: [id])
+  students          User[]                  @relation("StudentGroups")
 }
 
 model Subject {
@@ -133,6 +134,16 @@ model GroupAssignment {
   refId     String
   createdAt DateTime      @default(now())
   group     LearningGroup @relation(fields: [groupId], references: [id])
+}
+
+model GroupFolderAssignment {
+  id         String        @id @default(uuid())
+  groupId    String
+  folderPath String
+  folderName String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
 model Note {

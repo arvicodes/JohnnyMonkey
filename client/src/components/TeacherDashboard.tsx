@@ -1373,14 +1373,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
-                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen/1. Ganz verschiedene Arten von Zahlen/karteikarten_technische_informatik_komplett.docx';
-                                                    const ext = filePath.split('.').pop()?.toLowerCase();
+                                                    // Verwende den neuen API-Endpunkt für Datei-Öffnung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen .../1. Ganz verschiedene Arten von Zahlen/karteikarten_technische_informatik_komplett.docx';
                                                     
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + filePath 
-                                                      : window.location.origin + filePath;
+                                                    // Verwende den neuen /open Endpunkt über den Server
+                                                    const fullUrl = `http://localhost:3005/api/file-system-paths/open?filePath=${encodeURIComponent(filePath)}`;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1415,14 +1412,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
-                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen/1. Ganz verschiedene Arten von Zahlen/SuSGo.html';
-                                                    const ext = filePath.split('.').pop()?.toLowerCase();
+                                                    // Verwende den neuen API-Endpunkt für Datei-Öffnung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen .../1. Ganz verschiedene Arten von Zahlen/SuSGo.html';
                                                     
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + filePath 
-                                                      : window.location.origin + filePath;
+                                                    // Verwende den neuen /open Endpunkt über den Server
+                                                    const fullUrl = `http://localhost:3005/api/file-system-paths/open?filePath=${encodeURIComponent(filePath)}`;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1474,14 +1468,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
-                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/2. Erstelle ein Merkblatt zu den Rationalen Zahlen/TechnischeInfo-Quiz.docx';
-                                                    const ext = filePath.split('.').pop()?.toLowerCase();
+                                                    // Verwende den neuen API-Endpunkt für Datei-Öffnung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen .../2. Erstelle ein Merkblatt zu den Rationalen Zahlen/TechnischeInfo-Quiz.docx';
                                                     
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + filePath 
-                                                      : window.location.origin + filePath;
+                                                    // Verwende den neuen /open Endpunkt über den Server
+                                                    const fullUrl = `http://localhost:3005/api/file-system-paths/open?filePath=${encodeURIComponent(filePath)}`;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1533,14 +1524,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     }
                                                   }}
                                                   onClick={() => {
-                                                    // Verwende den vollständigen Pfad wie in der bestehenden Implementierung
-                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/3. Übungsaufgaben/TechnischeInfo-Quiz.docx';
-                                                    const ext = filePath.split('.').pop()?.toLowerCase();
+                                                    // Verwende den neuen API-Endpunkt für Datei-Öffnung
+                                                    const filePath = '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen .../3. Übungsaufgaben/TechnischeInfo-Quiz.docx';
                                                     
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + filePath 
-                                                      : window.location.origin + filePath;
+                                                    // Verwende den neuen /open Endpunkt über den Server
+                                                    const fullUrl = `http://localhost:3005/api/file-system-paths/open?filePath=${encodeURIComponent(filePath)}`;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     

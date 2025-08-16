@@ -1032,4 +1032,108 @@ export class FileSystemPathController {
       res.status(500).json({ error: 'Fehler beim Laden der Pfade' });
     }
   }
+
+  // Neue Methode: Datei öffnen (wie in der bestehenden Material&Quiz Implementierung)
+  static async openFile(req: Request, res: Response) {
+    try {
+      const { filePath } = req.query;
+      
+      console.log('=== OPEN FILE REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('Missing or invalid filePath parameter');
+        return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+      }
+      
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+      
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+      
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        console.log('Path is not a file:', normalizedPath);
+        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+      }
+      
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      // Datei lesen
+      const fileBuffer = fs.readFileSync(normalizedPath);
+      
+      // Content-Type basierend auf Dateiendung setzen
+      let contentType = 'application/octet-stream';
+      let contentDisposition = `inline; filename="${encodeURIComponent(fileName)}"`;
+      
+      switch (fileExtension) {
+        case '.html':
+        case '.htm':
+          contentType = 'text/html';
+          break;
+        case '.pdf':
+          contentType = 'application/pdf';
+          break;
+        case '.docx':
+          contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          break;
+        case '.doc':
+          contentType = 'application/msword';
+          break;
+        case '.pptx':
+          contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+          break;
+        case '.ppt':
+          contentType = 'application/vnd.ms-powerpoint';
+          break;
+        case '.xlsx':
+          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          break;
+        case '.xls':
+          contentType = 'application/vnd.ms-excel';
+          break;
+        case '.txt':
+          contentType = 'text/plain';
+          break;
+        case '.md':
+          contentType = 'text/markdown';
+          break;
+        case '.png':
+        case '.jpg':
+        case '.jpeg':
+        case '.gif':
+        case '.bmp':
+          contentType = `image/${fileExtension.substring(1)}`;
+          break;
+        default:
+          // Für unbekannte Dateitypen: Download erzwingen
+          contentDisposition = `attachment; filename="${encodeURIComponent(fileName)}"`;
+      }
+      
+      console.log('Sending file with content type:', contentType);
+      
+      // Headers setzen und Datei senden
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', contentDisposition);
+      res.setHeader('Content-Length', fileSize.toString());
+      
+      res.send(fileBuffer);
+      console.log('File sent successfully');
+      
+    } catch (error) {
+      console.error('Error in openFile:', error);
+      res.status(500).json({ error: 'Fehler beim Öffnen der Datei' });
+    }
+  }
 }

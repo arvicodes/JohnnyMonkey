@@ -214,6 +214,15 @@ exports.Prisma.GroupAssignmentScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.GroupFolderAssignmentScalarFieldEnum = {
+  id: 'id',
+  groupId: 'groupId',
+  folderPath: 'folderPath',
+  folderName: 'folderName',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.NoteScalarFieldEnum = {
   id: 'id',
   title: 'title',
@@ -339,6 +348,7 @@ exports.Prisma.ModelName = {
   Topic: 'Topic',
   Lesson: 'Lesson',
   GroupAssignment: 'GroupAssignment',
+  GroupFolderAssignment: 'GroupFolderAssignment',
   Note: 'Note',
   Material: 'Material',
   LessonMaterial: 'LessonMaterial',
