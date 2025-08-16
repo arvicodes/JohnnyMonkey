@@ -15,11 +15,29 @@ router.get('/read', FileSystemPathController.readDirectory);
 // HTML-Datei lesen
 router.get('/read-html', FileSystemPathController.readHtmlFile);
 
+// DOCX-Datei lesen
+router.get('/read-docx', FileSystemPathController.readDocxFile);
+
+// Excel-Datei lesen
+router.get('/read-excel', FileSystemPathController.readExcelFile);
+
+// PowerPoint-Datei lesen
+router.get('/read-powerpoint', FileSystemPathController.readPowerPointFile);
+
+// Bild-Datei lesen
+router.get('/read-image', FileSystemPathController.readImageFile);
+
+// GoodNotes-Datei lesen
+router.get('/read-goodnotes', FileSystemPathController.readGoodNotesFile);
+
+// Text-Datei lesen
+router.get('/read-text', FileSystemPathController.readTextFile);
+
 // PDF-Datei lesen
 router.get('/read-pdf', FileSystemPathController.readPdfFile);
 
-// DOCX-Datei lesen
-router.get('/read-docx', FileSystemPathController.readDocxFile);
+// Datei für Download bereitstellen
+router.get('/download', FileSystemPathController.downloadFile);
 
 // Pfad löschen
 router.delete('/:id', FileSystemPathController.deletePath);

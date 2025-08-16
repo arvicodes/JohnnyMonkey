@@ -131,6 +131,106 @@ export class FileSystemPathController {
     }
   }
 
+  // Datei für Download bereitstellen
+  static async downloadFile(req: Request, res: Response) {
+    try {
+      const { filePath } = req.query;
+      
+      console.log('=== DOWNLOAD FILE REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('Missing or invalid filePath parameter');
+        return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+      }
+      
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+      
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+      
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        console.log('Path is not a file:', normalizedPath);
+        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+      }
+      
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath });
+      
+      // Für sehr große Dateien (> 50 MB) Warnung ausgeben
+      if (fileSize > 50 * 1024 * 1024) {
+        console.log('Large file detected:', (fileSize / (1024 * 1024)).toFixed(2), 'MB');
+      }
+      
+      // Datei-Stream erstellen und senden
+      const fileStream = fs.createReadStream(normalizedPath);
+      
+      // Content-Type basierend auf Dateiendung setzen
+      const ext = path.extname(fileName).toLowerCase();
+      let contentType = 'application/octet-stream';
+      
+      if (ext === '.pdf') contentType = 'application/pdf';
+      else if (ext === '.docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      else if (ext === '.doc') contentType = 'application/msword';
+      else if (ext === '.txt') contentType = 'text/plain';
+      else if (['.jpg', '.jpeg'].includes(ext)) contentType = 'image/jpeg';
+      else if (ext === '.png') contentType = 'image/png';
+      else if (ext === '.gif') contentType = 'image/gif';
+      else if (ext === '.svg') contentType = 'image/svg+xml';
+      else if (ext === '.html' || ext === '.htm') contentType = 'text/html';
+      else if (ext === '.xlsx') contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      else if (ext === '.xls') contentType = 'application/vnd.ms-excel';
+      else if (ext === '.pptx') contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      else if (ext === '.ppt') contentType = 'application/vnd.ms-powerpoint';
+      else if (ext === '.goodnotes' || ext === '.gn') contentType = 'application/octet-stream';
+      
+      // Response-Header setzen
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+      res.setHeader('Content-Length', fileSize.toString());
+      
+      // Timeout für große Dateien erhöhen
+      if (fileSize > 10 * 1024 * 1024) { // > 10 MB
+        res.setTimeout(300000); // 5 Minuten
+        console.log('Extended timeout set for large file');
+      }
+      
+      // Datei senden
+      fileStream.pipe(res);
+      
+      // Fehlerbehandlung für den Stream
+      fileStream.on('error', (error) => {
+        console.error('File stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Fehler beim Lesen der Datei' });
+        }
+      });
+      
+      // Erfolg
+      fileStream.on('end', () => {
+        console.log('File download completed successfully');
+      });
+      
+      console.log('File download started successfully');
+      
+    } catch (error) {
+      console.error('Error in downloadFile:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Fehler beim Download der Datei' });
+      }
+    }
+  }
+
   // Verzeichnisstruktur eines Pfades lesen
   static async readDirectory(req: Request, res: Response) {
     try {
@@ -332,325 +432,452 @@ export class FileSystemPathController {
     }
   }
 
-  // Neue Methode zum Lesen von PDF-Dateien
-  static async readPdfFile(req: Request, res: Response) {
+  // Excel-Datei lesen
+  static async readExcelFile(req: Request, res: Response) {
     try {
-      console.log('=== PDF FILE READ REQUEST ===');
-      console.log('Query params:', req.query);
-      console.log('filePath from query:', req.query.filePath);
+      const { filePath, preview } = req.query;
       
-      const { filePath } = req.query;
+      console.log('=== EXCEL FILE READ REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
       
       if (!filePath || typeof filePath !== 'string') {
-        console.log('Error: filePath is missing or not a string');
+        console.log('Missing or invalid filePath parameter');
         return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
       }
-
-      console.log('Original filePath:', filePath);
       
-      // Pfad normalisieren und validieren
+      // Pfad normalisieren
       const normalizedPath = path.resolve(filePath);
       console.log('Normalized path:', normalizedPath);
       
-      // Sicherheitscheck: Pfad muss existieren und eine Datei sein
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
       if (!fs.existsSync(normalizedPath)) {
-        console.log('Error: Path does not exist:', normalizedPath);
-        return res.status(404).json({ error: 'Datei existiert nicht' });
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
       }
-
-      const stats = fs.statSync(normalizedPath);
-      console.log('File stats:', stats);
       
+      const stats = fs.statSync(normalizedPath);
       if (!stats.isFile()) {
-        console.log('Error: Path is not a file');
+        console.log('Path is not a file:', normalizedPath);
         return res.status(400).json({ error: 'Pfad ist keine Datei' });
       }
-
-      // Dateiendung prüfen
-      const fileExtension = path.extname(normalizedPath).toLowerCase();
-      console.log('File extension:', fileExtension);
       
-      if (fileExtension !== '.pdf') {
-        console.log('Error: File is not PDF');
-        return res.status(400).json({ error: 'Nur PDF-Dateien sind erlaubt' });
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      if (!['.xlsx', '.xls'].includes(fileExtension)) {
+        console.log('File is not an Excel file:', fileExtension);
+        return res.status(400).json({ error: 'Datei ist keine Excel-Datei' });
       }
-
-      console.log('Reading PDF file...');
-      // PDF-Datei als Buffer lesen
-      const pdfBuffer = fs.readFileSync(normalizedPath);
-      console.log('PDF buffer length:', pdfBuffer.length);
       
-      // Content-Type setzen und PDF-Inhalt zurückgeben
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'inline');
-      res.send(pdfBuffer);
-      console.log('PDF file sent successfully');
+      if (preview === 'true') {
+        // Für Vorschau: Einfache HTML-Tabelle erstellen
+        const htmlContent = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #1976d2; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">
+              Excel-Vorschau: ${fileName}
+            </h2>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Dateiname:</strong> ${fileName}</p>
+              <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
+              <p><strong>Typ:</strong> Excel-Datei (${fileExtension.toUpperCase()})</p>
+              <p><strong>Pfad:</strong> ${normalizedPath}</p>
+            </div>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+              <p><strong>Hinweis:</strong> Für eine vollständige Vorschau der Excel-Inhalte wird eine spezielle Bibliothek benötigt.</p>
+              <p>Sie können die Datei über den Download-Button herunterladen und in Excel öffnen.</p>
+            </div>
+          </div>
+        `;
+        
+        console.log('Excel HTML preview sent successfully');
+        res.send(htmlContent);
+      } else {
+        // Für Download: Datei als Blob senden
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(fileBuffer);
+      }
       
     } catch (error) {
-      console.error('Fehler beim Lesen der PDF-Datei:', error);
-      res.status(500).json({ error: 'Fehler beim Lesen der PDF-Datei' });
+      console.error('Error in readExcelFile:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der Excel-Datei' });
     }
   }
 
-  // Neue Methode zum Lesen von DOCX-Dateien
-  static async readDocxFile(req: Request, res: Response) {
+  // PowerPoint-Datei lesen
+  static async readPowerPointFile(req: Request, res: Response) {
     try {
-      console.log('=== DOCX FILE READ REQUEST ===');
-      console.log('Query params:', req.query);
-      console.log('filePath from query:', req.query.filePath);
-      
       const { filePath, preview } = req.query;
       
+      console.log('=== POWERPOINT FILE READ REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
       if (!filePath || typeof filePath !== 'string') {
-        console.log('Error: filePath is missing or not a string');
+        console.log('Missing or invalid filePath parameter');
         return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
       }
-
-      console.log('Original filePath:', filePath);
-      console.log('Preview mode:', preview);
       
-      // Pfad normalisieren und validieren
+      // Pfad normalisieren
       const normalizedPath = path.resolve(filePath);
       console.log('Normalized path:', normalizedPath);
       
-      // Sicherheitscheck: Pfad muss existieren und eine Datei sein
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
       if (!fs.existsSync(normalizedPath)) {
-        console.log('Error: Path does not exist:', normalizedPath);
-        return res.status(404).json({ error: 'Datei existiert nicht' });
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
       }
-
-      const stats = fs.statSync(normalizedPath);
-      console.log('File stats:', stats);
       
+      const stats = fs.statSync(normalizedPath);
       if (!stats.isFile()) {
-        console.log('Error: Path is not a file');
+        console.log('Path is not a file:', normalizedPath);
         return res.status(400).json({ error: 'Pfad ist keine Datei' });
       }
-
-      // Dateiendung prüfen
-      const fileExtension = path.extname(normalizedPath).toLowerCase();
-      console.log('File extension:', fileExtension);
       
-      if (fileExtension !== '.docx') {
-        console.log('Error: File is not DOCX');
-        return res.status(400).json({ error: 'Nur DOCX-Dateien sind erlaubt' });
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      if (!['.pptx', '.ppt'].includes(fileExtension)) {
+        console.log('File is not a PowerPoint file:', fileExtension);
+        return res.status(400).json({ error: 'Datei ist keine PowerPoint-Datei' });
       }
-
-      console.log('Reading DOCX file...');
-      // DOCX-Datei als Buffer lesen
-      const docxBuffer = fs.readFileSync(normalizedPath);
-      console.log('DOCX buffer length:', docxBuffer.length);
       
-      // Wenn Vorschau gewünscht ist, konvertiere zu HTML
       if (preview === 'true') {
-        console.log('Converting DOCX to HTML for preview...');
-        try {
-          const result = await mammoth.convertToHtml({ buffer: docxBuffer });
-          const htmlContent = result.value;
-          const messages = result.messages;
-          
-          console.log('HTML conversion successful, length:', htmlContent.length);
-          if (messages.length > 0) {
-            console.log('Conversion messages:', messages);
-          }
-          
-          // HTML-Vorschau mit Styling zurückgeben
-          const fullHtml = `
-            <!DOCTYPE html>
-            <html lang="de">
-            <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>DOCX Vorschau: ${path.basename(normalizedPath)}</title>
-              <style>
-                body {
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  max-width: 800px;
-                  margin: 0 auto;
-                  padding: 20px;
-                  background-color: #f8f9fa;
-                }
-                .preview-container {
-                  background: white;
-                  padding: 30px;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                }
-                .preview-header {
-                  border-bottom: 2px solid #e9ecef;
-                  padding-bottom: 15px;
-                  margin-bottom: 25px;
-                  display: flex;
-                  flex-direction: column;
-                  gap: 15px;
-                }
-                .preview-title {
-                  color: #2c3e50;
-                  margin: 0;
-                  font-size: 1.8rem;
-                }
-                .preview-subtitle {
-                  color: #6c757d;
-                  margin: 5px 0 0 0;
-                  font-size: 1rem;
-                }
-                .preview-content {
-                  line-height: 1.8;
-                }
-                .preview-content h1, .preview-content h2, .preview-content h3 {
-                  color: #2c3e50;
-                  margin-top: 30px;
-                  margin-bottom: 15px;
-                }
-                .preview-content p {
-                  margin-bottom: 15px;
-                }
-                .preview-content table {
-                  border-collapse: collapse;
-                  width: 100%;
-                  margin: 20px 0;
-                }
-                .preview-content table, .preview-content th, .preview-content td {
-                  border: 1px solid #dee2e6;
-                }
-                .preview-content th, .preview-content td {
-                  padding: 8px 12px;
-                  text-align: left;
-                }
-                .preview-content th {
-                  background-color: #f8f9fa;
-                  font-weight: 600;
-                }
-                                              .download-button {
-                                display: inline-block;
-                                background: #28a745;
-                                color: white;
-                                padding: 12px 24px;
-                                text-decoration: none;
-                                border-radius: 6px;
-                                margin-top: 15px;
-                                transition: all 0.3s ease;
-                                font-weight: 600;
-                                text-align: center;
-                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                border: none;
-                                cursor: pointer;
-                                font-size: 14px;
-                                font-family: inherit;
-                              }
-                              .download-button:hover {
-                                background: #218838;
-                                transform: translateY(-1px);
-                                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-                              }
-                .conversion-info {
-                  background: #e7f3ff;
-                  border: 1px solid #b3d9ff;
-                  border-radius: 5px;
-                  padding: 15px;
-                  margin: 20px 0;
-                  color: #004085;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="preview-container">
-                <div class="preview-header">
-                  <h1 class="preview-title">📄 ${path.basename(normalizedPath)}</h1>
-                  <p class="preview-subtitle">DOCX Vorschau - Generiert am ${new Date().toLocaleString('de-DE')}</p>
-                  
-                  <button onclick="downloadDocx('${filePath.replace(/'/g, "\\'").replace(/"/g, '\\"')}', '${path.basename(normalizedPath).replace(/'/g, "\\'").replace(/"/g, '\\"')}')" 
-                          class="download-button">
-                     📥 Original DOCX herunterladen
-                  </button>
-                  
-                  <script>
-                    function downloadDocx(filePath, fileName) {
-                      try {
-                        console.log('Starting download for:', fileName);
-                        console.log('File path:', filePath);
-                        
-                        // Verwende window.open() um den Download zu starten
-                        const url = '/api/file-system-paths/read-docx?filePath=' + encodeURIComponent(filePath);
-                        console.log('Opening URL:', url);
-                        
-                        // Öffne die URL in einem neuen Tab/Fenster
-                        const newWindow = window.open(url, '_blank');
-                        
-                        if (newWindow) {
-                          console.log('New window opened successfully');
-                          // Schließe das Fenster nach kurzer Zeit, falls es leer ist
-                          setTimeout(() => {
-                            if (newWindow.location.href === 'about:blank') {
-                              newWindow.close();
-                              console.log('Empty window closed');
-                            }
-                          }, 1000);
-                        } else {
-                          console.log('Window blocked, trying alternative method');
-                          // Fallback: Erstelle einen versteckten Link
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.download = fileName;
-                          link.style.display = 'none';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }
-                        
-                        console.log('Download initiated for:', fileName);
-                        
-                      } catch (error) {
-                        console.error('Download error:', error);
-                        alert('Download fehlgeschlagen: ' + error.message);
-                      }
-                    }
-                  </script>
-                </div>
-                
-                <div class="preview-content">
-                  ${htmlContent}
-                </div>
-                
-                ${messages.length > 0 ? `
-                  <div class="conversion-info">
-                    <strong>Konvertierungshinweise:</strong>
-                    <ul>
-                      ${messages.map(msg => `<li>${msg.message}</li>`).join('')}
-                    </ul>
-                  </div>
-                ` : ''}
-              </div>
-            </body>
-            </html>
-          `;
-          
-          res.setHeader('Content-Type', 'text/html');
-          res.send(fullHtml);
-          console.log('DOCX HTML preview sent successfully');
-          
-        } catch (conversionError) {
-          console.error('Error converting DOCX to HTML:', conversionError);
-          // Fallback: Original DOCX senden
-          res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-          res.setHeader('Content-Disposition', 'attachment; filename="' + path.basename(normalizedPath) + '"');
-          res.send(docxBuffer);
-          console.log('DOCX file sent as fallback');
-        }
-                          } else {
-                      // Original DOCX-Datei als Download senden
-                      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-                      res.setHeader('Content-Disposition', 'attachment; filename="' + path.basename(normalizedPath) + '"');
-                      res.setHeader('Content-Length', docxBuffer.length.toString());
-                      res.send(docxBuffer);
-                      console.log('DOCX file sent as download successfully');
-                    }
+        // Für Vorschau: Einfache HTML-Info erstellen
+        const htmlContent = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #1976d2; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">
+              PowerPoint-Vorschau: ${fileName}
+            </h2>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Dateiname:</strong> ${fileName}</p>
+              <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
+              <p><strong>Typ:</strong> PowerPoint-Datei (${fileExtension.toUpperCase()})</p>
+              <p><strong>Pfad:</strong> ${normalizedPath}</p>
+            </div>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+              <p><strong>Hinweis:</strong> Für eine vollständige Vorschau der PowerPoint-Inhalte wird eine spezielle Bibliothek benötigt.</p>
+              <p>Sie können die Datei über den Download-Button herunterladen und in PowerPoint öffnen.</p>
+            </div>
+          </div>
+        `;
+        
+        console.log('PowerPoint HTML preview sent successfully');
+        res.send(htmlContent);
+      } else {
+        // Für Download: Datei als Blob senden
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(fileBuffer);
+      }
       
     } catch (error) {
-      console.error('Fehler beim Lesen der DOCX-Datei:', error);
-      res.status(500).json({ error: 'Fehler beim Lesen der DOCX-Datei' });
+      console.error('Error in readPowerPointFile:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der PowerPoint-Datei' });
+    }
+  }
+
+  // Bild-Datei lesen
+  static async readImageFile(req: Request, res: Response) {
+    try {
+      const { filePath, preview } = req.query;
+      
+      console.log('=== IMAGE FILE READ REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('Missing or invalid filePath parameter');
+        return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+      }
+      
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+      
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+      
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        console.log('Path is not a file:', normalizedPath);
+        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+      }
+      
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      if (!['.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp', '.webp'].includes(fileExtension)) {
+        console.log('File is not an image file:', fileExtension);
+        return res.status(400).json({ error: 'Datei ist keine Bilddatei' });
+      }
+      
+      if (preview === 'true') {
+        // Für Vorschau: Bild als Base64 konvertieren
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        const base64Data = fileBuffer.toString('base64');
+        const mimeType = FileSystemPathController.getMimeType(fileExtension);
+        const dataUrl = `data:${mimeType};base64,${base64Data}`;
+        
+        const imageData = {
+          fileName,
+          fileSize,
+          filePath: normalizedPath,
+          mimeType,
+          dataUrl,
+          dimensions: 'Vorschau verfügbar'
+        };
+        
+        console.log('Image preview data sent successfully');
+        res.json(imageData);
+      } else {
+        // Für Download: Datei als Blob senden
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        const mimeType = FileSystemPathController.getMimeType(fileExtension);
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(fileBuffer);
+      }
+      
+    } catch (error) {
+      console.error('Error in readImageFile:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der Bilddatei' });
+    }
+  }
+
+  // GoodNotes-Datei lesen
+  static async readGoodNotesFile(req: Request, res: Response) {
+    try {
+      const { filePath, preview } = req.query;
+      
+      console.log('=== GOODNOTES FILE READ REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('Missing or invalid filePath parameter');
+        return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+      }
+      
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+      
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+      
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        console.log('Path is not a file:', normalizedPath);
+        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+      }
+      
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      if (!['.goodnotes', '.gn'].includes(fileExtension)) {
+        console.log('File is not a GoodNotes file:', fileExtension);
+        return res.status(400).json({ error: 'Datei ist keine GoodNotes-Datei' });
+      }
+      
+      if (preview === 'true') {
+        // Für Vorschau: Einfache HTML-Info erstellen
+        const htmlContent = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #1976d2; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">
+              GoodNotes-Vorschau: ${fileName}
+            </h2>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Dateiname:</strong> ${fileName}</p>
+              <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
+              <p><strong>Typ:</strong> GoodNotes-Datei (${fileExtension.toUpperCase()})</p>
+              <p><strong>Pfad:</strong> ${normalizedPath}</p>
+            </div>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+              <p><strong>Hinweis:</strong> GoodNotes-Dateien können nur in der GoodNotes-App geöffnet werden.</p>
+              <p>Sie können die Datei über den Download-Button herunterladen und in GoodNotes öffnen.</p>
+            </div>
+          </div>
+        `;
+        
+        console.log('GoodNotes HTML preview sent successfully');
+        res.send(htmlContent);
+      } else {
+        // Für Download: Datei als Blob senden
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(fileBuffer);
+      }
+      
+    } catch (error) {
+      console.error('Error in readGoodNotesFile:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der GoodNotes-Datei' });
+    }
+  }
+
+  // Text-Datei lesen
+  static async readTextFile(req: Request, res: Response) {
+    try {
+      const { filePath, preview } = req.query;
+      
+      console.log('=== TEXT FILE READ REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('Missing or invalid filePath parameter');
+        return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+      }
+      
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+      
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+      
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        console.log('Path is not a file:', normalizedPath);
+        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+      }
+      
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      if (!['.txt', '.md', '.rtf'].includes(fileExtension)) {
+        console.log('File is not a text file:', fileExtension);
+        return res.status(400).json({ error: 'Datei ist keine Textdatei' });
+      }
+      
+      if (preview === 'true') {
+        // Für Vorschau: Textinhalt lesen und senden
+        const textContent = fs.readFileSync(normalizedPath, 'utf8');
+        console.log('Text file content read successfully, length:', textContent.length);
+        res.send(textContent);
+      } else {
+        // Für Download: Datei als Blob senden
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        const mimeType = FileSystemPathController.getMimeType(fileExtension);
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(fileBuffer);
+      }
+      
+    } catch (error) {
+      console.error('Error in readTextFile:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der Textdatei' });
+    }
+  }
+
+  // PDF-Datei lesen
+  static async readPdfFile(req: Request, res: Response) {
+    try {
+      const { filePath, preview } = req.query;
+      
+      console.log('=== PDF FILE READ REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('Missing or invalid filePath parameter');
+        return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+      }
+      
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+      
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+      
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        console.log('Path is not a file:', normalizedPath);
+        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+      }
+      
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      if (fileExtension !== '.pdf') {
+        console.log('File is not a PDF file:', fileExtension);
+        return res.status(400).json({ error: 'Datei ist keine PDF-Datei' });
+      }
+      
+      if (preview === 'true') {
+        // Für Vorschau: Einfache HTML-Info erstellen
+        const htmlContent = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #1976d2; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">
+              PDF-Vorschau: ${fileName}
+            </h2>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Dateiname:</strong> ${fileName}</p>
+              <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
+              <p><strong>Typ:</strong> PDF-Datei</p>
+              <p><strong>Pfad:</strong> ${normalizedPath}</p>
+            </div>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+              <p><strong>Hinweis:</strong> Für eine vollständige PDF-Vorschau wird eine spezielle Bibliothek benötigt.</p>
+              <p>Sie können die Datei über den Download-Button herunterladen und in einem PDF-Reader öffnen.</p>
+            </div>
+          </div>
+        `;
+        
+        console.log('PDF HTML preview sent successfully');
+        res.send(htmlContent);
+      } else {
+        // Für Download: Datei als Blob senden
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(fileBuffer);
+      }
+      
+    } catch (error) {
+      console.error('Error in readPdfFile:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der PDF-Datei' });
     }
   }
 
@@ -680,6 +907,111 @@ export class FileSystemPathController {
     } catch (error) {
       console.error('Fehler beim Löschen des Pfades:', error);
       res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+  }
+
+  // Hilfsfunktion: MIME-Type basierend auf Dateiendung
+  static getMimeType(fileExtension: string): string {
+    const mimeTypes: { [key: string]: string } = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.bmp': 'image/bmp',
+      '.webp': 'image/webp',
+      '.txt': 'text/plain',
+      '.md': 'text/markdown',
+      '.rtf': 'application/rtf',
+      '.pdf': 'application/pdf',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.doc': 'application/msword',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.xls': 'application/vnd.ms-excel',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.ppt': 'application/vnd.ms-powerpoint'
+    };
+    
+    return mimeTypes[fileExtension.toLowerCase()] || 'application/octet-stream';
+  }
+
+  // DOCX-Datei lesen
+  static async readDocxFile(req: Request, res: Response) {
+    try {
+      const { filePath, preview } = req.query;
+      
+      console.log('=== DOCX FILE READ REQUEST ===');
+      console.log('Query params:', req.query);
+      console.log('File path from query:', filePath);
+      
+      if (!filePath || typeof filePath !== 'string') {
+        console.log('Missing or invalid filePath parameter');
+        return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+      }
+      
+      // Pfad normalisieren
+      const normalizedPath = path.resolve(filePath);
+      console.log('Normalized path:', normalizedPath);
+      
+      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      if (!fs.existsSync(normalizedPath)) {
+        console.log('File does not exist:', normalizedPath);
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+      
+      const stats = fs.statSync(normalizedPath);
+      if (!stats.isFile()) {
+        console.log('Path is not a file:', normalizedPath);
+        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+      }
+      
+      // Datei-Informationen abrufen
+      const fileName = path.basename(normalizedPath);
+      const fileSize = stats.size;
+      const fileExtension = path.extname(fileName).toLowerCase();
+      
+      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
+      
+      if (fileExtension !== '.docx') {
+        console.log('File is not a DOCX file:', fileExtension);
+        return res.status(400).json({ error: 'Datei ist keine DOCX-Datei' });
+      }
+      
+      if (preview === 'true') {
+        // Für Vorschau: DOCX zu HTML konvertieren
+        console.log('Reading DOCX file...');
+        const docxBuffer = fs.readFileSync(normalizedPath);
+        console.log('DOCX buffer length:', docxBuffer.length);
+        
+        console.log('Converting DOCX to HTML for preview...');
+        try {
+          const result = await mammoth.convertToHtml({ buffer: docxBuffer });
+          const htmlContent = result.value;
+          const messages = result.messages;
+          
+          console.log('HTML conversion successful, length:', htmlContent.length);
+          if (messages.length > 0) {
+            console.log('Conversion messages:', messages);
+          }
+          
+          console.log('DOCX HTML preview sent successfully');
+          res.send(htmlContent);
+          
+        } catch (conversionError) {
+          console.error('Error converting DOCX to HTML:', conversionError);
+          res.status(500).json({ error: 'Fehler bei der DOCX-zu-HTML-Konvertierung' });
+        }
+      } else {
+        // Für Download: Datei als Blob senden
+        const fileBuffer = fs.readFileSync(normalizedPath);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+        res.send(fileBuffer);
+      }
+      
+    } catch (error) {
+      console.error('Error in readDocxFile:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der DOCX-Datei' });
     }
   }
 }

@@ -200,6 +200,529 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     setExpandedItems(newExpanded);
   };
 
+  // Hilfsfunktion: Zeige Datei-Vorschau Modal
+  const showFilePreviewModal = (fileName: string, htmlContent: string, filePath: string, fileType: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onmouseover = () => {
+      downloadButton.style.transform = 'translateY(-1px)';
+      downloadButton.style.boxShadow = '0 4px 12px rgba(25, 118, 210, 0.4)';
+    };
+    downloadButton.onmouseout = () => {
+      downloadButton.style.transform = 'translateY(0)';
+      downloadButton.style.boxShadow = '0 2px 8px rgba(25, 118, 210, 0.3)';
+    };
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        // Timeout für große Dateien erhöhen
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 Minuten
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Datei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error: any) {
+        console.error('Fehler beim Download:', error);
+        
+        if (error.name === 'AbortError') {
+          alert('Download wurde wegen Timeout abgebrochen. Die Datei ist möglicherweise zu groß. Bitte versuchen Sie es erneut.');
+        } else {
+          alert('Fehler beim Download der Datei. Bitte versuchen Sie es erneut.');
+        }
+        
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    // Button vor der Überschrift hinzufügen
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    content.innerHTML = htmlContent;
+    content.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      max-height: 400px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+    `;
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  };
+
+  // Hilfsfunktion: Zeige Bild-Vorschau Modal
+  const showImagePreviewModal = (fileName: string, imageData: any, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Bild konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download des Bildes. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const imageContainer = document.createElement('div');
+    imageContainer.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      text-align: center;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageData.dataUrl || imageData.url;
+    img.alt = fileName;
+    img.style.cssText = `
+      max-width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    `;
+    
+    imageContainer.appendChild(img);
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(imageContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  };
+
+  // Hilfsfunktion: Zeige Text-Vorschau Modal
+  const showTextPreviewModal = (fileName: string, textContent: string, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Textdatei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download der Textdatei. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    content.textContent = textContent;
+    content.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      max-height: 400px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+    `;
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  };
+
   // Rekursive Komponente für hierarchische Anzeige
   const renderDirectoryItem = (item: DirectoryItem, level: number = 0) => {
     const isExpanded = expandedItems.has(item.path);
@@ -287,70 +810,133 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
             
             if (response.ok) {
               const htmlContent = await response.text();
-              // Erstelle Blob für die HTML-Vorschau und öffne im neuen Tab
-              const blob = new Blob([htmlContent], { type: 'text/html' });
-              const url = URL.createObjectURL(blob);
-              window.open(url, '_blank');
-              // Cleanup nach dem Öffnen
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
+              showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
             } else {
-              // Fallback: Versuche normale DOCX-Behandlung
+              // Fallback: Zeige Fehlermeldung
               console.error('DOCX-Vorschau konnte nicht geladen werden:', response.statusText);
-              
-              // Fallback: Download der DOCX-Datei
-              const downloadResponse = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}`);
-              if (downloadResponse.ok) {
-                const docxBlob = await downloadResponse.blob();
-                const url = URL.createObjectURL(docxBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = item.name;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-              } else {
-                alert(`DOCX-Datei konnte nicht geladen werden: ${downloadResponse.statusText}`);
-              }
+              alert('DOCX-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
             }
           } catch (error) {
             console.error('Fehler beim Laden der DOCX-Datei:', error);
             alert('Fehler beim Laden der DOCX-Datei. Bitte versuchen Sie es erneut.');
           }
-        } else if (['txt', 'jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileExtension || '')) {
-          // Andere Browser-kompatible Dateien: Download und öffnen
-          const link = document.createElement('a');
-          link.href = `file://${item.path}`;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Kurze Verzögerung, dann versuchen zu öffnen
-          setTimeout(() => {
-            try {
-              window.open(`file://${item.path}`, '_blank');
-            } catch (error) {
-              // Fallback: Datei wurde bereits heruntergeladen
+        } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+          // Excel-Dateien über den Server laden und als Vorschau anzeigen
+          try {
+            const response = await fetch(`/api/file-system-paths/read-excel?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            
+            if (response.ok) {
+              const htmlContent = await response.text();
+              showFilePreviewModal(item.name, htmlContent, item.path, 'excel');
+            } else {
+              console.error('Excel-Vorschau konnte nicht geladen werden:', response.statusText);
+              alert('Excel-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
             }
-          }, 500);
+          } catch (error) {
+            console.error('Fehler beim Laden der Excel-Datei:', error);
+            alert('Fehler beim Laden der Excel-Datei. Bitte versuchen Sie es erneut.');
+          }
+        } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
+          // PowerPoint-Dateien über den Server laden und als Vorschau anzeigen
+          try {
+            const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            
+            if (response.ok) {
+              const htmlContent = await response.text();
+              showFilePreviewModal(item.name, htmlContent, item.path, 'powerpoint');
+            } else {
+              console.error('PowerPoint-Vorschau konnte nicht geladen werden:', response.statusText);
+              alert('PowerPoint-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden der PowerPoint-Datei:', error);
+            alert('Fehler beim Laden der PowerPoint-Datei. Bitte versuchen Sie es erneut.');
+          }
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
+          // Bildformate über den Server laden und als Vorschau anzeigen
+          try {
+            const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            
+            if (response.ok) {
+              const imageData = await response.json();
+              showImagePreviewModal(item.name, imageData, item.path);
+            } else {
+              console.error('Bild-Vorschau konnte nicht geladen werden:', response.statusText);
+              alert('Bild-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden des Bildes:', error);
+            alert('Fehler beim Laden des Bildes. Bitte versuchen Sie es erneut.');
+          }
+        } else if (fileExtension === 'goodnotes' || fileExtension === 'gn') {
+          // GoodNotes-Dateien über den Server laden und als Vorschau anzeigen
+          try {
+            const response = await fetch(`/api/file-system-paths/read-goodnotes?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            
+            if (response.ok) {
+              const htmlContent = await response.text();
+              showFilePreviewModal(item.name, htmlContent, item.path, 'goodnotes');
+            } else {
+              console.error('GoodNotes-Vorschau konnte nicht geladen werden:', response.statusText);
+              alert('GoodNotes-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden der GoodNotes-Datei:', error);
+            alert('Fehler beim Laden der GoodNotes-Datei. Bitte versuchen Sie es erneut.');
+          }
+        } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
+          // Textdateien über den Server laden und als Vorschau anzeigen
+          try {
+            const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            
+            if (response.ok) {
+              const textContent = await response.text();
+              showTextPreviewModal(item.name, textContent, item.path);
+            } else {
+              console.error('Text-Vorschau konnte nicht geladen werden:', response.statusText);
+              alert('Text-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden der Textdatei:', error);
+            alert('Fehler beim Laden der Textdatei. Bitte versuchen Sie es erneut.');
+          }
+        } else if (fileExtension === 'pdf') {
+          // PDF-Dateien über den Server laden und als Vorschau anzeigen
+          try {
+            const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            
+            if (response.ok) {
+              const htmlContent = await response.text();
+              showFilePreviewModal(item.name, htmlContent, item.path, 'pdf');
+            } else {
+              console.error('PDF-Vorschau konnte nicht geladen werden:', response.statusText);
+              alert('PDF-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
+            }
+          } catch (error) {
+            console.error('Fehler beim Laden der PDF-Datei:', error);
+            alert('Fehler beim Laden der PDF-Datei. Bitte versuchen Sie es erneut.');
+          }
         } else {
-          // Andere Dateitypen (Word, Excel, etc.): Download und öffnen
-          const link = document.createElement('a');
-          link.href = `file://${item.path}`;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Versuche die Datei nach dem Download zu öffnen
-          setTimeout(() => {
-            try {
-              window.open(`file://${item.path}`, '_blank');
-            } catch (error) {
-              // Fallback: Datei wurde bereits heruntergeladen
+          // Andere Dateitypen: Download über den Server
+          try {
+            const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+            if (response.ok) {
+              const blob = await response.blob();
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = item.name;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } else {
+              alert(`Datei konnte nicht heruntergeladen werden: ${response.statusText}`);
             }
-          }, 1000);
+          } catch (error) {
+            console.error('Fehler beim Download:', error);
+            alert('Fehler beim Download der Datei. Bitte versuchen Sie es erneut.');
+          }
         }
       } else if (canExpand) {
         // Ordner auf-/zuklappen
@@ -474,87 +1060,85 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
         Dateisystem-Pfade verwalten
       </Typography>
 
-      {/* Neue Pfad-Eingabe */}
-      <Card sx={{ mb: 3, borderRadius: 2 }}>
-        <CardContent>
-          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
-            Neuen Pfad hinzufügen
-          </Typography>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={5}>
-              <TextField
-                fullWidth
-                label="Absoluter Dateipfad"
-                placeholder="/Users/username/Documents"
-                value={newPath}
-                onChange={(e) => setNewPath(e.target.value)}
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Anzeigename"
-                placeholder="Meine Dokumente"
-                value={newPathName}
-                onChange={(e) => setNewPathName(e.target.value)}
-                size="small"
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={handleSavePath}
-                disabled={savePathMutation.isPending}
-                sx={{ height: 40 }}
-              >
-                {savePathMutation.isPending ? <CircularProgress size={20} /> : 'Speichern'}
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-
       <Grid container spacing={3}>
-        {/* Gespeicherte Pfade */}
+        {/* Gemeinschaftliche Box "Pfade" - kompakt links */}
         <Grid item xs={12} md={4}>
           <Card sx={{ borderRadius: 2, height: 'fit-content' }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Pfade
+              </Typography>
+              
+              {/* Neue Pfad-Eingabe - kompakt */}
+              <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f8f9fa', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium', fontSize: '0.75rem' }}>
+                  Neuen Pfad hinzufügen
+                </Typography>
+                <Grid container spacing={1} alignItems="center">
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Absoluter Dateipfad"
+                      placeholder="/Users/username/Documents"
+                      value={newPath}
+                      onChange={(e) => setNewPath(e.target.value)}
+                      size="small"
+                      sx={{ '& .MuiInputLabel-root': { fontSize: '0.7rem' }, '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Anzeigename"
+                      placeholder="Meine Dokumente"
+                      value={newPathName}
+                      onChange={(e) => setNewPathName(e.target.value)}
+                      size="small"
+                      sx={{ '& .MuiInputLabel-root': { fontSize: '0.7rem' }, '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSavePath}
+                      disabled={savePathMutation.isPending}
+                      sx={{ 
+                        height: 32, 
+                        fontSize: '0.7rem',
+                        '& .MuiButton-startIcon': { mr: 0.5 }
+                      }}
+                    >
+                      {savePathMutation.isPending ? <CircularProgress size={16} /> : 'Speichern'}
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+              
+              {/* Gespeicherte Pfade */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'medium', fontSize: '0.75rem' }}>
                   Gespeicherte Pfade
                 </Typography>
                 <IconButton
                   size="small"
                   onClick={() => queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] })}
                   disabled={pathsLoading}
-                  sx={{
-                    p: 0,
-                    width: '5%',
-                    height: '100%',
-                    borderRadius: 0,
-                    '& .MuiIconButton-root': {
-                      width: '100%',
-                      height: '100%'
-                    }
-                  }}
+                  sx={{ p: 0.5, width: 20, height: 20 }}
                 >
-                  <RefreshIcon sx={{
-                    fontSize: '0.7rem',
-                    width: '100%',
-                    height: '100%'
-                  }} />
+                  <RefreshIcon sx={{ fontSize: '0.7rem' }} />
                 </IconButton>
               </Box>
               
               {pathsLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                  <CircularProgress size={24} />
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 1 }}>
+                  <CircularProgress size={20} />
                 </Box>
               ) : savedPaths && savedPaths.length > 0 ? (
-                <List dense>
+                <List dense sx={{ py: 0 }}>
                   {savedPaths.map((path, index) => (
                     <React.Fragment key={path.id}>
                       <ListItem 
@@ -564,7 +1148,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                           borderRadius: 1,
                           cursor: 'pointer',
                           position: 'relative',
-                          pr: 2, // Platz für das Icon rechts
+                          pr: 2,
                         }}
                         onClick={() => {
                           setSelectedPath(path.path);
@@ -573,7 +1157,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                       >
                         <Box sx={{ 
                           mr: 0.5, 
-                          fontSize: '0.8rem',
+                          fontSize: '0.7rem',
                           color: ['#2e7d32', '#ed6c02', '#d32f2f', '#7b1fa2', '#1565c0'][index % 5]
                         }}>
                           📁
@@ -582,7 +1166,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                           <Typography 
                             variant="body2" 
                             sx={{ 
-                              fontSize: '0.7rem',
+                              fontSize: '0.65rem',
                               color: ['#2e7d32', '#ed6c02', '#d32f2f', '#7b1fa2', '#1565c0'][index % 5],
                               fontWeight: 'medium',
                               lineHeight: 1.2
@@ -593,7 +1177,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                           <Typography 
                             variant="caption" 
                             sx={{ 
-                              fontSize: '0.6rem',
+                              fontSize: '0.55rem',
                               color: 'text.secondary',
                               fontFamily: 'monospace',
                               wordBreak: 'break-all',
@@ -613,23 +1197,15 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                           sx={{ 
                             color: 'error.main',
                             p: 0,
-                            width: '5%',
-                            height: '100%',
+                            width: 16,
+                            height: 16,
                             position: 'absolute',
                             right: 0,
                             top: 0,
                             borderRadius: 0,
-                            '& .MuiIconButton-root': {
-                              width: '100%',
-                              height: '100%'
-                            }
                           }}
                         >
-                          <DeleteIcon sx={{ 
-                            fontSize: '0.7rem',
-                            width: '100%',
-                            height: '100%'
-                          }} />
+                          <DeleteIcon sx={{ fontSize: '0.6rem' }} />
                         </IconButton>
                       </ListItem>
                       <Divider sx={{ my: 0.25 }} />
@@ -637,7 +1213,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                   ))}
                 </List>
               ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1, fontSize: '0.7rem' }}>
                   Keine Pfade gespeichert
                 </Typography>
               )}
@@ -645,7 +1221,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
           </Card>
         </Grid>
 
-        {/* Verzeichnisvorschau */}
+        {/* Verzeichnisvorschau - rechts, größer */}
         <Grid item xs={12} md={8}>
           <Card sx={{ borderRadius: 2 }}>
             <CardContent>
@@ -653,50 +1229,50 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                   Verzeichnisvorschau
                 </Typography>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {/* Steuerung für hierarchische Ansicht */}
-                    <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Button 
-                        size="small" 
-                        variant="outlined" 
-                        onClick={() => expandedItems.size > 0 ? collapseAllFolders() : expandAllFolders()}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {/* Steuerung für hierarchische Ansicht */}
+                  <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => expandedItems.size > 0 ? collapseAllFolders() : expandAllFolders()}
+                      sx={{ 
+                        fontSize: '0.65rem', 
+                        py: 0.25, 
+                        px: 1,
+                        minWidth: 'auto',
+                        height: 24
+                      }}
+                    >
+                      {expandedItems.size > 0 ? 'Einklappen' : 'Aufklappen'}
+                    </Button>
+                    
+                    {selectedPath && (
+                      <IconButton
+                        size="small"
+                        onClick={() => refetchDirectory()}
+                        disabled={directoryLoading}
                         sx={{ 
-                          fontSize: '0.65rem', 
-                          py: 0.25, 
-                          px: 1,
-                          minWidth: 'auto',
-                          height: 24
-                        }}
-                      >
-                        {expandedItems.size > 0 ? 'Einklappen' : 'Aufklappen'}
-                      </Button>
-                      
-                      {selectedPath && (
-                        <IconButton
-                          size="small"
-                          onClick={() => refetchDirectory()}
-                          disabled={directoryLoading}
-                          sx={{ 
-                            color: 'primary.main',
-                            p: 0,
-                            width: 24,
-                            height: 24,
-                            borderRadius: 0,
-                            '& .MuiIconButton-root': {
-                              width: '100%',
-                              height: '100%'
-                            }
-                          }}
-                        >
-                          <RefreshIcon sx={{ 
-                            fontSize: '0.7rem',
+                          color: 'primary.main',
+                          p: 0,
+                          width: 24,
+                          height: 24,
+                          borderRadius: 0,
+                          '& .MuiIconButton-root': {
                             width: '100%',
                             height: '100%'
-                          }} />
-                        </IconButton>
-                      )}
-                    </Box>
+                          }
+                        }}
+                      >
+                        <RefreshIcon sx={{ 
+                          fontSize: '0.7rem',
+                          width: '100%',
+                          height: '100%'
+                        }} />
+                      </IconButton>
+                    )}
                   </Box>
+                </Box>
               </Box>
 
               {!selectedPath ? (
