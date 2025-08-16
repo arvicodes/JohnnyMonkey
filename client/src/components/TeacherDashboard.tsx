@@ -1378,8 +1378,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + fileName 
-                                                      : window.location.origin + fileName;
+                                                      ? 'http://localhost:3005/' + fileName 
+                                                      : window.location.origin + '/' + fileName;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1419,8 +1419,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + fileName 
-                                                      : window.location.origin + fileName;
+                                                      ? 'http://localhost:3005/' + fileName 
+                                                      : window.location.origin + '/' + fileName;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1477,8 +1477,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + fileName 
-                                                      : window.location.origin + fileName;
+                                                      ? 'http://localhost:3005/' + fileName 
+                                                      : window.location.origin + '/' + fileName;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
@@ -1535,8 +1535,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                     
                                                     // Verwende den Server-Port (3005) für HTML-Dateien
                                                     const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005' + fileName 
-                                                      : window.location.origin + fileName;
+                                                      ? 'http://localhost:3005/' + fileName 
+                                                      : window.location.origin + '/' + fileName;
                                                     
                                                     const newWindow = window.open(fullUrl, '_blank');
                                                     
