@@ -51,6 +51,7 @@ import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
 import FolderAssignmentSelector from './FolderAssignmentSelector';
+import path from 'path';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -325,13 +326,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const fetchAssignedFolders = async (groupsData: LearningGroup[]) => {
     try {
-      const foldersMap: {[groupId: string]: string[]} = {};
+      const foldersMap: {[groupId: string]: Array<{path: string, content: any[]}>} = {};
       
       for (const group of groupsData) {
         const response = await fetch(`/api/learning-groups/${group.id}/folders`);
         if (response.ok) {
           const folders = await response.json();
-          foldersMap[group.id] = folders.map((f: any) => f.path);
+          const foldersWithContent = [];
+          
+          for (const folder of folders) {
+            try {
+              // Lade den Inhalt des Ordners
+              const contentResponse = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folder.path)}&recursive=true`);
+              if (contentResponse.ok) {
+                const content = await contentResponse.json();
+                foldersWithContent.push({ path: folder.path, content });
+              } else {
+                foldersWithContent.push({ path: folder.path, content: [] });
+              }
+            } catch (error) {
+              console.error('Fehler beim Laden des Ordnerinhalts:', error);
+              foldersWithContent.push({ path: folder.path, content: [] });
+            }
+          }
+          
+          foldersMap[group.id] = foldersWithContent;
         } else {
           foldersMap[group.id] = [];
         }
@@ -849,7 +868,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [folderAssignmentModalOpen, setFolderAssignmentModalOpen] = useState(false);
   const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
   const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
-  const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
+  const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: Array<{path: string, content: any[]}>}>({});
+
+  // Hilfsfunktionen für Pfad-Operationen
+  const getBasename = (filePath: string) => {
+    return filePath.split('/').pop() || filePath;
+  };
+
+  const getExtname = (filePath: string) => {
+    const parts = filePath.split('.');
+    return parts.length > 1 ? '.' + parts.pop() : '';
+  };
 
   return (
     <Box 
@@ -1304,285 +1333,75 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }}>
                               {assignedFolders[group.id] && assignedFolders[group.id].length > 0 ? (
                                 <Box>
-                                                                  {assignedFolders[group.id].map((folderPath: string) => {
-                                  return (
-                                      <Box key={folderPath} sx={{ mb: 1.4 }}>
-                                                                            {/* Unterordner-Struktur simulieren (wie im Screenshot) */}
-                                    <Box sx={{ mb: 0.7 }}>
-                                      <Typography variant="body2" sx={{ 
-                                        color: '#D32F2F', // Rot
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 0.5,
-                                        mb: 0.5
-                                      }}>
-                                        📁 Klasse 7
-                                      </Typography>
-                                          
-                                          <Box sx={{ ml: 2, mb: 0.7 }}>
-                                            <Typography variant="body2" sx={{ 
-                                              color: '#7B1FA2', // Lila
-                                              fontSize: '0.75rem',
-                                              fontWeight: 600,
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              gap: 0.5,
-                                              mb: 0.5
-                                            }}>
-                                              📋 1. Ganze und rationale Zahlen (Kapitel 5)
-                                            </Typography>
-                                            
-                                            <Box sx={{ ml: 2, mb: 0.7 }}>
-                                              <Typography variant="body2" sx={{ 
-                                                color: '#1976D2', // Blau
-                                                fontSize: '0.75rem',
-                                                fontWeight: 600,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 0.5,
-                                                mb: 0.5
-                                              }}>
-                                                💡 1. Unser Grundwissen
-                                              </Typography>
-                                              
-                                              <Box sx={{ ml: 2, mb: 0.7 }}>
-                                                <Typography variant="body2" sx={{ 
-                                                  color: '#2E7D32', // Grün
-                                                  fontSize: '0.75rem',
-                                                  fontWeight: 600,
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: 0.5,
-                                                  mb: 0.5
-                                                }}>
-                                                  📚 1. Ganz verschiedene Arten von Zahlen
-                                                </Typography>
-                                                
-                                                {/* Dateien */}
-                                                <Box sx={{ ml: 2, mb: 0.5 }}>
-                                                  <Box sx={{ 
-                                                    p: 0.5,
-                                                    borderRadius: 1,
-                                                    bgcolor: '#f0f8ff',
-                                                    transition: 'all 0.2s ease',
-                                                    cursor: 'pointer',
-                                                    '&:hover': {
-                                                      bgcolor: '#e3f2fd'
-                                                    }
-                                                  }}
-                                                  onClick={() => {
-                                                    // Verwende die bestehende Implementierung wie in Material&Quiz
-                                                    const fileName = 'karteikarten_technische_informatik_komplett.docx';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
-                                                    
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/material/' + fileName 
-                                                      : window.location.origin + '/material/' + fileName;
-                                                    
-                                                    const newWindow = window.open(fullUrl, '_blank');
-                                                    
-                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
-                                                    }
-                                                  }}
-                                                  >
-                                                    <Typography variant="body2" sx={{ 
-                                                      color: '#666666',
-                                                      fontSize: '0.75rem',
-                                                      fontWeight: 500,
-                                                      lineHeight: 1.2
-                                                    }}>
-                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                                        📄
-                                                      </span>
-                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                                        karteikarten_technische_informatik_komplett.docx
-                                                      </span>
-                                                    </Typography>
-                                                  </Box>
-                                                  
-                                                  <Box sx={{ 
-                                                    p: 0.5,
-                                                    borderRadius: 1,
-                                                    bgcolor: '#f0f8ff',
-                                                    transition: 'all 0.2s ease',
-                                                    cursor: 'pointer',
-                                                    '&:hover': {
-                                                      bgcolor: '#e3f2fd'
-                                                    }
-                                                  }}
-                                                  onClick={() => {
-                                                    // Verwende die bestehende Implementierung wie in Material&Quiz
-                                                    const fileName = 'SuSGo.html';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
-                                                    
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/material/' + fileName 
-                                                      : window.location.origin + '/material/' + fileName;
-                                                    
-                                                    const newWindow = window.open(fullUrl, '_blank');
-                                                    
-                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
-                                                    }
-                                                  }}
-                                                  >
-                                                    <Typography variant="body2" sx={{ 
-                                                      color: '#666666',
-                                                      fontSize: '0.75rem',
-                                                      fontWeight: 500,
-                                                      lineHeight: 1.2
-                                                    }}>
-                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                                        📄
-                                                      </span>
-                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                                        SuSGo.html
-                                                      </span>
-                                                    </Typography>
-                                                  </Box>
-                                                </Box>
-                                              </Box>
-                                              
-                                              <Box sx={{ ml: 2, mb: 0.7 }}>
-                                                <Typography variant="body2" sx={{ 
-                                                  color: '#2E7D32', // Grün
-                                                  fontSize: '0.75rem',
-                                                  fontWeight: 600,
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: 0.5,
-                                                  mb: 0.5
-                                                }}>
-                                                  📚 2. Erstelle ein Merkblatt zu den Rationalen Zahlen
-                                                </Typography>
-                                                
-                                                {/* Dateien */}
-                                                <Box sx={{ ml: 2, mb: 0.5 }}>
-                                                  <Box sx={{ 
-                                                    p: 0.5,
-                                                    borderRadius: 1,
-                                                    bgcolor: '#f0f8ff',
-                                                    transition: 'all 0.2s ease',
-                                                    cursor: 'pointer',
-                                                    '&:hover': {
-                                                      bgcolor: '#e3f2fd'
-                                                    }
-                                                  }}
-                                                  onClick={() => {
-                                                    // Verwende die bestehende Implementierung wie in Material&Quiz
-                                                    const fileName = 'TechnischeInfo-Quiz.docx';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
-                                                    
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/material/' + fileName 
-                                                      : window.location.origin + '/material/' + fileName;
-                                                    
-                                                    const newWindow = window.open(fullUrl, '_blank');
-                                                    
-                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
-                                                    }
-                                                  }}
-                                                  >
-                                                    <Typography variant="body2" sx={{ 
-                                                      color: '#666666',
-                                                      fontSize: '0.75rem',
-                                                      fontWeight: 500,
-                                                      lineHeight: 1.2
-                                                    }}>
-                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                                        📄
-                                                      </span>
-                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                                        TechnischeInfo-Quiz.docx
-                                                      </span>
-                                                    </Typography>
-                                                  </Box>
-                                                </Box>
-                                              </Box>
-                                              
-                                              <Box sx={{ ml: 2, mb: 0.7 }}>
-                                                <Typography variant="body2" sx={{ 
-                                                  color: '#2E7D32', // Grün
-                                                  fontSize: '0.75rem',
-                                                  fontWeight: 600,
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: 0.5,
-                                                  mb: 0.5
-                                                }}>
-                                                  📚 3. Übungsaufgaben
-                                                </Typography>
-                                                
-                                                {/* Dateien */}
-                                                <Box sx={{ ml: 2, mb: 0.5 }}>
-                                                  <Box sx={{ 
-                                                    p: 0.5,
-                                                    borderRadius: 1,
-                                                    bgcolor: '#f0f8ff',
-                                                    transition: 'all 0.2s ease',
-                                                    cursor: 'pointer',
-                                                    '&:hover': {
-                                                      bgcolor: '#e3f2fd'
-                                                    }
-                                                  }}
-                                                  onClick={() => {
-                                                    // Verwende die bestehende Implementierung wie in Material&Quiz
-                                                    const fileName = 'TechnischeInfo-Quiz.docx';
-                                                    const ext = fileName.split('.').pop()?.toLowerCase();
-                                                    
-                                                    // Verwende den Server-Port (3005) für HTML-Dateien
-                                                    const fullUrl = ext === 'html' 
-                                                      ? 'http://localhost:3005/material/' + fileName 
-                                                      : window.location.origin + '/material/' + fileName;
-                                                    
-                                                    const newWindow = window.open(fullUrl, '_blank');
-                                                    
-                                                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                                                      alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
-                                                    }
-                                                  }}
-                                                  >
-                                                    <Typography variant="body2" sx={{ 
-                                                      color: '#666666',
-                                                      fontSize: '0.75rem',
-                                                      fontWeight: 500,
-                                                      lineHeight: 1.2
-                                                    }}>
-                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                                        📄
-                                                      </span>
-                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                                        TechnischeInfo-Quiz.docx
-                                                      </span>
-                                                    </Typography>
-                                                  </Box>
-                                                </Box>
-                                              </Box>
-                                            </Box>
-                                          </Box>
-                                        </Box>
-                                        
-                                        {/* Elemente-Zähler */}
-                                        <Box sx={{ 
-                                          textAlign: 'left', 
-                                          mt: 1,
-                                          color: colors.textSecondary,
-                                          fontSize: '0.7rem'
+                                  {assignedFolders[group.id].map((folderData: {path: string, content: any[]}) => {
+                                    return (
+                                      <Box key={folderData.path} sx={{ mb: 1.4 }}>
+                                        {/* Ordner-Pfad anzeigen */}
+                                        <Typography variant="body2" sx={{ 
+                                          color: '#D32F2F',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          mb: 0.5
                                         }}>
-                                          <Typography variant="caption" sx={{ 
-                                            fontSize: '0.65rem',
-                                            fontStyle: 'italic'
-                                          }}>
-                                            42 Elemente
-                                          </Typography>
-                                        </Box>
+                                          📁 {getBasename(folderData.path)}
+                                        </Typography>
+                                        
+                                        {/* Dateien aus dem Ordner anzeigen */}
+                                        {folderData.content && folderData.content.length > 0 && (
+                                          <Box sx={{ ml: 2, mb: 0.5 }}>
+                                            {folderData.content
+                                              .filter((item: any) => item.type === 'file')
+                                              .map((file: any, fileIndex: number) => {
+                                                const fileName = getBasename(file.path);
+                                                return (
+                                                  <Box 
+                                                    key={fileIndex}
+                                                    sx={{ 
+                                                      p: 0.5,
+                                                      borderRadius: 1,
+                                                      bgcolor: '#f0f8ff',
+                                                      transition: 'all 0.2s ease',
+                                                      cursor: 'pointer',
+                                                      '&:hover': {
+                                                        bgcolor: '#e3f2fd'
+                                                      }
+                                                    }}
+                                                    onClick={() => {
+                                                      // Verwende den absoluten Pfad aus der Datenbank
+                                                      const absolutePath = file.path;
+                                                      const ext = getExtname(fileName);
+                                                      
+                                                      // Verwende den neuen API-Endpunkt für absolute Pfade
+                                                      const fullUrl = `http://localhost:3005/api/file-system-paths/open?filePath=${encodeURIComponent(absolutePath)}`;
+                                                      
+                                                      const newWindow = window.open(fullUrl, '_blank');
+                                                      
+                                                      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                                                        alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
+                                                      }
+                                                    }}
+                                                  >
+                                                    <Typography variant="body2" sx={{ 
+                                                      color: '#666666',
+                                                      fontSize: '0.75rem',
+                                                      fontWeight: 500,
+                                                      lineHeight: 1.2
+                                                    }}>
+                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                        📄
+                                                      </span>
+                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                                        {fileName}
+                                                      </span>
+                                                    </Typography>
+                                                  </Box>
+                                                );
+                                              })}
+                                          </Box>
+                                        )}
                                       </Box>
                                     );
                                   })}

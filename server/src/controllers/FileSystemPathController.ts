@@ -1038,45 +1038,36 @@ export class FileSystemPathController {
     try {
       const { filePath } = req.query;
       
-      console.log('=== OPEN FILE REQUEST ===');
-      console.log('Query params:', req.query);
-      console.log('File path from query:', filePath);
-      
       if (!filePath || typeof filePath !== 'string') {
-        console.log('Missing or invalid filePath parameter');
         return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
       }
+
+      // Normalisiere den Pfad für Sicherheit
+      const normalizedPath = path.normalize(filePath);
       
-      // Pfad normalisieren
-      const normalizedPath = path.resolve(filePath);
-      console.log('Normalized path:', normalizedPath);
-      
-      // Sicherheitsprüfung: Pfad muss existieren und lesbar sein
+      // Überprüfe, ob der Pfad existiert
       if (!fs.existsSync(normalizedPath)) {
-        console.log('File does not exist:', normalizedPath);
         return res.status(404).json({ error: 'Datei nicht gefunden' });
       }
-      
+
+      // Überprüfe, ob es sich um eine Datei handelt
       const stats = fs.statSync(normalizedPath);
       if (!stats.isFile()) {
-        console.log('Path is not a file:', normalizedPath);
-        return res.status(400).json({ error: 'Pfad ist keine Datei' });
+        return res.status(400).json({ error: 'Der Pfad zeigt nicht auf eine Datei' });
       }
-      
-      // Datei-Informationen abrufen
+
+      // Bestimme den Dateinamen und die Erweiterung
       const fileName = path.basename(normalizedPath);
-      const fileSize = stats.size;
       const fileExtension = path.extname(fileName).toLowerCase();
-      
-      console.log('File info:', { fileName, fileSize, path: normalizedPath, extension: fileExtension });
-      
-      // Datei lesen
+      const fileSize = stats.size;
+
+      // Lese die Datei
       const fileBuffer = fs.readFileSync(normalizedPath);
-      
-      // Content-Type basierend auf Dateiendung setzen
+
+      // Bestimme den Content-Type basierend auf der Dateierweiterung
       let contentType = 'application/octet-stream';
       let contentDisposition = `inline; filename="${encodeURIComponent(fileName)}"`;
-      
+
       switch (fileExtension) {
         case '.html':
         case '.htm':
@@ -1120,20 +1111,18 @@ export class FileSystemPathController {
           // Für unbekannte Dateitypen: Download erzwingen
           contentDisposition = `attachment; filename="${encodeURIComponent(fileName)}"`;
       }
-      
-      console.log('Sending file with content type:', contentType);
-      
-      // Headers setzen und Datei senden
+
+      // Setze die Response-Header
       res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', contentDisposition);
       res.setHeader('Content-Length', fileSize.toString());
-      
+
+      // Sende die Datei
       res.send(fileBuffer);
-      console.log('File sent successfully');
-      
+
     } catch (error) {
-      console.error('Error in openFile:', error);
-      res.status(500).json({ error: 'Fehler beim Öffnen der Datei' });
+      console.error('Fehler beim Öffnen der Datei:', error);
+      res.status(500).json({ error: 'Interner Serverfehler beim Öffnen der Datei' });
     }
   }
 }
