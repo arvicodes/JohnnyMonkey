@@ -409,6 +409,718 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     });
   };
 
+  // Schöne Vorschau-Modals (aus FileSystemPathManager kopiert)
+  const showFilePreviewModal = (fileName: string, htmlContent: string, filePath: string, fileType: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    
+    // Für PowerPoint-Dateien breiter (aber 20% reduziert)
+    if (fileType === 'powerpoint') {
+      modalContent.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 95%;
+        width: 960px;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        border: 1px solid #e0e0e0;
+      `;
+    } else {
+      modalContent.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 90%;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        border: 1px solid #e0e0e0;
+      `;
+    }
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Datei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download der Datei. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    
+    // Für PowerPoint-Dateien keinen Inhalt und keinen Rahmen anzeigen
+    if (fileType === 'powerpoint') {
+      content.innerHTML = '';
+      content.style.cssText = `
+        padding: 0;
+        margin: 0;
+        border: none;
+        background: transparent;
+        max-height: none;
+        overflow: visible;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      `;
+    } else {
+      // Für andere Dateitypen den normalen Inhalt und Rahmen anzeigen
+      content.innerHTML = htmlContent;
+      content.style.cssText = `
+        border: 1px solid #e0e0e0;
+        padding: 20px;
+        border-radius: 8px;
+        background: #fafafa;
+        max-height: 400px;
+        overflow: auto;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      `;
+    }
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // ESC-Taste zum Schließen - mit Modal-Fokus
+    modal.setAttribute('tabindex', '0');
+    modal.focus();
+    
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener('keydown', handleModalKeyDown);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleModalKeyDown);
+  };
+
+  const showImagePreviewModal = (fileName: string, imageData: any, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Bild konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download des Bildes. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const imageContainer = document.createElement('div');
+    imageContainer.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      text-align: center;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageData.dataUrl || imageData.url;
+    img.alt = fileName;
+    img.style.cssText = `
+      max-width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    `;
+    
+    imageContainer.appendChild(img);
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(imageContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // ESC-Taste zum Schließen - mit Modal-Fokus
+    modal.setAttribute('tabindex', '0');
+    modal.focus();
+    
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener('keydown', handleModalKeyDown);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleModalKeyDown);
+  };
+
+  const showTextPreviewModal = (fileName: string, textContent: string, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Textdatei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download der Textdatei. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    content.textContent = textContent;
+    content.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      max-height: 400px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+    `;
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // ESC-Taste zum Schließen - mit Modal-Fokus
+    modal.setAttribute('tabindex', '0');
+    modal.focus();
+    
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener('keydown', handleModalKeyDown);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleModalKeyDown);
+  };
+
+  // Funktion zum Öffnen von Dateien - nutzt die bereits vorhandenen, schönen Vorschau-Methoden
+  const handleFileClick = async (item: any) => {
+    if (item.type !== 'file') return;
+    
+    const fileExtension = item.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExtension === 'html' || fileExtension === 'htm') {
+      // HTML-Dateien im neuen Tab öffnen
+      try {
+        const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der HTML-Datei:', error);
+        alert('HTML-Datei konnte nicht geöffnet werden.');
+      }
+    } else if (fileExtension === 'pdf') {
+      // PDF-Dateien im neuen Tab öffnen
+      try {
+        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PDF-Datei:', error);
+        alert('PDF-Datei konnte nicht geöffnet werden.');
+      }
+    } else if (fileExtension === 'docx') {
+      // DOCX-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der DOCX-Datei:', error);
+        alert('DOCX-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      // Excel-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-excel?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'excel');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Excel-Datei:', error);
+        alert('Excel-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
+      // PowerPoint-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'powerpoint');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PowerPoint-Datei:', error);
+        alert('PowerPoint-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
+      // Bild-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const imageData = await response.json();
+          showImagePreviewModal(item.name, imageData, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden des Bildes:', error);
+        alert('Bild-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'goodnotes' || fileExtension === 'gn') {
+      // GoodNotes-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-goodnotes?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'goodnotes');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der GoodNotes-Datei:', error);
+        alert('GoodNotes-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
+      // Text-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const textContent = await response.text();
+          showTextPreviewModal(item.name, textContent, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Textdatei:', error);
+        alert('Text-Vorschau konnte nicht geladen werden.');
+      }
+    } else {
+      // Download über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = item.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Datei konnte nicht heruntergeladen werden.');
+      }
+    }
+  };
+
   // Neue Funktion zum Rendern der echten Ordner-Vorschau
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
@@ -473,10 +1185,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             fontSize: '0.75rem',
             fontWeight: fontWeight,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: 0.5,
-            mb: 0.5
-          }}>
+            mb: 0.5,
+            cursor: item.type === 'file' ? 'pointer' : 'default',
+            textDecoration: 'none',
+            wordBreak: 'break-word',
+            maxWidth: '100%',
+            '&:hover': item.type === 'file' ? {
+              color: '#1976D2'
+            } : {}
+          }}
+          onClick={() => {
+            if (item.type === 'file') {
+              console.log('File clicked:', item);
+              handleFileClick(item);
+            }
+          }}
+          >
             {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
             {item.type === 'directory' ? (
               level === 0 ? (
@@ -1497,14 +2223,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                             border: '1px solid #e0e0e0'
                           }}>
-                            <Typography variant="subtitle2" sx={{ 
-                              fontWeight: 'bold', 
-                              mb: 1.4,
-                              color: colors.textPrimary,
-                              fontSize: '0.85rem'
-                            }}>
-                              Zugeordnete Ordner
-                            </Typography>
+
                             <Box sx={{ 
                               ml: 1,
                               p: 1.4,
@@ -1538,14 +2257,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                             border: '1px solid #e0e0e0'
                           }}>
-                            <Typography variant="subtitle2" sx={{ 
-                              fontWeight: 'bold', 
-                              mb: 1.4,
-                              color: colors.textPrimary,
-                              fontSize: '0.85rem'
-                            }}>
-                              Zugeordnete Inhalte
-                            </Typography>
+
                             {/* Verschachtelte Darstellung */}
                             <Box sx={{ 
                               ml: 1,

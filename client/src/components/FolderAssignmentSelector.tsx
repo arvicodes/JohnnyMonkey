@@ -230,18 +230,602 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     setSnackbar({ ...snackbar, open: false });
   };
 
+  // Neue Hilfsfunktionen für Datei-Vorschau (aus FileSystemPathManager kopiert)
+  const showFilePreviewModal = (fileName: string, htmlContent: string, filePath: string, fileType: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Datei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download der Datei. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    content.innerHTML = htmlContent;
+    content.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      max-height: 400px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+    `;
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  };
+
+  const showImagePreviewModal = (fileName: string, imageData: any, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Bild konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download des Bildes. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const imageContainer = document.createElement('div');
+    imageContainer.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      text-align: center;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageData.dataUrl || imageData.url;
+    img.alt = fileName;
+    img.style.cssText = `
+      max-width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    `;
+    
+    imageContainer.appendChild(img);
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(imageContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  };
+
+  const showTextPreviewModal = (fileName: string, textContent: string, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Textdatei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download der Textdatei. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    content.textContent = textContent;
+    content.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      max-height: 400px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+    `;
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+  };
+
+  // Neue Funktion zum Öffnen von Dateien
+  const handleFileClick = async (item: DirectoryItem) => {
+    if (item.type !== 'file') return;
+    
+    const fileExtension = item.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExtension === 'html' || fileExtension === 'htm') {
+      // HTML-Dateien im neuen Tab öffnen
+      try {
+        const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der HTML-Datei:', error);
+        alert('HTML-Datei konnte nicht geöffnet werden.');
+      }
+    } else if (fileExtension === 'pdf') {
+      // PDF-Vorschau
+      try {
+        const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'pdf');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PDF-Datei:', error);
+        alert('PDF-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'docx') {
+      // DOCX-Vorschau
+      try {
+        const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der DOCX-Datei:', error);
+        alert('DOCX-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
+      // Bild-Vorschau
+      try {
+        const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const imageData = await response.json();
+          showImagePreviewModal(item.name, imageData, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden des Bildes:', error);
+        alert('Bild-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
+      // Text-Vorschau
+      try {
+        const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const textContent = await response.text();
+          showTextPreviewModal(item.name, textContent, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Textdatei:', error);
+        alert('Text-Vorschau konnte nicht geladen werden.');
+      }
+    } else {
+      // Download für unbekannte Dateitypen
+      try {
+        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = item.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Datei konnte nicht heruntergeladen werden.');
+      }
+    }
+  };
+
   // Rekursive Komponente für hierarchische Anzeige
   const renderDirectoryItem = (item: DirectoryItem, level: number = 0) => {
     const isExpanded = expandedItems.has(item.path);
     const hasChildren = item.children && item.children.length > 0;
     const canExpand = item.type === 'directory' && hasChildren;
     const isDirectory = item.type === 'directory';
+    const isFile = item.type === 'file';
     const isAssigned = assignedFolders.includes(item.path);
-
-    // Nur Ordner anzeigen, Dateien filtern
-    if (!isDirectory) {
-      return null;
-    }
 
     // Filtere nach Suchbegriff
     if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -256,15 +840,21 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
             alignItems: 'center', 
             py: 0.5,
             pl: level * 2,
-            cursor: canExpand ? 'pointer' : 'default',
+            cursor: (canExpand || isFile) ? 'pointer' : 'default',
             borderRadius: 1,
-            '&:hover': canExpand ? { 
+            '&:hover': (canExpand || isFile) ? { 
               bgcolor: 'rgba(0,0,0,0.04)',
               transform: 'translateX(2px)',
               transition: 'all 0.2s ease'
             } : {}
           }}
-          onClick={() => canExpand && toggleItemExpanded(item.path)}
+          onClick={() => {
+            if (isFile) {
+              handleFileClick(item);
+            } else if (canExpand) {
+              toggleItemExpanded(item.path);
+            }
+          }}
         >
           {canExpand && (
             <Box sx={{ 
@@ -284,17 +874,18 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
           <Box sx={{ 
             mr: 0.5, 
             fontSize: '0.9rem',
-            color: '#2e7d32'
+            color: isDirectory ? '#2e7d32' : '#1976d2'
           }}>
-            📁
+            {isDirectory ? '📁' : '📄'}
           </Box>
           
           <Typography 
             variant="body2" 
             sx={{ 
               fontSize: '0.75rem',
-              color: '#2e7d32',
-              fontWeight: 'medium',
+              color: isDirectory ? '#2e7d32' : '#1976d2',
+              fontWeight: isDirectory ? 'medium' : 'normal',
+              textDecoration: isFile ? 'underline' : 'none',
               flex: 1
             }}
           >
@@ -302,30 +893,32 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 0.5 }}>
-            {isAssigned ? (
-              <Chip 
-                label="Zugeordnet" 
-                size="small" 
-                color="success" 
-                variant="outlined"
-                sx={{ fontSize: '0.6rem', height: 20 }}
-              />
-            ) : (
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  assignFolder(item.path);
-                }}
-                sx={{ 
-                  width: 24, 
-                  height: 24, 
-                  color: '#2e7d32',
-                  '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.1)' }
-                }}
-              >
-                <AddIcon fontSize="small" />
-              </IconButton>
+            {isDirectory && (
+              isAssigned ? (
+                <Chip 
+                  label="Zugeordnet" 
+                  size="small" 
+                  color="success" 
+                  variant="outlined"
+                  sx={{ fontSize: '0.6rem', height: 20 }}
+                />
+              ) : (
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    assignFolder(item.path);
+                  }}
+                  sx={{ 
+                    width: 24, 
+                    height: 24, 
+                    color: '#2e7d32',
+                    '&:hover': { bgcolor: 'rgba(46, 125, 50,0.1)' }
+                  }}
+                >
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              )
             )}
           </Box>
         </Box>
@@ -334,7 +927,6 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
         {isExpanded && hasChildren && (
           <Box>
             {item.children
-              .filter(child => child.type === 'directory') // Nur Ordner anzeigen
               .map(child => renderDirectoryItem(child, level + 1))}
           </Box>
         )}
@@ -410,17 +1002,49 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
                       Inhalt ({items.filter(item => item.type === 'directory').length} Ordner, {items.filter(item => item.type === 'file').length} Dateien):
                     </Typography>
                     {items.slice(0, 5).map((item, index) => (
-                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                      <Box 
+                        key={index} 
+                        sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          mb: 0.5,
+                          cursor: item.type === 'file' ? 'pointer' : 'default',
+                          userSelect: 'none',
+                          '&:hover': item.type === 'file' ? { 
+                            bgcolor: 'rgba(0,0,0,0.04)', 
+                            borderRadius: 1,
+                            px: 0.5
+                          } : {}
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('Item clicked:', item);
+                          if (item.type === 'file') {
+                            console.log('File clicked, calling handleFileClick');
+                            handleFileClick(item);
+                          } else {
+                            console.log('Not a file, item type:', item.type);
+                          }
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
                         <Box sx={{ 
                           mr: 0.5, 
                           fontSize: '0.8rem',
-                          color: item.type === 'directory' ? '#2e7d32' : '#666'
+                          color: item.type === 'directory' ? '#2e7d32' : '#1976d2'
                         }}>
                           {item.type === 'directory' ? '📁' : '📄'}
                         </Box>
                         <Typography variant="caption" sx={{ 
-                          color: 'text.secondary',
-                          fontSize: '0.7rem'
+                          color: item.type === 'file' ? 'primary.main' : 'text.secondary',
+                          fontSize: '0.7rem',
+                          textDecoration: item.type === 'file' ? 'underline' : 'none',
+                          fontWeight: item.type === 'file' ? 'medium' : 'normal',
+                          '&:hover': item.type === 'file' ? {
+                            color: 'primary.dark',
+                            textDecoration: 'underline'
+                          } : {}
                         }}>
                           {item.name}
                         </Typography>

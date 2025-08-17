@@ -3,6 +3,8 @@ import { PrismaClient } from '../generated/prisma';
 import * as fs from 'fs';
 import * as path from 'path';
 import mammoth from 'mammoth';
+import pdf from 'pdf-parse';
+import * as XLSX from 'xlsx';
 
 const prisma = new PrismaClient();
 
@@ -475,27 +477,65 @@ export class FileSystemPathController {
       }
       
       if (preview === 'true') {
-        // Für Vorschau: Einfache HTML-Tabelle erstellen
-        const htmlContent = `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #1976d2; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">
-              Excel-Vorschau: ${fileName}
-            </h2>
-            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Dateiname:</strong> ${fileName}</p>
-              <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
-              <p><strong>Typ:</strong> Excel-Datei (${fileExtension.toUpperCase()})</p>
-              <p><strong>Pfad:</strong> ${normalizedPath}</p>
+        // Für Vorschau: Excel-Inhalt mit XLSX-Bibliothek lesen
+        try {
+          const fileBuffer = fs.readFileSync(normalizedPath);
+          const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+          
+          let htmlContent = `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1976d2; margin-bottom: 20px;">Excel-Vorschau: ${fileName}</h2>
+          `;
+          
+          // Alle Arbeitsblätter durchgehen
+          workbook.SheetNames.forEach((sheetName, index) => {
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            if (jsonData.length > 0) {
+              htmlContent += `
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50; margin-bottom: 20px;">
+                  <h3 style="margin: 0 0 15px 0; color: #2e7d32;">📊 Arbeitsblatt: ${sheetName}</h3>
+                  <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #c8e6c9; max-height: 300px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              `;
+              
+              // Tabelle erstellen (maximal 20 Zeilen für Vorschau)
+              const maxRows = Math.min(jsonData.length, 20);
+              for (let i = 0; i < maxRows; i++) {
+                const row = jsonData[i];
+                htmlContent += '<tr>';
+                if (Array.isArray(row)) {
+                  row.forEach((cell, cellIndex) => {
+                    const cellValue = cell !== undefined && cell !== null ? String(cell) : '';
+                    htmlContent += `<td style="border: 1px solid #ddd; padding: 6px; text-align: left;">${cellValue}</td>`;
+                  });
+                }
+                htmlContent += '</tr>';
+              }
+              
+              htmlContent += `
+                    </table>
+                    ${jsonData.length > 20 ? `<p style="margin-top: 10px; color: #666; font-style: italic;">Zeige ${maxRows} von ${jsonData.length} Zeilen</p>` : ''}
+                  </div>
+                </div>
+              `;
+            }
+          });
+          
+          htmlContent += '</div>';
+          
+          console.log('Excel HTML preview with content sent successfully');
+          res.send(htmlContent);
+        } catch (excelError) {
+          console.error('Error parsing Excel file:', excelError);
+          res.send(`
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1976d2;">Excel-Vorschau: ${fileName}</h2>
+              <p>Excel-Inhalt konnte nicht gelesen werden.</p>
             </div>
-            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-              <p><strong>Hinweis:</strong> Für eine vollständige Vorschau der Excel-Inhalte wird eine spezielle Bibliothek benötigt.</p>
-              <p>Sie können die Datei über den Download-Button herunterladen und in Excel öffnen.</p>
-            </div>
-          </div>
-        `;
-        
-        console.log('Excel HTML preview sent successfully');
-        res.send(htmlContent);
+          `);
+        }
       } else {
         // Für Download: Datei als Blob senden
         const fileBuffer = fs.readFileSync(normalizedPath);
@@ -553,27 +593,71 @@ export class FileSystemPathController {
       }
       
       if (preview === 'true') {
-        // Für Vorschau: Einfache HTML-Info erstellen
-        const htmlContent = `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #1976d2; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">
-              PowerPoint-Vorschau: ${fileName}
-            </h2>
-            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Dateiname:</strong> ${fileName}</p>
-              <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
-              <p><strong>Typ:</strong> PowerPoint-Datei (${fileExtension.toUpperCase()})</p>
-              <p><strong>Pfad:</strong> ${normalizedPath}</p>
+        // Für Vorschau: PowerPoint-Inhalt direkt anzeigen
+        try {
+          const fileBuffer = fs.readFileSync(normalizedPath);
+          
+          if (fileExtension === '.pptx') {
+            // Für .pptx-Dateien: Nur Header anzeigen (wie im Screenshot)
+            try {
+              const bufferString = fileBuffer.toString('utf8', 0, Math.min(fileBuffer.length, 200000));
+              const slideCount = bufferString.match(/<p:sld[^>]*>/g)?.length || 0;
+              
+              // Nur der Header wird angezeigt - wie im Screenshot
+              const htmlContent = `
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                  <h2 style="color: #1976d2; margin-bottom: 20px;">PowerPoint-Vorschau: ${fileName}</h2>
+                  <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #495057; margin: 0 0 10px 0;">📊 Präsentation: ${slideCount} Folien</h3>
+                  </div>
+                </div>
+              `;
+              
+              res.send(htmlContent);
+              
+            } catch (extractError) {
+              console.error('Error extracting PPTX content:', extractError);
+              res.send(`
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                  <h2 style="color: #1976d2;">PowerPoint-Vorschau: ${fileName}</h2>
+                  <p>PowerPoint-Inhalt konnte nicht extrahiert werden.</p>
+                </div>
+              `);
+            }
+          } else {
+            // Für .ppt-Dateien: Nur Header anzeigen (wie im Screenshot)
+            try {
+              // Nur der Header wird angezeigt - wie im Screenshot
+              const htmlContent = `
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                  <h2 style="color: #1976d2; margin-bottom: 20px;">PowerPoint-Vorschau: ${fileName}</h2>
+                  <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #495057; margin: 0 0 10px 0;">📊 Präsentation: Folien-Info nicht verfügbar</h3>
+                  </div>
+                </div>
+              `;
+              
+              res.send(htmlContent);
+              
+            } catch (pptError) {
+              console.error('Error reading PPT file:', pptError);
+              res.send(`
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                  <h2 style="color: #1976d2;">PowerPoint-Vorschau: ${fileName}</h2>
+                  <p>PowerPoint-Inhalt konnte nicht gelesen werden.</p>
+                </div>
+              `);
+            }
+          }
+        } catch (error) {
+          console.error('Error in PowerPoint preview:', error);
+          res.send(`
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1976d2;">PowerPoint-Vorschau: ${fileName}</h2>
+              <p>PowerPoint-Vorschau konnte nicht geladen werden.</p>
             </div>
-            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-              <p><strong>Hinweis:</strong> Für eine vollständige Vorschau der PowerPoint-Inhalte wird eine spezielle Bibliothek benötigt.</p>
-              <p>Sie können die Datei über den Download-Button herunterladen und in PowerPoint öffnen.</p>
-            </div>
-          </div>
-        `;
-        
-        console.log('PowerPoint HTML preview sent successfully');
-        res.send(htmlContent);
+          `);
+        }
       } else {
         // Für Download: Datei als Blob senden
         const fileBuffer = fs.readFileSync(normalizedPath);
@@ -846,27 +930,34 @@ export class FileSystemPathController {
       }
       
       if (preview === 'true') {
-        // Für Vorschau: Einfache HTML-Info erstellen
-        const htmlContent = `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #1976d2; border-bottom: 2px solid #e3f2fd; padding-bottom: 10px;">
-              PDF-Vorschau: ${fileName}
-            </h2>
-            <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Dateiname:</strong> ${fileName}</p>
-              <p><strong>Größe:</strong> ${(fileSize / 1024).toFixed(2)} KB</p>
-              <p><strong>Typ:</strong> PDF-Datei</p>
-              <p><strong>Pfad:</strong> ${normalizedPath}</p>
-                  </div>
-            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-              <p><strong>Hinweis:</strong> Für eine vollständige PDF-Vorschau wird eine spezielle Bibliothek benötigt.</p>
-              <p>Sie können die Datei über den Download-Button herunterladen und in einem PDF-Reader öffnen.</p>
+        // Für Vorschau: PDF-Inhalt mit pdf-parse lesen
+        try {
+          const fileBuffer = fs.readFileSync(normalizedPath);
+          const pdfData = await pdf(fileBuffer);
+          
+          const htmlContent = `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1976d2; margin-bottom: 20px;">PDF-Vorschau: ${fileName}</h2>
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 10px 0; color: #2e7d32;">📄 PDF-Inhalt:</h3>
+                <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #c8e6c9; max-height: 400px; overflow-y: auto;">
+                  <pre style="margin: 0; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;">${pdfData.text}</pre>
+                </div>
               </div>
-          </div>
-        `;
-        
-        console.log('PDF HTML preview sent successfully');
-        res.send(htmlContent);
+            </div>
+          `;
+          
+          console.log('PDF HTML preview with content sent successfully');
+          res.send(htmlContent);
+        } catch (pdfError) {
+          console.error('Error parsing PDF:', pdfError);
+          res.send(`
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1976d2;">PDF-Vorschau: ${fileName}</h2>
+              <p>PDF-Inhalt konnte nicht gelesen werden.</p>
+            </div>
+          `);
+        }
                           } else {
         // Für Download: Datei als Blob senden
         const fileBuffer = fs.readFileSync(normalizedPath);
