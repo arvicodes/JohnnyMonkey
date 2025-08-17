@@ -2952,8 +2952,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       <Dialog 
         open={folderAssignmentModalOpen} 
         onClose={handleFolderAssignmentClose}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
+        PaperProps={{
+          sx: {
+            minHeight: '80vh',
+            maxHeight: '90vh'
+          }
+        }}
       >
         <DialogTitle>
           Ordner zuordnen: {folderAssignmentGroupName}

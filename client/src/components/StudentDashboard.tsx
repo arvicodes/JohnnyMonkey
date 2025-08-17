@@ -135,6 +135,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Noten-Sektion aufklappbar
   const [gradesExpanded, setGradesExpanded] = useState(false);
 
+  // Neue States für echte Ordner-Vorschau (exakt wie im TeacherDashboard)
+  const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
+  const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
+  const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
+  const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
+
   // Spielerische Farbpalette
   const colors = {
     primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
@@ -267,6 +273,955 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     } catch {
       return null;
     }
+  };
+
+  // Neue Funktion zum Laden der zugeordneten Ordner (exakt wie im TeacherDashboard)
+  const fetchAssignedFolders = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/learning-groups/${groupId}/folders`);
+      if (response.ok) {
+        const folders = await response.json();
+        const folderPaths = folders.map((f: any) => f.path);
+        
+        setAssignedFolders(prev => ({
+          ...prev,
+          [groupId]: folderPaths
+        }));
+
+        // Lade den Inhalt aller zugeordneten Ordner
+        folderPaths.forEach((folderPath: string) => {
+          fetchAssignedFolderContent(groupId, folderPath);
+        });
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der zugeordneten Ordner:', error);
+    }
+  };
+
+  // Neue Funktion zum Laden des Inhalts zugeordneter Ordner (exakt wie im TeacherDashboard)
+  const fetchAssignedFolderContent = async (groupId: string, folderPath: string) => {
+    try {
+      setLoadingFolderContents(prev => ({
+        ...prev,
+        [`${groupId}:${folderPath}`]: true
+      }));
+
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true`);
+      if (response.ok) {
+        const content = await response.json();
+        console.log('API Response for folder:', folderPath, content); // Debug-Ausgabe
+        
+        let items: any[] = [];
+        if (content.root) {
+          items = content.root.children || [];
+        } else if (content.items) {
+          items = content.items;
+        }
+        
+        console.log('Processed items:', items); // Debug-Ausgabe
+        
+        setAssignedFolderContents(prev => ({
+          ...prev,
+          [`${groupId}:${folderPath}`]: items
+        }));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden des Ordnerinhalts:', error);
+    } finally {
+      setLoadingFolderContents(prev => ({
+        ...prev,
+        [`${groupId}:${folderPath}`]: false
+      }));
+    }
+  };
+
+  // Neue Funktion zum Umschalten der Vorschau zugeordneter Ordner (exakt wie im TeacherDashboard)
+  const toggleAssignedFolderExpanded = (groupId: string, folderPath: string) => {
+    setExpandedAssignedFolders(prev => {
+      const groupExpanded = prev[groupId] || new Set();
+      const newGroupExpanded = new Set(groupExpanded);
+      
+      if (newGroupExpanded.has(folderPath)) {
+        newGroupExpanded.delete(folderPath);
+      } else {
+        newGroupExpanded.add(folderPath);
+      }
+      
+      return {
+        ...prev,
+        [groupId]: newGroupExpanded
+      };
+    });
+  };
+
+  // Schöne Vorschau-Modals (aus FileSystemPathManager kopiert, exakt wie im TeacherDashboard)
+  const showFilePreviewModal = (fileName: string, htmlContent: string, filePath: string, fileType: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    
+    // Für PowerPoint-Dateien breiter (aber 20% reduziert)
+    if (fileType === 'powerpoint') {
+      modalContent.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 95%;
+        width: 960px;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        border: 1px solid #e0e0e0;
+      `;
+    } else {
+      modalContent.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 90%;
+        max-height: 90%;
+        overflow: auto;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        border: 1px solid #e0e0e0;
+      `;
+    }
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Datei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download der Datei. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    
+    // Für PowerPoint-Dateien keinen Inhalt und keinen Rahmen anzeigen
+    if (fileType === 'powerpoint') {
+      content.innerHTML = '';
+      content.style.cssText = `
+        padding: 0;
+        margin: 0;
+        border: none;
+        background: transparent;
+        max-height: none;
+        overflow: visible;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      `;
+    } else {
+      // Für andere Dateitypen den normalen Inhalt und Rahmen anzeigen
+      content.innerHTML = htmlContent;
+      content.style.cssText = `
+        border: 1px solid #e0e0e0;
+        padding: 20px;
+        border-radius: 8px;
+        background: #fafafa;
+        max-height: 400px;
+        overflow: auto;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      `;
+    }
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // ESC-Taste zum Schließen - mit Modal-Fokus
+    modal.setAttribute('tabindex', '0');
+    modal.focus();
+    
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener('keydown', handleModalKeyDown);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleModalKeyDown);
+  };
+
+  const showImagePreviewModal = (fileName: string, imageData: any, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Bild konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download des Bildes. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const imageContainer = document.createElement('div');
+    imageContainer.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      text-align: center;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imageData.dataUrl || imageData.url;
+    img.alt = fileName;
+    img.style.cssText = `
+      max-width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    `;
+    
+    imageContainer.appendChild(img);
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(imageContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // ESC-Taste zum Schließen - mit Modal-Fokus
+    modal.setAttribute('tabindex', '0');
+    modal.focus();
+    
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener('keydown', handleModalKeyDown);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleModalKeyDown);
+  };
+
+  const showTextPreviewModal = (fileName: string, textContent: string, filePath: string) => {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      border: 1px solid #e0e0e0;
+    `;
+    
+    const closeButton = document.createElement('button');
+    closeButton.innerHTML = '&times;';
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #f5f5f5;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #666;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      line-height: 1;
+    `;
+    closeButton.onmouseover = () => {
+      closeButton.style.background = '#e0e0e0';
+      closeButton.style.color = '#333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = '#f5f5f5';
+      closeButton.style.color = '#666';
+    };
+    closeButton.onclick = () => document.body.removeChild(modal);
+    
+    const title = document.createElement('h2');
+    title.textContent = `Vorschau: ${fileName}`;
+    title.style.cssText = `
+      margin: 0 0 25px 0;
+      color: #1976d2;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 15px;
+    `;
+    
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = '📥 Download';
+    downloadButton.style.cssText = `
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+      width: auto;
+      margin: 0;
+      order: -1;
+    `;
+    downloadButton.onclick = async () => {
+      try {
+        downloadButton.textContent = '⏳ Läuft...';
+        downloadButton.disabled = true;
+        downloadButton.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+        downloadButton.style.cursor = 'not-allowed';
+        
+        const downloadResponse = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(filePath)}`);
+        if (downloadResponse.ok) {
+          const blob = await downloadResponse.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          downloadButton.textContent = '✅ Fertig!';
+          downloadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
+          setTimeout(() => {
+            downloadButton.textContent = '📥 Download';
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+            downloadButton.style.cursor = 'pointer';
+          }, 2000);
+        } else {
+          alert(`Textdatei konnte nicht heruntergeladen werden: ${downloadResponse.statusText}`);
+          downloadButton.textContent = '📥 Download';
+          downloadButton.disabled = false;
+          downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+          downloadButton.style.cursor = 'pointer';
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Fehler beim Download der Textdatei. Bitte versuchen Sie es erneut.');
+        downloadButton.textContent = '📥 Download';
+        downloadButton.disabled = false;
+        downloadButton.style.background = 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)';
+        downloadButton.style.cursor = 'pointer';
+      }
+    };
+    
+    title.insertBefore(downloadButton, title.firstChild);
+    
+    const content = document.createElement('div');
+    content.textContent = textContent;
+    content.style.cssText = `
+      border: 1px solid #e0e0e0;
+      padding: 20px;
+      border-radius: 8px;
+      background: #fafafa;
+      max-height: 400px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+    `;
+    
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(title);
+    modalContent.appendChild(content);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // ESC-Taste zum Schließen - mit Modal-Fokus
+    modal.setAttribute('tabindex', '0');
+    modal.focus();
+    
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener('keydown', handleModalKeyDown);
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleModalKeyDown);
+  };
+
+  // Funktion zum Öffnen von Dateien - nutzt die bereits vorhandenen, schönen Vorschau-Methoden (exakt wie im TeacherDashboard)
+  const handleFileClick = async (item: any) => {
+    if (item.type !== 'file') return;
+    
+    const fileExtension = item.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExtension === 'html' || fileExtension === 'htm') {
+      // HTML-Dateien im neuen Tab öffnen
+      try {
+        const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der HTML-Datei:', error);
+        alert('HTML-Datei konnte nicht geöffnet werden.');
+      }
+    } else if (fileExtension === 'pdf') {
+      // PDF-Dateien im neuen Tab öffnen
+      try {
+        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PDF-Datei:', error);
+        alert('PDF-Datei konnte nicht geöffnet werden.');
+      }
+    } else if (fileExtension === 'docx') {
+      // DOCX-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der DOCX-Datei:', error);
+        alert('DOCX-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      // Excel-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-excel?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'excel');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Excel-Datei:', error);
+        alert('Excel-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
+      // PowerPoint-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'powerpoint');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PowerPoint-Datei:', error);
+        alert('PowerPoint-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
+      // Bild-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const imageData = await response.json();
+          showImagePreviewModal(item.name, imageData, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden des Bildes:', error);
+        alert('Bild-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'goodnotes' || fileExtension === 'gn') {
+      // GoodNotes-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-goodnotes?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'goodnotes');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der GoodNotes-Datei:', error);
+        alert('GoodNotes-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
+      // Text-Vorschau über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const textContent = await response.text();
+          showTextPreviewModal(item.name, textContent, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Textdatei:', error);
+        alert('Text-Vorschau konnte nicht geladen werden.');
+      }
+    } else {
+      // Download über den bestehenden Endpunkt
+      try {
+        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = item.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Datei konnte nicht heruntergeladen werden.');
+      }
+    }
+  };
+
+  // Neue Funktion zum Rendern der echten Ordner-Vorschau (exakt wie im TeacherDashboard)
+  const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
+    const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
+    const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
+    
+    console.log('Rendering folder preview for:', groupId, folderPath, 'Items:', items, 'Loading:', isLoading); // Debug-Ausgabe
+    
+    // Rekursive Funktion zum Rendern aller Ebenen
+    const renderItemRecursively = (item: any, level: number = 0) => {
+      console.log(`Rendering item: ${item.name}, type: ${item.type}, level: ${level}`); // Debug
+      
+      // Bestimme Icon und Farbe basierend auf dem Screenshot
+      let icon = '📁';
+      let color = '#666';
+      let fontWeight = 400;
+      
+      if (item.type === 'directory') {
+        // Exakte Icons und Farben aus dem Screenshot
+        if (level === 0) {
+          // Level 0: Hauptebene (wie "MSS Grundthemen")
+          icon = '📁'; // Hellgrauer Ordner
+          color = '#D32F2F'; // Rot
+          fontWeight = 600;
+          console.log(`Level 0: ${item.name} -> Rot, Icon: ${icon}`); // Debug
+        } else if (level === 1) {
+          // Level 1: Erste Unterebene (wie "Informatik = Informationen ?")
+          icon = '📁'; // Hellbrauner Ordner mit bunten Tabs
+          color = '#7B1FA2'; // Lila
+          fontWeight = 600;
+          console.log(`Level 1: ${item.name} -> Lila, Icon: ${icon}`); // Debug
+        } else if (level === 2) {
+          // Level 2: Zweite Unterebene (wie "Informationen in verschiedenen Darstellungsform")
+          icon = '📁'; // Hellgrauer Ordner
+          color = '#1976D2'; // Blau
+          fontWeight = 600;
+          console.log(`Level 2: ${item.name} -> Blau, Icon: ${icon}`); // Debug
+        } else if (level === 3) {
+          // Level 3: Dritte Unterebene (wie "1. Über weite Enfernungen")
+          icon = '📚'; // Grüner Bücherstapel
+          color = '#2E7D32'; // Grün
+          fontWeight = 600;
+          console.log(`Level 3: ${item.name} -> Grün, Icon: ${icon}`); // Debug
+        } else {
+          // Weitere Ebenen
+          icon = '📁'; // Standard Ordner
+          color = '#666'; // Grau
+          fontWeight = 600;
+          console.log(`Level ${level}: ${item.name} -> Grau, Icon: ${icon}`); // Debug
+        }
+      } else {
+        // Level 4: Dateien (wie "qr-timeline-finder-integriert.html")
+        icon = '📄'; // Hellgraues Dokument
+        color = '#03A9F4'; // Hellblau/Cyan wie im Screenshot
+        fontWeight = 400;
+        console.log(`File: ${item.name} -> Hellblau, Icon: ${icon}`); // Debug
+      }
+      
+      return (
+        <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
+          <Typography variant="body2" sx={{ 
+            color: color,
+            fontSize: '0.75rem',
+            fontWeight: fontWeight,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 0.5,
+            mb: 0.5,
+            cursor: item.type === 'file' ? 'pointer' : 'default',
+            textDecoration: 'none',
+            wordBreak: 'break-word',
+            maxWidth: '100%',
+            '&:hover': item.type === 'file' ? {
+              color: '#1976D2'
+            } : {}
+          }}
+          onClick={() => {
+            if (item.type === 'file') {
+              console.log('File clicked:', item);
+              handleFileClick(item);
+            }
+          }}
+          >
+            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+            {item.type === 'directory' ? (
+              level === 0 ? (
+                <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 0
+              ) : level === 1 ? (
+                <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 1
+              ) : level === 2 ? (
+                <span style={{ color: '#1976D2' }}>▼</span> // Blau für Level 2
+              ) : level === 3 ? (
+                <span style={{ color: '#2E7D32' }}>▼</span> // Grün für Level 3
+              ) : (
+                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
+              )
+            ) : null} {/* Kein Dreieck für Dateien */}
+            {icon} {item.name}
+          </Typography>
+          
+          {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
+          {item.type === 'directory' && item.children && item.children.length > 0 && (
+            <Box sx={{ ml: 2, mb: 0.7 }}>
+              {item.children.map((child: any, childIndex: number) => 
+                renderItemRecursively(child, level + 1)
+              )}
+            </Box>
+          )}
+        </Box>
+      );
+    };
+    
+    return (
+      <Box key={folderPath} sx={{ mb: 1.4 }}>
+        {/* Hauptordner - Hellgrauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
+        <Box sx={{ 
+          p: 1.4,
+          borderRadius: 1.4,
+          bgcolor: '#f8f9fa',
+          border: '1px solid #e9ecef',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            bgcolor: '#e9ecef'
+          }
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="body2" sx={{ 
+              color: '#D32F2F', // Rot wie im Screenshot
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5
+            }}>
+              ▼ 📁 {folderPath.split('/').pop() || folderPath}
+            </Typography>
+          </Box>
+        </Box>
+        
+        {/* Vorschau des Ordnerinhalts - IMMER aufgeklappt */}
+        <Box sx={{ ml: 2, mt: 1 }}>
+          {isLoading ? (
+            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+              Lade Inhalt...
+            </Typography>
+          ) : items.length === 0 ? (
+            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+              Ordner ist leer (Debug: {items.length} Items geladen)
+            </Typography>
+          ) : (
+            <Box>
+              {items.map((item, index) => renderItemRecursively(item, 0))}
+            </Box>
+          )}
+        </Box>
+      </Box>
+    );
   };
 
   // Hilfsfunktion: Hole Materialien für eine Lesson
@@ -795,6 +1750,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             await fetchAllContent(group.teacher.id);
             // Lade Noten für jede Lerngruppe
             await fetchGrades(group.id);
+            // Lade zugeordnete Ordner für jede Lerngruppe
+            await fetchAssignedFolders(group.id);
           }
         }
       } catch (err) {
@@ -1272,163 +2229,202 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                             </Box>
                           </Box>
                           
-                          {/* Zugeordnete Inhalte anzeigen */}
-                          {assignments.length > 0 && (
-                            <Box sx={{ mt: 2 }}>
-                              
-                              {/* Verschachtelte Darstellung wie im TeacherDashboard */}
-                              <Box sx={{ 
-                                ml: 1,
-                                p: 1.4,
-                                bgcolor: '#fafbfc',
-                                borderRadius: 1.4,
-                                border: '1px solid #f0f0f0'
-                              }}>
-                                {subjects
-                                  .filter(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id))
-                                  .map(subject => (
-                                    <Box key={subject.id} sx={{ mb: 1.4 }}>
-                                      <Typography variant="body2" sx={{ 
-                                        fontWeight: 'bold', 
-                                        color: colors.accent1, 
-                                        fontSize: '0.8rem',
-                                        mb: 0.7,
-                                        pb: 0.3,
-                                        borderBottom: `2px solid ${colors.accent1}30`
-                                      }}>
-                                        📚 {subject.name}
-                                      </Typography>
-                                      {/* Blöcke */}
-                                      {blocks
-                                        .filter(block => block.subjectId === subject.id && (blockAssignments[block.id] || []).includes(gruppe.id))
-                                        .map(block => (
-                                                                                  <Box key={block.id} sx={{ ml: 2, mb: 0.7 }}>
-                                          <Typography variant="body2" sx={{ 
-                                            color: colors.primary, 
-                                            fontSize: '0.75rem',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 0.5
-                                          }}>
-                                            📦 {block.name}
-                                          </Typography>
-                                            {/* Units */}
-                                            {units
-                                              .filter(unit => unit.blockId === block.id && (unitAssignments[unit.id] || []).includes(gruppe.id))
-                                              .map(unit => (
-                                                                                            <Box key={unit.id} sx={{ ml: 2, mb: 0.7 }}>
-                                              <Typography variant="body2" sx={{ 
-                                                color: colors.secondary, 
-                                                fontSize: '0.75rem',
-                                                fontWeight: 600,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 0.5
-                                              }}>
-                                                📋 {unit.name}
-                                              </Typography>
-                                                  {/* Themen */}
-                                                  {topics
-                                                    .filter(topic => topic.unitId === unit.id && (topicAssignments[topic.id] || []).includes(gruppe.id))
-                                                    .map(topic => (
-                                                                                                        <Box key={topic.id} sx={{ ml: 2, mb: 0.7 }}>
-                                                    <Typography variant="body2" sx={{ 
-                                                      color: colors.accent2, 
-                                                      fontSize: '0.75rem',
-                                                      fontWeight: 600,
-                                                      display: 'flex',
-                                                      alignItems: 'center',
-                                                      gap: 0.5
-                                                    }}>
-                                                      💡 {topic.name}
-                                                    </Typography>
-                                                        {/* Stunden */}
-                                                        {lessons
-                                                          .filter(lesson => lesson.topicId === topic.id && (lessonAssignments[lesson.id] || []).includes(gruppe.id))
-                                                          .map(lesson => (
-                                                                                                                    <Box key={lesson.id} sx={{ 
-                                                          ml: 2, 
-                                                          display: 'flex', 
-                                                          alignItems: 'center', 
-                                                          gap: '6px',
-                                                          p: 0.5,
-                                                          borderRadius: 1,
-                                                          bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#f0f8ff' : 'transparent',
-                                                          transition: 'all 0.2s ease',
-                                                          '&:hover': {
-                                                            bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#e3f2fd' : 'transparent'
-                                                          }
-                                                        }}>
-                                                          <Typography 
-                                                            variant="body2" 
-                                                            sx={{ 
-                                                              color: colors.textSecondary,
-                                                              cursor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? 'pointer' : 'default',
-                                                              fontSize: '0.75rem',
-                                                              fontWeight: 500,
-                                                              '&:hover': {
-                                                                color: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? colors.primary : colors.textSecondary
-                                                              }
-                                                            }}
-                                                                onClick={e => {
-                                                                  e.stopPropagation();
-                                                                  if ((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) {
-                                                                    openLessonContent(lesson.id, lesson.name);
-                                                                  }
-                                                                }}
-                                                                title={(materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? "Material/Quiz öffnen" : ""}
-                                                              >
-                                                                📖 {lesson.name}
-                                                              </Typography>
-                                                              {((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) && (
-                                                                <span 
-                                                                  style={{ 
-                                                                    color: colors.secondary, 
-                                                                    fontSize: '0.8em', 
-                                                                    cursor: 'pointer',
-                                                                    marginLeft: '4px',
-                                                                    transition: 'all 0.2s ease'
-                                                                  }}
-                                                                  onClick={e => {
-                                                                    e.stopPropagation();
-                                                                    openLessonContent(lesson.id, lesson.name);
-                                                                  }}
-                                                                  title="Material/Quiz öffnen"
-                                                                >
-                                                                  {quizzesMap[lesson.id] ? '🧩' : '📄'}
-                                                                </span>
-                                                              )}
-                                                            </Box>
-                                                          ))}
-                                                      </Box>
-                                                    ))}
-                                                </Box>
-                                              ))}
-                                          </Box>
-                                        ))}
-                                    </Box>
-                                  ))}
-                                {/* Falls keine Inhalte */}
-                                {!(subjects.some(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id)) ||
-                                  blocks.some(block => (blockAssignments[block.id] || []).includes(gruppe.id)) ||
-                                  units.some(unit => (unitAssignments[unit.id] || []).includes(gruppe.id)) ||
-                                  topics.some(topic => (topicAssignments[topic.id] || []).includes(gruppe.id)) ||
-                                  lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(gruppe.id))) && (
+                          <Grid container spacing={0.8}>
+                            <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
+                              {/* Zugeordnete Inhalte anzeigen */}
+                              {assignments.length > 0 && (
+                                <Box sx={{ mt: 2 }}>
+                                  
+                                  {/* Verschachtelte Darstellung wie im TeacherDashboard */}
                                   <Box sx={{ 
-                                    textAlign: 'center', 
-                                    py: 2,
-                                    color: colors.textSecondary,
-                                    fontStyle: 'italic'
+                                    ml: 1,
+                                    p: 1.4,
+                                    bgcolor: '#fafbfc',
+                                    borderRadius: 1.4,
+                                    border: '1px solid #f0f0f0'
                                   }}>
-                                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                      📝 Noch keine Inhalte zugeordnet
-                                    </Typography>
+                                    {subjects
+                                      .filter(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id))
+                                      .map(subject => (
+                                        <Box key={subject.id} sx={{ mb: 1.4 }}>
+                                          <Typography variant="body2" sx={{ 
+                                            fontWeight: 'bold', 
+                                            color: colors.accent1, 
+                                            fontSize: '0.8rem',
+                                            mb: 0.7,
+                                            pb: 0.3,
+                                            borderBottom: `2px solid ${colors.accent1}30`
+                                          }}>
+                                            📚 {subject.name}
+                                          </Typography>
+                                          {/* Blöcke */}
+                                          {blocks
+                                            .filter(block => block.subjectId === subject.id && (blockAssignments[block.id] || []).includes(gruppe.id))
+                                            .map(block => (
+                                              <Box key={block.id} sx={{ ml: 2, mb: 0.7 }}>
+                                                <Typography variant="body2" sx={{ 
+                                                  color: colors.primary, 
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 600,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: 0.5
+                                                }}>
+                                                  📦 {block.name}
+                                                </Typography>
+                                                {/* Units */}
+                                                {units
+                                                  .filter(unit => unit.blockId === block.id && (unitAssignments[unit.id] || []).includes(gruppe.id))
+                                                  .map(unit => (
+                                                    <Box key={unit.id} sx={{ ml: 2, mb: 0.7 }}>
+                                                      <Typography variant="body2" sx={{ 
+                                                        color: colors.secondary, 
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 0.5
+                                                      }}>
+                                                        📋 {unit.name}
+                                                      </Typography>
+                                                      {/* Themen */}
+                                                      {topics
+                                                        .filter(topic => topic.unitId === unit.id && (topicAssignments[topic.id] || []).includes(gruppe.id))
+                                                        .map(topic => (
+                                                          <Box key={topic.id} sx={{ ml: 2, mb: 0.7 }}>
+                                                            <Typography variant="body2" sx={{ 
+                                                              color: colors.accent2, 
+                                                              fontSize: '0.75rem',
+                                                              fontWeight: 600,
+                                                              display: 'flex',
+                                                              alignItems: 'center',
+                                                              gap: 0.5
+                                                            }}>
+                                                              💡 {topic.name}
+                                                            </Typography>
+                                                            {/* Stunden */}
+                                                            {lessons
+                                                              .filter(lesson => lesson.topicId === topic.id && (lessonAssignments[lesson.id] || []).includes(gruppe.id))
+                                                              .map(lesson => (
+                                                                <Box key={lesson.id} sx={{ 
+                                                                  ml: 2, 
+                                                                  display: 'flex', 
+                                                                  alignItems: 'center', 
+                                                                  gap: '6px',
+                                                                  p: 0.5,
+                                                                  borderRadius: 1,
+                                                                  bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#f0f8ff' : 'transparent',
+                                                                  transition: 'all 0.2s ease',
+                                                                  '&:hover': {
+                                                                    bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#e3f2fd' : 'transparent'
+                                                                  }
+                                                                }}>
+                                                                  <Typography 
+                                                                    variant="body2" 
+                                                                    sx={{ 
+                                                                      color: colors.textSecondary,
+                                                                      cursor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? 'pointer' : 'default',
+                                                                      fontSize: '0.75rem',
+                                                                      fontWeight: 500,
+                                                                      '&:hover': {
+                                                                        color: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? colors.primary : colors.textSecondary
+                                                                      }
+                                                                    }}
+                                                                    onClick={e => {
+                                                                      e.stopPropagation();
+                                                                      if ((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) {
+                                                                        openLessonContent(lesson.id, lesson.name);
+                                                                      }
+                                                                    }}
+                                                                    title={(materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? "Material/Quiz öffnen" : ""}
+                                                                  >
+                                                                    📖 {lesson.name}
+                                                                  </Typography>
+                                                                  {((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) && (
+                                                                    <span 
+                                                                      style={{ 
+                                                                        color: colors.secondary, 
+                                                                        fontSize: '0.8em', 
+                                                                        cursor: 'pointer',
+                                                                        marginLeft: '4px',
+                                                                        transition: 'all 0.2s ease'
+                                                                      }}
+                                                                      onClick={e => {
+                                                                        e.stopPropagation();
+                                                                        openLessonContent(lesson.id, lesson.name);
+                                                                      }}
+                                                                      title="Material/Quiz öffnen"
+                                                                    >
+                                                                      {quizzesMap[lesson.id] ? '🧩' : '📄'}
+                                                                    </span>
+                                                                  )}
+                                                                </Box>
+                                                              ))}
+                                                          </Box>
+                                                        ))}
+                                                    </Box>
+                                                  ))}
+                                              </Box>
+                                            ))}
+                                        </Box>
+                                      ))}
+                                    {/* Falls keine Inhalte */}
+                                    {!(subjects.some(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id)) ||
+                                      blocks.some(block => (blockAssignments[block.id] || []).includes(gruppe.id)) ||
+                                      units.some(unit => (unitAssignments[unit.id] || []).includes(gruppe.id)) ||
+                                      topics.some(topic => (topicAssignments[topic.id] || []).includes(gruppe.id)) ||
+                                      lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(gruppe.id))) && (
+                                      <Box sx={{ 
+                                        textAlign: 'center', 
+                                        py: 2,
+                                        color: colors.textSecondary,
+                                        fontStyle: 'italic'
+                                      }}>
+                                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                          📝 Noch keine Inhalte zugeordnet
+                                        </Typography>
+                                      </Box>
+                                    )}
                                   </Box>
-                                )}
+                                </Box>
+                              )}
+                            </Grid>
+                            <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
+                              {/* Zugeordnete Ordner - exakt wie im TeacherDashboard */}
+                              <Box sx={{ 
+                                p: 2.1, 
+                                bgcolor: '#fff', 
+                                borderRadius: 2.8, 
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                border: '1px solid #e0e0e0'
+                              }}>
+
+                                <Box sx={{ 
+                                  ml: 1,
+                                  p: 1.4,
+                                  bgcolor: '#fafbfc',
+                                  borderRadius: 1.4,
+                                  border: '1px solid #f0f0f0'
+                                }}>
+                                  {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
+                                    <Box>
+                                      {assignedFolders[gruppe.id].map((folderPath: string) => {
+                                        return renderAssignedFolderPreview(gruppe.id, folderPath);
+                                      })}
+                                    </Box>
+                                  ) : (
+                                    <Typography variant="body2" sx={{ 
+                                      color: colors.textSecondary,
+                                      fontSize: '0.75rem',
+                                      fontStyle: 'italic'
+                                    }}>
+                                      Keine Ordner zugeordnet
+                                    </Typography>
+                                  )}
+                                </Box>
                               </Box>
-                            </Box>
-                          )}
+                            </Grid>
+                          </Grid>
                         </CardContent>
                       </Card>
                     </Grid>

@@ -24,6 +24,7 @@ import {
   Description as FileIcon,
   Add as AddIcon,
   Remove as RemoveIcon,
+  Delete as DeleteIcon,
   Search as SearchIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon
@@ -107,6 +108,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
   const fetchAssignedFolders = async () => {
     try {
       const response = await fetch(`/api/learning-groups/${groupId}/folders`);
+      
       if (response.ok) {
         const folders = await response.json();
         const folderPaths: string[] = folders.map((f: any) => f.path);
@@ -912,8 +914,8 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
                   sx={{ 
                     width: 24, 
                     height: 24, 
-                    color: '#2e7d32',
-                    '&:hover': { bgcolor: 'rgba(46, 125, 50,0.1)' }
+                    color: '#666666',
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
                   }}
                 >
                   <AddIcon fontSize="small" />
@@ -954,9 +956,9 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
         <Card variant="outlined">
           <CardContent sx={{ p: 1.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                 <FolderIcon sx={{ mr: 1, color: '#2e7d32' }} />
-                <Box>
+                <Box sx={{ flex: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                     {folderPath.split('/').pop() || folderPath}
                   </Typography>
@@ -965,14 +967,17 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
                   </Typography>
                 </Box>
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2 }}>
                 <IconButton
                   size="small"
                   onClick={() => toggleAssignedFolderExpanded(folderPath)}
                   sx={{ 
-                    color: '#2e7d32',
-                    '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.1)' }
+                    color: '#666666',
+                    width: 24,
+                    height: 24,
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
                   }}
+                  title="Ordner ein-/ausklappen"
                 >
                   {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                 </IconButton>
@@ -981,10 +986,16 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
                   onClick={() => removeFolder(folderPath)}
                   sx={{ 
                     color: '#d32f2f',
-                    '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.1)' }
+                    width: 24,
+                    height: 24,
+                    '&:hover': { 
+                      bgcolor: 'rgba(211, 47, 47, 0.1)'
+                    },
+                    transition: 'background-color 0.2s ease'
                   }}
+                  title="Ordner entfernen"
                 >
-                  <RemoveIcon fontSize="small" />
+                  <DeleteIcon fontSize="small" />
                 </IconButton>
               </Box>
             </Box>
@@ -1069,7 +1080,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     <Box>
       <Grid container spacing={2}>
         {/* Linke Seite: Pfad-Auswahl und Verzeichnisinhalt */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={6}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Verfügbare Ordner
           </Typography>
@@ -1135,7 +1146,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
         </Grid>
 
         {/* Rechte Seite: Zugeordnete Ordner */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={6}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Zugeordnete Ordner
           </Typography>
