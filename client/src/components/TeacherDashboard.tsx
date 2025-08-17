@@ -51,7 +51,6 @@ import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
 import FolderAssignmentSelector from './FolderAssignmentSelector';
-import path from 'path';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -169,7 +168,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [subjectAssignments, setSubjectAssignments] = useState<{ [subjectId: string]: string[] }>({});
   const [blockAssignments, setBlockAssignments] = useState<{ [blockId: string]: string[] }>({});
   const [unitAssignments, setUnitAssignments] = useState<{ [unitId: string]: string[] }>({});
-  const [topicAssignments, setTopicAssignments] = useState<{ [topicId: string]: string[] }>({});
+  const [topicAssignments, setTopicAssignments] = useState<{ [unitId: string]: string[] }>({});
   const [lessonAssignments, setLessonAssignments] = useState<{ [lessonId: string]: string[] }>({});
   // Listen für Namen
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -208,6 +207,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Mini-Noten Cache: key = `${groupId}:${studentId}`
   const [miniGradesMap, setMiniGradesMap] = useState<{ [key: string]: { loading: boolean; gradingSystem: string; overall?: number | null; nodes: MiniGradeNode[] } }>({});
+
+  // Neue States für echte Ordner-Vorschau
+  const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
+  const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
+  const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
 
   // Spielerische Farbpalette
   const colors = {
@@ -317,49 +321,236 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       setGroups(groupsData);
       
       // Lade zugeordnete Ordner für alle Gruppen
-      await fetchAssignedFolders(groupsData);
+      for (const group of groupsData) {
+        await fetchAssignedFolders(group.id);
+      }
     } catch (error) {
       console.error('Fehler beim Laden der Gruppen:', error);
       showSnackbar('Fehler beim Laden der Gruppen', 'error');
     }
   };
 
-  const fetchAssignedFolders = async (groupsData: LearningGroup[]) => {
+  // Neue Funktion zum Laden der zugeordneten Ordner
+  const fetchAssignedFolders = async (groupId: string) => {
     try {
-      const foldersMap: {[groupId: string]: Array<{path: string, content: any[]}>} = {};
-      
-      for (const group of groupsData) {
-        const response = await fetch(`/api/learning-groups/${group.id}/folders`);
-        if (response.ok) {
-          const folders = await response.json();
-          const foldersWithContent = [];
-          
-          for (const folder of folders) {
-            try {
-              // Lade den Inhalt des Ordners
-              const contentResponse = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folder.path)}&recursive=true`);
-              if (contentResponse.ok) {
-                const content = await contentResponse.json();
-                foldersWithContent.push({ path: folder.path, content });
-              } else {
-                foldersWithContent.push({ path: folder.path, content: [] });
-              }
-            } catch (error) {
-              console.error('Fehler beim Laden des Ordnerinhalts:', error);
-              foldersWithContent.push({ path: folder.path, content: [] });
-            }
-          }
-          
-          foldersMap[group.id] = foldersWithContent;
-        } else {
-          foldersMap[group.id] = [];
-        }
+      const response = await fetch(`/api/learning-groups/${groupId}/folders`);
+      if (response.ok) {
+        const folders = await response.json();
+        const folderPaths = folders.map((f: any) => f.path);
+        
+        setAssignedFolders(prev => ({
+          ...prev,
+          [groupId]: folderPaths
+        }));
+
+        // Lade den Inhalt aller zugeordneten Ordner
+        folderPaths.forEach((folderPath: string) => {
+          fetchAssignedFolderContent(groupId, folderPath);
+        });
       }
-      
-      setAssignedFolders(foldersMap);
     } catch (error) {
       console.error('Fehler beim Laden der zugeordneten Ordner:', error);
     }
+  };
+
+  // Neue Funktion zum Laden des Inhalts zugeordneter Ordner
+  const fetchAssignedFolderContent = async (groupId: string, folderPath: string) => {
+    try {
+      setLoadingFolderContents(prev => ({
+        ...prev,
+        [`${groupId}:${folderPath}`]: true
+      }));
+
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true`);
+      if (response.ok) {
+        const content = await response.json();
+        console.log('API Response for folder:', folderPath, content); // Debug-Ausgabe
+        
+        let items: any[] = [];
+        if (content.root) {
+          items = content.root.children || [];
+        } else if (content.items) {
+          items = content.items;
+        }
+        
+        console.log('Processed items:', items); // Debug-Ausgabe
+        
+        setAssignedFolderContents(prev => ({
+          ...prev,
+          [`${groupId}:${folderPath}`]: items
+        }));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden des Ordnerinhalts:', error);
+    } finally {
+      setLoadingFolderContents(prev => ({
+        ...prev,
+        [`${groupId}:${folderPath}`]: false
+      }));
+    }
+  };
+
+  // Neue Funktion zum Umschalten der Vorschau zugeordneter Ordner
+  const toggleAssignedFolderExpanded = (groupId: string, folderPath: string) => {
+    setExpandedAssignedFolders(prev => {
+      const groupExpanded = prev[groupId] || new Set();
+      const newGroupExpanded = new Set(groupExpanded);
+      
+      if (newGroupExpanded.has(folderPath)) {
+        newGroupExpanded.delete(folderPath);
+      } else {
+        newGroupExpanded.add(folderPath);
+      }
+      
+      return {
+        ...prev,
+        [groupId]: newGroupExpanded
+      };
+    });
+  };
+
+  // Neue Funktion zum Rendern der echten Ordner-Vorschau
+  const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
+    const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
+    const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
+    
+    console.log('Rendering folder preview for:', groupId, folderPath, 'Items:', items, 'Loading:', isLoading); // Debug-Ausgabe
+    
+    // Rekursive Funktion zum Rendern aller Ebenen
+    const renderItemRecursively = (item: any, level: number = 0) => {
+      console.log(`Rendering item: ${item.name}, type: ${item.type}, level: ${level}`); // Debug
+      
+      // Bestimme Icon und Farbe basierend auf dem Screenshot
+      let icon = '📁';
+      let color = '#666';
+      let fontWeight = 400;
+      
+      if (item.type === 'directory') {
+        // Exakte Icons und Farben aus dem Screenshot
+        if (level === 0) {
+          // Level 0: Hauptebene (wie "MSS Grundthemen")
+          icon = '📁'; // Hellgrauer Ordner
+          color = '#D32F2F'; // Rot
+          fontWeight = 600;
+          console.log(`Level 0: ${item.name} -> Rot, Icon: ${icon}`); // Debug
+        } else if (level === 1) {
+          // Level 1: Erste Unterebene (wie "Informatik = Informationen ?")
+          icon = '📁'; // Hellbrauner Ordner mit bunten Tabs
+          color = '#7B1FA2'; // Lila
+          fontWeight = 600;
+          console.log(`Level 1: ${item.name} -> Lila, Icon: ${icon}`); // Debug
+        } else if (level === 2) {
+          // Level 2: Zweite Unterebene (wie "Informationen in verschiedenen Darstellungsform")
+          icon = '📁'; // Hellgrauer Ordner
+          color = '#1976D2'; // Blau
+          fontWeight = 600;
+          console.log(`Level 2: ${item.name} -> Blau, Icon: ${icon}`); // Debug
+        } else if (level === 3) {
+          // Level 3: Dritte Unterebene (wie "1. Über weite Enfernungen")
+          icon = '📚'; // Grüner Bücherstapel
+          color = '#2E7D32'; // Grün
+          fontWeight = 600;
+          console.log(`Level 3: ${item.name} -> Grün, Icon: ${icon}`); // Debug
+        } else {
+          // Weitere Ebenen
+          icon = '📁'; // Standard Ordner
+          color = '#666'; // Grau
+          fontWeight = 600;
+          console.log(`Level ${level}: ${item.name} -> Grau, Icon: ${icon}`); // Debug
+        }
+      } else {
+        // Level 4: Dateien (wie "qr-timeline-finder-integriert.html")
+        icon = '📄'; // Hellgraues Dokument
+        color = '#03A9F4'; // Hellblau/Cyan wie im Screenshot
+        fontWeight = 400;
+        console.log(`File: ${item.name} -> Hellblau, Icon: ${icon}`); // Debug
+      }
+      
+      return (
+        <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
+          <Typography variant="body2" sx={{ 
+            color: color,
+            fontSize: '0.75rem',
+            fontWeight: fontWeight,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            mb: 0.5
+          }}>
+            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+            {item.type === 'directory' ? (
+              level === 0 ? (
+                <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 0
+              ) : level === 1 ? (
+                <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 1
+              ) : level === 2 ? (
+                <span style={{ color: '#1976D2' }}>▼</span> // Blau für Level 2
+              ) : level === 3 ? (
+                <span style={{ color: '#2E7D32' }}>▼</span> // Grün für Level 3
+              ) : (
+                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
+              )
+            ) : null} {/* Kein Dreieck für Dateien */}
+            {icon} {item.name}
+          </Typography>
+          
+          {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
+          {item.type === 'directory' && item.children && item.children.length > 0 && (
+            <Box sx={{ ml: 2, mb: 0.7 }}>
+              {item.children.map((child: any, childIndex: number) => 
+                renderItemRecursively(child, level + 1)
+              )}
+            </Box>
+          )}
+        </Box>
+      );
+    };
+    
+    return (
+      <Box key={folderPath} sx={{ mb: 1.4 }}>
+        {/* Hauptordner - Hellgrauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
+        <Box sx={{ 
+          p: 1.4,
+          borderRadius: 1.4,
+          bgcolor: '#f8f9fa',
+          border: '1px solid #e9ecef',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            bgcolor: '#e9ecef'
+          }
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="body2" sx={{ 
+              color: '#D32F2F', // Rot wie im Screenshot
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5
+            }}>
+              ▼ 📁 {folderPath.split('/').pop() || folderPath}
+            </Typography>
+          </Box>
+        </Box>
+        
+        {/* Vorschau des Ordnerinhalts - IMMER aufgeklappt */}
+        <Box sx={{ ml: 2, mt: 1 }}>
+          {isLoading ? (
+            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+              Lade Inhalt...
+            </Typography>
+          ) : items.length === 0 ? (
+            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+              Ordner ist leer (Debug: {items.length} Items geladen)
+            </Typography>
+          ) : (
+            <Box>
+              {items.map((item, index) => renderItemRecursively(item, 0))}
+            </Box>
+          )}
+        </Box>
+      </Box>
+    );
   };
 
   const handleCreateGroup = async () => {
@@ -868,17 +1059,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [folderAssignmentModalOpen, setFolderAssignmentModalOpen] = useState(false);
   const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
   const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
-  const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: Array<{path: string, content: any[]}>}>({});
-
-  // Hilfsfunktionen für Pfad-Operationen
-  const getBasename = (filePath: string) => {
-    return filePath.split('/').pop() || filePath;
-  };
-
-  const getExtname = (filePath: string) => {
-    const parts = filePath.split('.');
-    return parts.length > 1 ? '.' + parts.pop() : '';
-  };
+  const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
 
   return (
     <Box 
@@ -1333,90 +1514,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }}>
                               {assignedFolders[group.id] && assignedFolders[group.id].length > 0 ? (
                                 <Box>
-                                  {assignedFolders[group.id].map((folderData: {path: string, content: any[]}) => {
-                                    return (
-                                      <Box key={folderData.path} sx={{ mb: 1.4 }}>
-                                        {/* Ordner-Pfad anzeigen */}
-                                        <Typography variant="body2" sx={{ 
-                                          color: '#D32F2F',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 600,
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 0.5,
-                                          mb: 0.5
-                                        }}>
-                                          📁 {getBasename(folderData.path)}
-                                        </Typography>
-                                        
-                                        {/* Dateien aus dem Ordner anzeigen */}
-                                        {folderData.content && folderData.content.length > 0 && (
-                                          <Box sx={{ ml: 2, mb: 0.5 }}>
-                                            {folderData.content
-                                              .filter((item: any) => item.type === 'file')
-                                              .map((file: any, fileIndex: number) => {
-                                                const fileName = getBasename(file.path);
-                                                return (
-                                                  <Box 
-                                                    key={fileIndex}
-                                                    sx={{ 
-                                                      p: 0.5,
-                                                      borderRadius: 1,
-                                                      bgcolor: '#f0f8ff',
-                                                      transition: 'all 0.2s ease',
-                                                      cursor: 'pointer',
-                                                      '&:hover': {
-                                                        bgcolor: '#e3f2fd'
-                                                      }
-                                                    }}
-                                                    onClick={() => {
-                                                      // Verwende den absoluten Pfad aus der Datenbank
-                                                      const absolutePath = file.path;
-                                                      const ext = getExtname(fileName);
-                                                      
-                                                      // Verwende den neuen API-Endpunkt für absolute Pfade
-                                                      const fullUrl = `http://localhost:3005/api/file-system-paths/open?filePath=${encodeURIComponent(absolutePath)}`;
-                                                      
-                                                      const newWindow = window.open(fullUrl, '_blank');
-                                                      
-                                                      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                                                        alert('Die Datei konnte nicht geöffnet werden. Versuchen Sie es erneut.');
-                                                      }
-                                                    }}
-                                                  >
-                                                    <Typography variant="body2" sx={{ 
-                                                      color: '#666666',
-                                                      fontSize: '0.75rem',
-                                                      fontWeight: 500,
-                                                      lineHeight: 1.2
-                                                    }}>
-                                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                                        📄
-                                                      </span>
-                                                      <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                                        {fileName}
-                                                      </span>
-                                                    </Typography>
-                                                  </Box>
-                                                );
-                                              })}
-                                          </Box>
-                                        )}
-                                      </Box>
-                                    );
+                                  {assignedFolders[group.id].map((folderPath: string) => {
+                                    return renderAssignedFolderPreview(group.id, folderPath);
                                   })}
                                 </Box>
                               ) : (
-                                <Box sx={{ 
-                                  textAlign: 'center', 
-                                  py: 2,
+                                <Typography variant="body2" sx={{ 
                                   color: colors.textSecondary,
+                                  fontSize: '0.75rem',
                                   fontStyle: 'italic'
                                 }}>
-                                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                    📁 Noch keine Ordner zugeordnet
-                                  </Typography>
-                                </Box>
+                                  Keine Ordner zugeordnet
+                                </Typography>
                               )}
                             </Box>
                           </Box>
@@ -2143,7 +2252,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             onClose={handleFolderAssignmentClose}
             onFoldersAssigned={() => {
               if (folderAssignmentGroupId) {
-                fetchAssignedFolders(groups);
+                fetchAssignedFolders(folderAssignmentGroupId);
               }
             }}
           />

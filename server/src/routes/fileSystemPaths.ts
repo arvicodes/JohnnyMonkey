@@ -42,9 +42,6 @@ router.get('/read-pdf', FileSystemPathController.readPdfFile);
 // Datei für Download bereitstellen
 router.get('/download', FileSystemPathController.downloadFile);
 
-// Neue Route: Datei öffnen (wie in der bestehenden Material&Quiz Implementierung)
-router.get('/open', FileSystemPathController.openFile);
-
 // Pfad löschen
 router.delete('/:id', FileSystemPathController.deletePath);
 

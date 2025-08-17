@@ -16,7 +16,8 @@ import {
   Divider,
   TextField,
   InputAdornment,
-  Chip
+  Chip,
+  Collapse
 } from '@mui/material';
 import {
   Folder as FolderIcon,
@@ -66,6 +67,10 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  
+  // Neue States für zugeordnete Ordner Vorschau
+  const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: DirectoryItem[]}>({});
+  const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<Set<string>>(new Set());
 
   // Lade gespeicherte Pfade
   useEffect(() => {
@@ -104,10 +109,39 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       const response = await fetch(`/api/learning-groups/${groupId}/folders`);
       if (response.ok) {
         const folders = await response.json();
-        setAssignedFolders(folders.map((f: any) => f.path));
+        const folderPaths: string[] = folders.map((f: any) => f.path);
+        setAssignedFolders(folderPaths);
+        
+        // Lade den Inhalt aller zugeordneten Ordner
+        folderPaths.forEach((folderPath: string) => {
+          fetchAssignedFolderContent(folderPath);
+        });
       }
     } catch (error) {
       console.error('Fehler beim Laden der zugeordneten Ordner:', error);
+    }
+  };
+
+  // Neue Funktion zum Laden des Inhalts zugeordneter Ordner
+  const fetchAssignedFolderContent = async (folderPath: string) => {
+    try {
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true`);
+      if (response.ok) {
+        const content = await response.json();
+        let items: DirectoryItem[] = [];
+        if (content.root) {
+          items = content.root.children || [];
+        } else if (content.items) {
+          items = content.items;
+        }
+        
+        setAssignedFolderContents(prev => ({
+          ...prev,
+          [folderPath]: items
+        }));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden des Ordnerinhalts:', error);
     }
   };
 
@@ -150,6 +184,8 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       
       if (response.ok) {
         setAssignedFolders(prev => [...prev, folderPath]);
+        // Lade den Inhalt des neu zugeordneten Ordners
+        fetchAssignedFolderContent(folderPath);
         showSnackbar('Ordner erfolgreich zugeordnet', 'success');
         onFoldersAssigned();
       } else {
@@ -169,6 +205,12 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       
       if (response.ok) {
         setAssignedFolders(prev => prev.filter(p => p !== folderPath));
+        // Entferne den Inhalt des entfernten Ordners
+        setAssignedFolderContents(prev => {
+          const newContents = { ...prev };
+          delete newContents[folderPath];
+          return newContents;
+        });
         showSnackbar('Ordner erfolgreich entfernt', 'success');
         onFoldersAssigned();
       } else {
@@ -300,6 +342,105 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     );
   };
 
+  // Neue Funktion zum Umschalten der Vorschau zugeordneter Ordner
+  const toggleAssignedFolderExpanded = (folderPath: string) => {
+    const newExpanded = new Set(expandedAssignedFolders);
+    if (newExpanded.has(folderPath)) {
+      newExpanded.delete(folderPath);
+    } else {
+      newExpanded.add(folderPath);
+    }
+    setExpandedAssignedFolders(newExpanded);
+  };
+
+  // Neue Funktion zum Rendern der Vorschau zugeordneter Ordner
+  const renderAssignedFolderPreview = (folderPath: string, items: DirectoryItem[]) => {
+    const isExpanded = expandedAssignedFolders.has(folderPath);
+    
+    return (
+      <Box key={folderPath} sx={{ mb: 1 }}>
+        <Card variant="outlined">
+          <CardContent sx={{ p: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <FolderIcon sx={{ mr: 1, color: '#2e7d32' }} />
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                    {folderPath.split('/').pop() || folderPath}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {folderPath}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <IconButton
+                  size="small"
+                  onClick={() => toggleAssignedFolderExpanded(folderPath)}
+                  sx={{ 
+                    color: '#2e7d32',
+                    '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.1)' }
+                  }}
+                >
+                  {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => removeFolder(folderPath)}
+                  sx={{ 
+                    color: '#d32f2f',
+                    '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.1)' }
+                  }}
+                >
+                  <RemoveIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+            
+            {/* Vorschau des Ordnerinhalts */}
+            <Collapse in={isExpanded}>
+              <Box sx={{ mt: 1, pl: 2, borderLeft: '2px solid #e0e0e0' }}>
+                {items.length === 0 ? (
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                    Ordner ist leer
+                  </Typography>
+                ) : (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
+                      Inhalt ({items.filter(item => item.type === 'directory').length} Ordner, {items.filter(item => item.type === 'file').length} Dateien):
+                    </Typography>
+                    {items.slice(0, 5).map((item, index) => (
+                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                        <Box sx={{ 
+                          mr: 0.5, 
+                          fontSize: '0.8rem',
+                          color: item.type === 'directory' ? '#2e7d32' : '#666'
+                        }}>
+                          {item.type === 'directory' ? '📁' : '📄'}
+                        </Box>
+                        <Typography variant="caption" sx={{ 
+                          color: 'text.secondary',
+                          fontSize: '0.7rem'
+                        }}>
+                          {item.name}
+                        </Typography>
+                      </Box>
+                    ))}
+                    {items.length > 5 && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                        ... und {items.length - 5} weitere Elemente
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            </Collapse>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  };
+
   return (
     <Box>
       <Grid container spacing={2}>
@@ -382,36 +523,8 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
           ) : (
             <Box>
               {assignedFolders.map((folderPath) => {
-                const folderName = folderPath.split('/').pop() || folderPath;
-                return (
-                  <Card key={folderPath} variant="outlined" sx={{ mb: 1 }}>
-                    <CardContent sx={{ p: 1.5 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <FolderIcon sx={{ mr: 1, color: '#2e7d32' }} />
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {folderName}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              {folderPath}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <IconButton
-                          size="small"
-                          onClick={() => removeFolder(folderPath)}
-                          sx={{ 
-                            color: '#d32f2f',
-                            '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.1)' }
-                          }}
-                        >
-                          <RemoveIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                );
+                const items = assignedFolderContents[folderPath] || [];
+                return renderAssignedFolderPreview(folderPath, items);
               })}
             </Box>
           )}

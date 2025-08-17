@@ -47,7 +47,7 @@ app.use('/api/quiz-sessions', quizSessionRoutes);
 app.use('/api/quiz-participations', quizParticipationRoutes);
 app.use('/api/grades', gradesRoutes);
 app.use('/api/file-system-paths', fileSystemPathsRoutes);
-app.use('/material', express.static(path.join(__dirname, '../material')));
+app.use('/material', express.static(path.join(__dirname, '../../material')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
