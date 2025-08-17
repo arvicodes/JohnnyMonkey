@@ -64,11 +64,6 @@ export type Lesson = $Result.DefaultSelection<Prisma.$LessonPayload>
  */
 export type GroupAssignment = $Result.DefaultSelection<Prisma.$GroupAssignmentPayload>
 /**
- * Model GroupFolderAssignment
- * 
- */
-export type GroupFolderAssignment = $Result.DefaultSelection<Prisma.$GroupFolderAssignmentPayload>
-/**
  * Model Note
  * 
  */
@@ -343,16 +338,6 @@ export class PrismaClient<
     * ```
     */
   get groupAssignment(): Prisma.GroupAssignmentDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.groupFolderAssignment`: Exposes CRUD operations for the **GroupFolderAssignment** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more GroupFolderAssignments
-    * const groupFolderAssignments = await prisma.groupFolderAssignment.findMany()
-    * ```
-    */
-  get groupFolderAssignment(): Prisma.GroupFolderAssignmentDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.note`: Exposes CRUD operations for the **Note** model.
@@ -903,7 +888,6 @@ export namespace Prisma {
     Topic: 'Topic',
     Lesson: 'Lesson',
     GroupAssignment: 'GroupAssignment',
-    GroupFolderAssignment: 'GroupFolderAssignment',
     Note: 'Note',
     Material: 'Material',
     LessonMaterial: 'LessonMaterial',
@@ -932,7 +916,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "groupFolderAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "fileSystemPath"
+      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "fileSystemPath"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1673,80 +1657,6 @@ export namespace Prisma {
           count: {
             args: Prisma.GroupAssignmentCountArgs<ExtArgs>
             result: $Utils.Optional<GroupAssignmentCountAggregateOutputType> | number
-          }
-        }
-      }
-      GroupFolderAssignment: {
-        payload: Prisma.$GroupFolderAssignmentPayload<ExtArgs>
-        fields: Prisma.GroupFolderAssignmentFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.GroupFolderAssignmentFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.GroupFolderAssignmentFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>
-          }
-          findFirst: {
-            args: Prisma.GroupFolderAssignmentFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.GroupFolderAssignmentFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>
-          }
-          findMany: {
-            args: Prisma.GroupFolderAssignmentFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>[]
-          }
-          create: {
-            args: Prisma.GroupFolderAssignmentCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>
-          }
-          createMany: {
-            args: Prisma.GroupFolderAssignmentCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.GroupFolderAssignmentCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>[]
-          }
-          delete: {
-            args: Prisma.GroupFolderAssignmentDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>
-          }
-          update: {
-            args: Prisma.GroupFolderAssignmentUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>
-          }
-          deleteMany: {
-            args: Prisma.GroupFolderAssignmentDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.GroupFolderAssignmentUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.GroupFolderAssignmentUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>[]
-          }
-          upsert: {
-            args: Prisma.GroupFolderAssignmentUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$GroupFolderAssignmentPayload>
-          }
-          aggregate: {
-            args: Prisma.GroupFolderAssignmentAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateGroupFolderAssignment>
-          }
-          groupBy: {
-            args: Prisma.GroupFolderAssignmentGroupByArgs<ExtArgs>
-            result: $Utils.Optional<GroupFolderAssignmentGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.GroupFolderAssignmentCountArgs<ExtArgs>
-            result: $Utils.Optional<GroupFolderAssignmentCountAggregateOutputType> | number
           }
         }
       }
@@ -2584,7 +2494,6 @@ export namespace Prisma {
     topic?: TopicOmit
     lesson?: LessonOmit
     groupAssignment?: GroupAssignmentOmit
-    groupFolderAssignment?: GroupFolderAssignmentOmit
     note?: NoteOmit
     material?: MaterialOmit
     lessonMaterial?: LessonMaterialOmit
@@ -2816,14 +2725,12 @@ export namespace Prisma {
   export type LearningGroupCountOutputType = {
     gradingSchemas: number
     assignments: number
-    folderAssignments: number
     students: number
   }
 
   export type LearningGroupCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     gradingSchemas?: boolean | LearningGroupCountOutputTypeCountGradingSchemasArgs
     assignments?: boolean | LearningGroupCountOutputTypeCountAssignmentsArgs
-    folderAssignments?: boolean | LearningGroupCountOutputTypeCountFolderAssignmentsArgs
     students?: boolean | LearningGroupCountOutputTypeCountStudentsArgs
   }
 
@@ -2850,13 +2757,6 @@ export namespace Prisma {
    */
   export type LearningGroupCountOutputTypeCountAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: GroupAssignmentWhereInput
-  }
-
-  /**
-   * LearningGroupCountOutputType without action
-   */
-  export type LearningGroupCountOutputTypeCountFolderAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: GroupFolderAssignmentWhereInput
   }
 
   /**
@@ -6917,7 +6817,6 @@ export namespace Prisma {
     teacherId?: boolean
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
-    folderAssignments?: boolean | LearningGroup$folderAssignmentsArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
@@ -6953,7 +6852,6 @@ export namespace Prisma {
   export type LearningGroupInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
-    folderAssignments?: boolean | LearningGroup$folderAssignmentsArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
@@ -6970,7 +6868,6 @@ export namespace Prisma {
     objects: {
       gradingSchemas: Prisma.$GradingSchemaPayload<ExtArgs>[]
       assignments: Prisma.$GroupAssignmentPayload<ExtArgs>[]
-      folderAssignments: Prisma.$GroupFolderAssignmentPayload<ExtArgs>[]
       teacher: Prisma.$UserPayload<ExtArgs>
       students: Prisma.$UserPayload<ExtArgs>[]
     }
@@ -7376,7 +7273,6 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     gradingSchemas<T extends LearningGroup$gradingSchemasArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$gradingSchemasArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GradingSchemaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     assignments<T extends LearningGroup$assignmentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    folderAssignments<T extends LearningGroup$folderAssignmentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$folderAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     students<T extends LearningGroup$studentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$studentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -7852,30 +7748,6 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: GroupAssignmentScalarFieldEnum | GroupAssignmentScalarFieldEnum[]
-  }
-
-  /**
-   * LearningGroup.folderAssignments
-   */
-  export type LearningGroup$folderAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    where?: GroupFolderAssignmentWhereInput
-    orderBy?: GroupFolderAssignmentOrderByWithRelationInput | GroupFolderAssignmentOrderByWithRelationInput[]
-    cursor?: GroupFolderAssignmentWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: GroupFolderAssignmentScalarFieldEnum | GroupFolderAssignmentScalarFieldEnum[]
   }
 
   /**
@@ -14732,1075 +14604,6 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: GroupAssignmentInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model GroupFolderAssignment
-   */
-
-  export type AggregateGroupFolderAssignment = {
-    _count: GroupFolderAssignmentCountAggregateOutputType | null
-    _min: GroupFolderAssignmentMinAggregateOutputType | null
-    _max: GroupFolderAssignmentMaxAggregateOutputType | null
-  }
-
-  export type GroupFolderAssignmentMinAggregateOutputType = {
-    id: string | null
-    groupId: string | null
-    folderPath: string | null
-    folderName: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type GroupFolderAssignmentMaxAggregateOutputType = {
-    id: string | null
-    groupId: string | null
-    folderPath: string | null
-    folderName: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type GroupFolderAssignmentCountAggregateOutputType = {
-    id: number
-    groupId: number
-    folderPath: number
-    folderName: number
-    createdAt: number
-    updatedAt: number
-    _all: number
-  }
-
-
-  export type GroupFolderAssignmentMinAggregateInputType = {
-    id?: true
-    groupId?: true
-    folderPath?: true
-    folderName?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type GroupFolderAssignmentMaxAggregateInputType = {
-    id?: true
-    groupId?: true
-    folderPath?: true
-    folderName?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type GroupFolderAssignmentCountAggregateInputType = {
-    id?: true
-    groupId?: true
-    folderPath?: true
-    folderName?: true
-    createdAt?: true
-    updatedAt?: true
-    _all?: true
-  }
-
-  export type GroupFolderAssignmentAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which GroupFolderAssignment to aggregate.
-     */
-    where?: GroupFolderAssignmentWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of GroupFolderAssignments to fetch.
-     */
-    orderBy?: GroupFolderAssignmentOrderByWithRelationInput | GroupFolderAssignmentOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: GroupFolderAssignmentWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` GroupFolderAssignments from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` GroupFolderAssignments.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned GroupFolderAssignments
-    **/
-    _count?: true | GroupFolderAssignmentCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: GroupFolderAssignmentMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: GroupFolderAssignmentMaxAggregateInputType
-  }
-
-  export type GetGroupFolderAssignmentAggregateType<T extends GroupFolderAssignmentAggregateArgs> = {
-        [P in keyof T & keyof AggregateGroupFolderAssignment]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateGroupFolderAssignment[P]>
-      : GetScalarType<T[P], AggregateGroupFolderAssignment[P]>
-  }
-
-
-
-
-  export type GroupFolderAssignmentGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: GroupFolderAssignmentWhereInput
-    orderBy?: GroupFolderAssignmentOrderByWithAggregationInput | GroupFolderAssignmentOrderByWithAggregationInput[]
-    by: GroupFolderAssignmentScalarFieldEnum[] | GroupFolderAssignmentScalarFieldEnum
-    having?: GroupFolderAssignmentScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: GroupFolderAssignmentCountAggregateInputType | true
-    _min?: GroupFolderAssignmentMinAggregateInputType
-    _max?: GroupFolderAssignmentMaxAggregateInputType
-  }
-
-  export type GroupFolderAssignmentGroupByOutputType = {
-    id: string
-    groupId: string
-    folderPath: string
-    folderName: string
-    createdAt: Date
-    updatedAt: Date
-    _count: GroupFolderAssignmentCountAggregateOutputType | null
-    _min: GroupFolderAssignmentMinAggregateOutputType | null
-    _max: GroupFolderAssignmentMaxAggregateOutputType | null
-  }
-
-  type GetGroupFolderAssignmentGroupByPayload<T extends GroupFolderAssignmentGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<GroupFolderAssignmentGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof GroupFolderAssignmentGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], GroupFolderAssignmentGroupByOutputType[P]>
-            : GetScalarType<T[P], GroupFolderAssignmentGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type GroupFolderAssignmentSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    groupId?: boolean
-    folderPath?: boolean
-    folderName?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["groupFolderAssignment"]>
-
-  export type GroupFolderAssignmentSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    groupId?: boolean
-    folderPath?: boolean
-    folderName?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["groupFolderAssignment"]>
-
-  export type GroupFolderAssignmentSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    groupId?: boolean
-    folderPath?: boolean
-    folderName?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["groupFolderAssignment"]>
-
-  export type GroupFolderAssignmentSelectScalar = {
-    id?: boolean
-    groupId?: boolean
-    folderPath?: boolean
-    folderName?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }
-
-  export type GroupFolderAssignmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "groupId" | "folderPath" | "folderName" | "createdAt" | "updatedAt", ExtArgs["result"]["groupFolderAssignment"]>
-  export type GroupFolderAssignmentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
-  }
-  export type GroupFolderAssignmentIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
-  }
-  export type GroupFolderAssignmentIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
-  }
-
-  export type $GroupFolderAssignmentPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "GroupFolderAssignment"
-    objects: {
-      group: Prisma.$LearningGroupPayload<ExtArgs>
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      groupId: string
-      folderPath: string
-      folderName: string
-      createdAt: Date
-      updatedAt: Date
-    }, ExtArgs["result"]["groupFolderAssignment"]>
-    composites: {}
-  }
-
-  type GroupFolderAssignmentGetPayload<S extends boolean | null | undefined | GroupFolderAssignmentDefaultArgs> = $Result.GetResult<Prisma.$GroupFolderAssignmentPayload, S>
-
-  type GroupFolderAssignmentCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<GroupFolderAssignmentFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: GroupFolderAssignmentCountAggregateInputType | true
-    }
-
-  export interface GroupFolderAssignmentDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GroupFolderAssignment'], meta: { name: 'GroupFolderAssignment' } }
-    /**
-     * Find zero or one GroupFolderAssignment that matches the filter.
-     * @param {GroupFolderAssignmentFindUniqueArgs} args - Arguments to find a GroupFolderAssignment
-     * @example
-     * // Get one GroupFolderAssignment
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends GroupFolderAssignmentFindUniqueArgs>(args: SelectSubset<T, GroupFolderAssignmentFindUniqueArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one GroupFolderAssignment that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {GroupFolderAssignmentFindUniqueOrThrowArgs} args - Arguments to find a GroupFolderAssignment
-     * @example
-     * // Get one GroupFolderAssignment
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends GroupFolderAssignmentFindUniqueOrThrowArgs>(args: SelectSubset<T, GroupFolderAssignmentFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first GroupFolderAssignment that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {GroupFolderAssignmentFindFirstArgs} args - Arguments to find a GroupFolderAssignment
-     * @example
-     * // Get one GroupFolderAssignment
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends GroupFolderAssignmentFindFirstArgs>(args?: SelectSubset<T, GroupFolderAssignmentFindFirstArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first GroupFolderAssignment that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {GroupFolderAssignmentFindFirstOrThrowArgs} args - Arguments to find a GroupFolderAssignment
-     * @example
-     * // Get one GroupFolderAssignment
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends GroupFolderAssignmentFindFirstOrThrowArgs>(args?: SelectSubset<T, GroupFolderAssignmentFindFirstOrThrowArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more GroupFolderAssignments that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {GroupFolderAssignmentFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all GroupFolderAssignments
-     * const groupFolderAssignments = await prisma.groupFolderAssignment.findMany()
-     * 
-     * // Get first 10 GroupFolderAssignments
-     * const groupFolderAssignments = await prisma.groupFolderAssignment.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const groupFolderAssignmentWithIdOnly = await prisma.groupFolderAssignment.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends GroupFolderAssignmentFindManyArgs>(args?: SelectSubset<T, GroupFolderAssignmentFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a GroupFolderAssignment.
-     * @param {GroupFolderAssignmentCreateArgs} args - Arguments to create a GroupFolderAssignment.
-     * @example
-     * // Create one GroupFolderAssignment
-     * const GroupFolderAssignment = await prisma.groupFolderAssignment.create({
-     *   data: {
-     *     // ... data to create a GroupFolderAssignment
-     *   }
-     * })
-     * 
-     */
-    create<T extends GroupFolderAssignmentCreateArgs>(args: SelectSubset<T, GroupFolderAssignmentCreateArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many GroupFolderAssignments.
-     * @param {GroupFolderAssignmentCreateManyArgs} args - Arguments to create many GroupFolderAssignments.
-     * @example
-     * // Create many GroupFolderAssignments
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends GroupFolderAssignmentCreateManyArgs>(args?: SelectSubset<T, GroupFolderAssignmentCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many GroupFolderAssignments and returns the data saved in the database.
-     * @param {GroupFolderAssignmentCreateManyAndReturnArgs} args - Arguments to create many GroupFolderAssignments.
-     * @example
-     * // Create many GroupFolderAssignments
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many GroupFolderAssignments and only return the `id`
-     * const groupFolderAssignmentWithIdOnly = await prisma.groupFolderAssignment.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends GroupFolderAssignmentCreateManyAndReturnArgs>(args?: SelectSubset<T, GroupFolderAssignmentCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a GroupFolderAssignment.
-     * @param {GroupFolderAssignmentDeleteArgs} args - Arguments to delete one GroupFolderAssignment.
-     * @example
-     * // Delete one GroupFolderAssignment
-     * const GroupFolderAssignment = await prisma.groupFolderAssignment.delete({
-     *   where: {
-     *     // ... filter to delete one GroupFolderAssignment
-     *   }
-     * })
-     * 
-     */
-    delete<T extends GroupFolderAssignmentDeleteArgs>(args: SelectSubset<T, GroupFolderAssignmentDeleteArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one GroupFolderAssignment.
-     * @param {GroupFolderAssignmentUpdateArgs} args - Arguments to update one GroupFolderAssignment.
-     * @example
-     * // Update one GroupFolderAssignment
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends GroupFolderAssignmentUpdateArgs>(args: SelectSubset<T, GroupFolderAssignmentUpdateArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more GroupFolderAssignments.
-     * @param {GroupFolderAssignmentDeleteManyArgs} args - Arguments to filter GroupFolderAssignments to delete.
-     * @example
-     * // Delete a few GroupFolderAssignments
-     * const { count } = await prisma.groupFolderAssignment.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends GroupFolderAssignmentDeleteManyArgs>(args?: SelectSubset<T, GroupFolderAssignmentDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more GroupFolderAssignments.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {GroupFolderAssignmentUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many GroupFolderAssignments
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends GroupFolderAssignmentUpdateManyArgs>(args: SelectSubset<T, GroupFolderAssignmentUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more GroupFolderAssignments and returns the data updated in the database.
-     * @param {GroupFolderAssignmentUpdateManyAndReturnArgs} args - Arguments to update many GroupFolderAssignments.
-     * @example
-     * // Update many GroupFolderAssignments
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more GroupFolderAssignments and only return the `id`
-     * const groupFolderAssignmentWithIdOnly = await prisma.groupFolderAssignment.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends GroupFolderAssignmentUpdateManyAndReturnArgs>(args: SelectSubset<T, GroupFolderAssignmentUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one GroupFolderAssignment.
-     * @param {GroupFolderAssignmentUpsertArgs} args - Arguments to update or create a GroupFolderAssignment.
-     * @example
-     * // Update or create a GroupFolderAssignment
-     * const groupFolderAssignment = await prisma.groupFolderAssignment.upsert({
-     *   create: {
-     *     // ... data to create a GroupFolderAssignment
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the GroupFolderAssignment we want to update
-     *   }
-     * })
-     */
-    upsert<T extends GroupFolderAssignmentUpsertArgs>(args: SelectSubset<T, GroupFolderAssignmentUpsertArgs<ExtArgs>>): Prisma__GroupFolderAssignmentClient<$Result.GetResult<Prisma.$GroupFolderAssignmentPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of GroupFolderAssignments.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {GroupFolderAssignmentCountArgs} args - Arguments to filter GroupFolderAssignments to count.
-     * @example
-     * // Count the number of GroupFolderAssignments
-     * const count = await prisma.groupFolderAssignment.count({
-     *   where: {
-     *     // ... the filter for the GroupFolderAssignments we want to count
-     *   }
-     * })
-    **/
-    count<T extends GroupFolderAssignmentCountArgs>(
-      args?: Subset<T, GroupFolderAssignmentCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], GroupFolderAssignmentCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a GroupFolderAssignment.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {GroupFolderAssignmentAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends GroupFolderAssignmentAggregateArgs>(args: Subset<T, GroupFolderAssignmentAggregateArgs>): Prisma.PrismaPromise<GetGroupFolderAssignmentAggregateType<T>>
-
-    /**
-     * Group by GroupFolderAssignment.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {GroupFolderAssignmentGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends GroupFolderAssignmentGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: GroupFolderAssignmentGroupByArgs['orderBy'] }
-        : { orderBy?: GroupFolderAssignmentGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, GroupFolderAssignmentGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGroupFolderAssignmentGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the GroupFolderAssignment model
-   */
-  readonly fields: GroupFolderAssignmentFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for GroupFolderAssignment.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__GroupFolderAssignmentClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    group<T extends LearningGroupDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroupDefaultArgs<ExtArgs>>): Prisma__LearningGroupClient<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the GroupFolderAssignment model
-   */
-  interface GroupFolderAssignmentFieldRefs {
-    readonly id: FieldRef<"GroupFolderAssignment", 'String'>
-    readonly groupId: FieldRef<"GroupFolderAssignment", 'String'>
-    readonly folderPath: FieldRef<"GroupFolderAssignment", 'String'>
-    readonly folderName: FieldRef<"GroupFolderAssignment", 'String'>
-    readonly createdAt: FieldRef<"GroupFolderAssignment", 'DateTime'>
-    readonly updatedAt: FieldRef<"GroupFolderAssignment", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * GroupFolderAssignment findUnique
-   */
-  export type GroupFolderAssignmentFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * Filter, which GroupFolderAssignment to fetch.
-     */
-    where: GroupFolderAssignmentWhereUniqueInput
-  }
-
-  /**
-   * GroupFolderAssignment findUniqueOrThrow
-   */
-  export type GroupFolderAssignmentFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * Filter, which GroupFolderAssignment to fetch.
-     */
-    where: GroupFolderAssignmentWhereUniqueInput
-  }
-
-  /**
-   * GroupFolderAssignment findFirst
-   */
-  export type GroupFolderAssignmentFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * Filter, which GroupFolderAssignment to fetch.
-     */
-    where?: GroupFolderAssignmentWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of GroupFolderAssignments to fetch.
-     */
-    orderBy?: GroupFolderAssignmentOrderByWithRelationInput | GroupFolderAssignmentOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for GroupFolderAssignments.
-     */
-    cursor?: GroupFolderAssignmentWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` GroupFolderAssignments from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` GroupFolderAssignments.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of GroupFolderAssignments.
-     */
-    distinct?: GroupFolderAssignmentScalarFieldEnum | GroupFolderAssignmentScalarFieldEnum[]
-  }
-
-  /**
-   * GroupFolderAssignment findFirstOrThrow
-   */
-  export type GroupFolderAssignmentFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * Filter, which GroupFolderAssignment to fetch.
-     */
-    where?: GroupFolderAssignmentWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of GroupFolderAssignments to fetch.
-     */
-    orderBy?: GroupFolderAssignmentOrderByWithRelationInput | GroupFolderAssignmentOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for GroupFolderAssignments.
-     */
-    cursor?: GroupFolderAssignmentWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` GroupFolderAssignments from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` GroupFolderAssignments.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of GroupFolderAssignments.
-     */
-    distinct?: GroupFolderAssignmentScalarFieldEnum | GroupFolderAssignmentScalarFieldEnum[]
-  }
-
-  /**
-   * GroupFolderAssignment findMany
-   */
-  export type GroupFolderAssignmentFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * Filter, which GroupFolderAssignments to fetch.
-     */
-    where?: GroupFolderAssignmentWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of GroupFolderAssignments to fetch.
-     */
-    orderBy?: GroupFolderAssignmentOrderByWithRelationInput | GroupFolderAssignmentOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing GroupFolderAssignments.
-     */
-    cursor?: GroupFolderAssignmentWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` GroupFolderAssignments from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` GroupFolderAssignments.
-     */
-    skip?: number
-    distinct?: GroupFolderAssignmentScalarFieldEnum | GroupFolderAssignmentScalarFieldEnum[]
-  }
-
-  /**
-   * GroupFolderAssignment create
-   */
-  export type GroupFolderAssignmentCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * The data needed to create a GroupFolderAssignment.
-     */
-    data: XOR<GroupFolderAssignmentCreateInput, GroupFolderAssignmentUncheckedCreateInput>
-  }
-
-  /**
-   * GroupFolderAssignment createMany
-   */
-  export type GroupFolderAssignmentCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many GroupFolderAssignments.
-     */
-    data: GroupFolderAssignmentCreateManyInput | GroupFolderAssignmentCreateManyInput[]
-  }
-
-  /**
-   * GroupFolderAssignment createManyAndReturn
-   */
-  export type GroupFolderAssignmentCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * The data used to create many GroupFolderAssignments.
-     */
-    data: GroupFolderAssignmentCreateManyInput | GroupFolderAssignmentCreateManyInput[]
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentIncludeCreateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * GroupFolderAssignment update
-   */
-  export type GroupFolderAssignmentUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * The data needed to update a GroupFolderAssignment.
-     */
-    data: XOR<GroupFolderAssignmentUpdateInput, GroupFolderAssignmentUncheckedUpdateInput>
-    /**
-     * Choose, which GroupFolderAssignment to update.
-     */
-    where: GroupFolderAssignmentWhereUniqueInput
-  }
-
-  /**
-   * GroupFolderAssignment updateMany
-   */
-  export type GroupFolderAssignmentUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update GroupFolderAssignments.
-     */
-    data: XOR<GroupFolderAssignmentUpdateManyMutationInput, GroupFolderAssignmentUncheckedUpdateManyInput>
-    /**
-     * Filter which GroupFolderAssignments to update
-     */
-    where?: GroupFolderAssignmentWhereInput
-    /**
-     * Limit how many GroupFolderAssignments to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * GroupFolderAssignment updateManyAndReturn
-   */
-  export type GroupFolderAssignmentUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * The data used to update GroupFolderAssignments.
-     */
-    data: XOR<GroupFolderAssignmentUpdateManyMutationInput, GroupFolderAssignmentUncheckedUpdateManyInput>
-    /**
-     * Filter which GroupFolderAssignments to update
-     */
-    where?: GroupFolderAssignmentWhereInput
-    /**
-     * Limit how many GroupFolderAssignments to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentIncludeUpdateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * GroupFolderAssignment upsert
-   */
-  export type GroupFolderAssignmentUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * The filter to search for the GroupFolderAssignment to update in case it exists.
-     */
-    where: GroupFolderAssignmentWhereUniqueInput
-    /**
-     * In case the GroupFolderAssignment found by the `where` argument doesn't exist, create a new GroupFolderAssignment with this data.
-     */
-    create: XOR<GroupFolderAssignmentCreateInput, GroupFolderAssignmentUncheckedCreateInput>
-    /**
-     * In case the GroupFolderAssignment was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<GroupFolderAssignmentUpdateInput, GroupFolderAssignmentUncheckedUpdateInput>
-  }
-
-  /**
-   * GroupFolderAssignment delete
-   */
-  export type GroupFolderAssignmentDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
-    /**
-     * Filter which GroupFolderAssignment to delete.
-     */
-    where: GroupFolderAssignmentWhereUniqueInput
-  }
-
-  /**
-   * GroupFolderAssignment deleteMany
-   */
-  export type GroupFolderAssignmentDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which GroupFolderAssignments to delete
-     */
-    where?: GroupFolderAssignmentWhereInput
-    /**
-     * Limit how many GroupFolderAssignments to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * GroupFolderAssignment without action
-   */
-  export type GroupFolderAssignmentDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the GroupFolderAssignment
-     */
-    select?: GroupFolderAssignmentSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the GroupFolderAssignment
-     */
-    omit?: GroupFolderAssignmentOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: GroupFolderAssignmentInclude<ExtArgs> | null
   }
 
 
@@ -27195,18 +25998,6 @@ export namespace Prisma {
   export type GroupAssignmentScalarFieldEnum = (typeof GroupAssignmentScalarFieldEnum)[keyof typeof GroupAssignmentScalarFieldEnum]
 
 
-  export const GroupFolderAssignmentScalarFieldEnum: {
-    id: 'id',
-    groupId: 'groupId',
-    folderPath: 'folderPath',
-    folderName: 'folderName',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
-  };
-
-  export type GroupFolderAssignmentScalarFieldEnum = (typeof GroupFolderAssignmentScalarFieldEnum)[keyof typeof GroupFolderAssignmentScalarFieldEnum]
-
-
   export const NoteScalarFieldEnum: {
     id: 'id',
     title: 'title',
@@ -27640,7 +26431,6 @@ export namespace Prisma {
     teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
-    folderAssignments?: GroupFolderAssignmentListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
   }
@@ -27653,7 +26443,6 @@ export namespace Prisma {
     teacherId?: SortOrder
     gradingSchemas?: GradingSchemaOrderByRelationAggregateInput
     assignments?: GroupAssignmentOrderByRelationAggregateInput
-    folderAssignments?: GroupFolderAssignmentOrderByRelationAggregateInput
     teacher?: UserOrderByWithRelationInput
     students?: UserOrderByRelationAggregateInput
   }
@@ -27669,7 +26458,6 @@ export namespace Prisma {
     teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
-    folderAssignments?: GroupFolderAssignmentListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
   }, "id">
@@ -28102,66 +26890,6 @@ export namespace Prisma {
     type?: StringWithAggregatesFilter<"GroupAssignment"> | string
     refId?: StringWithAggregatesFilter<"GroupAssignment"> | string
     createdAt?: DateTimeWithAggregatesFilter<"GroupAssignment"> | Date | string
-  }
-
-  export type GroupFolderAssignmentWhereInput = {
-    AND?: GroupFolderAssignmentWhereInput | GroupFolderAssignmentWhereInput[]
-    OR?: GroupFolderAssignmentWhereInput[]
-    NOT?: GroupFolderAssignmentWhereInput | GroupFolderAssignmentWhereInput[]
-    id?: StringFilter<"GroupFolderAssignment"> | string
-    groupId?: StringFilter<"GroupFolderAssignment"> | string
-    folderPath?: StringFilter<"GroupFolderAssignment"> | string
-    folderName?: StringFilter<"GroupFolderAssignment"> | string
-    createdAt?: DateTimeFilter<"GroupFolderAssignment"> | Date | string
-    updatedAt?: DateTimeFilter<"GroupFolderAssignment"> | Date | string
-    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
-  }
-
-  export type GroupFolderAssignmentOrderByWithRelationInput = {
-    id?: SortOrder
-    groupId?: SortOrder
-    folderPath?: SortOrder
-    folderName?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    group?: LearningGroupOrderByWithRelationInput
-  }
-
-  export type GroupFolderAssignmentWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    AND?: GroupFolderAssignmentWhereInput | GroupFolderAssignmentWhereInput[]
-    OR?: GroupFolderAssignmentWhereInput[]
-    NOT?: GroupFolderAssignmentWhereInput | GroupFolderAssignmentWhereInput[]
-    groupId?: StringFilter<"GroupFolderAssignment"> | string
-    folderPath?: StringFilter<"GroupFolderAssignment"> | string
-    folderName?: StringFilter<"GroupFolderAssignment"> | string
-    createdAt?: DateTimeFilter<"GroupFolderAssignment"> | Date | string
-    updatedAt?: DateTimeFilter<"GroupFolderAssignment"> | Date | string
-    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
-  }, "id">
-
-  export type GroupFolderAssignmentOrderByWithAggregationInput = {
-    id?: SortOrder
-    groupId?: SortOrder
-    folderPath?: SortOrder
-    folderName?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    _count?: GroupFolderAssignmentCountOrderByAggregateInput
-    _max?: GroupFolderAssignmentMaxOrderByAggregateInput
-    _min?: GroupFolderAssignmentMinOrderByAggregateInput
-  }
-
-  export type GroupFolderAssignmentScalarWhereWithAggregatesInput = {
-    AND?: GroupFolderAssignmentScalarWhereWithAggregatesInput | GroupFolderAssignmentScalarWhereWithAggregatesInput[]
-    OR?: GroupFolderAssignmentScalarWhereWithAggregatesInput[]
-    NOT?: GroupFolderAssignmentScalarWhereWithAggregatesInput | GroupFolderAssignmentScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"GroupFolderAssignment"> | string
-    groupId?: StringWithAggregatesFilter<"GroupFolderAssignment"> | string
-    folderPath?: StringWithAggregatesFilter<"GroupFolderAssignment"> | string
-    folderName?: StringWithAggregatesFilter<"GroupFolderAssignment"> | string
-    createdAt?: DateTimeWithAggregatesFilter<"GroupFolderAssignment"> | Date | string
-    updatedAt?: DateTimeWithAggregatesFilter<"GroupFolderAssignment"> | Date | string
   }
 
   export type NoteWhereInput = {
@@ -29129,7 +27857,6 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -29142,7 +27869,6 @@ export namespace Prisma {
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -29153,7 +27879,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -29166,7 +27891,6 @@ export namespace Prisma {
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -29615,68 +28339,6 @@ export namespace Prisma {
     type?: StringFieldUpdateOperationsInput | string
     refId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type GroupFolderAssignmentCreateInput = {
-    id?: string
-    folderPath: string
-    folderName: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    group: LearningGroupCreateNestedOneWithoutFolderAssignmentsInput
-  }
-
-  export type GroupFolderAssignmentUncheckedCreateInput = {
-    id?: string
-    groupId: string
-    folderPath: string
-    folderName: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type GroupFolderAssignmentUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    folderPath?: StringFieldUpdateOperationsInput | string
-    folderName?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    group?: LearningGroupUpdateOneRequiredWithoutFolderAssignmentsNestedInput
-  }
-
-  export type GroupFolderAssignmentUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    groupId?: StringFieldUpdateOperationsInput | string
-    folderPath?: StringFieldUpdateOperationsInput | string
-    folderName?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type GroupFolderAssignmentCreateManyInput = {
-    id?: string
-    groupId: string
-    folderPath: string
-    folderName: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type GroupFolderAssignmentUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    folderPath?: StringFieldUpdateOperationsInput | string
-    folderName?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type GroupFolderAssignmentUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    groupId?: StringFieldUpdateOperationsInput | string
-    folderPath?: StringFieldUpdateOperationsInput | string
-    folderName?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type NoteCreateInput = {
@@ -30740,12 +29402,6 @@ export namespace Prisma {
     none?: GroupAssignmentWhereInput
   }
 
-  export type GroupFolderAssignmentListRelationFilter = {
-    every?: GroupFolderAssignmentWhereInput
-    some?: GroupFolderAssignmentWhereInput
-    none?: GroupFolderAssignmentWhereInput
-  }
-
   export type UserListRelationFilter = {
     every?: UserWhereInput
     some?: UserWhereInput
@@ -30757,10 +29413,6 @@ export namespace Prisma {
   }
 
   export type GroupAssignmentOrderByRelationAggregateInput = {
-    _count?: SortOrder
-  }
-
-  export type GroupFolderAssignmentOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -31111,33 +29763,6 @@ export namespace Prisma {
     type?: SortOrder
     refId?: SortOrder
     createdAt?: SortOrder
-  }
-
-  export type GroupFolderAssignmentCountOrderByAggregateInput = {
-    id?: SortOrder
-    groupId?: SortOrder
-    folderPath?: SortOrder
-    folderName?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type GroupFolderAssignmentMaxOrderByAggregateInput = {
-    id?: SortOrder
-    groupId?: SortOrder
-    folderPath?: SortOrder
-    folderName?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type GroupFolderAssignmentMinOrderByAggregateInput = {
-    id?: SortOrder
-    groupId?: SortOrder
-    folderPath?: SortOrder
-    folderName?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
   }
 
   export type BoolFilter<$PrismaModel = never> = {
@@ -32081,13 +30706,6 @@ export namespace Prisma {
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
   }
 
-  export type GroupFolderAssignmentCreateNestedManyWithoutGroupInput = {
-    create?: XOR<GroupFolderAssignmentCreateWithoutGroupInput, GroupFolderAssignmentUncheckedCreateWithoutGroupInput> | GroupFolderAssignmentCreateWithoutGroupInput[] | GroupFolderAssignmentUncheckedCreateWithoutGroupInput[]
-    connectOrCreate?: GroupFolderAssignmentCreateOrConnectWithoutGroupInput | GroupFolderAssignmentCreateOrConnectWithoutGroupInput[]
-    createMany?: GroupFolderAssignmentCreateManyGroupInputEnvelope
-    connect?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-  }
-
   export type UserCreateNestedOneWithoutTeacherGroupsInput = {
     create?: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
     connectOrCreate?: UserCreateOrConnectWithoutTeacherGroupsInput
@@ -32112,13 +30730,6 @@ export namespace Prisma {
     connectOrCreate?: GroupAssignmentCreateOrConnectWithoutGroupInput | GroupAssignmentCreateOrConnectWithoutGroupInput[]
     createMany?: GroupAssignmentCreateManyGroupInputEnvelope
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
-  }
-
-  export type GroupFolderAssignmentUncheckedCreateNestedManyWithoutGroupInput = {
-    create?: XOR<GroupFolderAssignmentCreateWithoutGroupInput, GroupFolderAssignmentUncheckedCreateWithoutGroupInput> | GroupFolderAssignmentCreateWithoutGroupInput[] | GroupFolderAssignmentUncheckedCreateWithoutGroupInput[]
-    connectOrCreate?: GroupFolderAssignmentCreateOrConnectWithoutGroupInput | GroupFolderAssignmentCreateOrConnectWithoutGroupInput[]
-    createMany?: GroupFolderAssignmentCreateManyGroupInputEnvelope
-    connect?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
   }
 
   export type UserUncheckedCreateNestedManyWithoutLearningGroupsInput = {
@@ -32153,20 +30764,6 @@ export namespace Prisma {
     update?: GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
     updateMany?: GroupAssignmentUpdateManyWithWhereWithoutGroupInput | GroupAssignmentUpdateManyWithWhereWithoutGroupInput[]
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
-  }
-
-  export type GroupFolderAssignmentUpdateManyWithoutGroupNestedInput = {
-    create?: XOR<GroupFolderAssignmentCreateWithoutGroupInput, GroupFolderAssignmentUncheckedCreateWithoutGroupInput> | GroupFolderAssignmentCreateWithoutGroupInput[] | GroupFolderAssignmentUncheckedCreateWithoutGroupInput[]
-    connectOrCreate?: GroupFolderAssignmentCreateOrConnectWithoutGroupInput | GroupFolderAssignmentCreateOrConnectWithoutGroupInput[]
-    upsert?: GroupFolderAssignmentUpsertWithWhereUniqueWithoutGroupInput | GroupFolderAssignmentUpsertWithWhereUniqueWithoutGroupInput[]
-    createMany?: GroupFolderAssignmentCreateManyGroupInputEnvelope
-    set?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    disconnect?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    delete?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    connect?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    update?: GroupFolderAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupFolderAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
-    updateMany?: GroupFolderAssignmentUpdateManyWithWhereWithoutGroupInput | GroupFolderAssignmentUpdateManyWithWhereWithoutGroupInput[]
-    deleteMany?: GroupFolderAssignmentScalarWhereInput | GroupFolderAssignmentScalarWhereInput[]
   }
 
   export type UserUpdateOneRequiredWithoutTeacherGroupsNestedInput = {
@@ -32216,20 +30813,6 @@ export namespace Prisma {
     update?: GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
     updateMany?: GroupAssignmentUpdateManyWithWhereWithoutGroupInput | GroupAssignmentUpdateManyWithWhereWithoutGroupInput[]
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
-  }
-
-  export type GroupFolderAssignmentUncheckedUpdateManyWithoutGroupNestedInput = {
-    create?: XOR<GroupFolderAssignmentCreateWithoutGroupInput, GroupFolderAssignmentUncheckedCreateWithoutGroupInput> | GroupFolderAssignmentCreateWithoutGroupInput[] | GroupFolderAssignmentUncheckedCreateWithoutGroupInput[]
-    connectOrCreate?: GroupFolderAssignmentCreateOrConnectWithoutGroupInput | GroupFolderAssignmentCreateOrConnectWithoutGroupInput[]
-    upsert?: GroupFolderAssignmentUpsertWithWhereUniqueWithoutGroupInput | GroupFolderAssignmentUpsertWithWhereUniqueWithoutGroupInput[]
-    createMany?: GroupFolderAssignmentCreateManyGroupInputEnvelope
-    set?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    disconnect?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    delete?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    connect?: GroupFolderAssignmentWhereUniqueInput | GroupFolderAssignmentWhereUniqueInput[]
-    update?: GroupFolderAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupFolderAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
-    updateMany?: GroupFolderAssignmentUpdateManyWithWhereWithoutGroupInput | GroupFolderAssignmentUpdateManyWithWhereWithoutGroupInput[]
-    deleteMany?: GroupFolderAssignmentScalarWhereInput | GroupFolderAssignmentScalarWhereInput[]
   }
 
   export type UserUncheckedUpdateManyWithoutLearningGroupsNestedInput = {
@@ -32587,20 +31170,6 @@ export namespace Prisma {
     upsert?: LearningGroupUpsertWithoutAssignmentsInput
     connect?: LearningGroupWhereUniqueInput
     update?: XOR<XOR<LearningGroupUpdateToOneWithWhereWithoutAssignmentsInput, LearningGroupUpdateWithoutAssignmentsInput>, LearningGroupUncheckedUpdateWithoutAssignmentsInput>
-  }
-
-  export type LearningGroupCreateNestedOneWithoutFolderAssignmentsInput = {
-    create?: XOR<LearningGroupCreateWithoutFolderAssignmentsInput, LearningGroupUncheckedCreateWithoutFolderAssignmentsInput>
-    connectOrCreate?: LearningGroupCreateOrConnectWithoutFolderAssignmentsInput
-    connect?: LearningGroupWhereUniqueInput
-  }
-
-  export type LearningGroupUpdateOneRequiredWithoutFolderAssignmentsNestedInput = {
-    create?: XOR<LearningGroupCreateWithoutFolderAssignmentsInput, LearningGroupUncheckedCreateWithoutFolderAssignmentsInput>
-    connectOrCreate?: LearningGroupCreateOrConnectWithoutFolderAssignmentsInput
-    upsert?: LearningGroupUpsertWithoutFolderAssignmentsInput
-    connect?: LearningGroupWhereUniqueInput
-    update?: XOR<XOR<LearningGroupUpdateToOneWithWhereWithoutFolderAssignmentsInput, LearningGroupUpdateWithoutFolderAssignmentsInput>, LearningGroupUncheckedUpdateWithoutFolderAssignmentsInput>
   }
 
   export type UserCreateNestedOneWithoutNotesInput = {
@@ -33319,7 +31888,6 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentCreateNestedManyWithoutGroupInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -33330,7 +31898,6 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -33484,7 +32051,6 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
   }
 
@@ -33496,7 +32062,6 @@ export namespace Prisma {
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentUncheckedCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupCreateOrConnectWithoutStudentsInput = {
@@ -33789,7 +32354,6 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -33801,7 +32365,6 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacherId: string
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
-    folderAssignments?: GroupFolderAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -33856,7 +32419,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -33868,7 +32430,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacherId?: StringFieldUpdateOperationsInput | string
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -34080,31 +32641,6 @@ export namespace Prisma {
     data: GroupAssignmentCreateManyGroupInput | GroupAssignmentCreateManyGroupInput[]
   }
 
-  export type GroupFolderAssignmentCreateWithoutGroupInput = {
-    id?: string
-    folderPath: string
-    folderName: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type GroupFolderAssignmentUncheckedCreateWithoutGroupInput = {
-    id?: string
-    folderPath: string
-    folderName: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type GroupFolderAssignmentCreateOrConnectWithoutGroupInput = {
-    where: GroupFolderAssignmentWhereUniqueInput
-    create: XOR<GroupFolderAssignmentCreateWithoutGroupInput, GroupFolderAssignmentUncheckedCreateWithoutGroupInput>
-  }
-
-  export type GroupFolderAssignmentCreateManyGroupInputEnvelope = {
-    data: GroupFolderAssignmentCreateManyGroupInput | GroupFolderAssignmentCreateManyGroupInput[]
-  }
-
   export type UserCreateWithoutTeacherGroupsInput = {
     id?: string
     name: string
@@ -34237,34 +32773,6 @@ export namespace Prisma {
     type?: StringFilter<"GroupAssignment"> | string
     refId?: StringFilter<"GroupAssignment"> | string
     createdAt?: DateTimeFilter<"GroupAssignment"> | Date | string
-  }
-
-  export type GroupFolderAssignmentUpsertWithWhereUniqueWithoutGroupInput = {
-    where: GroupFolderAssignmentWhereUniqueInput
-    update: XOR<GroupFolderAssignmentUpdateWithoutGroupInput, GroupFolderAssignmentUncheckedUpdateWithoutGroupInput>
-    create: XOR<GroupFolderAssignmentCreateWithoutGroupInput, GroupFolderAssignmentUncheckedCreateWithoutGroupInput>
-  }
-
-  export type GroupFolderAssignmentUpdateWithWhereUniqueWithoutGroupInput = {
-    where: GroupFolderAssignmentWhereUniqueInput
-    data: XOR<GroupFolderAssignmentUpdateWithoutGroupInput, GroupFolderAssignmentUncheckedUpdateWithoutGroupInput>
-  }
-
-  export type GroupFolderAssignmentUpdateManyWithWhereWithoutGroupInput = {
-    where: GroupFolderAssignmentScalarWhereInput
-    data: XOR<GroupFolderAssignmentUpdateManyMutationInput, GroupFolderAssignmentUncheckedUpdateManyWithoutGroupInput>
-  }
-
-  export type GroupFolderAssignmentScalarWhereInput = {
-    AND?: GroupFolderAssignmentScalarWhereInput | GroupFolderAssignmentScalarWhereInput[]
-    OR?: GroupFolderAssignmentScalarWhereInput[]
-    NOT?: GroupFolderAssignmentScalarWhereInput | GroupFolderAssignmentScalarWhereInput[]
-    id?: StringFilter<"GroupFolderAssignment"> | string
-    groupId?: StringFilter<"GroupFolderAssignment"> | string
-    folderPath?: StringFilter<"GroupFolderAssignment"> | string
-    folderName?: StringFilter<"GroupFolderAssignment"> | string
-    createdAt?: DateTimeFilter<"GroupFolderAssignment"> | Date | string
-    updatedAt?: DateTimeFilter<"GroupFolderAssignment"> | Date | string
   }
 
   export type UserUpsertWithoutTeacherGroupsInput = {
@@ -34983,7 +33491,6 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
-    folderAssignments?: GroupFolderAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -34995,7 +33502,6 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
-    folderAssignments?: GroupFolderAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -35021,7 +33527,6 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -35033,67 +33538,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUncheckedUpdateManyWithoutGroupNestedInput
-    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
-  }
-
-  export type LearningGroupCreateWithoutFolderAssignmentsInput = {
-    id?: string
-    name: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
-    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
-    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
-    students?: UserCreateNestedManyWithoutLearningGroupsInput
-  }
-
-  export type LearningGroupUncheckedCreateWithoutFolderAssignmentsInput = {
-    id?: string
-    name: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    teacherId: string
-    gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
-    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
-    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
-  }
-
-  export type LearningGroupCreateOrConnectWithoutFolderAssignmentsInput = {
-    where: LearningGroupWhereUniqueInput
-    create: XOR<LearningGroupCreateWithoutFolderAssignmentsInput, LearningGroupUncheckedCreateWithoutFolderAssignmentsInput>
-  }
-
-  export type LearningGroupUpsertWithoutFolderAssignmentsInput = {
-    update: XOR<LearningGroupUpdateWithoutFolderAssignmentsInput, LearningGroupUncheckedUpdateWithoutFolderAssignmentsInput>
-    create: XOR<LearningGroupCreateWithoutFolderAssignmentsInput, LearningGroupUncheckedCreateWithoutFolderAssignmentsInput>
-    where?: LearningGroupWhereInput
-  }
-
-  export type LearningGroupUpdateToOneWithWhereWithoutFolderAssignmentsInput = {
-    where?: LearningGroupWhereInput
-    data: XOR<LearningGroupUpdateWithoutFolderAssignmentsInput, LearningGroupUncheckedUpdateWithoutFolderAssignmentsInput>
-  }
-
-  export type LearningGroupUpdateWithoutFolderAssignmentsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
-    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
-    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
-    students?: UserUpdateManyWithoutLearningGroupsNestedInput
-  }
-
-  export type LearningGroupUncheckedUpdateWithoutFolderAssignmentsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    teacherId?: StringFieldUpdateOperationsInput | string
-    gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
-    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -36456,7 +34900,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUpdateManyWithoutGroupNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -36467,7 +34910,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -36627,7 +35069,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
   }
 
@@ -36639,7 +35080,6 @@ export namespace Prisma {
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
-    folderAssignments?: GroupFolderAssignmentUncheckedUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateManyWithoutStudentsInput = {
@@ -36760,14 +35200,6 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
-  export type GroupFolderAssignmentCreateManyGroupInput = {
-    id?: string
-    folderPath: string
-    folderName: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
   export type GradingSchemaUpdateWithoutLearningGroupInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
@@ -36816,30 +35248,6 @@ export namespace Prisma {
     type?: StringFieldUpdateOperationsInput | string
     refId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type GroupFolderAssignmentUpdateWithoutGroupInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    folderPath?: StringFieldUpdateOperationsInput | string
-    folderName?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type GroupFolderAssignmentUncheckedUpdateWithoutGroupInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    folderPath?: StringFieldUpdateOperationsInput | string
-    folderName?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type GroupFolderAssignmentUncheckedUpdateManyWithoutGroupInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    folderPath?: StringFieldUpdateOperationsInput | string
-    folderName?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type UserUpdateWithoutLearningGroupsInput = {

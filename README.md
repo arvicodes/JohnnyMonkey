@@ -44,8 +44,8 @@ Die Anwendung verwendet echte Daten aus der Datenbank. Für eine saubere Install
 - Provider: SQLite (Datei-basierte DB)
 - ORM: Prisma Client
 - Schema/Config: `server/prisma/schema.prisma`
-  - `datasource db { provider = "sqlite"; url = "file:./dev.db" }`
-- Laufzeit-Datei: `server/prisma/dev.db`
+  - `datasource db { provider = "sqlite"; url = "file:./prisma/dev.db" }`
+- Laufzeit-Datei: `server/prisma/dev.db` (368 KB, aktuelle Arbeitsdatenbank)
 - Generierter Prisma-Client: `server/src/generated/prisma/`
 - Backups: im Repo (z. B. `db-backup-full_YYYYMMDD_HHMMSS.sqlite3`)
 
