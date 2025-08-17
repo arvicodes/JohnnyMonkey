@@ -361,6 +361,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
+      // Filtere Quiz- und Cards-Dateien für Schüler aus
+      if (item.type === 'file' && (item.name.startsWith('Quiz') || item.name.startsWith('Cards'))) {
+        return null; // Diese Dateien werden für Schüler nicht angezeigt
+      }
       
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';

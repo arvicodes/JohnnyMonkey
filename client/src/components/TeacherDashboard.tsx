@@ -1136,6 +1136,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       let icon = '📁';
       let color = '#666';
       let fontWeight = 400;
+      let showCreateIcon = false;
+      let createIcon = '';
+      let createTooltip = '';
       
       if (item.type === 'directory') {
         // Exakte Icons und Farben aus dem Screenshot
@@ -1176,49 +1179,92 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
         fontWeight = 400;
         console.log(`File: ${item.name} -> Hellblau, Icon: ${icon}`); // Debug
+        
+        // Prüfe ob es sich um Quiz- oder Cards-Dateien handelt
+        if (item.name.startsWith('Quiz')) {
+          showCreateIcon = true;
+          createIcon = '🎯';
+          createTooltip = 'Quiz erstellen';
+        } else if (item.name.startsWith('Cards')) {
+          showCreateIcon = true;
+          createIcon = '🗂️';
+          createTooltip = 'Karteikarten erstellen';
+        }
       }
       
       return (
         <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
-          <Typography variant="body2" sx={{ 
-            color: color,
-            fontSize: '0.75rem',
-            fontWeight: fontWeight,
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 0.5,
-            mb: 0.5,
-            cursor: item.type === 'file' ? 'pointer' : 'default',
-            textDecoration: 'none',
-            wordBreak: 'break-word',
-            maxWidth: '100%',
-            '&:hover': item.type === 'file' ? {
-              color: '#1976D2'
-            } : {}
-          }}
-          onClick={() => {
-            if (item.type === 'file') {
-              console.log('File clicked:', item);
-              handleFileClick(item);
-            }
-          }}
-          >
-            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
-            {item.type === 'directory' ? (
-              level === 0 ? (
-                <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
-              ) : level === 1 ? (
-                <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
-              ) : level === 2 ? (
-                <span style={{ color: '#2e7d32' }}>▼</span> // Grün für Level 2
-              ) : level === 3 ? (
-                <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
-              ) : (
-                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
-              )
-            ) : null} {/* Kein Dreieck für Dateien */}
-            {icon} {item.name}
-          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'flex-start', 
+            justifyContent: 'space-between',
+            gap: 0.5
+          }}>
+            <Typography variant="body2" sx={{ 
+              color: color,
+              fontSize: '0.75rem',
+              fontWeight: fontWeight,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 0.5,
+              mb: 0.5,
+              cursor: item.type === 'file' ? 'pointer' : 'default',
+              textDecoration: 'none',
+              wordBreak: 'break-word',
+              maxWidth: '100%',
+              flex: 1,
+              '&:hover': item.type === 'file' ? {
+                color: '#1976D2'
+              } : {}
+            }}
+            onClick={() => {
+              if (item.type === 'file') {
+                console.log('File clicked:', item);
+                handleFileClick(item);
+              }
+            }}
+            >
+              {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+              {item.type === 'directory' ? (
+                level === 0 ? (
+                  <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
+                ) : level === 1 ? (
+                  <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
+                ) : level === 2 ? (
+                  <span style={{ color: '#2e7d32' }}>▼</span> // Grün für Level 2
+                ) : level === 3 ? (
+                  <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
+                ) : (
+                  <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
+                )
+              ) : null} {/* Kein Dreieck für Dateien */}
+              {icon} {item.name}
+            </Typography>
+            
+            {/* Erstellungs-Icons für Quiz- und Cards-Dateien */}
+            {showCreateIcon && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  ml: 1,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    opacity: 0.8
+                  }
+                }}
+                title={createTooltip}
+              >
+                <Typography variant="caption" sx={{ 
+                  color: '#666',
+                  fontSize: '0.7rem'
+                }}>
+                  {createIcon}
+                </Typography>
+              </Box>
+            )}
+          </Box>
           
           {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
           {item.type === 'directory' && item.children && item.children.length > 0 && (
