@@ -834,6 +834,42 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       return null;
     }
 
+    // Bestimme Farben und Icons basierend auf der Hierarchieebene
+    const getLevelStyles = (level: number) => {
+      switch (level) {
+        case 0: // Top-Level (Klasse 7, MSS Grundthemen, etc.)
+          return {
+            textColor: '#d32f2f', // Rot
+            arrowColor: '#d32f2f', // Rot
+            icon: '🏫', // Schulgebäude für Top-Level
+            fontWeight: 'bold'
+          };
+        case 1: // Second-Level (3D Druck, Micro Bit, etc.)
+          return {
+            textColor: '#9c27b0', // Lila
+            arrowColor: '#9c27b0', // Lila
+            icon: '📚', // Bücher für Hauptthemen
+            fontWeight: '600'
+          };
+        case 2: // Third-Level (Grundlagen, etc.)
+          return {
+            textColor: '#1976d2', // Blau
+            arrowColor: '#1976d2', // Blau
+            icon: '📖', // Buch für Unterkategorien
+            fontWeight: '500'
+          };
+        default: // Fourth-Level und tiefer (konkrete Lektionen)
+          return {
+            textColor: '#2e7d32', // Grün
+            arrowColor: '#2e7d32', // Grün
+            icon: '📄', // Dokument für Lektionen
+            fontWeight: 'normal'
+          };
+      }
+    };
+
+    const levelStyles = getLevelStyles(level);
+
     return (
       <Box key={item.path}>
         <Box 
@@ -865,7 +901,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
               mr: 0.5, 
               display: 'flex', 
               alignItems: 'center',
-              color: '#2e7d32',
+              color: levelStyles.arrowColor,
               fontWeight: 'bold'
             }}>
               {isExpanded ? '▼' : '▶'}
@@ -876,17 +912,17 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
           <Box sx={{ 
             mr: 0.5, 
             fontSize: '0.9rem',
-            color: isDirectory ? '#2e7d32' : '#1976d2'
+            color: levelStyles.textColor
           }}>
-            {isDirectory ? '📁' : '📄'}
+            {isDirectory ? levelStyles.icon : '📄'}
           </Box>
           
           <Typography 
             variant="body2" 
             sx={{ 
               fontSize: '0.75rem',
-              color: isDirectory ? '#2e7d32' : '#1976d2',
-              fontWeight: isDirectory ? 'medium' : 'normal',
+              color: levelStyles.textColor,
+              fontWeight: levelStyles.fontWeight,
               textDecoration: isFile ? 'underline' : 'none',
               flex: 1
             }}

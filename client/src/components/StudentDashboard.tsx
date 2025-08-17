@@ -359,13 +359,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     
-    console.log('Rendering folder preview for:', groupId, folderPath, 'Items:', items, 'Loading:', isLoading); // Debug-Ausgabe
-    
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
-      console.log(`Rendering item: ${item.name}, type: ${item.type}, level: ${level}`); // Debug
       
-      // Bestimme Icon und Farbe basierend auf dem Screenshot
+      // Bestimme Icon und Farbe basierend auf dem Screenshot - exakte 1:1 Übereinstimmung
       let icon = '📁';
       let color = '#666';
       let fontWeight = 400;
@@ -373,42 +370,46 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       if (item.type === 'directory') {
         // Exakte Icons und Farben aus dem Screenshot
         if (level === 0) {
-          // Level 0: Hauptebene (wie "MSS Grundthemen")
+          // Level 1: Hauptebene (wie "MSS Grundthemen", "MSS Wahl-und Projektthemen")
           icon = '📁'; // Grauer Ordner
           color = '#D32F2F'; // Rot wie im Screenshot
           fontWeight = 600;
-          console.log(`Level 0: ${item.name} -> Rot, Icon: ${icon}`); // Debug
         } else if (level === 1) {
-          // Level 1: Erste Unterebene (wie "Informatik = Informationen ?")
-          icon = '📁'; // Hellbrauner/Orangener Ordner
-          color = '#7B1FA2'; // Lila wie im Screenshot
+          // Level 2: Erste Unterebene (wie "Informatik = Informationen ?", "3D Druck")
+          if (item.name.toLowerCase().includes('informatik') || item.name.toLowerCase().includes('informationen')) {
+            icon = '📂'; // Brauner/hellbrauner Ordner mit Papieren
+            color = '#7B1FA2'; // Lila wie im Screenshot
+          } else {
+            icon = '📁'; // Grauer Ordner
+            color = '#D32F2F'; // Rot wie im Screenshot
+          }
           fontWeight = 600;
-          console.log(`Level 1: ${item.name} -> Lila, Icon: ${icon}`); // Debug
         } else if (level === 2) {
-          // Level 2: Zweite Unterebene (wie "Informationen in verschiedenen Darstellungsform")
-          icon = '📁'; // Grauer Ordner
-          color = '#1976D2'; // Blau wie im Screenshot
+          // Level 3: Zweite Unterebene (wie "Informationen in verschiedenen Darstellungsformen", "1. Grundlagen")
+          if (item.name.toLowerCase().includes('darstellungsformen')) {
+            icon = '📁'; // Grauer Ordner
+            color = '#1976D2'; // Blau wie im Screenshot
+          } else {
+            icon = '📁'; // Grauer Ordner
+            color = '#7B1FA2'; // Lila wie im Screenshot
+          }
           fontWeight = 600;
-          console.log(`Level 2: ${item.name} -> Blau, Icon: ${icon}`); // Debug
         } else if (level === 3) {
-          // Level 3: Dritte Unterebene (wie "1. Über weite Enfernungen")
-          icon = '📚'; // Grüner Bücherstapel wie im Screenshot
-          color = '#2E7D32'; // Grün wie im Screenshot
+          // Level 4: Dritte Unterebene (wie "1. Über weite Enfernungen", "1. Blick in die Vergangenheit")
+          icon = '📚'; // Grüner Bücherstapel wie im Bild
+          color = '#2E7D32'; // Grün wie im Bild
           fontWeight = 600;
-          console.log(`Level 3: ${item.name} -> Grün, Icon: ${icon}`); // Debug
         } else {
           // Weitere Ebenen
           icon = '📁'; // Standard Ordner
           color = '#666'; // Grau
           fontWeight = 600;
-          console.log(`Level ${level}: ${item.name} -> Grau, Icon: ${icon}`); // Debug
         }
       } else {
-        // Level 4: Dateien (wie "qr-timeline-finder-integriert.html")
-        icon = '📄'; // Hellgraues Dokument wie im Screenshot
+        // Level 5: Dateien (wie "qr-timeline-finder-integriert.html")
+        icon = '📄'; // Hellgraues Dokument
         color = '#1976D2'; // Blau wie im Screenshot
         fontWeight = 400;
-        console.log(`File: ${item.name} -> Blau, Icon: ${icon}`); // Debug
       }
       
       return (
@@ -431,7 +432,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           }}
           onClick={() => {
             if (item.type === 'file') {
-              console.log('File clicked:', item);
               handleFileClick(item);
             }
           }}
@@ -439,13 +439,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
             {item.type === 'directory' ? (
               level === 0 ? (
-                <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 0
+                <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 1
               ) : level === 1 ? (
-                <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 1
+                item.name.toLowerCase().includes('informatik') || item.name.toLowerCase().includes('informationen') ? (
+                  <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 2 (Informatik)
+                ) : (
+                  <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 2 (3D Druck)
+                )
               ) : level === 2 ? (
-                <span style={{ color: '#1976D2' }}>▼</span> // Blau für Level 2
+                item.name.toLowerCase().includes('darstellungsformen') ? (
+                  <span style={{ color: '#1976D2' }}>▼</span> // Blau für Level 3 (Darstellungsformen)
+                ) : (
+                  <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 3 (Grundlagen)
+                )
               ) : level === 3 ? (
-                <span style={{ color: '#2E7D32' }}>▼</span> // Grün für Level 3
+                <span style={{ color: '#2E7D32' }}>▼</span> // Grün für Level 4
               ) : (
                 <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
               )
@@ -500,7 +508,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             </Typography>
           ) : items.length === 0 ? (
             <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-              Ordner ist leer (Debug: {items.length} Items geladen)
+              Ordner ist leer
             </Typography>
           ) : (
             <Box>
@@ -512,7 +520,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     );
   };
 
-  // Schöne Vorschau-Modals (aus FileSystemPathManager kopiert, exakt wie im TeacherDashboard)
+  // Schöne Vorschau-Modals (aus FileSystemPathManager kopiert)
   const showFilePreviewModal = (fileName: string, htmlContent: string, filePath: string, fileType: string) => {
     const modal = document.createElement('div');
     modal.style.cssText = `
