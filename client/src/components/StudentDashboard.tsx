@@ -354,6 +354,164 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     });
   };
 
+  // Neue Funktion zum Rendern der echten Ordner-Vorschau (exakt wie im Screenshot)
+  const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
+    const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
+    const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
+    
+    console.log('Rendering folder preview for:', groupId, folderPath, 'Items:', items, 'Loading:', isLoading); // Debug-Ausgabe
+    
+    // Rekursive Funktion zum Rendern aller Ebenen
+    const renderItemRecursively = (item: any, level: number = 0) => {
+      console.log(`Rendering item: ${item.name}, type: ${item.type}, level: ${level}`); // Debug
+      
+      // Bestimme Icon und Farbe basierend auf dem Screenshot
+      let icon = '📁';
+      let color = '#666';
+      let fontWeight = 400;
+      
+      if (item.type === 'directory') {
+        // Exakte Icons und Farben aus dem Screenshot
+        if (level === 0) {
+          // Level 0: Hauptebene (wie "MSS Grundthemen")
+          icon = '📁'; // Grauer Ordner
+          color = '#D32F2F'; // Rot wie im Screenshot
+          fontWeight = 600;
+          console.log(`Level 0: ${item.name} -> Rot, Icon: ${icon}`); // Debug
+        } else if (level === 1) {
+          // Level 1: Erste Unterebene (wie "Informatik = Informationen ?")
+          icon = '📁'; // Hellbrauner/Orangener Ordner
+          color = '#7B1FA2'; // Lila wie im Screenshot
+          fontWeight = 600;
+          console.log(`Level 1: ${item.name} -> Lila, Icon: ${icon}`); // Debug
+        } else if (level === 2) {
+          // Level 2: Zweite Unterebene (wie "Informationen in verschiedenen Darstellungsform")
+          icon = '📁'; // Grauer Ordner
+          color = '#1976D2'; // Blau wie im Screenshot
+          fontWeight = 600;
+          console.log(`Level 2: ${item.name} -> Blau, Icon: ${icon}`); // Debug
+        } else if (level === 3) {
+          // Level 3: Dritte Unterebene (wie "1. Über weite Enfernungen")
+          icon = '📚'; // Grüner Bücherstapel wie im Screenshot
+          color = '#2E7D32'; // Grün wie im Screenshot
+          fontWeight = 600;
+          console.log(`Level 3: ${item.name} -> Grün, Icon: ${icon}`); // Debug
+        } else {
+          // Weitere Ebenen
+          icon = '📁'; // Standard Ordner
+          color = '#666'; // Grau
+          fontWeight = 600;
+          console.log(`Level ${level}: ${item.name} -> Grau, Icon: ${icon}`); // Debug
+        }
+      } else {
+        // Level 4: Dateien (wie "qr-timeline-finder-integriert.html")
+        icon = '📄'; // Hellgraues Dokument wie im Screenshot
+        color = '#1976D2'; // Blau wie im Screenshot
+        fontWeight = 400;
+        console.log(`File: ${item.name} -> Blau, Icon: ${icon}`); // Debug
+      }
+      
+      return (
+        <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
+          <Typography variant="body2" sx={{ 
+            color: color,
+            fontSize: '0.75rem',
+            fontWeight: fontWeight,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 0.5,
+            mb: 0.5,
+            cursor: item.type === 'file' ? 'pointer' : 'default',
+            textDecoration: 'none',
+            wordBreak: 'break-word',
+            maxWidth: '100%',
+            '&:hover': item.type === 'file' ? {
+              color: '#1976D2'
+            } : {}
+          }}
+          onClick={() => {
+            if (item.type === 'file') {
+              console.log('File clicked:', item);
+              handleFileClick(item);
+            }
+          }}
+          >
+            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+            {item.type === 'directory' ? (
+              level === 0 ? (
+                <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 0
+              ) : level === 1 ? (
+                <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 1
+              ) : level === 2 ? (
+                <span style={{ color: '#1976D2' }}>▼</span> // Blau für Level 2
+              ) : level === 3 ? (
+                <span style={{ color: '#2E7D32' }}>▼</span> // Grün für Level 3
+              ) : (
+                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
+              )
+            ) : null} {/* Kein Dreieck für Dateien */}
+            {icon} {item.name}
+          </Typography>
+          
+          {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
+          {item.type === 'directory' && item.children && item.children.length > 0 && (
+            <Box sx={{ ml: 2, mb: 0.7 }}>
+              {item.children.map((child: any, childIndex: number) => 
+                renderItemRecursively(child, level + 1)
+              )}
+            </Box>
+          )}
+        </Box>
+      );
+    };
+    
+    return (
+      <Box key={folderPath} sx={{ mb: 1.4 }}>
+        {/* Hauptordner - Grauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
+        <Box sx={{ 
+          p: 1.4,
+          borderRadius: 1.4,
+          bgcolor: '#f8f9fa',
+          border: '1px solid #e9ecef',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            bgcolor: '#e9ecef'
+          }
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="body2" sx={{ 
+              color: '#D32F2F', // Rot wie im Screenshot
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5
+            }}>
+              ▼ 📁 {folderPath.split('/').pop() || folderPath}
+            </Typography>
+          </Box>
+        </Box>
+        
+        {/* Vorschau des Ordnerinhalts - IMMER aufgeklappt */}
+        <Box sx={{ ml: 2, mt: 1 }}>
+          {isLoading ? (
+            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+              Lade Inhalt...
+            </Typography>
+          ) : items.length === 0 ? (
+            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+              Ordner ist leer (Debug: {items.length} Items geladen)
+            </Typography>
+          ) : (
+            <Box>
+              {items.map((item, index) => renderItemRecursively(item, 0))}
+            </Box>
+          )}
+        </Box>
+      </Box>
+    );
+  };
+
   // Schöne Vorschau-Modals (aus FileSystemPathManager kopiert, exakt wie im TeacherDashboard)
   const showFilePreviewModal = (fileName: string, htmlContent: string, filePath: string, fileType: string) => {
     const modal = document.createElement('div');
@@ -937,7 +1095,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     document.addEventListener('keydown', handleModalKeyDown);
   };
 
-  // Funktion zum Öffnen von Dateien - nutzt die bereits vorhandenen, schönen Vorschau-Methoden (exakt wie im TeacherDashboard)
+  // Funktion zum Öffnen von Dateien - nutzt die bereits vorhandenen, schönen Vorschau-Methoden
   const handleFileClick = async (item: any) => {
     if (item.type !== 'file') return;
     
@@ -1064,164 +1222,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         alert('Datei konnte nicht heruntergeladen werden.');
       }
     }
-  };
-
-  // Neue Funktion zum Rendern der echten Ordner-Vorschau (exakt wie im TeacherDashboard)
-  const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
-    const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
-    const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
-    
-    console.log('Rendering folder preview for:', groupId, folderPath, 'Items:', items, 'Loading:', isLoading); // Debug-Ausgabe
-    
-    // Rekursive Funktion zum Rendern aller Ebenen
-    const renderItemRecursively = (item: any, level: number = 0) => {
-      console.log(`Rendering item: ${item.name}, type: ${item.type}, level: ${level}`); // Debug
-      
-      // Bestimme Icon und Farbe basierend auf dem Screenshot
-      let icon = '📁';
-      let color = '#666';
-      let fontWeight = 400;
-      
-      if (item.type === 'directory') {
-        // Exakte Icons und Farben aus dem Screenshot
-        if (level === 0) {
-          // Level 0: Hauptebene (wie "MSS Grundthemen")
-          icon = '📁'; // Hellgrauer Ordner
-          color = '#D32F2F'; // Rot
-          fontWeight = 600;
-          console.log(`Level 0: ${item.name} -> Rot, Icon: ${icon}`); // Debug
-        } else if (level === 1) {
-          // Level 1: Erste Unterebene (wie "Informatik = Informationen ?")
-          icon = '📁'; // Hellbrauner Ordner mit bunten Tabs
-          color = '#7B1FA2'; // Lila
-          fontWeight = 600;
-          console.log(`Level 1: ${item.name} -> Lila, Icon: ${icon}`); // Debug
-        } else if (level === 2) {
-          // Level 2: Zweite Unterebene (wie "Informationen in verschiedenen Darstellungsform")
-          icon = '📁'; // Hellgrauer Ordner
-          color = '#1976D2'; // Blau
-          fontWeight = 600;
-          console.log(`Level 2: ${item.name} -> Blau, Icon: ${icon}`); // Debug
-        } else if (level === 3) {
-          // Level 3: Dritte Unterebene (wie "1. Über weite Enfernungen")
-          icon = '📚'; // Grüner Bücherstapel
-          color = '#2E7D32'; // Grün
-          fontWeight = 600;
-          console.log(`Level 3: ${item.name} -> Grün, Icon: ${icon}`); // Debug
-        } else {
-          // Weitere Ebenen
-          icon = '📁'; // Standard Ordner
-          color = '#666'; // Grau
-          fontWeight = 600;
-          console.log(`Level ${level}: ${item.name} -> Grau, Icon: ${icon}`); // Debug
-        }
-      } else {
-        // Level 4: Dateien (wie "qr-timeline-finder-integriert.html")
-        icon = '📄'; // Hellgraues Dokument
-        color = '#03A9F4'; // Hellblau/Cyan wie im Screenshot
-        fontWeight = 400;
-        console.log(`File: ${item.name} -> Hellblau, Icon: ${icon}`); // Debug
-      }
-      
-      return (
-        <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
-          <Typography variant="body2" sx={{ 
-            color: color,
-            fontSize: '0.75rem',
-            fontWeight: fontWeight,
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 0.5,
-            mb: 0.5,
-            cursor: item.type === 'file' ? 'pointer' : 'default',
-            textDecoration: 'none',
-            wordBreak: 'break-word',
-            maxWidth: '100%',
-            '&:hover': item.type === 'file' ? {
-              color: '#1976D2'
-            } : {}
-          }}
-          onClick={() => {
-            if (item.type === 'file') {
-              console.log('File clicked:', item);
-              handleFileClick(item);
-            }
-          }}
-          >
-            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
-            {item.type === 'directory' ? (
-              level === 0 ? (
-                <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 0
-              ) : level === 1 ? (
-                <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 1
-              ) : level === 2 ? (
-                <span style={{ color: '#1976D2' }}>▼</span> // Blau für Level 2
-              ) : level === 3 ? (
-                <span style={{ color: '#2E7D32' }}>▼</span> // Grün für Level 3
-              ) : (
-                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
-              )
-            ) : null} {/* Kein Dreieck für Dateien */}
-            {icon} {item.name}
-          </Typography>
-          
-          {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
-          {item.type === 'directory' && item.children && item.children.length > 0 && (
-            <Box sx={{ ml: 2, mb: 0.7 }}>
-              {item.children.map((child: any, childIndex: number) => 
-                renderItemRecursively(child, level + 1)
-              )}
-            </Box>
-          )}
-        </Box>
-      );
-    };
-    
-    return (
-      <Box key={folderPath} sx={{ mb: 1.4 }}>
-        {/* Hauptordner - Hellgrauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
-        <Box sx={{ 
-          p: 1.4,
-          borderRadius: 1.4,
-          bgcolor: '#f8f9fa',
-          border: '1px solid #e9ecef',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            bgcolor: '#e9ecef'
-          }
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="body2" sx={{ 
-              color: '#D32F2F', // Rot wie im Screenshot
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5
-            }}>
-              ▼ 📁 {folderPath.split('/').pop() || folderPath}
-            </Typography>
-          </Box>
-        </Box>
-        
-        {/* Vorschau des Ordnerinhalts - IMMER aufgeklappt */}
-        <Box sx={{ ml: 2, mt: 1 }}>
-          {isLoading ? (
-            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-              Lade Inhalt...
-            </Typography>
-          ) : items.length === 0 ? (
-            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-              Ordner ist leer (Debug: {items.length} Items geladen)
-            </Typography>
-          ) : (
-            <Box>
-              {items.map((item, index) => renderItemRecursively(item, 0))}
-            </Box>
-          )}
-        </Box>
-      </Box>
-    );
   };
 
   // Hilfsfunktion: Hole Materialien für eine Lesson
@@ -2229,202 +2229,197 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                             </Box>
                           </Box>
                           
-                          <Grid container spacing={0.8}>
-                            <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
-                              {/* Zugeordnete Inhalte anzeigen */}
-                              {assignments.length > 0 && (
-                                <Box sx={{ mt: 2 }}>
-                                  
-                                  {/* Verschachtelte Darstellung wie im TeacherDashboard */}
-                                  <Box sx={{ 
-                                    ml: 1,
-                                    p: 1.4,
-                                    bgcolor: '#fafbfc',
-                                    borderRadius: 1.4,
-                                    border: '1px solid #f0f0f0'
-                                  }}>
-                                    {subjects
-                                      .filter(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id))
-                                      .map(subject => (
-                                        <Box key={subject.id} sx={{ mb: 1.4 }}>
-                                          <Typography variant="body2" sx={{ 
-                                            fontWeight: 'bold', 
-                                            color: colors.accent1, 
-                                            fontSize: '0.8rem',
-                                            mb: 0.7,
-                                            pb: 0.3,
-                                            borderBottom: `2px solid ${colors.accent1}30`
-                                          }}>
-                                            📚 {subject.name}
-                                          </Typography>
-                                          {/* Blöcke */}
-                                          {blocks
-                                            .filter(block => block.subjectId === subject.id && (blockAssignments[block.id] || []).includes(gruppe.id))
-                                            .map(block => (
-                                              <Box key={block.id} sx={{ ml: 2, mb: 0.7 }}>
-                                                <Typography variant="body2" sx={{ 
-                                                  color: colors.primary, 
-                                                  fontSize: '0.75rem',
-                                                  fontWeight: 600,
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: 0.5
-                                                }}>
-                                                  📦 {block.name}
-                                                </Typography>
-                                                {/* Units */}
-                                                {units
-                                                  .filter(unit => unit.blockId === block.id && (unitAssignments[unit.id] || []).includes(gruppe.id))
-                                                  .map(unit => (
-                                                    <Box key={unit.id} sx={{ ml: 2, mb: 0.7 }}>
-                                                      <Typography variant="body2" sx={{ 
-                                                        color: colors.secondary, 
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 0.5
-                                                      }}>
-                                                        📋 {unit.name}
-                                                      </Typography>
-                                                      {/* Themen */}
-                                                      {topics
-                                                        .filter(topic => topic.unitId === unit.id && (topicAssignments[topic.id] || []).includes(gruppe.id))
-                                                        .map(topic => (
-                                                          <Box key={topic.id} sx={{ ml: 2, mb: 0.7 }}>
-                                                            <Typography variant="body2" sx={{ 
-                                                              color: colors.accent2, 
-                                                              fontSize: '0.75rem',
-                                                              fontWeight: 600,
-                                                              display: 'flex',
-                                                              alignItems: 'center',
-                                                              gap: 0.5
-                                                            }}>
-                                                              💡 {topic.name}
-                                                            </Typography>
-                                                            {/* Stunden */}
-                                                            {lessons
-                                                              .filter(lesson => lesson.topicId === topic.id && (lessonAssignments[lesson.id] || []).includes(gruppe.id))
-                                                              .map(lesson => (
-                                                                <Box key={lesson.id} sx={{ 
-                                                                  ml: 2, 
-                                                                  display: 'flex', 
-                                                                  alignItems: 'center', 
-                                                                  gap: '6px',
-                                                                  p: 0.5,
-                                                                  borderRadius: 1,
-                                                                  bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#f0f8ff' : 'transparent',
-                                                                  transition: 'all 0.2s ease',
-                                                                  '&:hover': {
-                                                                    bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#e3f2fd' : 'transparent'
-                                                                  }
-                                                                }}>
-                                                                  <Typography 
-                                                                    variant="body2" 
-                                                                    sx={{ 
-                                                                      color: colors.textSecondary,
-                                                                      cursor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? 'pointer' : 'default',
-                                                                      fontSize: '0.75rem',
-                                                                      fontWeight: 500,
-                                                                      '&:hover': {
-                                                                        color: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? colors.primary : colors.textSecondary
-                                                                      }
-                                                                    }}
-                                                                    onClick={e => {
-                                                                      e.stopPropagation();
-                                                                      if ((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) {
-                                                                        openLessonContent(lesson.id, lesson.name);
-                                                                      }
-                                                                    }}
-                                                                    title={(materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? "Material/Quiz öffnen" : ""}
-                                                                  >
-                                                                    📖 {lesson.name}
-                                                                  </Typography>
-                                                                  {((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) && (
-                                                                    <span 
-                                                                      style={{ 
-                                                                        color: colors.secondary, 
-                                                                        fontSize: '0.8em', 
-                                                                        cursor: 'pointer',
-                                                                        marginLeft: '4px',
-                                                                        transition: 'all 0.2s ease'
-                                                                      }}
-                                                                      onClick={e => {
-                                                                        e.stopPropagation();
-                                                                        openLessonContent(lesson.id, lesson.name);
-                                                                      }}
-                                                                      title="Material/Quiz öffnen"
-                                                                    >
-                                                                      {quizzesMap[lesson.id] ? '🧩' : '📄'}
-                                                                    </span>
-                                                                  )}
-                                                                </Box>
-                                                              ))}
-                                                          </Box>
-                                                        ))}
-                                                    </Box>
-                                                  ))}
-                                              </Box>
-                                            ))}
-                                        </Box>
-                                      ))}
-                                    {/* Falls keine Inhalte */}
-                                    {!(subjects.some(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id)) ||
-                                      blocks.some(block => (blockAssignments[block.id] || []).includes(gruppe.id)) ||
-                                      units.some(unit => (unitAssignments[unit.id] || []).includes(gruppe.id)) ||
-                                      topics.some(topic => (topicAssignments[topic.id] || []).includes(gruppe.id)) ||
-                                      lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(gruppe.id))) && (
-                                      <Box sx={{ 
-                                        textAlign: 'center', 
-                                        py: 2,
-                                        color: colors.textSecondary,
-                                        fontStyle: 'italic'
-                                      }}>
-                                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                          📝 Noch keine Inhalte zugeordnet
-                                        </Typography>
-                                      </Box>
-                                    )}
-                                  </Box>
+                          {/* Zugeordnete Ordner - direkt unterhalb des Headers, exakt wie im TeacherDashboard */}
+                          <Box sx={{ 
+                            p: 2.1, 
+                            bgcolor: '#fff', 
+                            borderRadius: 2.8, 
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                            border: '1px solid #e0e0e0',
+                            mb: 1.4
+                          }}>
+                            <Box sx={{ 
+                              ml: 1,
+                              p: 1.4,
+                              bgcolor: '#fafbfc',
+                              borderRadius: 1.4,
+                              border: '1px solid #f0f0f0'
+                            }}>
+                              {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
+                                <Box>
+                                  {assignedFolders[gruppe.id].map((folderPath: string) => {
+                                    return renderAssignedFolderPreview(gruppe.id, folderPath);
+                                  })}
                                 </Box>
-                              )}
-                            </Grid>
-                            <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', gap: 1.4 }}>
-                              {/* Zugeordnete Ordner - exakt wie im TeacherDashboard */}
-                              <Box sx={{ 
-                                p: 2.1, 
-                                bgcolor: '#fff', 
-                                borderRadius: 2.8, 
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                                border: '1px solid #e0e0e0'
-                              }}>
-
-                                <Box sx={{ 
-                                  ml: 1,
-                                  p: 1.4,
-                                  bgcolor: '#fafbfc',
-                                  borderRadius: 1.4,
-                                  border: '1px solid #f0f0f0'
+                              ) : (
+                                <Typography variant="body2" sx={{ 
+                                  color: colors.textSecondary,
+                                  fontSize: '0.75rem',
+                                  fontStyle: 'italic'
                                 }}>
-                                  {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
-                                    <Box>
-                                      {assignedFolders[gruppe.id].map((folderPath: string) => {
-                                        return renderAssignedFolderPreview(gruppe.id, folderPath);
-                                      })}
+                                  Keine Ordner zugeordnet
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                          
+                          {/* Zugeordnete Inhalte anzeigen */}
+                          {assignments.length > 0 && (
+                            <Box sx={{ mt: 2 }}>
+                              
+                              {/* Verschachtelte Darstellung wie im TeacherDashboard */}
+                              <Box sx={{ 
+                                ml: 1,
+                                p: 1.4,
+                                bgcolor: '#fafbfc',
+                                borderRadius: 1.4,
+                                border: '1px solid #f0f0f0'
+                              }}>
+                                {subjects
+                                  .filter(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id))
+                                  .map(subject => (
+                                    <Box key={subject.id} sx={{ mb: 1.4 }}>
+                                      <Typography variant="body2" sx={{ 
+                                        fontWeight: 'bold', 
+                                        color: colors.accent1, 
+                                        fontSize: '0.8rem',
+                                        mb: 0.7,
+                                        pb: 0.3,
+                                        borderBottom: `2px solid ${colors.accent1}30`
+                                      }}>
+                                        📚 {subject.name}
+                                      </Typography>
+                                      {/* Blöcke */}
+                                      {blocks
+                                        .filter(block => block.subjectId === subject.id && (blockAssignments[block.id] || []).includes(gruppe.id))
+                                        .map(block => (
+                                          <Box key={block.id} sx={{ ml: 2, mb: 0.7 }}>
+                                            <Typography variant="body2" sx={{ 
+                                              color: colors.primary, 
+                                              fontSize: '0.75rem',
+                                              fontWeight: 600,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: 0.5
+                                            }}>
+                                              📦 {block.name}
+                                            </Typography>
+                                            {/* Units */}
+                                            {units
+                                              .filter(unit => unit.blockId === block.id && (unitAssignments[unit.id] || []).includes(gruppe.id))
+                                              .map(unit => (
+                                                <Box key={unit.id} sx={{ ml: 2, mb: 0.7 }}>
+                                                  <Typography variant="body2" sx={{ 
+                                                    color: colors.secondary, 
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 0.5
+                                                  }}>
+                                                    📋 {unit.name}
+                                                  </Typography>
+                                                  {/* Themen */}
+                                                  {topics
+                                                    .filter(topic => topic.unitId === unit.id && (topicAssignments[topic.id] || []).includes(gruppe.id))
+                                                    .map(topic => (
+                                                      <Box key={topic.id} sx={{ ml: 2, mb: 0.7 }}>
+                                                        <Typography variant="body2" sx={{ 
+                                                          color: colors.accent2, 
+                                                          fontSize: '0.75rem',
+                                                          fontWeight: 600,
+                                                          display: 'flex',
+                                                          alignItems: 'center',
+                                                          gap: 0.5
+                                                        }}>
+                                                          💡 {topic.name}
+                                                        </Typography>
+                                                        {/* Stunden */}
+                                                        {lessons
+                                                          .filter(lesson => lesson.topicId === topic.id && (lessonAssignments[lesson.id] || []).includes(gruppe.id))
+                                                          .map(lesson => (
+                                                            <Box key={lesson.id} sx={{ 
+                                                              ml: 2, 
+                                                              display: 'flex', 
+                                                              alignItems: 'center', 
+                                                              gap: '6px',
+                                                              p: 0.5,
+                                                              borderRadius: 1,
+                                                              bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#f0f8ff' : 'transparent',
+                                                              transition: 'all 0.2s ease',
+                                                              '&:hover': {
+                                                                bgcolor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? '#e3f2fd' : 'transparent'
+                                                              }
+                                                            }}>
+                                                              <Typography 
+                                                                variant="body2" 
+                                                                sx={{ 
+                                                                  color: colors.textSecondary,
+                                                                  cursor: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? 'pointer' : 'default',
+                                                                  fontSize: '0.75rem',
+                                                                  fontWeight: 500,
+                                                                  '&:hover': {
+                                                                    color: (materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? colors.primary : colors.textSecondary
+                                                                  }
+                                                                }}
+                                                                onClick={e => {
+                                                                  e.stopPropagation();
+                                                                  if ((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) {
+                                                                    openLessonContent(lesson.id, lesson.name);
+                                                                  }
+                                                                }}
+                                                                title={(materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id] ? "Material/Quiz öffnen" : ""}
+                                                              >
+                                                                📖 {lesson.name}
+                                                              </Typography>
+                                                              {((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) && (
+                                                                <span 
+                                                                  style={{ 
+                                                                    color: colors.secondary, 
+                                                                    fontSize: '0.8em', 
+                                                                    cursor: 'pointer',
+                                                                    marginLeft: '4px',
+                                                                    transition: 'all 0.2s ease'
+                                                                  }}
+                                                                  onClick={e => {
+                                                                    e.stopPropagation();
+                                                                    openLessonContent(lesson.id, lesson.name);
+                                                                  }}
+                                                                  title="Material/Quiz öffnen"
+                                                                >
+                                                                  {quizzesMap[lesson.id] ? '🧩' : '📄'}
+                                                                </span>
+                                                              )}
+                                                            </Box>
+                                                          ))}
+                                                      </Box>
+                                                    ))}
+                                                </Box>
+                                              ))}
+                                          </Box>
+                                        ))}
                                     </Box>
-                                  ) : (
-                                    <Typography variant="body2" sx={{ 
-                                      color: colors.textSecondary,
-                                      fontSize: '0.75rem',
-                                      fontStyle: 'italic'
-                                    }}>
-                                      Keine Ordner zugeordnet
+                                  ))}
+                                {/* Falls keine Inhalte */}
+                                {!(subjects.some(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id)) ||
+                                  blocks.some(block => (blockAssignments[block.id] || []).includes(gruppe.id)) ||
+                                  units.some(unit => (unitAssignments[unit.id] || []).includes(gruppe.id)) ||
+                                  topics.some(topic => (topicAssignments[topic.id] || []).includes(gruppe.id)) ||
+                                  lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(gruppe.id))) && (
+                                  <Box sx={{ 
+                                    textAlign: 'center', 
+                                    py: 2,
+                                    color: colors.textSecondary,
+                                    fontStyle: 'italic'
+                                  }}>
+                                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                      📝 Noch keine Inhalte zugeordnet
                                     </Typography>
-                                  )}
-                                </Box>
+                                  </Box>
+                                )}
                               </Box>
-                            </Grid>
-                          </Grid>
+                            </Box>
+                          )}
                         </CardContent>
                       </Card>
                     </Grid>
