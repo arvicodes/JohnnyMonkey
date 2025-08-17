@@ -2213,38 +2213,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           </Box>
                           
                           {/* Zugeordnete Ordner - direkt unterhalb des Headers, exakt wie im TeacherDashboard */}
-                          <Box sx={{ 
-                            p: 2.1, 
-                            bgcolor: '#fff', 
-                            borderRadius: 2.8, 
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                            border: '1px solid #e0e0e0',
-                            mb: 1.4
-                          }}>
-                            <Box sx={{ 
-                              ml: 1,
-                              p: 1.4,
-                              bgcolor: '#fafbfc',
-                              borderRadius: 1.4,
-                              border: '1px solid #f0f0f0'
-                            }}>
-                              {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
-                                <Box>
-                                  {assignedFolders[gruppe.id].map((folderPath: string) => {
-                                    return renderAssignedFolderPreview(gruppe.id, folderPath);
-                                  })}
-                                </Box>
-                              ) : (
-                                <Typography variant="body2" sx={{ 
-                                  color: colors.textSecondary,
-                                  fontSize: '0.75rem',
-                                  fontStyle: 'italic'
-                                }}>
-                                  Keine Ordner zugeordnet
-                                </Typography>
-                              )}
+                          {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
+                            <Box>
+                              {assignedFolders[gruppe.id].map((folderPath: string) => {
+                                return renderAssignedFolderPreview(gruppe.id, folderPath);
+                              })}
                             </Box>
-                          </Box>
+                          ) : (
+                            <Typography variant="body2" sx={{ 
+                              color: colors.textSecondary,
+                              fontSize: '0.75rem',
+                              fontStyle: 'italic'
+                            }}>
+                              Keine Ordner zugeordnet
+                            </Typography>
+                          )}
                           
                           {/* Zugeordnete Inhalte anzeigen */}
                           {assignments.length > 0 && (
