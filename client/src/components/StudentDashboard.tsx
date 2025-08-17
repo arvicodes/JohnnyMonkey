@@ -362,7 +362,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
       
-      // Bestimme Icon und Farbe basierend auf dem Screenshot - exakte 1:1 Übereinstimmung
+      // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
       let color = '#666';
       let fontWeight = 400;
@@ -370,45 +370,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       if (item.type === 'directory') {
         // Exakte Icons und Farben aus dem Screenshot
         if (level === 0) {
-          // Level 1: Hauptebene (wie "MSS Grundthemen", "MSS Wahl-und Projektthemen")
-          icon = '📁'; // Grauer Ordner
-          color = '#D32F2F'; // Rot wie im Screenshot
+          // Level 0: Top-Level (wie "3D Druck", "Micro Bit", "Ganze und rationale Zahlen")
+          icon = '📚'; // Bücher für Hauptthemen
+          color = '#9c27b0'; // Lila
           fontWeight = 600;
         } else if (level === 1) {
-          // Level 2: Erste Unterebene (wie "Informatik = Informationen ?", "3D Druck")
-          if (item.name.toLowerCase().includes('informatik') || item.name.toLowerCase().includes('informationen')) {
-            icon = '📂'; // Brauner/hellbrauner Ordner mit Papieren
-            color = '#7B1FA2'; // Lila wie im Screenshot
-          } else {
-            icon = '📁'; // Grauer Ordner
-            color = '#D32F2F'; // Rot wie im Screenshot
-          }
-          fontWeight = 600;
+          // Level 1: Second-Level (wie "1. Grundlagen", "Grundlagen")
+          icon = '📖'; // Buch für Unterkategorien
+          color = '#1976d2'; // Blau
+          fontWeight = 500;
         } else if (level === 2) {
-          // Level 3: Zweite Unterebene (wie "Informationen in verschiedenen Darstellungsformen", "1. Grundlagen")
-          if (item.name.toLowerCase().includes('darstellungsformen')) {
-            icon = '📁'; // Grauer Ordner
-            color = '#1976D2'; // Blau wie im Screenshot
-          } else {
-            icon = '📁'; // Grauer Ordner
-            color = '#7B1FA2'; // Lila wie im Screenshot
-          }
-          fontWeight = 600;
+          // Level 2: Third-Level (wie "1. Blick in die Vergangenheit", "2. Technischer Aufbau")
+          icon = '📚'; // Grüner Bücherstapel
+          color = '#2e7d32'; // Grün
+          fontWeight = 500;
         } else if (level === 3) {
-          // Level 4: Dritte Unterebene (wie "1. Über weite Enfernungen", "1. Blick in die Vergangenheit")
-          icon = '📚'; // Grüner Bücherstapel wie im Bild
-          color = '#2E7D32'; // Grün wie im Bild
-          fontWeight = 600;
+          // Level 3: Fourth-Level und weitere Ebenen
+          icon = '📁'; // Standard Ordner
+          color = '#666'; // Grau
+          fontWeight = 400;
         } else {
           // Weitere Ebenen
           icon = '📁'; // Standard Ordner
           color = '#666'; // Grau
-          fontWeight = 600;
+          fontWeight = 400;
         }
       } else {
-        // Level 5: Dateien (wie "qr-timeline-finder-integriert.html")
-        icon = '📄'; // Hellgraues Dokument
-        color = '#1976D2'; // Blau wie im Screenshot
+        // Dateien
+        icon = '📄'; // Dokument
+        color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
         fontWeight = 400;
       }
       
@@ -439,21 +429,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
             {item.type === 'directory' ? (
               level === 0 ? (
-                <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 1
+                <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
               ) : level === 1 ? (
-                item.name.toLowerCase().includes('informatik') || item.name.toLowerCase().includes('informationen') ? (
-                  <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 2 (Informatik)
-                ) : (
-                  <span style={{ color: '#D32F2F' }}>▼</span> // Rot für Level 2 (3D Druck)
-                )
+                <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
               ) : level === 2 ? (
-                item.name.toLowerCase().includes('darstellungsformen') ? (
-                  <span style={{ color: '#1976D2' }}>▼</span> // Blau für Level 3 (Darstellungsformen)
-                ) : (
-                  <span style={{ color: '#7B1FA2' }}>▼</span> // Lila für Level 3 (Grundlagen)
-                )
+                <span style={{ color: '#2e7d32' }}>▼</span> // Grün für Level 2
               ) : level === 3 ? (
-                <span style={{ color: '#2E7D32' }}>▼</span> // Grün für Level 4
+                <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
               ) : (
                 <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
               )
@@ -2193,13 +2175,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               }
             }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
-                  <SchoolIcon sx={{ mr: 1.4, color: colors.primary, fontSize: 28 }} />
-                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.primary, fontSize: '1.12rem' }}>
-                    Deine Lerngruppen
-                  </Typography>
-                </Box>
-
                 <Grid container spacing={1.4}>
                   {lerngruppen
                     .filter(gruppe => !gruppe.name.toLowerCase().includes("unter") || !gruppe.name.toLowerCase().includes("mittelstufe"))
