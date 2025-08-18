@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '../generated/prisma';
 import { parseWordFile } from '../utils/wordParser';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -25,11 +26,31 @@ export const createQuiz = async (req: Request, res: Response) => {
 
     // Parse the Word file to extract questions
     console.log('Parsing Word file for quiz creation:', sourceFile);
-    const parsedQuestions = await parseWordFile(sourceFile);
     
-    if (parsedQuestions.length === 0) {
+    // Ensure the file path is correct
+    let filePath = sourceFile;
+    if (!filePath.startsWith('/material/')) {
+      filePath = `/material/${path.basename(sourceFile)}`;
+    }
+    
+    console.log('Using file path for parsing:', filePath);
+    
+    let parsedQuestions;
+    try {
+      parsedQuestions = await parseWordFile(filePath);
+      console.log('Parsed questions result:', parsedQuestions);
+    } catch (parseError) {
+      console.error('Error parsing Word file:', parseError);
+      return res.status(400).json({ 
+        error: `Fehler beim Parsen der Word-Datei: ${parseError instanceof Error ? parseError.message : String(parseError)}` 
+      });
+    }
+    
+    if (!parsedQuestions || parsedQuestions.length === 0) {
       return res.status(400).json({ error: 'Keine Fragen in der Word-Datei gefunden. Bitte überprüfen Sie das Format.' });
     }
+
+    console.log(`Found ${parsedQuestions.length} questions, creating quiz...`);
 
     // Create the quiz with questions
     const quiz = await prisma.quiz.create({
@@ -62,7 +83,10 @@ export const createQuiz = async (req: Request, res: Response) => {
     res.json(quiz);
   } catch (error) {
     console.error('Error creating quiz:', error);
-    res.status(500).json({ error: 'Fehler beim Erstellen des Quiz' });
+    res.status(500).json({ 
+      error: 'Fehler beim Erstellen des Quiz',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 

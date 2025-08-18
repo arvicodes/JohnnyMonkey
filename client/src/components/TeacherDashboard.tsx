@@ -1885,6 +1885,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
   const [shuffleAnswers, setShuffleAnswers] = useState(true);
   const [gradeCategory, setGradeCategory] = useState<string>('');
+  const [selectedGradeSchema, setSelectedGradeSchema] = useState<string>('');
   const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{
     category: string;
     schemaName: string;
@@ -1900,6 +1901,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setShuffleQuestions(true);
     setShuffleAnswers(true);
     setGradeCategory('');
+    setSelectedGradeSchema('');
     setQuizDialogOpen(true);
     loadGradeSchemas();
   };
@@ -1913,7 +1915,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setShuffleQuestions(true);
     setShuffleAnswers(true);
     setGradeCategory('');
-
+    setSelectedGradeSchema('');
   };
 
   const loadGradeSchemas = async () => {
@@ -3295,7 +3297,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               </FormControl>
             </Grid>
 
-
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Notenschema</InputLabel>
+                <Select
+                  value={selectedGradeSchema}
+                  onChange={(e) => setSelectedGradeSchema(e.target.value)}
+                  label="Notenschema"
+                >
+                  {availableGradeCategories
+                    .filter(cat => !gradeCategory || cat.category === gradeCategory)
+                    .map((cat) => (
+                      <MenuItem key={cat.schemaId} value={cat.schemaId}>
+                        {cat.schemaName}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
             <Grid item xs={12} md={6}>
               <FormControlLabel
