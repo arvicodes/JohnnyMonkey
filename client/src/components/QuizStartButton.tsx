@@ -39,48 +39,42 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   }, [quizFile.path]);
 
   const checkQuizStatus = async () => {
+    if (!quizFile.path || !userId) return;
+    
     try {
       setQuizStatus('loading');
       
       // Check if quiz exists for this file
       const quizResponse = await fetch(`/api/quizzes/check/exists?sourceFile=${encodeURIComponent(quizFile.path)}`);
       if (!quizResponse.ok) {
-        setQuizStatus('error');
+        setQuizStatus('available');
         return;
       }
       
       const quizData = await quizResponse.json();
-      if (!quizData.exists) {
-        setQuizStatus('error');
+      if (!quizData.exists || !quizData.quiz) {
+        setQuizStatus('available');
         return;
       }
       
       const foundQuizId = quizData.quiz.id;
       setQuizId(foundQuizId);
       
-      // Check if there's an active session first
-      const activeSessionResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/active`);
-      let session = null;
-      
-      if (activeSessionResponse.ok) {
-        session = await activeSessionResponse.json();
-      }
-      
-      // If no active session, check for the most recent session
-      if (!session) {
-        const sessionsResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/sessions`);
-        if (sessionsResponse.ok) {
-          const sessions = await sessionsResponse.json();
-          if (sessions && sessions.length > 0) {
-            session = sessions[0]; // Most recent session
-          }
-        }
-      }
-      
-      if (!session) {
+      // Get the most recent session for this quiz
+      const sessionsResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/sessions`);
+      if (!sessionsResponse.ok || !sessionsResponse.json) {
         setQuizStatus('available');
         return;
       }
+      
+      const sessions = await sessionsResponse.json();
+      if (!sessions || sessions.length === 0) {
+        setQuizStatus('available');
+        return;
+      }
+      
+      // Get the most recent session
+      const session = sessions[0];
       
       // Check if student has participated and completed
       const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${userId}`);
@@ -94,26 +88,26 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       if (participation.completed) {
         setParticipationId(participation.id);
         
-        // Check if results are released by teacher - get this from the session directly
+        // Check if results are released by teacher - get this directly from the session
         const sessionDetailsResponse = await fetch(`/api/quiz-sessions/session/${session.id}`);
         if (sessionDetailsResponse.ok) {
           const sessionDetails = await sessionDetailsResponse.json();
+          console.log('Session details:', sessionDetails); // Debug log
+          
           if (sessionDetails.resultsReleased) {
             setResultsReleased(true);
             setQuizStatus('completed');
+            console.log('Results are released!'); // Debug log
           } else {
             setResultsReleased(false);
-            setQuizStatus('completed'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
+            setQuizStatus('completed');
+            console.log('Results are NOT released'); // Debug log
           }
         } else {
-          // Fallback: use participation status
-          if (participation.resultsReleased) {
-            setResultsReleased(true);
-            setQuizStatus('completed');
-          } else {
-            setResultsReleased(false);
-            setQuizStatus('completed');
-          }
+          console.error('Failed to get session details:', sessionDetailsResponse.status);
+          // Fallback: assume not released
+          setResultsReleased(false);
+          setQuizStatus('completed');
         }
       } else {
         setQuizStatus('available');
