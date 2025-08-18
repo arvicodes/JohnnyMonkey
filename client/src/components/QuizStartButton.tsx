@@ -23,6 +23,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   const [participationId, setParticipationId] = useState<string | null>(null);
   const [quizResults, setQuizResults] = useState<any>(null);
   const [showQuizResults, setShowQuizResults] = useState(false);
+  const [resultsReleased, setResultsReleased] = useState(false);
 
   useEffect(() => {
     checkQuizStatus();
@@ -86,8 +87,10 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
         
         // Check if results are released by teacher
         if (participation.resultsReleased) {
+          setResultsReleased(true);
           setQuizStatus('completed');
         } else {
+          setResultsReleased(false);
           setQuizStatus('completed'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
         }
       } else {
@@ -125,23 +128,29 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   };
 
   const handleViewResults = async () => {
-    if (participationId) {
-      try {
-        const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results?studentId=${userId}`);
-        if (participationResponse.ok) {
-          const results = await participationResponse.json();
-          setQuizResults(results);
-          setShowQuizResults(true);
-        } else if (participationResponse.status === 403) {
-          // Ergebnisse noch nicht freigegeben
-          alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
-        } else {
-          alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
-        }
-      } catch (error) {
-        console.error('Error fetching results:', error);
+    if (!participationId) return;
+    
+    // Prüfe zuerst, ob Ergebnisse freigegeben sind
+    if (!resultsReleased) {
+      alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
+      return;
+    }
+    
+    try {
+      const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results?studentId=${userId}`);
+      if (participationResponse.ok) {
+        const results = await participationResponse.json();
+        setQuizResults(results);
+        setShowQuizResults(true);
+      } else if (participationResponse.status === 403) {
+        // Ergebnisse noch nicht freigegeben
+        alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
+      } else {
         alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
       }
+    } catch (error) {
+      console.error('Error fetching results:', error);
+      alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -216,29 +225,31 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   return (
     <Box>
       <Button
-        variant={getButtonVariant()}
-        color={getButtonColor()}
-        startIcon={getButtonIcon()}
-        onClick={onClickHandler}
-        disabled={isButtonDisabled}
+        variant="contained"
         size="small"
+        startIcon={getButtonIcon()}
+        onClick={quizStatus === 'completed' ? handleViewResults : handleQuizStart}
+        disabled={quizStatus === 'loading' || quizStatus === 'error'}
         sx={{
           fontSize: '0.7rem',
-          fontWeight: 500,
-          textTransform: 'none',
-          borderRadius: 1.5,
           px: 1.5,
           py: 0.3,
           minHeight: '28px',
           maxWidth: '280px',
-          '&:hover': {
-            transform: 'translateY(-1px)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-          },
-          '&:disabled': {
-            opacity: 0.6
-          }
+          borderRadius: 1.5,
+          backgroundColor: quizStatus === 'completed' && !resultsReleased ? '#ccc' : undefined,
+          color: quizStatus === 'completed' && !resultsReleased ? '#666' : undefined,
+          cursor: quizStatus === 'completed' && !resultsReleased ? 'not-allowed' : 'pointer',
+          '&:hover': quizStatus === 'completed' && !resultsReleased ? {
+            backgroundColor: '#ccc'
+          } : undefined
         }}
+        title={quizStatus === 'completed' && !resultsReleased ? 
+          'Ergebnisse noch nicht freigegeben' : 
+          quizStatus === 'completed' ? 
+          'Ergebnisse anzeigen' : 
+          'Quiz starten'
+        }
       >
         {getButtonText()}
       </Button>
