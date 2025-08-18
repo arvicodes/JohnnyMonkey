@@ -144,24 +144,38 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   };
 
   const handleViewResults = async () => {
-    if (!participationId) return;
+    console.log('handleViewResults called with:', { participationId, resultsReleased, quizStatus });
+    
+    if (!participationId) {
+      console.error('No participationId available');
+      alert('Fehler: Keine Teilnahme-ID verfügbar. Bitte laden Sie die Seite neu.');
+      return;
+    }
     
     // Prüfe zuerst, ob Ergebnisse freigegeben sind
     if (!resultsReleased) {
+      console.log('Results not released yet');
       alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
       return;
     }
     
+    console.log('Fetching results for participation:', participationId);
+    
     try {
       const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results?studentId=${userId}`);
+      console.log('Results response status:', participationResponse.status);
+      
       if (participationResponse.ok) {
         const results = await participationResponse.json();
+        console.log('Results received:', results);
         setQuizResults(results);
         setShowQuizResults(true);
       } else if (participationResponse.status === 403) {
         // Ergebnisse noch nicht freigegeben
+        console.log('Results not released (403)');
         alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
       } else {
+        console.error('Error response:', participationResponse.status, participationResponse.statusText);
         alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
       }
     } catch (error) {
