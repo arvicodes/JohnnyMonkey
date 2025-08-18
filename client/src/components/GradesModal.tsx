@@ -621,7 +621,17 @@ const GradesModal: React.FC<GradesModalProps> = ({
             <IconButton
               size="small"
               onClick={() => toggleNodeExpansion(node.id)}
-              sx={{ p: 0.5 }}
+              sx={{ 
+                p: 0,
+                minWidth: 24,
+                width: 24,
+                height: 24,
+                '& .MuiSvgIcon-root': {
+                  fontSize: 20,
+                  width: 20,
+                  height: 20
+                }
+              }}
             >
               {expandedNodes.has(node.id) ? <ExpandLess /> : <ExpandMore />}
             </IconButton>
@@ -684,9 +694,19 @@ const GradesModal: React.FC<GradesModalProps> = ({
                     <IconButton
                       size="small"
                       onClick={() => toggleGradeLock(node.id)}
-                      sx={{ p: 0.5 }}
+                      sx={{ 
+                        p: 0,
+                        minWidth: 20,
+                        width: 20,
+                        height: 20,
+                        '& .MuiSvgIcon-root': {
+                          fontSize: 16,
+                          width: 16,
+                          height: 16
+                        }
+                      }}
                     >
-                      {isLocked ? <LockIcon sx={{ fontSize: 16 }} /> : <LockOpenIcon sx={{ fontSize: 16 }} />}
+                      {isLocked ? <LockIcon /> : <LockOpenIcon />}
                     </IconButton>
                   </InputAdornment>
                 )
