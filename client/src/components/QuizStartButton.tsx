@@ -94,13 +94,26 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       if (participation.completed) {
         setParticipationId(participation.id);
         
-        // Check if results are released by teacher
-        if (participation.resultsReleased) {
-          setResultsReleased(true);
-          setQuizStatus('completed');
+        // Check if results are released by teacher - get this from the session directly
+        const sessionDetailsResponse = await fetch(`/api/quiz-sessions/session/${session.id}`);
+        if (sessionDetailsResponse.ok) {
+          const sessionDetails = await sessionDetailsResponse.json();
+          if (sessionDetails.resultsReleased) {
+            setResultsReleased(true);
+            setQuizStatus('completed');
+          } else {
+            setResultsReleased(false);
+            setQuizStatus('completed'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
+          }
         } else {
-          setResultsReleased(false);
-          setQuizStatus('completed'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
+          // Fallback: use participation status
+          if (participation.resultsReleased) {
+            setResultsReleased(true);
+            setQuizStatus('completed');
+          } else {
+            setResultsReleased(false);
+            setQuizStatus('completed');
+          }
         }
       } else {
         setQuizStatus('available');
