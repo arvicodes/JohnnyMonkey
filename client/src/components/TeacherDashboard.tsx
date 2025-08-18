@@ -120,6 +120,7 @@ function TabPanel(props: TabPanelProps) {
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
   const subjectManagerRef = useRef<any>(null);
+  const materialCreatorRef = useRef<any>(null);
   
   // Debug: Log userId
   console.log('TeacherDashboard received userId:', userId);
@@ -1185,10 +1186,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           showCreateIcon = true;
           createIcon = '🎯';
           createTooltip = 'Quiz erstellen';
+          console.log('Quiz-Datei erkannt:', item.name, 'showCreateIcon:', showCreateIcon);
         } else if (item.name.startsWith('Cards')) {
           showCreateIcon = true;
           createIcon = '🗂️';
           createTooltip = 'Karteikarten erstellen';
+          console.log('Cards-Datei erkannt:', item.name, 'showCreateIcon:', showCreateIcon);
         }
       }
       
@@ -1250,15 +1253,34 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   gap: 0.5,
                   ml: 1,
                   cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
                   '&:hover': {
+                    backgroundColor: 'rgba(0,0,0,0.1)',
                     opacity: 0.8
                   }
                 }}
                 title={createTooltip}
+                onClick={() => {
+                  console.log('Quiz-Icon clicked for:', item.name, 'Path:', item.path);
+                  if (item.name.startsWith('Quiz')) {
+                    // Öffne das Quiz-Erstellungsmodal mit der ausgewählten Datei
+                    if (materialCreatorRef.current) {
+                      console.log('Calling openQuizWithSource with:', item.path, item.name);
+                      materialCreatorRef.current.openQuizWithSource(item.path, item.name);
+                    } else {
+                      console.error('materialCreatorRef.current is null');
+                    }
+                  } else if (item.name.startsWith('Cards')) {
+                    // TODO: Implementiere Karteikarten-Erstellung
+                    console.log('Karteikarten-Erstellung für:', item.name);
+                  }
+                }}
               >
                 <Typography variant="caption" sx={{ 
                   color: '#666',
-                  fontSize: '0.7rem'
+                  fontSize: '0.8rem',
+                  userSelect: 'none'
                 }}>
                   {createIcon}
                 </Typography>
@@ -1832,6 +1854,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [folderAssignmentGroupId, setFolderAssignmentGroupId] = useState<string | null>(null);
   const [folderAssignmentGroupName, setFolderAssignmentGroupName] = useState('');
   const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
+
+  // Test-Funktion für den MaterialCreator-Ref
+  const testMaterialCreatorRef = () => {
+    console.log('Testing MaterialCreator ref:', materialCreatorRef.current);
+    if (materialCreatorRef.current) {
+      console.log('Ref is available, testing openQuizWithSource...');
+      materialCreatorRef.current.openQuizWithSource('/test/path', 'TestQuiz.docx');
+    } else {
+      console.error('MaterialCreator ref is not available');
+    }
+  };
 
   return (
     <Box 
@@ -2677,7 +2710,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               
               {/* Hauptbereich - MaterialCreator */}
               <Box>
-                <MaterialCreator teacherId={userId} />
+                {/* Test-Button für MaterialCreator-Ref */}
+                <Button 
+                  variant="outlined" 
+                  onClick={testMaterialCreatorRef}
+                  sx={{ mb: 2 }}
+                >
+                  Test MaterialCreator Ref
+                </Button>
+                
+                <MaterialCreator teacherId={userId} ref={materialCreatorRef} />
               </Box>
             </Box>
           </TabPanel>

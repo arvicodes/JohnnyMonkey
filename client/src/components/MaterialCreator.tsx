@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -52,6 +52,10 @@ interface MaterialCreatorProps {
   teacherId: string;
 }
 
+interface MaterialCreatorRef {
+  openQuizWithSource: (sourceFilePath: string, fileName: string) => void;
+}
+
 interface FileInfo {
   name: string;
   path: string;
@@ -93,7 +97,7 @@ interface Note {
   updatedAt: string;
 }
 
-const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
+const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ teacherId }, ref) => {
   console.log('MaterialCreator received teacherId:', teacherId, 'type:', typeof teacherId);
   const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
@@ -112,6 +116,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const [shuffleAnswers, setShuffleAnswers] = useState(true);
   const [gradeCategory, setGradeCategory] = useState<string>('');
   const [selectedGradeSchema, setSelectedGradeSchema] = useState<string>('');
+  const [sourceFilePath, setSourceFilePath] = useState<string>(''); // Neue Variable für den Quellpfad
   
   // Available grade categories with schemas
   const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{
@@ -240,6 +245,8 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     loadGradeSchemas(); // Load grade schemas when component mounts
   }, [fetchQuizzes]);
 
+
+
   const loadGradeSchemas = async () => {
     try {
       const response = await fetch('/api/grading-schemas/all');
@@ -295,6 +302,31 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     loadGradeSchemas(); // Load grade schemas when opening quiz dialog
   };
 
+  // Neue Funktion: Quiz-Modal mit vorausgefüllter Quelldatei öffnen
+  const handleQuizDialogOpenWithSource = (sourceFilePath: string, fileName: string) => {
+    setQuizDialogOpen(true);
+    
+    // Erstelle ein File-Objekt aus dem Pfad (für die Anzeige)
+    const mockFile = new File([''], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    setUploadedWordFile(mockFile);
+    
+    // Setze den Titel aus dem Dateinamen
+    const title = fileName.replace(/\.[^/.]+$/, ""); // Entferne Dateiendung
+    setQuizTitle(title);
+    
+    // Speichere den tatsächlichen Pfad für die Quiz-Erstellung
+    setSourceFilePath(sourceFilePath);
+    
+    setQuizDescription('');
+    setQuizTimeLimit(30);
+    setShuffleQuestions(true);
+    setShuffleAnswers(true);
+    setGradeCategory('');
+    loadGradeSchemas();
+  };
+
+
+
   const handleQuizDialogClose = () => {
     setQuizDialogOpen(false);
     // Reset all quiz fields to empty/default values
@@ -306,7 +338,13 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     setShuffleAnswers(true);
     setGradeCategory('');
     setSelectedGradeSchema('');
+    setSourceFilePath(''); // Reset source file path
   };
+
+  // Expose the function to parent components via ref
+  useImperativeHandle(ref, () => ({
+    openQuizWithSource: handleQuizDialogOpenWithSource,
+  }));
 
   const handleWordFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -322,36 +360,44 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
     try {
       console.log('Creating quiz with teacherId:', teacherId);
       
-      if (!uploadedWordFile) {
+      let sourceFile: string;
+      
+      // Prüfe ob wir einen vorausgefüllten Pfad haben oder eine neue Datei hochladen müssen
+      if (sourceFilePath) {
+        // Verwende den vorausgefüllten Pfad
+        sourceFile = sourceFilePath;
+        console.log('Using pre-filled source file path:', sourceFile);
+      } else if (uploadedWordFile) {
+        // Neue Datei hochladen
+        const formData = new FormData();
+        formData.append('wordFile', uploadedWordFile);
+
+        console.log('Uploading Word file:', uploadedWordFile.name);
+        const uploadResponse = await fetch('/api/materials/word-upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        console.log('Upload response status:', uploadResponse.status);
+        if (!uploadResponse.ok) {
+          const error = await uploadResponse.json();
+          console.error('Upload error:', error);
+          showSnackbar(error.error || 'Fehler beim Hochladen der Datei', 'error');
+          return;
+        }
+
+        const uploadResult = await uploadResponse.json();
+        console.log('Upload result:', uploadResult);
+        sourceFile = uploadResult.sourceFile;
+      } else {
         showSnackbar('Bitte wählen Sie eine Datei aus (.docx, .doc, oder .txt)', 'error');
         return;
       }
 
-      // 1. Word-Datei hochladen
-      const formData = new FormData();
-      formData.append('wordFile', uploadedWordFile);
-
-      console.log('Uploading Word file:', uploadedWordFile.name);
-      const uploadResponse = await fetch('/api/materials/word-upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      console.log('Upload response status:', uploadResponse.status);
-      if (!uploadResponse.ok) {
-        const error = await uploadResponse.json();
-        console.error('Upload error:', error);
-        showSnackbar(error.error || 'Fehler beim Hochladen der Datei', 'error');
-        return;
-      }
-
-      const uploadResult = await uploadResponse.json();
-      console.log('Upload result:', uploadResult);
-
       // 2. Quiz erstellen
       const quizData = {
         teacherId,
-        sourceFile: uploadResult.sourceFile,
+        sourceFile: sourceFile,
         title: quizTitle,
         description: quizDescription,
         timeLimit: quizTimeLimit,
@@ -369,9 +415,9 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
       });
 
       console.log('Quiz response status:', quizResponse.status);
-      if (quizResponse.ok) {
-        const quizResult = await quizResponse.json();
-        console.log('Quiz created successfully:', quizResult);
+              if (quizResponse.ok) {
+          const quizResult = await quizResponse.json();
+          console.log('Quiz created successfully:', quizResult);
         showSnackbar('Quiz erfolgreich erstellt', 'success');
         handleQuizDialogClose();
         fetchQuizzes(); // Aktualisiere die Quiz-Liste
@@ -2015,6 +2061,6 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
       </Dialog>
     </Box>
   );
-};
+});
 
 export default MaterialCreator; 
