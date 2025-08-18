@@ -1,17 +1,18 @@
 {
-  "name": "fullstack-app",
+  "name": "johnny-monkey",
   "version": "1.0.0",
-  "private": true,
+  "description": "Educational platform with database backup integration",
+  "main": "index.js",
   "scripts": {
-    "start": "concurrently \"npm start --prefix client\" \"npm run dev --prefix server\""
+    "backup": "bash scripts/backup-manager.sh create",
+    "backup:list": "bash scripts/backup-manager.sh list",
+    "backup:cleanup": "bash scripts/backup-manager.sh cleanup",
+    "backup:restore": "bash scripts/backup-manager.sh restore",
+    "git:commit": "bash scripts/backup-manager.sh create && git add . && git commit -m \"Auto-backup: $(date)\"",
+    "git:push": "git push",
+    "postinstall": "chmod +x scripts/backup-manager.sh && chmod +x .git/hooks/pre-commit && chmod +x .git/hooks/pre-push"
   },
-  "dependencies": {
-    "@mui/icons-material": "^7.1.0",
-    "@types/react-router-dom": "^5.3.3",
-    "concurrently": "^8.2.2",
-    "react-router-dom": "^7.6.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.15.18"
-  }
+  "keywords": ["education", "database", "backup", "git"],
+  "author": "",
+  "license": "ISC"
 }
