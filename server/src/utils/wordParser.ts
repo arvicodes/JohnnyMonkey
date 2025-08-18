@@ -12,10 +12,26 @@ interface QuizQuestion {
 
 export async function parseWordFile(filePath: string): Promise<QuizQuestion[]> {
   try {
-    // Convert relative path to absolute path
-    const absolutePath = path.join(process.cwd(), '..', filePath.replace('/material/', 'material/'));
+    let absolutePath: string;
+    
+    // Handle different path formats
+    if (filePath.startsWith('/Users/')) {
+      // Absolute path - use as is
+      absolutePath = filePath;
+    } else if (filePath.startsWith('/material/')) {
+      // Relative path from material directory
+      absolutePath = path.join(process.cwd(), '..', filePath.replace('/material/', 'material/'));
+    } else {
+      // Fallback: assume it's relative to material directory
+      absolutePath = path.join(process.cwd(), '..', 'material', filePath);
+    }
     
     console.log('Parsing file at:', absolutePath);
+    
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error(`Datei nicht gefunden: ${absolutePath}`);
+    }
     
     let text: string;
     
@@ -43,7 +59,7 @@ export async function parseWordFile(filePath: string): Promise<QuizQuestion[]> {
     return questions;
   } catch (error) {
     console.error('Error parsing file:', error);
-    throw new Error('Fehler beim Parsen der Datei');
+    throw new Error(`Fehler beim Parsen der Datei: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

@@ -27,12 +27,8 @@ export const createQuiz = async (req: Request, res: Response) => {
     // Parse the Word file to extract questions
     console.log('Parsing Word file for quiz creation:', sourceFile);
     
-    // Ensure the file path is correct
+    // The wordParser can now handle absolute paths directly
     let filePath = sourceFile;
-    if (!filePath.startsWith('/material/')) {
-      filePath = `/material/${path.basename(sourceFile)}`;
-    }
-    
     console.log('Using file path for parsing:', filePath);
     
     let parsedQuestions;
