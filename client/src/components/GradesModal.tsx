@@ -657,12 +657,29 @@ const GradesModal: React.FC<GradesModalProps> = ({
           <Typography
             variant="body2"
             sx={{
-              fontWeight: isLeaf ? 'normal' : 'bold',
-              color: isLeaf ? colors.textPrimary : colors.textSecondary,
-              fontSize: isLeaf ? '0.75rem' : '0.8rem'
+              fontSize: isLeaf ? '0.75rem' : '0.8rem',
+              // Eindeutige Markierung: Kategorien mit gesetzten Noten sind farbig
+              color: isLeaf && node.grade !== undefined ? getGradeColor(node.grade, gradingSchema?.gradingSystem) : (isLeaf ? colors.textPrimary : colors.textSecondary),
+              fontWeight: isLeaf && node.grade !== undefined ? 600 : (isLeaf ? 'normal' : 'bold')
             }}
           >
             {node.name}
+            {/* Status-Indikator für gesetzte vs. leere Noten */}
+            {isLeaf && (
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-block',
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  bgcolor: node.grade !== undefined ? getGradeColor(node.grade, gradingSchema?.gradingSystem) : '#ccc',
+                  ml: 0.5,
+                  verticalAlign: 'middle',
+                  border: node.grade === undefined ? '1px solid #999' : 'none'
+                }}
+              />
+            )}
           </Typography>
           
           <Typography
@@ -693,10 +710,23 @@ const GradesModal: React.FC<GradesModalProps> = ({
                   borderRadius: 0.6,
                   fontSize: '0.65rem',
                   minHeight: '24px',
-                  maxHeight: '24px'
+                  maxHeight: '24px',
+                  // Eindeutige Markierung: Gesetzte Noten haben farbigen Hintergrund
+                  bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}15` : '#f5f5f5',
+                  border: node.grade !== undefined ? `2px solid ${getGradeColor(node.grade, gradingSchema?.gradingSystem)}40` : '1px solid #ddd',
+                  '&:hover': {
+                    bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}20` : '#eeeeee'
+                  },
+                  '&.Mui-focused': {
+                    bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}25` : '#ffffff',
+                    borderColor: node.grade !== undefined ? getGradeColor(node.grade, gradingSchema?.gradingSystem) : colors.primary
+                  }
                 }
               }}
-              placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
+              placeholder={node.grade === undefined ? 
+                (gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6') : 
+                'Bereits gesetzt'
+              }
               error={gradingSchema?.gradingSystem === 'MSS' &&
                 node.grade !== undefined &&
                 (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15)

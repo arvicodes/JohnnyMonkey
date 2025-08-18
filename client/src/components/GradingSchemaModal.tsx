@@ -250,7 +250,12 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
       setSchemaName(schema.name);
       setGradingSystem(schema.gradingSystem || 'GERMAN');
       console.log('Loading schema structure:', schema.structure);
-      const parsedNodes = parseSchemaString(schema.structure);
+      
+      // Bereinige das Schema vor dem Parsen
+      const cleanedStructure = cleanSchemaStructure(schema.structure);
+      const parsedNodes = parseSchemaString(cleanedStructure);
+      
+      console.log('Cleaned structure:', cleanedStructure);
       console.log('Parsed nodes:', parsedNodes);
       setGradeNodes(parsedNodes);
       setIsEditing(true);
@@ -258,6 +263,38 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
       console.error('Error loading schema:', error);
       setError('Fehler beim Laden des Schemas: ' + (error instanceof Error ? error.message : String(error)));
     }
+  };
+
+  // Funktion zum Bereinigen der Schema-Struktur
+  const cleanSchemaStructure = (structure: string): string => {
+    const lines = structure.split('\n');
+    const cleanedLines: string[] = [];
+    const seenNames = new Set<string>();
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
+      // Extrahiere den Namen (alles vor dem ersten % oder ()
+      const nameMatch = trimmedLine.match(/^(.+?)(?:\s*\([^)]*\)|\s+\d+%?|%)/);
+      if (nameMatch) {
+        const name = nameMatch[1].trim();
+        
+        // Wenn der Name bereits gesehen wurde, überspringe diese Zeile
+        if (seenNames.has(name)) {
+          console.log('Skipping duplicate name:', name);
+          continue;
+        }
+        
+        seenNames.add(name);
+        cleanedLines.push(line);
+      } else {
+        // Wenn kein Name extrahiert werden kann, füge die Zeile trotzdem hinzu
+        cleanedLines.push(line);
+      }
+    }
+    
+    return cleanedLines.join('\n');
   };
 
   const addGradeNode = (parentId?: string) => {
