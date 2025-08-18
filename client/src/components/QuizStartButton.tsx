@@ -219,7 +219,7 @@ export const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, user
     // Prüfe zuerst, ob Ergebnisse freigegeben sind
     if (!resultsReleased) {
       console.log('📝 Results not released yet');
-      alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
+      alert('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
       return;
     }
     
@@ -234,14 +234,14 @@ export const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, user
         setShowQuizResults(true);
       } else if (participationResponse.status === 403) {
         console.log('❌ Results not released (403)');
-        alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
+        alert('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
       } else {
         console.log('❌ Failed to fetch results, status:', participationResponse.status);
-        alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
+        alert('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
       }
     } catch (error) {
       console.error('❌ Error fetching results:', error);
-      alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
+      alert('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
     }
   };
 
