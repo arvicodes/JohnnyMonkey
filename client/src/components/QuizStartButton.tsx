@@ -9,6 +9,7 @@ import {
   QuestionAnswer as QuizIcon,
   Assessment as ResultsIcon
 } from '@mui/icons-material';
+import { QuizResultsModal } from './QuizResultsModal';
 
 interface QuizStartButtonProps {
   quizFile: any;
@@ -20,6 +21,8 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   const [quizStatus, setQuizStatus] = useState<'loading' | 'available' | 'completed' | 'error'>('loading');
   const [quizId, setQuizId] = useState<string | null>(null);
   const [participationId, setParticipationId] = useState<string | null>(null);
+  const [quizResults, setQuizResults] = useState<any>(null);
+  const [showQuizResults, setShowQuizResults] = useState(false);
 
   useEffect(() => {
     checkQuizStatus();
@@ -121,13 +124,27 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
     }
   };
 
-  const handleViewResults = () => {
+  const handleViewResults = async () => {
     if (participationId) {
-      // Öffne die Ergebnisse in einem Modal oder navigiere zu einer Ergebnisseite
-      // Hier können Sie die bestehende QuizResultsModal-Logik verwenden
-      console.log('Viewing results for participation:', participationId);
-      // TODO: Implementiere die Anzeige der Ergebnisse
+      try {
+        const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results`);
+        if (participationResponse.ok) {
+          const results = await participationResponse.json();
+          setQuizResults(results);
+          setShowQuizResults(true);
+        } else {
+          alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
+        }
+      } catch (error) {
+        console.error('Error fetching results:', error);
+        alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
+      }
     }
+  };
+
+  const handleCloseQuizResults = () => {
+    setShowQuizResults(false);
+    setQuizResults(null);
   };
 
   const getButtonText = () => {
@@ -139,7 +156,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       case 'available':
         return `Quiz starten: ${quizName}`;
       case 'completed':
-        return `Quizergebnisse anschauen: ${quizName}`;
+        return `Ergebnisse: ${quizName}`;
       case 'error':
         return `Quiz nicht verfügbar: ${quizName}`;
       default:
@@ -196,33 +213,43 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   const onClickHandler = quizStatus === 'completed' ? handleViewResults : handleQuizStart;
 
   return (
-    <Button
-      variant={getButtonVariant()}
-      color={getButtonColor()}
-      startIcon={getButtonIcon()}
-      onClick={onClickHandler}
-      disabled={isButtonDisabled}
-      size="small"
-      sx={{
-        fontSize: '0.7rem',
-        fontWeight: 500,
-        textTransform: 'none',
-        borderRadius: 1.5,
-        px: 1.5,
-        py: 0.3,
-        minHeight: '28px',
-        maxWidth: '280px',
-        '&:hover': {
-          transform: 'translateY(-1px)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-        },
-        '&:disabled': {
-          opacity: 0.6
-        }
-      }}
-    >
-      {getButtonText()}
-    </Button>
+    <Box>
+      <Button
+        variant={getButtonVariant()}
+        color={getButtonColor()}
+        startIcon={getButtonIcon()}
+        onClick={onClickHandler}
+        disabled={isButtonDisabled}
+        size="small"
+        sx={{
+          fontSize: '0.7rem',
+          fontWeight: 500,
+          textTransform: 'none',
+          borderRadius: 1.5,
+          px: 1.5,
+          py: 0.3,
+          minHeight: '28px',
+          maxWidth: '280px',
+          '&:hover': {
+            transform: 'translateY(-1px)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          },
+          '&:disabled': {
+            opacity: 0.6
+          }
+        }}
+      >
+        {getButtonText()}
+      </Button>
+      
+      {showQuizResults && quizResults && (
+        <QuizResultsModal
+          open={showQuizResults}
+          results={quizResults}
+          onClose={handleCloseQuizResults}
+        />
+      )}
+    </Box>
   );
 };
 
