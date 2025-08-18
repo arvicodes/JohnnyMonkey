@@ -127,7 +127,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   const handleViewResults = async () => {
     if (participationId) {
       try {
-        const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results`);
+        const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results?studentId=${userId}`);
         if (participationResponse.ok) {
           const results = await participationResponse.json();
           setQuizResults(results);
