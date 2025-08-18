@@ -25,7 +25,11 @@ import {
   Tab,
   Tabs,
   Menu,
-  MenuItem
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  FormControlLabel
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -41,7 +45,8 @@ import {
   Grade as GradeIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  Folder as FolderIcon
+  Folder as FolderIcon,
+  Quiz as QuizIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -1273,19 +1278,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 onClick={() => {
                   console.log('Quiz-Icon clicked for:', item.name, 'Path:', item.path);
                   if (item.name.startsWith('Quiz')) {
-                    // Öffne das Quiz-Erstellungsmodal mit der ausgewählten Datei
-                    if (materialCreatorRef.current && materialCreatorRef.current.openQuizWithSource) {
-                      console.log('Calling openQuizWithSource with:', item.path, item.name);
-                      materialCreatorRef.current.openQuizWithSource(item.path, item.name);
-                    } else {
-                      console.error('MaterialCreator ref is not available or missing openQuizWithSource method');
-                      console.log('Ref status:', {
-                        ref: materialCreatorRef.current,
-                        hasMethod: materialCreatorRef.current?.openQuizWithSource
-                      });
-                      // Fallback: Öffne das Modal manuell über den MaterialCreator-Tab
-                      alert('Bitte wechseln Sie zum "Material & Quiz erstellen" Tab, um das Quiz zu erstellen.');
-                    }
+                    // Öffne das Quiz-Erstellungsmodal direkt im Dashboard
+                    console.log('Opening quiz dialog for:', item.path, item.name);
+                    handleQuizDialogOpen(item.path, item.name);
                   } else if (item.name.startsWith('Cards')) {
                     // TODO: Implementiere Karteikarten-Erstellung
                     console.log('Karteikarten-Erstellung für:', item.name);
@@ -1878,6 +1873,129 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       materialCreatorRef.current.openQuizWithSource('/test/path', 'TestQuiz.docx');
     } else {
       console.error('MaterialCreator ref is not available');
+    }
+  };
+
+  // Neue States für Quiz-Erstellung direkt im Dashboard
+  const [quizDialogOpen, setQuizDialogOpen] = useState(false);
+  const [selectedQuizFile, setSelectedQuizFile] = useState<{path: string, name: string} | null>(null);
+  const [quizTitle, setQuizTitle] = useState('');
+  const [quizDescription, setQuizDescription] = useState('');
+  const [quizTimeLimit, setQuizTimeLimit] = useState(30);
+  const [shuffleQuestions, setShuffleQuestions] = useState(true);
+  const [shuffleAnswers, setShuffleAnswers] = useState(true);
+  const [gradeCategory, setGradeCategory] = useState<string>('');
+  const [selectedGradeSchema, setSelectedGradeSchema] = useState<string>('');
+  const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{
+    category: string;
+    schemaName: string;
+    schemaId: string;
+  }>>([]);
+
+  // Quiz-Erstellung direkt im Dashboard
+  const handleQuizDialogOpen = (filePath: string, fileName: string) => {
+    setSelectedQuizFile({ path: filePath, name: fileName });
+    setQuizTitle(fileName.replace(/\.[^/.]+$/, "")); // Titel aus Dateinamen
+    setQuizDescription('');
+    setQuizTimeLimit(30);
+    setShuffleQuestions(true);
+    setShuffleAnswers(true);
+    setGradeCategory('');
+    setSelectedGradeSchema('');
+    setQuizDialogOpen(true);
+    loadGradeSchemas();
+  };
+
+  const handleQuizDialogClose = () => {
+    setQuizDialogOpen(false);
+    setSelectedQuizFile(null);
+    setQuizTitle('');
+    setQuizDescription('');
+    setQuizTimeLimit(30);
+    setShuffleQuestions(true);
+    setShuffleAnswers(true);
+    setGradeCategory('');
+    setSelectedGradeSchema('');
+  };
+
+  const loadGradeSchemas = async () => {
+    try {
+      const response = await fetch('/api/grading-schemas/all');
+      if (!response.ok) {
+        throw new Error('Failed to fetch grading schemas');
+      }
+      
+      const schemas = await response.json();
+      
+      // Extract ONLY quiz-related grade categories from all schemas
+      const quizCategories: Array<{category: string, schemaName: string, schemaId: string}> = [];
+      
+      schemas.forEach((schema: any) => {
+        const structure = schema.structure;
+        const lines = structure.split('\n');
+        
+        lines.forEach((line: string) => {
+          const trimmedLine = line.trim();
+          // ONLY look for lines that contain the word "Quiz" (case insensitive) AND exclude "Hüs"
+          if (trimmedLine.toLowerCase().includes('quiz') && !trimmedLine.toLowerCase().includes('hüs')) {
+            
+            // Extract the category name (remove percentages and extra info)
+            const categoryMatch = trimmedLine.match(/^([^(]+)/);
+            if (categoryMatch) {
+              const category = categoryMatch[1].trim();
+              quizCategories.push({
+                category,
+                schemaName: schema.name,
+                schemaId: schema.id
+              });
+            }
+          }
+        });
+      });
+      
+      setAvailableGradeCategories(quizCategories);
+      
+    } catch (error) {
+      console.error('Error loading grade schemas:', error);
+    }
+  };
+
+  const handleCreateQuiz = async () => {
+    if (!selectedQuizFile) return;
+
+    try {
+      const quizData = {
+        teacherId: userId,
+        sourceFile: selectedQuizFile.path,
+        title: quizTitle,
+        description: quizDescription,
+        timeLimit: quizTimeLimit,
+        shuffleQuestions,
+        shuffleAnswers,
+        gradeCategory: gradeCategory || null,
+        gradeSchemaId: selectedGradeSchema || null
+      };
+      
+      console.log('Creating quiz with data:', quizData);
+      const quizResponse = await fetch('/api/quizzes/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(quizData)
+      });
+
+      if (quizResponse.ok) {
+        const quizResult = await quizResponse.json();
+        console.log('Quiz created successfully:', quizResult);
+        alert('Quiz erfolgreich erstellt!');
+        handleQuizDialogClose();
+      } else {
+        const error = await quizResponse.json();
+        console.error('Quiz creation error:', error);
+        alert(error.error || 'Fehler beim Erstellen des Quiz');
+      }
+    } catch (error) {
+      console.error('Exception in handleCreateQuiz:', error);
+      alert('Fehler beim Erstellen des Quiz');
     }
   };
 
@@ -2979,17 +3097,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         groupName={gradingGroupName}
       />
 
-      {/* Grades Modal */}
-      {selectedStudent && (
-        <GradesModal
-          open={gradesModalOpen}
-          onClose={handleGradesDialogClose}
-          groupId={gradesGroupId || ''}
-          groupName={gradesGroupName}
-          student={selectedStudent}
-        />
-      )}
-
       {/* Schüler Menü */}
       <Menu anchorEl={studentMenuAnchorEl} open={Boolean(studentMenuAnchorEl)} onClose={handleStudentMenuClose}>
         <MenuItem onClick={() => { if (studentMenuCtx) handleGradesDialogOpen(studentMenuCtx.groupId, groups.find(g=>g.id===studentMenuCtx.groupId)?.name || '', studentMenuCtx.student); handleStudentMenuClose(); }}>
@@ -3078,6 +3185,148 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             }}
           />
         </DialogContent>
+      </Dialog>
+
+      {/* Grades Modal */}
+      {selectedStudent && (
+        <GradesModal
+          open={gradesModalOpen}
+          onClose={handleGradesDialogClose}
+          student={selectedStudent}
+          groupId={gradesGroupId || ''}
+          groupName={gradesGroupName}
+        />
+      )}
+
+      {/* Quiz-Erstellungsmodal */}
+      <Dialog 
+        open={quizDialogOpen} 
+        onClose={handleQuizDialogClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <QuizIcon sx={{ mr: 1, color: '#ff9800' }} />
+            Quiz erstellen aus: {selectedQuizFile?.name}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2}>
+            {/* Quiz-Einstellungen */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#ff9800' }}>
+                Quiz-Einstellungen
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Titel des Quiz"
+                value={quizTitle}
+                onChange={(e) => setQuizTitle(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Zeitlimit (Minuten)"
+                type="number"
+                value={quizTimeLimit}
+                onChange={(e) => setQuizTimeLimit(parseInt(e.target.value) || 30)}
+                sx={{ mb: 2 }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Beschreibung"
+                multiline
+                rows={3}
+                value={quizDescription}
+                onChange={(e) => setQuizDescription(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Notenkategorie</InputLabel>
+                <Select
+                  value={gradeCategory}
+                  onChange={(e) => setGradeCategory(e.target.value)}
+                  label="Notenkategorie"
+                >
+                  {availableGradeCategories.map((cat) => (
+                    <MenuItem key={cat.category} value={cat.category}>
+                      {cat.category} ({cat.schemaName})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Notenschema</InputLabel>
+                <Select
+                  value={selectedGradeSchema}
+                  onChange={(e) => setSelectedGradeSchema(e.target.value)}
+                  label="Notenschema"
+                >
+                  {availableGradeCategories
+                    .filter(cat => !gradeCategory || cat.category === gradeCategory)
+                    .map((cat) => (
+                      <MenuItem key={cat.schemaId} value={cat.schemaId}>
+                        {cat.schemaName}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={shuffleQuestions}
+                    onChange={(e) => setShuffleQuestions(e.target.checked)}
+                  />
+                }
+                label="Fragen mischen"
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={shuffleAnswers}
+                    onChange={(e) => setShuffleAnswers(e.target.checked)}
+                  />
+                }
+                label="Antworten mischen"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleQuizDialogClose}>
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleCreateQuiz} 
+            variant="contained" 
+            color="primary"
+            disabled={!quizTitle.trim()}
+          >
+            Quiz erstellen
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
