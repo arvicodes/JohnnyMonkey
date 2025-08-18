@@ -1362,9 +1362,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       
       const ext = material.filePath.split('.').pop()?.toLowerCase();
       
-      // Verwende den Server-Port (3005) für HTML-Dateien
+      // Verwende den Server-Port (3001) für HTML-Dateien
       const fullUrl = ext === 'html' 
-        ? 'http://localhost:3005' + material.filePath 
+        ? 'http://localhost:3001' + material.filePath 
         : window.location.origin + material.filePath;
       
       const newWindow = window.open(fullUrl, '_blank');

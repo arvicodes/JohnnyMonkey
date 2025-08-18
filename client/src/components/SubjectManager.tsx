@@ -892,9 +892,9 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
       const materialPath = lessonMaterials[0].material.filePath;
       const ext = materialPath.split('.').pop()?.toLowerCase();
       
-      // Verwende den Server-Port (3005) für HTML-Dateien
+      // Verwende den Server-Port (3001) für HTML-Dateien
       const fullUrl = ext === 'html' 
-        ? 'http://localhost:3005' + materialPath 
+        ? 'http://localhost:3001' + materialPath 
         : window.location.origin + materialPath;
       
       // Versuche zuerst, die Datei in einem neuen Tab zu öffnen

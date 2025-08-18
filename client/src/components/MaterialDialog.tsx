@@ -141,9 +141,9 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
   const openMaterial = (filePath: string) => {
     const ext = filePath.split('.').pop()?.toLowerCase();
     
-    // Verwende den Server-Port (3005) für HTML-Dateien
+    // Verwende den Server-Port (3001) für HTML-Dateien
     const fullUrl = ext === 'html' 
-      ? 'http://localhost:3005' + filePath 
+      ? 'http://localhost:3001' + filePath 
       : window.location.origin + filePath;
     
     const newWindow = window.open(fullUrl, '_blank');
@@ -164,8 +164,8 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
   const showMaterialInDialog = (filePath: string) => {
     const ext = filePath.split('.').pop()?.toLowerCase();
     if (ext === 'html') {
-      // Verwende den Server-Port (3005) für HTML-Dateien
-      const fullUrl = 'http://localhost:3005' + filePath;
+      // Verwende den Server-Port (3001) für HTML-Dateien
+      const fullUrl = 'http://localhost:3001' + filePath;
       setPreviewMaterial(fullUrl);
     } else {
       // Für andere Dateitypen: Download oder externe Vorschau

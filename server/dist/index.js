@@ -27,7 +27,7 @@ const fileSystemPaths_1 = __importDefault(require("./routes/fileSystemPaths"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const prisma = new prisma_1.PrismaClient();
-const port = 3005;
+const port = 3001;
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 // Routes
