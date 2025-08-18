@@ -209,10 +209,10 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         console.log('Fragen mit Erklärungen:', questions.filter(q => q.explanation).length);
         console.log('Beispiel-Frage mit Erklärung:', questions.find(q => q.explanation));
       } else {
-        setError('Ergebnisse konnten nicht geladen werden');
+        setError('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
       }
     } catch (err) {
-      setError('Fehler beim Laden der Ergebnisse');
+      setError('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
     }
   };
 
