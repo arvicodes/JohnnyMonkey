@@ -151,6 +151,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     });
   }, [groups]);
 
+  // Debug: Überprüfe den MaterialCreator-Ref
+  useEffect(() => {
+    console.log('MaterialCreator ref status:', {
+      ref: materialCreatorRef.current,
+      hasRef: !!materialCreatorRef.current,
+      hasOpenQuizWithSource: materialCreatorRef.current?.openQuizWithSource
+    });
+  }, [materialCreatorRef.current]);
+
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !(prev[groupId] ?? false) }));
   };
@@ -1265,11 +1274,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   console.log('Quiz-Icon clicked for:', item.name, 'Path:', item.path);
                   if (item.name.startsWith('Quiz')) {
                     // Öffne das Quiz-Erstellungsmodal mit der ausgewählten Datei
-                    if (materialCreatorRef.current) {
+                    if (materialCreatorRef.current && materialCreatorRef.current.openQuizWithSource) {
                       console.log('Calling openQuizWithSource with:', item.path, item.name);
                       materialCreatorRef.current.openQuizWithSource(item.path, item.name);
                     } else {
-                      console.error('materialCreatorRef.current is null');
+                      console.error('MaterialCreator ref is not available or missing openQuizWithSource method');
+                      console.log('Ref status:', {
+                        ref: materialCreatorRef.current,
+                        hasMethod: materialCreatorRef.current?.openQuizWithSource
+                      });
+                      // Fallback: Öffne das Modal manuell über den MaterialCreator-Tab
+                      alert('Bitte wechseln Sie zum "Material & Quiz erstellen" Tab, um das Quiz zu erstellen.');
                     }
                   } else if (item.name.startsWith('Cards')) {
                     // TODO: Implementiere Karteikarten-Erstellung

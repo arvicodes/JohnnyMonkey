@@ -342,9 +342,13 @@ const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ 
   };
 
   // Expose the function to parent components via ref
-  useImperativeHandle(ref, () => ({
-    openQuizWithSource: handleQuizDialogOpenWithSource,
-  }));
+  useImperativeHandle(ref, () => {
+    console.log('MaterialCreator: useImperativeHandle called, exposing openQuizWithSource method');
+    console.log('handleQuizDialogOpenWithSource function:', handleQuizDialogOpenWithSource);
+    return {
+      openQuizWithSource: handleQuizDialogOpenWithSource,
+    };
+  });
 
   const handleWordFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
