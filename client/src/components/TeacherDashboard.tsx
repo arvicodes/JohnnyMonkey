@@ -1296,6 +1296,41 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 </Typography>
               </Box>
             )}
+            
+            {/* Quiz starten Icon - wenn bereits ein Quiz existiert */}
+            {item.type === 'file' && item.name.startsWith('Quiz') && quizStatusMap.get(item.path)?.exists && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  ml: 0.5,
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: '#45a049',
+                    opacity: 0.9
+                  }
+                }}
+                title={`Quiz starten: ${quizStatusMap.get(item.path)?.title || 'Unbekanntes Quiz'}`}
+                onClick={() => {
+                  const quizId = quizStatusMap.get(item.path)?.quizId;
+                  if (quizId) {
+                    handleStartQuiz(quizId);
+                  }
+                }}
+              >
+                <Typography variant="caption" sx={{ 
+                  fontSize: '0.8rem',
+                  userSelect: 'none'
+                }}>
+                  ▶️
+                </Typography>
+              </Box>
+            )}
           </Box>
           
           {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
@@ -1878,7 +1913,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Neue States für Quiz-Erstellung direkt im Dashboard
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
-  const [selectedQuizFile, setSelectedQuizFile] = useState<{path: string, name: string} | null>(null);
+  const [selectedQuizFile, setSelectedQuizFile] = useState<{ path: string; name: string } | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('');
   const [quizTimeLimit, setQuizTimeLimit] = useState(30);
@@ -1886,11 +1921,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [shuffleAnswers, setShuffleAnswers] = useState(true);
   const [gradeCategory, setGradeCategory] = useState<string>('');
   const [selectedGradeSchema, setSelectedGradeSchema] = useState<string>('');
-  const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{
-    category: string;
-    schemaName: string;
-    schemaId: string;
-  }>>([]);
+  const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{ schemaId: string; schemaName: string; category: string }>>([]);
+  
+  // State für Quiz-Status
+  const [quizStatusMap, setQuizStatusMap] = useState<Map<string, { exists: boolean; quizId?: string; title?: string }>>(new Map());
 
   // Quiz-Erstellung direkt im Dashboard
   const handleQuizDialogOpen = (filePath: string, fileName: string) => {
@@ -2004,6 +2038,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const quizResult = await quizResponse.json();
         console.log('Quiz created successfully:', quizResult);
         alert('Quiz erfolgreich erstellt!');
+        
+        // Quiz-Status aktualisieren, um das "Quiz starten" Icon anzuzeigen
+        await checkQuizStatus(selectedQuizFile.path);
+        
         handleQuizDialogClose();
       } else {
         const errorText = await quizResponse.text();
@@ -2023,6 +2061,60 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     } catch (error) {
       console.error('Exception in handleCreateQuiz:', error);
       alert(`Fehler beim Erstellen des Quiz:\n${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Quiz-Status prüfen
+  const checkQuizStatus = async (filePath: string) => {
+    try {
+      const response = await fetch(`/api/quizzes/check/exists?sourceFile=${encodeURIComponent(filePath)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setQuizStatusMap(prev => new Map(prev.set(filePath, {
+          exists: data.exists,
+          quizId: data.quiz?.id,
+          title: data.quiz?.title
+        })));
+      }
+    } catch (error) {
+      console.error('Error checking quiz status:', error);
+    }
+  };
+
+  // Quiz-Status für alle Quiz-Dateien prüfen
+  const checkAllQuizStatuses = async () => {
+    // Sammle alle Quiz-Dateien aus allen zugewiesenen Ordnern
+    const allQuizFiles: Array<{ path: string; name: string }> = [];
+    
+    Object.entries(assignedFolderContents).forEach(([key, items]) => {
+      const quizFiles = items.filter((item: any) => 
+        item.type === 'file' && item.name.startsWith('Quiz')
+      );
+      allQuizFiles.push(...quizFiles);
+    });
+    
+    for (const file of allQuizFiles) {
+      await checkQuizStatus(file.path);
+    }
+  };
+
+  // Quiz-Status beim Laden der Dateien prüfen
+  useEffect(() => {
+    if (Object.keys(assignedFolderContents).length > 0) {
+      checkAllQuizStatuses();
+    }
+  }, [assignedFolderContents]);
+
+  // Quiz starten
+  const handleStartQuiz = async (quizId: string) => {
+    try {
+      console.log('Starting quiz with ID:', quizId);
+      // Hier können Sie die Logik zum Starten des Quiz implementieren
+      // Zum Beispiel: Weiterleitung zur Quiz-Session-Seite
+      alert(`Quiz wird gestartet! Quiz-ID: ${quizId}`);
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+      alert('Fehler beim Starten des Quiz');
     }
   };
 

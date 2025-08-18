@@ -276,3 +276,50 @@ export const updateQuizQuestions = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Fehler beim Aktualisieren der Quiz-Fragen' });
   }
 }; 
+
+export const checkQuizExists = async (req: Request, res: Response) => {
+  try {
+    const { sourceFile } = req.query;
+    
+    if (!sourceFile || typeof sourceFile !== 'string') {
+      return res.status(400).json({ error: 'sourceFile parameter is required' });
+    }
+    
+    console.log('Checking if quiz exists for file:', sourceFile);
+    
+    const quiz = await prisma.quiz.findFirst({
+      where: {
+        sourceFile: sourceFile
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        timeLimit: true,
+        shuffleQuestions: true,
+        shuffleAnswers: true,
+        gradeCategory: true,
+        createdAt: true,
+        _count: {
+          select: {
+            questions: true
+          }
+        }
+      }
+    });
+    
+    if (quiz) {
+      console.log('Quiz found:', quiz);
+      res.json({ exists: true, quiz });
+    } else {
+      console.log('No quiz found for file:', sourceFile);
+      res.json({ exists: false });
+    }
+  } catch (error) {
+    console.error('Error checking quiz existence:', error);
+    res.status(500).json({
+      error: 'Fehler beim Prüfen der Quiz-Existenz',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+}; 
