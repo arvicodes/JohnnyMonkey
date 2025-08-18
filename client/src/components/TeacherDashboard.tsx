@@ -2161,13 +2161,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             }
           }
           
-          if (session) {
+          if (session && session.id) {
+            const sessionId = session.id;
+            const resultsReleased = session.resultsReleased || false;
             setQuizStatusMap(prev => new Map(prev.set(filePath, {
               exists: data.exists,
               quizId: data.quiz?.id,
               title: data.quiz?.title,
-              sessionId: session.id,
-              resultsReleased: session.resultsReleased || false
+              sessionId: sessionId,
+              resultsReleased: resultsReleased
             })));
           } else {
             setQuizStatusMap(prev => new Map(prev.set(filePath, {

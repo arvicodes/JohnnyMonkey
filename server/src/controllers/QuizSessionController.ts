@@ -331,9 +331,7 @@ export const releaseResults = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Nur der Quiz-Ersteller kann die Ergebnisse freigeben' });
     }
 
-    if (session.isActive) {
-      return res.status(400).json({ error: 'Ergebnisse können nur freigegeben werden, wenn die Session beendet ist' });
-    }
+    // Lehrer kann Ergebnisse jederzeit freigeben, auch wenn Session noch läuft
 
     await prisma.quizSession.update({
       where: { id: sessionId },
