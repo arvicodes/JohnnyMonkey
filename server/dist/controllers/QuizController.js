@@ -9,22 +9,46 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getQuizzesByTeacher = exports.deleteQuiz = exports.updateQuiz = exports.getQuiz = exports.getQuizzes = exports.createQuiz = void 0;
+exports.checkQuizExists = exports.updateQuizQuestions = exports.getQuizzesByTeacher = exports.deleteQuiz = exports.updateQuiz = exports.getQuiz = exports.getQuizzes = exports.createQuiz = void 0;
 const prisma_1 = require("../generated/prisma");
 const wordParser_1 = require("../utils/wordParser");
 const prisma = new prisma_1.PrismaClient();
 const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { teacherId, sourceFile, title, description, timeLimit, shuffleQuestions, shuffleAnswers } = req.body;
+        const { teacherId, sourceFile, title, description, timeLimit, shuffleQuestions, shuffleAnswers, gradeCategory } = req.body;
         if (!teacherId || !sourceFile || !title) {
             return res.status(400).json({ error: 'Lehrer-ID, Quelldatei und Titel sind erforderlich' });
         }
+        console.log('Creating quiz with data:', {
+            teacherId,
+            sourceFile,
+            title,
+            description,
+            timeLimit,
+            shuffleQuestions,
+            shuffleAnswers,
+            gradeCategory
+        });
         // Parse the Word file to extract questions
         console.log('Parsing Word file for quiz creation:', sourceFile);
-        const parsedQuestions = yield (0, wordParser_1.parseWordFile)(sourceFile);
-        if (parsedQuestions.length === 0) {
+        // The wordParser can now handle absolute paths directly
+        let filePath = sourceFile;
+        console.log('Using file path for parsing:', filePath);
+        let parsedQuestions;
+        try {
+            parsedQuestions = yield (0, wordParser_1.parseWordFile)(filePath);
+            console.log('Parsed questions result:', parsedQuestions);
+        }
+        catch (parseError) {
+            console.error('Error parsing Word file:', parseError);
+            return res.status(400).json({
+                error: `Fehler beim Parsen der Word-Datei: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+            });
+        }
+        if (!parsedQuestions || parsedQuestions.length === 0) {
             return res.status(400).json({ error: 'Keine Fragen in der Word-Datei gefunden. Bitte überprüfen Sie das Format.' });
         }
+        console.log(`Found ${parsedQuestions.length} questions, creating quiz...`);
         // Create the quiz with questions
         const quiz = yield prisma.quiz.create({
             data: {
@@ -35,11 +59,14 @@ const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 shuffleQuestions: shuffleQuestions !== undefined ? shuffleQuestions : true,
                 shuffleAnswers: shuffleAnswers !== undefined ? shuffleAnswers : true,
                 teacherId,
+                gradeCategory: gradeCategory || null,
                 questions: {
                     create: parsedQuestions.map((q, index) => ({
                         question: q.question,
                         correctAnswer: q.correctAnswer,
                         options: JSON.stringify(q.options),
+                        tip: q.tip || '',
+                        explanation: q.explanation || '',
                         order: index + 1
                     }))
                 }
@@ -53,7 +80,10 @@ const createQuiz = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
     catch (error) {
         console.error('Error creating quiz:', error);
-        res.status(500).json({ error: 'Fehler beim Erstellen des Quiz' });
+        res.status(500).json({
+            error: 'Fehler beim Erstellen des Quiz',
+            details: error instanceof Error ? error.message : String(error)
+        });
     }
 });
 exports.createQuiz = createQuiz;
@@ -166,3 +196,93 @@ const getQuizzesByTeacher = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.getQuizzesByTeacher = getQuizzesByTeacher;
+const updateQuizQuestions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const { questions } = req.body;
+        if (!questions || !Array.isArray(questions)) {
+            return res.status(400).json({ error: 'Fragen sind erforderlich und müssen ein Array sein' });
+        }
+        // Alle bestehenden Fragen für dieses Quiz löschen
+        yield prisma.quizQuestion.deleteMany({
+            where: { quizId: id }
+        });
+        // Neue Fragen erstellen
+        const createdQuestions = yield prisma.quizQuestion.createMany({
+            data: questions.map((q, index) => ({
+                question: q.question,
+                correctAnswer: q.correctAnswer,
+                options: JSON.stringify(q.options),
+                order: index + 1,
+                quizId: id
+            }))
+        });
+        // Aktualisiertes Quiz mit Fragen zurückgeben
+        const updatedQuiz = yield prisma.quiz.findUnique({
+            where: { id },
+            include: {
+                questions: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
+            }
+        });
+        if (!updatedQuiz) {
+            return res.status(404).json({ error: 'Quiz nicht gefunden' });
+        }
+        // Deserialize options for each question
+        const quizWithParsedOptions = Object.assign(Object.assign({}, updatedQuiz), { questions: updatedQuiz.questions.map(q => (Object.assign(Object.assign({}, q), { options: JSON.parse(q.options) }))) });
+        res.json(quizWithParsedOptions);
+    }
+    catch (error) {
+        console.error('Error updating quiz questions:', error);
+        res.status(500).json({ error: 'Fehler beim Aktualisieren der Quiz-Fragen' });
+    }
+});
+exports.updateQuizQuestions = updateQuizQuestions;
+const checkQuizExists = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { sourceFile } = req.query;
+        if (!sourceFile || typeof sourceFile !== 'string') {
+            return res.status(400).json({ error: 'sourceFile parameter is required' });
+        }
+        console.log('Checking if quiz exists for file:', sourceFile);
+        const quiz = yield prisma.quiz.findFirst({
+            where: {
+                sourceFile: sourceFile
+            },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                timeLimit: true,
+                shuffleQuestions: true,
+                shuffleAnswers: true,
+                gradeCategory: true,
+                createdAt: true,
+                _count: {
+                    select: {
+                        questions: true
+                    }
+                }
+            }
+        });
+        if (quiz) {
+            console.log('Quiz found:', quiz);
+            res.json({ exists: true, quiz });
+        }
+        else {
+            console.log('No quiz found for file:', sourceFile);
+            res.json({ exists: false });
+        }
+    }
+    catch (error) {
+        console.error('Error checking quiz existence:', error);
+        res.status(500).json({
+            error: 'Fehler beim Prüfen der Quiz-Existenz',
+            details: error instanceof Error ? error.message : String(error)
+        });
+    }
+});
+exports.checkQuizExists = checkQuizExists;

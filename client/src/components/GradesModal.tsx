@@ -424,6 +424,28 @@ const GradesModal: React.FC<GradesModalProps> = ({
     }
   };
 
+  // Validiert alle eingegebenen Noten für MSS
+  const validateMSSGrades = (nodes: GradeNode[]): boolean => {
+    if (gradingSchema?.gradingSystem !== 'MSS') return true;
+    
+    const validateNode = (node: GradeNode): boolean => {
+      if (node.children.length === 0) {
+        // Blattknoten - prüfe die Note
+        if (node.grade !== undefined) {
+          if (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15) {
+            return false;
+          }
+        }
+        return true;
+      } else {
+        // Kategorie mit Kindern - prüfe rekursiv
+        return node.children.every(validateNode);
+      }
+    };
+    
+    return nodes.every(validateNode);
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -443,6 +465,12 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
       if (grades.length === 0) {
         setError('Keine Noten zum Speichern vorhanden');
+        return;
+      }
+
+      // Validiere MSS-Noten vor dem Speichern
+      if (!validateMSSGrades(gradeNodes)) {
+        setError('Ungültige MSS-Noten gefunden. Nur natürliche Zahlen von 0 bis 15 sind erlaubt.');
         return;
       }
 
@@ -587,16 +615,28 @@ const GradesModal: React.FC<GradesModalProps> = ({
                         formatGermanGrade(node.grade)
                       ) : ''
                     }
+                    inputProps={{
+                      // Für MSS: Nur Zahlen 0-15 erlauben
+                      ...(gradingSchema?.gradingSystem === 'MSS' && {
+                        pattern: '[0-9]*',
+                        inputMode: 'numeric',
+                        min: 0,
+                        max: 15
+                      })
+                    }}
                     onChange={(e) => {
                       const value = e.target.value;
                       if (value === '') {
                         updateGrade(node.id, undefined);
                       } else {
-                        // Für MSS: Nur Zahlen 0-15
+                        // Für MSS: Nur natürliche Zahlen 0-15
                         if (gradingSchema?.gradingSystem === 'MSS') {
-                          const numValue = Number(value);
-                          if (!isNaN(numValue) && numValue >= 0 && numValue <= 15) {
-                            updateGrade(node.id, numValue);
+                          // Erlaube nur Zahlen und Leerzeichen
+                          if (/^[0-9\s]*$/.test(value)) {
+                            const numValue = Number(value);
+                            if (!isNaN(numValue) && numValue >= 0 && numValue <= 15 && Number.isInteger(numValue)) {
+                              updateGrade(node.id, numValue);
+                            }
                           }
                         } else {
                           // Für deutsche Noten: Konvertiere Text zu numerischem Wert
@@ -609,6 +649,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
                     }}
                     placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
                     disabled={isGradeLocked(node.id)}
+                    error={gradingSchema?.gradingSystem === 'MSS' && 
+                           node.grade !== undefined && 
+                           (node.grade < 0 || node.grade > 15 || !Number.isInteger(node.grade))}
+                    helperText={gradingSchema?.gradingSystem === 'MSS' && 
+                               node.grade !== undefined && 
+                               (node.grade < 0 || node.grade > 15 || !Number.isInteger(node.grade)) ? 
+                               'Nur Zahlen 0-15 erlaubt' : ''}
                     sx={{ 
                       fontSize: '0.6rem',
                       flex: 1,
@@ -630,6 +677,25 @@ const GradesModal: React.FC<GradesModalProps> = ({
                       }
                     }}
                   />
+                  {/* Warnung für ungültige MSS-Noten */}
+                  {gradingSchema?.gradingSystem === 'MSS' && 
+                   node.grade !== undefined && 
+                   (node.grade < 0 || node.grade > 15 || !Number.isInteger(node.grade)) && (
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        color: colors.accent2,
+                        fontSize: '0.45rem',
+                        fontStyle: 'italic',
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        mt: 0.2
+                      }}
+                    >
+                      ⚠️ Nur 0-15 erlaubt
+                    </Typography>
+                  )}
                   {node.grade !== undefined && (
                     <Chip
                       label={gradingSchema?.gradingSystem === 'MSS' ? 

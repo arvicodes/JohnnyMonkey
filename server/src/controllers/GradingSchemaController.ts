@@ -7,7 +7,7 @@ const schemaService = new GradingSchemaService();
 
 export const createSchema = async (req: Request, res: Response) => {
   try {
-    const { name, structure, groupId } = req.body;
+    const { name, structure, groupId, gradingSystem } = req.body;
 
     if (!name || !structure || !groupId) {
       return res.status(400).json({ error: 'Missing required fields: name, structure, groupId' });
@@ -30,12 +30,19 @@ export const createSchema = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid schema: Root level weights must sum to 100%' });
     }
 
+    const createData: any = {
+      name,
+      structure: structure, // Speichere als String, nicht als JSON
+      groupId
+    };
+
+    // Füge gradingSystem hinzu, falls es im Request vorhanden ist
+    if (gradingSystem) {
+      createData.gradingSystem = gradingSystem;
+    }
+
     const schema = await prisma.gradingSchema.create({
-      data: {
-        name,
-        structure: structure, // Speichere als String, nicht als JSON
-        groupId
-      }
+      data: createData
     });
 
     res.json(schema);
@@ -98,7 +105,7 @@ export const getAllSchemas = async (req: Request, res: Response) => {
 export const updateSchema = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, structure, groupId } = req.body;
+    const { name, structure, groupId, gradingSystem } = req.body;
 
     if (!name || !structure || !groupId) {
       return res.status(400).json({ error: 'Missing required fields: name, structure, groupId' });
@@ -121,13 +128,20 @@ export const updateSchema = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid schema: Root level weights must sum to 100%' });
     }
 
+    const updateData: any = {
+      name,
+      structure: structure, // Speichere als String, nicht als JSON
+      groupId
+    };
+
+    // Füge gradingSystem hinzu, falls es im Request vorhanden ist
+    if (gradingSystem) {
+      updateData.gradingSystem = gradingSystem;
+    }
+
     const schema = await prisma.gradingSchema.update({
       where: { id },
-      data: {
-        name,
-        structure: structure, // Speichere als String, nicht als JSON
-        groupId
-      }
+      data: updateData
     });
 
     res.json(schema);
