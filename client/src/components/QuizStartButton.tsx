@@ -93,6 +93,11 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
         console.log('Quiz completed, setting participationId:', participation.id);
         setParticipationId(participation.id);
         
+        // Debug: Check if participationId was set correctly
+        setTimeout(() => {
+          console.log('After setParticipationId, current participationId state:', participationId);
+        }, 100);
+        
         // Check if results are released by teacher - get this directly from the session
         const sessionDetailsResponse = await fetch(`/api/quiz-sessions/session/${session.id}`);
         console.log('Session details response status:', sessionDetailsResponse.status);
@@ -104,17 +109,18 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
           if (sessionDetails.resultsReleased) {
             setResultsReleased(true);
             setQuizStatus('completed');
-            console.log('Results are released!'); // Debug log
+            console.log('Results are released! participationId should be:', participation.id); // Debug log
           } else {
             setResultsReleased(false);
             setQuizStatus('completed');
-            console.log('Results are NOT released'); // Debug log
+            console.log('Results are NOT released, participationId should be:', participation.id); // Debug log
           }
         } else {
           console.error('Failed to get session details:', sessionDetailsResponse.status);
           // Fallback: assume not released
           setResultsReleased(false);
           setQuizStatus('completed');
+          console.log('Fallback: participationId should be:', participation.id); // Debug log
         }
       } else {
         console.log('Quiz not completed, setting status to available');
