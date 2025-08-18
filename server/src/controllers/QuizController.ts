@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export const createQuiz = async (req: Request, res: Response) => {
   try {
-    const { teacherId, sourceFile, title, description, timeLimit, shuffleQuestions, shuffleAnswers, gradeCategory, gradeSchemaId } = req.body;
+    const { teacherId, sourceFile, title, description, timeLimit, shuffleQuestions, shuffleAnswers, gradeCategory } = req.body;
     
     if (!teacherId || !sourceFile || !title) {
       return res.status(400).json({ error: 'Lehrer-ID, Quelldatei und Titel sind erforderlich' });
@@ -20,8 +20,7 @@ export const createQuiz = async (req: Request, res: Response) => {
       timeLimit,
       shuffleQuestions,
       shuffleAnswers,
-      gradeCategory,
-      gradeSchemaId
+      gradeCategory
     });
 
     // Parse the Word file to extract questions
@@ -43,7 +42,6 @@ export const createQuiz = async (req: Request, res: Response) => {
         shuffleAnswers: shuffleAnswers !== undefined ? shuffleAnswers : true,
         teacherId,
         gradeCategory: gradeCategory || null,
-        gradeSchemaId: gradeSchemaId || null,
         questions: {
           create: parsedQuestions.map((q, index) => ({
             question: q.question,
