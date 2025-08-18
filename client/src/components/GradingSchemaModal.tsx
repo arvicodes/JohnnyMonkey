@@ -73,17 +73,22 @@ interface GradingSchemaModalProps {
   groupName: string;
 }
 
-// App color palette
+// App color palette - Moderner und akzentuierter
 const colors = {
-  primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
-  secondary: '#F57C00', // Dunkleres Orange
-  accent1: '#1976D2', // Dunkleres Blau
-  accent2: '#C2185B', // Dunkleres Pink
-  background: '#F8FAFC', // Helleres, moderneres Blau
+  primary: '#1E88E5', // Modernes Blau
+  secondary: '#FF6B35', // Lebendiges Orange
+  accent1: '#7C4DFF', // Elegantes Violett
+  accent2: '#E91E63', // Modernes Pink
+  background: '#FAFBFF', // Sehr helles Blau
   cardBg: '#FFFFFF',
-  success: '#4CAF50',
-  textPrimary: '#2C3E50', // Dunkler Text für bessere Lesbarkeit
-  textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
+  success: '#00C853', // Lebendiges Grün
+  warning: '#FF9800', // Warmes Orange
+  error: '#F44336', // Klares Rot
+  textPrimary: '#1A237E', // Dunkles Blau
+  textSecondary: '#546E7A', // Modernes Grau
+  border: '#E3F2FD', // Helles Blau
+  hover: '#F5F9FF', // Sehr helles Blau für Hover
+  active: '#E8F4FD' // Helles Blau für aktive Elemente
 };
 
 const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
@@ -432,47 +437,48 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     const isTopLevel = level === 0;
 
     return (
-      <Box key={node.id} sx={{ mb: 0.7 }}>
+      <Box key={node.id} sx={{ mb: 1 }}>
         <Card 
           variant="outlined" 
           sx={{ 
-            borderRadius: 1.4,
-            border: isValid ? '1px solid #e0e0e0' : '1px solid #f44336',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            transition: 'all 0.2s ease-in-out',
+            borderRadius: 2,
+            border: isValid ? `1px solid ${colors.border}` : `2px solid ${colors.error}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            transition: 'all 0.3s ease-in-out',
             '&:hover': {
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              transform: 'translateY(-1px)'
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              transform: 'translateY(-2px)'
             },
             // Klare Einrückung basierend auf Level
-            ml: level * 3.5,
+            ml: level * 2,
             // Visueller Indikator für Hierarchie
-            borderLeft: level > 0 ? `4px solid ${isTopLevel ? colors.primary : colors.accent1}` : '1px solid #e0e0e0',
+            borderLeft: level > 0 ? `4px solid ${isTopLevel ? colors.primary : colors.accent1}` : 'none',
             // Hintergrundfarbe für verschiedene Ebenen
             bgcolor: isValid ? 
               (level === 0 ? colors.cardBg : 
-               level === 1 ? '#fafafa' : 
-               level === 2 ? '#f5f5f5' : '#f0f0f0') : '#ffebee'
+               level === 1 ? colors.hover : 
+               level === 2 ? colors.active : '#f8f9fa') : '#ffebee'
           }}
         >
-          <CardContent sx={{ p: 1.4, '&:last-child': { pb: 1.4 } }}>
-            <Grid container spacing={0.7} alignItems="center">
+          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+            <Grid container spacing={1} alignItems="center">
               <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Avatar 
                     sx={{ 
                       bgcolor: isTopLevel ? colors.primary : 
                               level === 1 ? colors.accent1 : 
                               level === 2 ? colors.secondary : colors.accent2,
-                      width: 20,
-                      height: 20,
-                      fontSize: '0.6rem'
+                      width: 24,
+                      height: 24,
+                      fontSize: '0.7rem',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
-                    {isTopLevel ? <CategoryIcon sx={{ fontSize: 12 }} /> : 
-                     level === 1 ? <SubdirectoryIcon sx={{ fontSize: 12 }} /> :
-                     level === 2 ? <SubdirectoryIcon sx={{ fontSize: 12 }} /> :
-                     <SubdirectoryIcon sx={{ fontSize: 12 }} />}
+                    {isTopLevel ? <CategoryIcon sx={{ fontSize: 14 }} /> : 
+                     level === 1 ? <SubdirectoryIcon sx={{ fontSize: 14 }} /> :
+                     level === 2 ? <SubdirectoryIcon sx={{ fontSize: 14 }} /> :
+                     <SubdirectoryIcon sx={{ fontSize: 14 }} />}
                   </Avatar>
                   <TextField
                     fullWidth
@@ -485,9 +491,16 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                     variant="outlined"
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        borderRadius: 0.7,
-                        fontSize: '0.65rem',
-                        minHeight: '32px'
+                        borderRadius: 1.5,
+                        fontSize: '0.75rem',
+                        minHeight: '36px',
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: colors.primary
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: colors.primary,
+                          borderWidth: 2
+                        }
                       }
                     }}
                   />
@@ -506,16 +519,23 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   inputProps={{ min: 0, max: 100, step: 0.1 }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      borderRadius: 0.7,
-                      fontSize: '0.65rem',
-                      minHeight: '32px'
+                      borderRadius: 1.5,
+                      fontSize: '0.75rem',
+                      minHeight: '36px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary,
+                        borderWidth: 2
+                      }
                     }
                   }}
                 />
               </Grid>
               
               <Grid item xs={12} sm={3}>
-                <Box sx={{ display: 'flex', gap: 0.35, justifyContent: 'flex-end' }}>
+                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
                   <Tooltip title="Unterkategorie hinzufügen">
                     <IconButton 
                       size="small" 
@@ -523,12 +543,16 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                       sx={{ 
                         bgcolor: colors.primary,
                         color: 'white',
-                        width: 24,
-                        height: 24,
-                        '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
+                        width: 28,
+                        height: 28,
+                        '&:hover': { 
+                          bgcolor: colors.accent1,
+                          transform: 'scale(1.1)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                        }
                       }}
                     >
-                      <AddIcon sx={{ fontSize: 14 }} />
+                      <AddIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Tooltip>
                   
@@ -540,12 +564,16 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                         sx={{ 
                           bgcolor: colors.accent1,
                           color: 'white',
-                          width: 24,
-                          height: 24,
-                          '&:hover': { bgcolor: colors.accent1, filter: 'brightness(1.1)' }
+                          width: 28,
+                          height: 28,
+                          '&:hover': { 
+                            bgcolor: colors.primary,
+                            transform: 'scale(1.1)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                          }
                         }}
                       >
-                        {node.isExpanded ? <ExpandLessIcon sx={{ fontSize: 14 }} /> : <ExpandMoreIcon sx={{ fontSize: 14 }} />}
+                        {node.isExpanded ? <ExpandLessIcon sx={{ fontSize: 16 }} /> : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
                       </IconButton>
                     </Tooltip>
                   )}
@@ -555,14 +583,18 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                       size="small" 
                       onClick={() => deleteGradeNode(node.id)}
                       sx={{ 
-                        bgcolor: colors.accent2,
+                        bgcolor: colors.error,
                         color: 'white',
-                        width: 24,
-                        height: 24,
-                        '&:hover': { bgcolor: colors.accent2, filter: 'brightness(1.1)' }
+                        width: 28,
+                        height: 28,
+                        '&:hover': { 
+                          bgcolor: '#d32f2f',
+                          transform: 'scale(1.1)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                        }
                       }}
                     >
-                      <DeleteIcon sx={{ fontSize: 14 }} />
+                      <DeleteIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Tooltip>
                 </Box>
@@ -570,27 +602,28 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
             </Grid>
             
             {hasChildren && (
-              <Box sx={{ mt: 0.7 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.7, mb: 0.35 }}>
+              <Box sx={{ mt: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <Chip 
-                    icon={isValid ? <CheckCircleIcon sx={{ fontSize: 12 }} /> : <ErrorIcon sx={{ fontSize: 12 }} />}
+                    icon={isValid ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : <ErrorIcon sx={{ fontSize: 14 }} />}
                     label={`Summe: ${weightSum.toFixed(1)}%`}
                     color={isValid ? 'success' : 'error'}
                     size="small"
                     variant="outlined"
                     sx={{ 
                       fontWeight: 'bold',
-                      fontSize: '0.6rem',
-                      height: 18
+                      fontSize: '0.7rem',
+                      height: 24,
+                      borderWidth: 2
                     }}
                   />
                   {!isValid && level === 0 && (
-                    <Typography variant="caption" color="error" sx={{ fontWeight: 'bold', fontSize: '0.6rem' }}>
+                    <Typography variant="caption" color="error" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
                       Sollte 100% sein
                     </Typography>
                   )}
                   {level > 0 && (
-                    <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.6rem' }}>
+                    <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
                       Unterkategorien können beliebige Gewichtungen haben
                     </Typography>
                   )}
@@ -600,12 +633,12 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   variant="determinate" 
                   value={Math.min(weightSum, 100)} 
                   sx={{ 
-                    height: 3,
-                    borderRadius: 1.5,
-                    bgcolor: 'grey.200',
+                    height: 6,
+                    borderRadius: 3,
+                    bgcolor: colors.border,
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: isValid ? colors.success : '#f44336',
-                      borderRadius: 1.5,
+                      bgcolor: isValid ? colors.success : colors.error,
+                      borderRadius: 3,
                     }
                   }} 
                 />
@@ -616,7 +649,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
         
         {/* Rekursiv alle Kinder rendern - nur wenn expanded */}
         {hasChildren && node.isExpanded && (
-          <Box sx={{ mt: 0.35 }}>
+          <Box sx={{ mt: 0.5 }}>
             {node.children.map(child => renderCategoryCard(child, level + 1))}
           </Box>
         )}
@@ -628,27 +661,41 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     if (!showPreview || gradeNodes.length === 0) return null;
 
     return (
-      <Paper elevation={1} sx={{ p: 1.4, mb: 1.4, bgcolor: '#f8f9fa', borderRadius: 1.4 }}>
+      <Paper elevation={0} sx={{ 
+        p: 2, 
+        mb: 2, 
+        bgcolor: colors.hover, 
+        borderRadius: 2,
+        border: `1px solid ${colors.border}`
+      }}>
         <Typography variant="h6" gutterBottom sx={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: 0.7,
-          fontSize: '0.75rem',
+          gap: 1,
+          fontSize: '0.9rem',
           fontWeight: 'bold',
-          color: colors.textPrimary
+          color: colors.textPrimary,
+          mb: 1
         }}>
-          <VisibilityIcon sx={{ fontSize: 14, color: colors.primary }} />
+          <VisibilityIcon sx={{ fontSize: 18, color: colors.primary }} />
           Vorschau des Schemas
         </Typography>
         <Box sx={{ 
           fontFamily: 'monospace', 
-          fontSize: '0.6rem', 
-          bgcolor: 'white', 
-          p: 0.7, 
-          borderRadius: 0.7,
-          border: '1px solid #e0e0e0'
+          fontSize: '0.75rem', 
+          bgcolor: colors.cardBg, 
+          p: 1.5, 
+          borderRadius: 2,
+          border: `1px solid ${colors.border}`,
+          maxHeight: 200,
+          overflowY: 'auto'
         }}>
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+          <pre style={{ 
+            margin: 0, 
+            whiteSpace: 'pre-wrap',
+            color: colors.textPrimary,
+            lineHeight: 1.5
+          }}>
             {formatSchemaToString(gradeNodes)}
           </pre>
         </Box>
@@ -660,67 +707,87 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     <Dialog 
       open={open} 
       onClose={onClose}
-      maxWidth="md"
+      maxWidth="sm" // Schmaler gemacht
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          background: colors.background
+        }
+      }}
     >
-      <DialogTitle sx={{ pb: 0.7 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
-          <AssessmentIcon sx={{ color: colors.primary, fontSize: 16 }} />
+      <DialogTitle sx={{ 
+        pb: 1, 
+        background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+        color: 'white',
+        borderRadius: '8px 8px 0 0'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AssessmentIcon sx={{ color: 'white', fontSize: 20 }} />
           <Typography variant="h6" sx={{ 
             fontWeight: 600, 
-            fontSize: '0.75rem',
-            color: colors.textPrimary
+            fontSize: '1rem',
+            color: 'white'
           }}>
             Bewertungsschema {isEditing ? 'bearbeiten' : 'erstellen'} - {groupName}
           </Typography>
         </Box>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 1.4 }}>
-        <Grid container spacing={1.4}>
-          {/* Existing Schemas Section */}
-          <Grid item xs={12} md={4}>
-            <Paper elevation={1} sx={{ p: 1.4, height: 'fit-content', borderRadius: 1.4 }}>
+      <DialogContent sx={{ p: 2, background: colors.background }}>
+        <Grid container spacing={2}>
+          {/* Existing Schemas Section - Schmaler */}
+          <Grid item xs={12} md={5}>
+            <Paper elevation={0} sx={{ 
+              p: 2, 
+              height: 'fit-content', 
+              borderRadius: 2,
+              border: `2px solid ${colors.border}`,
+              background: colors.cardBg
+            }}>
               <Typography variant="h6" gutterBottom sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 0.7,
-                fontSize: '0.75rem',
+                gap: 1,
+                fontSize: '0.9rem',
                 fontWeight: 'bold',
-                color: colors.textPrimary
+                color: colors.textPrimary,
+                mb: 2
               }}>
-                <CategoryIcon sx={{ fontSize: 14, color: colors.primary }} />
+                <CategoryIcon sx={{ fontSize: 18, color: colors.primary }} />
                 Bestehende Schemata
               </Typography>
               
               {existingSchemas.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 1.4 }}>
-                  <CategoryIcon sx={{ fontSize: 24, color: 'grey.400', mb: 0.7 }} />
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.6rem' }}>
+                <Box sx={{ textAlign: 'center', py: 3 }}>
+                  <CategoryIcon sx={{ fontSize: 32, color: colors.textSecondary, mb: 1 }} />
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.8rem' }}>
                     Noch keine Bewertungsschemata vorhanden.
                   </Typography>
                 </Box>
               ) : (
-                <List dense>
+                <List dense sx={{ maxHeight: 400, overflowY: 'auto' }}>
                   {existingSchemas.map((schema) => (
                     <ListItem 
                       key={schema.id}
                       sx={{ 
-                        border: schema.isActive ? '2px solid #4caf50' : (selectedSchema?.id === schema.id ? '2px solid #1976d2' : '1px solid #e0e0e0'),
-                        borderRadius: 0.7,
-                        mb: 0.35,
-                        bgcolor: schema.isActive ? '#e8f5e8' : (selectedSchema?.id === schema.id ? '#e3f2fd' : 'white'),
-                        transition: 'all 0.2s ease',
+                        border: schema.isActive ? `2px solid ${colors.success}` : (selectedSchema?.id === schema.id ? `2px solid ${colors.primary}` : `1px solid ${colors.border}`),
+                        borderRadius: 1.5,
+                        mb: 1,
+                        bgcolor: schema.isActive ? colors.active : (selectedSchema?.id === schema.id ? colors.hover : colors.cardBg),
+                        transition: 'all 0.3s ease',
                         '&:hover': {
-                          bgcolor: schema.isActive ? '#e8f5e8' : (selectedSchema?.id === schema.id ? '#e3f2fd' : '#f5f5f5'),
-                          transform: 'translateX(1px)'
+                          bgcolor: schema.isActive ? colors.active : (selectedSchema?.id === schema.id ? colors.hover : colors.hover),
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                         }
                       }}
                     >
                       <ListItemText
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" sx={{ fontSize: '0.65rem', fontWeight: 'bold' }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>
                               {schema.name}
                             </Typography>
                             {schema.isActive && (
@@ -728,56 +795,50 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                                 label="Aktiv" 
                                 size="small" 
                                 sx={{ 
-                                  height: 16, 
-                                  fontSize: '0.5rem',
-                                  bgcolor: '#4caf50',
-                                  color: 'white'
+                                  height: 20, 
+                                  fontSize: '0.6rem',
+                                  bgcolor: colors.success,
+                                  color: 'white',
+                                  fontWeight: 'bold'
                                 }} 
                               />
                             )}
                           </Box>
                         }
                         secondary={
-                          <Box>
-                            <Typography variant="body2" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: colors.textSecondary }}>
                               {schema.createdAt ? new Date(schema.createdAt).toLocaleDateString('de-DE') : ''}
                             </Typography>
-                            <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.disabled' }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: colors.accent1, fontWeight: 'bold' }}>
                               {schema.gradingSystem === 'GERMAN' ? 'Deutsches Notensystem' : 'MSS-Punktesystem'}
                             </Typography>
-                            <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.disabled', fontFamily: 'monospace' }}>
-                              {schema.structure.substring(0, 100)}...
-                            </Typography>
-                            {schema.learningGroup && (
-                              <Typography variant="caption" sx={{ fontSize: '0.55rem', color: 'text.disabled', fontStyle: 'italic' }}>
-                                Lerngruppe: {schema.learningGroup.name}
-                              </Typography>
-                            )}
                           </Box>
                         }
                         sx={{
                           '& .MuiListItemText-primary': {
-                            fontSize: '0.65rem',
+                            fontSize: '0.8rem',
                             fontWeight: 'bold'
                           },
                           '& .MuiListItemText-secondary': {
-                            fontSize: '0.6rem'
+                            fontSize: '0.7rem'
                           }
                         }}
                       />
                       <ListItemSecondaryAction>
-                        <Box sx={{ display: 'flex', gap: 0.2 }}>
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
                           <Tooltip title="Bearbeiten">
                             <IconButton 
                               size="small" 
                               onClick={() => loadSchema(schema)}
                               sx={{ 
                                 color: colors.primary,
-                                width: 20,
-                                height: 20
+                                width: 28,
+                                height: 28,
+                                '&:hover': { bgcolor: colors.hover }
                               }}
                             >
-                              <EditIcon sx={{ fontSize: 12 }} />
+                              <EditIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Löschen">
@@ -785,12 +846,13 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                               size="small" 
                               onClick={() => handleDeleteSchema(schema.id!)}
                               sx={{ 
-                                color: colors.accent2,
-                                width: 20,
-                                height: 20
+                                color: colors.error,
+                                width: 28,
+                                height: 28,
+                                '&:hover': { bgcolor: '#FFEBEE' }
                               }}
                             >
-                              <DeleteIcon sx={{ fontSize: 12 }} />
+                              <DeleteIcon sx={{ fontSize: 16 }}/>
                             </IconButton>
                           </Tooltip>
                         </Box>
@@ -802,21 +864,25 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
               
               <Button
                 variant="contained"
-                startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 onClick={() => {
                   resetForm();
                   setIsEditing(false);
                 }}
                 fullWidth
                 sx={{ 
-                  mt: 0.7,
-                  borderRadius: 0.7,
-                  py: 0.2,
-                  px: 0.7,
-                  fontSize: '0.6rem',
-                  height: '24px',
-                  bgcolor: colors.primary,
-                  '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
+                  mt: 2,
+                  borderRadius: 2,
+                  py: 1,
+                  px: 2,
+                  fontSize: '0.8rem',
+                  height: '36px',
+                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                  '&:hover': { 
+                    background: `linear-gradient(135deg, ${colors.accent1} 0%, ${colors.primary} 100%)`,
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }
                 }}
               >
                 Neues Schema erstellen
@@ -824,31 +890,42 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
             </Paper>
           </Grid>
 
-          {/* Schema Editor Section */}
-          <Grid item xs={12} md={8}>
-            <Paper elevation={1} sx={{ p: 1.4, borderRadius: 1.4 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.4 }}>
+          {/* Schema Editor Section - Breiter */}
+          <Grid item xs={12} md={7}>
+            <Paper elevation={0} sx={{ 
+              p: 2, 
+              borderRadius: 2,
+              border: `2px solid ${colors.border}`,
+              background: colors.cardBg
+            }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6" sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 0.7,
-                  fontSize: '0.75rem',
+                  gap: 1,
+                  fontSize: '0.9rem',
                   fontWeight: 'bold',
                   color: colors.textPrimary
                 }}>
-                  <AssessmentIcon sx={{ fontSize: 14, color: colors.primary }} />
+                  <AssessmentIcon sx={{ fontSize: 18, color: colors.primary }} />
                   {isEditing ? 'Schema bearbeiten' : 'Neues Schema erstellen'}
                 </Typography>
                 <Button
                   variant="outlined"
-                  startIcon={showPreview ? <VisibilityOffIcon sx={{ fontSize: 14 }} /> : <VisibilityIcon sx={{ fontSize: 14 }} />}
+                  startIcon={showPreview ? <VisibilityOffIcon sx={{ fontSize: 16 }} /> : <VisibilityIcon sx={{ fontSize: 16 }} />}
                   onClick={() => setShowPreview(!showPreview)}
                   sx={{ 
-                    borderRadius: 0.7,
-                    py: 0.2,
-                    px: 0.7,
-                    fontSize: '0.6rem',
-                    height: '24px'
+                    borderRadius: 2,
+                    py: 0.5,
+                    px: 1.5,
+                    fontSize: '0.7rem',
+                    height: '32px',
+                    borderColor: colors.primary,
+                    color: colors.primary,
+                    '&:hover': { 
+                      borderColor: colors.accent1,
+                      bgcolor: colors.hover
+                    }
                   }}
                 >
                   {showPreview ? 'Vorschau ausblenden' : 'Vorschau anzeigen'}
@@ -864,33 +941,55 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                 variant="outlined"
                 size="small"
                 sx={{ 
-                  mb: 1.4,
+                  mb: 2,
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 0.7,
-                    fontSize: '0.65rem',
-                    minHeight: '32px'
+                    borderRadius: 2,
+                    fontSize: '0.8rem',
+                    minHeight: '40px',
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colors.primary
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: colors.primary,
+                      borderWidth: 2
+                    }
+                  },
+                  '& .MuiInputLabel-root': {
+                    fontSize: '0.8rem',
+                    color: colors.textSecondary
                   }
                 }}
               />
               
-              <FormControl fullWidth size="small" sx={{ mb: 1.4 }}>
-                <InputLabel sx={{ fontSize: '0.65rem' }}>Notensystem</InputLabel>
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel sx={{ fontSize: '0.8rem', color: colors.textSecondary }}>Notensystem</InputLabel>
                 <Select
                   value={gradingSystem}
                   onChange={(e) => setGradingSystem(e.target.value)}
                   label="Notensystem"
                   sx={{
                     '& .MuiOutlinedInput-root': {
-                      borderRadius: 0.7,
-                      fontSize: '0.65rem',
-                      minHeight: '32px'
+                      borderRadius: 2,
+                      fontSize: '0.8rem',
+                      minHeight: '40px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: colors.primary,
+                        borderWidth: 2
+                      }
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: '0.8rem',
+                      color: colors.textSecondary
                     }
                   }}
                 >
-                  <MenuItem value="GERMAN" sx={{ fontSize: '0.65rem' }}>
+                  <MenuItem value="GERMAN" sx={{ fontSize: '0.8rem' }}>
                     Deutsches Schulnotensystem (1-6)
                   </MenuItem>
-                  <MenuItem value="MSS" sx={{ fontSize: '0.65rem' }}>
+                  <MenuItem value="MSS" sx={{ fontSize: '0.8rem' }}>
                     MSS-Punktesystem (0-15)
                   </MenuItem>
                 </Select>
@@ -899,79 +998,99 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
               {renderPreview()}
               
               {error && (
-                <Alert severity="error" sx={{ mb: 1.4, borderRadius: 0.7, fontSize: '0.6rem' }}>
+                <Alert severity="error" sx={{ 
+                  mb: 2, 
+                  borderRadius: 2, 
+                  fontSize: '0.8rem',
+                  border: `1px solid ${colors.error}`,
+                  '& .MuiAlert-icon': {
+                    color: colors.error
+                  }
+                }}>
                   {error}
                 </Alert>
               )}
               
-              <Box sx={{ mb: 1.4 }}>
+              <Box sx={{ mb: 2 }}>
                 <Typography variant="h6" gutterBottom sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 0.7,
-                  fontSize: '0.75rem',
+                  gap: 1,
+                  fontSize: '0.9rem',
                   fontWeight: 'bold',
-                  color: colors.textPrimary
+                  color: colors.textPrimary,
+                  mb: 1
                 }}>
-                  <CategoryIcon sx={{ fontSize: 14, color: colors.primary }} />
+                  <CategoryIcon sx={{ fontSize: 18, color: colors.primary }} />
                   Bewertungskategorien
                 </Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 0.7, fontSize: '0.6rem' }}>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5, fontSize: '0.75rem', lineHeight: 1.4 }}>
                   Erstellen Sie Kategorien und Unterkategorien mit Gewichtungen. 
                   Die Hauptkategorien müssen zusammen 100% ergeben. Unterkategorien können beliebige Gewichtungen haben.
                 </Typography>
                 
                 <Button
                   variant="contained"
-                  startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                  startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                   onClick={() => addGradeNode()}
                   sx={{ 
-                    mb: 0.7,
-                    borderRadius: 0.7,
-                    py: 0.2,
-                    px: 0.7,
-                    fontSize: '0.6rem',
-                    height: '24px',
-                    bgcolor: colors.primary,
-                    '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
+                    mb: 1.5,
+                    borderRadius: 2,
+                    py: 0.8,
+                    px: 2,
+                    fontSize: '0.8rem',
+                    height: '36px',
+                    background: `linear-gradient(135deg, ${colors.secondary} 0%, ${colors.accent2} 100%)`,
+                    '&:hover': { 
+                      background: `linear-gradient(135deg, ${colors.accent2} 0%, ${colors.secondary} 100%)`,
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                    }
                   }}
                 >
                   Hauptkategorie hinzufügen
                 </Button>
               </Box>
               
-              <Box sx={{ maxHeight: 300, overflowY: 'auto', pr: 0.35 }}>
+              <Box sx={{ maxHeight: 350, overflowY: 'auto', pr: 1 }}>
                 {gradeNodes.map(node => renderCategoryCard(node))}
               </Box>
               
               {gradeNodes.length > 0 && (
-                <Paper elevation={1} sx={{ mt: 1.4, p: 1.4, bgcolor: '#f8f9fa', borderRadius: 1.4 }}>
+                <Paper elevation={0} sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  bgcolor: colors.hover, 
+                  borderRadius: 2,
+                  border: `1px solid ${colors.border}`
+                }}>
                   <Typography variant="h6" gutterBottom sx={{ 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: 0.7,
-                    fontSize: '0.75rem',
+                    gap: 1,
+                    fontSize: '0.9rem',
                     fontWeight: 'bold',
-                    color: colors.textPrimary
+                    color: colors.textPrimary,
+                    mb: 1
                   }}>
-                    <InfoIcon sx={{ fontSize: 14, color: colors.primary }} />
+                    <InfoIcon sx={{ fontSize: 18, color: colors.primary }} />
                     Gesamtsumme: {calculateWeightSum(gradeNodes).toFixed(1)}%
                   </Typography>
                   <LinearProgress 
                     variant="determinate" 
                     value={Math.min(calculateWeightSum(gradeNodes), 100)} 
                     sx={{ 
-                      height: 4,
-                      borderRadius: 2,
-                      bgcolor: 'grey.200',
+                      height: 8,
+                      borderRadius: 4,
+                      bgcolor: colors.border,
                       '& .MuiLinearProgress-bar': {
-                        bgcolor: Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01 ? colors.success : '#f44336',
-                        borderRadius: 2,
+                        bgcolor: Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01 ? colors.success : colors.error,
+                        borderRadius: 4,
                       }
                     }} 
                   />
                   {Math.abs(calculateWeightSum(gradeNodes) - 100) > 0.01 && (
-                    <Typography color="error" variant="body2" sx={{ mt: 0.35, fontWeight: 'bold', fontSize: '0.6rem' }}>
+                    <Typography color="error" variant="body2" sx={{ mt: 1, fontWeight: 'bold', fontSize: '0.75rem' }}>
                       Die Gesamtsumme muss 100% betragen.
                     </Typography>
                   )}
@@ -982,16 +1101,27 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
         </Grid>
       </DialogContent>
       
-      <DialogActions sx={{ p: 1.4 }}>
+      <DialogActions sx={{ 
+        p: 2, 
+        background: colors.background,
+        borderTop: `1px solid ${colors.border}`,
+        borderRadius: '0 0 8px 8px'
+      }}>
         <Button 
           onClick={onClose}
           variant="outlined"
           sx={{ 
-            borderRadius: 0.7, 
-            px: 0.7,
-            py: 0.2,
-            fontSize: '0.6rem',
-            height: '24px'
+            borderRadius: 2, 
+            px: 2,
+            py: 1,
+            fontSize: '0.8rem',
+            height: '36px',
+            borderColor: colors.textSecondary,
+            color: colors.textSecondary,
+            '&:hover': {
+              borderColor: colors.textPrimary,
+              bgcolor: colors.hover
+            }
           }}
         >
           Abbrechen
@@ -1000,16 +1130,23 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
           onClick={handleSave} 
           variant="contained" 
           disabled={loading || !validateSchema(gradeNodes)}
-          startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 14 }} />}
+          startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 16 }} />}
           sx={{ 
-            borderRadius: 0.7, 
-            px: 0.7,
-            py: 0.2,
-            fontSize: '0.6rem',
-            height: '24px',
+            borderRadius: 2, 
+            px: 2,
+            py: 1,
+            fontSize: '0.8rem',
+            height: '36px',
             fontWeight: 'bold',
-            bgcolor: colors.primary,
-            '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
+            background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+            '&:hover': { 
+              background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+              transform: 'translateY(-1px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            },
+            '&:disabled': {
+              background: colors.textSecondary
+            }
           }}
         >
           {loading ? 'Speichern...' : (isEditing ? 'Aktualisieren' : 'Speichern')}

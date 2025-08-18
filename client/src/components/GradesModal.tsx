@@ -775,120 +775,270 @@ const GradesModal: React.FC<GradesModalProps> = ({
     <Dialog 
       open={open} 
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth={false}
-      sx={{ '& .MuiDialog-paper': { width: '50%', minWidth: 400 } }}
+      sx={{ '& .MuiDialog-paper': { width: '35%', minWidth: 320, maxWidth: 450 } }}
     >
-      <DialogTitle sx={{ pb: 0.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <GradeIcon sx={{ color: colors.primary, fontSize: 14 }} />
-          <Typography variant="h6" sx={{ 
-            fontWeight: 600, 
-            fontSize: '0.7rem',
-            color: colors.textPrimary
+      <DialogTitle sx={{ 
+        pb: 1.5, 
+        background: `linear-gradient(135deg, ${colors.primary}15 0%, ${colors.accent1}10 100%)`,
+        borderBottom: `2px solid ${colors.primary}30`,
+        position: 'relative'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ 
+            p: 0.5, 
+            borderRadius: '50%', 
+            bgcolor: colors.primary,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}>
-            Noten eintragen - {student.name}
+            <GradeIcon sx={{ color: 'white', fontSize: 16 }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ 
+              fontWeight: 700, 
+              fontSize: '0.85rem',
+              color: colors.textPrimary,
+              mb: 0.2
+            }}>
+              Noten eintragen
+            </Typography>
+            <Typography variant="body2" sx={{ 
+              fontSize: '0.75rem',
+              color: colors.primary,
+              fontWeight: 600
+            }}>
+              {student.name}
+            </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ 
+          mt: 1, 
+          p: 0.8, 
+          bgcolor: 'white', 
+          borderRadius: 1,
+          border: `1px solid ${colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5
+        }}>
+          <Typography variant="caption" sx={{ 
+            fontSize: '0.65rem', 
+            color: colors.textSecondary,
+            fontWeight: 500
+          }}>
+            📚 {groupName}
+          </Typography>
+          <Typography variant="caption" sx={{ 
+            fontSize: '0.65rem', 
+            color: colors.textSecondary,
+            fontWeight: 500
+          }}>
+            •
+          </Typography>
+          <Typography variant="caption" sx={{ 
+            fontSize: '0.65rem', 
+            color: colors.accent1,
+            fontWeight: 600
+          }}>
+            {gradingSchema?.name}
           </Typography>
         </Box>
-        <Typography variant="caption" sx={{ fontSize: '0.55rem', color: colors.textSecondary }}>
-          {groupName} • {gradingSchema?.name}
-        </Typography>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 1 }}>
+      <DialogContent sx={{ p: 2, pt: 1.5 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 1, borderRadius: 0.6, fontSize: '0.55rem' }}>
+          <Alert severity="error" sx={{ 
+            mb: 1.5, 
+            borderRadius: 1, 
+            fontSize: '0.65rem',
+            border: `1px solid ${colors.accent2}30`,
+            '& .MuiAlert-icon': { color: colors.accent2 }
+          }}>
             {error}
           </Alert>
         )}
         
         {success && (
-          <Alert severity="success" sx={{ mb: 1, borderRadius: 0.6, fontSize: '0.55rem' }}>
+          <Alert severity="success" sx={{ 
+            mb: 1.5, 
+            borderRadius: 1, 
+            fontSize: '0.65rem',
+            border: `1px solid ${colors.success}30`,
+            '& .MuiAlert-icon': { color: colors.success }
+          }}>
             {success}
           </Alert>
         )}
 
-        <Box sx={{ mb: 1 }}>
-          
-          <Typography variant="h6" sx={{ 
-            fontSize: '0.7rem',
-            fontWeight: 'bold',
-            color: colors.textPrimary,
-            mb: 0.5
+        <Box sx={{ mb: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1, 
+            mb: 1.5,
+            p: 1,
+            bgcolor: `${colors.primary}08`,
+            borderRadius: 1,
+            border: `1px solid ${colors.primary}20`
           }}>
-            Bewertungskategorien
-          </Typography>
+            <Typography variant="h6" sx={{ 
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              color: colors.primary,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5
+            }}>
+              📊 Bewertungskategorien
+            </Typography>
+          </Box>
           
-          <Box sx={{ maxHeight: 350, overflowY: 'auto', pr: 0.3 }}>
+          <Box sx={{ 
+            maxHeight: 400, 
+            overflowY: 'auto', 
+            pr: 0.5,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 1,
+            bgcolor: '#fafbfc'
+          }}>
             {gradeNodes.map(node => renderGradeNode(node))}
           </Box>
         </Box>
         
         {finalGrade > 0 && (
-          <Paper elevation={1} sx={{ p: 1, bgcolor: '#f8f9fa', borderRadius: 1 }}>
+          <Paper elevation={0} sx={{ 
+            p: 1.5, 
+            background: `linear-gradient(135deg, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}15 0%, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}08 100%)`,
+            borderRadius: 1.5,
+            border: `2px solid ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <Box sx={{ 
+              position: 'absolute', 
+              top: 0, 
+              right: 0, 
+              width: 60, 
+              height: 60, 
+              background: `radial-gradient(circle, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}20 0%, transparent 70%)`,
+              borderRadius: '50%',
+              transform: 'translate(20px, -20px)'
+            }} />
+            
             <Typography variant="h6" sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 0.5,
-              fontSize: '0.7rem',
-              fontWeight: 'bold',
-              color: colors.textPrimary
+              gap: 1,
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              color: colors.textPrimary,
+              mb: 1,
+              position: 'relative',
+              zIndex: 1
             }}>
-              <AssessmentIcon sx={{ fontSize: 12, color: colors.primary }} />
-              Gesamtnote: {gradingSchema?.gradingSystem === 'MSS' ? 
-                `${finalGrade.toFixed(0)} Punkte` : 
-                formatGermanGrade(finalGrade)
-              }
+              <AssessmentIcon sx={{ 
+                fontSize: 16, 
+                color: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+              }} />
+              🎯 Gesamtnote
             </Typography>
-            <Chip 
-              label={gradingSchema?.gradingSystem === 'MSS' ? 
-                `${finalGrade.toFixed(0)} Punkte` : 
-                formatGermanGrade(finalGrade)
-              }
-              sx={{ 
-                bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: '0.65rem',
-                height: 24,
-                mt: 0.5
-              }}
-            />
+            
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1.5,
+              position: 'relative',
+              zIndex: 1
+            }}>
+              <Chip 
+                label={gradingSchema?.gradingSystem === 'MSS' ? 
+                  `${finalGrade.toFixed(0)} Punkte` : 
+                  formatGermanGrade(finalGrade)
+                }
+                sx={{ 
+                  bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  height: 32,
+                  px: 1.5,
+                  boxShadow: `0 2px 8px ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
+                  '& .MuiChip-label': { px: 1.5 }
+                }}
+              />
+              <Typography variant="body2" sx={{ 
+                fontSize: '0.7rem',
+                color: colors.textSecondary,
+                fontWeight: 500
+              }}>
+                {gradingSchema?.gradingSystem === 'MSS' ? 
+                  'MSS-System' : 
+                  'Deutsches System'
+                }
+              </Typography>
+            </Box>
           </Paper>
         )}
       </DialogContent>
       
-      <DialogActions sx={{ p: 1 }}>
+      <DialogActions sx={{ 
+        p: 2, 
+        pt: 1,
+        background: `linear-gradient(135deg, ${colors.primary}05 0%, ${colors.accent1}03 100%)`,
+        borderTop: `1px solid ${colors.border}`
+      }}>
         <Button 
           onClick={onClose}
           variant="outlined"
           sx={{ 
-            borderRadius: 0.6, 
-            px: 0.6,
-            py: 0.15,
-            fontSize: '0.55rem',
-            height: '20px'
+            borderRadius: 1.5, 
+            px: 2,
+            py: 0.8,
+            fontSize: '0.7rem',
+            height: '32px',
+            borderColor: colors.border,
+            color: colors.textSecondary,
+            fontWeight: 500,
+            '&:hover': {
+              borderColor: colors.primary,
+              color: colors.primary,
+              bgcolor: `${colors.primary}08`
+            }
           }}
         >
-          Abbrechen
+          ❌ Abbrechen
         </Button>
         <Button 
           onClick={handleSave} 
           variant="contained" 
           disabled={saving}
           startIcon={saving ? undefined : <SaveIcon sx={{ fontSize: 12 }} />}
-          sx={{ 
-            borderRadius: 0.6, 
-            px: 0.6,
-            py: 0.15,
-            fontSize: '0.55rem',
-            height: '20px',
-            fontWeight: 'bold',
-            bgcolor: colors.primary,
-            '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' }
+          sx={{
+            borderRadius: 1.5,
+            px: 2.5,
+            py: 0.8,
+            fontSize: '0.7rem',
+            height: '32px',
+            fontWeight: 600,
+            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+            boxShadow: `0 2px 8px ${colors.primary}40`,
+            '&:hover': {
+              background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+              boxShadow: `0 4px 12px ${colors.primary}50`,
+              transform: 'translateY(-1px)'
+            },
+            '&:disabled': {
+              background: colors.textSecondary,
+              boxShadow: 'none',
+              transform: 'none'
+            }
           }}
         >
-          {saving ? 'Speichern...' : 'Noten speichern'}
+          {saving ? '💾 Speichern...' : '💾 Noten speichern'}
         </Button>
       </DialogActions>
     </Dialog>
