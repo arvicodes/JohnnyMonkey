@@ -48,19 +48,34 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       const foundQuizId = quizData.quiz.id;
       setQuizId(foundQuizId);
       
-      // Check if there's an active session
-      const sessionResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/active`);
-      if (!sessionResponse.ok) {
-        setQuizStatus('error');
-        return;
+      // Check if there's an active session first
+      const activeSessionResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/active`);
+      let session = null;
+      
+      if (activeSessionResponse.ok) {
+        session = await activeSessionResponse.json();
       }
       
-      const session = await sessionResponse.json();
+      // If no active session, check for the most recent session
+      if (!session) {
+        const sessionsResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/sessions`);
+        if (sessionsResponse.ok) {
+          const sessions = await sessionsResponse.json();
+          if (sessions && sessions.length > 0) {
+            session = sessions[0]; // Most recent session
+          }
+        }
+      }
+      
+      if (!session) {
+        setQuizStatus('available');
+        return;
+      }
       
       // Check if student has participated and completed
       const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${userId}`);
       if (!participationResponse.ok) {
-        setQuizStatus('error');
+        setQuizStatus('available');
         return;
       }
       
@@ -73,14 +88,14 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
         if (participation.resultsReleased) {
           setQuizStatus('completed');
         } else {
-          setQuizStatus('available'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
+          setQuizStatus('completed'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
         }
       } else {
         setQuizStatus('available');
       }
     } catch (error) {
       console.error('Error checking quiz status:', error);
-      setQuizStatus('error');
+      setQuizStatus('available');
     }
   };
 
@@ -117,6 +132,9 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
           const results = await participationResponse.json();
           setQuizResults(results);
           setShowQuizResults(true);
+        } else if (participationResponse.status === 403) {
+          // Ergebnisse noch nicht freigegeben
+          alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
         } else {
           alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
         }
@@ -141,6 +159,12 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       case 'available':
         return `Quiz starten: ${quizName}`;
       case 'completed':
+        // Prüfe, ob Ergebnisse freigegeben sind
+        if (quizId) {
+          // Hier können wir den Freigabe-Status aus dem State abrufen
+          // Für jetzt zeigen wir immer "Ergebnisse" an, wenn Quiz abgeschlossen ist
+          return `Ergebnisse: ${quizName}`;
+        }
         return `Ergebnisse: ${quizName}`;
       case 'error':
         return `Quiz nicht verfügbar: ${quizName}`;

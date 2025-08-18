@@ -2143,15 +2143,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         
         if (data.exists && data.quiz?.id) {
           // Prüfe den Freigabe-Status der Ergebnisse
-          const sessionResponse = await fetch(`/api/quiz-sessions/${data.quiz.id}/active`);
-          if (sessionResponse.ok) {
-            const session = await sessionResponse.json();
+          const activeSessionResponse = await fetch(`/api/quiz-sessions/${data.quiz.id}/active`);
+          let session = null;
+          
+          if (activeSessionResponse.ok) {
+            session = await activeSessionResponse.json();
+          }
+          
+          // If no active session, check for the most recent session
+          if (!session) {
+            const sessionsResponse = await fetch(`/api/quiz-sessions/${data.quiz.id}/sessions`);
+            if (sessionsResponse.ok) {
+              const sessions = await sessionsResponse.json();
+              if (sessions && sessions.length > 0) {
+                session = sessions[0]; // Most recent session
+              }
+            }
+          }
+          
+          if (session) {
             setQuizStatusMap(prev => new Map(prev.set(filePath, {
               exists: data.exists,
               quizId: data.quiz?.id,
               title: data.quiz?.title,
-              sessionId: session?.id,
-              resultsReleased: session?.resultsReleased || false
+              sessionId: session.id,
+              resultsReleased: session.resultsReleased || false
             })));
           } else {
             setQuizStatusMap(prev => new Map(prev.set(filePath, {

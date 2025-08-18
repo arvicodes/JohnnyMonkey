@@ -461,6 +461,9 @@ export const getParticipationStatus = async (req: Request, res: Response) => {
           sessionId: sessionId,
           studentId: studentId
         }
+      },
+      include: {
+        session: true
       }
     });
 
@@ -471,11 +474,13 @@ export const getParticipationStatus = async (req: Request, res: Response) => {
     res.json({
       hasParticipated: true,
       isCompleted: !!participation.completedAt,
+      completed: !!participation.completedAt, // Alias für Kompatibilität
       participationId: participation.id,
       score: participation.score,
       maxScore: participation.maxScore,
       startedAt: participation.startedAt,
-      completedAt: participation.completedAt
+      completedAt: participation.completedAt,
+      resultsReleased: participation.session.resultsReleased || false
     });
   } catch (error) {
     console.error('Error getting participation status:', error);
