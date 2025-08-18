@@ -1,12 +1,18 @@
 import express from 'express';
-import { createSchema, getSchemas, updateSchema, deleteSchema, getAllSchemas } from '../controllers/GradingSchemaController';
+import { 
+  createGradingSchema, 
+  getGradingSchemas, 
+  updateGradingSchema, 
+  deleteGradingSchema,
+  createMSSSchema
+} from '../controllers/GradingSchemaController';
 
 const router = express.Router();
 
-router.post('/', createSchema);
-router.get('/all', getAllSchemas); // New route to get all schemas
-router.get('/:groupId', getSchemas);
-router.put('/:id', updateSchema);
-router.delete('/:id', deleteSchema);
+router.post('/', createGradingSchema);
+router.post('/mss/:groupId', createMSSSchema); // Spezielle Route für MSS-Schema
+router.get('/:groupId', getGradingSchemas);
+router.put('/:id', updateGradingSchema);
+router.delete('/:id', deleteGradingSchema);
 
 export default router; 

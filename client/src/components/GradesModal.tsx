@@ -4,7 +4,9 @@ import {
   Grade as GradeIcon,
   Assessment as AssessmentIcon,
   Lock as LockIcon,
-  LockOpen as LockOpenIcon
+  LockOpen as LockOpenIcon,
+  ExpandLess,
+  ExpandMore
 } from '@mui/icons-material';
 import {
   Dialog,
@@ -21,7 +23,8 @@ import {
   Chip,
   Alert,
   LinearProgress,
-  IconButton
+  IconButton,
+  InputAdornment
 } from '@mui/material';
 
 interface GradeNode {
@@ -67,6 +70,7 @@ const colors = {
   success: '#4CAF50',
   textPrimary: '#2C3E50',
   textSecondary: '#7F8C8D',
+  border: '#e0e0e0' // Neu: Farbe für Linien
 };
 
 const GradesModal: React.FC<GradesModalProps> = ({
@@ -83,6 +87,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [lockedGrades, setLockedGrades] = useState<Set<string>>(new Set()); // Neu: Set der gesperrten Noten-IDs
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set()); // Neu: Set der erweiterten Kategorien
 
   const fetchGradingSchema = useCallback(async () => {
     try {
@@ -231,6 +236,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
       const indent = line.search(/\S/);
       
+      // Verbesserte Regex für verschiedene Formate
       let match = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
       if (!match) {
         match = line.trim().match(/^(.+?)\s+(\d+(?:\.\d+)?)%?$/);
@@ -246,14 +252,23 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
       if (isNaN(weight)) continue;
 
+      // Bereinige den Namen - entferne doppelte Einträge
+      let cleanName = name.trim();
+      
+      // Wenn der Name mit dem vorherigen übereinstimmt, überspringe ihn
+      if (stack.length > 0 && stack[stack.length - 1].node.name === cleanName) {
+        continue;
+      }
+
       const node: GradeNode = {
         id: generateId(),
-        name: name.trim(),
+        name: cleanName,
         weight: weight,
         children: [],
-        originalLevel: Math.floor(indent / 2) // Speichere das ursprüngliche Level basierend auf Einrückung
+        originalLevel: Math.floor(indent / 2)
       };
 
+      // Korrekte Hierarchie basierend auf Einrückung
       while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
         stack.pop();
       }
@@ -544,269 +559,162 @@ const GradesModal: React.FC<GradesModalProps> = ({
     return grades;
   };
 
-  const renderGradeInput = (node: GradeNode, level: number = 0) => {
-    const isTopLevel = level === 0;
-    const hasChildren = node.children.length > 0;
-    // Verwende originalLevel falls verfügbar, sonst das übergebene level
-    const displayLevel = node.originalLevel !== undefined ? node.originalLevel : level;
+  const toggleNodeExpansion = (nodeId: string) => {
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatGermanMini = (grade: number): string => {
+    if (grade === 1.0) return '1';
+    if (grade === 1.3) return '1-';
+    if (grade === 1.7) return '2+';
+    if (grade === 2.0) return '2';
+    if (grade === 2.3) return '2-';
+    if (grade === 2.7) return '3+';
+    if (grade === 3.0) return '3';
+    if (grade === 3.3) return '3-';
+    if (grade === 3.7) return '4+';
+    if (grade === 4.0) return '4';
+    if (grade === 4.3) return '4-';
+    if (grade === 4.7) return '5+';
+    if (grade === 5.0) return '5';
+    if (grade === 5.3) return '5-';
+    if (grade === 6.0) return '6';
+    return grade.toFixed(1);
+  };
+
+  const renderGradeNode = (node: GradeNode, level: number = 0): JSX.Element => {
+    const isLeaf = node.children.length === 0;
+    const isCalculated = !isLeaf && node.grade !== undefined;
+    const isLocked = isGradeLocked(node.id);
+    
+    // Für MSS: Zeige nur die relevanten Einträge, nicht die doppelten "Oberstufe"
+    if (gradingSchema?.gradingSystem === 'MSS' && node.name === 'Oberstufe - MSS' && level === 0) {
+      // Überspringe den Root-Eintrag für MSS, zeige direkt die Kinder
+      return (
+        <Box key={node.id}>
+          {node.children.map(child => renderGradeNode(child, level + 1))}
+        </Box>
+      );
+    }
 
     return (
-      <Box key={node.id} sx={{ mb: 0.4 }}>
-        <Card 
-          variant="outlined" 
-          sx={{ 
-            borderRadius: 1,
-            ml: displayLevel * 4, // Kompaktere Einrückung
-            borderLeft: displayLevel > 0 ? `3px solid ${isTopLevel ? colors.primary : 
-                              displayLevel === 1 ? colors.accent1 : 
-                              displayLevel === 2 ? colors.secondary : colors.accent2}` : '1px solid #e0e0e0',
-            bgcolor: displayLevel === 0 ? '#ffffff' : 
-                     displayLevel === 1 ? '#f8fbff' : 
-                     displayLevel === 2 ? '#fff8f5' : '#f5f8ff',
-            borderColor: displayLevel === 0 ? '#e0e0e0' : 
-                        displayLevel === 1 ? '#d0e0f0' : 
-                        displayLevel === 2 ? '#f0d0c0' : '#e0d0f0'
+      <Box key={node.id} sx={{ mb: 1 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            pl: level * 2,
+            borderLeft: level > 0 ? `2px solid ${colors.border}` : 'none',
+            py: 0.5
           }}
         >
-          <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'nowrap' }}>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  fontSize: '0.6rem',
-                  fontWeight: 'bold',
-                  color: colors.textPrimary,
-                  minWidth: '100px'
-                }}
-              >
-                {node.name}
-              </Typography>
-              
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  fontSize: '0.55rem',
-                  color: colors.textSecondary,
-                  minWidth: '60px'
-                }}
-              >
-                {node.weight}%
-              </Typography>
-              
-              {!hasChildren ? (
-                // Nur für Blattknoten (ohne Kinder) - manuelle Eingabe
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontSize: '0.5rem',
-                      color: colors.textSecondary,
-                      fontStyle: 'italic',
-                      minWidth: '50px'
-                    }}
-                  >
-                    Eingabe
-                  </Typography>
-                  <TextField
-                    size="small"
-                    value={node.grade !== undefined ? 
-                      (gradingSchema?.gradingSystem === 'MSS' ? 
-                        node.grade.toString() : 
-                        formatGermanGrade(node.grade)
-                      ) : ''
-                    }
-                    inputProps={{
-                      // Für MSS: Nur Zahlen 0-15 erlauben
-                      ...(gradingSchema?.gradingSystem === 'MSS' && {
-                        pattern: '[0-9]*',
-                        inputMode: 'numeric',
-                        min: 0,
-                        max: 15
-                      })
-                    }}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === '') {
-                        updateGrade(node.id, undefined);
-                      } else {
-                        // Für MSS: Nur natürliche Zahlen 0-15
-                        if (gradingSchema?.gradingSystem === 'MSS') {
-                          // Erlaube nur Zahlen und Leerzeichen
-                          if (/^[0-9\s]*$/.test(value)) {
-                            const numValue = Number(value);
-                            if (!isNaN(numValue) && numValue >= 0 && numValue <= 15 && Number.isInteger(numValue)) {
-                              updateGrade(node.id, numValue);
-                            }
-                          }
-                        } else {
-                          // Für deutsche Noten: Konvertiere Text zu numerischem Wert
-                          const germanGrade = convertGermanGradeTextToNumber(value);
-                          if (germanGrade !== null) {
-                            updateGrade(node.id, germanGrade);
-                          }
-                        }
-                      }
-                    }}
-                    placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
-                    disabled={isGradeLocked(node.id)}
-                    error={gradingSchema?.gradingSystem === 'MSS' && 
-                           node.grade !== undefined && 
-                           (node.grade < 0 || node.grade > 15 || !Number.isInteger(node.grade))}
-                    helperText={gradingSchema?.gradingSystem === 'MSS' && 
-                               node.grade !== undefined && 
-                               (node.grade < 0 || node.grade > 15 || !Number.isInteger(node.grade)) ? 
-                               'Nur Zahlen 0-15 erlaubt' : ''}
-                    sx={{ 
-                      fontSize: '0.6rem',
-                      flex: 1,
-                      maxWidth: '100px',
-                      '& .MuiInputBase-input': { 
-                        fontSize: '0.6rem',
-                        padding: '4px 8px'
-                      },
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 0.6,
-                        minHeight: '28px',
-                        ...(isGradeLocked(node.id) && {
-                          bgcolor: '#f8f8f8',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: colors.accent2,
-                            borderWidth: '1.5px'
-                          }
-                        })
-                      }
-                    }}
-                  />
-                  {/* Warnung für ungültige MSS-Noten */}
-                  {gradingSchema?.gradingSystem === 'MSS' && 
-                   node.grade !== undefined && 
-                   (node.grade < 0 || node.grade > 15 || !Number.isInteger(node.grade)) && (
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        color: colors.accent2,
-                        fontSize: '0.45rem',
-                        fontStyle: 'italic',
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        mt: 0.2
-                      }}
-                    >
-                      ⚠️ Nur 0-15 erlaubt
-                    </Typography>
-                  )}
-                  {node.grade !== undefined && (
-                    <Chip
-                      label={gradingSchema?.gradingSystem === 'MSS' ? 
-                        `${node.grade} Punkte` : 
-                        formatGermanGrade(node.grade)
-                      }
-                      size="small"
-                      sx={{
-                        bgcolor: getGradeColor(node.grade, gradingSchema?.gradingSystem),
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '0.55rem',
-                        height: 20,
-                        px: 0.6
-                      }}
-                    />
-                  )}
-                  {node.grade !== undefined && (
+          {!isLeaf && (
+            <IconButton
+              size="small"
+              onClick={() => toggleNodeExpansion(node.id)}
+              sx={{ p: 0.5 }}
+            >
+              {expandedNodes.has(node.id) ? <ExpandLess /> : <ExpandMore />}
+            </IconButton>
+          )}
+          
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: isLeaf ? 'normal' : 'bold',
+              color: isLeaf ? colors.textPrimary : colors.textSecondary,
+              fontSize: isLeaf ? '0.875rem' : '0.9rem'
+            }}
+          >
+            {node.name}
+          </Typography>
+          
+          <Typography
+            variant="caption"
+            sx={{
+              color: colors.textSecondary,
+              fontSize: '0.75rem'
+            }}
+          >
+            ({node.weight}%)
+          </Typography>
+
+          {isLeaf && (
+            <TextField
+              size="small"
+              type="number"
+              value={node.grade || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                const grade = value === '' ? undefined : parseFloat(value);
+                updateGrade(node.id, grade);
+              }}
+              disabled={isLocked}
+              sx={{
+                width: 80,
+                ml: 'auto',
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 0.7,
+                  fontSize: '0.75rem',
+                  minHeight: '32px'
+                }
+              }}
+              placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
+              error={gradingSchema?.gradingSystem === 'MSS' &&
+                node.grade !== undefined &&
+                (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15)
+              }
+              helperText={gradingSchema?.gradingSystem === 'MSS' &&
+                node.grade !== undefined &&
+                (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15) &&
+                'MSS: 0-15'
+              }
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
                     <IconButton
                       size="small"
                       onClick={() => toggleGradeLock(node.id)}
-                      sx={{ 
-                        p: 0.3,
-                        bgcolor: isGradeLocked(node.id) ? colors.accent2 : 'transparent',
-                        color: isGradeLocked(node.id) ? 'white' : colors.textSecondary,
-                        border: `1px solid ${isGradeLocked(node.id) ? colors.accent2 : '#ddd'}`,
-                        borderRadius: 0.6,
-                        width: '24px',
-                        height: '24px',
-                        '&:hover': {
-                          bgcolor: isGradeLocked(node.id) ? colors.accent2 : colors.primary,
-                          color: 'white',
-                          borderColor: isGradeLocked(node.id) ? colors.accent2 : colors.primary
-                        },
-                        transition: 'all 0.2s ease'
-                      }}
-                      title={isGradeLocked(node.id) ? 'Note entsperren' : 'Note sperren'}
+                      sx={{ p: 0.5 }}
                     >
-                      {isGradeLocked(node.id) ? <LockIcon sx={{ fontSize: 12 }} /> : <LockOpenIcon sx={{ fontSize: 12 }} />}
+                      {isLocked ? <LockIcon sx={{ fontSize: 16 }} /> : <LockOpenIcon sx={{ fontSize: 16 }} />}
                     </IconButton>
-                  )}
-                </Box>
-              ) : (
-                // Für Kategorien mit Kindern - automatisch berechnete Note
-                (() => {
-                  const intermediateGrade = calculateIntermediateGrade(node);
-                  return intermediateGrade !== null ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          fontSize: '0.5rem',
-                          color: colors.textSecondary,
-                          fontStyle: 'italic',
-                          minWidth: '50px'
-                        }}
-                      >
-                        Berechnet
-                      </Typography>
-                      <Chip 
-                        label={`${gradingSchema?.gradingSystem === 'MSS' ? 
-                          `${intermediateGrade.toFixed(0)} Punkte` : 
-                          formatGermanGrade(intermediateGrade)
-                        }`}
-                        size="small"
-                        sx={{ 
-                          bgcolor: getGradeColor(intermediateGrade, gradingSchema?.gradingSystem),
-                          color: 'white',
-                          fontWeight: 'bold',
-                          fontSize: '0.55rem',
-                          height: 20,
-                          opacity: 0.8
-                        }}
-                      />
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: 1 }}>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          fontSize: '0.5rem',
-                          color: colors.textSecondary,
-                          fontStyle: 'italic',
-                          minWidth: '50px'
-                        }}
-                      >
-                        Berechnet
-                      </Typography>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          fontSize: '0.55rem',
-                          color: colors.textSecondary,
-                          fontStyle: 'italic'
-                        }}
-                      >
-                        Keine Noten
-                      </Typography>
-                    </Box>
-                  );
-                })()
-              )}
-              
+                  </InputAdornment>
+                )
+              }}
+            />
+          )}
 
-            </Box>
-          </CardContent>
-        </Card>
-        
-        {hasChildren && (
-          <Box sx={{ mt: 0.2 }}>
-            {node.children.map(child => renderGradeInput(child, level + 1))}
+          {isCalculated && (
+            <Chip
+              label={`${gradingSchema?.gradingSystem === 'MSS' ?
+                node.grade?.toFixed(0) :
+                formatGermanMini(node.grade || 0)
+              }`}
+              size="small"
+              sx={{
+                ml: 'auto',
+                backgroundColor: getGradeColor(node.grade || 0, gradingSchema?.gradingSystem),
+                color: 'white',
+                fontSize: '0.7rem',
+                height: '24px'
+              }}
+            />
+          )}
+        </Box>
+
+        {!isLeaf && expandedNodes.has(node.id) && (
+          <Box sx={{ pl: 2 }}>
+            {node.children.map(child => renderGradeNode(child, level + 1))}
           </Box>
         )}
       </Box>
@@ -874,7 +782,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
           </Typography>
           
           <Box sx={{ maxHeight: 350, overflowY: 'auto', pr: 0.3 }}>
-            {gradeNodes.map(node => renderGradeInput(node))}
+            {gradeNodes.map(node => renderGradeNode(node))}
           </Box>
         </Box>
         
