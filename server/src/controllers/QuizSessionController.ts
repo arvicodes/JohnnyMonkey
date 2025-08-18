@@ -332,18 +332,24 @@ export const releaseResults = async (req: Request, res: Response) => {
     }
 
     // Lehrer kann Ergebnisse jederzeit freigeben, auch wenn Session noch läuft
+    // Toggle-Funktionalität: Wenn bereits freigegeben, dann zurücknehmen
+    const newResultsReleased = !session.resultsReleased;
+    const actionText = newResultsReleased ? 'freigegeben' : 'zurückgenommen';
 
     await prisma.quizSession.update({
       where: { id: sessionId },
-      data: { 
-        resultsReleased: true,
+      data: {
+        resultsReleased: newResultsReleased,
         updatedAt: new Date()
       }
     });
 
-    res.json({ message: 'Quiz-Ergebnisse erfolgreich freigegeben' });
+    res.json({ 
+      message: `Quiz-Ergebnisse erfolgreich ${actionText}`,
+      resultsReleased: newResultsReleased
+    });
   } catch (error) {
-    console.error('Error releasing results:', error);
-    res.status(500).json({ error: 'Fehler beim Freigeben der Ergebnisse' });
+    console.error('Error toggling results release:', error);
+    res.status(500).json({ error: 'Fehler beim Freigeben/Zurücknehmen der Ergebnisse' });
   }
 }; 

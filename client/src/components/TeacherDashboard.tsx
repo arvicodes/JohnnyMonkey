@@ -1333,10 +1333,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             )}
 
             {/* Ergebnisse freigeben Button - wenn Quiz beendet ist aber Ergebnisse noch nicht freigegeben */}
-            {item.type === 'file' && item.name.startsWith('Quiz') && 
-             quizStatusMap.get(item.path)?.exists && 
-             quizStatusMap.get(item.path)?.sessionId && 
-             !quizStatusMap.get(item.path)?.resultsReleased && (
+                        {item.type === 'file' && item.name.startsWith('Quiz') &&
+             quizStatusMap.get(item.path)?.exists &&
+             quizStatusMap.get(item.path)?.sessionId && (
               <Box
                 sx={{
                   display: 'flex',
@@ -1346,14 +1345,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   cursor: 'pointer',
                   padding: '4px',
                   borderRadius: '4px',
-                  backgroundColor: '#ff9800',
+                  backgroundColor: quizStatusMap.get(item.path)?.resultsReleased ? '#4caf50' : '#ff9800',
                   color: 'white',
                   '&:hover': {
-                    backgroundColor: '#f57c00',
+                    backgroundColor: quizStatusMap.get(item.path)?.resultsReleased ? '#45a049' : '#f57c00',
                     opacity: 0.9
                   }
                 }}
-                title="Ergebnisse jetzt freigeben"
+                title={quizStatusMap.get(item.path)?.resultsReleased ? 
+                  'Ergebnisse zurücknehmen' : 
+                  'Ergebnisse jetzt freigeben'
+                }
                 onClick={() => {
                   const sessionId = quizStatusMap.get(item.path)?.sessionId;
                   if (sessionId) {
@@ -1361,40 +1363,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   }
                 }}
               >
-                <Typography variant="caption" sx={{ 
+                <Typography variant="caption" sx={{
                   fontSize: '0.8rem',
                   userSelect: 'none'
                 }}>
-                  🔓
+                  {quizStatusMap.get(item.path)?.resultsReleased ? '🔒' : '🔓'}
                 </Typography>
               </Box>
             )}
 
             {/* Ergebnisse bereits freigegeben - grüner Haken */}
-            {item.type === 'file' && item.name.startsWith('Quiz') && 
-             quizStatusMap.get(item.path)?.exists && 
-             quizStatusMap.get(item.path)?.resultsReleased && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  ml: 0.5,
-                  padding: '4px',
-                  borderRadius: '4px',
-                  backgroundColor: '#4caf50',
-                  color: 'white'
-                }}
-                title="Ergebnisse bereits freigegeben"
-              >
-                <Typography variant="caption" sx={{ 
-                  fontSize: '0.8rem',
-                  userSelect: 'none'
-                }}>
-                  ✅
-                </Typography>
-              </Box>
-            )}
+            
           </Box>
           
           {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
@@ -2239,16 +2218,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       });
 
       if (response.ok) {
-        alert('Quiz-Ergebnisse erfolgreich freigegeben!');
-        // Status aktualisieren
+        const data = await response.json();
+        alert(data.message);
         await checkQuizStatus(filePath);
       } else {
         const errorText = await response.text();
-        alert(`Fehler beim Freigeben der Ergebnisse: ${errorText}`);
+        alert(`Fehler beim Freigeben/Zurücknehmen der Ergebnisse: ${errorText}`);
       }
     } catch (error) {
-      console.error('Error releasing results:', error);
-      alert('Fehler beim Freigeben der Ergebnisse');
+      console.error('Error toggling results release:', error);
+      alert('Fehler beim Freigeben/Zurücknehmen der Ergebnisse');
     }
   };
 

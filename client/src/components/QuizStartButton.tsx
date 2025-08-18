@@ -27,6 +27,15 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
 
   useEffect(() => {
     checkQuizStatus();
+    
+    // Polling für Freigabe-Status alle 5 Sekunden
+    const interval = setInterval(() => {
+      if (quizStatus === 'completed') {
+        checkQuizStatus();
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, [quizFile.path]);
 
   const checkQuizStatus = async () => {
