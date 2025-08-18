@@ -85,6 +85,8 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   const [showTip, setShowTip] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usedTips, setUsedTips] = useState<Set<string>>(new Set()); // Neue State für verwendete Tipps
+  const [tipPenalty, setTipPenalty] = useState(0); // Neue State für Tipp-Punkteabzug
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Prüfe den Status der Teilnahme beim Laden
@@ -196,7 +198,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
             resultsMap[question.id] = {
               selected: answer.selectedAnswer,
               correct: answer.correctAnswer,
-              isCorrect: !!answer.isCorrect,
+              isCorrect: answer.selectedAnswer === answer.correctAnswer
             };
           }
         });
@@ -204,16 +206,45 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         setAnswers(answersMap);
         setResultAnswersByQuestionId(resultsMap);
         
-        // Debug: Überprüfe, ob Fragen mit Erklärungen geladen wurden
-        console.log('Quiz-Fragen geladen:', questions.length);
-        console.log('Fragen mit Erklärungen:', questions.filter(q => q.explanation).length);
-        console.log('Beispiel-Frage mit Erklärung:', questions.find(q => q.explanation));
+        // Berechne den finalen Prozentsatz
+        const correctCount = Object.values(resultsMap).filter(r => r.isCorrect).length;
+        const basePercentage = (correctCount / questions.length) * 100;
+        
+        // Berechne den finalen Prozentsatz mit Tipp-Punkteabzug
+        const finalScore = calculateFinalScore();
+        setFinalPercentage(finalScore);
+        
+        setShowResults(true);
+        setLoading(false);
       } else {
-        setError('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
+        setError('Ergebnisse konnten nicht geladen werden');
       }
     } catch (err) {
-      setError('Quiz beendet! Deine Ergebnisse werden in Kürze von deiner Lehrkraft freigegeben. Bitte warte, bis du eine Benachrichtigung erhältst.');
+      setError('Fehler beim Laden der Ergebnisse');
     }
+  };
+
+  // Tipp-Funktionalität mit Punkteabzug
+  const handleTipUse = (questionId: string) => {
+    if (!usedTips.has(questionId)) {
+      setUsedTips(prev => new Set(Array.from(prev).concat(questionId)));
+      // Punkteabzug für Tipp: 10% der möglichen Punkte pro Frage
+      const pointsPerQuestion = 100 / questions.length;
+      const penalty = pointsPerQuestion * 0.1; // 10% Abzug
+      setTipPenalty(prev => prev + penalty);
+    }
+    setShowTip(!showTip);
+  };
+
+  const calculateFinalScore = (): number => {
+    const correctAnswers = Object.keys(resultAnswersByQuestionId).filter(
+      questionId => resultAnswersByQuestionId[questionId].isCorrect
+    ).length;
+    
+    const baseScore = (correctAnswers / questions.length) * 100;
+    const finalScore = Math.max(0, baseScore - tipPenalty); // Mindestens 0 Punkte
+    
+    return Math.round(finalScore * 100) / 100; // Auf 2 Dezimalstellen runden
   };
 
   const handleStartParticipation = async () => {
@@ -1032,7 +1063,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => setShowTip(!showTip)}
+                    onClick={() => handleTipUse(currentQuestion.id)}
                     sx={{
                       color: '#ff9800',
                       borderColor: '#ff9800',
@@ -1048,6 +1079,19 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                   >
                     {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
                   </Button>
+                  
+                  {/* Warnung über Punkteabzug */}
+                  {!usedTips.has(currentQuestion.id) && (
+                    <Typography variant="caption" sx={{ 
+                      display: 'block', 
+                      mt: 0.5, 
+                      color: '#f57c00', 
+                      fontSize: '0.6rem',
+                      fontStyle: 'italic'
+                    }}>
+                      ⚠️ Verwendung kostet {Math.round((100 / questions.length) * 0.1 * 10) / 10}% der Gesamtpunktzahl
+                    </Typography>
+                  )}
                   
                   {showTip && (
                     <Box sx={{ 
@@ -1070,25 +1114,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                 </Box>
               )}
 
-              {/* Erklärung anzeigen - direkt nach dem Tip */}
-              {currentQuestion.explanation && (
-                <Box sx={{ 
-                  mt: 2, 
-                  p: 1.5, 
-                  background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
-                  borderRadius: 1, 
-                  border: '1px solid #2196f3'
-                }}>
-                  <Typography variant="body2" sx={{ 
-                    color: '#1565c0', 
-                    fontWeight: 500,
-                    fontStyle: 'italic',
-                    fontSize: '0.7rem'
-                  }}>
-                    📚 <strong>Erklärung:</strong> {currentQuestion.explanation}
-                  </Typography>
-                </Box>
-              )}
+              {/* Erklärungen werden nur noch in den Ergebnissen angezeigt, nicht während des Quiz */}
             </CardContent>
           </Card>
 
