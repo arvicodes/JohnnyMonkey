@@ -62,7 +62,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       
       // Get the most recent session for this quiz
       const sessionsResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/sessions`);
-      if (!sessionsResponse.ok || !sessionsResponse.json) {
+      if (!sessionsResponse.ok) {
         setQuizStatus('available');
         return;
       }
@@ -73,8 +73,9 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
         return;
       }
       
-      // Get the most recent session
-      const session = sessions[0];
+      // Get the most recent active session
+      const session = sessions[0]; // Most recent session
+      console.log('Found session:', session);
       
       // Check if student has participated and completed
       const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${userId}`);
@@ -93,42 +94,34 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
         console.log('Quiz completed, setting participationId:', participation.id);
         setParticipationId(participation.id);
         
-        // Debug: Check if participationId was set correctly
-        setTimeout(() => {
-          console.log('After setParticipationId, current participationId state:', participationId);
-        }, 100);
-        
         // Check if results are released by teacher - get this directly from the session
         const sessionDetailsResponse = await fetch(`/api/quiz-sessions/session/${session.id}`);
         console.log('Session details response status:', sessionDetailsResponse.status);
         
         if (sessionDetailsResponse.ok) {
           const sessionDetails = await sessionDetailsResponse.json();
-          console.log('Session details:', sessionDetails); // Debug log
+          console.log('Session details:', sessionDetails);
           
           if (sessionDetails.resultsReleased) {
             setResultsReleased(true);
             setQuizStatus('completed');
-            console.log('Results are released! participationId should be:', participation.id); // Debug log
+            console.log('Results are released! participationId should be:', participation.id);
           } else {
             setResultsReleased(false);
-            setQuizStatus('completed');
-            console.log('Results are NOT released, participationId should be:', participation.id); // Debug log
+            setQuizStatus('completed'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
+            console.log('Results not released yet');
           }
         } else {
-          console.error('Failed to get session details:', sessionDetailsResponse.status);
-          // Fallback: assume not released
+          console.log('Failed to get session details, setting resultsReleased to false');
           setResultsReleased(false);
           setQuizStatus('completed');
-          console.log('Fallback: participationId should be:', participation.id); // Debug log
         }
       } else {
-        console.log('Quiz not completed, setting status to available');
         setQuizStatus('available');
       }
     } catch (error) {
       console.error('Error checking quiz status:', error);
-      setQuizStatus('available');
+      setQuizStatus('error');
     }
   };
 
@@ -160,6 +153,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   const handleViewResults = async () => {
     console.log('handleViewResults called with:', { participationId, resultsReleased, quizStatus });
     
+    // Get the current participationId from the most recent checkQuizStatus call
     if (!participationId) {
       console.error('No participationId available');
       alert('Fehler: Keine Teilnahme-ID verfügbar. Bitte laden Sie die Seite neu.');
@@ -177,19 +171,13 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
     
     try {
       const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results?studentId=${userId}`);
-      console.log('Results response status:', participationResponse.status);
-      
       if (participationResponse.ok) {
         const results = await participationResponse.json();
-        console.log('Results received:', results);
         setQuizResults(results);
         setShowQuizResults(true);
       } else if (participationResponse.status === 403) {
-        // Ergebnisse noch nicht freigegeben
-        console.log('Results not released (403)');
         alert('Die Ergebnisse wurden noch nicht vom Lehrer freigegeben. Bitte warten Sie, bis der Lehrer die Ergebnisse freigibt.');
       } else {
-        console.error('Error response:', participationResponse.status, participationResponse.statusText);
         alert('Fehler beim Laden der Ergebnisse. Bitte versuchen Sie es erneut.');
       }
     } catch (error) {
