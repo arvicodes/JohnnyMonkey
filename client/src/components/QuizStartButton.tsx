@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -16,7 +16,7 @@ interface QuizStartButtonProps {
   userId: string;
 }
 
-const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) => {
+export const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) => {
   const navigate = useNavigate();
   const [quizStatus, setQuizStatus] = useState<'loading' | 'available' | 'completed' | 'error'>('loading');
   const [quizId, setQuizId] = useState<string | null>(null);
@@ -24,6 +24,9 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
   const [quizResults, setQuizResults] = useState<any>(null);
   const [showQuizResults, setShowQuizResults] = useState(false);
   const [resultsReleased, setResultsReleased] = useState(false);
+  
+  // Use ref to store current participationId immediately
+  const currentParticipationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     checkQuizStatus();
@@ -106,15 +109,21 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
             setResultsReleased(true);
             setQuizStatus('completed');
             console.log('Results are released! participationId should be:', participation.id);
+            
+            // Store participationId in a ref or use it directly
+            // This ensures we have the correct value immediately
+            currentParticipationIdRef.current = participation.id;
           } else {
             setResultsReleased(false);
             setQuizStatus('completed'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
             console.log('Results not released yet');
+            currentParticipationIdRef.current = participation.id;
           }
         } else {
           console.log('Failed to get session details, setting resultsReleased to false');
           setResultsReleased(false);
           setQuizStatus('completed');
+          currentParticipationIdRef.current = participation.id;
         }
       } else {
         setQuizStatus('available');
@@ -154,7 +163,10 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
     console.log('handleViewResults called with:', { participationId, resultsReleased, quizStatus });
     
     // Get the current participationId from the most recent checkQuizStatus call
-    if (!participationId) {
+    const currentParticipationId = currentParticipationIdRef.current || participationId;
+    console.log('Using participationId:', currentParticipationId);
+    
+    if (!currentParticipationId) {
       console.error('No participationId available');
       alert('Fehler: Keine Teilnahme-ID verfügbar. Bitte laden Sie die Seite neu.');
       return;
@@ -167,10 +179,10 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       return;
     }
     
-    console.log('Fetching results for participation:', participationId);
+    console.log('Fetching results for participation:', currentParticipationId);
     
     try {
-      const participationResponse = await fetch(`/api/quiz-participations/${participationId}/results?studentId=${userId}`);
+      const participationResponse = await fetch(`/api/quiz-participations/${currentParticipationId}/results?studentId=${userId}`);
       if (participationResponse.ok) {
         const results = await participationResponse.json();
         setQuizResults(results);
