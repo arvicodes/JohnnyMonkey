@@ -623,15 +623,15 @@ const GradesModal: React.FC<GradesModalProps> = ({
     }
 
     return (
-      <Box key={node.id} sx={{ mb: 1 }}>
+      <Box key={node.id} sx={{ mb: 0.8 }}>
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
-            pl: level * 2,
+            gap: 0.8,
+            pl: level * 1.5,
             borderLeft: level > 0 ? `2px solid ${colors.border}` : 'none',
-            py: 0.5
+            py: 0.3
           }}
         >
           {!isLeaf && (
@@ -640,13 +640,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
               onClick={() => toggleNodeExpansion(node.id)}
               sx={{ 
                 p: 0,
-                minWidth: 24,
-                width: 24,
-                height: 24,
+                minWidth: 20,
+                width: 20,
+                height: 20,
                 '& .MuiSvgIcon-root': {
-                  fontSize: 20,
-                  width: 20,
-                  height: 20
+                  fontSize: 16,
+                  width: 16,
+                  height: 16
                 }
               }}
             >
@@ -659,7 +659,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
             sx={{
               fontWeight: isLeaf ? 'normal' : 'bold',
               color: isLeaf ? colors.textPrimary : colors.textSecondary,
-              fontSize: isLeaf ? '0.875rem' : '0.9rem'
+              fontSize: isLeaf ? '0.75rem' : '0.8rem'
             }}
           >
             {node.name}
@@ -669,7 +669,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
             variant="caption"
             sx={{
               color: colors.textSecondary,
-              fontSize: '0.75rem'
+              fontSize: '0.65rem'
             }}
           >
             ({node.weight}%)
@@ -687,12 +687,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
               }}
               disabled={isLocked}
               sx={{
-                width: 80,
+                width: 100,
                 ml: 'auto',
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: 0.7,
-                  fontSize: '0.75rem',
-                  minHeight: '32px'
+                  borderRadius: 0.6,
+                  fontSize: '0.65rem',
+                  minHeight: '24px',
+                  maxHeight: '24px'
                 }
               }}
               placeholder={gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6'}
@@ -713,13 +714,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
                       onClick={() => toggleGradeLock(node.id)}
                       sx={{ 
                         p: 0,
-                        minWidth: 20,
-                        width: 20,
-                        height: 20,
+                        minWidth: 18,
+                        width: 18,
+                        height: 18,
                         '& .MuiSvgIcon-root': {
-                          fontSize: 16,
-                          width: 16,
-                          height: 16
+                          fontSize: 14,
+                          width: 14,
+                          height: 14
                         }
                       }}
                     >
@@ -742,8 +743,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
                 ml: 'auto',
                 backgroundColor: getGradeColor(node.grade || 0, gradingSchema?.gradingSystem),
                 color: 'white',
-                fontSize: '0.7rem',
-                height: '24px'
+                fontSize: '0.6rem',
+                height: '20px'
               }}
             />
           )}
@@ -780,33 +781,33 @@ const GradesModal: React.FC<GradesModalProps> = ({
       sx={{ '& .MuiDialog-paper': { width: '35%', minWidth: 320, maxWidth: 450 } }}
     >
       <DialogTitle sx={{ 
-        pb: 1.5, 
+        pb: 1, 
         background: `linear-gradient(135deg, ${colors.primary}15 0%, ${colors.accent1}10 100%)`,
         borderBottom: `2px solid ${colors.primary}30`,
         position: 'relative'
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
           <Box sx={{ 
-            p: 0.5, 
+            p: 0.3, 
             borderRadius: '50%', 
             bgcolor: colors.primary,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <GradeIcon sx={{ color: 'white', fontSize: 16 }} />
+            <GradeIcon sx={{ color: 'white', fontSize: 14 }} />
           </Box>
           <Box>
             <Typography variant="h6" sx={{ 
               fontWeight: 700, 
-              fontSize: '0.85rem',
+              fontSize: '0.75rem',
               color: colors.textPrimary,
-              mb: 0.2
+              mb: 0.1
             }}>
               Noten eintragen
             </Typography>
             <Typography variant="body2" sx={{ 
-              fontSize: '0.75rem',
+              fontSize: '0.65rem',
               color: colors.primary,
               fontWeight: 600
             }}>
@@ -815,31 +816,31 @@ const GradesModal: React.FC<GradesModalProps> = ({
           </Box>
         </Box>
         <Box sx={{ 
-          mt: 1, 
-          p: 0.8, 
+          mt: 0.8, 
+          p: 0.6, 
           bgcolor: 'white', 
-          borderRadius: 1,
+          borderRadius: 0.8,
           border: `1px solid ${colors.border}`,
           display: 'flex',
           alignItems: 'center',
-          gap: 0.5
+          gap: 0.4
         }}>
           <Typography variant="caption" sx={{ 
-            fontSize: '0.65rem', 
+            fontSize: '0.55rem', 
             color: colors.textSecondary,
             fontWeight: 500
           }}>
             📚 {groupName}
           </Typography>
           <Typography variant="caption" sx={{ 
-            fontSize: '0.65rem', 
+            fontSize: '0.55rem', 
             color: colors.textSecondary,
             fontWeight: 500
           }}>
             •
           </Typography>
           <Typography variant="caption" sx={{ 
-            fontSize: '0.65rem', 
+            fontSize: '0.55rem', 
             color: colors.accent1,
             fontWeight: 600
           }}>
@@ -848,12 +849,12 @@ const GradesModal: React.FC<GradesModalProps> = ({
         </Box>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 2, pt: 1.5 }}>
+      <DialogContent sx={{ p: 1.5, pt: 1 }}>
         {error && (
           <Alert severity="error" sx={{ 
-            mb: 1.5, 
-            borderRadius: 1, 
-            fontSize: '0.65rem',
+            mb: 1, 
+            borderRadius: 0.8, 
+            fontSize: '0.55rem',
             border: `1px solid ${colors.accent2}30`,
             '& .MuiAlert-icon': { color: colors.accent2 }
           }}>
@@ -863,9 +864,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
         
         {success && (
           <Alert severity="success" sx={{ 
-            mb: 1.5, 
-            borderRadius: 1, 
-            fontSize: '0.65rem',
+            mb: 1, 
+            borderRadius: 0.8, 
+            fontSize: '0.55rem',
             border: `1px solid ${colors.success}30`,
             '& .MuiAlert-icon': { color: colors.success }
           }}>
@@ -873,24 +874,24 @@ const GradesModal: React.FC<GradesModalProps> = ({
           </Alert>
         )}
 
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 1.5 }}>
           <Box sx={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 1, 
-            mb: 1.5,
-            p: 1,
+            gap: 0.8, 
+            mb: 1,
+            p: 0.8,
             bgcolor: `${colors.primary}08`,
-            borderRadius: 1,
+            borderRadius: 0.8,
             border: `1px solid ${colors.primary}20`
           }}>
             <Typography variant="h6" sx={{ 
-              fontSize: '0.75rem',
+              fontSize: '0.65rem',
               fontWeight: 700,
               color: colors.primary,
               display: 'flex',
               alignItems: 'center',
-              gap: 0.5
+              gap: 0.4
             }}>
               📊 Bewertungskategorien
             </Typography>
@@ -899,9 +900,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
           <Box sx={{ 
             maxHeight: 400, 
             overflowY: 'auto', 
-            pr: 0.5,
+            pr: 0.4,
             border: `1px solid ${colors.border}`,
-            borderRadius: 1,
+            borderRadius: 0.8,
             bgcolor: '#fafbfc'
           }}>
             {gradeNodes.map(node => renderGradeNode(node))}
@@ -910,9 +911,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
         
         {finalGrade > 0 && (
           <Paper elevation={0} sx={{ 
-            p: 1.5, 
+            p: 1, 
             background: `linear-gradient(135deg, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}15 0%, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}08 100%)`,
-            borderRadius: 1.5,
+            borderRadius: 1,
             border: `2px solid ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
             position: 'relative',
             overflow: 'hidden'
@@ -921,26 +922,26 @@ const GradesModal: React.FC<GradesModalProps> = ({
               position: 'absolute', 
               top: 0, 
               right: 0, 
-              width: 60, 
-              height: 60, 
+              width: 50, 
+              height: 50, 
               background: `radial-gradient(circle, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}20 0%, transparent 70%)`,
               borderRadius: '50%',
-              transform: 'translate(20px, -20px)'
+              transform: 'translate(15px, -15px)'
             }} />
             
             <Typography variant="h6" sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 1,
-              fontSize: '0.8rem',
+              gap: 0.8,
+              fontSize: '0.7rem',
               fontWeight: 700,
               color: colors.textPrimary,
-              mb: 1,
+              mb: 0.8,
               position: 'relative',
               zIndex: 1
             }}>
               <AssessmentIcon sx={{ 
-                fontSize: 16, 
+                fontSize: 14, 
                 color: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
                 filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
               }} />
@@ -950,7 +951,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 1.5,
+              gap: 1.2,
               position: 'relative',
               zIndex: 1
             }}>
@@ -963,15 +964,15 @@ const GradesModal: React.FC<GradesModalProps> = ({
                   bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
                   color: 'white',
                   fontWeight: 700,
-                  fontSize: '0.75rem',
-                  height: 32,
-                  px: 1.5,
+                  fontSize: '0.65rem',
+                  height: 28,
+                  px: 1.2,
                   boxShadow: `0 2px 8px ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
-                  '& .MuiChip-label': { px: 1.5 }
+                  '& .MuiChip-label': { px: 1.2 }
                 }}
               />
               <Typography variant="body2" sx={{ 
-                fontSize: '0.7rem',
+                fontSize: '0.6rem',
                 color: colors.textSecondary,
                 fontWeight: 500
               }}>
@@ -986,8 +987,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
       </DialogContent>
       
       <DialogActions sx={{ 
-        p: 2, 
-        pt: 1,
+        p: 1.5, 
+        pt: 0.8,
         background: `linear-gradient(135deg, ${colors.primary}05 0%, ${colors.accent1}03 100%)`,
         borderTop: `1px solid ${colors.border}`
       }}>
@@ -995,11 +996,11 @@ const GradesModal: React.FC<GradesModalProps> = ({
           onClick={onClose}
           variant="outlined"
           sx={{ 
-            borderRadius: 1.5, 
-            px: 2,
-            py: 0.8,
-            fontSize: '0.7rem',
-            height: '32px',
+            borderRadius: 1.2, 
+            px: 1.8,
+            py: 0.6,
+            fontSize: '0.65rem',
+            height: '28px',
             borderColor: colors.border,
             color: colors.textSecondary,
             fontWeight: 500,
@@ -1016,13 +1017,13 @@ const GradesModal: React.FC<GradesModalProps> = ({
           onClick={handleSave} 
           variant="contained" 
           disabled={saving}
-          startIcon={saving ? undefined : <SaveIcon sx={{ fontSize: 12 }} />}
+          startIcon={saving ? undefined : <SaveIcon sx={{ fontSize: 11 }} />}
           sx={{
-            borderRadius: 1.5,
-            px: 2.5,
-            py: 0.8,
-            fontSize: '0.7rem',
-            height: '32px',
+            borderRadius: 1.2,
+            px: 2.2,
+            py: 0.6,
+            fontSize: '0.65rem',
+            height: '28px',
             fontWeight: 600,
             background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
             boxShadow: `0 2px 8px ${colors.primary}40`,

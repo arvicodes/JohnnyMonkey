@@ -707,7 +707,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     <Dialog 
       open={open} 
       onClose={onClose}
-      maxWidth="sm" // Schmaler gemacht
+      maxWidth="md" // Wieder breiter gemacht
       fullWidth
       PaperProps={{
         sx: {
@@ -737,8 +737,8 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
       
       <DialogContent sx={{ p: 2, background: colors.background }}>
         <Grid container spacing={2}>
-          {/* Existing Schemas Section - Schmaler */}
-          <Grid item xs={12} md={5}>
+          {/* Existing Schemata Section - Schmaler */}
+          <Grid item xs={12} md={4}>
             <Paper elevation={0} sx={{ 
               p: 2, 
               height: 'fit-content', 
@@ -891,7 +891,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
           </Grid>
 
           {/* Schema Editor Section - Breiter */}
-          <Grid item xs={12} md={7}>
+          <Grid item xs={12} md={8}>
             <Paper elevation={0} sx={{ 
               p: 2, 
               borderRadius: 2,
