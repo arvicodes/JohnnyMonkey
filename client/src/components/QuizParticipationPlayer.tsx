@@ -217,10 +217,10 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         setShowResults(true);
         setLoading(false);
       } else {
-        setError('Ergebnisse konnten nicht geladen werden');
+        setError('Die Ergebnisse werden in Kürze von deiner Lehrkraft freigeschaltet');
       }
     } catch (err) {
-      setError('Fehler beim Laden der Ergebnisse');
+      setError('Die Ergebnisse werden in Kürze von deiner Lehrkraft freigeschaltet');
     }
   };
 
