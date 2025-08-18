@@ -1260,116 +1260,91 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             
             {/* Erstellungs-Icons für Quiz- und Cards-Dateien */}
             {showCreateIcon && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  ml: 1,
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  '&:hover': {
-                    backgroundColor: 'rgba(0,0,0,0.1)',
-                    opacity: 0.8
-                  }
-                }}
-                title={createTooltip}
-                onClick={() => {
-                  console.log('Quiz-Icon clicked for:', item.name, 'Path:', item.path);
-                  if (item.name.startsWith('Quiz')) {
-                    // Öffne das Quiz-Erstellungsmodal direkt im Dashboard
-                    console.log('Opening quiz dialog for:', item.path, item.name);
-                    handleQuizDialogOpen(item.path, item.name);
-                  } else if (item.name.startsWith('Cards')) {
-                    // TODO: Implementiere Karteikarten-Erstellung
-                    console.log('Karteikarten-Erstellung für:', item.name);
-                  }
-                }}
+              <Typography variant="caption" sx={{ 
+                color: '#666',
+                fontSize: '0.7rem',
+                userSelect: 'none',
+                cursor: 'pointer',
+                ml: 0.2,
+                border: '1px solid #ccc',
+                borderRadius: '2px',
+                padding: '1px',
+                '&:hover': {
+                  opacity: 0.8
+                }
+              }}
+              title={createTooltip}
+              onClick={() => {
+                console.log('Quiz-Icon clicked for:', item.name, 'Path:', item.path);
+                if (item.name.startsWith('Quiz')) {
+                  // Öffne das Quiz-Erstellungsmodal direkt im Dashboard
+                  console.log('Opening quiz dialog for:', item.path, item.name);
+                  handleQuizDialogOpen(item.path, item.name);
+                } else if (item.name.startsWith('Cards')) {
+                  // TODO: Implementiere Karteikarten-Erstellung
+                  console.log('Karteikarten-Erstellung für:', item.name);
+                }
+              }}
               >
-                <Typography variant="caption" sx={{ 
-                  color: '#666',
-                  fontSize: '0.8rem',
-                  userSelect: 'none'
-                }}>
-                  {createIcon}
-                </Typography>
-              </Box>
+                {createIcon}
+              </Typography>
             )}
             
             {/* Quiz starten Icon - wenn bereits ein Quiz existiert */}
             {item.type === 'file' && item.name.startsWith('Quiz') && quizStatusMap.get(item.path)?.exists && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  ml: 0.5,
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  backgroundColor: '#4caf50',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: '#45a049',
-                    opacity: 0.9
-                  }
-                }}
-                title={`Quiz starten: ${quizStatusMap.get(item.path)?.title || 'Unbekanntes Quiz'}`}
-                onClick={() => {
-                  const quizId = quizStatusMap.get(item.path)?.quizId;
-                  if (quizId) {
-                    handleStartQuiz(quizId);
-                  }
-                }}
+              <Typography variant="caption" sx={{ 
+                fontSize: '0.7rem',
+                userSelect: 'none',
+                cursor: 'pointer',
+                ml: 0.2,
+                border: '1px solid #4caf50',
+                borderRadius: '2px',
+                padding: '1px',
+                '&:hover': {
+                  opacity: 0.8
+                }
+              }}
+              title={`Quiz starten: ${quizStatusMap.get(item.path)?.title || 'Unbekanntes Quiz'}`}
+              onClick={() => {
+                const quizId = quizStatusMap.get(item.path)?.quizId;
+                if (quizId) {
+                  handleStartQuiz(quizId);
+                }
+              }}
               >
-                <Typography variant="caption" sx={{ 
-                  fontSize: '0.8rem',
-                  userSelect: 'none'
-                }}>
-                  ▶️
-                </Typography>
-              </Box>
+                ▶️
+              </Typography>
             )}
 
             {/* Ergebnisse freigeben Button - wenn Quiz beendet ist aber Ergebnisse noch nicht freigegeben */}
-                        {item.type === 'file' && item.name.startsWith('Quiz') &&
+            {item.type === 'file' && item.name.startsWith('Quiz') &&
              quizStatusMap.get(item.path)?.exists &&
              quizStatusMap.get(item.path)?.sessionId && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  ml: 0.5,
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  backgroundColor: quizStatusMap.get(item.path)?.resultsReleased ? '#4caf50' : '#ff9800',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: quizStatusMap.get(item.path)?.resultsReleased ? '#45a049' : '#f57c00',
-                    opacity: 0.9
-                  }
-                }}
-                title={quizStatusMap.get(item.path)?.resultsReleased ? 
-                  'Ergebnisse zurücknehmen' : 
-                  'Ergebnisse jetzt freigeben'
+              <Typography variant="caption" sx={{
+                fontSize: '0.7rem',
+                userSelect: 'none',
+                cursor: 'pointer',
+                ml: 0.2,
+                border: quizStatusMap.get(item.path)?.resultsReleased ? '1px solid #4caf50' : '1px solid #f44336',
+                borderRadius: '2px',
+                padding: '1px',
+                '&:hover': {
+                  opacity: 0.8
                 }
-                onClick={() => {
-                  const sessionId = quizStatusMap.get(item.path)?.sessionId;
-                  if (sessionId) {
-                    handleReleaseResults(sessionId, item.path);
-                  }
-                }}
+              }}
+              title={quizStatusMap.get(item.path)?.resultsReleased ? 
+                'Ergebnisse zurücknehmen' : 
+                'Ergebnisse jetzt freigeben'
+              }
+              onClick={() => {
+                const sessionId = quizStatusMap.get(item.path)?.sessionId;
+                if (sessionId) {
+                  handleReleaseResults(sessionId, item.path);
+                }
+              }}
               >
-                <Typography variant="caption" sx={{
-                  fontSize: '0.8rem',
-                  userSelect: 'none'
-                }}>
-                  {quizStatusMap.get(item.path)?.resultsReleased ? '🔒' : '🔓'}
-                </Typography>
-              </Box>
+                {quizStatusMap.get(item.path)?.resultsReleased ? '🔒' : '🔓'}
+              </Typography>
             )}
 
             {/* Ergebnisse bereits freigegeben - grüner Haken */}
