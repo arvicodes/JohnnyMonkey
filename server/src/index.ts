@@ -23,7 +23,7 @@ import path from 'path';
 
 const app = express();
 const prisma = new PrismaClient();
-const port = 3005;
+const port = 3001;
 
 app.use(cors());
 app.use(express.json());
