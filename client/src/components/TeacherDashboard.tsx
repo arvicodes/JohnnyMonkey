@@ -2144,7 +2144,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         if (data.exists && data.quiz?.id) {
           // Prüfe den Freigabe-Status der Ergebnisse
           const activeSessionResponse = await fetch(`/api/quiz-sessions/${data.quiz.id}/active`);
-          let session = null;
+          let session: { id: string; resultsReleased?: boolean } | null = null;
           
           if (activeSessionResponse.ok) {
             session = await activeSessionResponse.json();
