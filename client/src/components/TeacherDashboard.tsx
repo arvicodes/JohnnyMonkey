@@ -1964,6 +1964,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     if (!selectedQuizFile) return;
 
     try {
+      console.log('Starting quiz creation...');
+      console.log('Selected file:', selectedQuizFile);
+      console.log('Quiz data:', {
+        teacherId: userId,
+        sourceFile: selectedQuizFile.path,
+        title: quizTitle,
+        description: quizDescription,
+        timeLimit: quizTimeLimit,
+        shuffleQuestions,
+        shuffleAnswers,
+        gradeCategory: gradeCategory || null,
+        gradeSchemaId: selectedGradeSchema || null
+      });
+
       const quizData = {
         teacherId: userId,
         sourceFile: selectedQuizFile.path,
@@ -1976,12 +1990,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         gradeSchemaId: selectedGradeSchema || null
       };
       
-      console.log('Creating quiz with data:', quizData);
+      console.log('Sending quiz creation request to:', '/api/quizzes/create');
       const quizResponse = await fetch('/api/quizzes/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(quizData)
       });
+
+      console.log('Quiz response status:', quizResponse.status);
+      console.log('Quiz response headers:', quizResponse.headers);
 
       if (quizResponse.ok) {
         const quizResult = await quizResponse.json();
@@ -1989,13 +2006,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         alert('Quiz erfolgreich erstellt!');
         handleQuizDialogClose();
       } else {
-        const error = await quizResponse.json();
-        console.error('Quiz creation error:', error);
-        alert(error.error || 'Fehler beim Erstellen des Quiz');
+        const errorText = await quizResponse.text();
+        console.error('Quiz creation error - Status:', quizResponse.status);
+        console.error('Quiz creation error - Response:', errorText);
+        
+        let errorMessage = 'Fehler beim Erstellen des Quiz';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch (e) {
+          errorMessage = `HTTP ${quizResponse.status}: ${errorText}`;
+        }
+        
+        alert(`Fehler beim Erstellen des Quiz:\n${errorMessage}`);
       }
     } catch (error) {
       console.error('Exception in handleCreateQuiz:', error);
-      alert('Fehler beim Erstellen des Quiz');
+      alert(`Fehler beim Erstellen des Quiz:\n${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
