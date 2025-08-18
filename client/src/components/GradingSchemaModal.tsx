@@ -206,6 +206,17 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
         continue;
       }
 
+      // Filtere doppelte Einträge mit gleichem Namen und gleicher Einrückung
+      const isDuplicate = stack.some(item => 
+        item.indent === indent && 
+        item.node.name === name.trim()
+      );
+      
+      if (isDuplicate) {
+        console.warn('Skipping duplicate entry:', name.trim(), 'at level', indent);
+        continue;
+      }
+
       const node: GradeNode = {
         id: generateId(),
         name: name.trim(),

@@ -797,54 +797,12 @@ const GradesModal: React.FC<GradesModalProps> = ({
           }}>
             <GradeIcon sx={{ color: 'white', fontSize: 14 }} />
           </Box>
-          <Box>
-            <Typography variant="h6" sx={{ 
-              fontWeight: 700, 
-              fontSize: '0.75rem',
-              color: colors.textPrimary,
-              mb: 0.1
-            }}>
-              Noten eintragen
-            </Typography>
-            <Typography variant="body2" sx={{ 
-              fontSize: '0.65rem',
-              color: colors.primary,
-              fontWeight: 600
-            }}>
-              {student.name}
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ 
-          mt: 0.8, 
-          p: 0.6, 
-          bgcolor: 'white', 
-          borderRadius: 0.8,
-          border: `1px solid ${colors.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.4
-        }}>
-          <Typography variant="caption" sx={{ 
-            fontSize: '0.55rem', 
-            color: colors.textSecondary,
-            fontWeight: 500
+          <Typography variant="h6" sx={{ 
+            fontWeight: 700, 
+            fontSize: '0.75rem',
+            color: colors.textPrimary
           }}>
-            📚 {groupName}
-          </Typography>
-          <Typography variant="caption" sx={{ 
-            fontSize: '0.55rem', 
-            color: colors.textSecondary,
-            fontWeight: 500
-          }}>
-            •
-          </Typography>
-          <Typography variant="caption" sx={{ 
-            fontSize: '0.55rem', 
-            color: colors.accent1,
-            fontWeight: 600
-          }}>
-            {gradingSchema?.name}
+            Noten eintragen - {student.name}
           </Typography>
         </Box>
       </DialogTitle>
@@ -875,28 +833,6 @@ const GradesModal: React.FC<GradesModalProps> = ({
         )}
 
         <Box sx={{ mb: 1.5 }}>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 0.8, 
-            mb: 1,
-            p: 0.8,
-            bgcolor: `${colors.primary}08`,
-            borderRadius: 0.8,
-            border: `1px solid ${colors.primary}20`
-          }}>
-            <Typography variant="h6" sx={{ 
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              color: colors.primary,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.4
-            }}>
-              📊 Bewertungskategorien
-            </Typography>
-          </Box>
-          
           <Box sx={{ 
             maxHeight: 400, 
             overflowY: 'auto', 
