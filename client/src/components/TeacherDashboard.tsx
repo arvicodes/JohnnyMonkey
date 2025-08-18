@@ -2109,9 +2109,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const handleStartQuiz = async (quizId: string) => {
     try {
       console.log('Starting quiz with ID:', quizId);
-      // Hier können Sie die Logik zum Starten des Quiz implementieren
-      // Zum Beispiel: Weiterleitung zur Quiz-Session-Seite
-      alert(`Quiz wird gestartet! Quiz-ID: ${quizId}`);
+      // Navigiere zur bestehenden Quiz-Session-Seite
+      window.location.href = `/quiz-session/${quizId}`;
     } catch (error) {
       console.error('Error starting quiz:', error);
       alert('Fehler beim Starten des Quiz');
