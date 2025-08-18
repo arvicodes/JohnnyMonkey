@@ -89,6 +89,23 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const [lockedGrades, setLockedGrades] = useState<Set<string>>(new Set()); // Neu: Set der gesperrten Noten-IDs
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set()); // Neu: Set der erweiterten Kategorien
 
+  // Alle Kategorien standardmäßig aufgeklappt
+  useEffect(() => {
+    if (gradeNodes.length > 0) {
+      const allNodeIds = new Set<string>();
+      const collectNodeIds = (nodes: GradeNode[]) => {
+        nodes.forEach(node => {
+          if (node.children.length > 0) {
+            allNodeIds.add(node.id);
+            collectNodeIds(node.children);
+          }
+        });
+      };
+      collectNodeIds(gradeNodes);
+      setExpandedNodes(allNodeIds);
+    }
+  }, [gradeNodes]);
+
   const fetchGradingSchema = useCallback(async () => {
     try {
       setLoading(true);
@@ -732,11 +749,11 @@ const GradesModal: React.FC<GradesModalProps> = ({
           )}
         </Box>
 
-        {!isLeaf && expandedNodes.has(node.id) && (
-          <Box sx={{ pl: 2 }}>
-            {node.children.map(child => renderGradeNode(child, level + 1))}
-          </Box>
-        )}
+                  {!isLeaf && (
+            <Box sx={{ pl: 2 }}>
+              {node.children.map(child => renderGradeNode(child, level + 1))}
+            </Box>
+          )}
       </Box>
     );
   };
@@ -758,8 +775,9 @@ const GradesModal: React.FC<GradesModalProps> = ({
     <Dialog 
       open={open} 
       onClose={onClose}
-      maxWidth="md"
-      fullWidth
+      maxWidth="sm"
+      fullWidth={false}
+      sx={{ '& .MuiDialog-paper': { width: '50%', minWidth: 400 } }}
     >
       <DialogTitle sx={{ pb: 0.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
