@@ -21387,6 +21387,7 @@ export namespace Prisma {
     isActive: boolean | null
     startedAt: Date | null
     endedAt: Date | null
+    resultsReleased: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -21397,6 +21398,7 @@ export namespace Prisma {
     isActive: boolean | null
     startedAt: Date | null
     endedAt: Date | null
+    resultsReleased: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -21407,6 +21409,7 @@ export namespace Prisma {
     isActive: number
     startedAt: number
     endedAt: number
+    resultsReleased: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -21419,6 +21422,7 @@ export namespace Prisma {
     isActive?: true
     startedAt?: true
     endedAt?: true
+    resultsReleased?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -21429,6 +21433,7 @@ export namespace Prisma {
     isActive?: true
     startedAt?: true
     endedAt?: true
+    resultsReleased?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -21439,6 +21444,7 @@ export namespace Prisma {
     isActive?: true
     startedAt?: true
     endedAt?: true
+    resultsReleased?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -21522,6 +21528,7 @@ export namespace Prisma {
     isActive: boolean
     startedAt: Date | null
     endedAt: Date | null
+    resultsReleased: boolean
     createdAt: Date
     updatedAt: Date
     _count: QuizSessionCountAggregateOutputType | null
@@ -21549,6 +21556,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: boolean
     endedAt?: boolean
+    resultsReleased?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     participations?: boolean | QuizSession$participationsArgs<ExtArgs>
@@ -21562,6 +21570,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: boolean
     endedAt?: boolean
+    resultsReleased?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     quiz?: boolean | QuizDefaultArgs<ExtArgs>
@@ -21573,6 +21582,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: boolean
     endedAt?: boolean
+    resultsReleased?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     quiz?: boolean | QuizDefaultArgs<ExtArgs>
@@ -21584,11 +21594,12 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: boolean
     endedAt?: boolean
+    resultsReleased?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type QuizSessionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "quizId" | "isActive" | "startedAt" | "endedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["quizSession"]>
+  export type QuizSessionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "quizId" | "isActive" | "startedAt" | "endedAt" | "resultsReleased" | "createdAt" | "updatedAt", ExtArgs["result"]["quizSession"]>
   export type QuizSessionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     participations?: boolean | QuizSession$participationsArgs<ExtArgs>
     quiz?: boolean | QuizDefaultArgs<ExtArgs>
@@ -21613,6 +21624,7 @@ export namespace Prisma {
       isActive: boolean
       startedAt: Date | null
       endedAt: Date | null
+      resultsReleased: boolean
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["quizSession"]>
@@ -22045,6 +22057,7 @@ export namespace Prisma {
     readonly isActive: FieldRef<"QuizSession", 'Boolean'>
     readonly startedAt: FieldRef<"QuizSession", 'DateTime'>
     readonly endedAt: FieldRef<"QuizSession", 'DateTime'>
+    readonly resultsReleased: FieldRef<"QuizSession", 'Boolean'>
     readonly createdAt: FieldRef<"QuizSession", 'DateTime'>
     readonly updatedAt: FieldRef<"QuizSession", 'DateTime'>
   }
@@ -26084,6 +26097,7 @@ export namespace Prisma {
     isActive: 'isActive',
     startedAt: 'startedAt',
     endedAt: 'endedAt',
+    resultsReleased: 'resultsReleased',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -27326,6 +27340,7 @@ export namespace Prisma {
     isActive?: BoolFilter<"QuizSession"> | boolean
     startedAt?: DateTimeNullableFilter<"QuizSession"> | Date | string | null
     endedAt?: DateTimeNullableFilter<"QuizSession"> | Date | string | null
+    resultsReleased?: BoolFilter<"QuizSession"> | boolean
     createdAt?: DateTimeFilter<"QuizSession"> | Date | string
     updatedAt?: DateTimeFilter<"QuizSession"> | Date | string
     participations?: QuizParticipationListRelationFilter
@@ -27338,6 +27353,7 @@ export namespace Prisma {
     isActive?: SortOrder
     startedAt?: SortOrderInput | SortOrder
     endedAt?: SortOrderInput | SortOrder
+    resultsReleased?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     participations?: QuizParticipationOrderByRelationAggregateInput
@@ -27353,6 +27369,7 @@ export namespace Prisma {
     isActive?: BoolFilter<"QuizSession"> | boolean
     startedAt?: DateTimeNullableFilter<"QuizSession"> | Date | string | null
     endedAt?: DateTimeNullableFilter<"QuizSession"> | Date | string | null
+    resultsReleased?: BoolFilter<"QuizSession"> | boolean
     createdAt?: DateTimeFilter<"QuizSession"> | Date | string
     updatedAt?: DateTimeFilter<"QuizSession"> | Date | string
     participations?: QuizParticipationListRelationFilter
@@ -27365,6 +27382,7 @@ export namespace Prisma {
     isActive?: SortOrder
     startedAt?: SortOrderInput | SortOrder
     endedAt?: SortOrderInput | SortOrder
+    resultsReleased?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: QuizSessionCountOrderByAggregateInput
@@ -27381,6 +27399,7 @@ export namespace Prisma {
     isActive?: BoolWithAggregatesFilter<"QuizSession"> | boolean
     startedAt?: DateTimeNullableWithAggregatesFilter<"QuizSession"> | Date | string | null
     endedAt?: DateTimeNullableWithAggregatesFilter<"QuizSession"> | Date | string | null
+    resultsReleased?: BoolWithAggregatesFilter<"QuizSession"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"QuizSession"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"QuizSession"> | Date | string
   }
@@ -28793,6 +28812,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     participations?: QuizParticipationCreateNestedManyWithoutSessionInput
@@ -28805,6 +28825,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     participations?: QuizParticipationUncheckedCreateNestedManyWithoutSessionInput
@@ -28815,6 +28836,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     participations?: QuizParticipationUpdateManyWithoutSessionNestedInput
@@ -28827,6 +28849,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     participations?: QuizParticipationUncheckedUpdateManyWithoutSessionNestedInput
@@ -28838,6 +28861,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -28847,6 +28871,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -28857,6 +28882,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -30055,6 +30081,7 @@ export namespace Prisma {
     isActive?: SortOrder
     startedAt?: SortOrder
     endedAt?: SortOrder
+    resultsReleased?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -30065,6 +30092,7 @@ export namespace Prisma {
     isActive?: SortOrder
     startedAt?: SortOrder
     endedAt?: SortOrder
+    resultsReleased?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -30075,6 +30103,7 @@ export namespace Prisma {
     isActive?: SortOrder
     startedAt?: SortOrder
     endedAt?: SortOrder
+    resultsReleased?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -33874,6 +33903,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     participations?: QuizParticipationCreateNestedManyWithoutSessionInput
@@ -33884,6 +33914,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     participations?: QuizParticipationUncheckedCreateNestedManyWithoutSessionInput
@@ -34016,6 +34047,7 @@ export namespace Prisma {
     isActive?: BoolFilter<"QuizSession"> | boolean
     startedAt?: DateTimeNullableFilter<"QuizSession"> | Date | string | null
     endedAt?: DateTimeNullableFilter<"QuizSession"> | Date | string | null
+    resultsReleased?: BoolFilter<"QuizSession"> | boolean
     createdAt?: DateTimeFilter<"QuizSession"> | Date | string
     updatedAt?: DateTimeFilter<"QuizSession"> | Date | string
   }
@@ -34496,6 +34528,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     quiz: QuizCreateNestedOneWithoutSessionsInput
@@ -34507,6 +34540,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -34593,6 +34627,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     quiz?: QuizUpdateOneRequiredWithoutSessionsNestedInput
@@ -34604,6 +34639,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -35543,6 +35579,7 @@ export namespace Prisma {
     isActive?: boolean
     startedAt?: Date | string | null
     endedAt?: Date | string | null
+    resultsReleased?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -35608,6 +35645,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     participations?: QuizParticipationUpdateManyWithoutSessionNestedInput
@@ -35618,6 +35656,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     participations?: QuizParticipationUncheckedUpdateManyWithoutSessionNestedInput
@@ -35628,6 +35667,7 @@ export namespace Prisma {
     isActive?: BoolFieldUpdateOperationsInput | boolean
     startedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    resultsReleased?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

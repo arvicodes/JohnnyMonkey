@@ -212,15 +212,16 @@ model LessonQuiz {
 }
 
 model QuizSession {
-  id             String              @id @default(uuid())
-  quizId         String
-  isActive       Boolean             @default(false)
-  startedAt      DateTime?
-  endedAt        DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  participations QuizParticipation[]
-  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  id              String              @id @default(uuid())
+  quizId          String
+  isActive        Boolean             @default(false)
+  startedAt       DateTime?
+  endedAt         DateTime?
+  resultsReleased Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now())
+  participations  QuizParticipation[]
+  quiz            Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }
 
 model QuizParticipation {

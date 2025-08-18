@@ -6,7 +6,8 @@ import {
   getSessionById, 
   getSessionsForQuiz,
   stopQuizSession,
-  getQuizForSession
+  getQuizForSession,
+  releaseResults
 } from '../controllers/QuizSessionController';
 
 const router = express.Router();
@@ -19,5 +20,6 @@ router.get('/:sessionId/quiz', getQuizForSession);
 router.get('/:sessionId/results', getSessionResults);
 router.get('/:quizId/sessions', getSessionsForQuiz);
 router.post('/:sessionId/stop', stopQuizSession);
+router.post('/:sessionId/release-results', releaseResults);
 
 export default router; 

@@ -338,6 +338,11 @@ export const getParticipationResults = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Quiz noch nicht abgeschlossen' });
     }
 
+    // Check if results are released by teacher
+    if (!participation.session.resultsReleased) {
+      return res.status(403).json({ error: 'Die Ergebnisse wurden noch nicht vom Lehrer freigegeben' });
+    }
+
     // Prepare results with correct answers
     const results = {
       participation: {

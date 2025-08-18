@@ -282,6 +282,7 @@ exports.Prisma.QuizSessionScalarFieldEnum = {
   isActive: 'isActive',
   startedAt: 'startedAt',
   endedAt: 'endedAt',
+  resultsReleased: 'resultsReleased',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

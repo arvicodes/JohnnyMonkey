@@ -1331,6 +1331,70 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 </Typography>
               </Box>
             )}
+
+            {/* Ergebnisse freigeben Button - wenn Quiz beendet ist aber Ergebnisse noch nicht freigegeben */}
+            {item.type === 'file' && item.name.startsWith('Quiz') && 
+             quizStatusMap.get(item.path)?.exists && 
+             quizStatusMap.get(item.path)?.sessionId && 
+             !quizStatusMap.get(item.path)?.resultsReleased && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  ml: 0.5,
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  backgroundColor: '#ff9800',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: '#f57c00',
+                    opacity: 0.9
+                  }
+                }}
+                title="Ergebnisse jetzt freigeben"
+                onClick={() => {
+                  const sessionId = quizStatusMap.get(item.path)?.sessionId;
+                  if (sessionId) {
+                    handleReleaseResults(sessionId, item.path);
+                  }
+                }}
+              >
+                <Typography variant="caption" sx={{ 
+                  fontSize: '0.8rem',
+                  userSelect: 'none'
+                }}>
+                  🔓
+                </Typography>
+              </Box>
+            )}
+
+            {/* Ergebnisse bereits freigegeben - grüner Haken */}
+            {item.type === 'file' && item.name.startsWith('Quiz') && 
+             quizStatusMap.get(item.path)?.exists && 
+             quizStatusMap.get(item.path)?.resultsReleased && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  ml: 0.5,
+                  padding: '4px',
+                  borderRadius: '4px',
+                  backgroundColor: '#4caf50',
+                  color: 'white'
+                }}
+                title="Ergebnisse bereits freigegeben"
+              >
+                <Typography variant="caption" sx={{ 
+                  fontSize: '0.8rem',
+                  userSelect: 'none'
+                }}>
+                  ✅
+                </Typography>
+              </Box>
+            )}
           </Box>
           
           {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
@@ -1924,7 +1988,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{ schemaId: string; schemaName: string; category: string }>>([]);
   
   // State für Quiz-Status
-  const [quizStatusMap, setQuizStatusMap] = useState<Map<string, { exists: boolean; quizId?: string; title?: string }>>(new Map());
+  const [quizStatusMap, setQuizStatusMap] = useState<Map<string, { 
+    exists: boolean; 
+    quizId?: string; 
+    title?: string;
+    sessionId?: string;
+    resultsReleased?: boolean;
+  }>>(new Map());
 
   // Quiz-Erstellung direkt im Dashboard
   const handleQuizDialogOpen = (filePath: string, fileName: string) => {
@@ -2070,11 +2140,33 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const response = await fetch(`/api/quizzes/check/exists?sourceFile=${encodeURIComponent(filePath)}`);
       if (response.ok) {
         const data = await response.json();
-        setQuizStatusMap(prev => new Map(prev.set(filePath, {
-          exists: data.exists,
-          quizId: data.quiz?.id,
-          title: data.quiz?.title
-        })));
+        
+        if (data.exists && data.quiz?.id) {
+          // Prüfe den Freigabe-Status der Ergebnisse
+          const sessionResponse = await fetch(`/api/quiz-sessions/${data.quiz.id}/active`);
+          if (sessionResponse.ok) {
+            const session = await sessionResponse.json();
+            setQuizStatusMap(prev => new Map(prev.set(filePath, {
+              exists: data.exists,
+              quizId: data.quiz?.id,
+              title: data.quiz?.title,
+              sessionId: session?.id,
+              resultsReleased: session?.resultsReleased || false
+            })));
+          } else {
+            setQuizStatusMap(prev => new Map(prev.set(filePath, {
+              exists: data.exists,
+              quizId: data.quiz?.id,
+              title: data.quiz?.title
+            })));
+          }
+        } else {
+          setQuizStatusMap(prev => new Map(prev.set(filePath, {
+            exists: data.exists,
+            quizId: data.quiz?.id,
+            title: data.quiz?.title
+          })));
+        }
       }
     } catch (error) {
       console.error('Error checking quiz status:', error);
@@ -2114,6 +2206,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     } catch (error) {
       console.error('Error starting quiz:', error);
       alert('Fehler beim Starten des Quiz');
+    }
+  };
+
+  // Quiz-Ergebnisse freigeben
+  const handleReleaseResults = async (sessionId: string, filePath: string) => {
+    try {
+      const response = await fetch(`/api/quiz-sessions/${sessionId}/release-results`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teacherId: userId })
+      });
+
+      if (response.ok) {
+        alert('Quiz-Ergebnisse erfolgreich freigegeben!');
+        // Status aktualisieren
+        await checkQuizStatus(filePath);
+      } else {
+        const errorText = await response.text();
+        alert(`Fehler beim Freigeben der Ergebnisse: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error releasing results:', error);
+      alert('Fehler beim Freigeben der Ergebnisse');
     }
   };
 

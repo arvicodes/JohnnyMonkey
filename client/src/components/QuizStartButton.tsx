@@ -32,7 +32,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
     try {
       setQuizStatus('loading');
       
-      // Suche nach dem Quiz basierend auf der Quelldatei
+      // Check if quiz exists for this file
       const quizResponse = await fetch(`/api/quizzes/check/exists?sourceFile=${encodeURIComponent(quizFile.path)}`);
       if (!quizResponse.ok) {
         setQuizStatus('error');
@@ -40,7 +40,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       }
       
       const quizData = await quizResponse.json();
-      if (!quizData.exists || !quizData.quiz) {
+      if (!quizData.exists) {
         setQuizStatus('error');
         return;
       }
@@ -48,51 +48,36 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       const foundQuizId = quizData.quiz.id;
       setQuizId(foundQuizId);
       
-      // Prüfe, ob eine aktive Session läuft
+      // Check if there's an active session
       const sessionResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/active`);
-      if (sessionResponse.ok) {
-        const session = await sessionResponse.json();
+      if (!sessionResponse.ok) {
+        setQuizStatus('error');
+        return;
+      }
+      
+      const session = await sessionResponse.json();
+      
+      // Check if student has participated and completed
+      const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${userId}`);
+      if (!participationResponse.ok) {
+        setQuizStatus('error');
+        return;
+      }
+      
+      const participation = await participationResponse.json();
+      
+      if (participation.completed) {
+        setParticipationId(participation.id);
         
-        if (session && session.id) {
-          // Prüfe, ob der Schüler bereits teilgenommen hat
-          const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${userId}`);
-          if (participationResponse.ok) {
-            const participation = await participationResponse.json();
-            
-            // Wenn der Schüler bereits abgeschlossen hat
-            if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
-              setParticipationId(participation.participationId);
-              setQuizStatus('completed');
-              return;
-            } else {
-              // Quiz ist verfügbar
-              setQuizStatus('available');
-              return;
-            }
-          }
+        // Check if results are released by teacher
+        if (participation.resultsReleased) {
+          setQuizStatus('completed');
+        } else {
+          setQuizStatus('available'); // Quiz abgeschlossen, aber Ergebnisse noch nicht freigegeben
         }
+      } else {
+        setQuizStatus('available');
       }
-      
-      // Keine aktive Session - prüfe auf letzte Ergebnisse
-      const sessionsResponse = await fetch(`/api/quiz-sessions/${foundQuizId}/sessions`);
-      if (sessionsResponse.ok) {
-        const sessions = await sessionsResponse.json();
-        if (sessions && sessions.length > 0) {
-          const lastSession = sessions[sessions.length - 1];
-          const participationResponse = await fetch(`/api/quiz-participations/${lastSession.id}/status?studentId=${userId}`);
-          if (participationResponse.ok) {
-            const participation = await participationResponse.json();
-            if (participation.hasParticipated && participation.participationId) {
-              setParticipationId(participation.participationId);
-              setQuizStatus('completed');
-              return;
-            }
-          }
-        }
-      }
-      
-      setQuizStatus('available');
-      
     } catch (error) {
       console.error('Error checking quiz status:', error);
       setQuizStatus('error');
@@ -181,14 +166,8 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
 
   const getButtonVariant = () => {
     switch (quizStatus) {
-      case 'loading':
-        return 'outlined';
-      case 'available':
-        return 'contained';
       case 'completed':
-        return 'outlined';
-      case 'error':
-        return 'outlined';
+        return 'contained';
       default:
         return 'outlined';
     }
@@ -196,12 +175,10 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
 
   const getButtonColor = () => {
     switch (quizStatus) {
-      case 'loading':
+      case 'completed':
         return 'primary';
       case 'available':
         return 'success';
-      case 'completed':
-        return 'info';
       case 'error':
         return 'error';
       default:
