@@ -78,18 +78,25 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
       
       // Check if student has participated and completed
       const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${userId}`);
+      console.log('Participation response status:', participationResponse.status);
+      
       if (!participationResponse.ok) {
+        console.log('Participation response not ok, setting status to available');
         setQuizStatus('available');
         return;
       }
       
       const participation = await participationResponse.json();
+      console.log('Participation data:', participation);
       
       if (participation.completed) {
+        console.log('Quiz completed, setting participationId:', participation.id);
         setParticipationId(participation.id);
         
         // Check if results are released by teacher - get this directly from the session
         const sessionDetailsResponse = await fetch(`/api/quiz-sessions/session/${session.id}`);
+        console.log('Session details response status:', sessionDetailsResponse.status);
+        
         if (sessionDetailsResponse.ok) {
           const sessionDetails = await sessionDetailsResponse.json();
           console.log('Session details:', sessionDetails); // Debug log
@@ -110,6 +117,7 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
           setQuizStatus('completed');
         }
       } else {
+        console.log('Quiz not completed, setting status to available');
         setQuizStatus('available');
       }
     } catch (error) {
