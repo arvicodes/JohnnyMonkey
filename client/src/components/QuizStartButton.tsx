@@ -244,8 +244,8 @@ const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, userId }) =
         variant="contained"
         size="small"
         startIcon={getButtonIcon()}
-        onClick={quizStatus === 'completed' ? handleViewResults : handleQuizStart}
-        disabled={quizStatus === 'loading' || quizStatus === 'error'}
+        onClick={onClickHandler}
+        disabled={isButtonDisabled}
         sx={{
           fontSize: '0.7rem',
           px: 1.5,
