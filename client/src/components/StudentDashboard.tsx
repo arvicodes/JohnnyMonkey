@@ -192,6 +192,95 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     setShowEmojiSelector(false);
   };
 
+  // Quiz starten - verwendet exakt die bestehende Funktionalität
+  const handleQuizStart = async (quizFile: any) => {
+    try {
+      console.log('Starting quiz for file:', quizFile);
+      
+      // Suche nach dem Quiz basierend auf der Quelldatei
+      const quizResponse = await fetch(`/api/quizzes/check/exists?sourceFile=${encodeURIComponent(quizFile.path)}`);
+      if (!quizResponse.ok) {
+        alert('Quiz nicht gefunden. Bitte wenden Sie sich an Ihren Lehrer.');
+        return;
+      }
+      
+      const quizData = await quizResponse.json();
+      if (!quizData.exists || !quizData.quiz) {
+        alert('Quiz nicht verfügbar. Bitte wenden Sie sich an Ihren Lehrer.');
+        return;
+      }
+      
+      const quizId = quizData.quiz.id;
+      console.log('Found quiz with ID:', quizId);
+      
+      // Prüfe, ob eine aktive Session läuft
+      const sessionResponse = await fetch(`/api/quiz-sessions/${quizId}/active`);
+      if (sessionResponse.ok) {
+        const session = await sessionResponse.json();
+        
+        if (session && session.id) {
+          // Prüfe, ob der Schüler bereits teilgenommen hat
+          const participationResponse = await fetch(`/api/quiz-participations/${session.id}/status?studentId=${userId}`);
+          if (participationResponse.ok) {
+            const participation = await participationResponse.json();
+            
+            // Wenn der Schüler bereits abgeschlossen hat, zeige Auswertung
+            if (participation.hasParticipated && participation.isCompleted && participation.participationId) {
+              const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${userId}`);
+              if (resultsResponse.ok) {
+                const results = await resultsResponse.json();
+                setQuizResults(results);
+                setShowQuizResults(true);
+                return;
+              }
+            } else {
+              // Schüler hat noch nicht teilgenommen oder nicht abgeschlossen - kann starten
+              const participationUrl = `/quiz-participation/${session.id}`;
+              navigate(participationUrl);
+              return;
+            }
+          }
+          
+          // Fallback: Navigiere zur Quiz-Teilnahme
+          const participationUrl = `/quiz-participation/${session.id}`;
+          navigate(participationUrl);
+          return;
+        }
+      }
+      
+      // Keine aktive Session - prüfe auf letzte Ergebnisse
+      console.log('Keine aktive Session, prüfe auf letzte Ergebnisse...');
+      const sessionsResponse = await fetch(`/api/quiz-sessions/${quizId}/sessions`);
+      if (sessionsResponse.ok) {
+        const sessions = await sessionsResponse.json();
+        if (sessions && sessions.length > 0) {
+          // Zeige letzte Ergebnisse
+          const lastSession = sessions[sessions.length - 1];
+          const participationResponse = await fetch(`/api/quiz-participations/${lastSession.id}/status?studentId=${userId}`);
+          if (participationResponse.ok) {
+            const participation = await participationResponse.json();
+            if (participation.hasParticipated && participation.participationId) {
+              const resultsResponse = await fetch(`/api/quiz-participations/${participation.participationId}/results?studentId=${userId}`);
+              if (resultsResponse.ok) {
+                const results = await resultsResponse.json();
+                setQuizResults(results);
+                setShowQuizResults(true);
+                return;
+              }
+            }
+          }
+        }
+      }
+      
+      // Keine aktive Session und keine Ergebnisse - Quiz ist nicht verfügbar
+      alert('Aktuell ist keine Quiz-Session aktiv. Bitte warten Sie, bis Ihr Lehrer das Quiz startet.');
+      
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+      alert('Fehler beim Starten des Quiz. Bitte versuchen Sie es erneut.');
+    }
+  };
+
   // Hilfsfunktion zum Laden des Student-Namens und Avatar-Emojis
   const fetchStudentData = async (userId: string) => {
     try {
@@ -361,8 +450,38 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
-      // Filtere Quiz- und Cards-Dateien für Schüler aus
-      if (item.type === 'file' && (item.name.startsWith('Quiz') || item.name.startsWith('Cards'))) {
+      // Quiz-Dateien werden für Schüler als "Quiz starten" Button angezeigt
+      if (item.type === 'file' && item.name.startsWith('Quiz')) {
+        return (
+          <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
+            <Button
+              variant="contained"
+              startIcon={<QuizIcon />}
+              onClick={() => handleQuizStart(item)}
+              sx={{
+                backgroundColor: '#4caf50',
+                color: 'white',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                textTransform: 'none',
+                borderRadius: 2,
+                px: 2,
+                py: 0.5,
+                '&:hover': {
+                  backgroundColor: '#45a049',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                }
+              }}
+            >
+              Quiz starten: {item.name.replace('Quiz ', '').replace('.docx', '').replace('.doc', '').replace('.txt', '')}
+            </Button>
+          </Box>
+        );
+      }
+      
+      // Cards-Dateien werden weiterhin ausgeblendet
+      if (item.type === 'file' && item.name.startsWith('Cards')) {
         return null; // Diese Dateien werden für Schüler nicht angezeigt
       }
       
