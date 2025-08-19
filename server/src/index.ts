@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from './generated/prisma';
+import { PortManager } from './utils/portManager';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import learningGroupRoutes from './routes/learningGroups';
@@ -23,7 +24,6 @@ import path from 'path';
 
 const app = express();
 const prisma = new PrismaClient();
-const port = 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -54,6 +54,38 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-}); 
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+// Start server with automatic port management
+async function startServer() {
+  try {
+    // Cleanup ports before starting
+    await PortManager.cleanupPorts();
+    
+    // Start server with automatic port finding
+    const { server, port } = await PortManager.startServer(app, 3001);
+    
+    console.log(`🎯 Server is running on port ${port}`);
+    console.log(`🔗 Health check: http://localhost:${port}/health`);
+    
+    // Store port in global for potential external access
+    (global as any).SERVER_PORT = port;
+    
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer(); 
