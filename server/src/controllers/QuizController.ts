@@ -151,7 +151,7 @@ export const getQuiz = async (req: Request, res: Response) => {
 export const updateQuiz = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, timeLimit, shuffleQuestions, shuffleAnswers } = req.body;
+    const { title, description, timeLimit, shuffleQuestions, shuffleAnswers, gradeCategory } = req.body;
     
     const quiz = await prisma.quiz.update({
       where: { id },
@@ -160,7 +160,8 @@ export const updateQuiz = async (req: Request, res: Response) => {
         description,
         timeLimit,
         shuffleQuestions,
-        shuffleAnswers
+        shuffleAnswers,
+        gradeCategory
       },
       include: {
         questions: true
@@ -240,6 +241,8 @@ export const updateQuizQuestions = async (req: Request, res: Response) => {
         question: q.question,
         correctAnswer: q.correctAnswer,
         options: JSON.stringify(q.options),
+        tip: q.tip || '',
+        explanation: q.explanation || '',
         order: index + 1,
         quizId: id
       }))
@@ -299,26 +302,110 @@ export const checkQuizExists = async (req: Request, res: Response) => {
         shuffleQuestions: true,
         shuffleAnswers: true,
         gradeCategory: true,
-        createdAt: true,
-        _count: {
-          select: {
-            questions: true
+        createdAt: true
+      }
+    });
+    
+    if (quiz) {
+      res.json({ exists: true, quiz });
+    } else {
+      res.json({ exists: false });
+    }
+  } catch (error) {
+    console.error('Error checking quiz existence:', error);
+    res.status(500).json({ error: 'Fehler beim Prüfen der Quiz-Existenz' });
+  }
+};
+
+export const reloadQuizFromSource = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { sourceFile } = req.body;
+    
+    if (!sourceFile) {
+      return res.status(400).json({ error: 'sourceFile ist erforderlich' });
+    }
+    
+    console.log(`Reloading quiz ${id} from source file: ${sourceFile}`);
+    
+    // Parse the source file to extract questions with tips and explanations
+    let parsedQuestions;
+    try {
+      parsedQuestions = await parseWordFile(sourceFile);
+      console.log('Parsed questions with tips/explanations:', parsedQuestions);
+    } catch (parseError) {
+      console.error('Error parsing source file:', parseError);
+      return res.status(400).json({ 
+        error: `Fehler beim Parsen der Quelldatei: ${parseError instanceof Error ? parseError.message : String(parseError)}` 
+      });
+    }
+    
+    if (!parsedQuestions || parsedQuestions.length === 0) {
+      return res.status(400).json({ error: 'Keine Fragen in der Quelldatei gefunden' });
+    }
+    
+    // Update existing questions with new data (preserving existing IDs and order)
+    const existingQuiz = await prisma.quiz.findUnique({
+      where: { id },
+      include: {
+        questions: {
+          orderBy: {
+            order: 'asc'
           }
         }
       }
     });
     
-    if (quiz) {
-      console.log('Quiz found:', quiz);
-      res.json({ exists: true, quiz });
-    } else {
-      console.log('No quiz found for file:', sourceFile);
-      res.json({ exists: false });
+    if (!existingQuiz) {
+      return res.status(404).json({ error: 'Quiz nicht gefunden' });
     }
+    
+    // Update each question with new tip and explanation data
+    for (let i = 0; i < Math.min(existingQuiz.questions.length, parsedQuestions.length); i++) {
+      const existingQuestion = existingQuiz.questions[i];
+      const newData = parsedQuestions[i];
+      
+      await prisma.quizQuestion.update({
+        where: { id: existingQuestion.id },
+        data: {
+          tip: newData.tip || '',
+          explanation: newData.explanation || ''
+        }
+      });
+    }
+    
+    // Return updated quiz
+    const updatedQuiz = await prisma.quiz.findUnique({
+      where: { id },
+      include: {
+        questions: {
+          orderBy: {
+            order: 'asc'
+          }
+        }
+      }
+    });
+    
+    if (!updatedQuiz) {
+      return res.status(404).json({ error: 'Quiz nach dem Update nicht gefunden' });
+    }
+    
+    // Deserialize options for each question
+    const quizWithParsedOptions = {
+      ...updatedQuiz,
+      questions: updatedQuiz.questions.map(q => ({
+        ...q,
+        options: JSON.parse(q.options)
+      }))
+    };
+    
+    console.log(`Quiz ${id} successfully reloaded from source with ${parsedQuestions.length} questions`);
+    res.json(quizWithParsedOptions);
+    
   } catch (error) {
-    console.error('Error checking quiz existence:', error);
-    res.status(500).json({
-      error: 'Fehler beim Prüfen der Quiz-Existenz',
+    console.error('Error reloading quiz from source:', error);
+    res.status(500).json({ 
+      error: 'Fehler beim Neuladen des Quiz aus der Quelldatei',
       details: error instanceof Error ? error.message : String(error)
     });
   }

@@ -2274,9 +2274,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 1.4 }}>
             <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
               <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Material & Quiz</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Verwalten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
             </Tabs>
           </Box>
         </Grid>
@@ -2842,11 +2842,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={1}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {/* Dateisystem-Pfade verwalten */}
+              <Box sx={{ mb: 2 }}>
+                <FileSystemPathManager teacherId={userId} />
+              </Box>
+              
+              {/* Hauptbereich - MaterialCreator */}
+              <Box>
+                <MaterialCreator teacherId={userId} ref={materialCreatorRef} />
+              </Box>
+            </Box>
+          </TabPanel>
+          <TabPanel value={mainTabValue} index={2}>
             <Box sx={{ fontSize: '0.7rem' }}>
               <DatabaseViewer />
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={2}>
+          <TabPanel value={mainTabValue} index={3}>
             {/* Subtabs: Fächer als Tabs */}
             <Box sx={{ mb: 0.15 }}>
               <Tabs
@@ -3041,28 +3054,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               onOpenSubjectDialog={handleOpenSubjectDialog}
             />
           </TabPanel>
-          <TabPanel value={mainTabValue} index={3}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {/* Dateisystem-Pfade verwalten */}
-              <Box sx={{ mb: 2 }}>
-                <FileSystemPathManager teacherId={userId} />
-              </Box>
-              
-              {/* Hauptbereich - MaterialCreator */}
-              <Box>
-                {/* Test-Button für MaterialCreator-Ref */}
-                <Button 
-                  variant="outlined" 
-                  onClick={testMaterialCreatorRef}
-                  sx={{ mb: 2 }}
-                >
-                  Test MaterialCreator Ref
-                </Button>
-                
-                <MaterialCreator teacherId={userId} ref={materialCreatorRef} />
-              </Box>
-            </Box>
-          </TabPanel>
+
 
         </Grid>
       </Grid>

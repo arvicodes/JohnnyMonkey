@@ -8,7 +8,8 @@ import {
   deleteQuiz,
   getQuizzesByTeacher,
   updateQuizQuestions,
-  checkQuizExists
+  checkQuizExists,
+  reloadQuizFromSource
 } from '../controllers/QuizController';
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.get('/', getQuizzes);
 router.get('/:id', getQuiz);
 router.put('/:id/settings', updateQuiz);
 router.put('/:id/questions', updateQuizQuestions);
+router.post('/:id/reload-from-source', reloadQuizFromSource);
 router.delete('/:id', deleteQuiz);
 
 // Quiz existence check
