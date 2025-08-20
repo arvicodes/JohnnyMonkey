@@ -32,7 +32,7 @@ import {
 import { QuizResultsModal } from './QuizResultsModal';
 import { QuizStatisticsModal } from './QuizStatisticsModal';
 
-// Grade conversion function (same as backend)
+// Grade conversion function for German system
 const percentageToGrade = (percentage: number): number => {
   if (percentage >= 95.0) return 1.0;
   if (percentage >= 90.0) return 1.3;
@@ -49,6 +49,26 @@ const percentageToGrade = (percentage: number): number => {
   if (percentage >= 35.0) return 5.0;
   if (percentage >= 20.0) return 5.3;
   return 6.0; // unter 20.0%
+};
+
+// Grade conversion function for MSS system
+const percentageToMSSPoints = (percentage: number): number => {
+  if (percentage >= 95.0) return 15;
+  if (percentage >= 90.0) return 14;
+  if (percentage >= 85.0) return 13;
+  if (percentage >= 80.0) return 12;
+  if (percentage >= 75.0) return 11;
+  if (percentage >= 70.0) return 10;
+  if (percentage >= 65.0) return 9;
+  if (percentage >= 60.0) return 8;
+  if (percentage >= 55.0) return 7;
+  if (percentage >= 50.0) return 6;
+  if (percentage >= 45.0) return 5;
+  if (percentage >= 40.0) return 4;
+  if (percentage >= 35.0) return 3;
+  if (percentage >= 20.0) return 2;
+  if (percentage >= 10.0) return 1;
+  return 0; // unter 10.0%
 };
 
 interface QuizSessionManagerProps {
@@ -78,31 +98,85 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
   teacherId
 }) => {
   const [quiz, setQuiz] = useState<any>(null);
-  const [activeSession, setActiveSession] = useState<QuizSession | null>(null);
+  const [sessions, setSessions] = useState<QuizSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showResults, setShowResults] = useState(false);
-  const [selectedResults, setSelectedResults] = useState<any>(null);
-  const [showStatistics, setShowStatistics] = useState(false);
-  const [selectedStatistics, setSelectedStatistics] = useState<any>(null);
+  const [selectedSession, setSelectedSession] = useState<QuizSession | null>(null);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [showStatisticsModal, setShowStatisticsModal] = useState(false);
+  const [selectedParticipationId, setSelectedParticipationId] = useState<string | null>(null);
+  const [selectedStudentName, setSelectedStudentName] = useState<string | null>(null);
+  const [gradingSystem, setGradingSystem] = useState<string>('GERMAN'); // Default to German system
+
+  // Function to determine grading system
+  const getGradingSystem = (quizData: any): string => {
+    console.log('🔍 getGradingSystem called with:', {
+      gradeCategory: quizData?.gradeCategory,
+      teacherGroups: quizData?.teacher?.teacherGroups?.length || 0
+    });
+    
+    // Try to get grading system from quiz's teacher's teacherGroups
+    if (quizData?.teacher?.teacherGroups?.length > 0) {
+      // First, try to find a group that matches the quiz's gradeCategory AND has MSS system
+      for (const group of quizData.teacher.teacherGroups) {
+        console.log('🔍 Checking group:', group.name);
+        if (group.gradingSchemas && group.gradingSchemas.length > 0) {
+          // Check if any schema has a category that matches the quiz's gradeCategory
+          for (const schema of group.gradingSchemas) {
+            console.log('🔍 Checking schema:', schema.name, 'gradingSystem:', schema.gradingSystem);
+            if (schema.structure && schema.structure.includes(quizData.gradeCategory)) {
+              console.log('✅ Found matching schema:', schema.name, 'with gradingSystem:', schema.gradingSystem);
+              
+              // Prioritize MSS system if found
+              if (schema.gradingSystem === 'MSS') {
+                console.log('🎯 Prioritizing MSS system for:', group.name);
+                return 'MSS';
+              }
+            }
+          }
+        }
+      }
+      
+      // If no MSS system found, fall back to any matching schema
+      for (const group of quizData.teacher.teacherGroups) {
+        if (group.gradingSchemas && group.gradingSchemas.length > 0) {
+          for (const schema of group.gradingSchemas) {
+            if (schema.structure && schema.structure.includes(quizData.gradeCategory)) {
+              console.log('🔄 Fallback to schema:', schema.name, 'with gradingSystem:', schema.gradingSystem);
+              return schema.gradingSystem || 'GERMAN';
+            }
+          }
+        }
+      }
+    }
+    console.log('⚠️ No matching schema found, using default GERMAN');
+    return 'GERMAN'; // Default fallback
+  };
 
   useEffect(() => {
     fetchQuizData();
   }, [quizId]);
 
   useEffect(() => {
-    if (!activeSession) {
+    if (!selectedSession) {
       // Wenn keine aktive Session, lade die letzten Ergebnisse
       fetchLastSessionResults();
     }
-  }, [activeSession]);
+  }, [selectedSession]);
 
   useEffect(() => {
-    if (activeSession && activeSession.isActive) {
+    if (selectedSession && selectedSession.isActive) {
       const interval = setInterval(fetchActiveSession, 5000); // Alle 5 Sekunden aktualisieren
       return () => clearInterval(interval);
     }
-  }, [activeSession]);
+  }, [selectedSession]);
+
+  // Debug logging for grading system
+  useEffect(() => {
+    if (gradingSystem) {
+      console.log('🎯 Current grading system:', gradingSystem);
+    }
+  }, [gradingSystem]);
 
   const fetchQuizData = async () => {
     try {
@@ -110,6 +184,9 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       if (response.ok) {
         const quizData = await response.json();
         setQuiz(quizData);
+        const detectedGradingSystem = getGradingSystem(quizData);
+        console.log('🎯 Setting grading system to:', detectedGradingSystem);
+        setGradingSystem(detectedGradingSystem); // Set grading system on quiz load
         await fetchActiveSession();
       } else {
         setError('Quiz konnte nicht geladen werden');
@@ -126,7 +203,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       const response = await fetch(`/api/quiz-sessions/${quizId}/active`);
       if (response.ok) {
         const sessionData = await response.json();
-        setActiveSession(sessionData);
+        setSelectedSession(sessionData);
       }
     } catch (err) {
       console.error('Error fetching active session:', err);
@@ -141,7 +218,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
         // Get the most recent session
         if (sessionsData.length > 0) {
           const lastSession = sessionsData[sessionsData.length - 1];
-          setActiveSession(lastSession);
+          setSelectedSession(lastSession);
         }
       }
     } catch (err) {
@@ -162,7 +239,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
 
       if (response.ok) {
         const sessionData = await response.json();
-        setActiveSession(sessionData);
+        setSelectedSession(sessionData);
         setError(null);
       } else {
         const errorData = await response.json();
@@ -218,8 +295,9 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
 
       if (response.ok) {
         const results = await response.json();
-        setSelectedResults(results);
-        setShowResults(true);
+        setSelectedParticipationId(participationId);
+        setSelectedStudentName(studentName);
+        setShowResultsModal(true);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Auswertung konnte nicht geladen werden');
@@ -244,8 +322,9 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
 
       if (response.ok) {
         const stats = await response.json();
-        setSelectedStatistics(stats);
-        setShowStatistics(true);
+        setSelectedParticipationId(sessionId);
+        setSelectedStudentName(null); // No specific student for statistics
+        setShowStatisticsModal(true);
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Statistiken konnten nicht geladen werden');
@@ -278,9 +357,9 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
     );
   }
 
-  const completedParticipations = activeSession?.participations?.filter(p => p.completedAt) || [];
-  const activeParticipations = activeSession?.participations?.filter(p => !p.completedAt) || [];
-  const totalParticipations = activeSession?.participations?.length || 0;
+  const completedParticipations = selectedSession?.participations?.filter(p => p.completedAt) || [];
+  const activeParticipations = selectedSession?.participations?.filter(p => !p.completedAt) || [];
+  const totalParticipations = selectedSession?.participations?.length || 0;
   const completionRate = totalParticipations > 0 ? Math.round((completedParticipations.length / totalParticipations) * 100) : 0;
 
   return (
@@ -343,7 +422,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
         </CardContent>
       </Card>
 
-      {!activeSession ? (
+      {!selectedSession ? (
         /* Start Session Card */
         <Card sx={{ 
           background: 'rgba(255,255,255,0.95)',
@@ -411,18 +490,18 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Avatar sx={{ 
-                  bgcolor: activeSession.isActive ? 'success.main' : 'grey.500',
+                  bgcolor: selectedSession.isActive ? 'success.main' : 'grey.500',
                   width: 36,
                   height: 36
                 }}>
-                  {activeSession.isActive ? <StartIcon /> : <StopIcon />}
+                  {selectedSession.isActive ? <StartIcon /> : <StopIcon />}
                 </Avatar>
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                    {activeSession.isActive ? 'Aktive Session' : 'Letzte Session'}
+                    {selectedSession.isActive ? 'Aktive Session' : 'Letzte Session'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                    {activeSession.isActive ? 'Gestartet' : 'Beendet'}: {new Date(activeSession.isActive ? activeSession.startedAt : (activeSession.endedAt || activeSession.startedAt)).toLocaleString('de-DE')}
+                    {selectedSession.isActive ? 'Gestartet' : 'Beendet'}: {new Date(selectedSession.isActive ? selectedSession.startedAt : (selectedSession.endedAt || selectedSession.startedAt)).toLocaleString('de-DE')}
               </Typography>
                 </Box>
               </Box>
@@ -434,7 +513,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                     variant="outlined"
                     size="small"
                     startIcon={<AnalyticsIcon />}
-                    onClick={() => handleViewStatistics(activeSession.id)}
+                    onClick={() => handleViewStatistics(selectedSession.id)}
                     disabled={loading}
                     sx={{
                       minWidth: 120,
@@ -513,7 +592,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
             <Divider sx={{ my: 2 }} />
 
             {/* Participants List */}
-            {activeSession.participations && activeSession.participations.length > 0 && (
+            {selectedSession.participations && selectedSession.participations.length > 0 && (
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.75rem' }}>
                   <PeopleIcon color="primary" sx={{ fontSize: 16 }} />
@@ -521,7 +600,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                 </Typography>
                 
                 <List sx={{ p: 0 }}>
-                  {activeSession.participations.map((participation) => {
+                  {selectedSession.participations.map((participation) => {
                     const isCompleted = !!participation.completedAt;
                     const percentage = participation.maxScore && participation.score 
                       ? Math.round((participation.score / participation.maxScore) * 100) 
@@ -572,7 +651,8 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                                     ({percentage}%)
                                   </Typography>
                                   <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#1976d2', fontWeight: 'bold' }}>
-                                    Note: {percentageToGrade(percentage)}
+                                    Note: {gradingSystem === 'MSS' ? percentageToMSSPoints(percentage) : percentageToGrade(percentage)}
+                                    {gradingSystem === 'MSS' ? ' Punkte' : ''}
                                   </Typography>
                                   <LinearProgress 
                                     variant="determinate" 
@@ -674,26 +754,28 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
       )}
 
       {/* Results Modal */}
-      {showResults && selectedResults && (
+      {showResultsModal && selectedParticipationId && selectedStudentName && (
         <QuizResultsModal
-          open={showResults}
+          open={showResultsModal}
           onClose={() => {
-            setShowResults(false);
-            setSelectedResults(null);
+            setShowResultsModal(false);
+            setSelectedParticipationId(null);
+            setSelectedStudentName(null);
           }}
-          results={selectedResults}
+          results={null}
         />
       )}
 
       {/* Statistics Modal */}
-      {showStatistics && selectedStatistics && (
+      {showStatisticsModal && selectedParticipationId && (
         <QuizStatisticsModal
-          open={showStatistics}
+          open={showStatisticsModal}
           onClose={() => {
-            setShowStatistics(false);
-            setSelectedStatistics(null);
+            setShowStatisticsModal(false);
+            setSelectedParticipationId(null);
+            setSelectedStudentName(null);
           }}
-          statistics={selectedStatistics}
+          statistics={null}
         />
       )}
     </Box>

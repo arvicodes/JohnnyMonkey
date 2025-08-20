@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '../generated/prisma';
-import { percentageToGrade } from '../utils/gradeConverter';
+import { percentageToGrade, percentageToMSSPoints } from '../utils/gradeConverter';
 
 const prisma = new PrismaClient();
 
@@ -239,8 +239,37 @@ export const submitAnswers = async (req: Request, res: Response) => {
           const gradingSchema = group.gradingSchemas[0]; // Assuming one schema per group
 
           if (gradingSchema) {
-            // Convert percentage to grade
-            const grade = percentageToGrade(percentage);
+            let grade: number;
+            let weight: number = 1.0; // Default weight
+
+            // Convert percentage to appropriate grade system
+            if (gradingSchema.gradingSystem === 'MSS') {
+              grade = percentageToMSSPoints(percentage);
+              
+              // Try to find the weight from the schema structure
+              try {
+                const schemaStructure = gradingSchema.structure;
+                const lines = schemaStructure.split('\n');
+                
+                // Find the line that matches the gradeCategory and extract weight
+                for (const line of lines) {
+                  if (line.includes(participation.session.quiz.gradeCategory)) {
+                    const weightMatch = line.match(/\((\d+(?:\.\d+)?)%\)/);
+                    if (weightMatch) {
+                      weight = parseFloat(weightMatch[1]) / 100; // Convert percentage to decimal
+                      break;
+                    }
+                  }
+                }
+              } catch (weightError) {
+                console.log(`Could not extract weight for ${participation.session.quiz.gradeCategory}, using default 1.0`);
+              }
+            } else {
+              // German grading system
+              grade = percentageToGrade(percentage);
+            }
+
+            console.log(`Converting quiz result: ${percentage}% -> ${grade} (${gradingSchema.gradingSystem}) with weight ${weight}`);
 
             // Create or update the grade
             await prisma.grade.upsert({
@@ -253,18 +282,18 @@ export const submitAnswers = async (req: Request, res: Response) => {
               },
               update: {
                 grade: grade,
-                weight: 1.0 // Default weight
+                weight: weight
               },
               create: {
                 studentId: participation.studentId,
                 schemaId: gradingSchema.id,
                 categoryName: participation.session.quiz.gradeCategory,
                 grade: grade,
-                weight: 1.0 // Default weight
+                weight: weight
               }
             });
 
-            console.log(`Grade ${grade} created for student ${participation.studentId} in category ${participation.session.quiz.gradeCategory}`);
+            console.log(`Grade ${grade} created for student ${participation.studentId} in category ${participation.session.quiz.gradeCategory} with weight ${weight}`);
           }
         }
       } catch (gradeError) {

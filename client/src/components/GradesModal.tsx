@@ -345,23 +345,32 @@ const GradesModal: React.FC<GradesModalProps> = ({
     setGradeNodes(finalNodes);
   };
 
-  const calculateWeightedGrade = (nodes: GradeNode[]): number => {
-    let totalWeight = 0;
-    let weightedSum = 0;
+  // Berechnet gewichtete Note aus Kindern
+  const calculateWeightedGrade = (node: GradeNode): number | null => {
+    if (node.children.length === 0) {
+      return node.grade !== undefined ? node.grade : null;
+    }
 
-    const calculate = (nodeList: GradeNode[]) => {
-      nodeList.forEach(node => {
-        if (node.children.length === 0 && node.grade !== undefined) {
-          totalWeight += node.weight;
-          weightedSum += (node.grade * node.weight);
-        } else if (node.children.length > 0) {
-          calculate(node.children);
-        }
-      });
-    };
+    const validChildren = node.children.filter(child => {
+      const childGrade = calculateWeightedGrade(child);
+      return childGrade !== null;
+    });
 
-    calculate(nodes);
-    return totalWeight > 0 ? weightedSum / totalWeight : 0;
+    if (validChildren.length === 0) {
+      return null;
+    }
+
+    const totalWeight = validChildren.reduce((sum, child) => sum + child.weight, 0);
+    if (totalWeight === 0) {
+      return null;
+    }
+
+    const weightedSum = validChildren.reduce((sum, child) => {
+      const childGrade = calculateWeightedGrade(child);
+      return sum + (childGrade! * child.weight);
+    }, 0);
+
+    return weightedSum / totalWeight;
   };
 
   // Berechnet Zwischensummen für ALLE Kategorien mit Kindern (rekursiv)
@@ -388,7 +397,15 @@ const GradesModal: React.FC<GradesModalProps> = ({
   };
 
   // Gültige Notenwerte basierend auf dem Notensystem
-
+  const getValidGradeValues = (gradingSystem: string = 'GERMAN'): number[] => {
+    if (gradingSystem === 'MSS') {
+      // MSS: 0-15 Punkte (nur ganze Zahlen)
+      return Array.from({ length: 16 }, (_, i) => i);
+    } else {
+      // Deutsches System: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0
+      return [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0];
+    }
+  };
 
   // Funktion zur Formatierung der deutschen Notenanzeige
   const formatGermanGrade = (grade: number): string => {
@@ -408,6 +425,20 @@ const GradesModal: React.FC<GradesModalProps> = ({
     if (grade === 5.3) return '5-';
     if (grade === 6.0) return '6';
     return grade.toFixed(1);
+  };
+
+  // Funktion zur Formatierung der MSS-Punkte
+  const formatMSSPoints = (points: number): string => {
+    return points.toString();
+  };
+
+  // Funktion zur Formatierung der Noten basierend auf dem System
+  const formatGrade = (grade: number, gradingSystem: string = 'GERMAN'): string => {
+    if (gradingSystem === 'MSS') {
+      return formatMSSPoints(grade);
+    } else {
+      return formatGermanGrade(grade);
+    }
   };
 
   // Funktion zur Konvertierung von deutschen Notentexten zu numerischen Werten
@@ -478,66 +509,95 @@ const GradesModal: React.FC<GradesModalProps> = ({
     return nodes.every(validateNode);
   };
 
+  // Hilfsfunktion zum Finden eines Nodes nach Namen
+  const findNodeByName = (nodes: GradeNode[], name: string): GradeNode | null => {
+    for (const node of nodes) {
+      if (node.name === name) return node;
+      if (node.children.length > 0) {
+        const found = findNodeByName(node.children, name);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
       setError('');
-      setSuccess('');
 
-      const grades = collectAllGrades(gradeNodes);
+      // Validiere MSS-Noten
+      if (gradingSchema?.gradingSystem === 'MSS' && !validateMSSGrades(gradeNodes)) {
+        setError('MSS-Noten müssen zwischen 0 und 15 liegen und ganze Zahlen sein.');
+        return;
+      }
+
+      // Berechne finale Note
+      const finalGrade = calculateWeightedGrade(gradeNodes[0]); // Verwende den Root-Node
       
-      console.log('Debug - Grades to save:', grades);
-      console.log('Debug - Student ID:', student.id);
-      console.log('Debug - Schema ID:', gradingSchema?.id);
-      
-      if (!gradingSchema?.id) {
-        setError('Kein Bewertungsschema gefunden');
+      if (finalGrade === null) {
+        setError('Keine gültigen Noten zum Speichern gefunden.');
         return;
       }
 
-      if (grades.length === 0) {
-        setError('Keine Noten zum Speichern vorhanden');
+      // Validiere finale Note
+      const validGrades = getValidGradeValues(gradingSchema?.gradingSystem || 'GERMAN');
+      if (!validGrades.includes(finalGrade)) {
+        setError(`Ungültige finale Note: ${finalGrade}`);
         return;
       }
 
-      // Validiere MSS-Noten vor dem Speichern
-      if (!validateMSSGrades(gradeNodes)) {
-        setError('Ungültige MSS-Noten gefunden. Nur natürliche Zahlen von 0 bis 15 sind erlaubt.');
-        return;
-      }
-
-      const requestBody = {
-        studentId: student.id,
-        schemaId: gradingSchema.id,
-        grades
+      // Sammle alle Noten
+      const gradesToSave: any[] = [];
+      const collectGrades = (nodes: GradeNode[]) => {
+        nodes.forEach(node => {
+          if (node.grade !== undefined) {
+            gradesToSave.push({
+              studentId: student.id,
+              schemaId: gradingSchema!.id,
+              categoryName: node.name,
+              grade: node.grade,
+              weight: node.weight
+            });
+          }
+          if (node.children.length > 0) {
+            collectGrades(node.children);
+          }
+        });
       };
+      collectGrades(gradeNodes);
+
+      // Speichere alle Noten
+      const savePromises = gradesToSave.map(gradeData =>
+        fetch('/api/grades', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gradeData)
+        })
+      );
+
+      await Promise.all(savePromises);
       
-      console.log('Debug - Request body:', requestBody);
-
-      const response = await fetch('/api/grades', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+      // Aktualisiere die gesperrten Noten
+      const newLockedGrades = new Set<string>();
+      gradesToSave.forEach(grade => {
+        const node = findNodeByName(gradeNodes, grade.categoryName);
+        if (node) {
+          newLockedGrades.add(node.id);
+        }
       });
+      setLockedGrades(newLockedGrades);
 
-      console.log('Debug - Response status:', response.status);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Debug - Success result:', result);
-        setSuccess('Noten erfolgreich gespeichert!');
-        setTimeout(() => {
-          onClose();
-        }, 1500);
-      } else {
-        const errorData = await response.json();
-        console.log('Debug - Error data:', errorData);
-        setError(errorData.error || 'Fehler beim Speichern der Noten');
+      setSuccess('Noten erfolgreich gespeichert!');
+      setTimeout(() => setSuccess(''), 3000);
+      
+      // Aktualisiere die Anzeige
+      if (gradingSchema) {
+        await loadExistingGrades(gradeNodes, gradingSchema);
       }
+      
     } catch (error) {
-      console.error('Fehler beim Speichern der Noten:', error);
+      console.error('Error saving grades:', error);
       setError('Fehler beim Speichern der Noten');
     } finally {
       setSaving(false);
@@ -800,7 +860,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
     );
   }
 
-  const finalGrade = calculateWeightedGrade(gradeNodes);
+  const finalGrade = gradeNodes.length > 0 ? calculateWeightedGrade(gradeNodes[0]) : null;
 
   return (
     <Dialog 
@@ -875,7 +935,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
           </Box>
         </Box>
         
-        {finalGrade > 0 && (
+        {finalGrade !== null && finalGrade > 0 && (
           <Paper elevation={0} sx={{ 
             p: 1, 
             background: `linear-gradient(135deg, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}15 0%, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}08 100%)`,
@@ -923,8 +983,8 @@ const GradesModal: React.FC<GradesModalProps> = ({
             }}>
               <Chip 
                 label={gradingSchema?.gradingSystem === 'MSS' ? 
-                  `${finalGrade.toFixed(0)} Punkte` : 
-                  formatGermanGrade(finalGrade)
+                  `${finalGrade!.toFixed(0)} Punkte` : 
+                  formatGermanGrade(finalGrade!)
                 }
                 sx={{ 
                   bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),

@@ -71,7 +71,16 @@ export const createQuiz = async (req: Request, res: Response) => {
         }
       },
       include: {
-        questions: true
+        questions: true,
+        teacher: {
+          include: {
+            teacherGroups: {
+              include: {
+                gradingSchemas: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -93,6 +102,15 @@ export const getQuizzes = async (req: Request, res: Response) => {
         questions: {
           orderBy: {
             order: 'asc'
+          }
+        },
+        teacher: {
+          include: {
+            teacherGroups: {
+              include: {
+                gradingSchemas: true
+              }
+            }
           }
         }
       }
@@ -123,6 +141,15 @@ export const getQuiz = async (req: Request, res: Response) => {
         questions: {
           orderBy: {
             order: 'asc'
+          }
+        },
+        teacher: {
+          include: {
+            teacherGroups: {
+              include: {
+                gradingSchemas: true
+              }
+            }
           }
         }
       }
@@ -164,7 +191,16 @@ export const updateQuiz = async (req: Request, res: Response) => {
         gradeCategory
       },
       include: {
-        questions: true
+        questions: true,
+        teacher: {
+          include: {
+            teacherGroups: {
+              include: {
+                gradingSchemas: true
+              }
+            }
+          }
+        }
       }
     });
     
@@ -200,6 +236,15 @@ export const getQuizzesByTeacher = async (req: Request, res: Response) => {
         questions: {
           orderBy: {
             order: 'asc'
+          }
+        },
+        teacher: {
+          include: {
+            teacherGroups: {
+              include: {
+                gradingSchemas: true
+              }
+            }
           }
         }
       }
@@ -255,6 +300,15 @@ export const updateQuizQuestions = async (req: Request, res: Response) => {
         questions: {
           orderBy: {
             order: 'asc'
+          }
+        },
+        teacher: {
+          include: {
+            teacherGroups: {
+              include: {
+                gradingSchemas: true
+              }
+            }
           }
         }
       }
