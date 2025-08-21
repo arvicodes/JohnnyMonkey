@@ -32,7 +32,7 @@ import {
   FormControlLabel
 } from '@mui/material';
 import {
-  School as SchoolIcon,
+  Style as StyleIcon,
   Assessment as AssessmentIcon,
   Add as AddIcon,
   Group as GroupIcon,
@@ -47,6 +47,7 @@ import {
   ExpandLess as ExpandLessIcon,
   Folder as FolderIcon,
   Quiz as QuizIcon,
+  Refresh as RefreshIcon,
 
   Add,
   Edit,
@@ -258,7 +259,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Flashcard States
   const [flashcardDecks, setFlashcardDecks] = useState<FlashcardDeck[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<FlashcardDeck | null>(null);
-  const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
   const [openNewDeckDialog, setOpenNewDeckDialog] = useState(false);
   const [editingDeck, setEditingDeck] = useState<FlashcardDeck | null>(null);
   const [newDeckTitle, setNewDeckTitle] = useState('');
@@ -269,6 +269,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deckToDelete, setDeckToDelete] = useState<FlashcardDeck | null>(null);
   const [deleteConfirmWord, setDeleteConfirmWord] = useState('');
+  
+  // Flashcard Management States
+  const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
+  const [newCardFront, setNewCardFront] = useState('');
+  const [newCardBack, setNewCardBack] = useState('');
+  const [isAddingCard, setIsAddingCard] = useState(false);
+  const [draggedCard, setDraggedCard] = useState<Flashcard | null>(null);
 
 
   // Menü pro Schüler
@@ -315,12 +322,33 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Lade Karteikarten-Decks aus der Datenbank
   const fetchFlashcardDecks = async () => {
     try {
+      console.log('Lade Karteikarten-Decks...');
       const response = await fetch(`/api/flashcards/decks?teacherId=${userId}`);
+      
       if (response.ok) {
         const decks = await response.json();
-        setFlashcardDecks(decks);
+        console.log(`Erfolgreich ${decks.length} Karteikarten-Decks geladen:`, decks);
+        
+        // Lade für jedes Deck auch die Karten
+        const decksWithCards = await Promise.all(
+          decks.map(async (deck: FlashcardDeck) => {
+            if (deck.id) {
+              try {
+                const cards = await fetchDeckCards(deck.id);
+                return { ...deck, cards: cards };
+              } catch (error) {
+                console.warn(`Konnte Karten für Deck ${deck.title} nicht laden:`, error);
+                return { ...deck, cards: [] };
+              }
+            }
+            return { ...deck, cards: [] };
+          })
+        );
+        
+        setFlashcardDecks(decksWithCards);
+        console.log('Alle Decks mit Karten geladen:', decksWithCards);
       } else {
-        console.error('Fehler beim Laden der Karteikarten-Decks');
+        console.error(`HTTP-Fehler beim Laden der Karteikarten-Decks: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error('Fehler beim Laden der Karteikarten-Decks:', error);
@@ -348,9 +376,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Lade alle Karten für ein spezifisches Deck
   const fetchDeckCards = async (deckId: string) => {
     try {
+      console.log(`Lade Karten für Deck ${deckId}...`);
       const response = await fetch(`/api/flashcards/decks/${deckId}/cards`);
+      
       if (response.ok) {
         const cards = await response.json();
+        console.log(`Erfolgreich ${cards.length} Karten geladen:`, cards);
         
         // Aktualisiere das Deck mit den Karten
         setFlashcardDecks(prev => prev.map(deck => 
@@ -360,6 +391,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         ));
         
         return cards;
+      } else {
+        console.error(`HTTP-Fehler beim Laden der Karten: ${response.status} ${response.statusText}`);
+        return [];
       }
     } catch (error) {
       console.error('Fehler beim Laden der Deck-Karten:', error);
@@ -2558,53 +2592,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setOpenNewDeckDialog(true);
   };
 
-  const handleEditCard = (card: Flashcard) => {
-    setEditingCard(card);
-  };
 
-  const handleSaveCard = (card: Flashcard) => {
-    if (!selectedDeck) return;
-    
-    setFlashcardDecks(prev => prev.map(deck => {
-      if (deck.id === selectedDeck.id) {
-        return {
-          ...deck,
-          cards: deck.cards.map(c => c.id === card.id ? card : c)
-        };
-      }
-      return deck;
-    }));
-    setEditingCard(null);
-  };
-
-  const handleDeleteCard = (cardId: string) => {
-    if (!selectedDeck) return;
-    
-    setFlashcardDecks(prev => prev.map(deck => {
-      if (deck.id === selectedDeck.id) {
-        return {
-          ...deck,
-          cards: deck.cards.filter(c => c.id !== cardId)
-        };
-      }
-      return deck;
-    }));
-  };
-
-  const handleAddCard = () => {
-    if (!selectedDeck) return;
-    
-    const newCard: Flashcard = {
-      id: Date.now().toString(),
-      front: '',
-      back: '',
-      hint: '',
-      difficulty: 1,
-      order: selectedDeck.cards?.length || 0
-    };
-    
-    setEditingCard(newCard);
-  };
 
 
 
@@ -2625,8 +2613,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: newDeckTitle,
-          description: newDeckDescription,
+      title: newDeckTitle,
+      description: newDeckDescription,
           teacherId: userId
         })
       });
@@ -2667,9 +2655,89 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  const handleViewCards = (deck: FlashcardDeck) => {
+  const handleViewCards = async (deck: FlashcardDeck) => {
     setSelectedDeck(deck);
-    // TODO: Implement card viewing functionality
+    
+    // Lade alle Karten für das ausgewählte Deck
+    if (deck.id) {
+      try {
+        const cards = await fetchDeckCards(deck.id);
+        console.log(`Geladene Karten für Deck ${deck.title}:`, cards);
+        
+        // Aktualisiere das lokale Deck mit den geladenen Karten
+        setFlashcardDecks(prev => prev.map(d => 
+          d.id === deck.id 
+            ? { ...d, cards: cards }
+            : d
+        ));
+        
+        // Aktualisiere auch das selectedDeck
+        setSelectedDeck(prev => prev ? { ...prev, cards: cards } : null);
+      } catch (error) {
+        console.error('Fehler beim Laden der Karten:', error);
+        // Fallback: Verwende vorhandene Karten falls verfügbar
+        if (deck.cards && deck.cards.length > 0) {
+          console.log('Verwende bereits geladene Karten:', deck.cards);
+        }
+      }
+    }
+  };
+
+  // Verbesserte Funktion zum Öffnen des Karteikarten-Modals
+  const handleOpenFlashcardModal = async (deck: FlashcardDeck) => {
+    setSelectedDeck(deck);
+    
+    // Lade Karten, falls sie noch nicht geladen sind
+    if (deck.id && (!deck.cards || deck.cards.length === 0)) {
+      try {
+        console.log(`Lade Karten für Deck ${deck.title}...`);
+        const cards = await fetchDeckCards(deck.id);
+        
+        // Aktualisiere das lokale Deck mit den geladenen Karten
+        setFlashcardDecks(prev => prev.map(d => 
+          d.id === deck.id 
+            ? { ...d, cards: cards }
+            : d
+        ));
+        
+        // Aktualisiere auch das selectedDeck
+        setSelectedDeck(prev => prev ? { ...prev, cards: cards } : null);
+        
+        console.log(`Karten für Deck ${deck.title} geladen:`, cards);
+      } catch (error) {
+        console.error(`Fehler beim Laden der Karten für Deck ${deck.title}:`, error);
+        // Fallback: Verwende vorhandene Karten falls verfügbar
+        if (deck.cards && deck.cards.length > 0) {
+          console.log('Verwende bereits geladene Karten:', deck.cards);
+        }
+      }
+    } else if (deck.cards && deck.cards.length > 0) {
+      console.log(`Verwende bereits geladene Karten für Deck ${deck.title}:`, deck.cards);
+    }
+  };
+
+  // Funktion zum Neuladen der Karten für ein spezifisches Deck
+  const refreshDeckCards = async (deckId: string) => {
+    try {
+      console.log(`Lade Karten für Deck ${deckId} neu...`);
+      const cards = await fetchDeckCards(deckId);
+      
+      // Aktualisiere das lokale Deck mit den geladenen Karten
+      setFlashcardDecks(prev => prev.map(d => 
+        d.id === deckId 
+          ? { ...d, cards: cards }
+          : d
+      ));
+      
+      // Aktualisiere auch das selectedDeck falls es das gleiche Deck ist
+      setSelectedDeck(prev => prev && prev.id === deckId ? { ...prev, cards: cards } : prev);
+      
+      console.log(`Karten für Deck ${deckId} erfolgreich neu geladen:`, cards);
+      return cards;
+    } catch (error) {
+      console.error(`Fehler beim Neuladen der Karten für Deck ${deckId}:`, error);
+      return [];
+    }
   };
 
   const handleDeleteDeck = (deckId: string) => {
@@ -2749,8 +2817,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           setEditingDeck(null);
         }
         
-        setSnackbar({
-          open: true,
+      setSnackbar({
+        open: true,
           message: `Karteideck erfolgreich gelöscht (${deleteResults.assignmentsDeleted} Zuweisungen, ${deleteResults.cardsDeleted} Karten entfernt)`,
           severity: 'success'
         });
@@ -2795,6 +2863,242 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       setDeleteModalOpen(false);
       setDeckToDelete(null);
       setDeleteConfirmWord('');
+    }
+  };
+
+  // Flashcard Management Functions
+  const handleAddCard = () => {
+    setIsAddingCard(true);
+    setNewCardFront('');
+    setNewCardBack('');
+  };
+
+  const handleSaveCard = async () => {
+    if (!selectedDeck || !newCardFront.trim() || !newCardBack.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Bitte füllen Sie beide Felder aus',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      console.log('Erstelle neue Karteikarte...', {
+        front: newCardFront,
+        back: newCardBack,
+        deckId: selectedDeck.id,
+        teacherId: userId
+      });
+
+      const response = await fetch('/api/flashcards/cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          front: newCardFront,
+          back: newCardBack,
+          deckId: selectedDeck.id,
+          teacherId: userId,
+          difficulty: 1, // Standard-Schwierigkeit
+          order: (selectedDeck.cards?.length || 0) + 1 // Nächste Reihenfolge
+        })
+      });
+
+      if (response.ok) {
+        const newCard = await response.json();
+        console.log('Neue Karte erfolgreich erstellt:', newCard);
+        
+        // Aktualisiere das lokale Deck
+        setSelectedDeck(prev => prev ? {
+          ...prev,
+          cards: [...(prev.cards || []), newCard]
+        } : null);
+        
+        // Aktualisiere auch den globalen State
+        setFlashcardDecks(prev => prev.map(deck => 
+          deck.id === selectedDeck.id 
+            ? { ...deck, cards: [...(deck.cards || []), newCard] }
+            : deck
+        ));
+
+        setIsAddingCard(false);
+        setNewCardFront('');
+        setNewCardBack('');
+        
+        setSnackbar({
+          open: true,
+          message: 'Karteikarte erfolgreich hinzugefügt',
+          severity: 'success'
+        });
+      } else {
+        const errorText = await response.text();
+        console.error(`HTTP-Fehler: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(`Fehler beim Hinzufügen der Karteikarte: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Hinzufügen der Karteikarte:', error);
+      setSnackbar({
+        open: true,
+        message: `Fehler beim Hinzufügen der Karteikarte: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleEditCard = (card: Flashcard) => {
+    setEditingCard(card);
+    setNewCardFront(card.front);
+    setNewCardBack(card.back);
+  };
+
+  const handleUpdateCard = async () => {
+    if (!editingCard || !newCardFront.trim() || !newCardBack.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Bitte füllen Sie beide Felder aus',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      console.log('Aktualisiere Karteikarte...', {
+        cardId: editingCard.id,
+        front: newCardFront,
+        back: newCardBack,
+        teacherId: userId
+      });
+
+      const response = await fetch(`/api/flashcards/cards/${editingCard.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          front: newCardFront,
+          back: newCardBack,
+          teacherId: userId
+        })
+      });
+
+      if (response.ok) {
+        const updatedCard = await response.json();
+        console.log('Karte erfolgreich aktualisiert:', updatedCard);
+        
+        // Aktualisiere das lokale Deck
+        setSelectedDeck(prev => prev ? {
+          ...prev,
+          cards: prev.cards?.map(c => c.id === editingCard.id ? updatedCard : c) || []
+        } : null);
+        
+        // Aktualisiere auch den globalen State
+        setFlashcardDecks(prev => prev.map(deck => 
+          deck.id === selectedDeck?.id 
+            ? { ...deck, cards: deck.cards?.map(c => c.id === editingCard.id ? updatedCard : c) || [] }
+            : deck
+        ));
+
+        setEditingCard(null);
+        setNewCardFront('');
+        setNewCardBack('');
+        
+        setSnackbar({
+          open: true,
+          message: 'Karteikarte erfolgreich aktualisiert',
+          severity: 'success'
+        });
+      } else {
+        const errorText = await response.text();
+        console.error(`HTTP-Fehler: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(`Fehler beim Aktualisieren der Karteikarte: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren der Karteikarte:', error);
+      setSnackbar({
+        open: true,
+        message: `Fehler beim Aktualisieren der Karteikarte: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleDeleteCard = async (cardId: string) => {
+    if (!selectedDeck) return;
+
+    try {
+      console.log(`Lösche Karteikarte ${cardId}...`);
+
+      const response = await fetch(`/api/flashcards/cards/${cardId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teacherId: userId
+        })
+      });
+
+      if (response.ok) {
+        console.log('Karte erfolgreich gelöscht');
+        
+        // Entferne die Karte aus dem lokalen State
+        setSelectedDeck(prev => prev ? {
+          ...prev,
+          cards: prev.cards?.filter(c => c.id !== cardId) || []
+        } : null);
+        
+        // Aktualisiere auch den globalen State
+        setFlashcardDecks(prev => prev.map(deck => 
+          deck.id === selectedDeck.id 
+            ? { ...deck, cards: deck.cards?.filter(c => c.id !== cardId) || [] }
+            : deck
+        ));
+
+        setSnackbar({
+          open: true,
+          message: 'Karteikarte erfolgreich gelöscht',
+          severity: 'success'
+        });
+      } else {
+        const errorText = await response.text();
+        console.error(`HTTP-Fehler: ${response.status} ${response.statusText}`, errorText);
+        throw new Error(`Fehler beim Löschen der Karteikarte: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Löschen der Karteikarte:', error);
+      setSnackbar({
+        open: true,
+        message: `Fehler beim Löschen der Karteikarte: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleDragStart = (card: Flashcard) => {
+    setDraggedCard(card);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (targetCard: Flashcard) => {
+    if (!draggedCard || !selectedDeck || draggedCard.id === targetCard.id) return;
+
+    try {
+      // Hier würde die Logik für das Verschieben implementiert
+      // Aktuell nur visueller Effekt
+      setSnackbar({
+        open: true,
+        message: 'Drag & Drop Funktionalität wird implementiert',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Fehler beim Verschieben der Karte:', error);
+    } finally {
+      setDraggedCard(null);
     }
   };
 
@@ -2925,9 +3229,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
               <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Verwalten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Karteikarten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem' }}>Karteikarten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
-              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<StyleIcon sx={{ fontSize: 18 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
             </Tabs>
           </Box>
         </Grid>
@@ -3589,19 +3893,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.4 }}>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.15 }}>
-                              <Typography variant="h6" component="h3" sx={{ 
-                                fontWeight: '600', 
-                                color: colors.primary,
-                                fontSize: '0.75rem',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
+                            <Typography variant="h6" component="h3" sx={{ 
+                              fontWeight: '600', 
+                              color: colors.primary,
+                              fontSize: '0.75rem',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
                                 letterSpacing: '0.3px',
                                 flex: 1,
                                 minWidth: 0
-                              }}>
-                                {deck.title}
-                              </Typography>
+                            }}>
+                              {deck.title}
+                            </Typography>
                               <Chip 
                                 label={`${deck.cards?.length || 0}`}
                                 size="small"
@@ -3638,8 +3942,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedDeck(deck);
-                                handleViewCards(deck);
+                                handleOpenFlashcardModal(deck);
                               }}
                               sx={{ 
                                 color: colors.accent1,
@@ -3652,9 +3955,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 width: 20,
                                 height: 20
                               }}
-                              title="Deck bearbeiten"
+                              title="Karteikarten bearbeiten"
                             >
-                              <Edit sx={{ fontSize: 11 }} />
+                              <StyleIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                             <IconButton
                               size="small"
@@ -4075,19 +4378,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.8 }}>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 0.3 }}>
-                              <Typography variant="h6" component="h3" sx={{ 
-                                fontWeight: '600', 
-                                color: colors.primary,
-                                fontSize: '0.9rem',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
+                            <Typography variant="h6" component="h3" sx={{ 
+                              fontWeight: '600', 
+                              color: colors.primary,
+                              fontSize: '0.9rem',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
                                 letterSpacing: '0.3px',
                                 flex: 1,
                                 minWidth: 0
-                              }}>
-                                {deck.title}
-                              </Typography>
+                            }}>
+                              {deck.title}
+                            </Typography>
                               <Chip 
                                 label={`${deck.cards?.length || 0}`}
                                 size="small"
@@ -4124,8 +4427,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedDeck(deck);
-                                handleViewCards(deck);
+                                handleOpenFlashcardModal(deck);
                               }}
                               sx={{ 
                                 color: colors.accent1,
@@ -4138,9 +4440,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 width: 26,
                                 height: 26
                               }}
-                              title="Deck bearbeiten"
+                              title="Karteikarten bearbeiten"
                             >
-                              <Edit sx={{ fontSize: 14 }} />
+                              <StyleIcon sx={{ fontSize: 18 }} />
                             </IconButton>
                             <IconButton
                               size="small"
@@ -4938,7 +5240,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               setEditingDeck(null);
               setNewDeckTitle('');
               setNewDeckDescription('');
-              setSelectedGroupIds([]);
+            setSelectedGroupIds([]);
             }}
             size="small"
           >
@@ -4956,328 +5258,734 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         </DialogActions>
       </Dialog>
 
-      {/* Kartenansicht Modal - Vereinfacht */}
+      {/* Karteikarten-Verwaltungs-Modal */}
       {selectedDeck && (
-      <Dialog 
+        <Dialog 
           open={!!selectedDeck} 
-        onClose={() => {
-          setSelectedDeck(null);
-          setEditingCard(null);
-        }}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            minHeight: '80vh',
-            maxHeight: '90vh',
-            borderRadius: '20px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-            background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`
-          }
-        }}
-      >
-        {/* Header with gradient accent */}
-        <Box sx={{ 
-          height: '4px',
-          background: `linear-gradient(90deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
-          width: '100%'
-        }} />
-        
-        <DialogTitle sx={{ 
-          pb: 0.8,
-          pt: 1.5,
-          background: `linear-gradient(135deg, ${colors.primary}08 0%, ${colors.accent1}08 100%)`,
-          borderBottom: `1px solid ${colors.border}`
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box sx={{ 
-                width: 32,
-                height: 32,
-                borderRadius: '10px',
-                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 1.5,
-                boxShadow: '0 3px 10px rgba(0,0,0,0.12)'
-              }}>
-
-              </Box>
-              <Typography variant="h6" sx={{ 
-                fontWeight: '600',
-                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                letterSpacing: '0.3px',
-                fontSize: '1.1rem'
-              }}>
-                Deck bearbeiten: {selectedDeck?.title}
-              </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={handleAddCard}
-              sx={{
-                background: `linear-gradient(135deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
-                borderRadius: '10px',
-                px: 2,
-                py: 0.8,
-                fontSize: '0.8rem',
-                boxShadow: '0 3px 12px rgba(0,0,0,0.15)',
-                '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
-                },
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Add sx={{ fontSize: 16, mr: 0.5 }} />
-              Neue Karte
-            </Button>
-          </Box>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 2 }}>
-          {selectedDeck && (
-            <Box>
-              {/* Deck-Informationen - Compact */}
-              <Card sx={{ 
-                mb: 2, 
-                p: 1.5, 
-                bgcolor: colors.background,
-                borderRadius: '12px',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.06)',
-                border: `1px solid ${colors.border}`,
-                background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`
-              }}>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 1 }}>
-
-                  {selectedDeck.assignments && selectedDeck.assignments.length > 0 && (
-                    <Chip 
-                      icon={<Group sx={{ fontSize: 14 }} />}
-                      label={`${selectedDeck.assignments.length} Lerngruppe${selectedDeck.assignments.length > 1 ? 'n' : ''}`}
-                      size="small"
-                      sx={{
-                        bgcolor: colors.accent2 + '20',
-                        color: colors.accent2,
-                        border: `1px solid ${colors.accent2}30`,
-                        borderRadius: '6px',
-                        fontWeight: '500',
-                        fontSize: '0.75rem',
-                        height: '24px'
-                      }}
-                    />
-                  )}
-                </Box>
-                {selectedDeck.description && (
-                  <Typography variant="body2" sx={{ 
-                    color: colors.textSecondary,
-                    lineHeight: 1.4,
-                    opacity: 0.85,
-                    fontStyle: 'italic',
-                    fontSize: '0.85rem'
-                  }}>
-                    {selectedDeck.description}
-                  </Typography>
-                )}
-              </Card>
-
-              {/* Deck-Eigenschaften bearbeiten */}
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h6" sx={{ mb: 1.5, fontWeight: '600', fontSize: '1rem' }}>
-                  Deck-Eigenschaften bearbeiten
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Titel *"
-                      value={newDeckTitle}
-                      onChange={(e) => setNewDeckTitle(e.target.value)}
-                      required
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Beschreibung"
-                      multiline
-                      rows={3}
-                      value={newDeckDescription}
-                      onChange={(e) => setNewDeckDescription(e.target.value)}
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>Lerngruppen zuweisen</InputLabel>
-                      <Select
-                        multiple
-                        value={selectedGroupIds}
-                        onChange={(e) => {
-                          console.log('Select onChange:', e.target.value);
-                          setSelectedGroupIds(e.target.value as string[]);
-                        }}
-                        label="Lerngruppen zuweisen"
-                        renderValue={(selected: string[]) => (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
-                            {selected.map((value: string) => {
-                              const group = groups.find(g => g.id === value);
-                              return (
-                                <Chip 
-                                  key={value} 
-                                  label={group?.name || value} 
-                                  size="small" 
-                                  sx={{ fontSize: '0.7rem' }}
-                                />
-                              );
-                            })}
-                          </Box>
-                        )}
-                      >
-                        {groups.map((group) => (
-                          <MenuItem key={group.id} value={group.id} dense>
-                            <Checkbox 
-                              checked={selectedGroupIds.includes(group.id)}
-                              size="small"
-                            />
-                            <ListItemText 
-                              primary={group.name}
-                              secondary={`${group.students?.length || 0} Schüler`}
-                            />
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <Typography variant="caption" sx={{ color: colors.textSecondary, mt: 1, display: 'block' }}>
-                      Debug: {selectedGroupIds.length} Gruppen ausgewählt
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-
-              {/* Karten bearbeiten */}
-              <Box>
-                <Typography variant="h6" sx={{ mb: 1.5, fontWeight: '600', fontSize: '1rem' }}>
-                  Karten ({selectedDeck.cards?.length || 0})
-                </Typography>
-                
-                                  {(!selectedDeck.cards || selectedDeck.cards.length === 0) ? (
-                  <Card sx={{ p: 4, textAlign: 'center', bgcolor: colors.background }}>
-                    <Description sx={{ fontSize: 48, color: colors.textSecondary, mb: 2, opacity: 0.5 }} />
-                    <Typography variant="h6" sx={{ color: colors.textSecondary, mb: 1 }}>
-                      Keine Karten vorhanden
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: colors.textSecondary }}>
-                      Fügen Sie Ihre erste Karte hinzu, um mit dem Lernen zu beginnen.
-                    </Typography>
-                  </Card>
-                ) : (
-                  <Grid container spacing={2}>
-                    {selectedDeck.cards.map((card, index) => (
-                      <Grid item xs={12} md={6} key={card.id || index}>
-                        <Card sx={{ 
-                          p: 2, 
-                          bgcolor: colors.cardBg,
-                          border: `2px solid ${colors.background}`,
-                          '&:hover': {
-                            borderColor: colors.primary,
-                            transform: 'translateY(-2px)',
-                            transition: 'all 0.2s ease-in-out'
-                          }
-                        }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                            <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                              Karte {index + 1}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                              <IconButton 
-                                size="small" 
-                                sx={{ color: colors.error }}
-                                onClick={() => handleDeleteCard(card.id || '')}
-                              >
-                                <Delete sx={{ fontSize: 14 }} />
-                              </IconButton>
-                            </Box>
-                          </Box>
-                          
-                          <Box sx={{ mb: 2 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: colors.primary }}>
-                              Frage:
-                            </Typography>
-                            <Typography variant="body2" sx={{ mb: 2 }}>
-                              {card.front}
-                            </Typography>
-                            
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: colors.secondary }}>
-                              Antwort:
-                            </Typography>
-                            <Typography variant="body2" sx={{ mb: 1 }}>
-                              {card.back}
-                            </Typography>
-                            
-                            {card.hint && (
-                              <>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: colors.accent1 }}>
-                                  Tipp:
-                                </Typography>
-                                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                                  {card.hint}
-                                </Typography>
-                              </>
-                            )}
-                          </Box>
-                          
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Chip 
-                              label={`Schwierigkeit: ${card.difficulty}`}
-                              size="small"
-                              color={card.difficulty <= 1 ? 'success' : card.difficulty <= 2 ? 'warning' : 'error'}
-                            />
-                            <Typography variant="caption" sx={{ color: colors.textSecondary }}>
-                              Reihenfolge: {card.order}
-                            </Typography>
-                          </Box>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                )}
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-
+          onClose={() => {
             setSelectedDeck(null);
             setEditingCard(null);
+            setIsAddingCard(false);
+            setNewCardFront('');
+            setNewCardBack('');
+          }}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              minHeight: '70vh',
+              maxHeight: '80vh',
+              borderRadius: '16px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+              background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`,
+              overflow: 'hidden'
+            }
+          }}
+        >
+          {/* Header mit Gradient */}
+          <Box sx={{ 
+            height: '6px',
+            background: `linear-gradient(90deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
+            width: '100%'
+          }} />
+          
+          {/* Modal Header */}
+          <DialogTitle sx={{ 
+            pb: 2,
+            pt: 3,
+            background: `linear-gradient(135deg, ${colors.primary}08 0%, ${colors.accent1}08 100%)`,
+            borderBottom: `2px solid ${colors.border}`,
+            position: 'relative'
           }}>
-            Schließen
-          </Button>
-          {selectedDeck && (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                <Box sx={{ 
+                  width: 40,
+                  height: 40,
+                  borderRadius: '12px',
+                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 2,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)'
+                }}>
+                  <StyleIcon sx={{ fontSize: 24, color: 'white' }} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h5" sx={{ 
+                    fontWeight: '700',
+                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    letterSpacing: '0.3px',
+                    fontSize: '1.3rem',
+                    mb: 0.5
+                  }}>
+                    {selectedDeck?.title}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                    <Chip 
+                      label={`${selectedDeck?.cards?.length || 0} Karten`}
+                      size="small"
+                      sx={{
+                        bgcolor: colors.primary + '20',
+                        color: colors.primary,
+                        fontWeight: '600',
+                        fontSize: '0.7rem',
+                        height: '22px'
+                      }}
+                    />
+
+                    {selectedDeck?.subject && (
+                      <Chip 
+                        label={selectedDeck.subject.name}
+                        size="small"
+                        sx={{
+                          bgcolor: colors.secondary + '20',
+                          color: colors.secondary,
+                          fontWeight: '600',
+                          fontSize: '0.7rem',
+                          height: '22px'
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                </Box>
+              </Box>
+              
+              {/* Action Buttons */}
+              <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setIsAddingCard(false);
+                    setEditingCard(null);
+                    setNewCardFront('');
+                    setNewCardBack('');
+                  }}
+                  sx={{
+                    borderColor: colors.primary,
+                    color: colors.primary,
+                    borderRadius: '8px',
+                    px: 2,
+                    py: 0.8,
+                    fontSize: '0.8rem',
+                    fontWeight: '500',
+                    '&:hover': {
+                      borderColor: colors.primary,
+                      backgroundColor: colors.primary + '08'
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <EditIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                  Bearbeiten
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => selectedDeck?.id && refreshDeckCards(selectedDeck.id)}
+                  sx={{
+                    borderColor: colors.accent2,
+                    color: colors.accent2,
+                    borderRadius: '8px',
+                    px: 2,
+                    py: 0.8,
+                    fontSize: '0.8rem',
+                    fontWeight: '500',
+                    '&:hover': {
+                      borderColor: colors.accent2,
+                      backgroundColor: colors.accent2 + '08'
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <RefreshIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                  Aktualisieren
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleAddCard}
+                  sx={{
+                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                    borderRadius: '8px',
+                    px: 2.5,
+                    py: 0.8,
+                    fontSize: '0.8rem',
+                    fontWeight: '600',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.15)'
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Add sx={{ fontSize: 18, mr: 0.5 }} />
+                  Neue Karte
+                </Button>
+              </Box>
+            </Box>
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
+            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              
+              {/* Neue Karte hinzufügen */}
+              {isAddingCard && (
+                <Box sx={{ 
+                  p: 3, 
+                  mb: 2, 
+                  background: `linear-gradient(135deg, ${colors.accent1}08 0%, ${colors.accent2}08 100%)`,
+                  border: `2px solid ${colors.accent1}30`,
+                  borderRadius: '16px',
+                  mx: 2,
+                  mt: 2,
+                  boxShadow: '0 6px 24px rgba(0,0,0,0.08)'
+                }}>
+                  <Typography variant="h6" sx={{ 
+                    mb: 2, 
+                    fontWeight: '600',
+                    color: colors.accent1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <Add sx={{ fontSize: 20 }} />
+                    Neue Karteikarte hinzufügen
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Frage *"
+                        value={newCardFront}
+                        onChange={(e) => setNewCardFront(e.target.value)}
+                        required
+                        multiline
+                        rows={3}
+                        placeholder="Frage eingeben..."
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            '&.Mui-focused': {
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: colors.accent1,
+                                borderWidth: '2px'
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Antwort *"
+                        value={newCardBack}
+                        onChange={(e) => setNewCardBack(e.target.value)}
+                        required
+                        multiline
+                        rows={3}
+                        placeholder="Antwort eingeben..."
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            '&.Mui-focused': {
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: colors.accent2,
+                                borderWidth: '2px'
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                  <Box sx={{ display: 'flex', gap: 1.5, mt: 2, justifyContent: 'flex-end' }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setIsAddingCard(false);
+                        setNewCardFront('');
+                        setNewCardBack('');
+                      }}
+                      sx={{
+                        borderColor: colors.textSecondary,
+                        color: colors.textSecondary,
+                        borderRadius: '8px',
+                        px: 2,
+                        py: 0.8,
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      Abbrechen
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleSaveCard}
+                      disabled={!newCardFront.trim() || !newCardBack.trim()}
+                      sx={{
+                        background: `linear-gradient(135deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
+                        borderRadius: '8px',
+                        px: 3,
+                        py: 0.8,
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        '&:disabled': {
+                          opacity: 0.6
+                        }
+                      }}
+                    >
+                      Karte speichern
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+
+              {/* Karte bearbeiten */}
+              {editingCard && (
+                <Box sx={{ 
+                  p: 3, 
+                  mb: 2,
+                  background: `linear-gradient(135deg, ${colors.primary}08 0%, ${colors.accent1}08 100%)`,
+                  border: `2px solid ${colors.primary}30`,
+                  borderRadius: '16px',
+                  mx: 2,
+                  mt: 2,
+                  boxShadow: '0 6px 24px rgba(0,0,0,0.08)'
+                }}>
+                  <Typography variant="h6" sx={{ 
+                    mb: 2, 
+                    fontWeight: '600',
+                    color: colors.primary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <EditIcon sx={{ fontSize: 20 }} />
+                    Karteikarte bearbeiten
+                  </Typography>
+                                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                        label="Frage *"
+                        value={newCardFront}
+                        onChange={(e) => setNewCardFront(e.target.value)}
+                      required
+                        multiline
+                        rows={3}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            '&.Mui-focused': {
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: colors.primary,
+                                borderWidth: '2px'
+                              }
+                            }
+                          }
+                        }}
+                    />
+                  </Grid>
+                    <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                        label="Antwort *"
+                        value={newCardBack}
+                        onChange={(e) => setNewCardBack(e.target.value)}
+                        required
+                      multiline
+                      rows={3}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            '&.Mui-focused': {
+                              '& .MuiOutlinedInput-notchedOutline': {
+                                borderColor: colors.primary,
+                                borderWidth: '2px'
+                              }
+                            }
+                          }
+                        }}
+                      />
+                  </Grid>
+                </Grid>
+                  <Box sx={{ display: 'flex', gap: 1.5, mt: 2, justifyContent: 'flex-end' }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        setEditingCard(null);
+                        setNewCardFront('');
+                        setNewCardBack('');
+                      }}
+                      sx={{
+                        borderColor: colors.textSecondary,
+                        color: colors.textSecondary,
+                        borderRadius: '8px',
+                        px: 2,
+                        py: 0.8,
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      Abbrechen
+                    </Button>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={handleUpdateCard}
+                      disabled={!newCardFront.trim() || !newCardBack.trim()}
+                      sx={{
+                        background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                        borderRadius: '8px',
+                        px: 3,
+                        py: 0.8,
+                        fontSize: '0.8rem',
+                        fontWeight: '600',
+                        '&:disabled': {
+                          opacity: 0.6
+                        }
+                      }}
+                    >
+                      Änderungen speichern
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+
+              {/* Karteikarten-Übersicht */}
+              <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                {(!selectedDeck.cards || selectedDeck.cards.length === 0) ? (
+                                      <Card sx={{ 
+                      p: 6, 
+                      textAlign: 'center', 
+                      bgcolor: colors.background,
+                      borderRadius: '20px',
+                      border: `2px dashed ${colors.border}`,
+                      mx: 2,
+                      boxShadow: '0 6px 24px rgba(0,0,0,0.08)'
+                    }}>
+                      <StyleIcon sx={{ fontSize: 60, color: colors.textSecondary, mb: 2, opacity: 0.4 }} />
+                      <Typography variant="h5" sx={{ color: colors.textSecondary, mb: 1.5, fontWeight: '600' }}>
+                        Keine Karteikarten vorhanden
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: colors.textSecondary, mb: 3, fontSize: '1rem', opacity: 0.8 }}>
+                        Erstellen Sie Ihre erste Karteikarte, um mit dem Lernen zu beginnen.
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        size="medium"
+                        onClick={handleAddCard}
+                        sx={{
+                          background: `linear-gradient(135deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
+                          borderRadius: '16px',
+                          px: 4,
+                          py: 1.5,
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          boxShadow: '0 6px 24px rgba(0,0,0,0.15)',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+                          },
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <Add sx={{ fontSize: 24, mr: 1 }} />
+                        Erste Karte erstellen
+                      </Button>
+                    </Card>
+                ) : (
+                  <Box>
+                    {/* Karteikarten-Header */}
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      mb: 2,
+                      p: 1.5,
+                      bgcolor: colors.cardBg,
+                      borderRadius: '12px',
+                      border: `1px solid ${colors.border}`
+                    }}>
+                      <Typography variant="subtitle1" sx={{ 
+                        fontWeight: '600',
+                        color: colors.primary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                      }}>
+                        <StyleIcon sx={{ fontSize: 20 }} />
+                        Karteikarten ({selectedDeck.cards.length})
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Chip 
+                          label="Drag & Drop"
+                          size="small"
+                          sx={{
+                            bgcolor: colors.accent1 + '20',
+                            color: colors.accent1,
+                            fontSize: '0.6rem',
+                            fontWeight: '500'
+                          }}
+                        />
+                      </Box>
+                    </Box>
+
+                    {/* Karteikarten-Grid */}
+                    <Grid container spacing={2}>
+                      {selectedDeck.cards.map((card, index) => (
+                        <Grid item xs={12} md={6} lg={4} key={card.id || index}>
+                                                  <Card 
+                          sx={{ 
+                            height: '100%',
+                            background: `linear-gradient(135deg, ${colors.cardBg} 0%, ${colors.background} 100%)`,
+                            border: `2px solid ${colors.border}`,
+                            borderRadius: '16px',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                            transition: 'all 0.3s ease',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              borderColor: colors.primary,
+                              transform: 'translateY(-4px)',
+                              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                              '& .card-actions': {
+                                opacity: 1
+                              }
+                            },
+                            position: 'relative',
+                            overflow: 'hidden'
+                          }}
+                            draggable
+                            onDragStart={() => handleDragStart(card)}
+                            onDragOver={handleDragOver}
+                            onDrop={() => handleDrop(card)}
+                          >
+                            {/* Karten-Nummer Badge */}
+                            <Box sx={{ 
+                              position: 'absolute',
+                              top: 16,
+                              right: 16,
+                              width: 40,
+                              height: 40,
+                              borderRadius: '50%',
+                              background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                              zIndex: 2
+                            }}>
+                              <Typography variant="caption" sx={{ 
+                                color: 'white', 
+                                fontWeight: '800',
+                                fontSize: '0.8rem'
+                              }}>
+                                {index + 1}
+                              </Typography>
+                            </Box>
+                            
+                            {/* Karten-Inhalt */}
+                            <CardContent sx={{ p: 4, pt: 5 }}>
+                              <Box sx={{ mb: 3 }}>
+                                <Typography variant="h6" sx={{ 
+                                  fontWeight: '800', 
+                                  mb: 2, 
+                                  color: colors.primary,
+                                  fontSize: '1rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1
+                                }}>
+                                  <Box sx={{ 
+                                    width: 10, 
+                                    height: 10, 
+                                    borderRadius: '50%', 
+                                    bgcolor: colors.primary 
+                                  }} />
+                                  Frage:
+                                </Typography>
+                                <Typography variant="body1" sx={{ 
+                                  mb: 3,
+                                  fontSize: '0.95rem',
+                                  lineHeight: 1.6,
+                                  color: colors.textPrimary,
+                                  minHeight: '3em',
+                                  fontWeight: '500'
+                                }}>
+                                  {card.front}
+                                </Typography>
+                                
+                                <Typography variant="h6" sx={{ 
+                                  fontWeight: '800', 
+                                  mb: 2, 
+                                  color: colors.secondary,
+                                  fontSize: '1rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1
+                                }}>
+                                  <Box sx={{ 
+                                    width: 10, 
+                                    height: 10, 
+                                    borderRadius: '50%', 
+                                    bgcolor: colors.secondary 
+                                  }} />
+                                  Antwort:
+                                </Typography>
+                                <Typography variant="body1" sx={{ 
+                                  mb: 2,
+                                  fontSize: '0.95rem',
+                                  lineHeight: 1.6,
+                                  color: colors.textPrimary,
+                                  minHeight: '3em',
+                                  fontWeight: '500'
+                                }}>
+                                  {card.back}
+                                </Typography>
+                              </Box>
+                              
+                              {/* Karten-Metadaten */}
+                              <Box sx={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                pt: 2,
+                                borderTop: `1px solid ${colors.border}`
+                              }}>
+                                <Chip 
+                                  label={`Schwierigkeit ${card.difficulty || 1}`}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: (card.difficulty || 1) <= 1 ? colors.success + '20' : 
+                                            (card.difficulty || 1) <= 2 ? colors.warning + '20' : 
+                                            colors.error + '20',
+                                    color: (card.difficulty || 1) <= 1 ? colors.success : 
+                                           (card.difficulty || 1) <= 2 ? colors.warning : 
+                                           colors.error,
+                                    fontWeight: '600',
+                                    fontSize: '0.75rem'
+                                  }}
+                                />
+                                <Typography variant="caption" sx={{ 
+                                  color: colors.textSecondary,
+                                  fontSize: '0.75rem',
+                                  fontWeight: '500'
+                                }}>
+                                  #{card.order || index + 1}
+                                </Typography>
+                              </Box>
+                            </CardContent>
+
+                            {/* Aktions-Buttons */}
+                            <Box sx={{ 
+                              position: 'absolute',
+                              bottom: 16,
+                              right: 16,
+                              display: 'flex',
+                              gap: 1,
+                              opacity: 0,
+                              transition: 'opacity 0.3s ease',
+                              zIndex: 2
+                            }}
+                            className="card-actions"
+                            >
+                              <IconButton 
+                                size="medium" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditCard(card);
+                                }}
+                                sx={{ 
+                                  color: colors.primary,
+                                  bgcolor: 'rgba(255,255,255,0.95)',
+                                  backdropFilter: 'blur(10px)',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(255,255,255,1)',
+                                    transform: 'scale(1.1)'
+                                  },
+                                  transition: 'all 0.2s ease'
+                                }}
+                                title="Karte bearbeiten"
+                              >
+                                <EditIcon sx={{ fontSize: 18 }} />
+                              </IconButton>
+                              <IconButton 
+                                size="medium" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm('Möchten Sie diese Karte wirklich löschen?')) {
+                                    handleDeleteCard(card.id || '');
+                                  }
+                                }}
+                                sx={{ 
+                                  color: colors.error,
+                                  bgcolor: 'rgba(255,255,255,0.95)',
+                                  backdropFilter: 'blur(10px)',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(255,255,255,1)',
+                                    transform: 'scale(1.1)'
+                                  },
+                                  transition: 'all 0.2s ease'
+                                }}
+                                title="Karte löschen"
+                              >
+                                <Delete sx={{ fontSize: 18 }} />
+                              </IconButton>
+                            </Box>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          </DialogContent>
+
+          <DialogActions sx={{ 
+            p: 2, 
+            pt: 1.5,
+            background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`,
+            borderTop: `1px solid ${colors.border}`
+          }}>
             <Button 
               onClick={() => {
-                // Hier würde die Deck-Aktualisierung implementiert
-                setSnackbar({
-                  open: true,
-                  message: 'Deck erfolgreich aktualisiert',
-                  severity: 'success'
-                });
+                setSelectedDeck(null);
+                setEditingCard(null);
+                setIsAddingCard(false);
+                setNewCardFront('');
+                setNewCardBack('');
               }}
-              variant="contained"
-              color="primary"
+              variant="outlined"
+              size="medium"
+              sx={{
+                borderColor: colors.textSecondary,
+                color: colors.textSecondary,
+                borderRadius: '10px',
+                px: 3,
+                py: 1,
+                fontSize: '0.9rem',
+                fontWeight: '500'
+              }}
             >
-              Speichern
+              Schließen
             </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+          </DialogActions>
+        </Dialog>
       )}
 
       {/* Delete Confirmation Modal */}
@@ -5409,8 +6117,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           borderBottomLeftRadius: '14px',
           borderBottomRightRadius: '14px'
         }}>
-          <Button 
-            onClick={() => {
+            <Button 
+              onClick={() => {
               setDeleteModalOpen(false);
               setDeckToDelete(null);
               setDeleteConfirmWord('');
@@ -5429,7 +6137,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
           <Button 
             onClick={confirmDeleteDeck}
-            variant="contained"
+              variant="contained"
             disabled={deleteConfirmWord !== 'LÖSCHEN'}
             sx={{
               backgroundColor: '#dc2626',
@@ -5445,7 +6153,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             }}
           >
             Endgültig löschen
-          </Button>
+            </Button>
         </DialogActions>
       </Dialog>
 

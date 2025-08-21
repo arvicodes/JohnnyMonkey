@@ -137,6 +137,60 @@ export const getDeck = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+export const getDeckCards = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { deckId } = req.params;
+    const userId = req.user?.id;
+
+    console.log(`Loading cards for deck ${deckId}...`);
+
+    // Prüfen ob das Deck existiert
+    const deck = await prisma.flashcardDeck.findUnique({
+      where: { id: deckId },
+      select: { 
+        id: true, 
+        teacherId: true, 
+        isPublic: true,
+        title: true
+      }
+    });
+
+    if (!deck) {
+      return res.status(404).json({ error: 'Karteideck nicht gefunden' });
+    }
+
+    // Prüfen ob der Benutzer Zugriff hat
+    if (!deck.isPublic && deck.teacherId !== userId && req.user?.role === 'STUDENT') {
+      // Prüfen ob der Schüler das Deck zugewiesen bekommen hat
+      const hasAccess = await prisma.flashcardAssignment.findFirst({
+        where: {
+          deckId,
+          group: {
+            students: { some: { id: userId } }
+          }
+        }
+      });
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Kein Zugriff auf dieses Karteideck' });
+      }
+    }
+
+    // Karten laden
+    const cards = await prisma.flashcard.findMany({
+      where: { deckId },
+      orderBy: { order: 'asc' }
+    });
+
+    console.log(`Successfully loaded ${cards.length} cards for deck ${deck.title}`);
+    
+    res.json(cards);
+  } catch (error) {
+    console.error('Fehler beim Abrufen der Karten:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
 export const updateDeck = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { deckId } = req.params;

@@ -4,6 +4,7 @@ import {
   createDeck,
   getDecks,
   getDeck,
+  getDeckCards,
   updateDeck,
   deleteDeck,
   
@@ -32,6 +33,7 @@ const router = express.Router();
 router.post('/decks', createDeck);
 router.get('/decks', getDecks);
 router.get('/decks/:deckId', getDeck);
+router.get('/decks/:deckId/cards', getDeckCards);
 router.put('/decks/:deckId', updateDeck);
 router.delete('/decks/:deckId', deleteDeck);
 
