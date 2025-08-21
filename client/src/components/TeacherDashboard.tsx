@@ -264,6 +264,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [newDeckTitle, setNewDeckTitle] = useState('');
   const [newDeckDescription, setNewDeckDescription] = useState('');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  
+  // Delete Modal States
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deckToDelete, setDeckToDelete] = useState<FlashcardDeck | null>(null);
+  const [deleteConfirmWord, setDeleteConfirmWord] = useState('');
 
 
   // Menü pro Schüler
@@ -340,6 +345,105 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // Lade alle Karten für ein spezifisches Deck
+  const fetchDeckCards = async (deckId: string) => {
+    try {
+      const response = await fetch(`/api/flashcards/decks/${deckId}/cards`);
+      if (response.ok) {
+        const cards = await response.json();
+        
+        // Aktualisiere das Deck mit den Karten
+        setFlashcardDecks(prev => prev.map(deck => 
+          deck.id === deckId 
+            ? { ...deck, cards: cards }
+            : deck
+        ));
+        
+        return cards;
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Deck-Karten:', error);
+      return [];
+    }
+  };
+
+  // Hilfsfunktion: Lösche alle verknüpften Daten eines Decks
+  const deleteDeckRelatedData = async (deckId: string, deck: FlashcardDeck) => {
+    const results = {
+      assignmentsDeleted: 0,
+      cardsDeleted: 0,
+      errors: [] as string[]
+    };
+
+    try {
+      // 1. Lösche alle Gruppen-Zuweisungen
+      if (deck.assignments && deck.assignments.length > 0) {
+        console.log(`Lösche ${deck.assignments.length} Gruppen-Zuweisungen...`);
+        for (const assignment of deck.assignments) {
+          try {
+            const deleteResponse = await fetch(`/api/flashcards/assignments/${assignment.id}`, {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                teacherId: userId
+              })
+            });
+            if (deleteResponse.ok) {
+              results.assignmentsDeleted++;
+              console.log(`✓ Gruppen-Zuweisung ${assignment.id} gelöscht`);
+            } else {
+              const errorMsg = `Gruppen-Zuweisung ${assignment.id}: ${deleteResponse.status}`;
+              results.errors.push(errorMsg);
+              console.warn(`✗ ${errorMsg}`);
+            }
+          } catch (assignmentError) {
+            const errorMsg = `Gruppen-Zuweisung ${assignment.id}: ${assignmentError}`;
+            results.errors.push(errorMsg);
+            console.warn(`✗ ${errorMsg}`);
+          }
+        }
+      }
+
+      // 2. Lösche alle Karten des Decks
+      if (deck.cards && deck.cards.length > 0) {
+        console.log(`Lösche ${deck.cards.length} Karten...`);
+        for (const card of deck.cards) {
+          try {
+            const deleteResponse = await fetch(`/api/flashcards/cards/${card.id}`, {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                teacherId: userId
+              })
+            });
+            if (deleteResponse.ok) {
+              results.cardsDeleted++;
+              console.log(`✓ Karte ${card.id} gelöscht`);
+            } else {
+              const errorMsg = `Karte ${card.id}: ${deleteResponse.status}`;
+              results.errors.push(errorMsg);
+              console.warn(`✗ ${errorMsg}`);
+            }
+          } catch (cardError) {
+            const errorMsg = `Karte ${card.id}: ${cardError}`;
+            results.errors.push(errorMsg);
+            console.warn(`✗ ${errorMsg}`);
+          }
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Fehler beim Löschen der verknüpften Daten:', error);
+      results.errors.push(`Allgemeiner Fehler: ${error}`);
+      return results;
+    }
+  };
+
   // Erstelle oder aktualisiere Lerngruppen-Zuweisungen
   const handleAssignGroups = async (deckId: string, groupIds: string[]) => {
     try {
@@ -347,7 +451,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const existingAssignments = flashcardDecks.find(d => d.id === deckId)?.assignments || [];
       for (const assignment of existingAssignments) {
         await fetch(`/api/flashcards/assignments/${assignment.id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            teacherId: userId
+          })
         });
       }
 
@@ -361,7 +471,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           body: JSON.stringify({
             deckId,
             groupId,
-            teacherId: "01ed6e10-397e-446c-9254-2ad7fd4ec777"
+            teacherId: userId
           })
         });
       }
@@ -2515,9 +2625,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-      title: newDeckTitle,
-      description: newDeckDescription,
-                      teacherId: "01ed6e10-397e-446c-9254-2ad7fd4ec777"
+          title: newDeckTitle,
+          description: newDeckDescription,
+          teacherId: userId
         })
       });
 
@@ -2562,29 +2672,129 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // TODO: Implement card viewing functionality
   };
 
-  const handleDeleteDeck = async (deckId: string) => {
+  const handleDeleteDeck = (deckId: string) => {
+    const deck = flashcardDecks.find(d => d.id === deckId);
+    if (deck) {
+      setDeckToDelete(deck);
+      setDeleteModalOpen(true);
+    }
+  };
+
+  const confirmDeleteDeck = async () => {
+    if (!deckToDelete || deleteConfirmWord !== 'LÖSCHEN') {
+      setSnackbar({
+        open: true,
+        message: 'Löschvorgang abgebrochen - falsches Bestätigungswort',
+        severity: 'error'
+      });
+      return;
+    }
+
     try {
+      const deckId = deckToDelete!.id;
+      let deckToDeleteWithData = deckToDelete!;
+
+      // Stelle sicher, dass alle verknüpften Daten geladen sind
+      console.log('Lade verknüpfte Daten vor dem Löschen...');
+      
+      // Lade Karten, falls noch nicht vorhanden
+      if (!deckToDeleteWithData.cards || deckToDeleteWithData.cards.length === 0) {
+        console.log('Lade Deck-Karten...');
+        const cards = await fetchDeckCards(deckId!);
+        deckToDeleteWithData = { ...deckToDeleteWithData, cards: cards };
+      }
+
+      // Lade Assignments neu, falls noch nicht vorhanden
+      if (!deckToDeleteWithData.assignments || deckToDeleteWithData.assignments.length === 0) {
+        console.log('Lade Deck-Assignments...');
+        await fetchFlashcardAssignments();
+        deckToDeleteWithData = flashcardDecks.find(d => d.id === deckId) || deckToDeleteWithData;
+      }
+
+      // Lösche alle verknüpften Daten mit der Hilfsfunktion
+      console.log('Lösche verknüpfte Daten...');
+      const deleteResults = await deleteDeckRelatedData(deckId!, deckToDeleteWithData);
+      
+      // Zeige Zusammenfassung der Löschvorgänge
+      if (deleteResults.errors.length > 0) {
+        console.warn('Einige verknüpfte Daten konnten nicht gelöscht werden:', deleteResults.errors);
+      }
+      
+      console.log(`Löschvorgang abgeschlossen: ${deleteResults.assignmentsDeleted} Zuweisungen, ${deleteResults.cardsDeleted} Karten gelöscht`);
+
+      // Kurze Pause, damit alle Löschvorgänge abgeschlossen werden können
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Jetzt das Deck selbst löschen
+      console.log('Lösche Karteideck...');
       const response = await fetch(`/api/flashcards/decks/${deckId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          teacherId: userId
+        })
       });
 
       if (response.ok) {
+        // Aus dem lokalen State entfernen
         setFlashcardDecks(prev => prev.filter(d => d.id !== deckId));
-      setSnackbar({
-        open: true,
-          message: 'Karteideck erfolgreich gelöscht',
+        
+        // Falls das gelöschte Deck gerade angezeigt wird, zurücksetzen
+        if (selectedDeck?.id === deckId) {
+          setSelectedDeck(null);
+        }
+        if (editingDeck?.id === deckId) {
+          setEditingDeck(null);
+        }
+        
+        setSnackbar({
+          open: true,
+          message: `Karteideck erfolgreich gelöscht (${deleteResults.assignmentsDeleted} Zuweisungen, ${deleteResults.cardsDeleted} Karten entfernt)`,
           severity: 'success'
         });
+        
+        // Modal schließen und States zurücksetzen
+        setDeleteModalOpen(false);
+        setDeckToDelete(null);
+        setDeleteConfirmWord('');
       } else {
-        throw new Error('Fehler beim Löschen des Karteidecks');
+        const errorData = await response.text();
+        console.error('Server-Fehler beim Löschen:', response.status, errorData);
+        
+        let errorMessage = 'Fehler beim Löschen des Karteidecks';
+        switch (response.status) {
+          case 403:
+            errorMessage = 'Zugriff verweigert - Sie haben keine Berechtigung, dieses Karteideck zu löschen';
+            break;
+          case 404:
+            errorMessage = 'Karteideck nicht gefunden';
+            break;
+          case 401:
+            errorMessage = 'Nicht authentifiziert - Bitte melden Sie sich erneut an';
+            break;
+          case 500:
+            errorMessage = 'Server-Fehler - Bitte versuchen Sie es später erneut';
+            break;
+          default:
+            errorMessage = `Fehler beim Löschen des Karteidecks: ${response.status}`;
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Fehler beim Löschen des Karteidecks:', error);
       setSnackbar({
         open: true,
-        message: 'Fehler beim Löschen des Karteidecks',
+        message: `Fehler beim Löschen des Karteidecks: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
         severity: 'error'
       });
+      
+      // Modal schließen und States zurücksetzen
+      setDeleteModalOpen(false);
+      setDeckToDelete(null);
+      setDeleteConfirmWord('');
     }
   };
 
@@ -2607,7 +2817,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         body: JSON.stringify({
           title: newDeckTitle,
           description: newDeckDescription,
-                      teacherId: "01ed6e10-397e-446c-9254-2ad7fd4ec777"
+          teacherId: userId
         })
       });
 
@@ -3351,7 +3561,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       bgcolor: colors.cardBg,
                       height: '100%',
                       cursor: 'pointer',
-                      minHeight: 220,
+                      minHeight: 180,
                       transition: 'all 0.2s ease',
                       '&:hover': {
                         boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
@@ -3378,18 +3588,34 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         {/* Title and Actions Row */}
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.4 }}>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography variant="h6" component="h3" sx={{ 
-                              fontWeight: '600', 
-                              color: colors.primary,
-                              fontSize: '0.75rem',
-                              mb: 0.15,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              letterSpacing: '0.3px'
-                            }}>
-                              {deck.title}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.15 }}>
+                              <Typography variant="h6" component="h3" sx={{ 
+                                fontWeight: '600', 
+                                color: colors.primary,
+                                fontSize: '0.75rem',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                letterSpacing: '0.3px',
+                                flex: 1,
+                                minWidth: 0
+                              }}>
+                                {deck.title}
+                              </Typography>
+                              <Chip 
+                                label={`${deck.cards?.length || 0}`}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: colors.primary + '20',
+                                  color: colors.primary,
+                                  fontSize: '0.45rem',
+                                  height: '12px',
+                                  fontWeight: '500',
+                                  border: `1px solid ${colors.primary}30`,
+                                  minWidth: '20px'
+                                }}
+                              />
+                            </Box>
                             {deck.description && (
                               <Typography variant="body2" sx={{ 
                                 color: colors.textSecondary,
@@ -3435,9 +3661,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (deck.id) {
-                                                                  if (window.confirm(`Sind Sie sicher, dass Sie das Deck "${deck.title}" löschen möchten?`)) {
                                   handleDeleteDeck(deck.id || '');
-                                }
                                 }
                               }}
                               sx={{ 
@@ -3560,22 +3784,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           )}
                         </Box>
                         
-                        {/* Info Chips - kompakter mit mehr Abstand nach unten */}
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.7, justifyContent: 'center', mt: 'auto' }}>
 
-                            <Chip 
-                            label={`${deck.cards?.length || 0} Karten`}
-                            size="small"
-                            sx={{ 
-                              bgcolor: colors.primary + '20',
-                              color: colors.primary,
-                              fontSize: '0.5rem',
-                              height: '14px',
-                              fontWeight: '500',
-                              border: `1px solid ${colors.primary}30`
-                            }}
-                          />
-                        </Box>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -3840,6 +4049,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       bgcolor: colors.cardBg,
                       height: '100%',
                       cursor: 'pointer',
+                      minHeight: 180,
                       transition: 'all 0.2s ease',
                       '&:hover': {
                         boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
@@ -3864,18 +4074,34 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         {/* Title and Actions Row */}
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.8 }}>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography variant="h6" component="h3" sx={{ 
-                              fontWeight: '600', 
-                              color: colors.primary,
-                              fontSize: '0.9rem',
-                              mb: 0.3,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              letterSpacing: '0.3px'
-                            }}>
-                              {deck.title}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 0.3 }}>
+                              <Typography variant="h6" component="h3" sx={{ 
+                                fontWeight: '600', 
+                                color: colors.primary,
+                                fontSize: '0.9rem',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                letterSpacing: '0.3px',
+                                flex: 1,
+                                minWidth: 0
+                              }}>
+                                {deck.title}
+                              </Typography>
+                              <Chip 
+                                label={`${deck.cards?.length || 0}`}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: colors.primary + '20',
+                                  color: colors.primary,
+                                  fontSize: '0.55rem',
+                                  height: '16px',
+                                  fontWeight: '500',
+                                  border: `1px solid ${colors.primary}30`,
+                                  minWidth: '24px'
+                                }}
+                              />
+                            </Box>
                             {deck.description && (
                               <Typography variant="body2" sx={{ 
                                 color: colors.textSecondary,
@@ -3921,9 +4147,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (deck.id) {
-                                                                  if (window.confirm(`Sind Sie sicher, dass Sie das Deck "${deck.title}" löschen möchten?`)) {
                                   handleDeleteDeck(deck.id || '');
-                                }
                                 }
                               }}
                               sx={{ 
@@ -4068,23 +4292,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           </Typography>
                         </Box>
                         
-                        {/* Info Chips - Smaller */}
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 0.8, justifyContent: 'center' }}>
 
-                            <Chip 
-                            label={`${deck.cards?.length || 0} Karten`}
-                            size="small"
-                            sx={{ 
-                              bgcolor: colors.primary + '20',
-                              color: colors.primary,
-                              fontSize: '0.6rem',
-                              height: '18px',
-                              fontWeight: '500',
-                              border: `1px solid ${colors.primary}30`
-                            }}
-                          />
-
-                        </Box>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -4615,6 +4823,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           setEditingDeck(null);
           setNewDeckTitle('');
           setNewDeckDescription('');
+          setSelectedGroupIds([]);
         }}
         maxWidth="sm"
         fullWidth
@@ -4659,10 +4868,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 <InputLabel>Lerngruppen zuweisen</InputLabel>
                 <Select
                   multiple
-                  value={[]}
+                  value={selectedGroupIds}
                   onChange={(e) => {
-                    // TODO: Implement assignment creation
-                    console.log('Lerngruppen-Auswahl:', e.target.value);
+                    const value = e.target.value as string[];
+                    console.log('Gruppenauswahl geändert:', value);
+                    setSelectedGroupIds(value);
                   }}
                   label="Lerngruppen zuweisen"
                   renderValue={(selected: string[]) => (
@@ -4681,10 +4891,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     </Box>
                   )}
                 >
-                  {groups && groups.map((group) => (
+                  {groups && groups.length > 0 ? groups.map((group) => (
                     <MenuItem key={group.id} value={group.id} dense>
                       <Checkbox 
-                        checked={false}
+                        checked={selectedGroupIds.includes(group.id)}
                         size="small"
                       />
                       <ListItemText 
@@ -4692,7 +4902,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         primaryTypographyProps={{ fontSize: '0.8rem' }}
                       />
                     </MenuItem>
-                  ))}
+                  )) : (
+                    <MenuItem disabled>
+                      <Typography variant="body2" color="textSecondary">
+                        Keine Lerngruppen verfügbar
+                      </Typography>
+                    </MenuItem>
+                  )}
                 </Select>
               </FormControl>
               
@@ -4722,7 +4938,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               setEditingDeck(null);
               setNewDeckTitle('');
               setNewDeckDescription('');
-            setSelectedGroupIds([]);
+              setSelectedGroupIds([]);
             }}
             size="small"
           >
@@ -5063,6 +5279,175 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         </DialogActions>
       </Dialog>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Dialog 
+        open={deleteModalOpen} 
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setDeckToDelete(null);
+          setDeleteConfirmWord('');
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 20px 60px rgba(220, 38, 38, 0.3)',
+            border: '2px solid #ef4444'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          pb: 1, 
+          pt: 2,
+          backgroundColor: '#fef2f2',
+          borderTopLeftRadius: '14px',
+          borderTopRightRadius: '14px',
+          borderBottom: '1px solid #fecaca'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ 
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              backgroundColor: '#dc2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mr: 2,
+              boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+            }}>
+              <Typography variant="h6" sx={{ color: 'white', fontSize: '1.2rem' }}>
+                ⚠️
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ 
+                fontSize: '1.2rem', 
+                fontWeight: '600',
+                color: '#dc2626',
+                mb: 0.5
+              }}>
+                Karteideck löschen
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: '#7f1d1d',
+                fontSize: '0.85rem'
+              }}>
+                Diese Aktion kann nicht rückgängig gemacht werden
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 3, backgroundColor: '#fef2f2' }}>
+          <Typography variant="body1" sx={{ 
+            mb: 3, 
+            color: '#7f1d1d',
+            fontSize: '0.95rem',
+            lineHeight: 1.6
+          }}>
+            Sie sind dabei, das Karteideck <strong>"{deckToDelete?.title}"</strong> zu löschen.
+            <br />
+            <br />
+            <strong>Alle folgenden Daten werden unwiderruflich gelöscht:</strong>
+          </Typography>
+          
+          <Box sx={{ 
+            p: 2, 
+            backgroundColor: '#fee2e2', 
+            borderRadius: '8px',
+            border: '1px solid #fecaca',
+            mb: 3
+          }}>
+            <Typography variant="body2" sx={{ color: '#991b1b', mb: 1 }}>
+              • Alle Karteikarten in diesem Deck
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#991b1b', mb: 1 }}>
+              • Alle Gruppen-Zuweisungen
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#991b1b' }}>
+              • Alle Lernfortschritte der Schüler
+            </Typography>
+          </Box>
+          
+          <Typography variant="body1" sx={{ 
+            mb: 2, 
+            color: '#7f1d1d',
+            fontWeight: '600'
+          }}>
+            Geben Sie <span style={{ color: '#dc2626' }}>LÖSCHEN</span> ein, um zu bestätigen:
+          </Typography>
+          
+          <TextField
+            fullWidth
+            value={deleteConfirmWord}
+            onChange={(e) => setDeleteConfirmWord(e.target.value)}
+            placeholder="LÖSCHEN"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'white',
+                '&.Mui-focused': {
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#dc2626',
+                    borderWidth: '2px'
+                  }
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#ef4444'
+                }
+              }
+            }}
+          />
+        </DialogContent>
+        
+        <DialogActions sx={{ 
+          p: 3, 
+          pt: 2,
+          backgroundColor: '#fef2f2',
+          borderBottomLeftRadius: '14px',
+          borderBottomRightRadius: '14px'
+        }}>
+          <Button 
+            onClick={() => {
+              setDeleteModalOpen(false);
+              setDeckToDelete(null);
+              setDeleteConfirmWord('');
+            }}
+            variant="outlined"
+            sx={{
+              borderColor: '#9ca3af',
+              color: '#6b7280',
+              '&:hover': {
+                borderColor: '#6b7280',
+                backgroundColor: '#f9fafb'
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={confirmDeleteDeck}
+            variant="contained"
+            disabled={deleteConfirmWord !== 'LÖSCHEN'}
+            sx={{
+              backgroundColor: '#dc2626',
+              color: 'white',
+              fontWeight: '600',
+              '&:hover': {
+                backgroundColor: '#b91c1c'
+              },
+              '&:disabled': {
+                backgroundColor: '#fca5a5',
+                color: '#fecaca'
+              }
+            }}
+          >
+            Endgültig löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );

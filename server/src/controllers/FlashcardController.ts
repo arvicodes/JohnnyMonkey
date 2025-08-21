@@ -178,14 +178,25 @@ export const updateDeck = async (req: AuthenticatedRequest, res: Response) => {
 export const deleteDeck = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { deckId } = req.params;
-    const userId = req.user?.id;
+    const { teacherId } = req.body;
+    
+    // Fallback zu req.user?.id wenn teacherId nicht im Body ist
+    const userId = teacherId || req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Keine Benutzer-ID gefunden' });
+    }
 
     // Prüfen ob der Benutzer der Besitzer ist
     const existingDeck = await prisma.flashcardDeck.findUnique({
       where: { id: deckId }
     });
 
-    if (!existingDeck || existingDeck.teacherId !== userId) {
+    if (!existingDeck) {
+      return res.status(404).json({ error: 'Karteideck nicht gefunden' });
+    }
+
+    if (existingDeck.teacherId !== userId) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieses Karteidecks' });
     }
 
@@ -270,7 +281,14 @@ export const updateCard = async (req: AuthenticatedRequest, res: Response) => {
 export const deleteCard = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { cardId } = req.params;
-    const userId = req.user?.id;
+    const { teacherId } = req.body;
+    
+    // Fallback zu req.user?.id wenn teacherId nicht im Body ist
+    const userId = teacherId || req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Keine Benutzer-ID gefunden' });
+    }
 
     // Prüfen ob der Benutzer der Besitzer des Decks ist
     const card = await prisma.flashcard.findUnique({
@@ -278,7 +296,11 @@ export const deleteCard = async (req: AuthenticatedRequest, res: Response) => {
       include: { deck: true }
     });
 
-    if (!card || card.deck.teacherId !== userId) {
+    if (!card) {
+      return res.status(404).json({ error: 'Karte nicht gefunden' });
+    }
+
+    if (card.deck.teacherId !== userId) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieser Karte' });
     }
 
@@ -560,10 +582,13 @@ export const getAssignments = async (req: AuthenticatedRequest, res: Response) =
 export const removeDeckAssignment = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { assignmentId } = req.params;
-    const teacherId = req.user?.id;
+    const { teacherId } = req.body;
+    
+    // Fallback zu req.user?.id wenn teacherId nicht im Body ist
+    const userId = teacherId || req.user?.id;
 
-    if (!teacherId) {
-      return res.status(401).json({ error: 'Nicht autorisiert' });
+    if (!userId) {
+      return res.status(400).json({ error: 'Keine Benutzer-ID gefunden' });
     }
 
     // Prüfen ob der Lehrer der Besitzer des Decks ist
@@ -572,7 +597,11 @@ export const removeDeckAssignment = async (req: AuthenticatedRequest, res: Respo
       include: { deck: true }
     });
 
-    if (!assignment || assignment.deck.teacherId !== teacherId) {
+    if (!assignment) {
+      return res.status(404).json({ error: 'Zuweisung nicht gefunden' });
+    }
+
+    if (assignment.deck.teacherId !== userId) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Entfernen dieser Zuweisung' });
     }
 
