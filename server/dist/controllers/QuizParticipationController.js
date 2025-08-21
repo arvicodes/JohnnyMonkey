@@ -219,8 +219,35 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                     const group = student.learningGroups[0]; // Assuming student is in one group
                     const gradingSchema = group.gradingSchemas[0]; // Assuming one schema per group
                     if (gradingSchema) {
-                        // Convert percentage to grade
-                        const grade = (0, gradeConverter_1.percentageToGrade)(percentage);
+                        let grade;
+                        let weight = 1.0; // Default weight
+                        // Convert percentage to appropriate grade system
+                        if (gradingSchema.gradingSystem === 'MSS') {
+                            grade = (0, gradeConverter_1.percentageToMSSPoints)(percentage);
+                            // Try to find the weight from the schema structure
+                            try {
+                                const schemaStructure = gradingSchema.structure;
+                                const lines = schemaStructure.split('\n');
+                                // Find the line that matches the gradeCategory and extract weight
+                                for (const line of lines) {
+                                    if (line.includes(participation.session.quiz.gradeCategory)) {
+                                        const weightMatch = line.match(/\((\d+(?:\.\d+)?)%\)/);
+                                        if (weightMatch) {
+                                            weight = parseFloat(weightMatch[1]) / 100; // Convert percentage to decimal
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            catch (weightError) {
+                                console.log(`Could not extract weight for ${participation.session.quiz.gradeCategory}, using default 1.0`);
+                            }
+                        }
+                        else {
+                            // German grading system
+                            grade = (0, gradeConverter_1.percentageToGrade)(percentage);
+                        }
+                        console.log(`Converting quiz result: ${percentage}% -> ${grade} (${gradingSchema.gradingSystem}) with weight ${weight}`);
                         // Create or update the grade
                         yield prisma.grade.upsert({
                             where: {
@@ -232,17 +259,17 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                             },
                             update: {
                                 grade: grade,
-                                weight: 1.0 // Default weight
+                                weight: weight
                             },
                             create: {
                                 studentId: participation.studentId,
                                 schemaId: gradingSchema.id,
                                 categoryName: participation.session.quiz.gradeCategory,
                                 grade: grade,
-                                weight: 1.0 // Default weight
+                                weight: weight
                             }
                         });
-                        console.log(`Grade ${grade} created for student ${participation.studentId} in category ${participation.session.quiz.gradeCategory}`);
+                        console.log(`Grade ${grade} created for student ${participation.studentId} in category ${participation.session.quiz.gradeCategory} with weight ${weight}`);
                     }
                 }
             }

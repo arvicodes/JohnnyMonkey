@@ -318,6 +318,49 @@ exports.Prisma.FileSystemPathScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.FlashcardDeckScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  description: 'description',
+  subjectId: 'subjectId',
+  teacherId: 'teacherId',
+  isPublic: 'isPublic',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.FlashcardScalarFieldEnum = {
+  id: 'id',
+  deckId: 'deckId',
+  front: 'front',
+  back: 'back',
+  hint: 'hint',
+  difficulty: 'difficulty',
+  order: 'order',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.FlashcardAssignmentScalarFieldEnum = {
+  id: 'id',
+  deckId: 'deckId',
+  groupId: 'groupId',
+  dueDate: 'dueDate',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.FlashcardProgressScalarFieldEnum = {
+  id: 'id',
+  cardId: 'cardId',
+  studentId: 'studentId',
+  level: 'level',
+  nextReview: 'nextReview',
+  lastReviewed: 'lastReviewed',
+  reviewCount: 'reviewCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -349,7 +392,11 @@ exports.Prisma.ModelName = {
   QuizSession: 'QuizSession',
   QuizParticipation: 'QuizParticipation',
   QuizAnswer: 'QuizAnswer',
-  FileSystemPath: 'FileSystemPath'
+  FileSystemPath: 'FileSystemPath',
+  FlashcardDeck: 'FlashcardDeck',
+  Flashcard: 'Flashcard',
+  FlashcardAssignment: 'FlashcardAssignment',
+  FlashcardProgress: 'FlashcardProgress'
 };
 
 /**

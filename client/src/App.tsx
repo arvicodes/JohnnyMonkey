@@ -8,6 +8,7 @@ import GeoCodingQuest from './pages/GeoCodingQuest';
 import { QuizPlayerPage } from './pages/QuizPlayerPage';
 import { QuizSessionPage } from './pages/QuizSessionPage';
 import { QuizParticipationPage } from './pages/QuizParticipationPage';
+import { FlashcardPage } from './pages/FlashcardPage';
 
 import { Snackbar, Alert } from '@mui/material';
 
@@ -133,6 +134,7 @@ function AppContent() {
         <Route path="/quiz-player/:quizId" element={<QuizPlayerPage />} />
         <Route path="/quiz-session/:quizId" element={<QuizSessionPage />} />
         <Route path="/quiz-participation/:sessionId" element={<QuizParticipationPage />} />
+        <Route path="/flashcards" element={<FlashcardPage userRole={user?.role as 'STUDENT' | 'TEACHER'} userId={user?.id} />} />
 
       </Routes>
       <Snackbar

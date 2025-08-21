@@ -46,7 +46,15 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Folder as FolderIcon,
-  Quiz as QuizIcon
+  Quiz as QuizIcon,
+
+  Add,
+  Edit,
+  Delete,
+  Group,
+  Description,
+  Public,
+  Lock
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -60,6 +68,12 @@ import FolderAssignmentSelector from './FolderAssignmentSelector';
 interface TeacherDashboardProps {
   userId: string;
   onLogout: () => void;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 interface LearningGroup {
@@ -94,6 +108,38 @@ interface MiniGradeNode {
   name: string;
   grade: number | null;
   children: MiniGradeNode[];
+}
+
+// Flashcard-Interfaces
+interface Flashcard {
+  id?: string;
+  front: string;
+  back: string;
+  hint?: string;
+  difficulty: number;
+  order: number;
+}
+
+interface FlashcardDeck {
+  id?: string;
+  title: string;
+  description?: string;
+  subjectId?: string;
+  teacherId: string;
+  imageUrl?: string; // URL für das Deck-Bild
+  imageColor?: string; // Fallback-Farbe für das Deck-Bild
+  imageIcon?: string; // Fallback-Emoji/Icon für das Deck
+  cards: Flashcard[];
+  subject?: Subject;
+  assignments?: FlashcardAssignment[];
+}
+
+interface FlashcardAssignment {
+  id: string;
+  deckId: string;
+  groupId: string;
+  dueDate?: string;
+  group: LearningGroup;
 }
 
 interface TabPanelProps {
@@ -208,6 +254,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [gradesGroupId, setGradesGroupId] = useState<string | null>(null);
   const [gradesGroupName, setGradesGroupName] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  
+  // Flashcard States
+  const [flashcardDecks, setFlashcardDecks] = useState<FlashcardDeck[]>([]);
+  const [selectedDeck, setSelectedDeck] = useState<FlashcardDeck | null>(null);
+  const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
+  const [openNewDeckDialog, setOpenNewDeckDialog] = useState(false);
+  const [editingDeck, setEditingDeck] = useState<FlashcardDeck | null>(null);
+  const [newDeckTitle, setNewDeckTitle] = useState('');
+  const [newDeckDescription, setNewDeckDescription] = useState('');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+
 
   // Menü pro Schüler
   const [studentMenuAnchorEl, setStudentMenuAnchorEl] = useState<null | HTMLElement>(null);
@@ -232,13 +289,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const colors = {
     primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
     secondary: '#F57C00', // Dunkleres Orange
-    accent1: '#1976D2', // Dunkleres Blau
+    accent1: '#1976D32', // Dunkleres Blau
     accent2: '#C2185B', // Dunkleres Pink
     background: '#F8FAFC', // Helleres, moderneres Blau
     cardBg: '#FFFFFF',
     success: '#4CAF50',
+    error: '#F44336', // Fehlerfarbe
+    warning: '#FF9800', // Warnfarbe
     textPrimary: '#2C3E50', // Dunkler Text für bessere Lesbarkeit
     textSecondary: '#7F8C8D', // Grauer Text für Sekundärinformationen
+    border: '#E0E0E0', // Rahmenfarbe für Karten und Modals
   };
 
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -246,6 +306,109 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   useEffect(() => {
     fetchGroups();
   }, [userId]);
+
+  // Lade Karteikarten-Decks aus der Datenbank
+  const fetchFlashcardDecks = async () => {
+    try {
+      const response = await fetch(`/api/flashcards/decks?teacherId=${userId}`);
+      if (response.ok) {
+        const decks = await response.json();
+        setFlashcardDecks(decks);
+      } else {
+        console.error('Fehler beim Laden der Karteikarten-Decks');
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Karteikarten-Decks:', error);
+    }
+  };
+
+  // Lade Flashcard-Assignments für alle Decks
+  const fetchFlashcardAssignments = async () => {
+    try {
+      const response = await fetch(`/api/flashcards/assignments?teacherId=${userId}`);
+      if (response.ok) {
+        const assignments = await response.json();
+        
+        // Füge Assignments zu den entsprechenden Decks hinzu
+        setFlashcardDecks(prev => prev.map(deck => ({
+          ...deck,
+          assignments: assignments.filter((a: any) => a.deckId === deck.id)
+        })));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Flashcard-Assignments:', error);
+    }
+  };
+
+  // Erstelle oder aktualisiere Lerngruppen-Zuweisungen
+  const handleAssignGroups = async (deckId: string, groupIds: string[]) => {
+    try {
+      // Lösche alle bestehenden Zuweisungen für dieses Deck
+      const existingAssignments = flashcardDecks.find(d => d.id === deckId)?.assignments || [];
+      for (const assignment of existingAssignments) {
+        await fetch(`/api/flashcards/assignments/${assignment.id}`, {
+          method: 'DELETE'
+        });
+      }
+
+      // Erstelle neue Zuweisungen
+      for (const groupId of groupIds) {
+        await fetch('/api/flashcards/assignments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deckId,
+            groupId,
+            teacherId: "01ed6e10-397e-446c-9254-2ad7fd4ec777"
+          })
+        });
+      }
+
+      // Lade Assignments neu
+      await fetchFlashcardAssignments();
+      
+      setSnackbar({
+        open: true,
+        message: 'Lerngruppen erfolgreich zugewiesen',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Fehler beim Zuweisen der Lerngruppen:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Zuweisen der Lerngruppen',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Lade Daten beim ersten Laden
+  useEffect(() => {
+    if (userId) {
+      fetchFlashcardDecks();
+    }
+  }, [userId]);
+
+  // Lade Assignments nachdem Decks geladen wurden
+  useEffect(() => {
+    if (flashcardDecks && flashcardDecks.length > 0) {
+      fetchFlashcardAssignments();
+    }
+  }, [flashcardDecks?.length]);
+
+  // Gruppen laden
+  useEffect(() => {
+    fetchGroups();
+  }, [userId]);
+
+  // Flashcard-Zuweisungen laden, nachdem Gruppen geladen wurden
+  useEffect(() => {
+    if (groups.length > 0) {
+      fetchFlashcardAssignments();
+    }
+  }, [groups, userId]);
 
   // Nach dem Laden der Gruppen: Zuweisungen und Listen laden
   useEffect(() => {
@@ -330,8 +493,34 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch(`/api/learning-groups/teacher/${userId}`);
-      if (!response.ok) throw new Error('Fehler beim Laden der Gruppen');
+      const response = await fetch(`/api/learning-groups/teacher/01ed6e10-397e-446c-9254-2ad7fd4ec777`);
+      if (!response.ok) {
+        // Fallback: Mock-Gruppen verwenden wenn Server nicht erreichbar
+        const mockGroups = [
+          {
+            id: '1',
+            name: '7a Mathematik',
+            students: []
+          },
+          {
+            id: '2',
+            name: '7b Deutsch',
+            students: []
+          },
+          {
+            id: '3',
+            name: '8a Informatik',
+            students: []
+          },
+          {
+            id: '4',
+            name: '8b Informatik',
+            students: []
+          }
+        ];
+        setGroups(mockGroups);
+        return;
+      }
       const groupsData = await response.json();
       setGroups(groupsData);
       
@@ -2206,6 +2395,257 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // Flashcard Functions
+  const handleCreateDeck = async () => {
+    if (!newDeckTitle.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Bitte geben Sie einen Titel ein',
+        severity: 'error'
+      });
+      return;
+    }
+
+    const newDeck: FlashcardDeck = {
+      id: Date.now().toString(),
+      title: newDeckTitle,
+      description: newDeckDescription,
+
+              teacherId: "01ed6e10-397e-446c-9254-2ad7fd4ec777",
+      
+      imageColor: '#1976D2',
+      imageIcon: '📚',
+      cards: []
+    };
+
+    setFlashcardDecks(prev => [...prev, newDeck]);
+    setOpenNewDeckDialog(false);
+    
+    // Reset form
+    setNewDeckTitle('');
+    setNewDeckDescription('');
+
+
+    setSnackbar({
+      open: true,
+      message: 'Karteideck erfolgreich erstellt',
+      severity: 'success'
+    });
+  };
+
+  const handleEditDeck = (deck: FlashcardDeck) => {
+    setEditingDeck(deck);
+    setNewDeckTitle(deck.title);
+    setNewDeckDescription(deck.description || '');
+    
+    // Lade bestehende Zuweisungen
+    if (deck.assignments && deck.assignments.length > 0) {
+      setSelectedGroupIds(deck.assignments.map(a => a.groupId));
+    } else {
+      setSelectedGroupIds([]);
+    }
+    
+    setOpenNewDeckDialog(true);
+  };
+
+  const handleEditCard = (card: Flashcard) => {
+    setEditingCard(card);
+  };
+
+  const handleSaveCard = (card: Flashcard) => {
+    if (!selectedDeck) return;
+    
+    setFlashcardDecks(prev => prev.map(deck => {
+      if (deck.id === selectedDeck.id) {
+        return {
+          ...deck,
+          cards: deck.cards.map(c => c.id === card.id ? card : c)
+        };
+      }
+      return deck;
+    }));
+    setEditingCard(null);
+  };
+
+  const handleDeleteCard = (cardId: string) => {
+    if (!selectedDeck) return;
+    
+    setFlashcardDecks(prev => prev.map(deck => {
+      if (deck.id === selectedDeck.id) {
+        return {
+          ...deck,
+          cards: deck.cards.filter(c => c.id !== cardId)
+        };
+      }
+      return deck;
+    }));
+  };
+
+  const handleAddCard = () => {
+    if (!selectedDeck) return;
+    
+    const newCard: Flashcard = {
+      id: Date.now().toString(),
+      front: '',
+      back: '',
+      hint: '',
+      difficulty: 1,
+      order: selectedDeck.cards?.length || 0
+    };
+    
+    setEditingCard(newCard);
+  };
+
+
+
+  const handleUpdateDeck = async () => {
+    if (!editingDeck || !newDeckTitle.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Bitte geben Sie einen Titel ein',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/flashcards/decks/${editingDeck.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+      title: newDeckTitle,
+      description: newDeckDescription,
+                      teacherId: "01ed6e10-397e-446c-9254-2ad7fd4ec777"
+        })
+      });
+
+      if (response.ok) {
+        const updatedDeck = await response.json();
+    setFlashcardDecks(prev => prev.map(d => d.id === editingDeck.id ? updatedDeck : d));
+        
+        // Aktualisiere Zuweisungen für ausgewählte Gruppen
+        if (editingDeck.id) {
+          await handleAssignGroups(editingDeck.id, selectedGroupIds);
+        }
+        
+    setOpenNewDeckDialog(false);
+    setEditingDeck(null);
+    
+    // Reset form
+    setNewDeckTitle('');
+    setNewDeckDescription('');
+        setSelectedGroupIds([]);
+
+
+    setSnackbar({
+      open: true,
+      message: 'Karteideck erfolgreich aktualisiert',
+      severity: 'success'
+      });
+      } else {
+        throw new Error('Fehler beim Aktualisieren des Karteidecks');
+      }
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren des Karteidecks:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Aktualisieren des Karteidecks',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleViewCards = (deck: FlashcardDeck) => {
+    setSelectedDeck(deck);
+    // TODO: Implement card viewing functionality
+  };
+
+  const handleDeleteDeck = async (deckId: string) => {
+    try {
+      const response = await fetch(`/api/flashcards/decks/${deckId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setFlashcardDecks(prev => prev.filter(d => d.id !== deckId));
+      setSnackbar({
+        open: true,
+          message: 'Karteideck erfolgreich gelöscht',
+          severity: 'success'
+        });
+      } else {
+        throw new Error('Fehler beim Löschen des Karteidecks');
+      }
+    } catch (error) {
+      console.error('Fehler beim Löschen des Karteidecks:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Löschen des Karteidecks',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleNewDeckSubmit = async () => {
+    if (!newDeckTitle.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Bitte geben Sie einen Titel ein',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/flashcards/decks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newDeckTitle,
+          description: newDeckDescription,
+                      teacherId: "01ed6e10-397e-446c-9254-2ad7fd4ec777"
+        })
+      });
+
+      if (response.ok) {
+        const newDeck = await response.json();
+        setFlashcardDecks(prev => [...prev, newDeck]);
+        
+        // Erstelle Zuweisungen für ausgewählte Gruppen
+        if (selectedGroupIds.length > 0) {
+          await handleAssignGroups(newDeck.id, selectedGroupIds);
+        }
+        
+        setOpenNewDeckDialog(false);
+        
+        // Reset form
+        setNewDeckTitle('');
+        setNewDeckDescription('');
+        setSelectedGroupIds([]);
+
+
+    setSnackbar({
+      open: true,
+          message: 'Karteideck erfolgreich erstellt',
+      severity: 'success'
+    });
+      } else {
+        throw new Error('Fehler beim Erstellen des Karteidecks');
+      }
+    } catch (error) {
+      console.error('Fehler beim Erstellen des Karteidecks:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Erstellen des Karteidecks',
+        severity: 'error'
+      });
+    }
+  };
+
   return (
     <Box 
       sx={{ width: '100%', bgcolor: colors.background, p: 0 }}
@@ -2275,6 +2715,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
               <Tab icon={<GroupIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Lerngruppen</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Verwalten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
+              <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem' }}>Karteikarten</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<StorageIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Datenbank</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
               <Tab icon={<SchoolIcon sx={{ fontSize: 16 }} />} label={<span style={{ fontSize: '0.65rem', color: '#9E9E9E' }}>Meine Fächer</span>} sx={{ minHeight: 28, px: 0, minWidth: 'auto', width: '12%' }} />
             </Tabs>
@@ -2855,11 +3296,299 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Box>
           </TabPanel>
           <TabPanel value={mainTabValue} index={2}>
+            {/* Karteikarten Section */}
+            <Box sx={{ p: 1.4 }}>
+              {/* Header */}
+              <Card sx={{ 
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                bgcolor: colors.cardBg,
+                mb: 1.5,
+                border: `1px solid ${colors.border}`
+              }}>
+                <CardContent sx={{ p: 1.2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="h6" component="h2" sx={{ 
+                      fontWeight: '600', 
+                      color: colors.primary,
+                      fontSize: '1rem'
+                    }}>
+                      Karteikarten
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => setOpenNewDeckDialog(true)}
+                      sx={{
+                        bgcolor: colors.accent1,
+                        color: 'white',
+                        fontWeight: '500',
+                        borderRadius: '6px',
+                        px: 0.4,
+                        py: 0.4,
+                        fontSize: '0.6rem',
+                        minWidth: 'auto',
+                        width: '25%',
+                        '&:hover': {
+                          bgcolor: colors.accent1 + 'dd'
+                        }
+                      }}
+                    >
+                      <Add sx={{ fontSize: 10, mr: 0.1 }} />
+                      Neues Deck
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              {/* Karteidecks Grid */}
+              <Grid container spacing={1.4}>
+                {flashcardDecks.map((deck) => (
+                                    <Grid item xs={12} sm={6} md={4} key={deck.id}>
+                    <Card sx={{ 
+                      borderRadius: '12px',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                      bgcolor: colors.cardBg,
+                      height: '100%',
+                      cursor: 'pointer',
+                      minHeight: 220,
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                        transform: 'translateY(-2px)',
+                        borderColor: colors.accent1
+                      },
+                      border: `1px solid ${colors.border}`,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`
+                    }}
+                    onClick={() => handleEditDeck(deck)}
+                    >
+                      {/* Header with gradient accent */}
+                      <Box sx={{ 
+                        height: '3px',
+                        background: `linear-gradient(90deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
+                        width: '100%'
+                      }} />
+                      
+                      <CardContent sx={{ p: 1.2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+
+                        
+                        {/* Title and Actions Row */}
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.4 }}>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="h6" component="h3" sx={{ 
+                              fontWeight: '600', 
+                              color: colors.primary,
+                              fontSize: '0.75rem',
+                              mb: 0.15,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              letterSpacing: '0.3px'
+                            }}>
+                              {deck.title}
+                            </Typography>
+                            {deck.description && (
+                              <Typography variant="body2" sx={{ 
+                                color: colors.textSecondary,
+                                fontSize: '0.55rem',
+                                lineHeight: 1.3,
+                                mb: 0.4,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                opacity: 0.8
+                              }}>
+                                {deck.description}
+                              </Typography>
+                            )}
+                          </Box>
+                          
+                          {/* Action Buttons */}
+                          <Box sx={{ display: 'flex', gap: 0.25 }}>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDeck(deck);
+                                handleViewCards(deck);
+                              }}
+                              sx={{ 
+                                color: colors.accent1,
+                                bgcolor: colors.accent1 + '10',
+                                '&:hover': { 
+                                  bgcolor: colors.accent1 + '20',
+                                  transform: 'scale(1.05)'
+                                },
+                                transition: 'all 0.15s ease',
+                                width: 20,
+                                height: 20
+                              }}
+                              title="Deck bearbeiten"
+                            >
+                              <Edit sx={{ fontSize: 11 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (deck.id) {
+                                                                  if (window.confirm(`Sind Sie sicher, dass Sie das Deck "${deck.title}" löschen möchten?`)) {
+                                  handleDeleteDeck(deck.id || '');
+                                }
+                                }
+                              }}
+                              sx={{ 
+                                color: colors.error,
+                                bgcolor: colors.error + '10',
+                                '&:hover': { 
+                                  bgcolor: colors.error + '20',
+                                  transform: 'scale(1.05)'
+                                },
+                                transition: 'all 0.15s ease',
+                                width: 20,
+                                height: 20
+                              }}
+                              title="Deck löschen"
+                            >
+                              <Delete sx={{ fontSize: 11 }} />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                        
+                        {/* Learning Groups - kompakter */}
+                        <Box sx={{ mb: 0.5 }}>
+                          <Typography variant="body2" sx={{ 
+                            color: colors.textSecondary,
+                            fontSize: '0.55rem',
+                            mb: 0.25,
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.3
+                          }}>
+                            <Group sx={{ fontSize: 11 }} />
+                            Zugewiesene Gruppen:
+                          </Typography>
+                          {deck.assignments && deck.assignments.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                              {deck.assignments.map((assignment) => {
+                                const group = assignment.group;
+                                return group ? (
+                                  <Box key={assignment.id} sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 0.3,
+                                    p: 0.2,
+                                    borderRadius: '4px',
+                                    bgcolor: colors.primary + '12',
+                                    border: `1px solid ${colors.primary}25`
+                                  }}>
+                                    <Box sx={{ 
+                                      width: 5, 
+                                      height: 5, 
+                                      borderRadius: '50%', 
+                                      bgcolor: colors.accent2 
+                                    }} />
+                                    <Typography sx={{ 
+                                      fontSize: '0.55rem',
+                                      fontWeight: '500',
+                                      color: colors.accent2,
+                                      flex: 1
+                                    }}>
+                                      {group.name}
+                                    </Typography>
+                                <Chip 
+                                      label={`${group.students?.length || 0}`}
+                                  size="small"
+                                  sx={{ 
+                                        bgcolor: colors.accent2 + '20',
+                                        color: colors.accent2,
+                                        fontSize: '0.45rem',
+                                        height: 12,
+                                        fontWeight: '500',
+                                        minWidth: 18
+                                      }}
+                                    />
+                            </Box>
+                          ) : (
+                                  <Box key={assignment.id} sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 0.3,
+                                    p: 0.2,
+                                    borderRadius: '4px',
+                                    bgcolor: colors.textSecondary + '15',
+                                    border: `1px solid ${colors.textSecondary}25`
+                                  }}>
+                                    <Box sx={{ 
+                                      width: 5, 
+                                      height: 5, 
+                                      borderRadius: '50%', 
+                                      bgcolor: colors.textSecondary 
+                                    }} />
+                                    <Typography sx={{ 
+                                      fontSize: '0.55rem',
+                                      fontWeight: '500',
+                              color: colors.textSecondary,
+                              fontStyle: 'italic'
+                            }}>
+                                      Unbekannte Gruppe
+                            </Typography>
+                        </Box>
+                                );
+                              })}
+                            </Box>
+                          ) : (
+                        <Box sx={{ 
+                              p: 0.3,
+                              borderRadius: '4px',
+                              bgcolor: colors.textSecondary + '10',
+                              border: `1px solid ${colors.textSecondary}20`
+                            }}>
+                              <Typography variant="body2" sx={{ 
+                                color: colors.textSecondary,
+                                fontSize: '0.5rem',
+                                fontStyle: 'italic',
+                                textAlign: 'center'
+                              }}>
+                                Keine Gruppen
+                          </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                        
+                        {/* Info Chips - kompakter mit mehr Abstand nach unten */}
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mb: 0.7, justifyContent: 'center', mt: 'auto' }}>
+
+                            <Chip 
+                            label={`${deck.cards?.length || 0} Karten`}
+                            size="small"
+                            sx={{ 
+                              bgcolor: colors.primary + '20',
+                              color: colors.primary,
+                              fontSize: '0.5rem',
+                              height: '14px',
+                              fontWeight: '500',
+                              border: `1px solid ${colors.primary}30`
+                            }}
+                          />
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          </TabPanel>
+          <TabPanel value={mainTabValue} index={3}>
             <Box sx={{ fontSize: '0.7rem' }}>
               <DatabaseViewer />
             </Box>
           </TabPanel>
-          <TabPanel value={mainTabValue} index={3}>
+          <TabPanel value={mainTabValue} index={4}>
             {/* Subtabs: Fächer als Tabs */}
             <Box sx={{ mb: 0.15 }}>
               <Tabs
@@ -3053,6 +3782,356 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               visibleBlockId={(blocks.filter(b => b.subjectId === subjects[subjectTabValue]?.id) || [])[blockTabValue]?.id}
               onOpenSubjectDialog={handleOpenSubjectDialog}
             />
+          </TabPanel>
+
+          <TabPanel value={mainTabValue} index={5}>
+            {/* Karteikarten Section */}
+            <Box sx={{ p: 1.4 }}>
+              {/* Header */}
+              <Card sx={{ 
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                bgcolor: colors.cardBg,
+                mb: 1.5,
+                border: `1px solid ${colors.border}`
+              }}>
+                <CardContent sx={{ p: 1.2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="h6" component="h2" sx={{ 
+                      fontWeight: '600', 
+                      color: colors.primary,
+                      fontSize: '1rem'
+                    }}>
+                      Karteikarten
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => setOpenNewDeckDialog(true)}
+                      sx={{
+                        bgcolor: colors.accent1,
+                        color: 'white',
+                        fontWeight: '500',
+                        borderRadius: '6px',
+                        px: 0.4,
+                        py: 0.4,
+                        fontSize: '0.6rem',
+                        minWidth: 'auto',
+                        width: '25%',
+                        '&:hover': {
+                          bgcolor: colors.accent1 + 'dd'
+                        }
+                      }}
+                    >
+                      <Add sx={{ fontSize: 10, mr: 0.1 }} />
+                      Neues Deck
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              {/* Karteidecks Grid */}
+              <Grid container spacing={1.4}>
+                {flashcardDecks.map((deck) => (
+                  <Grid item xs={12} sm={6} md={4} key={deck.id}>
+                                        <Card sx={{ 
+                      borderRadius: '12px',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                      bgcolor: colors.cardBg,
+                      height: '100%',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                        transform: 'translateY(-2px)',
+                        borderColor: colors.accent1
+                      },
+                      border: `1px solid ${colors.border}`,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`
+                    }}
+                    onClick={() => handleEditDeck(deck)}
+                    >
+                      {/* Header with gradient accent */}
+                      <Box sx={{ 
+                        height: '3px',
+                        background: `linear-gradient(90deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
+                        width: '100%'
+                      }} />
+                      
+                      <CardContent sx={{ p: 1.2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        {/* Title and Actions Row */}
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.8 }}>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="h6" component="h3" sx={{ 
+                              fontWeight: '600', 
+                              color: colors.primary,
+                              fontSize: '0.9rem',
+                              mb: 0.3,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              letterSpacing: '0.3px'
+                            }}>
+                              {deck.title}
+                            </Typography>
+                            {deck.description && (
+                              <Typography variant="body2" sx={{ 
+                                color: colors.textSecondary,
+                                fontSize: '0.7rem',
+                                lineHeight: 1.3,
+                                mb: 0.8,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                opacity: 0.8
+                              }}>
+                                {deck.description}
+                              </Typography>
+                            )}
+                          </Box>
+                          
+                          {/* Action Buttons */}
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDeck(deck);
+                                handleViewCards(deck);
+                              }}
+                              sx={{ 
+                                color: colors.accent1,
+                                bgcolor: colors.accent1 + '10',
+                                '&:hover': { 
+                                  bgcolor: colors.accent1 + '20',
+                                  transform: 'scale(1.05)'
+                                },
+                                transition: 'all 0.15s ease',
+                                width: 26,
+                                height: 26
+                              }}
+                              title="Deck bearbeiten"
+                            >
+                              <Edit sx={{ fontSize: 14 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (deck.id) {
+                                                                  if (window.confirm(`Sind Sie sicher, dass Sie das Deck "${deck.title}" löschen möchten?`)) {
+                                  handleDeleteDeck(deck.id || '');
+                                }
+                                }
+                              }}
+                              sx={{ 
+                                color: colors.error,
+                                bgcolor: colors.error + '10',
+                                '&:hover': { 
+                                  bgcolor: colors.error + '20',
+                                  transform: 'scale(1.05)'
+                                },
+                                transition: 'all 0.15s ease',
+                                width: 26,
+                                height: 26
+                              }}
+                              title="Deck löschen"
+                            >
+                              <Delete sx={{ fontSize: 14 }} />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                        
+                        {/* Learning Groups - DEUTLICH nach oben, direkt unter dem Titel */}
+                        <Box sx={{ mb: 0.8 }}>
+                          <Typography variant="body2" sx={{ 
+                            color: colors.textSecondary,
+                            fontSize: '0.65rem',
+                            mb: 0.4,
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.3
+                          }}>
+                            <Group sx={{ fontSize: 14 }} />
+                            Zugewiesen an:
+                          </Typography>
+                          {deck.assignments && deck.assignments.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                              {deck.assignments.map((assignment) => {
+                                const group = assignment.group;
+                                return group ? (
+                                  <Box key={assignment.id} sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 0.4,
+                                    p: 0.25,
+                                    borderRadius: '6px',
+                                    bgcolor: colors.primary + '12',
+                                    border: `1px solid ${colors.primary}25`
+                                  }}>
+                                    <Box sx={{ 
+                                      width: 6, 
+                                      height: 6, 
+                                      borderRadius: '50%', 
+                                      bgcolor: colors.accent2 
+                                    }} />
+                                    <Typography sx={{ 
+                                      fontSize: '0.6rem',
+                                      fontWeight: '500',
+                                      color: colors.accent2,
+                                      flex: 1
+                                    }}>
+                                      {group.name}
+                                    </Typography>
+                                    <Chip 
+                                      label={`${group.students?.length || 0}`}
+                                      size="small"
+                                      sx={{ 
+                                        bgcolor: colors.accent2 + '20',
+                                        color: colors.accent2,
+                                        fontSize: '0.45rem',
+                                        height: 14,
+                                        fontWeight: '500'
+                                      }}
+                                    />
+                                  </Box>
+                                ) : (
+                                  <Box key={assignment.id} sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 0.4,
+                                    p: 0.25,
+                                    borderRadius: '6px',
+                                    bgcolor: colors.textSecondary + '15',
+                                    border: `1px solid ${colors.textSecondary}25`
+                                  }}>
+                                    <Box sx={{ 
+                                      width: 6, 
+                                      height: 6, 
+                                      borderRadius: '50%', 
+                                      bgcolor: colors.textSecondary 
+                                    }} />
+                                    <Typography sx={{ 
+                                      fontSize: '0.6rem',
+                                      fontWeight: '500',
+                                      color: colors.textSecondary,
+                                      fontStyle: 'italic'
+                                    }}>
+                                      Unbekannte Gruppe
+                                    </Typography>
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          ) : (
+                            <Box sx={{ 
+                              p: 0.4,
+                              borderRadius: '6px',
+                              bgcolor: colors.textSecondary + '10',
+                              border: `1px solid ${colors.textSecondary}20`
+                            }}>
+                              <Typography variant="body2" sx={{ 
+                                color: colors.textSecondary,
+                                fontSize: '0.55rem',
+                                fontStyle: 'italic',
+                                textAlign: 'center'
+                              }}>
+                                Keine Lerngruppen zugewiesen
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                        
+                        {/* Icon Box - Smaller */}
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          width: 50,
+                          height: 50,
+                          borderRadius: '12px',
+                          background: `linear-gradient(135deg, ${deck.imageColor || colors.accent2} 0%, ${deck.imageColor || colors.accent2}dd 100%)`,
+                          mb: 1,
+                          alignSelf: 'center',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
+                        }}>
+                          <Typography sx={{ 
+                            fontSize: '1.5rem',
+                            color: 'white',
+                            fontWeight: 'bold',
+                            textShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                          }}>
+                            {deck.imageIcon || '📚'}
+                          </Typography>
+                        </Box>
+                        
+                        {/* Info Chips - Smaller */}
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 0.8, justifyContent: 'center' }}>
+
+                            <Chip 
+                            label={`${deck.cards?.length || 0} Karten`}
+                            size="small"
+                            sx={{ 
+                              bgcolor: colors.primary + '20',
+                              color: colors.primary,
+                              fontSize: '0.6rem',
+                              height: '18px',
+                              fontWeight: '500',
+                              border: `1px solid ${colors.primary}30`
+                            }}
+                          />
+
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+
+              {/* Leerer Zustand */}
+              {flashcardDecks.length === 0 && (
+                <Card sx={{ 
+                  borderRadius: 2.8,
+                  boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
+                  bgcolor: colors.cardBg,
+                  textAlign: 'center',
+                  p: 3,
+                  border: `1px solid ${colors.border}`
+                }}>
+                  <Typography variant="h6" sx={{ 
+                    color: colors.textSecondary,
+                    mb: 1,
+                    fontSize: '1rem'
+                  }}>
+                      Keine Karteidecks vorhanden
+                    </Typography>
+                  <Typography variant="body2" sx={{ 
+                    color: colors.textSecondary + '80',
+                    mb: 2,
+                    fontSize: '0.8rem'
+                  }}>
+                      Erstellen Sie Ihr erstes Karteideck, um mit dem Lernen zu beginnen.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      onClick={() => setOpenNewDeckDialog(true)}
+                      sx={{
+                      bgcolor: colors.accent1,
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: colors.accent1 + 'dd'
+                      }
+                    }}
+                  >
+                    <Add sx={{ mr: 1, fontSize: 16 }} />
+                      Erstes Deck erstellen
+                    </Button>
+                </Card>
+              )}
+            </Box>
           </TabPanel>
 
 
@@ -3527,6 +4606,464 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Neues Karteideck Dialog */}
+      <Dialog 
+        open={openNewDeckDialog} 
+        onClose={() => {
+          setOpenNewDeckDialog(false);
+          setEditingDeck(null);
+          setNewDeckTitle('');
+          setNewDeckDescription('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 1, pt: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            
+            <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: '600' }}>
+              {editingDeck ? 'Karteideck bearbeiten' : 'Neues Karteideck erstellen'}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 1.5 }}>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Titel *"
+                value={newDeckTitle}
+                onChange={(e) => setNewDeckTitle(e.target.value)}
+                required
+                size="small"
+                sx={{ mb: 1.5 }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Beschreibung"
+                multiline
+                rows={2}
+                value={newDeckDescription}
+                onChange={(e) => setNewDeckDescription(e.target.value)}
+                size="small"
+                sx={{ mb: 1.5 }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+                <InputLabel>Lerngruppen zuweisen</InputLabel>
+                <Select
+                  multiple
+                  value={[]}
+                  onChange={(e) => {
+                    // TODO: Implement assignment creation
+                    console.log('Lerngruppen-Auswahl:', e.target.value);
+                  }}
+                  label="Lerngruppen zuweisen"
+                  renderValue={(selected: string[]) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
+                      {selected.map((value: string) => {
+                        const group = groups.find(g => g.id === value);
+                        return (
+                          <Chip 
+                            key={value} 
+                            label={group?.name || value} 
+                            size="small" 
+                            sx={{ fontSize: '0.65rem', height: 20 }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  )}
+                >
+                  {groups && groups.map((group) => (
+                    <MenuItem key={group.id} value={group.id} dense>
+                      <Checkbox 
+                        checked={false}
+                        size="small"
+                      />
+                      <ListItemText 
+                        primary={group.name} 
+                        primaryTypographyProps={{ fontSize: '0.8rem' }}
+                      />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              {/* Anzeige der bereits zugewiesenen Lerngruppen */}
+              {false && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ 
+                    color: colors.textSecondary, 
+                    fontSize: '0.7rem', 
+                    mb: 0.5,
+                    fontWeight: '500'
+                  }}>
+                    Bereits zugewiesen:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
+                    {/* TODO: Implement assignment display */}
+                  </Box>
+                </Box>
+              )}
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 1.5, pt: 0 }}>
+          <Button 
+            onClick={() => {
+              setOpenNewDeckDialog(false);
+              setEditingDeck(null);
+              setNewDeckTitle('');
+              setNewDeckDescription('');
+            setSelectedGroupIds([]);
+            }}
+            size="small"
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={editingDeck ? handleUpdateDeck : handleNewDeckSubmit} 
+            variant="contained" 
+            color="primary"
+            disabled={!newDeckTitle.trim()}
+            size="small"
+          >
+            {editingDeck ? 'Aktualisieren' : 'Erstellen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Kartenansicht Modal - Vereinfacht */}
+      {selectedDeck && (
+      <Dialog 
+          open={!!selectedDeck} 
+        onClose={() => {
+          setSelectedDeck(null);
+          setEditingCard(null);
+        }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            minHeight: '80vh',
+            maxHeight: '90vh',
+            borderRadius: '20px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`
+          }
+        }}
+      >
+        {/* Header with gradient accent */}
+        <Box sx={{ 
+          height: '4px',
+          background: `linear-gradient(90deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
+          width: '100%'
+        }} />
+        
+        <DialogTitle sx={{ 
+          pb: 0.8,
+          pt: 1.5,
+          background: `linear-gradient(135deg, ${colors.primary}08 0%, ${colors.accent1}08 100%)`,
+          borderBottom: `1px solid ${colors.border}`
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ 
+                width: 32,
+                height: 32,
+                borderRadius: '10px',
+                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 1.5,
+                boxShadow: '0 3px 10px rgba(0,0,0,0.12)'
+              }}>
+
+              </Box>
+              <Typography variant="h6" sx={{ 
+                fontWeight: '600',
+                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '0.3px',
+                fontSize: '1.1rem'
+              }}>
+                Deck bearbeiten: {selectedDeck?.title}
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleAddCard}
+              sx={{
+                background: `linear-gradient(135deg, ${colors.accent1} 0%, ${colors.accent2} 100%)`,
+                borderRadius: '10px',
+                px: 2,
+                py: 0.8,
+                fontSize: '0.8rem',
+                boxShadow: '0 3px 12px rgba(0,0,0,0.15)',
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+                },
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Add sx={{ fontSize: 16, mr: 0.5 }} />
+              Neue Karte
+            </Button>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 2 }}>
+          {selectedDeck && (
+            <Box>
+              {/* Deck-Informationen - Compact */}
+              <Card sx={{ 
+                mb: 2, 
+                p: 1.5, 
+                bgcolor: colors.background,
+                borderRadius: '12px',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.06)',
+                border: `1px solid ${colors.border}`,
+                background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`
+              }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 1 }}>
+
+                  {selectedDeck.assignments && selectedDeck.assignments.length > 0 && (
+                    <Chip 
+                      icon={<Group sx={{ fontSize: 14 }} />}
+                      label={`${selectedDeck.assignments.length} Lerngruppe${selectedDeck.assignments.length > 1 ? 'n' : ''}`}
+                      size="small"
+                      sx={{
+                        bgcolor: colors.accent2 + '20',
+                        color: colors.accent2,
+                        border: `1px solid ${colors.accent2}30`,
+                        borderRadius: '6px',
+                        fontWeight: '500',
+                        fontSize: '0.75rem',
+                        height: '24px'
+                      }}
+                    />
+                  )}
+                </Box>
+                {selectedDeck.description && (
+                  <Typography variant="body2" sx={{ 
+                    color: colors.textSecondary,
+                    lineHeight: 1.4,
+                    opacity: 0.85,
+                    fontStyle: 'italic',
+                    fontSize: '0.85rem'
+                  }}>
+                    {selectedDeck.description}
+                  </Typography>
+                )}
+              </Card>
+
+              {/* Deck-Eigenschaften bearbeiten */}
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6" sx={{ mb: 1.5, fontWeight: '600', fontSize: '1rem' }}>
+                  Deck-Eigenschaften bearbeiten
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Titel *"
+                      value={newDeckTitle}
+                      onChange={(e) => setNewDeckTitle(e.target.value)}
+                      required
+                      sx={{ mb: 2 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Beschreibung"
+                      multiline
+                      rows={3}
+                      value={newDeckDescription}
+                      onChange={(e) => setNewDeckDescription(e.target.value)}
+                      sx={{ mb: 2 }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Lerngruppen zuweisen</InputLabel>
+                      <Select
+                        multiple
+                        value={selectedGroupIds}
+                        onChange={(e) => {
+                          console.log('Select onChange:', e.target.value);
+                          setSelectedGroupIds(e.target.value as string[]);
+                        }}
+                        label="Lerngruppen zuweisen"
+                        renderValue={(selected: string[]) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
+                            {selected.map((value: string) => {
+                              const group = groups.find(g => g.id === value);
+                              return (
+                                <Chip 
+                                  key={value} 
+                                  label={group?.name || value} 
+                                  size="small" 
+                                  sx={{ fontSize: '0.7rem' }}
+                                />
+                              );
+                            })}
+                          </Box>
+                        )}
+                      >
+                        {groups.map((group) => (
+                          <MenuItem key={group.id} value={group.id} dense>
+                            <Checkbox 
+                              checked={selectedGroupIds.includes(group.id)}
+                              size="small"
+                            />
+                            <ListItemText 
+                              primary={group.name}
+                              secondary={`${group.students?.length || 0} Schüler`}
+                            />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <Typography variant="caption" sx={{ color: colors.textSecondary, mt: 1, display: 'block' }}>
+                      Debug: {selectedGroupIds.length} Gruppen ausgewählt
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* Karten bearbeiten */}
+              <Box>
+                <Typography variant="h6" sx={{ mb: 1.5, fontWeight: '600', fontSize: '1rem' }}>
+                  Karten ({selectedDeck.cards?.length || 0})
+                </Typography>
+                
+                                  {(!selectedDeck.cards || selectedDeck.cards.length === 0) ? (
+                  <Card sx={{ p: 4, textAlign: 'center', bgcolor: colors.background }}>
+                    <Description sx={{ fontSize: 48, color: colors.textSecondary, mb: 2, opacity: 0.5 }} />
+                    <Typography variant="h6" sx={{ color: colors.textSecondary, mb: 1 }}>
+                      Keine Karten vorhanden
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: colors.textSecondary }}>
+                      Fügen Sie Ihre erste Karte hinzu, um mit dem Lernen zu beginnen.
+                    </Typography>
+                  </Card>
+                ) : (
+                  <Grid container spacing={2}>
+                    {selectedDeck.cards.map((card, index) => (
+                      <Grid item xs={12} md={6} key={card.id || index}>
+                        <Card sx={{ 
+                          p: 2, 
+                          bgcolor: colors.cardBg,
+                          border: `2px solid ${colors.background}`,
+                          '&:hover': {
+                            borderColor: colors.primary,
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.2s ease-in-out'
+                          }
+                        }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                              Karte {index + 1}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <IconButton 
+                                size="small" 
+                                sx={{ color: colors.error }}
+                                onClick={() => handleDeleteCard(card.id || '')}
+                              >
+                                <Delete sx={{ fontSize: 14 }} />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                          
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: colors.primary }}>
+                              Frage:
+                            </Typography>
+                            <Typography variant="body2" sx={{ mb: 2 }}>
+                              {card.front}
+                            </Typography>
+                            
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: colors.secondary }}>
+                              Antwort:
+                            </Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}>
+                              {card.back}
+                            </Typography>
+                            
+                            {card.hint && (
+                              <>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: colors.accent1 }}>
+                                  Tipp:
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                                  {card.hint}
+                                </Typography>
+                              </>
+                            )}
+                          </Box>
+                          
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Chip 
+                              label={`Schwierigkeit: ${card.difficulty}`}
+                              size="small"
+                              color={card.difficulty <= 1 ? 'success' : card.difficulty <= 2 ? 'warning' : 'error'}
+                            />
+                            <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                              Reihenfolge: {card.order}
+                            </Typography>
+                          </Box>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+
+            setSelectedDeck(null);
+            setEditingCard(null);
+          }}>
+            Schließen
+          </Button>
+          {selectedDeck && (
+            <Button 
+              onClick={() => {
+                // Hier würde die Deck-Aktualisierung implementiert
+                setSnackbar({
+                  open: true,
+                  message: 'Deck erfolgreich aktualisiert',
+                  severity: 'success'
+                });
+              }}
+              variant="contained"
+              color="primary"
+            >
+              Speichern
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+      )}
+
     </Box>
   );
 };

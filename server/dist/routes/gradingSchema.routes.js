@@ -8,6 +8,7 @@ const GradingSchemaController_1 = require("../controllers/GradingSchemaControlle
 const router = express_1.default.Router();
 router.post('/', GradingSchemaController_1.createGradingSchema);
 router.post('/mss/:groupId', GradingSchemaController_1.createMSSSchema); // Spezielle Route für MSS-Schema
+router.get('/all', GradingSchemaController_1.getAllSchemas); // Route für alle Schemata
 router.get('/:groupId', GradingSchemaController_1.getGradingSchemas);
 router.put('/:id', GradingSchemaController_1.updateGradingSchema);
 router.delete('/:id', GradingSchemaController_1.deleteGradingSchema);

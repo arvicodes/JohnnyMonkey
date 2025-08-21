@@ -111,7 +111,10 @@ function parseQuizText(text) {
         else if (line.toLowerCase().includes('tip') || line.toLowerCase().includes('hinweis')) {
             inTipSection = true;
             inExplanationSection = false;
-            currentTip = line.replace(/^(tip|hinweis)[:\s]*/i, '').trim();
+            let tipContent = line.replace(/^(tip|hinweis)[:\s]*/i, '').trim();
+            // Remove "p:" prefix if present
+            tipContent = tipContent.replace(/^p:\s*/, '').trim();
+            currentTip = tipContent;
         }
         // Check if this line starts an explanation section
         else if (line.toLowerCase().includes('erklärung') || line.toLowerCase().includes('explanation') || line.toLowerCase().includes('lösung')) {

@@ -113,6 +113,26 @@ export type QuizAnswer = $Result.DefaultSelection<Prisma.$QuizAnswerPayload>
  * 
  */
 export type FileSystemPath = $Result.DefaultSelection<Prisma.$FileSystemPathPayload>
+/**
+ * Model FlashcardDeck
+ * 
+ */
+export type FlashcardDeck = $Result.DefaultSelection<Prisma.$FlashcardDeckPayload>
+/**
+ * Model Flashcard
+ * 
+ */
+export type Flashcard = $Result.DefaultSelection<Prisma.$FlashcardPayload>
+/**
+ * Model FlashcardAssignment
+ * 
+ */
+export type FlashcardAssignment = $Result.DefaultSelection<Prisma.$FlashcardAssignmentPayload>
+/**
+ * Model FlashcardProgress
+ * 
+ */
+export type FlashcardProgress = $Result.DefaultSelection<Prisma.$FlashcardProgressPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -438,6 +458,46 @@ export class PrismaClient<
     * ```
     */
   get fileSystemPath(): Prisma.FileSystemPathDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.flashcardDeck`: Exposes CRUD operations for the **FlashcardDeck** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more FlashcardDecks
+    * const flashcardDecks = await prisma.flashcardDeck.findMany()
+    * ```
+    */
+  get flashcardDeck(): Prisma.FlashcardDeckDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.flashcard`: Exposes CRUD operations for the **Flashcard** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Flashcards
+    * const flashcards = await prisma.flashcard.findMany()
+    * ```
+    */
+  get flashcard(): Prisma.FlashcardDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.flashcardAssignment`: Exposes CRUD operations for the **FlashcardAssignment** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more FlashcardAssignments
+    * const flashcardAssignments = await prisma.flashcardAssignment.findMany()
+    * ```
+    */
+  get flashcardAssignment(): Prisma.FlashcardAssignmentDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.flashcardProgress`: Exposes CRUD operations for the **FlashcardProgress** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more FlashcardProgresses
+    * const flashcardProgresses = await prisma.flashcardProgress.findMany()
+    * ```
+    */
+  get flashcardProgress(): Prisma.FlashcardProgressDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -897,7 +957,11 @@ export namespace Prisma {
     QuizSession: 'QuizSession',
     QuizParticipation: 'QuizParticipation',
     QuizAnswer: 'QuizAnswer',
-    FileSystemPath: 'FileSystemPath'
+    FileSystemPath: 'FileSystemPath',
+    FlashcardDeck: 'FlashcardDeck',
+    Flashcard: 'Flashcard',
+    FlashcardAssignment: 'FlashcardAssignment',
+    FlashcardProgress: 'FlashcardProgress'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -916,7 +980,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "fileSystemPath"
+      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "fileSystemPath" | "flashcardDeck" | "flashcard" | "flashcardAssignment" | "flashcardProgress"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2400,6 +2464,302 @@ export namespace Prisma {
           }
         }
       }
+      FlashcardDeck: {
+        payload: Prisma.$FlashcardDeckPayload<ExtArgs>
+        fields: Prisma.FlashcardDeckFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FlashcardDeckFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FlashcardDeckFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>
+          }
+          findFirst: {
+            args: Prisma.FlashcardDeckFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FlashcardDeckFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>
+          }
+          findMany: {
+            args: Prisma.FlashcardDeckFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>[]
+          }
+          create: {
+            args: Prisma.FlashcardDeckCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>
+          }
+          createMany: {
+            args: Prisma.FlashcardDeckCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FlashcardDeckCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>[]
+          }
+          delete: {
+            args: Prisma.FlashcardDeckDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>
+          }
+          update: {
+            args: Prisma.FlashcardDeckUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>
+          }
+          deleteMany: {
+            args: Prisma.FlashcardDeckDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FlashcardDeckUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FlashcardDeckUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>[]
+          }
+          upsert: {
+            args: Prisma.FlashcardDeckUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardDeckPayload>
+          }
+          aggregate: {
+            args: Prisma.FlashcardDeckAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFlashcardDeck>
+          }
+          groupBy: {
+            args: Prisma.FlashcardDeckGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardDeckGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FlashcardDeckCountArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardDeckCountAggregateOutputType> | number
+          }
+        }
+      }
+      Flashcard: {
+        payload: Prisma.$FlashcardPayload<ExtArgs>
+        fields: Prisma.FlashcardFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FlashcardFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FlashcardFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>
+          }
+          findFirst: {
+            args: Prisma.FlashcardFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FlashcardFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>
+          }
+          findMany: {
+            args: Prisma.FlashcardFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>[]
+          }
+          create: {
+            args: Prisma.FlashcardCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>
+          }
+          createMany: {
+            args: Prisma.FlashcardCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FlashcardCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>[]
+          }
+          delete: {
+            args: Prisma.FlashcardDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>
+          }
+          update: {
+            args: Prisma.FlashcardUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>
+          }
+          deleteMany: {
+            args: Prisma.FlashcardDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FlashcardUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FlashcardUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>[]
+          }
+          upsert: {
+            args: Prisma.FlashcardUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardPayload>
+          }
+          aggregate: {
+            args: Prisma.FlashcardAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFlashcard>
+          }
+          groupBy: {
+            args: Prisma.FlashcardGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FlashcardCountArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardCountAggregateOutputType> | number
+          }
+        }
+      }
+      FlashcardAssignment: {
+        payload: Prisma.$FlashcardAssignmentPayload<ExtArgs>
+        fields: Prisma.FlashcardAssignmentFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FlashcardAssignmentFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FlashcardAssignmentFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>
+          }
+          findFirst: {
+            args: Prisma.FlashcardAssignmentFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FlashcardAssignmentFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>
+          }
+          findMany: {
+            args: Prisma.FlashcardAssignmentFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>[]
+          }
+          create: {
+            args: Prisma.FlashcardAssignmentCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>
+          }
+          createMany: {
+            args: Prisma.FlashcardAssignmentCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FlashcardAssignmentCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>[]
+          }
+          delete: {
+            args: Prisma.FlashcardAssignmentDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>
+          }
+          update: {
+            args: Prisma.FlashcardAssignmentUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>
+          }
+          deleteMany: {
+            args: Prisma.FlashcardAssignmentDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FlashcardAssignmentUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FlashcardAssignmentUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>[]
+          }
+          upsert: {
+            args: Prisma.FlashcardAssignmentUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardAssignmentPayload>
+          }
+          aggregate: {
+            args: Prisma.FlashcardAssignmentAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFlashcardAssignment>
+          }
+          groupBy: {
+            args: Prisma.FlashcardAssignmentGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardAssignmentGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FlashcardAssignmentCountArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardAssignmentCountAggregateOutputType> | number
+          }
+        }
+      }
+      FlashcardProgress: {
+        payload: Prisma.$FlashcardProgressPayload<ExtArgs>
+        fields: Prisma.FlashcardProgressFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FlashcardProgressFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FlashcardProgressFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>
+          }
+          findFirst: {
+            args: Prisma.FlashcardProgressFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FlashcardProgressFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>
+          }
+          findMany: {
+            args: Prisma.FlashcardProgressFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>[]
+          }
+          create: {
+            args: Prisma.FlashcardProgressCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>
+          }
+          createMany: {
+            args: Prisma.FlashcardProgressCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FlashcardProgressCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>[]
+          }
+          delete: {
+            args: Prisma.FlashcardProgressDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>
+          }
+          update: {
+            args: Prisma.FlashcardProgressUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>
+          }
+          deleteMany: {
+            args: Prisma.FlashcardProgressDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FlashcardProgressUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FlashcardProgressUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>[]
+          }
+          upsert: {
+            args: Prisma.FlashcardProgressUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardProgressPayload>
+          }
+          aggregate: {
+            args: Prisma.FlashcardProgressAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFlashcardProgress>
+          }
+          groupBy: {
+            args: Prisma.FlashcardProgressGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardProgressGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FlashcardProgressCountArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardProgressCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -2504,6 +2864,10 @@ export namespace Prisma {
     quizParticipation?: QuizParticipationOmit
     quizAnswer?: QuizAnswerOmit
     fileSystemPath?: FileSystemPathOmit
+    flashcardDeck?: FlashcardDeckOmit
+    flashcard?: FlashcardOmit
+    flashcardAssignment?: FlashcardAssignmentOmit
+    flashcardProgress?: FlashcardProgressOmit
   }
 
   /* Types for Logging */
@@ -2606,6 +2970,8 @@ export namespace Prisma {
     learningGroups: number
     grades: number
     fileSystemPaths: number
+    flashcardDecks: number
+    flashcardProgress: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2617,6 +2983,8 @@ export namespace Prisma {
     learningGroups?: boolean | UserCountOutputTypeCountLearningGroupsArgs
     grades?: boolean | UserCountOutputTypeCountGradesArgs
     fileSystemPaths?: boolean | UserCountOutputTypeCountFileSystemPathsArgs
+    flashcardDecks?: boolean | UserCountOutputTypeCountFlashcardDecksArgs
+    flashcardProgress?: boolean | UserCountOutputTypeCountFlashcardProgressArgs
   }
 
   // Custom InputTypes
@@ -2686,6 +3054,20 @@ export namespace Prisma {
     where?: FileSystemPathWhereInput
   }
 
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountFlashcardDecksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardDeckWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountFlashcardProgressArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardProgressWhereInput
+  }
+
 
   /**
    * Count Type GradingSchemaCountOutputType
@@ -2725,12 +3107,14 @@ export namespace Prisma {
   export type LearningGroupCountOutputType = {
     gradingSchemas: number
     assignments: number
+    flashcardAssignments: number
     students: number
   }
 
   export type LearningGroupCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     gradingSchemas?: boolean | LearningGroupCountOutputTypeCountGradingSchemasArgs
     assignments?: boolean | LearningGroupCountOutputTypeCountAssignmentsArgs
+    flashcardAssignments?: boolean | LearningGroupCountOutputTypeCountFlashcardAssignmentsArgs
     students?: boolean | LearningGroupCountOutputTypeCountStudentsArgs
   }
 
@@ -2762,6 +3146,13 @@ export namespace Prisma {
   /**
    * LearningGroupCountOutputType without action
    */
+  export type LearningGroupCountOutputTypeCountFlashcardAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardAssignmentWhereInput
+  }
+
+  /**
+   * LearningGroupCountOutputType without action
+   */
   export type LearningGroupCountOutputTypeCountStudentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: UserWhereInput
   }
@@ -2773,10 +3164,12 @@ export namespace Prisma {
 
   export type SubjectCountOutputType = {
     blocks: number
+    flashcardDecks: number
   }
 
   export type SubjectCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     blocks?: boolean | SubjectCountOutputTypeCountBlocksArgs
+    flashcardDecks?: boolean | SubjectCountOutputTypeCountFlashcardDecksArgs
   }
 
   // Custom InputTypes
@@ -2795,6 +3188,13 @@ export namespace Prisma {
    */
   export type SubjectCountOutputTypeCountBlocksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: BlockWhereInput
+  }
+
+  /**
+   * SubjectCountOutputType without action
+   */
+  export type SubjectCountOutputTypeCountFlashcardDecksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardDeckWhereInput
   }
 
 
@@ -3105,6 +3505,77 @@ export namespace Prisma {
 
 
   /**
+   * Count Type FlashcardDeckCountOutputType
+   */
+
+  export type FlashcardDeckCountOutputType = {
+    cards: number
+    assignments: number
+  }
+
+  export type FlashcardDeckCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    cards?: boolean | FlashcardDeckCountOutputTypeCountCardsArgs
+    assignments?: boolean | FlashcardDeckCountOutputTypeCountAssignmentsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * FlashcardDeckCountOutputType without action
+   */
+  export type FlashcardDeckCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeckCountOutputType
+     */
+    select?: FlashcardDeckCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardDeckCountOutputType without action
+   */
+  export type FlashcardDeckCountOutputTypeCountCardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardWhereInput
+  }
+
+  /**
+   * FlashcardDeckCountOutputType without action
+   */
+  export type FlashcardDeckCountOutputTypeCountAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardAssignmentWhereInput
+  }
+
+
+  /**
+   * Count Type FlashcardCountOutputType
+   */
+
+  export type FlashcardCountOutputType = {
+    progress: number
+  }
+
+  export type FlashcardCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    progress?: boolean | FlashcardCountOutputTypeCountProgressArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * FlashcardCountOutputType without action
+   */
+  export type FlashcardCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardCountOutputType
+     */
+    select?: FlashcardCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardCountOutputType without action
+   */
+  export type FlashcardCountOutputTypeCountProgressArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardProgressWhereInput
+  }
+
+
+  /**
    * Models
    */
 
@@ -3296,6 +3767,8 @@ export namespace Prisma {
     learningGroups?: boolean | User$learningGroupsArgs<ExtArgs>
     grades?: boolean | User$gradesArgs<ExtArgs>
     fileSystemPaths?: boolean | User$fileSystemPathsArgs<ExtArgs>
+    flashcardDecks?: boolean | User$flashcardDecksArgs<ExtArgs>
+    flashcardProgress?: boolean | User$flashcardProgressArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -3339,6 +3812,8 @@ export namespace Prisma {
     learningGroups?: boolean | User$learningGroupsArgs<ExtArgs>
     grades?: boolean | User$gradesArgs<ExtArgs>
     fileSystemPaths?: boolean | User$fileSystemPathsArgs<ExtArgs>
+    flashcardDecks?: boolean | User$flashcardDecksArgs<ExtArgs>
+    flashcardProgress?: boolean | User$flashcardProgressArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -3355,6 +3830,8 @@ export namespace Prisma {
       learningGroups: Prisma.$LearningGroupPayload<ExtArgs>[]
       grades: Prisma.$GradePayload<ExtArgs>[]
       fileSystemPaths: Prisma.$FileSystemPathPayload<ExtArgs>[]
+      flashcardDecks: Prisma.$FlashcardDeckPayload<ExtArgs>[]
+      flashcardProgress: Prisma.$FlashcardProgressPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -3766,6 +4243,8 @@ export namespace Prisma {
     learningGroups<T extends User$learningGroupsArgs<ExtArgs> = {}>(args?: Subset<T, User$learningGroupsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     grades<T extends User$gradesArgs<ExtArgs> = {}>(args?: Subset<T, User$gradesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GradePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     fileSystemPaths<T extends User$fileSystemPathsArgs<ExtArgs> = {}>(args?: Subset<T, User$fileSystemPathsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    flashcardDecks<T extends User$flashcardDecksArgs<ExtArgs> = {}>(args?: Subset<T, User$flashcardDecksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    flashcardProgress<T extends User$flashcardProgressArgs<ExtArgs> = {}>(args?: Subset<T, User$flashcardProgressArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4377,6 +4856,54 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: FileSystemPathScalarFieldEnum | FileSystemPathScalarFieldEnum[]
+  }
+
+  /**
+   * User.flashcardDecks
+   */
+  export type User$flashcardDecksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    where?: FlashcardDeckWhereInput
+    orderBy?: FlashcardDeckOrderByWithRelationInput | FlashcardDeckOrderByWithRelationInput[]
+    cursor?: FlashcardDeckWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardDeckScalarFieldEnum | FlashcardDeckScalarFieldEnum[]
+  }
+
+  /**
+   * User.flashcardProgress
+   */
+  export type User$flashcardProgressArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    where?: FlashcardProgressWhereInput
+    orderBy?: FlashcardProgressOrderByWithRelationInput | FlashcardProgressOrderByWithRelationInput[]
+    cursor?: FlashcardProgressWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardProgressScalarFieldEnum | FlashcardProgressScalarFieldEnum[]
   }
 
   /**
@@ -6817,6 +7344,7 @@ export namespace Prisma {
     teacherId?: boolean
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
+    flashcardAssignments?: boolean | LearningGroup$flashcardAssignmentsArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
@@ -6852,6 +7380,7 @@ export namespace Prisma {
   export type LearningGroupInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     gradingSchemas?: boolean | LearningGroup$gradingSchemasArgs<ExtArgs>
     assignments?: boolean | LearningGroup$assignmentsArgs<ExtArgs>
+    flashcardAssignments?: boolean | LearningGroup$flashcardAssignmentsArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     students?: boolean | LearningGroup$studentsArgs<ExtArgs>
     _count?: boolean | LearningGroupCountOutputTypeDefaultArgs<ExtArgs>
@@ -6868,6 +7397,7 @@ export namespace Prisma {
     objects: {
       gradingSchemas: Prisma.$GradingSchemaPayload<ExtArgs>[]
       assignments: Prisma.$GroupAssignmentPayload<ExtArgs>[]
+      flashcardAssignments: Prisma.$FlashcardAssignmentPayload<ExtArgs>[]
       teacher: Prisma.$UserPayload<ExtArgs>
       students: Prisma.$UserPayload<ExtArgs>[]
     }
@@ -7273,6 +7803,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     gradingSchemas<T extends LearningGroup$gradingSchemasArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$gradingSchemasArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GradingSchemaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     assignments<T extends LearningGroup$assignmentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GroupAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    flashcardAssignments<T extends LearningGroup$flashcardAssignmentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$flashcardAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     students<T extends LearningGroup$studentsArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroup$studentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -7751,6 +8282,30 @@ export namespace Prisma {
   }
 
   /**
+   * LearningGroup.flashcardAssignments
+   */
+  export type LearningGroup$flashcardAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    where?: FlashcardAssignmentWhereInput
+    orderBy?: FlashcardAssignmentOrderByWithRelationInput | FlashcardAssignmentOrderByWithRelationInput[]
+    cursor?: FlashcardAssignmentWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardAssignmentScalarFieldEnum | FlashcardAssignmentScalarFieldEnum[]
+  }
+
+  /**
    * LearningGroup.students
    */
   export type LearningGroup$studentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8009,6 +8564,7 @@ export namespace Prisma {
     updatedAt?: boolean
     blocks?: boolean | Subject$blocksArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
+    flashcardDecks?: boolean | Subject$flashcardDecksArgs<ExtArgs>
     _count?: boolean | SubjectCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["subject"]>
 
@@ -8048,6 +8604,7 @@ export namespace Prisma {
   export type SubjectInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     blocks?: boolean | Subject$blocksArgs<ExtArgs>
     teacher?: boolean | UserDefaultArgs<ExtArgs>
+    flashcardDecks?: boolean | Subject$flashcardDecksArgs<ExtArgs>
     _count?: boolean | SubjectCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type SubjectIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -8062,6 +8619,7 @@ export namespace Prisma {
     objects: {
       blocks: Prisma.$BlockPayload<ExtArgs>[]
       teacher: Prisma.$UserPayload<ExtArgs>
+      flashcardDecks: Prisma.$FlashcardDeckPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -8467,6 +9025,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     blocks<T extends Subject$blocksArgs<ExtArgs> = {}>(args?: Subset<T, Subject$blocksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BlockPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    flashcardDecks<T extends Subject$flashcardDecksArgs<ExtArgs> = {}>(args?: Subset<T, Subject$flashcardDecksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -8918,6 +9477,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: BlockScalarFieldEnum | BlockScalarFieldEnum[]
+  }
+
+  /**
+   * Subject.flashcardDecks
+   */
+  export type Subject$flashcardDecksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    where?: FlashcardDeckWhereInput
+    orderBy?: FlashcardDeckOrderByWithRelationInput | FlashcardDeckOrderByWithRelationInput[]
+    cursor?: FlashcardDeckWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardDeckScalarFieldEnum | FlashcardDeckScalarFieldEnum[]
   }
 
   /**
@@ -25874,6 +26457,4580 @@ export namespace Prisma {
 
 
   /**
+   * Model FlashcardDeck
+   */
+
+  export type AggregateFlashcardDeck = {
+    _count: FlashcardDeckCountAggregateOutputType | null
+    _min: FlashcardDeckMinAggregateOutputType | null
+    _max: FlashcardDeckMaxAggregateOutputType | null
+  }
+
+  export type FlashcardDeckMinAggregateOutputType = {
+    id: string | null
+    title: string | null
+    description: string | null
+    subjectId: string | null
+    teacherId: string | null
+    isPublic: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlashcardDeckMaxAggregateOutputType = {
+    id: string | null
+    title: string | null
+    description: string | null
+    subjectId: string | null
+    teacherId: string | null
+    isPublic: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlashcardDeckCountAggregateOutputType = {
+    id: number
+    title: number
+    description: number
+    subjectId: number
+    teacherId: number
+    isPublic: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type FlashcardDeckMinAggregateInputType = {
+    id?: true
+    title?: true
+    description?: true
+    subjectId?: true
+    teacherId?: true
+    isPublic?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlashcardDeckMaxAggregateInputType = {
+    id?: true
+    title?: true
+    description?: true
+    subjectId?: true
+    teacherId?: true
+    isPublic?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlashcardDeckCountAggregateInputType = {
+    id?: true
+    title?: true
+    description?: true
+    subjectId?: true
+    teacherId?: true
+    isPublic?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type FlashcardDeckAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardDeck to aggregate.
+     */
+    where?: FlashcardDeckWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardDecks to fetch.
+     */
+    orderBy?: FlashcardDeckOrderByWithRelationInput | FlashcardDeckOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FlashcardDeckWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardDecks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardDecks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned FlashcardDecks
+    **/
+    _count?: true | FlashcardDeckCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FlashcardDeckMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FlashcardDeckMaxAggregateInputType
+  }
+
+  export type GetFlashcardDeckAggregateType<T extends FlashcardDeckAggregateArgs> = {
+        [P in keyof T & keyof AggregateFlashcardDeck]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFlashcardDeck[P]>
+      : GetScalarType<T[P], AggregateFlashcardDeck[P]>
+  }
+
+
+
+
+  export type FlashcardDeckGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardDeckWhereInput
+    orderBy?: FlashcardDeckOrderByWithAggregationInput | FlashcardDeckOrderByWithAggregationInput[]
+    by: FlashcardDeckScalarFieldEnum[] | FlashcardDeckScalarFieldEnum
+    having?: FlashcardDeckScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FlashcardDeckCountAggregateInputType | true
+    _min?: FlashcardDeckMinAggregateInputType
+    _max?: FlashcardDeckMaxAggregateInputType
+  }
+
+  export type FlashcardDeckGroupByOutputType = {
+    id: string
+    title: string
+    description: string | null
+    subjectId: string | null
+    teacherId: string
+    isPublic: boolean
+    createdAt: Date
+    updatedAt: Date
+    _count: FlashcardDeckCountAggregateOutputType | null
+    _min: FlashcardDeckMinAggregateOutputType | null
+    _max: FlashcardDeckMaxAggregateOutputType | null
+  }
+
+  type GetFlashcardDeckGroupByPayload<T extends FlashcardDeckGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FlashcardDeckGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FlashcardDeckGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FlashcardDeckGroupByOutputType[P]>
+            : GetScalarType<T[P], FlashcardDeckGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FlashcardDeckSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    title?: boolean
+    description?: boolean
+    subjectId?: boolean
+    teacherId?: boolean
+    isPublic?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    subject?: boolean | FlashcardDeck$subjectArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+    cards?: boolean | FlashcardDeck$cardsArgs<ExtArgs>
+    assignments?: boolean | FlashcardDeck$assignmentsArgs<ExtArgs>
+    _count?: boolean | FlashcardDeckCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardDeck"]>
+
+  export type FlashcardDeckSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    title?: boolean
+    description?: boolean
+    subjectId?: boolean
+    teacherId?: boolean
+    isPublic?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    subject?: boolean | FlashcardDeck$subjectArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardDeck"]>
+
+  export type FlashcardDeckSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    title?: boolean
+    description?: boolean
+    subjectId?: boolean
+    teacherId?: boolean
+    isPublic?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    subject?: boolean | FlashcardDeck$subjectArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardDeck"]>
+
+  export type FlashcardDeckSelectScalar = {
+    id?: boolean
+    title?: boolean
+    description?: boolean
+    subjectId?: boolean
+    teacherId?: boolean
+    isPublic?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type FlashcardDeckOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "description" | "subjectId" | "teacherId" | "isPublic" | "createdAt" | "updatedAt", ExtArgs["result"]["flashcardDeck"]>
+  export type FlashcardDeckInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    subject?: boolean | FlashcardDeck$subjectArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+    cards?: boolean | FlashcardDeck$cardsArgs<ExtArgs>
+    assignments?: boolean | FlashcardDeck$assignmentsArgs<ExtArgs>
+    _count?: boolean | FlashcardDeckCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type FlashcardDeckIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    subject?: boolean | FlashcardDeck$subjectArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type FlashcardDeckIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    subject?: boolean | FlashcardDeck$subjectArgs<ExtArgs>
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $FlashcardDeckPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "FlashcardDeck"
+    objects: {
+      subject: Prisma.$SubjectPayload<ExtArgs> | null
+      teacher: Prisma.$UserPayload<ExtArgs>
+      cards: Prisma.$FlashcardPayload<ExtArgs>[]
+      assignments: Prisma.$FlashcardAssignmentPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      title: string
+      description: string | null
+      subjectId: string | null
+      teacherId: string
+      isPublic: boolean
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["flashcardDeck"]>
+    composites: {}
+  }
+
+  type FlashcardDeckGetPayload<S extends boolean | null | undefined | FlashcardDeckDefaultArgs> = $Result.GetResult<Prisma.$FlashcardDeckPayload, S>
+
+  type FlashcardDeckCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FlashcardDeckFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FlashcardDeckCountAggregateInputType | true
+    }
+
+  export interface FlashcardDeckDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FlashcardDeck'], meta: { name: 'FlashcardDeck' } }
+    /**
+     * Find zero or one FlashcardDeck that matches the filter.
+     * @param {FlashcardDeckFindUniqueArgs} args - Arguments to find a FlashcardDeck
+     * @example
+     * // Get one FlashcardDeck
+     * const flashcardDeck = await prisma.flashcardDeck.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FlashcardDeckFindUniqueArgs>(args: SelectSubset<T, FlashcardDeckFindUniqueArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one FlashcardDeck that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FlashcardDeckFindUniqueOrThrowArgs} args - Arguments to find a FlashcardDeck
+     * @example
+     * // Get one FlashcardDeck
+     * const flashcardDeck = await prisma.flashcardDeck.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FlashcardDeckFindUniqueOrThrowArgs>(args: SelectSubset<T, FlashcardDeckFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardDeck that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardDeckFindFirstArgs} args - Arguments to find a FlashcardDeck
+     * @example
+     * // Get one FlashcardDeck
+     * const flashcardDeck = await prisma.flashcardDeck.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FlashcardDeckFindFirstArgs>(args?: SelectSubset<T, FlashcardDeckFindFirstArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardDeck that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardDeckFindFirstOrThrowArgs} args - Arguments to find a FlashcardDeck
+     * @example
+     * // Get one FlashcardDeck
+     * const flashcardDeck = await prisma.flashcardDeck.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FlashcardDeckFindFirstOrThrowArgs>(args?: SelectSubset<T, FlashcardDeckFindFirstOrThrowArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more FlashcardDecks that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardDeckFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all FlashcardDecks
+     * const flashcardDecks = await prisma.flashcardDeck.findMany()
+     * 
+     * // Get first 10 FlashcardDecks
+     * const flashcardDecks = await prisma.flashcardDeck.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const flashcardDeckWithIdOnly = await prisma.flashcardDeck.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FlashcardDeckFindManyArgs>(args?: SelectSubset<T, FlashcardDeckFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a FlashcardDeck.
+     * @param {FlashcardDeckCreateArgs} args - Arguments to create a FlashcardDeck.
+     * @example
+     * // Create one FlashcardDeck
+     * const FlashcardDeck = await prisma.flashcardDeck.create({
+     *   data: {
+     *     // ... data to create a FlashcardDeck
+     *   }
+     * })
+     * 
+     */
+    create<T extends FlashcardDeckCreateArgs>(args: SelectSubset<T, FlashcardDeckCreateArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many FlashcardDecks.
+     * @param {FlashcardDeckCreateManyArgs} args - Arguments to create many FlashcardDecks.
+     * @example
+     * // Create many FlashcardDecks
+     * const flashcardDeck = await prisma.flashcardDeck.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FlashcardDeckCreateManyArgs>(args?: SelectSubset<T, FlashcardDeckCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many FlashcardDecks and returns the data saved in the database.
+     * @param {FlashcardDeckCreateManyAndReturnArgs} args - Arguments to create many FlashcardDecks.
+     * @example
+     * // Create many FlashcardDecks
+     * const flashcardDeck = await prisma.flashcardDeck.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many FlashcardDecks and only return the `id`
+     * const flashcardDeckWithIdOnly = await prisma.flashcardDeck.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FlashcardDeckCreateManyAndReturnArgs>(args?: SelectSubset<T, FlashcardDeckCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a FlashcardDeck.
+     * @param {FlashcardDeckDeleteArgs} args - Arguments to delete one FlashcardDeck.
+     * @example
+     * // Delete one FlashcardDeck
+     * const FlashcardDeck = await prisma.flashcardDeck.delete({
+     *   where: {
+     *     // ... filter to delete one FlashcardDeck
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FlashcardDeckDeleteArgs>(args: SelectSubset<T, FlashcardDeckDeleteArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one FlashcardDeck.
+     * @param {FlashcardDeckUpdateArgs} args - Arguments to update one FlashcardDeck.
+     * @example
+     * // Update one FlashcardDeck
+     * const flashcardDeck = await prisma.flashcardDeck.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FlashcardDeckUpdateArgs>(args: SelectSubset<T, FlashcardDeckUpdateArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more FlashcardDecks.
+     * @param {FlashcardDeckDeleteManyArgs} args - Arguments to filter FlashcardDecks to delete.
+     * @example
+     * // Delete a few FlashcardDecks
+     * const { count } = await prisma.flashcardDeck.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FlashcardDeckDeleteManyArgs>(args?: SelectSubset<T, FlashcardDeckDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardDecks.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardDeckUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many FlashcardDecks
+     * const flashcardDeck = await prisma.flashcardDeck.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FlashcardDeckUpdateManyArgs>(args: SelectSubset<T, FlashcardDeckUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardDecks and returns the data updated in the database.
+     * @param {FlashcardDeckUpdateManyAndReturnArgs} args - Arguments to update many FlashcardDecks.
+     * @example
+     * // Update many FlashcardDecks
+     * const flashcardDeck = await prisma.flashcardDeck.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more FlashcardDecks and only return the `id`
+     * const flashcardDeckWithIdOnly = await prisma.flashcardDeck.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FlashcardDeckUpdateManyAndReturnArgs>(args: SelectSubset<T, FlashcardDeckUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one FlashcardDeck.
+     * @param {FlashcardDeckUpsertArgs} args - Arguments to update or create a FlashcardDeck.
+     * @example
+     * // Update or create a FlashcardDeck
+     * const flashcardDeck = await prisma.flashcardDeck.upsert({
+     *   create: {
+     *     // ... data to create a FlashcardDeck
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the FlashcardDeck we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FlashcardDeckUpsertArgs>(args: SelectSubset<T, FlashcardDeckUpsertArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of FlashcardDecks.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardDeckCountArgs} args - Arguments to filter FlashcardDecks to count.
+     * @example
+     * // Count the number of FlashcardDecks
+     * const count = await prisma.flashcardDeck.count({
+     *   where: {
+     *     // ... the filter for the FlashcardDecks we want to count
+     *   }
+     * })
+    **/
+    count<T extends FlashcardDeckCountArgs>(
+      args?: Subset<T, FlashcardDeckCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FlashcardDeckCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a FlashcardDeck.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardDeckAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FlashcardDeckAggregateArgs>(args: Subset<T, FlashcardDeckAggregateArgs>): Prisma.PrismaPromise<GetFlashcardDeckAggregateType<T>>
+
+    /**
+     * Group by FlashcardDeck.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardDeckGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FlashcardDeckGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FlashcardDeckGroupByArgs['orderBy'] }
+        : { orderBy?: FlashcardDeckGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FlashcardDeckGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFlashcardDeckGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the FlashcardDeck model
+   */
+  readonly fields: FlashcardDeckFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for FlashcardDeck.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FlashcardDeckClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    subject<T extends FlashcardDeck$subjectArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeck$subjectArgs<ExtArgs>>): Prisma__SubjectClient<$Result.GetResult<Prisma.$SubjectPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    cards<T extends FlashcardDeck$cardsArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeck$cardsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    assignments<T extends FlashcardDeck$assignmentsArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeck$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the FlashcardDeck model
+   */
+  interface FlashcardDeckFieldRefs {
+    readonly id: FieldRef<"FlashcardDeck", 'String'>
+    readonly title: FieldRef<"FlashcardDeck", 'String'>
+    readonly description: FieldRef<"FlashcardDeck", 'String'>
+    readonly subjectId: FieldRef<"FlashcardDeck", 'String'>
+    readonly teacherId: FieldRef<"FlashcardDeck", 'String'>
+    readonly isPublic: FieldRef<"FlashcardDeck", 'Boolean'>
+    readonly createdAt: FieldRef<"FlashcardDeck", 'DateTime'>
+    readonly updatedAt: FieldRef<"FlashcardDeck", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * FlashcardDeck findUnique
+   */
+  export type FlashcardDeckFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardDeck to fetch.
+     */
+    where: FlashcardDeckWhereUniqueInput
+  }
+
+  /**
+   * FlashcardDeck findUniqueOrThrow
+   */
+  export type FlashcardDeckFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardDeck to fetch.
+     */
+    where: FlashcardDeckWhereUniqueInput
+  }
+
+  /**
+   * FlashcardDeck findFirst
+   */
+  export type FlashcardDeckFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardDeck to fetch.
+     */
+    where?: FlashcardDeckWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardDecks to fetch.
+     */
+    orderBy?: FlashcardDeckOrderByWithRelationInput | FlashcardDeckOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardDecks.
+     */
+    cursor?: FlashcardDeckWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardDecks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardDecks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardDecks.
+     */
+    distinct?: FlashcardDeckScalarFieldEnum | FlashcardDeckScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardDeck findFirstOrThrow
+   */
+  export type FlashcardDeckFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardDeck to fetch.
+     */
+    where?: FlashcardDeckWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardDecks to fetch.
+     */
+    orderBy?: FlashcardDeckOrderByWithRelationInput | FlashcardDeckOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardDecks.
+     */
+    cursor?: FlashcardDeckWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardDecks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardDecks.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardDecks.
+     */
+    distinct?: FlashcardDeckScalarFieldEnum | FlashcardDeckScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardDeck findMany
+   */
+  export type FlashcardDeckFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardDecks to fetch.
+     */
+    where?: FlashcardDeckWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardDecks to fetch.
+     */
+    orderBy?: FlashcardDeckOrderByWithRelationInput | FlashcardDeckOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing FlashcardDecks.
+     */
+    cursor?: FlashcardDeckWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardDecks from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardDecks.
+     */
+    skip?: number
+    distinct?: FlashcardDeckScalarFieldEnum | FlashcardDeckScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardDeck create
+   */
+  export type FlashcardDeckCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * The data needed to create a FlashcardDeck.
+     */
+    data: XOR<FlashcardDeckCreateInput, FlashcardDeckUncheckedCreateInput>
+  }
+
+  /**
+   * FlashcardDeck createMany
+   */
+  export type FlashcardDeckCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many FlashcardDecks.
+     */
+    data: FlashcardDeckCreateManyInput | FlashcardDeckCreateManyInput[]
+  }
+
+  /**
+   * FlashcardDeck createManyAndReturn
+   */
+  export type FlashcardDeckCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * The data used to create many FlashcardDecks.
+     */
+    data: FlashcardDeckCreateManyInput | FlashcardDeckCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardDeck update
+   */
+  export type FlashcardDeckUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * The data needed to update a FlashcardDeck.
+     */
+    data: XOR<FlashcardDeckUpdateInput, FlashcardDeckUncheckedUpdateInput>
+    /**
+     * Choose, which FlashcardDeck to update.
+     */
+    where: FlashcardDeckWhereUniqueInput
+  }
+
+  /**
+   * FlashcardDeck updateMany
+   */
+  export type FlashcardDeckUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update FlashcardDecks.
+     */
+    data: XOR<FlashcardDeckUpdateManyMutationInput, FlashcardDeckUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardDecks to update
+     */
+    where?: FlashcardDeckWhereInput
+    /**
+     * Limit how many FlashcardDecks to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardDeck updateManyAndReturn
+   */
+  export type FlashcardDeckUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * The data used to update FlashcardDecks.
+     */
+    data: XOR<FlashcardDeckUpdateManyMutationInput, FlashcardDeckUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardDecks to update
+     */
+    where?: FlashcardDeckWhereInput
+    /**
+     * Limit how many FlashcardDecks to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardDeck upsert
+   */
+  export type FlashcardDeckUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * The filter to search for the FlashcardDeck to update in case it exists.
+     */
+    where: FlashcardDeckWhereUniqueInput
+    /**
+     * In case the FlashcardDeck found by the `where` argument doesn't exist, create a new FlashcardDeck with this data.
+     */
+    create: XOR<FlashcardDeckCreateInput, FlashcardDeckUncheckedCreateInput>
+    /**
+     * In case the FlashcardDeck was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FlashcardDeckUpdateInput, FlashcardDeckUncheckedUpdateInput>
+  }
+
+  /**
+   * FlashcardDeck delete
+   */
+  export type FlashcardDeckDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+    /**
+     * Filter which FlashcardDeck to delete.
+     */
+    where: FlashcardDeckWhereUniqueInput
+  }
+
+  /**
+   * FlashcardDeck deleteMany
+   */
+  export type FlashcardDeckDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardDecks to delete
+     */
+    where?: FlashcardDeckWhereInput
+    /**
+     * Limit how many FlashcardDecks to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardDeck.subject
+   */
+  export type FlashcardDeck$subjectArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Subject
+     */
+    select?: SubjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Subject
+     */
+    omit?: SubjectOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SubjectInclude<ExtArgs> | null
+    where?: SubjectWhereInput
+  }
+
+  /**
+   * FlashcardDeck.cards
+   */
+  export type FlashcardDeck$cardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    where?: FlashcardWhereInput
+    orderBy?: FlashcardOrderByWithRelationInput | FlashcardOrderByWithRelationInput[]
+    cursor?: FlashcardWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardScalarFieldEnum | FlashcardScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardDeck.assignments
+   */
+  export type FlashcardDeck$assignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    where?: FlashcardAssignmentWhereInput
+    orderBy?: FlashcardAssignmentOrderByWithRelationInput | FlashcardAssignmentOrderByWithRelationInput[]
+    cursor?: FlashcardAssignmentWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardAssignmentScalarFieldEnum | FlashcardAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardDeck without action
+   */
+  export type FlashcardDeckDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardDeck
+     */
+    select?: FlashcardDeckSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardDeck
+     */
+    omit?: FlashcardDeckOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardDeckInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model Flashcard
+   */
+
+  export type AggregateFlashcard = {
+    _count: FlashcardCountAggregateOutputType | null
+    _avg: FlashcardAvgAggregateOutputType | null
+    _sum: FlashcardSumAggregateOutputType | null
+    _min: FlashcardMinAggregateOutputType | null
+    _max: FlashcardMaxAggregateOutputType | null
+  }
+
+  export type FlashcardAvgAggregateOutputType = {
+    difficulty: number | null
+    order: number | null
+  }
+
+  export type FlashcardSumAggregateOutputType = {
+    difficulty: number | null
+    order: number | null
+  }
+
+  export type FlashcardMinAggregateOutputType = {
+    id: string | null
+    deckId: string | null
+    front: string | null
+    back: string | null
+    hint: string | null
+    difficulty: number | null
+    order: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlashcardMaxAggregateOutputType = {
+    id: string | null
+    deckId: string | null
+    front: string | null
+    back: string | null
+    hint: string | null
+    difficulty: number | null
+    order: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlashcardCountAggregateOutputType = {
+    id: number
+    deckId: number
+    front: number
+    back: number
+    hint: number
+    difficulty: number
+    order: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type FlashcardAvgAggregateInputType = {
+    difficulty?: true
+    order?: true
+  }
+
+  export type FlashcardSumAggregateInputType = {
+    difficulty?: true
+    order?: true
+  }
+
+  export type FlashcardMinAggregateInputType = {
+    id?: true
+    deckId?: true
+    front?: true
+    back?: true
+    hint?: true
+    difficulty?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlashcardMaxAggregateInputType = {
+    id?: true
+    deckId?: true
+    front?: true
+    back?: true
+    hint?: true
+    difficulty?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlashcardCountAggregateInputType = {
+    id?: true
+    deckId?: true
+    front?: true
+    back?: true
+    hint?: true
+    difficulty?: true
+    order?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type FlashcardAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Flashcard to aggregate.
+     */
+    where?: FlashcardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Flashcards to fetch.
+     */
+    orderBy?: FlashcardOrderByWithRelationInput | FlashcardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FlashcardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Flashcards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Flashcards.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Flashcards
+    **/
+    _count?: true | FlashcardCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: FlashcardAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: FlashcardSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FlashcardMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FlashcardMaxAggregateInputType
+  }
+
+  export type GetFlashcardAggregateType<T extends FlashcardAggregateArgs> = {
+        [P in keyof T & keyof AggregateFlashcard]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFlashcard[P]>
+      : GetScalarType<T[P], AggregateFlashcard[P]>
+  }
+
+
+
+
+  export type FlashcardGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardWhereInput
+    orderBy?: FlashcardOrderByWithAggregationInput | FlashcardOrderByWithAggregationInput[]
+    by: FlashcardScalarFieldEnum[] | FlashcardScalarFieldEnum
+    having?: FlashcardScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FlashcardCountAggregateInputType | true
+    _avg?: FlashcardAvgAggregateInputType
+    _sum?: FlashcardSumAggregateInputType
+    _min?: FlashcardMinAggregateInputType
+    _max?: FlashcardMaxAggregateInputType
+  }
+
+  export type FlashcardGroupByOutputType = {
+    id: string
+    deckId: string
+    front: string
+    back: string
+    hint: string | null
+    difficulty: number
+    order: number
+    createdAt: Date
+    updatedAt: Date
+    _count: FlashcardCountAggregateOutputType | null
+    _avg: FlashcardAvgAggregateOutputType | null
+    _sum: FlashcardSumAggregateOutputType | null
+    _min: FlashcardMinAggregateOutputType | null
+    _max: FlashcardMaxAggregateOutputType | null
+  }
+
+  type GetFlashcardGroupByPayload<T extends FlashcardGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FlashcardGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FlashcardGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FlashcardGroupByOutputType[P]>
+            : GetScalarType<T[P], FlashcardGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FlashcardSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    deckId?: boolean
+    front?: boolean
+    back?: boolean
+    hint?: boolean
+    difficulty?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    progress?: boolean | Flashcard$progressArgs<ExtArgs>
+    _count?: boolean | FlashcardCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcard"]>
+
+  export type FlashcardSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    deckId?: boolean
+    front?: boolean
+    back?: boolean
+    hint?: boolean
+    difficulty?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcard"]>
+
+  export type FlashcardSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    deckId?: boolean
+    front?: boolean
+    back?: boolean
+    hint?: boolean
+    difficulty?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcard"]>
+
+  export type FlashcardSelectScalar = {
+    id?: boolean
+    deckId?: boolean
+    front?: boolean
+    back?: boolean
+    hint?: boolean
+    difficulty?: boolean
+    order?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type FlashcardOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "deckId" | "front" | "back" | "hint" | "difficulty" | "order" | "createdAt" | "updatedAt", ExtArgs["result"]["flashcard"]>
+  export type FlashcardInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    progress?: boolean | Flashcard$progressArgs<ExtArgs>
+    _count?: boolean | FlashcardCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type FlashcardIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }
+  export type FlashcardIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }
+
+  export type $FlashcardPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Flashcard"
+    objects: {
+      deck: Prisma.$FlashcardDeckPayload<ExtArgs>
+      progress: Prisma.$FlashcardProgressPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      deckId: string
+      front: string
+      back: string
+      hint: string | null
+      difficulty: number
+      order: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["flashcard"]>
+    composites: {}
+  }
+
+  type FlashcardGetPayload<S extends boolean | null | undefined | FlashcardDefaultArgs> = $Result.GetResult<Prisma.$FlashcardPayload, S>
+
+  type FlashcardCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FlashcardFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FlashcardCountAggregateInputType | true
+    }
+
+  export interface FlashcardDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Flashcard'], meta: { name: 'Flashcard' } }
+    /**
+     * Find zero or one Flashcard that matches the filter.
+     * @param {FlashcardFindUniqueArgs} args - Arguments to find a Flashcard
+     * @example
+     * // Get one Flashcard
+     * const flashcard = await prisma.flashcard.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FlashcardFindUniqueArgs>(args: SelectSubset<T, FlashcardFindUniqueArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Flashcard that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FlashcardFindUniqueOrThrowArgs} args - Arguments to find a Flashcard
+     * @example
+     * // Get one Flashcard
+     * const flashcard = await prisma.flashcard.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FlashcardFindUniqueOrThrowArgs>(args: SelectSubset<T, FlashcardFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Flashcard that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardFindFirstArgs} args - Arguments to find a Flashcard
+     * @example
+     * // Get one Flashcard
+     * const flashcard = await prisma.flashcard.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FlashcardFindFirstArgs>(args?: SelectSubset<T, FlashcardFindFirstArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Flashcard that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardFindFirstOrThrowArgs} args - Arguments to find a Flashcard
+     * @example
+     * // Get one Flashcard
+     * const flashcard = await prisma.flashcard.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FlashcardFindFirstOrThrowArgs>(args?: SelectSubset<T, FlashcardFindFirstOrThrowArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Flashcards that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Flashcards
+     * const flashcards = await prisma.flashcard.findMany()
+     * 
+     * // Get first 10 Flashcards
+     * const flashcards = await prisma.flashcard.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const flashcardWithIdOnly = await prisma.flashcard.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FlashcardFindManyArgs>(args?: SelectSubset<T, FlashcardFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Flashcard.
+     * @param {FlashcardCreateArgs} args - Arguments to create a Flashcard.
+     * @example
+     * // Create one Flashcard
+     * const Flashcard = await prisma.flashcard.create({
+     *   data: {
+     *     // ... data to create a Flashcard
+     *   }
+     * })
+     * 
+     */
+    create<T extends FlashcardCreateArgs>(args: SelectSubset<T, FlashcardCreateArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Flashcards.
+     * @param {FlashcardCreateManyArgs} args - Arguments to create many Flashcards.
+     * @example
+     * // Create many Flashcards
+     * const flashcard = await prisma.flashcard.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FlashcardCreateManyArgs>(args?: SelectSubset<T, FlashcardCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Flashcards and returns the data saved in the database.
+     * @param {FlashcardCreateManyAndReturnArgs} args - Arguments to create many Flashcards.
+     * @example
+     * // Create many Flashcards
+     * const flashcard = await prisma.flashcard.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Flashcards and only return the `id`
+     * const flashcardWithIdOnly = await prisma.flashcard.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FlashcardCreateManyAndReturnArgs>(args?: SelectSubset<T, FlashcardCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Flashcard.
+     * @param {FlashcardDeleteArgs} args - Arguments to delete one Flashcard.
+     * @example
+     * // Delete one Flashcard
+     * const Flashcard = await prisma.flashcard.delete({
+     *   where: {
+     *     // ... filter to delete one Flashcard
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FlashcardDeleteArgs>(args: SelectSubset<T, FlashcardDeleteArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Flashcard.
+     * @param {FlashcardUpdateArgs} args - Arguments to update one Flashcard.
+     * @example
+     * // Update one Flashcard
+     * const flashcard = await prisma.flashcard.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FlashcardUpdateArgs>(args: SelectSubset<T, FlashcardUpdateArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Flashcards.
+     * @param {FlashcardDeleteManyArgs} args - Arguments to filter Flashcards to delete.
+     * @example
+     * // Delete a few Flashcards
+     * const { count } = await prisma.flashcard.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FlashcardDeleteManyArgs>(args?: SelectSubset<T, FlashcardDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Flashcards.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Flashcards
+     * const flashcard = await prisma.flashcard.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FlashcardUpdateManyArgs>(args: SelectSubset<T, FlashcardUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Flashcards and returns the data updated in the database.
+     * @param {FlashcardUpdateManyAndReturnArgs} args - Arguments to update many Flashcards.
+     * @example
+     * // Update many Flashcards
+     * const flashcard = await prisma.flashcard.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Flashcards and only return the `id`
+     * const flashcardWithIdOnly = await prisma.flashcard.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FlashcardUpdateManyAndReturnArgs>(args: SelectSubset<T, FlashcardUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Flashcard.
+     * @param {FlashcardUpsertArgs} args - Arguments to update or create a Flashcard.
+     * @example
+     * // Update or create a Flashcard
+     * const flashcard = await prisma.flashcard.upsert({
+     *   create: {
+     *     // ... data to create a Flashcard
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Flashcard we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FlashcardUpsertArgs>(args: SelectSubset<T, FlashcardUpsertArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Flashcards.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardCountArgs} args - Arguments to filter Flashcards to count.
+     * @example
+     * // Count the number of Flashcards
+     * const count = await prisma.flashcard.count({
+     *   where: {
+     *     // ... the filter for the Flashcards we want to count
+     *   }
+     * })
+    **/
+    count<T extends FlashcardCountArgs>(
+      args?: Subset<T, FlashcardCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FlashcardCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Flashcard.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FlashcardAggregateArgs>(args: Subset<T, FlashcardAggregateArgs>): Prisma.PrismaPromise<GetFlashcardAggregateType<T>>
+
+    /**
+     * Group by Flashcard.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FlashcardGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FlashcardGroupByArgs['orderBy'] }
+        : { orderBy?: FlashcardGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FlashcardGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFlashcardGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Flashcard model
+   */
+  readonly fields: FlashcardFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Flashcard.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FlashcardClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    deck<T extends FlashcardDeckDefaultArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeckDefaultArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    progress<T extends Flashcard$progressArgs<ExtArgs> = {}>(args?: Subset<T, Flashcard$progressArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Flashcard model
+   */
+  interface FlashcardFieldRefs {
+    readonly id: FieldRef<"Flashcard", 'String'>
+    readonly deckId: FieldRef<"Flashcard", 'String'>
+    readonly front: FieldRef<"Flashcard", 'String'>
+    readonly back: FieldRef<"Flashcard", 'String'>
+    readonly hint: FieldRef<"Flashcard", 'String'>
+    readonly difficulty: FieldRef<"Flashcard", 'Int'>
+    readonly order: FieldRef<"Flashcard", 'Int'>
+    readonly createdAt: FieldRef<"Flashcard", 'DateTime'>
+    readonly updatedAt: FieldRef<"Flashcard", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Flashcard findUnique
+   */
+  export type FlashcardFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * Filter, which Flashcard to fetch.
+     */
+    where: FlashcardWhereUniqueInput
+  }
+
+  /**
+   * Flashcard findUniqueOrThrow
+   */
+  export type FlashcardFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * Filter, which Flashcard to fetch.
+     */
+    where: FlashcardWhereUniqueInput
+  }
+
+  /**
+   * Flashcard findFirst
+   */
+  export type FlashcardFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * Filter, which Flashcard to fetch.
+     */
+    where?: FlashcardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Flashcards to fetch.
+     */
+    orderBy?: FlashcardOrderByWithRelationInput | FlashcardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Flashcards.
+     */
+    cursor?: FlashcardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Flashcards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Flashcards.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Flashcards.
+     */
+    distinct?: FlashcardScalarFieldEnum | FlashcardScalarFieldEnum[]
+  }
+
+  /**
+   * Flashcard findFirstOrThrow
+   */
+  export type FlashcardFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * Filter, which Flashcard to fetch.
+     */
+    where?: FlashcardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Flashcards to fetch.
+     */
+    orderBy?: FlashcardOrderByWithRelationInput | FlashcardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Flashcards.
+     */
+    cursor?: FlashcardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Flashcards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Flashcards.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Flashcards.
+     */
+    distinct?: FlashcardScalarFieldEnum | FlashcardScalarFieldEnum[]
+  }
+
+  /**
+   * Flashcard findMany
+   */
+  export type FlashcardFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * Filter, which Flashcards to fetch.
+     */
+    where?: FlashcardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Flashcards to fetch.
+     */
+    orderBy?: FlashcardOrderByWithRelationInput | FlashcardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Flashcards.
+     */
+    cursor?: FlashcardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Flashcards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Flashcards.
+     */
+    skip?: number
+    distinct?: FlashcardScalarFieldEnum | FlashcardScalarFieldEnum[]
+  }
+
+  /**
+   * Flashcard create
+   */
+  export type FlashcardCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Flashcard.
+     */
+    data: XOR<FlashcardCreateInput, FlashcardUncheckedCreateInput>
+  }
+
+  /**
+   * Flashcard createMany
+   */
+  export type FlashcardCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Flashcards.
+     */
+    data: FlashcardCreateManyInput | FlashcardCreateManyInput[]
+  }
+
+  /**
+   * Flashcard createManyAndReturn
+   */
+  export type FlashcardCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * The data used to create many Flashcards.
+     */
+    data: FlashcardCreateManyInput | FlashcardCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Flashcard update
+   */
+  export type FlashcardUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Flashcard.
+     */
+    data: XOR<FlashcardUpdateInput, FlashcardUncheckedUpdateInput>
+    /**
+     * Choose, which Flashcard to update.
+     */
+    where: FlashcardWhereUniqueInput
+  }
+
+  /**
+   * Flashcard updateMany
+   */
+  export type FlashcardUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Flashcards.
+     */
+    data: XOR<FlashcardUpdateManyMutationInput, FlashcardUncheckedUpdateManyInput>
+    /**
+     * Filter which Flashcards to update
+     */
+    where?: FlashcardWhereInput
+    /**
+     * Limit how many Flashcards to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Flashcard updateManyAndReturn
+   */
+  export type FlashcardUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * The data used to update Flashcards.
+     */
+    data: XOR<FlashcardUpdateManyMutationInput, FlashcardUncheckedUpdateManyInput>
+    /**
+     * Filter which Flashcards to update
+     */
+    where?: FlashcardWhereInput
+    /**
+     * Limit how many Flashcards to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Flashcard upsert
+   */
+  export type FlashcardUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Flashcard to update in case it exists.
+     */
+    where: FlashcardWhereUniqueInput
+    /**
+     * In case the Flashcard found by the `where` argument doesn't exist, create a new Flashcard with this data.
+     */
+    create: XOR<FlashcardCreateInput, FlashcardUncheckedCreateInput>
+    /**
+     * In case the Flashcard was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FlashcardUpdateInput, FlashcardUncheckedUpdateInput>
+  }
+
+  /**
+   * Flashcard delete
+   */
+  export type FlashcardDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+    /**
+     * Filter which Flashcard to delete.
+     */
+    where: FlashcardWhereUniqueInput
+  }
+
+  /**
+   * Flashcard deleteMany
+   */
+  export type FlashcardDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Flashcards to delete
+     */
+    where?: FlashcardWhereInput
+    /**
+     * Limit how many Flashcards to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Flashcard.progress
+   */
+  export type Flashcard$progressArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    where?: FlashcardProgressWhereInput
+    orderBy?: FlashcardProgressOrderByWithRelationInput | FlashcardProgressOrderByWithRelationInput[]
+    cursor?: FlashcardProgressWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardProgressScalarFieldEnum | FlashcardProgressScalarFieldEnum[]
+  }
+
+  /**
+   * Flashcard without action
+   */
+  export type FlashcardDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Flashcard
+     */
+    select?: FlashcardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Flashcard
+     */
+    omit?: FlashcardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model FlashcardAssignment
+   */
+
+  export type AggregateFlashcardAssignment = {
+    _count: FlashcardAssignmentCountAggregateOutputType | null
+    _min: FlashcardAssignmentMinAggregateOutputType | null
+    _max: FlashcardAssignmentMaxAggregateOutputType | null
+  }
+
+  export type FlashcardAssignmentMinAggregateOutputType = {
+    id: string | null
+    deckId: string | null
+    groupId: string | null
+    dueDate: Date | null
+    createdAt: Date | null
+  }
+
+  export type FlashcardAssignmentMaxAggregateOutputType = {
+    id: string | null
+    deckId: string | null
+    groupId: string | null
+    dueDate: Date | null
+    createdAt: Date | null
+  }
+
+  export type FlashcardAssignmentCountAggregateOutputType = {
+    id: number
+    deckId: number
+    groupId: number
+    dueDate: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type FlashcardAssignmentMinAggregateInputType = {
+    id?: true
+    deckId?: true
+    groupId?: true
+    dueDate?: true
+    createdAt?: true
+  }
+
+  export type FlashcardAssignmentMaxAggregateInputType = {
+    id?: true
+    deckId?: true
+    groupId?: true
+    dueDate?: true
+    createdAt?: true
+  }
+
+  export type FlashcardAssignmentCountAggregateInputType = {
+    id?: true
+    deckId?: true
+    groupId?: true
+    dueDate?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type FlashcardAssignmentAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardAssignment to aggregate.
+     */
+    where?: FlashcardAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardAssignments to fetch.
+     */
+    orderBy?: FlashcardAssignmentOrderByWithRelationInput | FlashcardAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FlashcardAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardAssignments.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned FlashcardAssignments
+    **/
+    _count?: true | FlashcardAssignmentCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FlashcardAssignmentMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FlashcardAssignmentMaxAggregateInputType
+  }
+
+  export type GetFlashcardAssignmentAggregateType<T extends FlashcardAssignmentAggregateArgs> = {
+        [P in keyof T & keyof AggregateFlashcardAssignment]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFlashcardAssignment[P]>
+      : GetScalarType<T[P], AggregateFlashcardAssignment[P]>
+  }
+
+
+
+
+  export type FlashcardAssignmentGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardAssignmentWhereInput
+    orderBy?: FlashcardAssignmentOrderByWithAggregationInput | FlashcardAssignmentOrderByWithAggregationInput[]
+    by: FlashcardAssignmentScalarFieldEnum[] | FlashcardAssignmentScalarFieldEnum
+    having?: FlashcardAssignmentScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FlashcardAssignmentCountAggregateInputType | true
+    _min?: FlashcardAssignmentMinAggregateInputType
+    _max?: FlashcardAssignmentMaxAggregateInputType
+  }
+
+  export type FlashcardAssignmentGroupByOutputType = {
+    id: string
+    deckId: string
+    groupId: string
+    dueDate: Date | null
+    createdAt: Date
+    _count: FlashcardAssignmentCountAggregateOutputType | null
+    _min: FlashcardAssignmentMinAggregateOutputType | null
+    _max: FlashcardAssignmentMaxAggregateOutputType | null
+  }
+
+  type GetFlashcardAssignmentGroupByPayload<T extends FlashcardAssignmentGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FlashcardAssignmentGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FlashcardAssignmentGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FlashcardAssignmentGroupByOutputType[P]>
+            : GetScalarType<T[P], FlashcardAssignmentGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FlashcardAssignmentSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    deckId?: boolean
+    groupId?: boolean
+    dueDate?: boolean
+    createdAt?: boolean
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardAssignment"]>
+
+  export type FlashcardAssignmentSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    deckId?: boolean
+    groupId?: boolean
+    dueDate?: boolean
+    createdAt?: boolean
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardAssignment"]>
+
+  export type FlashcardAssignmentSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    deckId?: boolean
+    groupId?: boolean
+    dueDate?: boolean
+    createdAt?: boolean
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardAssignment"]>
+
+  export type FlashcardAssignmentSelectScalar = {
+    id?: boolean
+    deckId?: boolean
+    groupId?: boolean
+    dueDate?: boolean
+    createdAt?: boolean
+  }
+
+  export type FlashcardAssignmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "deckId" | "groupId" | "dueDate" | "createdAt", ExtArgs["result"]["flashcardAssignment"]>
+  export type FlashcardAssignmentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }
+  export type FlashcardAssignmentIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }
+  export type FlashcardAssignmentIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+    group?: boolean | LearningGroupDefaultArgs<ExtArgs>
+  }
+
+  export type $FlashcardAssignmentPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "FlashcardAssignment"
+    objects: {
+      deck: Prisma.$FlashcardDeckPayload<ExtArgs>
+      group: Prisma.$LearningGroupPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      deckId: string
+      groupId: string
+      dueDate: Date | null
+      createdAt: Date
+    }, ExtArgs["result"]["flashcardAssignment"]>
+    composites: {}
+  }
+
+  type FlashcardAssignmentGetPayload<S extends boolean | null | undefined | FlashcardAssignmentDefaultArgs> = $Result.GetResult<Prisma.$FlashcardAssignmentPayload, S>
+
+  type FlashcardAssignmentCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FlashcardAssignmentFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FlashcardAssignmentCountAggregateInputType | true
+    }
+
+  export interface FlashcardAssignmentDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FlashcardAssignment'], meta: { name: 'FlashcardAssignment' } }
+    /**
+     * Find zero or one FlashcardAssignment that matches the filter.
+     * @param {FlashcardAssignmentFindUniqueArgs} args - Arguments to find a FlashcardAssignment
+     * @example
+     * // Get one FlashcardAssignment
+     * const flashcardAssignment = await prisma.flashcardAssignment.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FlashcardAssignmentFindUniqueArgs>(args: SelectSubset<T, FlashcardAssignmentFindUniqueArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one FlashcardAssignment that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FlashcardAssignmentFindUniqueOrThrowArgs} args - Arguments to find a FlashcardAssignment
+     * @example
+     * // Get one FlashcardAssignment
+     * const flashcardAssignment = await prisma.flashcardAssignment.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FlashcardAssignmentFindUniqueOrThrowArgs>(args: SelectSubset<T, FlashcardAssignmentFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardAssignment that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAssignmentFindFirstArgs} args - Arguments to find a FlashcardAssignment
+     * @example
+     * // Get one FlashcardAssignment
+     * const flashcardAssignment = await prisma.flashcardAssignment.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FlashcardAssignmentFindFirstArgs>(args?: SelectSubset<T, FlashcardAssignmentFindFirstArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardAssignment that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAssignmentFindFirstOrThrowArgs} args - Arguments to find a FlashcardAssignment
+     * @example
+     * // Get one FlashcardAssignment
+     * const flashcardAssignment = await prisma.flashcardAssignment.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FlashcardAssignmentFindFirstOrThrowArgs>(args?: SelectSubset<T, FlashcardAssignmentFindFirstOrThrowArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more FlashcardAssignments that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAssignmentFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all FlashcardAssignments
+     * const flashcardAssignments = await prisma.flashcardAssignment.findMany()
+     * 
+     * // Get first 10 FlashcardAssignments
+     * const flashcardAssignments = await prisma.flashcardAssignment.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const flashcardAssignmentWithIdOnly = await prisma.flashcardAssignment.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FlashcardAssignmentFindManyArgs>(args?: SelectSubset<T, FlashcardAssignmentFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a FlashcardAssignment.
+     * @param {FlashcardAssignmentCreateArgs} args - Arguments to create a FlashcardAssignment.
+     * @example
+     * // Create one FlashcardAssignment
+     * const FlashcardAssignment = await prisma.flashcardAssignment.create({
+     *   data: {
+     *     // ... data to create a FlashcardAssignment
+     *   }
+     * })
+     * 
+     */
+    create<T extends FlashcardAssignmentCreateArgs>(args: SelectSubset<T, FlashcardAssignmentCreateArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many FlashcardAssignments.
+     * @param {FlashcardAssignmentCreateManyArgs} args - Arguments to create many FlashcardAssignments.
+     * @example
+     * // Create many FlashcardAssignments
+     * const flashcardAssignment = await prisma.flashcardAssignment.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FlashcardAssignmentCreateManyArgs>(args?: SelectSubset<T, FlashcardAssignmentCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many FlashcardAssignments and returns the data saved in the database.
+     * @param {FlashcardAssignmentCreateManyAndReturnArgs} args - Arguments to create many FlashcardAssignments.
+     * @example
+     * // Create many FlashcardAssignments
+     * const flashcardAssignment = await prisma.flashcardAssignment.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many FlashcardAssignments and only return the `id`
+     * const flashcardAssignmentWithIdOnly = await prisma.flashcardAssignment.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FlashcardAssignmentCreateManyAndReturnArgs>(args?: SelectSubset<T, FlashcardAssignmentCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a FlashcardAssignment.
+     * @param {FlashcardAssignmentDeleteArgs} args - Arguments to delete one FlashcardAssignment.
+     * @example
+     * // Delete one FlashcardAssignment
+     * const FlashcardAssignment = await prisma.flashcardAssignment.delete({
+     *   where: {
+     *     // ... filter to delete one FlashcardAssignment
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FlashcardAssignmentDeleteArgs>(args: SelectSubset<T, FlashcardAssignmentDeleteArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one FlashcardAssignment.
+     * @param {FlashcardAssignmentUpdateArgs} args - Arguments to update one FlashcardAssignment.
+     * @example
+     * // Update one FlashcardAssignment
+     * const flashcardAssignment = await prisma.flashcardAssignment.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FlashcardAssignmentUpdateArgs>(args: SelectSubset<T, FlashcardAssignmentUpdateArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more FlashcardAssignments.
+     * @param {FlashcardAssignmentDeleteManyArgs} args - Arguments to filter FlashcardAssignments to delete.
+     * @example
+     * // Delete a few FlashcardAssignments
+     * const { count } = await prisma.flashcardAssignment.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FlashcardAssignmentDeleteManyArgs>(args?: SelectSubset<T, FlashcardAssignmentDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardAssignments.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAssignmentUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many FlashcardAssignments
+     * const flashcardAssignment = await prisma.flashcardAssignment.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FlashcardAssignmentUpdateManyArgs>(args: SelectSubset<T, FlashcardAssignmentUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardAssignments and returns the data updated in the database.
+     * @param {FlashcardAssignmentUpdateManyAndReturnArgs} args - Arguments to update many FlashcardAssignments.
+     * @example
+     * // Update many FlashcardAssignments
+     * const flashcardAssignment = await prisma.flashcardAssignment.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more FlashcardAssignments and only return the `id`
+     * const flashcardAssignmentWithIdOnly = await prisma.flashcardAssignment.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FlashcardAssignmentUpdateManyAndReturnArgs>(args: SelectSubset<T, FlashcardAssignmentUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one FlashcardAssignment.
+     * @param {FlashcardAssignmentUpsertArgs} args - Arguments to update or create a FlashcardAssignment.
+     * @example
+     * // Update or create a FlashcardAssignment
+     * const flashcardAssignment = await prisma.flashcardAssignment.upsert({
+     *   create: {
+     *     // ... data to create a FlashcardAssignment
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the FlashcardAssignment we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FlashcardAssignmentUpsertArgs>(args: SelectSubset<T, FlashcardAssignmentUpsertArgs<ExtArgs>>): Prisma__FlashcardAssignmentClient<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of FlashcardAssignments.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAssignmentCountArgs} args - Arguments to filter FlashcardAssignments to count.
+     * @example
+     * // Count the number of FlashcardAssignments
+     * const count = await prisma.flashcardAssignment.count({
+     *   where: {
+     *     // ... the filter for the FlashcardAssignments we want to count
+     *   }
+     * })
+    **/
+    count<T extends FlashcardAssignmentCountArgs>(
+      args?: Subset<T, FlashcardAssignmentCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FlashcardAssignmentCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a FlashcardAssignment.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAssignmentAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FlashcardAssignmentAggregateArgs>(args: Subset<T, FlashcardAssignmentAggregateArgs>): Prisma.PrismaPromise<GetFlashcardAssignmentAggregateType<T>>
+
+    /**
+     * Group by FlashcardAssignment.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardAssignmentGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FlashcardAssignmentGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FlashcardAssignmentGroupByArgs['orderBy'] }
+        : { orderBy?: FlashcardAssignmentGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FlashcardAssignmentGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFlashcardAssignmentGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the FlashcardAssignment model
+   */
+  readonly fields: FlashcardAssignmentFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for FlashcardAssignment.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FlashcardAssignmentClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    deck<T extends FlashcardDeckDefaultArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeckDefaultArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    group<T extends LearningGroupDefaultArgs<ExtArgs> = {}>(args?: Subset<T, LearningGroupDefaultArgs<ExtArgs>>): Prisma__LearningGroupClient<$Result.GetResult<Prisma.$LearningGroupPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the FlashcardAssignment model
+   */
+  interface FlashcardAssignmentFieldRefs {
+    readonly id: FieldRef<"FlashcardAssignment", 'String'>
+    readonly deckId: FieldRef<"FlashcardAssignment", 'String'>
+    readonly groupId: FieldRef<"FlashcardAssignment", 'String'>
+    readonly dueDate: FieldRef<"FlashcardAssignment", 'DateTime'>
+    readonly createdAt: FieldRef<"FlashcardAssignment", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * FlashcardAssignment findUnique
+   */
+  export type FlashcardAssignmentFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardAssignment to fetch.
+     */
+    where: FlashcardAssignmentWhereUniqueInput
+  }
+
+  /**
+   * FlashcardAssignment findUniqueOrThrow
+   */
+  export type FlashcardAssignmentFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardAssignment to fetch.
+     */
+    where: FlashcardAssignmentWhereUniqueInput
+  }
+
+  /**
+   * FlashcardAssignment findFirst
+   */
+  export type FlashcardAssignmentFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardAssignment to fetch.
+     */
+    where?: FlashcardAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardAssignments to fetch.
+     */
+    orderBy?: FlashcardAssignmentOrderByWithRelationInput | FlashcardAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardAssignments.
+     */
+    cursor?: FlashcardAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardAssignments.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardAssignments.
+     */
+    distinct?: FlashcardAssignmentScalarFieldEnum | FlashcardAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardAssignment findFirstOrThrow
+   */
+  export type FlashcardAssignmentFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardAssignment to fetch.
+     */
+    where?: FlashcardAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardAssignments to fetch.
+     */
+    orderBy?: FlashcardAssignmentOrderByWithRelationInput | FlashcardAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardAssignments.
+     */
+    cursor?: FlashcardAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardAssignments.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardAssignments.
+     */
+    distinct?: FlashcardAssignmentScalarFieldEnum | FlashcardAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardAssignment findMany
+   */
+  export type FlashcardAssignmentFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardAssignments to fetch.
+     */
+    where?: FlashcardAssignmentWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardAssignments to fetch.
+     */
+    orderBy?: FlashcardAssignmentOrderByWithRelationInput | FlashcardAssignmentOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing FlashcardAssignments.
+     */
+    cursor?: FlashcardAssignmentWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardAssignments from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardAssignments.
+     */
+    skip?: number
+    distinct?: FlashcardAssignmentScalarFieldEnum | FlashcardAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardAssignment create
+   */
+  export type FlashcardAssignmentCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * The data needed to create a FlashcardAssignment.
+     */
+    data: XOR<FlashcardAssignmentCreateInput, FlashcardAssignmentUncheckedCreateInput>
+  }
+
+  /**
+   * FlashcardAssignment createMany
+   */
+  export type FlashcardAssignmentCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many FlashcardAssignments.
+     */
+    data: FlashcardAssignmentCreateManyInput | FlashcardAssignmentCreateManyInput[]
+  }
+
+  /**
+   * FlashcardAssignment createManyAndReturn
+   */
+  export type FlashcardAssignmentCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * The data used to create many FlashcardAssignments.
+     */
+    data: FlashcardAssignmentCreateManyInput | FlashcardAssignmentCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardAssignment update
+   */
+  export type FlashcardAssignmentUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * The data needed to update a FlashcardAssignment.
+     */
+    data: XOR<FlashcardAssignmentUpdateInput, FlashcardAssignmentUncheckedUpdateInput>
+    /**
+     * Choose, which FlashcardAssignment to update.
+     */
+    where: FlashcardAssignmentWhereUniqueInput
+  }
+
+  /**
+   * FlashcardAssignment updateMany
+   */
+  export type FlashcardAssignmentUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update FlashcardAssignments.
+     */
+    data: XOR<FlashcardAssignmentUpdateManyMutationInput, FlashcardAssignmentUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardAssignments to update
+     */
+    where?: FlashcardAssignmentWhereInput
+    /**
+     * Limit how many FlashcardAssignments to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardAssignment updateManyAndReturn
+   */
+  export type FlashcardAssignmentUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * The data used to update FlashcardAssignments.
+     */
+    data: XOR<FlashcardAssignmentUpdateManyMutationInput, FlashcardAssignmentUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardAssignments to update
+     */
+    where?: FlashcardAssignmentWhereInput
+    /**
+     * Limit how many FlashcardAssignments to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardAssignment upsert
+   */
+  export type FlashcardAssignmentUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * The filter to search for the FlashcardAssignment to update in case it exists.
+     */
+    where: FlashcardAssignmentWhereUniqueInput
+    /**
+     * In case the FlashcardAssignment found by the `where` argument doesn't exist, create a new FlashcardAssignment with this data.
+     */
+    create: XOR<FlashcardAssignmentCreateInput, FlashcardAssignmentUncheckedCreateInput>
+    /**
+     * In case the FlashcardAssignment was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FlashcardAssignmentUpdateInput, FlashcardAssignmentUncheckedUpdateInput>
+  }
+
+  /**
+   * FlashcardAssignment delete
+   */
+  export type FlashcardAssignmentDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+    /**
+     * Filter which FlashcardAssignment to delete.
+     */
+    where: FlashcardAssignmentWhereUniqueInput
+  }
+
+  /**
+   * FlashcardAssignment deleteMany
+   */
+  export type FlashcardAssignmentDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardAssignments to delete
+     */
+    where?: FlashcardAssignmentWhereInput
+    /**
+     * Limit how many FlashcardAssignments to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardAssignment without action
+   */
+  export type FlashcardAssignmentDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardAssignment
+     */
+    select?: FlashcardAssignmentSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardAssignment
+     */
+    omit?: FlashcardAssignmentOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardAssignmentInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model FlashcardProgress
+   */
+
+  export type AggregateFlashcardProgress = {
+    _count: FlashcardProgressCountAggregateOutputType | null
+    _avg: FlashcardProgressAvgAggregateOutputType | null
+    _sum: FlashcardProgressSumAggregateOutputType | null
+    _min: FlashcardProgressMinAggregateOutputType | null
+    _max: FlashcardProgressMaxAggregateOutputType | null
+  }
+
+  export type FlashcardProgressAvgAggregateOutputType = {
+    level: number | null
+    reviewCount: number | null
+  }
+
+  export type FlashcardProgressSumAggregateOutputType = {
+    level: number | null
+    reviewCount: number | null
+  }
+
+  export type FlashcardProgressMinAggregateOutputType = {
+    id: string | null
+    cardId: string | null
+    studentId: string | null
+    level: number | null
+    nextReview: Date | null
+    lastReviewed: Date | null
+    reviewCount: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlashcardProgressMaxAggregateOutputType = {
+    id: string | null
+    cardId: string | null
+    studentId: string | null
+    level: number | null
+    nextReview: Date | null
+    lastReviewed: Date | null
+    reviewCount: number | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type FlashcardProgressCountAggregateOutputType = {
+    id: number
+    cardId: number
+    studentId: number
+    level: number
+    nextReview: number
+    lastReviewed: number
+    reviewCount: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type FlashcardProgressAvgAggregateInputType = {
+    level?: true
+    reviewCount?: true
+  }
+
+  export type FlashcardProgressSumAggregateInputType = {
+    level?: true
+    reviewCount?: true
+  }
+
+  export type FlashcardProgressMinAggregateInputType = {
+    id?: true
+    cardId?: true
+    studentId?: true
+    level?: true
+    nextReview?: true
+    lastReviewed?: true
+    reviewCount?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlashcardProgressMaxAggregateInputType = {
+    id?: true
+    cardId?: true
+    studentId?: true
+    level?: true
+    nextReview?: true
+    lastReviewed?: true
+    reviewCount?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type FlashcardProgressCountAggregateInputType = {
+    id?: true
+    cardId?: true
+    studentId?: true
+    level?: true
+    nextReview?: true
+    lastReviewed?: true
+    reviewCount?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type FlashcardProgressAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardProgress to aggregate.
+     */
+    where?: FlashcardProgressWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardProgresses to fetch.
+     */
+    orderBy?: FlashcardProgressOrderByWithRelationInput | FlashcardProgressOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FlashcardProgressWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardProgresses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardProgresses.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned FlashcardProgresses
+    **/
+    _count?: true | FlashcardProgressCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: FlashcardProgressAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: FlashcardProgressSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FlashcardProgressMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FlashcardProgressMaxAggregateInputType
+  }
+
+  export type GetFlashcardProgressAggregateType<T extends FlashcardProgressAggregateArgs> = {
+        [P in keyof T & keyof AggregateFlashcardProgress]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFlashcardProgress[P]>
+      : GetScalarType<T[P], AggregateFlashcardProgress[P]>
+  }
+
+
+
+
+  export type FlashcardProgressGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardProgressWhereInput
+    orderBy?: FlashcardProgressOrderByWithAggregationInput | FlashcardProgressOrderByWithAggregationInput[]
+    by: FlashcardProgressScalarFieldEnum[] | FlashcardProgressScalarFieldEnum
+    having?: FlashcardProgressScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FlashcardProgressCountAggregateInputType | true
+    _avg?: FlashcardProgressAvgAggregateInputType
+    _sum?: FlashcardProgressSumAggregateInputType
+    _min?: FlashcardProgressMinAggregateInputType
+    _max?: FlashcardProgressMaxAggregateInputType
+  }
+
+  export type FlashcardProgressGroupByOutputType = {
+    id: string
+    cardId: string
+    studentId: string
+    level: number
+    nextReview: Date
+    lastReviewed: Date | null
+    reviewCount: number
+    createdAt: Date
+    updatedAt: Date
+    _count: FlashcardProgressCountAggregateOutputType | null
+    _avg: FlashcardProgressAvgAggregateOutputType | null
+    _sum: FlashcardProgressSumAggregateOutputType | null
+    _min: FlashcardProgressMinAggregateOutputType | null
+    _max: FlashcardProgressMaxAggregateOutputType | null
+  }
+
+  type GetFlashcardProgressGroupByPayload<T extends FlashcardProgressGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FlashcardProgressGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FlashcardProgressGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FlashcardProgressGroupByOutputType[P]>
+            : GetScalarType<T[P], FlashcardProgressGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FlashcardProgressSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    cardId?: boolean
+    studentId?: boolean
+    level?: boolean
+    nextReview?: boolean
+    lastReviewed?: boolean
+    reviewCount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    card?: boolean | FlashcardDefaultArgs<ExtArgs>
+    student?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardProgress"]>
+
+  export type FlashcardProgressSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    cardId?: boolean
+    studentId?: boolean
+    level?: boolean
+    nextReview?: boolean
+    lastReviewed?: boolean
+    reviewCount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    card?: boolean | FlashcardDefaultArgs<ExtArgs>
+    student?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardProgress"]>
+
+  export type FlashcardProgressSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    cardId?: boolean
+    studentId?: boolean
+    level?: boolean
+    nextReview?: boolean
+    lastReviewed?: boolean
+    reviewCount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    card?: boolean | FlashcardDefaultArgs<ExtArgs>
+    student?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardProgress"]>
+
+  export type FlashcardProgressSelectScalar = {
+    id?: boolean
+    cardId?: boolean
+    studentId?: boolean
+    level?: boolean
+    nextReview?: boolean
+    lastReviewed?: boolean
+    reviewCount?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type FlashcardProgressOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "cardId" | "studentId" | "level" | "nextReview" | "lastReviewed" | "reviewCount" | "createdAt" | "updatedAt", ExtArgs["result"]["flashcardProgress"]>
+  export type FlashcardProgressInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    card?: boolean | FlashcardDefaultArgs<ExtArgs>
+    student?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type FlashcardProgressIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    card?: boolean | FlashcardDefaultArgs<ExtArgs>
+    student?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type FlashcardProgressIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    card?: boolean | FlashcardDefaultArgs<ExtArgs>
+    student?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $FlashcardProgressPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "FlashcardProgress"
+    objects: {
+      card: Prisma.$FlashcardPayload<ExtArgs>
+      student: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      cardId: string
+      studentId: string
+      level: number
+      nextReview: Date
+      lastReviewed: Date | null
+      reviewCount: number
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["flashcardProgress"]>
+    composites: {}
+  }
+
+  type FlashcardProgressGetPayload<S extends boolean | null | undefined | FlashcardProgressDefaultArgs> = $Result.GetResult<Prisma.$FlashcardProgressPayload, S>
+
+  type FlashcardProgressCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FlashcardProgressFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FlashcardProgressCountAggregateInputType | true
+    }
+
+  export interface FlashcardProgressDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FlashcardProgress'], meta: { name: 'FlashcardProgress' } }
+    /**
+     * Find zero or one FlashcardProgress that matches the filter.
+     * @param {FlashcardProgressFindUniqueArgs} args - Arguments to find a FlashcardProgress
+     * @example
+     * // Get one FlashcardProgress
+     * const flashcardProgress = await prisma.flashcardProgress.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FlashcardProgressFindUniqueArgs>(args: SelectSubset<T, FlashcardProgressFindUniqueArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one FlashcardProgress that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FlashcardProgressFindUniqueOrThrowArgs} args - Arguments to find a FlashcardProgress
+     * @example
+     * // Get one FlashcardProgress
+     * const flashcardProgress = await prisma.flashcardProgress.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FlashcardProgressFindUniqueOrThrowArgs>(args: SelectSubset<T, FlashcardProgressFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardProgress that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardProgressFindFirstArgs} args - Arguments to find a FlashcardProgress
+     * @example
+     * // Get one FlashcardProgress
+     * const flashcardProgress = await prisma.flashcardProgress.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FlashcardProgressFindFirstArgs>(args?: SelectSubset<T, FlashcardProgressFindFirstArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardProgress that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardProgressFindFirstOrThrowArgs} args - Arguments to find a FlashcardProgress
+     * @example
+     * // Get one FlashcardProgress
+     * const flashcardProgress = await prisma.flashcardProgress.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FlashcardProgressFindFirstOrThrowArgs>(args?: SelectSubset<T, FlashcardProgressFindFirstOrThrowArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more FlashcardProgresses that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardProgressFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all FlashcardProgresses
+     * const flashcardProgresses = await prisma.flashcardProgress.findMany()
+     * 
+     * // Get first 10 FlashcardProgresses
+     * const flashcardProgresses = await prisma.flashcardProgress.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const flashcardProgressWithIdOnly = await prisma.flashcardProgress.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FlashcardProgressFindManyArgs>(args?: SelectSubset<T, FlashcardProgressFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a FlashcardProgress.
+     * @param {FlashcardProgressCreateArgs} args - Arguments to create a FlashcardProgress.
+     * @example
+     * // Create one FlashcardProgress
+     * const FlashcardProgress = await prisma.flashcardProgress.create({
+     *   data: {
+     *     // ... data to create a FlashcardProgress
+     *   }
+     * })
+     * 
+     */
+    create<T extends FlashcardProgressCreateArgs>(args: SelectSubset<T, FlashcardProgressCreateArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many FlashcardProgresses.
+     * @param {FlashcardProgressCreateManyArgs} args - Arguments to create many FlashcardProgresses.
+     * @example
+     * // Create many FlashcardProgresses
+     * const flashcardProgress = await prisma.flashcardProgress.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FlashcardProgressCreateManyArgs>(args?: SelectSubset<T, FlashcardProgressCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many FlashcardProgresses and returns the data saved in the database.
+     * @param {FlashcardProgressCreateManyAndReturnArgs} args - Arguments to create many FlashcardProgresses.
+     * @example
+     * // Create many FlashcardProgresses
+     * const flashcardProgress = await prisma.flashcardProgress.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many FlashcardProgresses and only return the `id`
+     * const flashcardProgressWithIdOnly = await prisma.flashcardProgress.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FlashcardProgressCreateManyAndReturnArgs>(args?: SelectSubset<T, FlashcardProgressCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a FlashcardProgress.
+     * @param {FlashcardProgressDeleteArgs} args - Arguments to delete one FlashcardProgress.
+     * @example
+     * // Delete one FlashcardProgress
+     * const FlashcardProgress = await prisma.flashcardProgress.delete({
+     *   where: {
+     *     // ... filter to delete one FlashcardProgress
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FlashcardProgressDeleteArgs>(args: SelectSubset<T, FlashcardProgressDeleteArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one FlashcardProgress.
+     * @param {FlashcardProgressUpdateArgs} args - Arguments to update one FlashcardProgress.
+     * @example
+     * // Update one FlashcardProgress
+     * const flashcardProgress = await prisma.flashcardProgress.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FlashcardProgressUpdateArgs>(args: SelectSubset<T, FlashcardProgressUpdateArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more FlashcardProgresses.
+     * @param {FlashcardProgressDeleteManyArgs} args - Arguments to filter FlashcardProgresses to delete.
+     * @example
+     * // Delete a few FlashcardProgresses
+     * const { count } = await prisma.flashcardProgress.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FlashcardProgressDeleteManyArgs>(args?: SelectSubset<T, FlashcardProgressDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardProgresses.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardProgressUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many FlashcardProgresses
+     * const flashcardProgress = await prisma.flashcardProgress.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FlashcardProgressUpdateManyArgs>(args: SelectSubset<T, FlashcardProgressUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardProgresses and returns the data updated in the database.
+     * @param {FlashcardProgressUpdateManyAndReturnArgs} args - Arguments to update many FlashcardProgresses.
+     * @example
+     * // Update many FlashcardProgresses
+     * const flashcardProgress = await prisma.flashcardProgress.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more FlashcardProgresses and only return the `id`
+     * const flashcardProgressWithIdOnly = await prisma.flashcardProgress.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FlashcardProgressUpdateManyAndReturnArgs>(args: SelectSubset<T, FlashcardProgressUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one FlashcardProgress.
+     * @param {FlashcardProgressUpsertArgs} args - Arguments to update or create a FlashcardProgress.
+     * @example
+     * // Update or create a FlashcardProgress
+     * const flashcardProgress = await prisma.flashcardProgress.upsert({
+     *   create: {
+     *     // ... data to create a FlashcardProgress
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the FlashcardProgress we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FlashcardProgressUpsertArgs>(args: SelectSubset<T, FlashcardProgressUpsertArgs<ExtArgs>>): Prisma__FlashcardProgressClient<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of FlashcardProgresses.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardProgressCountArgs} args - Arguments to filter FlashcardProgresses to count.
+     * @example
+     * // Count the number of FlashcardProgresses
+     * const count = await prisma.flashcardProgress.count({
+     *   where: {
+     *     // ... the filter for the FlashcardProgresses we want to count
+     *   }
+     * })
+    **/
+    count<T extends FlashcardProgressCountArgs>(
+      args?: Subset<T, FlashcardProgressCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FlashcardProgressCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a FlashcardProgress.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardProgressAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FlashcardProgressAggregateArgs>(args: Subset<T, FlashcardProgressAggregateArgs>): Prisma.PrismaPromise<GetFlashcardProgressAggregateType<T>>
+
+    /**
+     * Group by FlashcardProgress.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardProgressGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FlashcardProgressGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FlashcardProgressGroupByArgs['orderBy'] }
+        : { orderBy?: FlashcardProgressGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FlashcardProgressGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFlashcardProgressGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the FlashcardProgress model
+   */
+  readonly fields: FlashcardProgressFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for FlashcardProgress.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FlashcardProgressClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    card<T extends FlashcardDefaultArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDefaultArgs<ExtArgs>>): Prisma__FlashcardClient<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    student<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the FlashcardProgress model
+   */
+  interface FlashcardProgressFieldRefs {
+    readonly id: FieldRef<"FlashcardProgress", 'String'>
+    readonly cardId: FieldRef<"FlashcardProgress", 'String'>
+    readonly studentId: FieldRef<"FlashcardProgress", 'String'>
+    readonly level: FieldRef<"FlashcardProgress", 'Int'>
+    readonly nextReview: FieldRef<"FlashcardProgress", 'DateTime'>
+    readonly lastReviewed: FieldRef<"FlashcardProgress", 'DateTime'>
+    readonly reviewCount: FieldRef<"FlashcardProgress", 'Int'>
+    readonly createdAt: FieldRef<"FlashcardProgress", 'DateTime'>
+    readonly updatedAt: FieldRef<"FlashcardProgress", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * FlashcardProgress findUnique
+   */
+  export type FlashcardProgressFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardProgress to fetch.
+     */
+    where: FlashcardProgressWhereUniqueInput
+  }
+
+  /**
+   * FlashcardProgress findUniqueOrThrow
+   */
+  export type FlashcardProgressFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardProgress to fetch.
+     */
+    where: FlashcardProgressWhereUniqueInput
+  }
+
+  /**
+   * FlashcardProgress findFirst
+   */
+  export type FlashcardProgressFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardProgress to fetch.
+     */
+    where?: FlashcardProgressWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardProgresses to fetch.
+     */
+    orderBy?: FlashcardProgressOrderByWithRelationInput | FlashcardProgressOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardProgresses.
+     */
+    cursor?: FlashcardProgressWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardProgresses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardProgresses.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardProgresses.
+     */
+    distinct?: FlashcardProgressScalarFieldEnum | FlashcardProgressScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardProgress findFirstOrThrow
+   */
+  export type FlashcardProgressFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardProgress to fetch.
+     */
+    where?: FlashcardProgressWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardProgresses to fetch.
+     */
+    orderBy?: FlashcardProgressOrderByWithRelationInput | FlashcardProgressOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardProgresses.
+     */
+    cursor?: FlashcardProgressWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardProgresses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardProgresses.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardProgresses.
+     */
+    distinct?: FlashcardProgressScalarFieldEnum | FlashcardProgressScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardProgress findMany
+   */
+  export type FlashcardProgressFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardProgresses to fetch.
+     */
+    where?: FlashcardProgressWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardProgresses to fetch.
+     */
+    orderBy?: FlashcardProgressOrderByWithRelationInput | FlashcardProgressOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing FlashcardProgresses.
+     */
+    cursor?: FlashcardProgressWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardProgresses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardProgresses.
+     */
+    skip?: number
+    distinct?: FlashcardProgressScalarFieldEnum | FlashcardProgressScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardProgress create
+   */
+  export type FlashcardProgressCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * The data needed to create a FlashcardProgress.
+     */
+    data: XOR<FlashcardProgressCreateInput, FlashcardProgressUncheckedCreateInput>
+  }
+
+  /**
+   * FlashcardProgress createMany
+   */
+  export type FlashcardProgressCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many FlashcardProgresses.
+     */
+    data: FlashcardProgressCreateManyInput | FlashcardProgressCreateManyInput[]
+  }
+
+  /**
+   * FlashcardProgress createManyAndReturn
+   */
+  export type FlashcardProgressCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * The data used to create many FlashcardProgresses.
+     */
+    data: FlashcardProgressCreateManyInput | FlashcardProgressCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardProgress update
+   */
+  export type FlashcardProgressUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * The data needed to update a FlashcardProgress.
+     */
+    data: XOR<FlashcardProgressUpdateInput, FlashcardProgressUncheckedUpdateInput>
+    /**
+     * Choose, which FlashcardProgress to update.
+     */
+    where: FlashcardProgressWhereUniqueInput
+  }
+
+  /**
+   * FlashcardProgress updateMany
+   */
+  export type FlashcardProgressUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update FlashcardProgresses.
+     */
+    data: XOR<FlashcardProgressUpdateManyMutationInput, FlashcardProgressUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardProgresses to update
+     */
+    where?: FlashcardProgressWhereInput
+    /**
+     * Limit how many FlashcardProgresses to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardProgress updateManyAndReturn
+   */
+  export type FlashcardProgressUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * The data used to update FlashcardProgresses.
+     */
+    data: XOR<FlashcardProgressUpdateManyMutationInput, FlashcardProgressUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardProgresses to update
+     */
+    where?: FlashcardProgressWhereInput
+    /**
+     * Limit how many FlashcardProgresses to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardProgress upsert
+   */
+  export type FlashcardProgressUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * The filter to search for the FlashcardProgress to update in case it exists.
+     */
+    where: FlashcardProgressWhereUniqueInput
+    /**
+     * In case the FlashcardProgress found by the `where` argument doesn't exist, create a new FlashcardProgress with this data.
+     */
+    create: XOR<FlashcardProgressCreateInput, FlashcardProgressUncheckedCreateInput>
+    /**
+     * In case the FlashcardProgress was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FlashcardProgressUpdateInput, FlashcardProgressUncheckedUpdateInput>
+  }
+
+  /**
+   * FlashcardProgress delete
+   */
+  export type FlashcardProgressDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+    /**
+     * Filter which FlashcardProgress to delete.
+     */
+    where: FlashcardProgressWhereUniqueInput
+  }
+
+  /**
+   * FlashcardProgress deleteMany
+   */
+  export type FlashcardProgressDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardProgresses to delete
+     */
+    where?: FlashcardProgressWhereInput
+    /**
+     * Limit how many FlashcardProgresses to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardProgress without action
+   */
+  export type FlashcardProgressDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardProgress
+     */
+    select?: FlashcardProgressSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardProgress
+     */
+    omit?: FlashcardProgressOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardProgressInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -26145,6 +31302,61 @@ export namespace Prisma {
   export type FileSystemPathScalarFieldEnum = (typeof FileSystemPathScalarFieldEnum)[keyof typeof FileSystemPathScalarFieldEnum]
 
 
+  export const FlashcardDeckScalarFieldEnum: {
+    id: 'id',
+    title: 'title',
+    description: 'description',
+    subjectId: 'subjectId',
+    teacherId: 'teacherId',
+    isPublic: 'isPublic',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type FlashcardDeckScalarFieldEnum = (typeof FlashcardDeckScalarFieldEnum)[keyof typeof FlashcardDeckScalarFieldEnum]
+
+
+  export const FlashcardScalarFieldEnum: {
+    id: 'id',
+    deckId: 'deckId',
+    front: 'front',
+    back: 'back',
+    hint: 'hint',
+    difficulty: 'difficulty',
+    order: 'order',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type FlashcardScalarFieldEnum = (typeof FlashcardScalarFieldEnum)[keyof typeof FlashcardScalarFieldEnum]
+
+
+  export const FlashcardAssignmentScalarFieldEnum: {
+    id: 'id',
+    deckId: 'deckId',
+    groupId: 'groupId',
+    dueDate: 'dueDate',
+    createdAt: 'createdAt'
+  };
+
+  export type FlashcardAssignmentScalarFieldEnum = (typeof FlashcardAssignmentScalarFieldEnum)[keyof typeof FlashcardAssignmentScalarFieldEnum]
+
+
+  export const FlashcardProgressScalarFieldEnum: {
+    id: 'id',
+    cardId: 'cardId',
+    studentId: 'studentId',
+    level: 'level',
+    nextReview: 'nextReview',
+    lastReviewed: 'lastReviewed',
+    reviewCount: 'reviewCount',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type FlashcardProgressScalarFieldEnum = (typeof FlashcardProgressScalarFieldEnum)[keyof typeof FlashcardProgressScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -26223,6 +31435,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupListRelationFilter
     grades?: GradeListRelationFilter
     fileSystemPaths?: FileSystemPathListRelationFilter
+    flashcardDecks?: FlashcardDeckListRelationFilter
+    flashcardProgress?: FlashcardProgressListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -26241,6 +31455,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupOrderByRelationAggregateInput
     grades?: GradeOrderByRelationAggregateInput
     fileSystemPaths?: FileSystemPathOrderByRelationAggregateInput
+    flashcardDecks?: FlashcardDeckOrderByRelationAggregateInput
+    flashcardProgress?: FlashcardProgressOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -26262,6 +31478,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupListRelationFilter
     grades?: GradeListRelationFilter
     fileSystemPaths?: FileSystemPathListRelationFilter
+    flashcardDecks?: FlashcardDeckListRelationFilter
+    flashcardProgress?: FlashcardProgressListRelationFilter
   }, "id" | "loginCode">
 
   export type UserOrderByWithAggregationInput = {
@@ -26445,6 +31663,7 @@ export namespace Prisma {
     teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
+    flashcardAssignments?: FlashcardAssignmentListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
   }
@@ -26457,6 +31676,7 @@ export namespace Prisma {
     teacherId?: SortOrder
     gradingSchemas?: GradingSchemaOrderByRelationAggregateInput
     assignments?: GroupAssignmentOrderByRelationAggregateInput
+    flashcardAssignments?: FlashcardAssignmentOrderByRelationAggregateInput
     teacher?: UserOrderByWithRelationInput
     students?: UserOrderByRelationAggregateInput
   }
@@ -26472,6 +31692,7 @@ export namespace Prisma {
     teacherId?: StringFilter<"LearningGroup"> | string
     gradingSchemas?: GradingSchemaListRelationFilter
     assignments?: GroupAssignmentListRelationFilter
+    flashcardAssignments?: FlashcardAssignmentListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     students?: UserListRelationFilter
   }, "id">
@@ -26511,6 +31732,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Subject"> | Date | string
     blocks?: BlockListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+    flashcardDecks?: FlashcardDeckListRelationFilter
   }
 
   export type SubjectOrderByWithRelationInput = {
@@ -26523,6 +31745,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     blocks?: BlockOrderByRelationAggregateInput
     teacher?: UserOrderByWithRelationInput
+    flashcardDecks?: FlashcardDeckOrderByRelationAggregateInput
   }
 
   export type SubjectWhereUniqueInput = Prisma.AtLeast<{
@@ -26538,6 +31761,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Subject"> | Date | string
     blocks?: BlockListRelationFilter
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+    flashcardDecks?: FlashcardDeckListRelationFilter
   }, "id">
 
   export type SubjectOrderByWithAggregationInput = {
@@ -27619,6 +32843,304 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"FileSystemPath"> | Date | string
   }
 
+  export type FlashcardDeckWhereInput = {
+    AND?: FlashcardDeckWhereInput | FlashcardDeckWhereInput[]
+    OR?: FlashcardDeckWhereInput[]
+    NOT?: FlashcardDeckWhereInput | FlashcardDeckWhereInput[]
+    id?: StringFilter<"FlashcardDeck"> | string
+    title?: StringFilter<"FlashcardDeck"> | string
+    description?: StringNullableFilter<"FlashcardDeck"> | string | null
+    subjectId?: StringNullableFilter<"FlashcardDeck"> | string | null
+    teacherId?: StringFilter<"FlashcardDeck"> | string
+    isPublic?: BoolFilter<"FlashcardDeck"> | boolean
+    createdAt?: DateTimeFilter<"FlashcardDeck"> | Date | string
+    updatedAt?: DateTimeFilter<"FlashcardDeck"> | Date | string
+    subject?: XOR<SubjectNullableScalarRelationFilter, SubjectWhereInput> | null
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+    cards?: FlashcardListRelationFilter
+    assignments?: FlashcardAssignmentListRelationFilter
+  }
+
+  export type FlashcardDeckOrderByWithRelationInput = {
+    id?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    subjectId?: SortOrderInput | SortOrder
+    teacherId?: SortOrder
+    isPublic?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    subject?: SubjectOrderByWithRelationInput
+    teacher?: UserOrderByWithRelationInput
+    cards?: FlashcardOrderByRelationAggregateInput
+    assignments?: FlashcardAssignmentOrderByRelationAggregateInput
+  }
+
+  export type FlashcardDeckWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: FlashcardDeckWhereInput | FlashcardDeckWhereInput[]
+    OR?: FlashcardDeckWhereInput[]
+    NOT?: FlashcardDeckWhereInput | FlashcardDeckWhereInput[]
+    title?: StringFilter<"FlashcardDeck"> | string
+    description?: StringNullableFilter<"FlashcardDeck"> | string | null
+    subjectId?: StringNullableFilter<"FlashcardDeck"> | string | null
+    teacherId?: StringFilter<"FlashcardDeck"> | string
+    isPublic?: BoolFilter<"FlashcardDeck"> | boolean
+    createdAt?: DateTimeFilter<"FlashcardDeck"> | Date | string
+    updatedAt?: DateTimeFilter<"FlashcardDeck"> | Date | string
+    subject?: XOR<SubjectNullableScalarRelationFilter, SubjectWhereInput> | null
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+    cards?: FlashcardListRelationFilter
+    assignments?: FlashcardAssignmentListRelationFilter
+  }, "id">
+
+  export type FlashcardDeckOrderByWithAggregationInput = {
+    id?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    subjectId?: SortOrderInput | SortOrder
+    teacherId?: SortOrder
+    isPublic?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: FlashcardDeckCountOrderByAggregateInput
+    _max?: FlashcardDeckMaxOrderByAggregateInput
+    _min?: FlashcardDeckMinOrderByAggregateInput
+  }
+
+  export type FlashcardDeckScalarWhereWithAggregatesInput = {
+    AND?: FlashcardDeckScalarWhereWithAggregatesInput | FlashcardDeckScalarWhereWithAggregatesInput[]
+    OR?: FlashcardDeckScalarWhereWithAggregatesInput[]
+    NOT?: FlashcardDeckScalarWhereWithAggregatesInput | FlashcardDeckScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"FlashcardDeck"> | string
+    title?: StringWithAggregatesFilter<"FlashcardDeck"> | string
+    description?: StringNullableWithAggregatesFilter<"FlashcardDeck"> | string | null
+    subjectId?: StringNullableWithAggregatesFilter<"FlashcardDeck"> | string | null
+    teacherId?: StringWithAggregatesFilter<"FlashcardDeck"> | string
+    isPublic?: BoolWithAggregatesFilter<"FlashcardDeck"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"FlashcardDeck"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"FlashcardDeck"> | Date | string
+  }
+
+  export type FlashcardWhereInput = {
+    AND?: FlashcardWhereInput | FlashcardWhereInput[]
+    OR?: FlashcardWhereInput[]
+    NOT?: FlashcardWhereInput | FlashcardWhereInput[]
+    id?: StringFilter<"Flashcard"> | string
+    deckId?: StringFilter<"Flashcard"> | string
+    front?: StringFilter<"Flashcard"> | string
+    back?: StringFilter<"Flashcard"> | string
+    hint?: StringNullableFilter<"Flashcard"> | string | null
+    difficulty?: IntFilter<"Flashcard"> | number
+    order?: IntFilter<"Flashcard"> | number
+    createdAt?: DateTimeFilter<"Flashcard"> | Date | string
+    updatedAt?: DateTimeFilter<"Flashcard"> | Date | string
+    deck?: XOR<FlashcardDeckScalarRelationFilter, FlashcardDeckWhereInput>
+    progress?: FlashcardProgressListRelationFilter
+  }
+
+  export type FlashcardOrderByWithRelationInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    front?: SortOrder
+    back?: SortOrder
+    hint?: SortOrderInput | SortOrder
+    difficulty?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    deck?: FlashcardDeckOrderByWithRelationInput
+    progress?: FlashcardProgressOrderByRelationAggregateInput
+  }
+
+  export type FlashcardWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: FlashcardWhereInput | FlashcardWhereInput[]
+    OR?: FlashcardWhereInput[]
+    NOT?: FlashcardWhereInput | FlashcardWhereInput[]
+    deckId?: StringFilter<"Flashcard"> | string
+    front?: StringFilter<"Flashcard"> | string
+    back?: StringFilter<"Flashcard"> | string
+    hint?: StringNullableFilter<"Flashcard"> | string | null
+    difficulty?: IntFilter<"Flashcard"> | number
+    order?: IntFilter<"Flashcard"> | number
+    createdAt?: DateTimeFilter<"Flashcard"> | Date | string
+    updatedAt?: DateTimeFilter<"Flashcard"> | Date | string
+    deck?: XOR<FlashcardDeckScalarRelationFilter, FlashcardDeckWhereInput>
+    progress?: FlashcardProgressListRelationFilter
+  }, "id">
+
+  export type FlashcardOrderByWithAggregationInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    front?: SortOrder
+    back?: SortOrder
+    hint?: SortOrderInput | SortOrder
+    difficulty?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: FlashcardCountOrderByAggregateInput
+    _avg?: FlashcardAvgOrderByAggregateInput
+    _max?: FlashcardMaxOrderByAggregateInput
+    _min?: FlashcardMinOrderByAggregateInput
+    _sum?: FlashcardSumOrderByAggregateInput
+  }
+
+  export type FlashcardScalarWhereWithAggregatesInput = {
+    AND?: FlashcardScalarWhereWithAggregatesInput | FlashcardScalarWhereWithAggregatesInput[]
+    OR?: FlashcardScalarWhereWithAggregatesInput[]
+    NOT?: FlashcardScalarWhereWithAggregatesInput | FlashcardScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Flashcard"> | string
+    deckId?: StringWithAggregatesFilter<"Flashcard"> | string
+    front?: StringWithAggregatesFilter<"Flashcard"> | string
+    back?: StringWithAggregatesFilter<"Flashcard"> | string
+    hint?: StringNullableWithAggregatesFilter<"Flashcard"> | string | null
+    difficulty?: IntWithAggregatesFilter<"Flashcard"> | number
+    order?: IntWithAggregatesFilter<"Flashcard"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"Flashcard"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Flashcard"> | Date | string
+  }
+
+  export type FlashcardAssignmentWhereInput = {
+    AND?: FlashcardAssignmentWhereInput | FlashcardAssignmentWhereInput[]
+    OR?: FlashcardAssignmentWhereInput[]
+    NOT?: FlashcardAssignmentWhereInput | FlashcardAssignmentWhereInput[]
+    id?: StringFilter<"FlashcardAssignment"> | string
+    deckId?: StringFilter<"FlashcardAssignment"> | string
+    groupId?: StringFilter<"FlashcardAssignment"> | string
+    dueDate?: DateTimeNullableFilter<"FlashcardAssignment"> | Date | string | null
+    createdAt?: DateTimeFilter<"FlashcardAssignment"> | Date | string
+    deck?: XOR<FlashcardDeckScalarRelationFilter, FlashcardDeckWhereInput>
+    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
+  }
+
+  export type FlashcardAssignmentOrderByWithRelationInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    groupId?: SortOrder
+    dueDate?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    deck?: FlashcardDeckOrderByWithRelationInput
+    group?: LearningGroupOrderByWithRelationInput
+  }
+
+  export type FlashcardAssignmentWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: FlashcardAssignmentWhereInput | FlashcardAssignmentWhereInput[]
+    OR?: FlashcardAssignmentWhereInput[]
+    NOT?: FlashcardAssignmentWhereInput | FlashcardAssignmentWhereInput[]
+    deckId?: StringFilter<"FlashcardAssignment"> | string
+    groupId?: StringFilter<"FlashcardAssignment"> | string
+    dueDate?: DateTimeNullableFilter<"FlashcardAssignment"> | Date | string | null
+    createdAt?: DateTimeFilter<"FlashcardAssignment"> | Date | string
+    deck?: XOR<FlashcardDeckScalarRelationFilter, FlashcardDeckWhereInput>
+    group?: XOR<LearningGroupScalarRelationFilter, LearningGroupWhereInput>
+  }, "id">
+
+  export type FlashcardAssignmentOrderByWithAggregationInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    groupId?: SortOrder
+    dueDate?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: FlashcardAssignmentCountOrderByAggregateInput
+    _max?: FlashcardAssignmentMaxOrderByAggregateInput
+    _min?: FlashcardAssignmentMinOrderByAggregateInput
+  }
+
+  export type FlashcardAssignmentScalarWhereWithAggregatesInput = {
+    AND?: FlashcardAssignmentScalarWhereWithAggregatesInput | FlashcardAssignmentScalarWhereWithAggregatesInput[]
+    OR?: FlashcardAssignmentScalarWhereWithAggregatesInput[]
+    NOT?: FlashcardAssignmentScalarWhereWithAggregatesInput | FlashcardAssignmentScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"FlashcardAssignment"> | string
+    deckId?: StringWithAggregatesFilter<"FlashcardAssignment"> | string
+    groupId?: StringWithAggregatesFilter<"FlashcardAssignment"> | string
+    dueDate?: DateTimeNullableWithAggregatesFilter<"FlashcardAssignment"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"FlashcardAssignment"> | Date | string
+  }
+
+  export type FlashcardProgressWhereInput = {
+    AND?: FlashcardProgressWhereInput | FlashcardProgressWhereInput[]
+    OR?: FlashcardProgressWhereInput[]
+    NOT?: FlashcardProgressWhereInput | FlashcardProgressWhereInput[]
+    id?: StringFilter<"FlashcardProgress"> | string
+    cardId?: StringFilter<"FlashcardProgress"> | string
+    studentId?: StringFilter<"FlashcardProgress"> | string
+    level?: IntFilter<"FlashcardProgress"> | number
+    nextReview?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    lastReviewed?: DateTimeNullableFilter<"FlashcardProgress"> | Date | string | null
+    reviewCount?: IntFilter<"FlashcardProgress"> | number
+    createdAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    updatedAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    card?: XOR<FlashcardScalarRelationFilter, FlashcardWhereInput>
+    student?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type FlashcardProgressOrderByWithRelationInput = {
+    id?: SortOrder
+    cardId?: SortOrder
+    studentId?: SortOrder
+    level?: SortOrder
+    nextReview?: SortOrder
+    lastReviewed?: SortOrderInput | SortOrder
+    reviewCount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    card?: FlashcardOrderByWithRelationInput
+    student?: UserOrderByWithRelationInput
+  }
+
+  export type FlashcardProgressWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    cardId_studentId?: FlashcardProgressCardIdStudentIdCompoundUniqueInput
+    AND?: FlashcardProgressWhereInput | FlashcardProgressWhereInput[]
+    OR?: FlashcardProgressWhereInput[]
+    NOT?: FlashcardProgressWhereInput | FlashcardProgressWhereInput[]
+    cardId?: StringFilter<"FlashcardProgress"> | string
+    studentId?: StringFilter<"FlashcardProgress"> | string
+    level?: IntFilter<"FlashcardProgress"> | number
+    nextReview?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    lastReviewed?: DateTimeNullableFilter<"FlashcardProgress"> | Date | string | null
+    reviewCount?: IntFilter<"FlashcardProgress"> | number
+    createdAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    updatedAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    card?: XOR<FlashcardScalarRelationFilter, FlashcardWhereInput>
+    student?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "cardId_studentId">
+
+  export type FlashcardProgressOrderByWithAggregationInput = {
+    id?: SortOrder
+    cardId?: SortOrder
+    studentId?: SortOrder
+    level?: SortOrder
+    nextReview?: SortOrder
+    lastReviewed?: SortOrderInput | SortOrder
+    reviewCount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: FlashcardProgressCountOrderByAggregateInput
+    _avg?: FlashcardProgressAvgOrderByAggregateInput
+    _max?: FlashcardProgressMaxOrderByAggregateInput
+    _min?: FlashcardProgressMinOrderByAggregateInput
+    _sum?: FlashcardProgressSumOrderByAggregateInput
+  }
+
+  export type FlashcardProgressScalarWhereWithAggregatesInput = {
+    AND?: FlashcardProgressScalarWhereWithAggregatesInput | FlashcardProgressScalarWhereWithAggregatesInput[]
+    OR?: FlashcardProgressScalarWhereWithAggregatesInput[]
+    NOT?: FlashcardProgressScalarWhereWithAggregatesInput | FlashcardProgressScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"FlashcardProgress"> | string
+    cardId?: StringWithAggregatesFilter<"FlashcardProgress"> | string
+    studentId?: StringWithAggregatesFilter<"FlashcardProgress"> | string
+    level?: IntWithAggregatesFilter<"FlashcardProgress"> | number
+    nextReview?: DateTimeWithAggregatesFilter<"FlashcardProgress"> | Date | string
+    lastReviewed?: DateTimeNullableWithAggregatesFilter<"FlashcardProgress"> | Date | string | null
+    reviewCount?: IntWithAggregatesFilter<"FlashcardProgress"> | number
+    createdAt?: DateTimeWithAggregatesFilter<"FlashcardProgress"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"FlashcardProgress"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
@@ -27635,6 +33157,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -27653,6 +33177,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserUpdateInput = {
@@ -27671,6 +33197,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -27689,6 +33217,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -27876,6 +33406,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -27888,6 +33419,7 @@ export namespace Prisma {
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -27898,6 +33430,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -27910,6 +33443,7 @@ export namespace Prisma {
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -27945,6 +33479,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     blocks?: BlockCreateNestedManyWithoutSubjectInput
     teacher: UserCreateNestedOneWithoutSubjectsInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutSubjectInput
   }
 
   export type SubjectUncheckedCreateInput = {
@@ -27956,6 +33491,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     blocks?: BlockUncheckedCreateNestedManyWithoutSubjectInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutSubjectInput
   }
 
   export type SubjectUpdateInput = {
@@ -27967,6 +33503,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     blocks?: BlockUpdateManyWithoutSubjectNestedInput
     teacher?: UserUpdateOneRequiredWithoutSubjectsNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutSubjectNestedInput
   }
 
   export type SubjectUncheckedUpdateInput = {
@@ -27978,6 +33515,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     blocks?: BlockUncheckedUpdateManyWithoutSubjectNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutSubjectNestedInput
   }
 
   export type SubjectCreateManyInput = {
@@ -29103,6 +34641,312 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type FlashcardDeckCreateInput = {
+    id?: string
+    title: string
+    description?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
+    teacher: UserCreateNestedOneWithoutFlashcardDecksInput
+    cards?: FlashcardCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckUncheckedCreateInput = {
+    id?: string
+    title: string
+    description?: string | null
+    subjectId?: string | null
+    teacherId: string
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
+    teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
+    cards?: FlashcardUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    subjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherId?: StringFieldUpdateOperationsInput | string
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckCreateManyInput = {
+    id?: string
+    title: string
+    description?: string | null
+    subjectId?: string | null
+    teacherId: string
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardDeckUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardDeckUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    subjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherId?: StringFieldUpdateOperationsInput | string
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardCreateInput = {
+    id?: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deck: FlashcardDeckCreateNestedOneWithoutCardsInput
+    progress?: FlashcardProgressCreateNestedManyWithoutCardInput
+  }
+
+  export type FlashcardUncheckedCreateInput = {
+    id?: string
+    deckId: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    progress?: FlashcardProgressUncheckedCreateNestedManyWithoutCardInput
+  }
+
+  export type FlashcardUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deck?: FlashcardDeckUpdateOneRequiredWithoutCardsNestedInput
+    progress?: FlashcardProgressUpdateManyWithoutCardNestedInput
+  }
+
+  export type FlashcardUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    progress?: FlashcardProgressUncheckedUpdateManyWithoutCardNestedInput
+  }
+
+  export type FlashcardCreateManyInput = {
+    id?: string
+    deckId: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardAssignmentCreateInput = {
+    id?: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+    deck: FlashcardDeckCreateNestedOneWithoutAssignmentsInput
+    group: LearningGroupCreateNestedOneWithoutFlashcardAssignmentsInput
+  }
+
+  export type FlashcardAssignmentUncheckedCreateInput = {
+    id?: string
+    deckId: string
+    groupId: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardAssignmentUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deck?: FlashcardDeckUpdateOneRequiredWithoutAssignmentsNestedInput
+    group?: LearningGroupUpdateOneRequiredWithoutFlashcardAssignmentsNestedInput
+  }
+
+  export type FlashcardAssignmentUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardAssignmentCreateManyInput = {
+    id?: string
+    deckId: string
+    groupId: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardAssignmentUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardAssignmentUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardProgressCreateInput = {
+    id?: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    card: FlashcardCreateNestedOneWithoutProgressInput
+    student: UserCreateNestedOneWithoutFlashcardProgressInput
+  }
+
+  export type FlashcardProgressUncheckedCreateInput = {
+    id?: string
+    cardId: string
+    studentId: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardProgressUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    card?: FlashcardUpdateOneRequiredWithoutProgressNestedInput
+    student?: UserUpdateOneRequiredWithoutFlashcardProgressNestedInput
+  }
+
+  export type FlashcardProgressUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    cardId?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardProgressCreateManyInput = {
+    id?: string
+    cardId: string
+    studentId: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardProgressUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardProgressUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    cardId?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -29184,6 +35028,18 @@ export namespace Prisma {
     none?: FileSystemPathWhereInput
   }
 
+  export type FlashcardDeckListRelationFilter = {
+    every?: FlashcardDeckWhereInput
+    some?: FlashcardDeckWhereInput
+    none?: FlashcardDeckWhereInput
+  }
+
+  export type FlashcardProgressListRelationFilter = {
+    every?: FlashcardProgressWhereInput
+    some?: FlashcardProgressWhereInput
+    none?: FlashcardProgressWhereInput
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -29214,6 +35070,14 @@ export namespace Prisma {
   }
 
   export type FileSystemPathOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type FlashcardDeckOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type FlashcardProgressOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -29428,6 +35292,12 @@ export namespace Prisma {
     none?: GroupAssignmentWhereInput
   }
 
+  export type FlashcardAssignmentListRelationFilter = {
+    every?: FlashcardAssignmentWhereInput
+    some?: FlashcardAssignmentWhereInput
+    none?: FlashcardAssignmentWhereInput
+  }
+
   export type UserListRelationFilter = {
     every?: UserWhereInput
     some?: UserWhereInput
@@ -29439,6 +35309,10 @@ export namespace Prisma {
   }
 
   export type GroupAssignmentOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type FlashcardAssignmentOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -30285,6 +36159,185 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type SubjectNullableScalarRelationFilter = {
+    is?: SubjectWhereInput | null
+    isNot?: SubjectWhereInput | null
+  }
+
+  export type FlashcardListRelationFilter = {
+    every?: FlashcardWhereInput
+    some?: FlashcardWhereInput
+    none?: FlashcardWhereInput
+  }
+
+  export type FlashcardOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type FlashcardDeckCountOrderByAggregateInput = {
+    id?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    subjectId?: SortOrder
+    teacherId?: SortOrder
+    isPublic?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardDeckMaxOrderByAggregateInput = {
+    id?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    subjectId?: SortOrder
+    teacherId?: SortOrder
+    isPublic?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardDeckMinOrderByAggregateInput = {
+    id?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    subjectId?: SortOrder
+    teacherId?: SortOrder
+    isPublic?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardDeckScalarRelationFilter = {
+    is?: FlashcardDeckWhereInput
+    isNot?: FlashcardDeckWhereInput
+  }
+
+  export type FlashcardCountOrderByAggregateInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    front?: SortOrder
+    back?: SortOrder
+    hint?: SortOrder
+    difficulty?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardAvgOrderByAggregateInput = {
+    difficulty?: SortOrder
+    order?: SortOrder
+  }
+
+  export type FlashcardMaxOrderByAggregateInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    front?: SortOrder
+    back?: SortOrder
+    hint?: SortOrder
+    difficulty?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardMinOrderByAggregateInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    front?: SortOrder
+    back?: SortOrder
+    hint?: SortOrder
+    difficulty?: SortOrder
+    order?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardSumOrderByAggregateInput = {
+    difficulty?: SortOrder
+    order?: SortOrder
+  }
+
+  export type FlashcardAssignmentCountOrderByAggregateInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    groupId?: SortOrder
+    dueDate?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type FlashcardAssignmentMaxOrderByAggregateInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    groupId?: SortOrder
+    dueDate?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type FlashcardAssignmentMinOrderByAggregateInput = {
+    id?: SortOrder
+    deckId?: SortOrder
+    groupId?: SortOrder
+    dueDate?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type FlashcardScalarRelationFilter = {
+    is?: FlashcardWhereInput
+    isNot?: FlashcardWhereInput
+  }
+
+  export type FlashcardProgressCardIdStudentIdCompoundUniqueInput = {
+    cardId: string
+    studentId: string
+  }
+
+  export type FlashcardProgressCountOrderByAggregateInput = {
+    id?: SortOrder
+    cardId?: SortOrder
+    studentId?: SortOrder
+    level?: SortOrder
+    nextReview?: SortOrder
+    lastReviewed?: SortOrder
+    reviewCount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardProgressAvgOrderByAggregateInput = {
+    level?: SortOrder
+    reviewCount?: SortOrder
+  }
+
+  export type FlashcardProgressMaxOrderByAggregateInput = {
+    id?: SortOrder
+    cardId?: SortOrder
+    studentId?: SortOrder
+    level?: SortOrder
+    nextReview?: SortOrder
+    lastReviewed?: SortOrder
+    reviewCount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardProgressMinOrderByAggregateInput = {
+    id?: SortOrder
+    cardId?: SortOrder
+    studentId?: SortOrder
+    level?: SortOrder
+    nextReview?: SortOrder
+    lastReviewed?: SortOrder
+    reviewCount?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type FlashcardProgressSumOrderByAggregateInput = {
+    level?: SortOrder
+    reviewCount?: SortOrder
+  }
+
   export type LearningGroupCreateNestedManyWithoutTeacherInput = {
     create?: XOR<LearningGroupCreateWithoutTeacherInput, LearningGroupUncheckedCreateWithoutTeacherInput> | LearningGroupCreateWithoutTeacherInput[] | LearningGroupUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutTeacherInput | LearningGroupCreateOrConnectWithoutTeacherInput[]
@@ -30340,6 +36393,20 @@ export namespace Prisma {
     connect?: FileSystemPathWhereUniqueInput | FileSystemPathWhereUniqueInput[]
   }
 
+  export type FlashcardDeckCreateNestedManyWithoutTeacherInput = {
+    create?: XOR<FlashcardDeckCreateWithoutTeacherInput, FlashcardDeckUncheckedCreateWithoutTeacherInput> | FlashcardDeckCreateWithoutTeacherInput[] | FlashcardDeckUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutTeacherInput | FlashcardDeckCreateOrConnectWithoutTeacherInput[]
+    createMany?: FlashcardDeckCreateManyTeacherInputEnvelope
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+  }
+
+  export type FlashcardProgressCreateNestedManyWithoutStudentInput = {
+    create?: XOR<FlashcardProgressCreateWithoutStudentInput, FlashcardProgressUncheckedCreateWithoutStudentInput> | FlashcardProgressCreateWithoutStudentInput[] | FlashcardProgressUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutStudentInput | FlashcardProgressCreateOrConnectWithoutStudentInput[]
+    createMany?: FlashcardProgressCreateManyStudentInputEnvelope
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+  }
+
   export type LearningGroupUncheckedCreateNestedManyWithoutTeacherInput = {
     create?: XOR<LearningGroupCreateWithoutTeacherInput, LearningGroupUncheckedCreateWithoutTeacherInput> | LearningGroupCreateWithoutTeacherInput[] | LearningGroupUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutTeacherInput | LearningGroupCreateOrConnectWithoutTeacherInput[]
@@ -30393,6 +36460,20 @@ export namespace Prisma {
     connectOrCreate?: FileSystemPathCreateOrConnectWithoutTeacherInput | FileSystemPathCreateOrConnectWithoutTeacherInput[]
     createMany?: FileSystemPathCreateManyTeacherInputEnvelope
     connect?: FileSystemPathWhereUniqueInput | FileSystemPathWhereUniqueInput[]
+  }
+
+  export type FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput = {
+    create?: XOR<FlashcardDeckCreateWithoutTeacherInput, FlashcardDeckUncheckedCreateWithoutTeacherInput> | FlashcardDeckCreateWithoutTeacherInput[] | FlashcardDeckUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutTeacherInput | FlashcardDeckCreateOrConnectWithoutTeacherInput[]
+    createMany?: FlashcardDeckCreateManyTeacherInputEnvelope
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+  }
+
+  export type FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput = {
+    create?: XOR<FlashcardProgressCreateWithoutStudentInput, FlashcardProgressUncheckedCreateWithoutStudentInput> | FlashcardProgressCreateWithoutStudentInput[] | FlashcardProgressUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutStudentInput | FlashcardProgressCreateOrConnectWithoutStudentInput[]
+    createMany?: FlashcardProgressCreateManyStudentInputEnvelope
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -30518,6 +36599,34 @@ export namespace Prisma {
     deleteMany?: FileSystemPathScalarWhereInput | FileSystemPathScalarWhereInput[]
   }
 
+  export type FlashcardDeckUpdateManyWithoutTeacherNestedInput = {
+    create?: XOR<FlashcardDeckCreateWithoutTeacherInput, FlashcardDeckUncheckedCreateWithoutTeacherInput> | FlashcardDeckCreateWithoutTeacherInput[] | FlashcardDeckUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutTeacherInput | FlashcardDeckCreateOrConnectWithoutTeacherInput[]
+    upsert?: FlashcardDeckUpsertWithWhereUniqueWithoutTeacherInput | FlashcardDeckUpsertWithWhereUniqueWithoutTeacherInput[]
+    createMany?: FlashcardDeckCreateManyTeacherInputEnvelope
+    set?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    disconnect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    delete?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    update?: FlashcardDeckUpdateWithWhereUniqueWithoutTeacherInput | FlashcardDeckUpdateWithWhereUniqueWithoutTeacherInput[]
+    updateMany?: FlashcardDeckUpdateManyWithWhereWithoutTeacherInput | FlashcardDeckUpdateManyWithWhereWithoutTeacherInput[]
+    deleteMany?: FlashcardDeckScalarWhereInput | FlashcardDeckScalarWhereInput[]
+  }
+
+  export type FlashcardProgressUpdateManyWithoutStudentNestedInput = {
+    create?: XOR<FlashcardProgressCreateWithoutStudentInput, FlashcardProgressUncheckedCreateWithoutStudentInput> | FlashcardProgressCreateWithoutStudentInput[] | FlashcardProgressUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutStudentInput | FlashcardProgressCreateOrConnectWithoutStudentInput[]
+    upsert?: FlashcardProgressUpsertWithWhereUniqueWithoutStudentInput | FlashcardProgressUpsertWithWhereUniqueWithoutStudentInput[]
+    createMany?: FlashcardProgressCreateManyStudentInputEnvelope
+    set?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    disconnect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    delete?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    update?: FlashcardProgressUpdateWithWhereUniqueWithoutStudentInput | FlashcardProgressUpdateWithWhereUniqueWithoutStudentInput[]
+    updateMany?: FlashcardProgressUpdateManyWithWhereWithoutStudentInput | FlashcardProgressUpdateManyWithWhereWithoutStudentInput[]
+    deleteMany?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
+  }
+
   export type LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput = {
     create?: XOR<LearningGroupCreateWithoutTeacherInput, LearningGroupUncheckedCreateWithoutTeacherInput> | LearningGroupCreateWithoutTeacherInput[] | LearningGroupUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutTeacherInput | LearningGroupCreateOrConnectWithoutTeacherInput[]
@@ -30629,6 +36738,34 @@ export namespace Prisma {
     deleteMany?: FileSystemPathScalarWhereInput | FileSystemPathScalarWhereInput[]
   }
 
+  export type FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput = {
+    create?: XOR<FlashcardDeckCreateWithoutTeacherInput, FlashcardDeckUncheckedCreateWithoutTeacherInput> | FlashcardDeckCreateWithoutTeacherInput[] | FlashcardDeckUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutTeacherInput | FlashcardDeckCreateOrConnectWithoutTeacherInput[]
+    upsert?: FlashcardDeckUpsertWithWhereUniqueWithoutTeacherInput | FlashcardDeckUpsertWithWhereUniqueWithoutTeacherInput[]
+    createMany?: FlashcardDeckCreateManyTeacherInputEnvelope
+    set?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    disconnect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    delete?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    update?: FlashcardDeckUpdateWithWhereUniqueWithoutTeacherInput | FlashcardDeckUpdateWithWhereUniqueWithoutTeacherInput[]
+    updateMany?: FlashcardDeckUpdateManyWithWhereWithoutTeacherInput | FlashcardDeckUpdateManyWithWhereWithoutTeacherInput[]
+    deleteMany?: FlashcardDeckScalarWhereInput | FlashcardDeckScalarWhereInput[]
+  }
+
+  export type FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput = {
+    create?: XOR<FlashcardProgressCreateWithoutStudentInput, FlashcardProgressUncheckedCreateWithoutStudentInput> | FlashcardProgressCreateWithoutStudentInput[] | FlashcardProgressUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutStudentInput | FlashcardProgressCreateOrConnectWithoutStudentInput[]
+    upsert?: FlashcardProgressUpsertWithWhereUniqueWithoutStudentInput | FlashcardProgressUpsertWithWhereUniqueWithoutStudentInput[]
+    createMany?: FlashcardProgressCreateManyStudentInputEnvelope
+    set?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    disconnect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    delete?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    update?: FlashcardProgressUpdateWithWhereUniqueWithoutStudentInput | FlashcardProgressUpdateWithWhereUniqueWithoutStudentInput[]
+    updateMany?: FlashcardProgressUpdateManyWithWhereWithoutStudentInput | FlashcardProgressUpdateManyWithWhereWithoutStudentInput[]
+    deleteMany?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
+  }
+
   export type LearningGroupCreateNestedOneWithoutGradingSchemasInput = {
     create?: XOR<LearningGroupCreateWithoutGradingSchemasInput, LearningGroupUncheckedCreateWithoutGradingSchemasInput>
     connectOrCreate?: LearningGroupCreateOrConnectWithoutGradingSchemasInput
@@ -30735,6 +36872,13 @@ export namespace Prisma {
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
   }
 
+  export type FlashcardAssignmentCreateNestedManyWithoutGroupInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutGroupInput, FlashcardAssignmentUncheckedCreateWithoutGroupInput> | FlashcardAssignmentCreateWithoutGroupInput[] | FlashcardAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutGroupInput | FlashcardAssignmentCreateOrConnectWithoutGroupInput[]
+    createMany?: FlashcardAssignmentCreateManyGroupInputEnvelope
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+  }
+
   export type UserCreateNestedOneWithoutTeacherGroupsInput = {
     create?: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
     connectOrCreate?: UserCreateOrConnectWithoutTeacherGroupsInput
@@ -30759,6 +36903,13 @@ export namespace Prisma {
     connectOrCreate?: GroupAssignmentCreateOrConnectWithoutGroupInput | GroupAssignmentCreateOrConnectWithoutGroupInput[]
     createMany?: GroupAssignmentCreateManyGroupInputEnvelope
     connect?: GroupAssignmentWhereUniqueInput | GroupAssignmentWhereUniqueInput[]
+  }
+
+  export type FlashcardAssignmentUncheckedCreateNestedManyWithoutGroupInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutGroupInput, FlashcardAssignmentUncheckedCreateWithoutGroupInput> | FlashcardAssignmentCreateWithoutGroupInput[] | FlashcardAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutGroupInput | FlashcardAssignmentCreateOrConnectWithoutGroupInput[]
+    createMany?: FlashcardAssignmentCreateManyGroupInputEnvelope
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
   }
 
   export type UserUncheckedCreateNestedManyWithoutLearningGroupsInput = {
@@ -30793,6 +36944,20 @@ export namespace Prisma {
     update?: GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput | GroupAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
     updateMany?: GroupAssignmentUpdateManyWithWhereWithoutGroupInput | GroupAssignmentUpdateManyWithWhereWithoutGroupInput[]
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
+  }
+
+  export type FlashcardAssignmentUpdateManyWithoutGroupNestedInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutGroupInput, FlashcardAssignmentUncheckedCreateWithoutGroupInput> | FlashcardAssignmentCreateWithoutGroupInput[] | FlashcardAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutGroupInput | FlashcardAssignmentCreateOrConnectWithoutGroupInput[]
+    upsert?: FlashcardAssignmentUpsertWithWhereUniqueWithoutGroupInput | FlashcardAssignmentUpsertWithWhereUniqueWithoutGroupInput[]
+    createMany?: FlashcardAssignmentCreateManyGroupInputEnvelope
+    set?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    disconnect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    delete?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    update?: FlashcardAssignmentUpdateWithWhereUniqueWithoutGroupInput | FlashcardAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
+    updateMany?: FlashcardAssignmentUpdateManyWithWhereWithoutGroupInput | FlashcardAssignmentUpdateManyWithWhereWithoutGroupInput[]
+    deleteMany?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
   }
 
   export type UserUpdateOneRequiredWithoutTeacherGroupsNestedInput = {
@@ -30844,6 +37009,20 @@ export namespace Prisma {
     deleteMany?: GroupAssignmentScalarWhereInput | GroupAssignmentScalarWhereInput[]
   }
 
+  export type FlashcardAssignmentUncheckedUpdateManyWithoutGroupNestedInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutGroupInput, FlashcardAssignmentUncheckedCreateWithoutGroupInput> | FlashcardAssignmentCreateWithoutGroupInput[] | FlashcardAssignmentUncheckedCreateWithoutGroupInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutGroupInput | FlashcardAssignmentCreateOrConnectWithoutGroupInput[]
+    upsert?: FlashcardAssignmentUpsertWithWhereUniqueWithoutGroupInput | FlashcardAssignmentUpsertWithWhereUniqueWithoutGroupInput[]
+    createMany?: FlashcardAssignmentCreateManyGroupInputEnvelope
+    set?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    disconnect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    delete?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    update?: FlashcardAssignmentUpdateWithWhereUniqueWithoutGroupInput | FlashcardAssignmentUpdateWithWhereUniqueWithoutGroupInput[]
+    updateMany?: FlashcardAssignmentUpdateManyWithWhereWithoutGroupInput | FlashcardAssignmentUpdateManyWithWhereWithoutGroupInput[]
+    deleteMany?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
+  }
+
   export type UserUncheckedUpdateManyWithoutLearningGroupsNestedInput = {
     create?: XOR<UserCreateWithoutLearningGroupsInput, UserUncheckedCreateWithoutLearningGroupsInput> | UserCreateWithoutLearningGroupsInput[] | UserUncheckedCreateWithoutLearningGroupsInput[]
     connectOrCreate?: UserCreateOrConnectWithoutLearningGroupsInput | UserCreateOrConnectWithoutLearningGroupsInput[]
@@ -30870,11 +37049,25 @@ export namespace Prisma {
     connect?: UserWhereUniqueInput
   }
 
+  export type FlashcardDeckCreateNestedManyWithoutSubjectInput = {
+    create?: XOR<FlashcardDeckCreateWithoutSubjectInput, FlashcardDeckUncheckedCreateWithoutSubjectInput> | FlashcardDeckCreateWithoutSubjectInput[] | FlashcardDeckUncheckedCreateWithoutSubjectInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutSubjectInput | FlashcardDeckCreateOrConnectWithoutSubjectInput[]
+    createMany?: FlashcardDeckCreateManySubjectInputEnvelope
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+  }
+
   export type BlockUncheckedCreateNestedManyWithoutSubjectInput = {
     create?: XOR<BlockCreateWithoutSubjectInput, BlockUncheckedCreateWithoutSubjectInput> | BlockCreateWithoutSubjectInput[] | BlockUncheckedCreateWithoutSubjectInput[]
     connectOrCreate?: BlockCreateOrConnectWithoutSubjectInput | BlockCreateOrConnectWithoutSubjectInput[]
     createMany?: BlockCreateManySubjectInputEnvelope
     connect?: BlockWhereUniqueInput | BlockWhereUniqueInput[]
+  }
+
+  export type FlashcardDeckUncheckedCreateNestedManyWithoutSubjectInput = {
+    create?: XOR<FlashcardDeckCreateWithoutSubjectInput, FlashcardDeckUncheckedCreateWithoutSubjectInput> | FlashcardDeckCreateWithoutSubjectInput[] | FlashcardDeckUncheckedCreateWithoutSubjectInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutSubjectInput | FlashcardDeckCreateOrConnectWithoutSubjectInput[]
+    createMany?: FlashcardDeckCreateManySubjectInputEnvelope
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
   }
 
   export type IntFieldUpdateOperationsInput = {
@@ -30907,6 +37100,20 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSubjectsInput, UserUpdateWithoutSubjectsInput>, UserUncheckedUpdateWithoutSubjectsInput>
   }
 
+  export type FlashcardDeckUpdateManyWithoutSubjectNestedInput = {
+    create?: XOR<FlashcardDeckCreateWithoutSubjectInput, FlashcardDeckUncheckedCreateWithoutSubjectInput> | FlashcardDeckCreateWithoutSubjectInput[] | FlashcardDeckUncheckedCreateWithoutSubjectInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutSubjectInput | FlashcardDeckCreateOrConnectWithoutSubjectInput[]
+    upsert?: FlashcardDeckUpsertWithWhereUniqueWithoutSubjectInput | FlashcardDeckUpsertWithWhereUniqueWithoutSubjectInput[]
+    createMany?: FlashcardDeckCreateManySubjectInputEnvelope
+    set?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    disconnect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    delete?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    update?: FlashcardDeckUpdateWithWhereUniqueWithoutSubjectInput | FlashcardDeckUpdateWithWhereUniqueWithoutSubjectInput[]
+    updateMany?: FlashcardDeckUpdateManyWithWhereWithoutSubjectInput | FlashcardDeckUpdateManyWithWhereWithoutSubjectInput[]
+    deleteMany?: FlashcardDeckScalarWhereInput | FlashcardDeckScalarWhereInput[]
+  }
+
   export type BlockUncheckedUpdateManyWithoutSubjectNestedInput = {
     create?: XOR<BlockCreateWithoutSubjectInput, BlockUncheckedCreateWithoutSubjectInput> | BlockCreateWithoutSubjectInput[] | BlockUncheckedCreateWithoutSubjectInput[]
     connectOrCreate?: BlockCreateOrConnectWithoutSubjectInput | BlockCreateOrConnectWithoutSubjectInput[]
@@ -30919,6 +37126,20 @@ export namespace Prisma {
     update?: BlockUpdateWithWhereUniqueWithoutSubjectInput | BlockUpdateWithWhereUniqueWithoutSubjectInput[]
     updateMany?: BlockUpdateManyWithWhereWithoutSubjectInput | BlockUpdateManyWithWhereWithoutSubjectInput[]
     deleteMany?: BlockScalarWhereInput | BlockScalarWhereInput[]
+  }
+
+  export type FlashcardDeckUncheckedUpdateManyWithoutSubjectNestedInput = {
+    create?: XOR<FlashcardDeckCreateWithoutSubjectInput, FlashcardDeckUncheckedCreateWithoutSubjectInput> | FlashcardDeckCreateWithoutSubjectInput[] | FlashcardDeckUncheckedCreateWithoutSubjectInput[]
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutSubjectInput | FlashcardDeckCreateOrConnectWithoutSubjectInput[]
+    upsert?: FlashcardDeckUpsertWithWhereUniqueWithoutSubjectInput | FlashcardDeckUpsertWithWhereUniqueWithoutSubjectInput[]
+    createMany?: FlashcardDeckCreateManySubjectInputEnvelope
+    set?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    disconnect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    delete?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    connect?: FlashcardDeckWhereUniqueInput | FlashcardDeckWhereUniqueInput[]
+    update?: FlashcardDeckUpdateWithWhereUniqueWithoutSubjectInput | FlashcardDeckUpdateWithWhereUniqueWithoutSubjectInput[]
+    updateMany?: FlashcardDeckUpdateManyWithWhereWithoutSubjectInput | FlashcardDeckUpdateManyWithWhereWithoutSubjectInput[]
+    deleteMany?: FlashcardDeckScalarWhereInput | FlashcardDeckScalarWhereInput[]
   }
 
   export type SubjectCreateNestedOneWithoutBlocksInput = {
@@ -31693,6 +37914,232 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutFileSystemPathsInput, UserUpdateWithoutFileSystemPathsInput>, UserUncheckedUpdateWithoutFileSystemPathsInput>
   }
 
+  export type SubjectCreateNestedOneWithoutFlashcardDecksInput = {
+    create?: XOR<SubjectCreateWithoutFlashcardDecksInput, SubjectUncheckedCreateWithoutFlashcardDecksInput>
+    connectOrCreate?: SubjectCreateOrConnectWithoutFlashcardDecksInput
+    connect?: SubjectWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutFlashcardDecksInput = {
+    create?: XOR<UserCreateWithoutFlashcardDecksInput, UserUncheckedCreateWithoutFlashcardDecksInput>
+    connectOrCreate?: UserCreateOrConnectWithoutFlashcardDecksInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type FlashcardCreateNestedManyWithoutDeckInput = {
+    create?: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput> | FlashcardCreateWithoutDeckInput[] | FlashcardUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardCreateOrConnectWithoutDeckInput | FlashcardCreateOrConnectWithoutDeckInput[]
+    createMany?: FlashcardCreateManyDeckInputEnvelope
+    connect?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+  }
+
+  export type FlashcardAssignmentCreateNestedManyWithoutDeckInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutDeckInput, FlashcardAssignmentUncheckedCreateWithoutDeckInput> | FlashcardAssignmentCreateWithoutDeckInput[] | FlashcardAssignmentUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutDeckInput | FlashcardAssignmentCreateOrConnectWithoutDeckInput[]
+    createMany?: FlashcardAssignmentCreateManyDeckInputEnvelope
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+  }
+
+  export type FlashcardUncheckedCreateNestedManyWithoutDeckInput = {
+    create?: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput> | FlashcardCreateWithoutDeckInput[] | FlashcardUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardCreateOrConnectWithoutDeckInput | FlashcardCreateOrConnectWithoutDeckInput[]
+    createMany?: FlashcardCreateManyDeckInputEnvelope
+    connect?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+  }
+
+  export type FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutDeckInput, FlashcardAssignmentUncheckedCreateWithoutDeckInput> | FlashcardAssignmentCreateWithoutDeckInput[] | FlashcardAssignmentUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutDeckInput | FlashcardAssignmentCreateOrConnectWithoutDeckInput[]
+    createMany?: FlashcardAssignmentCreateManyDeckInputEnvelope
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+  }
+
+  export type SubjectUpdateOneWithoutFlashcardDecksNestedInput = {
+    create?: XOR<SubjectCreateWithoutFlashcardDecksInput, SubjectUncheckedCreateWithoutFlashcardDecksInput>
+    connectOrCreate?: SubjectCreateOrConnectWithoutFlashcardDecksInput
+    upsert?: SubjectUpsertWithoutFlashcardDecksInput
+    disconnect?: SubjectWhereInput | boolean
+    delete?: SubjectWhereInput | boolean
+    connect?: SubjectWhereUniqueInput
+    update?: XOR<XOR<SubjectUpdateToOneWithWhereWithoutFlashcardDecksInput, SubjectUpdateWithoutFlashcardDecksInput>, SubjectUncheckedUpdateWithoutFlashcardDecksInput>
+  }
+
+  export type UserUpdateOneRequiredWithoutFlashcardDecksNestedInput = {
+    create?: XOR<UserCreateWithoutFlashcardDecksInput, UserUncheckedCreateWithoutFlashcardDecksInput>
+    connectOrCreate?: UserCreateOrConnectWithoutFlashcardDecksInput
+    upsert?: UserUpsertWithoutFlashcardDecksInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutFlashcardDecksInput, UserUpdateWithoutFlashcardDecksInput>, UserUncheckedUpdateWithoutFlashcardDecksInput>
+  }
+
+  export type FlashcardUpdateManyWithoutDeckNestedInput = {
+    create?: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput> | FlashcardCreateWithoutDeckInput[] | FlashcardUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardCreateOrConnectWithoutDeckInput | FlashcardCreateOrConnectWithoutDeckInput[]
+    upsert?: FlashcardUpsertWithWhereUniqueWithoutDeckInput | FlashcardUpsertWithWhereUniqueWithoutDeckInput[]
+    createMany?: FlashcardCreateManyDeckInputEnvelope
+    set?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    disconnect?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    delete?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    connect?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    update?: FlashcardUpdateWithWhereUniqueWithoutDeckInput | FlashcardUpdateWithWhereUniqueWithoutDeckInput[]
+    updateMany?: FlashcardUpdateManyWithWhereWithoutDeckInput | FlashcardUpdateManyWithWhereWithoutDeckInput[]
+    deleteMany?: FlashcardScalarWhereInput | FlashcardScalarWhereInput[]
+  }
+
+  export type FlashcardAssignmentUpdateManyWithoutDeckNestedInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutDeckInput, FlashcardAssignmentUncheckedCreateWithoutDeckInput> | FlashcardAssignmentCreateWithoutDeckInput[] | FlashcardAssignmentUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutDeckInput | FlashcardAssignmentCreateOrConnectWithoutDeckInput[]
+    upsert?: FlashcardAssignmentUpsertWithWhereUniqueWithoutDeckInput | FlashcardAssignmentUpsertWithWhereUniqueWithoutDeckInput[]
+    createMany?: FlashcardAssignmentCreateManyDeckInputEnvelope
+    set?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    disconnect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    delete?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    update?: FlashcardAssignmentUpdateWithWhereUniqueWithoutDeckInput | FlashcardAssignmentUpdateWithWhereUniqueWithoutDeckInput[]
+    updateMany?: FlashcardAssignmentUpdateManyWithWhereWithoutDeckInput | FlashcardAssignmentUpdateManyWithWhereWithoutDeckInput[]
+    deleteMany?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
+  }
+
+  export type FlashcardUncheckedUpdateManyWithoutDeckNestedInput = {
+    create?: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput> | FlashcardCreateWithoutDeckInput[] | FlashcardUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardCreateOrConnectWithoutDeckInput | FlashcardCreateOrConnectWithoutDeckInput[]
+    upsert?: FlashcardUpsertWithWhereUniqueWithoutDeckInput | FlashcardUpsertWithWhereUniqueWithoutDeckInput[]
+    createMany?: FlashcardCreateManyDeckInputEnvelope
+    set?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    disconnect?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    delete?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    connect?: FlashcardWhereUniqueInput | FlashcardWhereUniqueInput[]
+    update?: FlashcardUpdateWithWhereUniqueWithoutDeckInput | FlashcardUpdateWithWhereUniqueWithoutDeckInput[]
+    updateMany?: FlashcardUpdateManyWithWhereWithoutDeckInput | FlashcardUpdateManyWithWhereWithoutDeckInput[]
+    deleteMany?: FlashcardScalarWhereInput | FlashcardScalarWhereInput[]
+  }
+
+  export type FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput = {
+    create?: XOR<FlashcardAssignmentCreateWithoutDeckInput, FlashcardAssignmentUncheckedCreateWithoutDeckInput> | FlashcardAssignmentCreateWithoutDeckInput[] | FlashcardAssignmentUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutDeckInput | FlashcardAssignmentCreateOrConnectWithoutDeckInput[]
+    upsert?: FlashcardAssignmentUpsertWithWhereUniqueWithoutDeckInput | FlashcardAssignmentUpsertWithWhereUniqueWithoutDeckInput[]
+    createMany?: FlashcardAssignmentCreateManyDeckInputEnvelope
+    set?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    disconnect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    delete?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+    update?: FlashcardAssignmentUpdateWithWhereUniqueWithoutDeckInput | FlashcardAssignmentUpdateWithWhereUniqueWithoutDeckInput[]
+    updateMany?: FlashcardAssignmentUpdateManyWithWhereWithoutDeckInput | FlashcardAssignmentUpdateManyWithWhereWithoutDeckInput[]
+    deleteMany?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
+  }
+
+  export type FlashcardDeckCreateNestedOneWithoutCardsInput = {
+    create?: XOR<FlashcardDeckCreateWithoutCardsInput, FlashcardDeckUncheckedCreateWithoutCardsInput>
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutCardsInput
+    connect?: FlashcardDeckWhereUniqueInput
+  }
+
+  export type FlashcardProgressCreateNestedManyWithoutCardInput = {
+    create?: XOR<FlashcardProgressCreateWithoutCardInput, FlashcardProgressUncheckedCreateWithoutCardInput> | FlashcardProgressCreateWithoutCardInput[] | FlashcardProgressUncheckedCreateWithoutCardInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutCardInput | FlashcardProgressCreateOrConnectWithoutCardInput[]
+    createMany?: FlashcardProgressCreateManyCardInputEnvelope
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+  }
+
+  export type FlashcardProgressUncheckedCreateNestedManyWithoutCardInput = {
+    create?: XOR<FlashcardProgressCreateWithoutCardInput, FlashcardProgressUncheckedCreateWithoutCardInput> | FlashcardProgressCreateWithoutCardInput[] | FlashcardProgressUncheckedCreateWithoutCardInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutCardInput | FlashcardProgressCreateOrConnectWithoutCardInput[]
+    createMany?: FlashcardProgressCreateManyCardInputEnvelope
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+  }
+
+  export type FlashcardDeckUpdateOneRequiredWithoutCardsNestedInput = {
+    create?: XOR<FlashcardDeckCreateWithoutCardsInput, FlashcardDeckUncheckedCreateWithoutCardsInput>
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutCardsInput
+    upsert?: FlashcardDeckUpsertWithoutCardsInput
+    connect?: FlashcardDeckWhereUniqueInput
+    update?: XOR<XOR<FlashcardDeckUpdateToOneWithWhereWithoutCardsInput, FlashcardDeckUpdateWithoutCardsInput>, FlashcardDeckUncheckedUpdateWithoutCardsInput>
+  }
+
+  export type FlashcardProgressUpdateManyWithoutCardNestedInput = {
+    create?: XOR<FlashcardProgressCreateWithoutCardInput, FlashcardProgressUncheckedCreateWithoutCardInput> | FlashcardProgressCreateWithoutCardInput[] | FlashcardProgressUncheckedCreateWithoutCardInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutCardInput | FlashcardProgressCreateOrConnectWithoutCardInput[]
+    upsert?: FlashcardProgressUpsertWithWhereUniqueWithoutCardInput | FlashcardProgressUpsertWithWhereUniqueWithoutCardInput[]
+    createMany?: FlashcardProgressCreateManyCardInputEnvelope
+    set?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    disconnect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    delete?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    update?: FlashcardProgressUpdateWithWhereUniqueWithoutCardInput | FlashcardProgressUpdateWithWhereUniqueWithoutCardInput[]
+    updateMany?: FlashcardProgressUpdateManyWithWhereWithoutCardInput | FlashcardProgressUpdateManyWithWhereWithoutCardInput[]
+    deleteMany?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
+  }
+
+  export type FlashcardProgressUncheckedUpdateManyWithoutCardNestedInput = {
+    create?: XOR<FlashcardProgressCreateWithoutCardInput, FlashcardProgressUncheckedCreateWithoutCardInput> | FlashcardProgressCreateWithoutCardInput[] | FlashcardProgressUncheckedCreateWithoutCardInput[]
+    connectOrCreate?: FlashcardProgressCreateOrConnectWithoutCardInput | FlashcardProgressCreateOrConnectWithoutCardInput[]
+    upsert?: FlashcardProgressUpsertWithWhereUniqueWithoutCardInput | FlashcardProgressUpsertWithWhereUniqueWithoutCardInput[]
+    createMany?: FlashcardProgressCreateManyCardInputEnvelope
+    set?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    disconnect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    delete?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+    update?: FlashcardProgressUpdateWithWhereUniqueWithoutCardInput | FlashcardProgressUpdateWithWhereUniqueWithoutCardInput[]
+    updateMany?: FlashcardProgressUpdateManyWithWhereWithoutCardInput | FlashcardProgressUpdateManyWithWhereWithoutCardInput[]
+    deleteMany?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
+  }
+
+  export type FlashcardDeckCreateNestedOneWithoutAssignmentsInput = {
+    create?: XOR<FlashcardDeckCreateWithoutAssignmentsInput, FlashcardDeckUncheckedCreateWithoutAssignmentsInput>
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutAssignmentsInput
+    connect?: FlashcardDeckWhereUniqueInput
+  }
+
+  export type LearningGroupCreateNestedOneWithoutFlashcardAssignmentsInput = {
+    create?: XOR<LearningGroupCreateWithoutFlashcardAssignmentsInput, LearningGroupUncheckedCreateWithoutFlashcardAssignmentsInput>
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutFlashcardAssignmentsInput
+    connect?: LearningGroupWhereUniqueInput
+  }
+
+  export type FlashcardDeckUpdateOneRequiredWithoutAssignmentsNestedInput = {
+    create?: XOR<FlashcardDeckCreateWithoutAssignmentsInput, FlashcardDeckUncheckedCreateWithoutAssignmentsInput>
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutAssignmentsInput
+    upsert?: FlashcardDeckUpsertWithoutAssignmentsInput
+    connect?: FlashcardDeckWhereUniqueInput
+    update?: XOR<XOR<FlashcardDeckUpdateToOneWithWhereWithoutAssignmentsInput, FlashcardDeckUpdateWithoutAssignmentsInput>, FlashcardDeckUncheckedUpdateWithoutAssignmentsInput>
+  }
+
+  export type LearningGroupUpdateOneRequiredWithoutFlashcardAssignmentsNestedInput = {
+    create?: XOR<LearningGroupCreateWithoutFlashcardAssignmentsInput, LearningGroupUncheckedCreateWithoutFlashcardAssignmentsInput>
+    connectOrCreate?: LearningGroupCreateOrConnectWithoutFlashcardAssignmentsInput
+    upsert?: LearningGroupUpsertWithoutFlashcardAssignmentsInput
+    connect?: LearningGroupWhereUniqueInput
+    update?: XOR<XOR<LearningGroupUpdateToOneWithWhereWithoutFlashcardAssignmentsInput, LearningGroupUpdateWithoutFlashcardAssignmentsInput>, LearningGroupUncheckedUpdateWithoutFlashcardAssignmentsInput>
+  }
+
+  export type FlashcardCreateNestedOneWithoutProgressInput = {
+    create?: XOR<FlashcardCreateWithoutProgressInput, FlashcardUncheckedCreateWithoutProgressInput>
+    connectOrCreate?: FlashcardCreateOrConnectWithoutProgressInput
+    connect?: FlashcardWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutFlashcardProgressInput = {
+    create?: XOR<UserCreateWithoutFlashcardProgressInput, UserUncheckedCreateWithoutFlashcardProgressInput>
+    connectOrCreate?: UserCreateOrConnectWithoutFlashcardProgressInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type FlashcardUpdateOneRequiredWithoutProgressNestedInput = {
+    create?: XOR<FlashcardCreateWithoutProgressInput, FlashcardUncheckedCreateWithoutProgressInput>
+    connectOrCreate?: FlashcardCreateOrConnectWithoutProgressInput
+    upsert?: FlashcardUpsertWithoutProgressInput
+    connect?: FlashcardWhereUniqueInput
+    update?: XOR<XOR<FlashcardUpdateToOneWithWhereWithoutProgressInput, FlashcardUpdateWithoutProgressInput>, FlashcardUncheckedUpdateWithoutProgressInput>
+  }
+
+  export type UserUpdateOneRequiredWithoutFlashcardProgressNestedInput = {
+    create?: XOR<UserCreateWithoutFlashcardProgressInput, UserUncheckedCreateWithoutFlashcardProgressInput>
+    connectOrCreate?: UserCreateOrConnectWithoutFlashcardProgressInput
+    upsert?: UserUpsertWithoutFlashcardProgressInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutFlashcardProgressInput, UserUpdateWithoutFlashcardProgressInput>, UserUncheckedUpdateWithoutFlashcardProgressInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -31917,6 +38364,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentCreateNestedManyWithoutGroupInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -31927,6 +38375,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -32052,6 +38501,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     blocks?: BlockCreateNestedManyWithoutSubjectInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutSubjectInput
   }
 
   export type SubjectUncheckedCreateWithoutTeacherInput = {
@@ -32062,6 +38512,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     blocks?: BlockUncheckedCreateNestedManyWithoutSubjectInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutSubjectInput
   }
 
   export type SubjectCreateOrConnectWithoutTeacherInput = {
@@ -32080,6 +38531,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
   }
 
@@ -32091,6 +38543,7 @@ export namespace Prisma {
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutGroupInput
   }
 
   export type LearningGroupCreateOrConnectWithoutStudentsInput = {
@@ -32150,6 +38603,70 @@ export namespace Prisma {
 
   export type FileSystemPathCreateManyTeacherInputEnvelope = {
     data: FileSystemPathCreateManyTeacherInput | FileSystemPathCreateManyTeacherInput[]
+  }
+
+  export type FlashcardDeckCreateWithoutTeacherInput = {
+    id?: string
+    title: string
+    description?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
+    cards?: FlashcardCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckUncheckedCreateWithoutTeacherInput = {
+    id?: string
+    title: string
+    description?: string | null
+    subjectId?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckCreateOrConnectWithoutTeacherInput = {
+    where: FlashcardDeckWhereUniqueInput
+    create: XOR<FlashcardDeckCreateWithoutTeacherInput, FlashcardDeckUncheckedCreateWithoutTeacherInput>
+  }
+
+  export type FlashcardDeckCreateManyTeacherInputEnvelope = {
+    data: FlashcardDeckCreateManyTeacherInput | FlashcardDeckCreateManyTeacherInput[]
+  }
+
+  export type FlashcardProgressCreateWithoutStudentInput = {
+    id?: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    card: FlashcardCreateNestedOneWithoutProgressInput
+  }
+
+  export type FlashcardProgressUncheckedCreateWithoutStudentInput = {
+    id?: string
+    cardId: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardProgressCreateOrConnectWithoutStudentInput = {
+    where: FlashcardProgressWhereUniqueInput
+    create: XOR<FlashcardProgressCreateWithoutStudentInput, FlashcardProgressUncheckedCreateWithoutStudentInput>
+  }
+
+  export type FlashcardProgressCreateManyStudentInputEnvelope = {
+    data: FlashcardProgressCreateManyStudentInput | FlashcardProgressCreateManyStudentInput[]
   }
 
   export type LearningGroupUpsertWithWhereUniqueWithoutTeacherInput = {
@@ -32377,12 +38894,74 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"FileSystemPath"> | Date | string
   }
 
+  export type FlashcardDeckUpsertWithWhereUniqueWithoutTeacherInput = {
+    where: FlashcardDeckWhereUniqueInput
+    update: XOR<FlashcardDeckUpdateWithoutTeacherInput, FlashcardDeckUncheckedUpdateWithoutTeacherInput>
+    create: XOR<FlashcardDeckCreateWithoutTeacherInput, FlashcardDeckUncheckedCreateWithoutTeacherInput>
+  }
+
+  export type FlashcardDeckUpdateWithWhereUniqueWithoutTeacherInput = {
+    where: FlashcardDeckWhereUniqueInput
+    data: XOR<FlashcardDeckUpdateWithoutTeacherInput, FlashcardDeckUncheckedUpdateWithoutTeacherInput>
+  }
+
+  export type FlashcardDeckUpdateManyWithWhereWithoutTeacherInput = {
+    where: FlashcardDeckScalarWhereInput
+    data: XOR<FlashcardDeckUpdateManyMutationInput, FlashcardDeckUncheckedUpdateManyWithoutTeacherInput>
+  }
+
+  export type FlashcardDeckScalarWhereInput = {
+    AND?: FlashcardDeckScalarWhereInput | FlashcardDeckScalarWhereInput[]
+    OR?: FlashcardDeckScalarWhereInput[]
+    NOT?: FlashcardDeckScalarWhereInput | FlashcardDeckScalarWhereInput[]
+    id?: StringFilter<"FlashcardDeck"> | string
+    title?: StringFilter<"FlashcardDeck"> | string
+    description?: StringNullableFilter<"FlashcardDeck"> | string | null
+    subjectId?: StringNullableFilter<"FlashcardDeck"> | string | null
+    teacherId?: StringFilter<"FlashcardDeck"> | string
+    isPublic?: BoolFilter<"FlashcardDeck"> | boolean
+    createdAt?: DateTimeFilter<"FlashcardDeck"> | Date | string
+    updatedAt?: DateTimeFilter<"FlashcardDeck"> | Date | string
+  }
+
+  export type FlashcardProgressUpsertWithWhereUniqueWithoutStudentInput = {
+    where: FlashcardProgressWhereUniqueInput
+    update: XOR<FlashcardProgressUpdateWithoutStudentInput, FlashcardProgressUncheckedUpdateWithoutStudentInput>
+    create: XOR<FlashcardProgressCreateWithoutStudentInput, FlashcardProgressUncheckedCreateWithoutStudentInput>
+  }
+
+  export type FlashcardProgressUpdateWithWhereUniqueWithoutStudentInput = {
+    where: FlashcardProgressWhereUniqueInput
+    data: XOR<FlashcardProgressUpdateWithoutStudentInput, FlashcardProgressUncheckedUpdateWithoutStudentInput>
+  }
+
+  export type FlashcardProgressUpdateManyWithWhereWithoutStudentInput = {
+    where: FlashcardProgressScalarWhereInput
+    data: XOR<FlashcardProgressUpdateManyMutationInput, FlashcardProgressUncheckedUpdateManyWithoutStudentInput>
+  }
+
+  export type FlashcardProgressScalarWhereInput = {
+    AND?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
+    OR?: FlashcardProgressScalarWhereInput[]
+    NOT?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
+    id?: StringFilter<"FlashcardProgress"> | string
+    cardId?: StringFilter<"FlashcardProgress"> | string
+    studentId?: StringFilter<"FlashcardProgress"> | string
+    level?: IntFilter<"FlashcardProgress"> | number
+    nextReview?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    lastReviewed?: DateTimeNullableFilter<"FlashcardProgress"> | Date | string | null
+    reviewCount?: IntFilter<"FlashcardProgress"> | number
+    createdAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
+    updatedAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
+  }
+
   export type LearningGroupCreateWithoutGradingSchemasInput = {
     id?: string
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string
     assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -32394,6 +38973,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacherId: string
     assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -32448,6 +39028,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -32459,6 +39040,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacherId?: StringFieldUpdateOperationsInput | string
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -32493,6 +39075,8 @@ export namespace Prisma {
     subjects?: SubjectCreateNestedManyWithoutTeacherInput
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutGradesInput = {
@@ -32510,6 +39094,8 @@ export namespace Prisma {
     subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutGradesInput = {
@@ -32568,6 +39154,8 @@ export namespace Prisma {
     subjects?: SubjectUpdateManyWithoutTeacherNestedInput
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutGradesInput = {
@@ -32585,6 +39173,8 @@ export namespace Prisma {
     subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type GradingSchemaUpsertWithoutGradesInput = {
@@ -32670,6 +39260,29 @@ export namespace Prisma {
     data: GroupAssignmentCreateManyGroupInput | GroupAssignmentCreateManyGroupInput[]
   }
 
+  export type FlashcardAssignmentCreateWithoutGroupInput = {
+    id?: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+    deck: FlashcardDeckCreateNestedOneWithoutAssignmentsInput
+  }
+
+  export type FlashcardAssignmentUncheckedCreateWithoutGroupInput = {
+    id?: string
+    deckId: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardAssignmentCreateOrConnectWithoutGroupInput = {
+    where: FlashcardAssignmentWhereUniqueInput
+    create: XOR<FlashcardAssignmentCreateWithoutGroupInput, FlashcardAssignmentUncheckedCreateWithoutGroupInput>
+  }
+
+  export type FlashcardAssignmentCreateManyGroupInputEnvelope = {
+    data: FlashcardAssignmentCreateManyGroupInput | FlashcardAssignmentCreateManyGroupInput[]
+  }
+
   export type UserCreateWithoutTeacherGroupsInput = {
     id?: string
     name: string
@@ -32685,6 +39298,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutTeacherGroupsInput = {
@@ -32702,6 +39317,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutTeacherGroupsInput = {
@@ -32724,6 +39341,8 @@ export namespace Prisma {
     subjects?: SubjectCreateNestedManyWithoutTeacherInput
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutLearningGroupsInput = {
@@ -32741,6 +39360,8 @@ export namespace Prisma {
     subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutLearningGroupsInput = {
@@ -32804,6 +39425,33 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"GroupAssignment"> | Date | string
   }
 
+  export type FlashcardAssignmentUpsertWithWhereUniqueWithoutGroupInput = {
+    where: FlashcardAssignmentWhereUniqueInput
+    update: XOR<FlashcardAssignmentUpdateWithoutGroupInput, FlashcardAssignmentUncheckedUpdateWithoutGroupInput>
+    create: XOR<FlashcardAssignmentCreateWithoutGroupInput, FlashcardAssignmentUncheckedCreateWithoutGroupInput>
+  }
+
+  export type FlashcardAssignmentUpdateWithWhereUniqueWithoutGroupInput = {
+    where: FlashcardAssignmentWhereUniqueInput
+    data: XOR<FlashcardAssignmentUpdateWithoutGroupInput, FlashcardAssignmentUncheckedUpdateWithoutGroupInput>
+  }
+
+  export type FlashcardAssignmentUpdateManyWithWhereWithoutGroupInput = {
+    where: FlashcardAssignmentScalarWhereInput
+    data: XOR<FlashcardAssignmentUpdateManyMutationInput, FlashcardAssignmentUncheckedUpdateManyWithoutGroupInput>
+  }
+
+  export type FlashcardAssignmentScalarWhereInput = {
+    AND?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
+    OR?: FlashcardAssignmentScalarWhereInput[]
+    NOT?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
+    id?: StringFilter<"FlashcardAssignment"> | string
+    deckId?: StringFilter<"FlashcardAssignment"> | string
+    groupId?: StringFilter<"FlashcardAssignment"> | string
+    dueDate?: DateTimeNullableFilter<"FlashcardAssignment"> | Date | string | null
+    createdAt?: DateTimeFilter<"FlashcardAssignment"> | Date | string
+  }
+
   export type UserUpsertWithoutTeacherGroupsInput = {
     update: XOR<UserUpdateWithoutTeacherGroupsInput, UserUncheckedUpdateWithoutTeacherGroupsInput>
     create: XOR<UserCreateWithoutTeacherGroupsInput, UserUncheckedCreateWithoutTeacherGroupsInput>
@@ -32830,6 +39478,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutTeacherGroupsInput = {
@@ -32847,6 +39497,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUpsertWithWhereUniqueWithoutLearningGroupsInput = {
@@ -32922,6 +39574,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutSubjectsInput = {
@@ -32939,11 +39593,46 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutSubjectsInput = {
     where: UserWhereUniqueInput
     create: XOR<UserCreateWithoutSubjectsInput, UserUncheckedCreateWithoutSubjectsInput>
+  }
+
+  export type FlashcardDeckCreateWithoutSubjectInput = {
+    id?: string
+    title: string
+    description?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacher: UserCreateNestedOneWithoutFlashcardDecksInput
+    cards?: FlashcardCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckUncheckedCreateWithoutSubjectInput = {
+    id?: string
+    title: string
+    description?: string | null
+    teacherId: string
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckCreateOrConnectWithoutSubjectInput = {
+    where: FlashcardDeckWhereUniqueInput
+    create: XOR<FlashcardDeckCreateWithoutSubjectInput, FlashcardDeckUncheckedCreateWithoutSubjectInput>
+  }
+
+  export type FlashcardDeckCreateManySubjectInputEnvelope = {
+    data: FlashcardDeckCreateManySubjectInput | FlashcardDeckCreateManySubjectInput[]
   }
 
   export type BlockUpsertWithWhereUniqueWithoutSubjectInput = {
@@ -33001,6 +39690,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutSubjectsInput = {
@@ -33018,6 +39709,24 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+  }
+
+  export type FlashcardDeckUpsertWithWhereUniqueWithoutSubjectInput = {
+    where: FlashcardDeckWhereUniqueInput
+    update: XOR<FlashcardDeckUpdateWithoutSubjectInput, FlashcardDeckUncheckedUpdateWithoutSubjectInput>
+    create: XOR<FlashcardDeckCreateWithoutSubjectInput, FlashcardDeckUncheckedCreateWithoutSubjectInput>
+  }
+
+  export type FlashcardDeckUpdateWithWhereUniqueWithoutSubjectInput = {
+    where: FlashcardDeckWhereUniqueInput
+    data: XOR<FlashcardDeckUpdateWithoutSubjectInput, FlashcardDeckUncheckedUpdateWithoutSubjectInput>
+  }
+
+  export type FlashcardDeckUpdateManyWithWhereWithoutSubjectInput = {
+    where: FlashcardDeckScalarWhereInput
+    data: XOR<FlashcardDeckUpdateManyMutationInput, FlashcardDeckUncheckedUpdateManyWithoutSubjectInput>
   }
 
   export type SubjectCreateWithoutBlocksInput = {
@@ -33028,6 +39737,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     teacher: UserCreateNestedOneWithoutSubjectsInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutSubjectInput
   }
 
   export type SubjectUncheckedCreateWithoutBlocksInput = {
@@ -33038,6 +39748,7 @@ export namespace Prisma {
     teacherId: string
     createdAt?: Date | string
     updatedAt?: Date | string
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutSubjectInput
   }
 
   export type SubjectCreateOrConnectWithoutBlocksInput = {
@@ -33093,6 +39804,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacher?: UserUpdateOneRequiredWithoutSubjectsNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutSubjectNestedInput
   }
 
   export type SubjectUncheckedUpdateWithoutBlocksInput = {
@@ -33103,6 +39815,7 @@ export namespace Prisma {
     teacherId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutSubjectNestedInput
   }
 
   export type UnitUpsertWithWhereUniqueWithoutBlockInput = {
@@ -33520,6 +40233,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    flashcardAssignments?: FlashcardAssignmentCreateNestedManyWithoutGroupInput
     teacher: UserCreateNestedOneWithoutTeacherGroupsInput
     students?: UserCreateNestedManyWithoutLearningGroupsInput
   }
@@ -33531,6 +40245,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     teacherId: string
     gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutGroupInput
     students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
   }
 
@@ -33556,6 +40271,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
@@ -33567,6 +40283,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -33585,6 +40302,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutNotesInput = {
@@ -33602,6 +40321,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutNotesInput = {
@@ -33635,6 +40356,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutNotesInput = {
@@ -33652,6 +40375,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type LessonMaterialCreateWithoutMaterialInput = {
@@ -33839,6 +40564,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutQuizzesInput = {
@@ -33856,6 +40583,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutQuizzesInput = {
@@ -33971,6 +40700,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutQuizzesInput = {
@@ -33988,6 +40719,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type QuizQuestionUpsertWithWhereUniqueWithoutQuizInput = {
@@ -34499,6 +41232,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutParticipationsInput = {
@@ -34516,6 +41251,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutParticipationsInput = {
@@ -34592,6 +41329,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutParticipationsInput = {
@@ -34609,6 +41348,8 @@ export namespace Prisma {
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type QuizSessionUpsertWithoutParticipationsInput = {
@@ -34791,6 +41532,8 @@ export namespace Prisma {
     subjects?: SubjectCreateNestedManyWithoutTeacherInput
     learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
     grades?: GradeCreateNestedManyWithoutStudentInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
   }
 
   export type UserUncheckedCreateWithoutFileSystemPathsInput = {
@@ -34808,6 +41551,8 @@ export namespace Prisma {
     subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
     learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
   }
 
   export type UserCreateOrConnectWithoutFileSystemPathsInput = {
@@ -34841,6 +41586,8 @@ export namespace Prisma {
     subjects?: SubjectUpdateManyWithoutTeacherNestedInput
     learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutFileSystemPathsInput = {
@@ -34858,6 +41605,654 @@ export namespace Prisma {
     subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
     learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+  }
+
+  export type SubjectCreateWithoutFlashcardDecksInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    blocks?: BlockCreateNestedManyWithoutSubjectInput
+    teacher: UserCreateNestedOneWithoutSubjectsInput
+  }
+
+  export type SubjectUncheckedCreateWithoutFlashcardDecksInput = {
+    id?: string
+    name: string
+    description?: string | null
+    order?: number
+    teacherId: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    blocks?: BlockUncheckedCreateNestedManyWithoutSubjectInput
+  }
+
+  export type SubjectCreateOrConnectWithoutFlashcardDecksInput = {
+    where: SubjectWhereUniqueInput
+    create: XOR<SubjectCreateWithoutFlashcardDecksInput, SubjectUncheckedCreateWithoutFlashcardDecksInput>
+  }
+
+  export type UserCreateWithoutFlashcardDecksInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationCreateNestedManyWithoutStudentInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+    grades?: GradeCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+  }
+
+  export type UserUncheckedCreateWithoutFlashcardDecksInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+    grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+  }
+
+  export type UserCreateOrConnectWithoutFlashcardDecksInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutFlashcardDecksInput, UserUncheckedCreateWithoutFlashcardDecksInput>
+  }
+
+  export type FlashcardCreateWithoutDeckInput = {
+    id?: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    progress?: FlashcardProgressCreateNestedManyWithoutCardInput
+  }
+
+  export type FlashcardUncheckedCreateWithoutDeckInput = {
+    id?: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    progress?: FlashcardProgressUncheckedCreateNestedManyWithoutCardInput
+  }
+
+  export type FlashcardCreateOrConnectWithoutDeckInput = {
+    where: FlashcardWhereUniqueInput
+    create: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput>
+  }
+
+  export type FlashcardCreateManyDeckInputEnvelope = {
+    data: FlashcardCreateManyDeckInput | FlashcardCreateManyDeckInput[]
+  }
+
+  export type FlashcardAssignmentCreateWithoutDeckInput = {
+    id?: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+    group: LearningGroupCreateNestedOneWithoutFlashcardAssignmentsInput
+  }
+
+  export type FlashcardAssignmentUncheckedCreateWithoutDeckInput = {
+    id?: string
+    groupId: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardAssignmentCreateOrConnectWithoutDeckInput = {
+    where: FlashcardAssignmentWhereUniqueInput
+    create: XOR<FlashcardAssignmentCreateWithoutDeckInput, FlashcardAssignmentUncheckedCreateWithoutDeckInput>
+  }
+
+  export type FlashcardAssignmentCreateManyDeckInputEnvelope = {
+    data: FlashcardAssignmentCreateManyDeckInput | FlashcardAssignmentCreateManyDeckInput[]
+  }
+
+  export type SubjectUpsertWithoutFlashcardDecksInput = {
+    update: XOR<SubjectUpdateWithoutFlashcardDecksInput, SubjectUncheckedUpdateWithoutFlashcardDecksInput>
+    create: XOR<SubjectCreateWithoutFlashcardDecksInput, SubjectUncheckedCreateWithoutFlashcardDecksInput>
+    where?: SubjectWhereInput
+  }
+
+  export type SubjectUpdateToOneWithWhereWithoutFlashcardDecksInput = {
+    where?: SubjectWhereInput
+    data: XOR<SubjectUpdateWithoutFlashcardDecksInput, SubjectUncheckedUpdateWithoutFlashcardDecksInput>
+  }
+
+  export type SubjectUpdateWithoutFlashcardDecksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    blocks?: BlockUpdateManyWithoutSubjectNestedInput
+    teacher?: UserUpdateOneRequiredWithoutSubjectsNestedInput
+  }
+
+  export type SubjectUncheckedUpdateWithoutFlashcardDecksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    order?: IntFieldUpdateOperationsInput | number
+    teacherId?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    blocks?: BlockUncheckedUpdateManyWithoutSubjectNestedInput
+  }
+
+  export type UserUpsertWithoutFlashcardDecksInput = {
+    update: XOR<UserUpdateWithoutFlashcardDecksInput, UserUncheckedUpdateWithoutFlashcardDecksInput>
+    create: XOR<UserCreateWithoutFlashcardDecksInput, UserUncheckedCreateWithoutFlashcardDecksInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutFlashcardDecksInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutFlashcardDecksInput, UserUncheckedUpdateWithoutFlashcardDecksInput>
+  }
+
+  export type UserUpdateWithoutFlashcardDecksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutFlashcardDecksInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+  }
+
+  export type FlashcardUpsertWithWhereUniqueWithoutDeckInput = {
+    where: FlashcardWhereUniqueInput
+    update: XOR<FlashcardUpdateWithoutDeckInput, FlashcardUncheckedUpdateWithoutDeckInput>
+    create: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput>
+  }
+
+  export type FlashcardUpdateWithWhereUniqueWithoutDeckInput = {
+    where: FlashcardWhereUniqueInput
+    data: XOR<FlashcardUpdateWithoutDeckInput, FlashcardUncheckedUpdateWithoutDeckInput>
+  }
+
+  export type FlashcardUpdateManyWithWhereWithoutDeckInput = {
+    where: FlashcardScalarWhereInput
+    data: XOR<FlashcardUpdateManyMutationInput, FlashcardUncheckedUpdateManyWithoutDeckInput>
+  }
+
+  export type FlashcardScalarWhereInput = {
+    AND?: FlashcardScalarWhereInput | FlashcardScalarWhereInput[]
+    OR?: FlashcardScalarWhereInput[]
+    NOT?: FlashcardScalarWhereInput | FlashcardScalarWhereInput[]
+    id?: StringFilter<"Flashcard"> | string
+    deckId?: StringFilter<"Flashcard"> | string
+    front?: StringFilter<"Flashcard"> | string
+    back?: StringFilter<"Flashcard"> | string
+    hint?: StringNullableFilter<"Flashcard"> | string | null
+    difficulty?: IntFilter<"Flashcard"> | number
+    order?: IntFilter<"Flashcard"> | number
+    createdAt?: DateTimeFilter<"Flashcard"> | Date | string
+    updatedAt?: DateTimeFilter<"Flashcard"> | Date | string
+  }
+
+  export type FlashcardAssignmentUpsertWithWhereUniqueWithoutDeckInput = {
+    where: FlashcardAssignmentWhereUniqueInput
+    update: XOR<FlashcardAssignmentUpdateWithoutDeckInput, FlashcardAssignmentUncheckedUpdateWithoutDeckInput>
+    create: XOR<FlashcardAssignmentCreateWithoutDeckInput, FlashcardAssignmentUncheckedCreateWithoutDeckInput>
+  }
+
+  export type FlashcardAssignmentUpdateWithWhereUniqueWithoutDeckInput = {
+    where: FlashcardAssignmentWhereUniqueInput
+    data: XOR<FlashcardAssignmentUpdateWithoutDeckInput, FlashcardAssignmentUncheckedUpdateWithoutDeckInput>
+  }
+
+  export type FlashcardAssignmentUpdateManyWithWhereWithoutDeckInput = {
+    where: FlashcardAssignmentScalarWhereInput
+    data: XOR<FlashcardAssignmentUpdateManyMutationInput, FlashcardAssignmentUncheckedUpdateManyWithoutDeckInput>
+  }
+
+  export type FlashcardDeckCreateWithoutCardsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
+    teacher: UserCreateNestedOneWithoutFlashcardDecksInput
+    assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckUncheckedCreateWithoutCardsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    subjectId?: string | null
+    teacherId: string
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckCreateOrConnectWithoutCardsInput = {
+    where: FlashcardDeckWhereUniqueInput
+    create: XOR<FlashcardDeckCreateWithoutCardsInput, FlashcardDeckUncheckedCreateWithoutCardsInput>
+  }
+
+  export type FlashcardProgressCreateWithoutCardInput = {
+    id?: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    student: UserCreateNestedOneWithoutFlashcardProgressInput
+  }
+
+  export type FlashcardProgressUncheckedCreateWithoutCardInput = {
+    id?: string
+    studentId: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardProgressCreateOrConnectWithoutCardInput = {
+    where: FlashcardProgressWhereUniqueInput
+    create: XOR<FlashcardProgressCreateWithoutCardInput, FlashcardProgressUncheckedCreateWithoutCardInput>
+  }
+
+  export type FlashcardProgressCreateManyCardInputEnvelope = {
+    data: FlashcardProgressCreateManyCardInput | FlashcardProgressCreateManyCardInput[]
+  }
+
+  export type FlashcardDeckUpsertWithoutCardsInput = {
+    update: XOR<FlashcardDeckUpdateWithoutCardsInput, FlashcardDeckUncheckedUpdateWithoutCardsInput>
+    create: XOR<FlashcardDeckCreateWithoutCardsInput, FlashcardDeckUncheckedCreateWithoutCardsInput>
+    where?: FlashcardDeckWhereInput
+  }
+
+  export type FlashcardDeckUpdateToOneWithWhereWithoutCardsInput = {
+    where?: FlashcardDeckWhereInput
+    data: XOR<FlashcardDeckUpdateWithoutCardsInput, FlashcardDeckUncheckedUpdateWithoutCardsInput>
+  }
+
+  export type FlashcardDeckUpdateWithoutCardsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
+    teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
+    assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateWithoutCardsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    subjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherId?: StringFieldUpdateOperationsInput | string
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardProgressUpsertWithWhereUniqueWithoutCardInput = {
+    where: FlashcardProgressWhereUniqueInput
+    update: XOR<FlashcardProgressUpdateWithoutCardInput, FlashcardProgressUncheckedUpdateWithoutCardInput>
+    create: XOR<FlashcardProgressCreateWithoutCardInput, FlashcardProgressUncheckedCreateWithoutCardInput>
+  }
+
+  export type FlashcardProgressUpdateWithWhereUniqueWithoutCardInput = {
+    where: FlashcardProgressWhereUniqueInput
+    data: XOR<FlashcardProgressUpdateWithoutCardInput, FlashcardProgressUncheckedUpdateWithoutCardInput>
+  }
+
+  export type FlashcardProgressUpdateManyWithWhereWithoutCardInput = {
+    where: FlashcardProgressScalarWhereInput
+    data: XOR<FlashcardProgressUpdateManyMutationInput, FlashcardProgressUncheckedUpdateManyWithoutCardInput>
+  }
+
+  export type FlashcardDeckCreateWithoutAssignmentsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
+    teacher: UserCreateNestedOneWithoutFlashcardDecksInput
+    cards?: FlashcardCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckUncheckedCreateWithoutAssignmentsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    subjectId?: string | null
+    teacherId: string
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckCreateOrConnectWithoutAssignmentsInput = {
+    where: FlashcardDeckWhereUniqueInput
+    create: XOR<FlashcardDeckCreateWithoutAssignmentsInput, FlashcardDeckUncheckedCreateWithoutAssignmentsInput>
+  }
+
+  export type LearningGroupCreateWithoutFlashcardAssignmentsInput = {
+    id?: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    gradingSchemas?: GradingSchemaCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentCreateNestedManyWithoutGroupInput
+    teacher: UserCreateNestedOneWithoutTeacherGroupsInput
+    students?: UserCreateNestedManyWithoutLearningGroupsInput
+  }
+
+  export type LearningGroupUncheckedCreateWithoutFlashcardAssignmentsInput = {
+    id?: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    teacherId: string
+    gradingSchemas?: GradingSchemaUncheckedCreateNestedManyWithoutLearningGroupInput
+    assignments?: GroupAssignmentUncheckedCreateNestedManyWithoutGroupInput
+    students?: UserUncheckedCreateNestedManyWithoutLearningGroupsInput
+  }
+
+  export type LearningGroupCreateOrConnectWithoutFlashcardAssignmentsInput = {
+    where: LearningGroupWhereUniqueInput
+    create: XOR<LearningGroupCreateWithoutFlashcardAssignmentsInput, LearningGroupUncheckedCreateWithoutFlashcardAssignmentsInput>
+  }
+
+  export type FlashcardDeckUpsertWithoutAssignmentsInput = {
+    update: XOR<FlashcardDeckUpdateWithoutAssignmentsInput, FlashcardDeckUncheckedUpdateWithoutAssignmentsInput>
+    create: XOR<FlashcardDeckCreateWithoutAssignmentsInput, FlashcardDeckUncheckedCreateWithoutAssignmentsInput>
+    where?: FlashcardDeckWhereInput
+  }
+
+  export type FlashcardDeckUpdateToOneWithWhereWithoutAssignmentsInput = {
+    where?: FlashcardDeckWhereInput
+    data: XOR<FlashcardDeckUpdateWithoutAssignmentsInput, FlashcardDeckUncheckedUpdateWithoutAssignmentsInput>
+  }
+
+  export type FlashcardDeckUpdateWithoutAssignmentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
+    teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
+    cards?: FlashcardUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateWithoutAssignmentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    subjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherId?: StringFieldUpdateOperationsInput | string
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+  }
+
+  export type LearningGroupUpsertWithoutFlashcardAssignmentsInput = {
+    update: XOR<LearningGroupUpdateWithoutFlashcardAssignmentsInput, LearningGroupUncheckedUpdateWithoutFlashcardAssignmentsInput>
+    create: XOR<LearningGroupCreateWithoutFlashcardAssignmentsInput, LearningGroupUncheckedCreateWithoutFlashcardAssignmentsInput>
+    where?: LearningGroupWhereInput
+  }
+
+  export type LearningGroupUpdateToOneWithWhereWithoutFlashcardAssignmentsInput = {
+    where?: LearningGroupWhereInput
+    data: XOR<LearningGroupUpdateWithoutFlashcardAssignmentsInput, LearningGroupUncheckedUpdateWithoutFlashcardAssignmentsInput>
+  }
+
+  export type LearningGroupUpdateWithoutFlashcardAssignmentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
+    students?: UserUpdateManyWithoutLearningGroupsNestedInput
+  }
+
+  export type LearningGroupUncheckedUpdateWithoutFlashcardAssignmentsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
+    assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
+  }
+
+  export type FlashcardCreateWithoutProgressInput = {
+    id?: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    deck: FlashcardDeckCreateNestedOneWithoutCardsInput
+  }
+
+  export type FlashcardUncheckedCreateWithoutProgressInput = {
+    id?: string
+    deckId: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardCreateOrConnectWithoutProgressInput = {
+    where: FlashcardWhereUniqueInput
+    create: XOR<FlashcardCreateWithoutProgressInput, FlashcardUncheckedCreateWithoutProgressInput>
+  }
+
+  export type UserCreateWithoutFlashcardProgressInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationCreateNestedManyWithoutStudentInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+    grades?: GradeCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+  }
+
+  export type UserUncheckedCreateWithoutFlashcardProgressInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+    grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+  }
+
+  export type UserCreateOrConnectWithoutFlashcardProgressInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutFlashcardProgressInput, UserUncheckedCreateWithoutFlashcardProgressInput>
+  }
+
+  export type FlashcardUpsertWithoutProgressInput = {
+    update: XOR<FlashcardUpdateWithoutProgressInput, FlashcardUncheckedUpdateWithoutProgressInput>
+    create: XOR<FlashcardCreateWithoutProgressInput, FlashcardUncheckedCreateWithoutProgressInput>
+    where?: FlashcardWhereInput
+  }
+
+  export type FlashcardUpdateToOneWithWhereWithoutProgressInput = {
+    where?: FlashcardWhereInput
+    data: XOR<FlashcardUpdateWithoutProgressInput, FlashcardUncheckedUpdateWithoutProgressInput>
+  }
+
+  export type FlashcardUpdateWithoutProgressInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deck?: FlashcardDeckUpdateOneRequiredWithoutCardsNestedInput
+  }
+
+  export type FlashcardUncheckedUpdateWithoutProgressInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type UserUpsertWithoutFlashcardProgressInput = {
+    update: XOR<UserUpdateWithoutFlashcardProgressInput, UserUncheckedUpdateWithoutFlashcardProgressInput>
+    create: XOR<UserCreateWithoutFlashcardProgressInput, UserUncheckedCreateWithoutFlashcardProgressInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutFlashcardProgressInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutFlashcardProgressInput, UserUncheckedUpdateWithoutFlashcardProgressInput>
+  }
+
+  export type UserUpdateWithoutFlashcardProgressInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutFlashcardProgressInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type LearningGroupCreateManyTeacherInput = {
@@ -34929,6 +42324,27 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
+  export type FlashcardDeckCreateManyTeacherInput = {
+    id?: string
+    title: string
+    description?: string | null
+    subjectId?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardProgressCreateManyStudentInput = {
+    id?: string
+    cardId: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type LearningGroupUpdateWithoutTeacherInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
@@ -34936,6 +42352,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUpdateManyWithoutGroupNestedInput
     students?: UserUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -34946,6 +42363,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedUpdateManyWithoutGroupNestedInput
     students?: UserUncheckedUpdateManyWithoutLearningGroupsNestedInput
   }
 
@@ -35077,6 +42495,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     blocks?: BlockUpdateManyWithoutSubjectNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutSubjectNestedInput
   }
 
   export type SubjectUncheckedUpdateWithoutTeacherInput = {
@@ -35087,6 +42506,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     blocks?: BlockUncheckedUpdateManyWithoutSubjectNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutSubjectNestedInput
   }
 
   export type SubjectUncheckedUpdateManyWithoutTeacherInput = {
@@ -35105,6 +42525,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     gradingSchemas?: GradingSchemaUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUpdateManyWithoutGroupNestedInput
     teacher?: UserUpdateOneRequiredWithoutTeacherGroupsNestedInput
   }
 
@@ -35116,6 +42537,7 @@ export namespace Prisma {
     teacherId?: StringFieldUpdateOperationsInput | string
     gradingSchemas?: GradingSchemaUncheckedUpdateManyWithoutLearningGroupNestedInput
     assignments?: GroupAssignmentUncheckedUpdateManyWithoutGroupNestedInput
+    flashcardAssignments?: FlashcardAssignmentUncheckedUpdateManyWithoutGroupNestedInput
   }
 
   export type LearningGroupUncheckedUpdateManyWithoutStudentsInput = {
@@ -35180,6 +42602,73 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type FlashcardDeckUpdateWithoutTeacherInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
+    cards?: FlashcardUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateWithoutTeacherInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    subjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateManyWithoutTeacherInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    subjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardProgressUpdateWithoutStudentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    card?: FlashcardUpdateOneRequiredWithoutProgressNestedInput
+  }
+
+  export type FlashcardProgressUncheckedUpdateWithoutStudentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    cardId?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardProgressUncheckedUpdateManyWithoutStudentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    cardId?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type GradeCreateManySchemaInput = {
     id?: string
     studentId: string
@@ -35236,6 +42725,13 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
+  export type FlashcardAssignmentCreateManyGroupInput = {
+    id?: string
+    deckId: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+  }
+
   export type GradingSchemaUpdateWithoutLearningGroupInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
@@ -35286,6 +42782,27 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type FlashcardAssignmentUpdateWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deck?: FlashcardDeckUpdateOneRequiredWithoutAssignmentsNestedInput
+  }
+
+  export type FlashcardAssignmentUncheckedUpdateWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardAssignmentUncheckedUpdateManyWithoutGroupInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type UserUpdateWithoutLearningGroupsInput = {
     id?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
@@ -35301,6 +42818,8 @@ export namespace Prisma {
     subjects?: SubjectUpdateManyWithoutTeacherNestedInput
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateWithoutLearningGroupsInput = {
@@ -35318,6 +42837,8 @@ export namespace Prisma {
     subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutLearningGroupsInput = {
@@ -35335,6 +42856,16 @@ export namespace Prisma {
     name: string
     description?: string | null
     order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardDeckCreateManySubjectInput = {
+    id?: string
+    title: string
+    description?: string | null
+    teacherId: string
+    isPublic?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -35364,6 +42895,40 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardDeckUpdateWithoutSubjectInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
+    cards?: FlashcardUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateWithoutSubjectInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherId?: StringFieldUpdateOperationsInput | string
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateManyWithoutSubjectInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherId?: StringFieldUpdateOperationsInput | string
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -35788,6 +43353,124 @@ export namespace Prisma {
     isCorrect?: BoolFieldUpdateOperationsInput | boolean
     points?: IntFieldUpdateOperationsInput | number
     answeredAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardCreateManyDeckInput = {
+    id?: string
+    front: string
+    back: string
+    hint?: string | null
+    difficulty?: number
+    order?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardAssignmentCreateManyDeckInput = {
+    id?: string
+    groupId: string
+    dueDate?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardUpdateWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    progress?: FlashcardProgressUpdateManyWithoutCardNestedInput
+  }
+
+  export type FlashcardUncheckedUpdateWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    progress?: FlashcardProgressUncheckedUpdateManyWithoutCardNestedInput
+  }
+
+  export type FlashcardUncheckedUpdateManyWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    front?: StringFieldUpdateOperationsInput | string
+    back?: StringFieldUpdateOperationsInput | string
+    hint?: NullableStringFieldUpdateOperationsInput | string | null
+    difficulty?: IntFieldUpdateOperationsInput | number
+    order?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardAssignmentUpdateWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    group?: LearningGroupUpdateOneRequiredWithoutFlashcardAssignmentsNestedInput
+  }
+
+  export type FlashcardAssignmentUncheckedUpdateWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardAssignmentUncheckedUpdateManyWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    groupId?: StringFieldUpdateOperationsInput | string
+    dueDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardProgressCreateManyCardInput = {
+    id?: string
+    studentId: string
+    level?: number
+    nextReview?: Date | string
+    lastReviewed?: Date | string | null
+    reviewCount?: number
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type FlashcardProgressUpdateWithoutCardInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    student?: UserUpdateOneRequiredWithoutFlashcardProgressNestedInput
+  }
+
+  export type FlashcardProgressUncheckedUpdateWithoutCardInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardProgressUncheckedUpdateManyWithoutCardInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    level?: IntFieldUpdateOperationsInput | number
+    nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    reviewCount?: IntFieldUpdateOperationsInput | number
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
 

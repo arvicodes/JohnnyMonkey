@@ -9,21 +9,23 @@ datasource db {
 }
 
 model User {
-  id              String              @id @default(uuid())
-  name            String
-  loginCode       String              @unique
-  role            String              @default("STUDENT")
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  avatarEmoji     String?
-  teacherGroups   LearningGroup[]     @relation("TeacherGroups")
-  notes           Note[]
-  quizzes         Quiz[]
-  participations  QuizParticipation[]
-  subjects        Subject[]
-  learningGroups  LearningGroup[]     @relation("StudentGroups")
-  grades          Grade[]
-  fileSystemPaths FileSystemPath[]
+  id                String              @id @default(uuid())
+  name              String
+  loginCode         String              @unique
+  role              String              @default("STUDENT")
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  avatarEmoji       String?
+  teacherGroups     LearningGroup[]     @relation("TeacherGroups")
+  notes             Note[]
+  quizzes           Quiz[]
+  participations    QuizParticipation[]
+  subjects          Subject[]
+  learningGroups    LearningGroup[]     @relation("StudentGroups")
+  grades            Grade[]
+  fileSystemPaths   FileSystemPath[]
+  flashcardDecks    FlashcardDeck[]
+  flashcardProgress FlashcardProgress[]
 }
 
 model GradingSchema {
@@ -54,27 +56,29 @@ model Grade {
 }
 
 model LearningGroup {
-  id             String            @id @default(uuid())
-  name           String
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  teacherId      String
-  gradingSchemas GradingSchema[]
-  assignments    GroupAssignment[]
-  teacher        User              @relation("TeacherGroups", fields: [teacherId], references: [id])
-  students       User[]            @relation("StudentGroups")
+  id                   String                @id @default(uuid())
+  name                 String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  teacherId            String
+  gradingSchemas       GradingSchema[]
+  assignments          GroupAssignment[]
+  flashcardAssignments FlashcardAssignment[]
+  teacher              User                  @relation("TeacherGroups", fields: [teacherId], references: [id])
+  students             User[]                @relation("StudentGroups")
 }
 
 model Subject {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  order       Int      @default(0)
-  teacherId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  blocks      Block[]
-  teacher     User     @relation(fields: [teacherId], references: [id])
+  id             String          @id @default(uuid())
+  name           String
+  description    String?
+  order          Int             @default(0)
+  teacherId      String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  blocks         Block[]
+  teacher        User            @relation(fields: [teacherId], references: [id])
+  flashcardDecks FlashcardDeck[]
 }
 
 model Block {
@@ -263,4 +267,64 @@ model FileSystemPath {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   teacher   User     @relation(fields: [teacherId], references: [id])
+}
+
+// Flashcard System Models
+model FlashcardDeck {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  subjectId   String?
+  teacherId   String
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject     Subject?              @relation(fields: [subjectId], references: [id])
+  teacher     User                  @relation(fields: [teacherId], references: [id])
+  cards       Flashcard[]
+  assignments FlashcardAssignment[]
+}
+
+model Flashcard {
+  id         String   @id @default(uuid())
+  deckId     String
+  front      String // Vorderseite (Frage/Begriff)
+  back       String // Rückseite (Antwort/Definition)
+  hint       String? // Optionaler Tipp
+  difficulty Int      @default(1) // 1-5
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  deck     FlashcardDeck       @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  progress FlashcardProgress[]
+}
+
+model FlashcardAssignment {
+  id        String    @id @default(uuid())
+  deckId    String
+  groupId   String
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+
+  deck  FlashcardDeck @relation(fields: [deckId], references: [id])
+  group LearningGroup @relation(fields: [groupId], references: [id])
+}
+
+model FlashcardProgress {
+  id           String    @id @default(uuid())
+  cardId       String
+  studentId    String
+  level        Int       @default(0) // Spaced Repetition Level
+  nextReview   DateTime  @default(now())
+  lastReviewed DateTime?
+  reviewCount  Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  card    Flashcard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  student User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, studentId])
 }

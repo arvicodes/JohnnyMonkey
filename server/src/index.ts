@@ -20,6 +20,7 @@ import quizSessionRoutes from './routes/quizSessions';
 import quizParticipationRoutes from './routes/quizParticipations';
 import gradesRoutes from './routes/grades.routes';
 import fileSystemPathsRoutes from './routes/fileSystemPaths';
+import flashcardRoutes from './routes/flashcards';
 import path from 'path';
 
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api/quiz-sessions', quizSessionRoutes);
 app.use('/api/quiz-participations', quizParticipationRoutes);
 app.use('/api/grades', gradesRoutes);
 app.use('/api/file-system-paths', fileSystemPathsRoutes);
+app.use('/api/flashcards', flashcardRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
 // Health check endpoint
