@@ -6,6 +6,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
+import { RichTextEditor } from './ui/rich-text-editor';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 
 // Unified interfaces for the entire flashcard system
@@ -343,15 +344,21 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium">Vorderseite</Label>
-                      <p className="mt-1 p-2 bg-gray-50 rounded border">
-                        {card.front || <span className="text-gray-400">Nicht ausgefüllt</span>}
-                      </p>
+                      <div 
+                        className="mt-1 p-2 bg-gray-50 rounded border"
+                        dangerouslySetInnerHTML={{ 
+                          __html: card.front || '<span class="text-gray-400">Nicht ausgefüllt</span>' 
+                        }}
+                      />
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Rückseite</Label>
-                      <p className="mt-1 p-2 bg-gray-50 rounded border">
-                        {card.back || <span className="text-gray-400">Nicht ausgefüllt</span>}
-                      </p>
+                      <div 
+                        className="mt-1 p-2 bg-gray-50 rounded border"
+                        dangerouslySetInnerHTML={{ 
+                          __html: card.back || '<span class="text-gray-400">Nicht ausgefüllt</span>' 
+                        }}
+                      />
                     </div>
                   </div>
                   
@@ -382,10 +389,9 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="front">Vorderseite *</Label>
-                <Textarea
-                  id="front"
+                <RichTextEditor
                   value={editingCard.front}
-                  onChange={(e) => setEditingCard(prev => ({ ...prev, front: e.target.value }))}
+                  onChange={(value) => setEditingCard(prev => ({ ...prev, front: value }))}
                   placeholder="Frage oder Begriff"
                   rows={3}
                 />
@@ -393,10 +399,9 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
               
               <div className="space-y-2">
                 <Label htmlFor="back">Rückseite *</Label>
-                <Textarea
-                  id="back"
+                <RichTextEditor
                   value={editingCard.back}
-                  onChange={(e) => setEditingCard(prev => ({ ...prev, back: e.target.value }))}
+                  onChange={(value) => setEditingCard(prev => ({ ...prev, back: value }))}
                   placeholder="Antwort oder Definition"
                   rows={3}
                 />

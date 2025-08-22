@@ -65,6 +65,7 @@ import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
 import FolderAssignmentSelector from './FolderAssignmentSelector';
+import { RichTextEditor } from './ui/rich-text-editor';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -168,6 +169,16 @@ function TabPanel(props: TabPanelProps) {
     </div>
   );
 }
+
+// Hilfsfunktion zum Konvertieren von HTML zu Plaintext für Vorschau
+const htmlToPlainText = (html: string): string => {
+  if (!html) return '';
+  // Erstelle ein temporäres div-Element
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  // Extrahiere nur den Text-Inhalt
+  return temp.textContent || temp.innerText || '';
+};
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
@@ -2948,9 +2959,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
 
   const handleEditCard = (card: Flashcard) => {
-    setEditingCard(card);
-    setNewCardFront(card.front);
-    setNewCardBack(card.back);
+    if (editingCard?.id === card.id) {
+      // Wenn die gleiche Karte bereits bearbeitet wird, beende den Bearbeitungsmodus
+      setEditingCard(null);
+      setNewCardFront('');
+      setNewCardBack('');
+    } else {
+      // Starte den Bearbeitungsmodus für die neue Karte
+      setEditingCard(card);
+      setNewCardFront(card.front);
+      setNewCardBack(card.back);
+    }
   };
 
   const handleUpdateCard = async () => {
@@ -5398,52 +5417,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Frage *"
-                        value={newCardFront}
-                        onChange={(e) => setNewCardFront(e.target.value)}
-                        required
-                        multiline
-                        rows={3}
-                        placeholder="Frage eingeben..."
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'white',
-                            borderRadius: '8px',
-                            '&.Mui-focused': {
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: colors.accent1,
-                                borderWidth: '2px'
-                              }
-                            }
-                          }
-                        }}
-                      />
+                      <Box>
+                        <Typography variant="body2" sx={{ mb: 1, fontWeight: '600', color: colors.textPrimary }}>
+                          Frage *
+                        </Typography>
+                        <RichTextEditor
+                          value={newCardFront}
+                          onChange={(value) => setNewCardFront(value)}
+                          placeholder="Frage eingeben..."
+                          rows={3}
+                          compact={true}
+                        />
+                      </Box>
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Antwort *"
-                        value={newCardBack}
-                        onChange={(e) => setNewCardBack(e.target.value)}
-                        required
-                        multiline
-                        rows={3}
-                        placeholder="Antwort eingeben..."
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'white',
-                            borderRadius: '8px',
-                            '&.Mui-focused': {
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: colors.accent2,
-                                borderWidth: '2px'
-                              }
-                            }
-                          }
-                        }}
-                      />
+                      <Box>
+                        <Typography variant="body2" sx={{ mb: 1, fontWeight: '600', color: colors.textPrimary }}>
+                          Antwort *
+                        </Typography>
+                        <RichTextEditor
+                          value={newCardBack}
+                          onChange={(value) => setNewCardBack(value)}
+                          placeholder="Antwort eingeben..."
+                          rows={3}
+                          compact={true}
+                        />
+                      </Box>
                     </Grid>
                   </Grid>
                   <Box sx={{ display: 'flex', gap: 1.5, mt: 2, justifyContent: 'flex-end' }}>
@@ -5489,121 +5488,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 </Box>
               )}
 
-              {/* Karte bearbeiten */}
-              {editingCard && (
-                <Box sx={{ 
-                  p: 3, 
-                  mb: 2,
-                  background: `linear-gradient(135deg, ${colors.primary}08 0%, ${colors.accent1}08 100%)`,
-                  border: `2px solid ${colors.primary}30`,
-                  borderRadius: '16px',
-                  mx: 2,
-                  mt: 2,
-                  boxShadow: '0 6px 24px rgba(0,0,0,0.08)'
-                }}>
-                  <Typography variant="h6" sx={{ 
-                    mb: 2, 
-                    fontWeight: '600',
-                    color: colors.primary,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <EditIcon sx={{ fontSize: 20 }} />
-                    Karteikarte bearbeiten
-                  </Typography>
-                                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                        label="Frage *"
-                        value={newCardFront}
-                        onChange={(e) => setNewCardFront(e.target.value)}
-                      required
-                        multiline
-                        minRows={1}
-                        maxRows={8}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'white',
-                            borderRadius: '8px',
-                            '&.Mui-focused': {
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: colors.primary,
-                                borderWidth: '2px'
-                              }
-                            }
-                          }
-                        }}
-                    />
-                  </Grid>
-                    <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                        label="Antwort *"
-                        value={newCardBack}
-                        onChange={(e) => setNewCardBack(e.target.value)}
-                        required
-                      multiline
-                      minRows={1}
-                      maxRows={8}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'white',
-                            borderRadius: '8px',
-                            '&.Mui-focused': {
-                              '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: colors.primary,
-                                borderWidth: '2px'
-                              }
-                            }
-                          }
-                        }}
-                      />
-                  </Grid>
-                </Grid>
-                  <Box sx={{ display: 'flex', gap: 1.5, mt: 2, justifyContent: 'flex-end' }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => {
-                        setEditingCard(null);
-                        setNewCardFront('');
-                        setNewCardBack('');
-                      }}
-                      sx={{
-                        borderColor: colors.textSecondary,
-                        color: colors.textSecondary,
-                        borderRadius: '8px',
-                        px: 2,
-                        py: 0.8,
-                        fontSize: '0.8rem'
-                      }}
-                    >
-                      Abbrechen
-                    </Button>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={handleUpdateCard}
-                      disabled={!newCardFront.trim() || !newCardBack.trim()}
-                      sx={{
-                        background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-                        borderRadius: '8px',
-                        px: 3,
-                        py: 0.8,
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        '&:disabled': {
-                          opacity: 0.6
-                        }
-                      }}
-                    >
-                      Änderungen speichern
-                    </Button>
-                  </Box>
-                </Box>
-              )}
+
 
               {/* Karteikarten-Übersicht */}
               <Box sx={{ flex: 1, overflow: 'visible', p: 1.5 }}>
@@ -5655,34 +5540,129 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     <Grid container spacing={1}>
                       {selectedDeck.cards.map((card, index) => (
                         <Grid item xs={6} sm={4} md={3} lg={2} key={card.id || index}>
-                                                  <Card 
-                          sx={{ 
-                            height: '100%',
-                            background: `linear-gradient(135deg, ${colors.cardBg} 0%, ${colors.background} 100%)`,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer',
-                            '&:hover': {
-                              borderColor: colors.primary,
-                              transform: 'translateY(-2px)',
-                              boxShadow: '0 4px 16px rgba(0,0,0,0.12)'
-                            },
-                            position: 'relative',
-                            overflow: 'hidden'
-                          }}
-                            draggable
-                            onDragStart={() => handleDragStart(card)}
-                            onDragOver={handleDragOver}
-                            onDrop={() => handleDrop(card)}
-                            onClick={() => handleEditCard(card)}
-                          >
+                                                                            <Card 
+                            sx={{ 
+                              height: '100%',
+                              background: `linear-gradient(135deg, ${colors.cardBg} 0%, ${colors.background} 100%)`,
+                              border: `1px solid ${colors.border}`,
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                              transition: 'all 0.2s ease',
+                              cursor: editingCard?.id === card.id ? 'default' : 'pointer',
+                              '&:hover': {
+                                borderColor: colors.primary,
+                                transform: editingCard?.id === card.id ? 'none' : 'translateY(-2px)',
+                                boxShadow: editingCard?.id === card.id ? '0 2px 8px rgba(0,0,0,0.06)' : '0 4px 16px rgba(0,0,0,0.12)'
+                              },
+                              position: 'relative',
+                              overflow: 'hidden'
+                            }}
+                              draggable
+                              onDragStart={() => handleDragStart(card)}
+                              onDragOver={handleDragOver}
+                              onDrop={() => handleDrop(card)}
+                              onClick={() => {
+                                if (editingCard?.id !== card.id) {
+                                  handleEditCard(card);
+                                }
+                              }}
+                            >
 
                             
                             {/* Karten-Inhalt */}
                             <CardContent sx={{ p: 0.75, pt: 0.75, pb: 0.1, px: 1 }}>
-                                                              <Box sx={{ mb: 0.1 }}>
+                              {editingCard?.id === card.id ? (
+                                // Bearbeitungsmodus
+                                <Box sx={{ mb: 0.05 }}>
+                                  <Typography variant="subtitle2" sx={{ 
+                                    fontWeight: '700', 
+                                    mb: 0.05, 
+                                    color: colors.primary,
+                                    fontSize: '0.7rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5
+                                  }}>
+                                    Frage:
+                                  </Typography>
+                                  <RichTextEditor
+                                    value={newCardFront}
+                                    onChange={(value) => setNewCardFront(value)}
+                                    placeholder="Frage eingeben..."
+                                    rows={2}
+                                    compact={true}
+                                  />
+                                  
+                                  <Typography variant="subtitle2" sx={{ 
+                                    fontWeight: '600', 
+                                    mb: 0.05, 
+                                    mt: 0.25,
+                                    color: colors.secondary,
+                                    fontSize: '0.7rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5
+                                  }}>
+                                    Antwort:
+                                  </Typography>
+                                  <RichTextEditor
+                                    value={newCardBack}
+                                    onChange={(value) => setNewCardBack(value)}
+                                    placeholder="Antwort eingeben..."
+                                    rows={2}
+                                    compact={true}
+                                  />
+                                  
+                                  {/* Aktions-Buttons */}
+                                  <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, justifyContent: 'flex-end' }}>
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingCard(null);
+                                        setNewCardFront('');
+                                        setNewCardBack('');
+                                      }}
+                                      sx={{
+                                        borderColor: colors.textSecondary,
+                                        color: colors.textSecondary,
+                                        borderRadius: '4px',
+                                        px: 1,
+                                        py: 0.3,
+                                        fontSize: '0.6rem',
+                                        minWidth: 'auto'
+                                      }}
+                                    >
+                                      ✕
+                                    </Button>
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUpdateCard();
+                                      }}
+                                      disabled={!newCardFront.trim() || !newCardBack.trim()}
+                                      sx={{
+                                        background: colors.primary,
+                                        borderRadius: '4px',
+                                        px: 1,
+                                        py: 0.3,
+                                        fontSize: '0.6rem',
+                                        minWidth: 'auto',
+                                        '&:disabled': {
+                                          opacity: 0.6
+                                        }
+                                      }}
+                                    >
+                                      ✓
+                                    </Button>
+                                  </Box>
+                                </Box>
+                              ) : (
+                                // Anzeigemodus
+                                <Box sx={{ mb: 0.1 }}>
                                   <Typography variant="subtitle2" sx={{ 
                                     fontWeight: '700', 
                                     mb: 0.1, 
@@ -5703,7 +5683,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     fontWeight: '500',
                                     whiteSpace: 'pre-wrap'
                                   }}>
-                                    {card.front}
+                                    {htmlToPlainText(card.front)}
                                   </Typography>
                                   
                                   <Typography variant="subtitle2" sx={{ 
@@ -5727,9 +5707,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     fontWeight: '500',
                                     whiteSpace: 'pre-wrap'
                                   }}>
-                                    {card.back}
+                                    {htmlToPlainText(card.back)}
                                   </Typography>
                                 </Box>
+                              )}
                             </CardContent>
 
 

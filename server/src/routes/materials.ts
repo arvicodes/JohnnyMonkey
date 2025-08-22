@@ -41,6 +41,24 @@ const upload = multer({
   }
 });
 
+// Separate multer for image uploads
+const imageUpload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    // Allow only image file types
+    const allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'];
+    const ext = path.extname(file.originalname).toLowerCase().substring(1);
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Image type .${ext} is not allowed`));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit for images
+  }
+});
+
 // Get all available files
 router.get('/files', (req, res) => {
   try {
@@ -115,6 +133,32 @@ router.post('/word-upload', upload.single('wordFile'), (req, res) => {
   } catch (error) {
     console.error('Error uploading file:', error);
     res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+// Upload image for rich text editor
+router.post('/upload-image', imageUpload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+
+    // Check if the uploaded file is an image
+    const fileExt = path.extname(req.file.originalname).toLowerCase();
+    if (!['.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp', '.webp'].includes(fileExt)) {
+      return res.status(400).json({ error: 'Only image files are allowed' });
+    }
+
+    const imagePath = `/material/${req.file.filename}`;
+    
+    res.json({ 
+      message: 'Image uploaded successfully',
+      imagePath: imagePath,
+      fileName: req.file.originalname
+    });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
   }
 });
 
