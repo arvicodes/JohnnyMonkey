@@ -268,8 +268,12 @@ export const deleteDeck = async (req: AuthenticatedRequest, res: Response) => {
 // Flashcard Controller
 export const createCard = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { deckId, front, back, hint, difficulty, order } = req.body;
-    const userId = req.user?.id;
+    const { deckId, front, back, hint, difficulty, order, teacherId } = req.body;
+    const userId = teacherId || req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'teacherId ist erforderlich' });
+    }
 
     // Prüfen ob der Benutzer der Besitzer des Decks ist
     const deck = await prisma.flashcardDeck.findUnique({
@@ -301,8 +305,12 @@ export const createCard = async (req: AuthenticatedRequest, res: Response) => {
 export const updateCard = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { cardId } = req.params;
-    const { front, back, hint, difficulty, order } = req.body;
-    const userId = req.user?.id;
+    const { front, back, hint, difficulty, order, teacherId } = req.body;
+    const userId = teacherId || req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'teacherId ist erforderlich' });
+    }
 
     // Prüfen ob der Benutzer der Besitzer des Decks ist
     const card = await prisma.flashcard.findUnique({

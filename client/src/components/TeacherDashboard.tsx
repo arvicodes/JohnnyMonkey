@@ -5275,8 +5275,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             sx: {
               minHeight: '70vh',
               maxHeight: '80vh',
-              borderRadius: '16px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+              borderRadius: '12px',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.15)',
               background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`,
               overflow: 'hidden'
             }
@@ -5291,37 +5291,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           
           {/* Modal Header */}
           <DialogTitle sx={{ 
-            pb: 2,
-            pt: 3,
+            pb: 1,
+            pt: 1.5,
             background: `linear-gradient(135deg, ${colors.primary}08 0%, ${colors.accent1}08 100%)`,
-            borderBottom: `2px solid ${colors.border}`,
+            borderBottom: `1px solid ${colors.border}`,
             position: 'relative'
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                <Box sx={{ 
-                  width: 40,
-                  height: 40,
-                  borderRadius: '12px',
-                  background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mr: 2,
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)'
-                }}>
-                  <StyleIcon sx={{ fontSize: 24, color: 'white' }} />
-                </Box>
+
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h5" sx={{ 
-                    fontWeight: '700',
-                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '0.3px',
-                    fontSize: '1.3rem',
-                    mb: 0.5
+                  <Typography variant="h6" sx={{ 
+                    fontWeight: '600',
+                    color: colors.textPrimary,
+                    letterSpacing: '0.2px',
+                    fontSize: '1.1rem',
+                    mb: 0.3
                   }}>
                     {selectedDeck?.title}
                   </Typography>
@@ -5357,83 +5342,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               </Box>
               
               {/* Action Buttons */}
-              <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => {
-                    setIsAddingCard(false);
-                    setEditingCard(null);
-                    setNewCardFront('');
-                    setNewCardBack('');
-                  }}
-                  sx={{
-                    borderColor: colors.primary,
-                    color: colors.primary,
-                    borderRadius: '8px',
-                    px: 2,
-                    py: 0.8,
-                    fontSize: '0.8rem',
-                    fontWeight: '500',
-                    '&:hover': {
-                      borderColor: colors.primary,
-                      backgroundColor: colors.primary + '08'
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <EditIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                  Bearbeiten
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => selectedDeck?.id && refreshDeckCards(selectedDeck.id)}
-                  sx={{
-                    borderColor: colors.accent2,
-                    color: colors.accent2,
-                    borderRadius: '8px',
-                    px: 2,
-                    py: 0.8,
-                    fontSize: '0.8rem',
-                    fontWeight: '500',
-                    '&:hover': {
-                      borderColor: colors.accent2,
-                      backgroundColor: colors.accent2 + '08'
-                    },
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <RefreshIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                  Aktualisieren
-                </Button>
+              <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
                 <Button
                   variant="contained"
                   size="small"
                   onClick={handleAddCard}
                   sx={{
                     background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-                    borderRadius: '8px',
-                    px: 2.5,
-                    py: 0.8,
-                    fontSize: '0.8rem',
+                    borderRadius: '6px',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.7rem',
                     fontWeight: '600',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                    minWidth: 'auto',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     '&:hover': {
                       transform: 'translateY(-1px)',
-                      boxShadow: '0 6px 16px rgba(0,0,0,0.15)'
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                     },
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <Add sx={{ fontSize: 18, mr: 0.5 }} />
+                  <Add sx={{ fontSize: 16, mr: 0.5, color: 'white' }} />
                   Neue Karte
                 </Button>
               </Box>
             </Box>
           </DialogTitle>
           
-          <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
+          <DialogContent sx={{ p: 0, overflow: 'auto', height: '100%', '&::-webkit-scrollbar': { width: '8px' }, '&::-webkit-scrollbar-track': { background: colors.border + '20' }, '&::-webkit-scrollbar-thumb': { background: colors.primary + '40', borderRadius: '4px' } }}>
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               
               {/* Neue Karte hinzufügen */}
@@ -5584,7 +5521,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         onChange={(e) => setNewCardFront(e.target.value)}
                       required
                         multiline
-                        rows={3}
+                        minRows={1}
+                        maxRows={8}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: 'white',
@@ -5607,7 +5545,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         onChange={(e) => setNewCardBack(e.target.value)}
                         required
                       multiline
-                      rows={3}
+                      minRows={1}
+                      maxRows={8}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: 'white',
@@ -5667,7 +5606,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               )}
 
               {/* Karteikarten-Übersicht */}
-              <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+              <Box sx={{ flex: 1, overflow: 'visible', p: 1.5 }}>
                 {(!selectedDeck.cards || selectedDeck.cards.length === 0) ? (
                                       <Card sx={{ 
                       p: 6, 
@@ -5710,61 +5649,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     </Card>
                 ) : (
                   <Box>
-                    {/* Karteikarten-Header */}
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      mb: 2,
-                      p: 1.5,
-                      bgcolor: colors.cardBg,
-                      borderRadius: '12px',
-                      border: `1px solid ${colors.border}`
-                    }}>
-                      <Typography variant="subtitle1" sx={{ 
-                        fontWeight: '600',
-                        color: colors.primary,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                      }}>
-                        <StyleIcon sx={{ fontSize: 20 }} />
-                        Karteikarten ({selectedDeck.cards.length})
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Chip 
-                          label="Drag & Drop"
-                          size="small"
-                          sx={{
-                            bgcolor: colors.accent1 + '20',
-                            color: colors.accent1,
-                            fontSize: '0.6rem',
-                            fontWeight: '500'
-                          }}
-                        />
-                      </Box>
-                    </Box>
+
 
                     {/* Karteikarten-Grid */}
-                    <Grid container spacing={2}>
+                    <Grid container spacing={1}>
                       {selectedDeck.cards.map((card, index) => (
-                        <Grid item xs={12} md={6} lg={4} key={card.id || index}>
+                        <Grid item xs={6} sm={4} md={3} lg={2} key={card.id || index}>
                                                   <Card 
                           sx={{ 
                             height: '100%',
                             background: `linear-gradient(135deg, ${colors.cardBg} 0%, ${colors.background} 100%)`,
-                            border: `2px solid ${colors.border}`,
-                            borderRadius: '16px',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                            transition: 'all 0.3s ease',
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
                             cursor: 'pointer',
                             '&:hover': {
                               borderColor: colors.primary,
-                              transform: 'translateY(-4px)',
-                              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-                              '& .card-actions': {
-                                opacity: 1
-                              }
+                              transform: 'translateY(-2px)',
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.12)'
                             },
                             position: 'relative',
                             overflow: 'hidden'
@@ -5773,179 +5676,63 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             onDragStart={() => handleDragStart(card)}
                             onDragOver={handleDragOver}
                             onDrop={() => handleDrop(card)}
+                            onClick={() => handleEditCard(card)}
                           >
-                            {/* Karten-Nummer Badge */}
-                            <Box sx={{ 
-                              position: 'absolute',
-                              top: 16,
-                              right: 16,
-                              width: 40,
-                              height: 40,
-                              borderRadius: '50%',
-                              background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                              zIndex: 2
-                            }}>
-                              <Typography variant="caption" sx={{ 
-                                color: 'white', 
-                                fontWeight: '800',
-                                fontSize: '0.8rem'
-                              }}>
-                                {index + 1}
-                              </Typography>
-                            </Box>
+
                             
                             {/* Karten-Inhalt */}
-                            <CardContent sx={{ p: 4, pt: 5 }}>
-                              <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" sx={{ 
-                                  fontWeight: '800', 
-                                  mb: 2, 
-                                  color: colors.primary,
-                                  fontSize: '1rem',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1
-                                }}>
-                                  <Box sx={{ 
-                                    width: 10, 
-                                    height: 10, 
-                                    borderRadius: '50%', 
-                                    bgcolor: colors.primary 
-                                  }} />
-                                  Frage:
-                                </Typography>
-                                <Typography variant="body1" sx={{ 
-                                  mb: 3,
-                                  fontSize: '0.95rem',
-                                  lineHeight: 1.6,
-                                  color: colors.textPrimary,
-                                  minHeight: '3em',
-                                  fontWeight: '500'
-                                }}>
-                                  {card.front}
-                                </Typography>
-                                
-                                <Typography variant="h6" sx={{ 
-                                  fontWeight: '800', 
-                                  mb: 2, 
-                                  color: colors.secondary,
-                                  fontSize: '1rem',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1
-                                }}>
-                                  <Box sx={{ 
-                                    width: 10, 
-                                    height: 10, 
-                                    borderRadius: '50%', 
-                                    bgcolor: colors.secondary 
-                                  }} />
-                                  Antwort:
-                                </Typography>
-                                <Typography variant="body1" sx={{ 
-                                  mb: 2,
-                                  fontSize: '0.95rem',
-                                  lineHeight: 1.6,
-                                  color: colors.textPrimary,
-                                  minHeight: '3em',
-                                  fontWeight: '500'
-                                }}>
-                                  {card.back}
-                                </Typography>
-                              </Box>
-                              
-                              {/* Karten-Metadaten */}
-                              <Box sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                pt: 2,
-                                borderTop: `1px solid ${colors.border}`
-                              }}>
-                                <Chip 
-                                  label={`Schwierigkeit ${card.difficulty || 1}`}
-                                  size="small"
-                                  sx={{
-                                    bgcolor: (card.difficulty || 1) <= 1 ? colors.success + '20' : 
-                                            (card.difficulty || 1) <= 2 ? colors.warning + '20' : 
-                                            colors.error + '20',
-                                    color: (card.difficulty || 1) <= 1 ? colors.success : 
-                                           (card.difficulty || 1) <= 2 ? colors.warning : 
-                                           colors.error,
-                                    fontWeight: '600',
-                                    fontSize: '0.75rem'
-                                  }}
-                                />
-                                <Typography variant="caption" sx={{ 
-                                  color: colors.textSecondary,
-                                  fontSize: '0.75rem',
-                                  fontWeight: '500'
-                                }}>
-                                  #{card.order || index + 1}
-                                </Typography>
-                              </Box>
+                            <CardContent sx={{ p: 0.75, pt: 0.75, pb: 0.1, px: 1 }}>
+                                                              <Box sx={{ mb: 0.1 }}>
+                                  <Typography variant="subtitle2" sx={{ 
+                                    fontWeight: '700', 
+                                    mb: 0.1, 
+                                    color: colors.primary,
+                                    fontSize: '0.7rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5
+                                  }}>
+                                    Frage:
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    mb: 0.1,
+                                    fontSize: '0.65rem',
+                                    lineHeight: 1.1,
+                                    color: colors.textPrimary,
+                                    minHeight: '1.1em',
+                                    fontWeight: '500',
+                                    whiteSpace: 'pre-wrap'
+                                  }}>
+                                    {card.front}
+                                  </Typography>
+                                  
+                                  <Typography variant="subtitle2" sx={{ 
+                                    fontWeight: '600', 
+                                    mb: 0.1, 
+                                    mt: 0.5,
+                                    color: colors.secondary,
+                                    fontSize: '0.7rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5
+                                  }}>
+                                    Antwort:
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    mb: 0,
+                                    fontSize: '0.65rem',
+                                    lineHeight: 1.1,
+                                    color: colors.textPrimary,
+                                    minHeight: '1.1em',
+                                    fontWeight: '500',
+                                    whiteSpace: 'pre-wrap'
+                                  }}>
+                                    {card.back}
+                                  </Typography>
+                                </Box>
                             </CardContent>
 
-                            {/* Aktions-Buttons */}
-                            <Box sx={{ 
-                              position: 'absolute',
-                              bottom: 16,
-                              right: 16,
-                              display: 'flex',
-                              gap: 1,
-                              opacity: 0,
-                              transition: 'opacity 0.3s ease',
-                              zIndex: 2
-                            }}
-                            className="card-actions"
-                            >
-                              <IconButton 
-                                size="medium" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditCard(card);
-                                }}
-                                sx={{ 
-                                  color: colors.primary,
-                                  bgcolor: 'rgba(255,255,255,0.95)',
-                                  backdropFilter: 'blur(10px)',
-                                  '&:hover': {
-                                    bgcolor: 'rgba(255,255,255,1)',
-                                    transform: 'scale(1.1)'
-                                  },
-                                  transition: 'all 0.2s ease'
-                                }}
-                                title="Karte bearbeiten"
-                              >
-                                <EditIcon sx={{ fontSize: 18 }} />
-                              </IconButton>
-                              <IconButton 
-                                size="medium" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (window.confirm('Möchten Sie diese Karte wirklich löschen?')) {
-                                    handleDeleteCard(card.id || '');
-                                  }
-                                }}
-                                sx={{ 
-                                  color: colors.error,
-                                  bgcolor: 'rgba(255,255,255,0.95)',
-                                  backdropFilter: 'blur(10px)',
-                                  '&:hover': {
-                                    bgcolor: 'rgba(255,255,255,1)',
-                                    transform: 'scale(1.1)'
-                                  },
-                                  transition: 'all 0.2s ease'
-                                }}
-                                title="Karte löschen"
-                              >
-                                <Delete sx={{ fontSize: 18 }} />
-                              </IconButton>
-                            </Box>
+
                           </Card>
                         </Grid>
                       ))}
@@ -5957,8 +5744,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </DialogContent>
 
           <DialogActions sx={{ 
-            p: 2, 
-            pt: 1.5,
+            p: 1.5, 
+            pt: 1,
             background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`,
             borderTop: `1px solid ${colors.border}`
           }}>
@@ -5971,14 +5758,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 setNewCardBack('');
               }}
               variant="outlined"
-              size="medium"
+              size="small"
               sx={{
                 borderColor: colors.textSecondary,
                 color: colors.textSecondary,
-                borderRadius: '10px',
-                px: 3,
-                py: 1,
-                fontSize: '0.9rem',
+                borderRadius: '8px',
+                px: 2,
+                py: 0.8,
+                fontSize: '0.8rem',
                 fontWeight: '500'
               }}
             >

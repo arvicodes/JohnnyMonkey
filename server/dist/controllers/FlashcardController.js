@@ -170,12 +170,20 @@ const deleteDeck = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     var _a;
     try {
         const { deckId } = req.params;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const { teacherId } = req.body;
+        // Fallback zu req.user?.id wenn teacherId nicht im Body ist
+        const userId = teacherId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id);
+        if (!userId) {
+            return res.status(400).json({ error: 'Keine Benutzer-ID gefunden' });
+        }
         // Prüfen ob der Benutzer der Besitzer ist
         const existingDeck = yield prisma.flashcardDeck.findUnique({
             where: { id: deckId }
         });
-        if (!existingDeck || existingDeck.teacherId !== userId) {
+        if (!existingDeck) {
+            return res.status(404).json({ error: 'Karteideck nicht gefunden' });
+        }
+        if (existingDeck.teacherId !== userId) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieses Karteidecks' });
         }
         yield prisma.flashcardDeck.delete({
@@ -256,13 +264,21 @@ const deleteCard = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     var _a;
     try {
         const { cardId } = req.params;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const { teacherId } = req.body;
+        // Fallback zu req.user?.id wenn teacherId nicht im Body ist
+        const userId = teacherId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id);
+        if (!userId) {
+            return res.status(400).json({ error: 'Keine Benutzer-ID gefunden' });
+        }
         // Prüfen ob der Benutzer der Besitzer des Decks ist
         const card = yield prisma.flashcard.findUnique({
             where: { id: cardId },
             include: { deck: true }
         });
-        if (!card || card.deck.teacherId !== userId) {
+        if (!card) {
+            return res.status(404).json({ error: 'Karte nicht gefunden' });
+        }
+        if (card.deck.teacherId !== userId) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieser Karte' });
         }
         yield prisma.flashcard.delete({
@@ -515,16 +531,21 @@ const removeDeckAssignment = (req, res) => __awaiter(void 0, void 0, void 0, fun
     var _a;
     try {
         const { assignmentId } = req.params;
-        const teacherId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-        if (!teacherId) {
-            return res.status(401).json({ error: 'Nicht autorisiert' });
+        const { teacherId } = req.body;
+        // Fallback zu req.user?.id wenn teacherId nicht im Body ist
+        const userId = teacherId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id);
+        if (!userId) {
+            return res.status(400).json({ error: 'Keine Benutzer-ID gefunden' });
         }
         // Prüfen ob der Lehrer der Besitzer des Decks ist
         const assignment = yield prisma.flashcardAssignment.findUnique({
             where: { id: assignmentId },
             include: { deck: true }
         });
-        if (!assignment || assignment.deck.teacherId !== teacherId) {
+        if (!assignment) {
+            return res.status(404).json({ error: 'Zuweisung nicht gefunden' });
+        }
+        if (assignment.deck.teacherId !== userId) {
             return res.status(403).json({ error: 'Keine Berechtigung zum Entfernen dieser Zuweisung' });
         }
         yield prisma.flashcardAssignment.delete({
