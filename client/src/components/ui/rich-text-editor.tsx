@@ -69,7 +69,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [alignment, setAlignment] = useState<'left' | 'center' | 'right'>('left');
   const [isUploading, setIsUploading] = useState(false);
-  const [resizingImage, setResizingImage] = useState<HTMLImageElement | null>(null);
+  // Removed resizingImage state - not needed anymore
   
   const editorRef = useRef<HTMLDivElement>(null);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -109,6 +109,56 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       }
     }
     return { offset: 0, node: null, nodeOffset: 0 };
+  };
+
+  // Save text selection for color application
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return null;
+    }
+    
+    try {
+      const range = selection.getRangeAt(0);
+      const text = selection.toString();
+      
+      if (!text || text.length === 0) {
+        return null;
+      }
+      
+      // Save the selection details
+      return {
+        text: text,
+        startContainer: range.startContainer,
+        startOffset: range.startOffset,
+        endContainer: range.endContainer,
+        endOffset: range.endOffset
+      };
+    } catch (error) {
+      console.warn('Error saving selection:', error);
+      return null;
+    }
+  };
+
+  // Restore text selection for color application
+  const restoreSelection = (savedSelection: any) => {
+    if (!savedSelection || !editorRef.current) return;
+    
+    try {
+      const selection = window.getSelection();
+      if (!selection) return;
+      
+      const range = document.createRange();
+      range.setStart(savedSelection.startContainer, savedSelection.startOffset);
+      range.setEnd(savedSelection.endContainer, savedSelection.endOffset);
+      
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      console.log('🔄 Selection restored successfully');
+    } catch (error) {
+      console.warn('Error restoring selection:', error);
+    }
   };
 
   // Restore cursor position with fallback strategies
@@ -281,81 +331,71 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const applyColor = (color: string) => {
-    try {
-      if (!editorRef.current) {
-        console.error('No editor ref');
-        return;
-      }
-      
-      console.log('=== COLOR APPLICATION START ===');
-      console.log('Target color:', color);
-      
-      // Force focus first
-      editorRef.current.focus();
-      
-      const selection = window.getSelection();
-      
-      if (!selection) {
-        console.error('No selection object available');
-        return;
-      }
-      
-      console.log('Selection range count:', selection.rangeCount);
-      
-      // Create selection if none exists
-      if (selection.rangeCount === 0) {
-        console.log('Creating new selection range');
-        const range = document.createRange();
-        range.selectNodeContents(editorRef.current!);
-        range.collapse(false);
-        selection.addRange(range);
-      }
-      
-      const range = selection.getRangeAt(0);
-      const selectedText = selection.toString();
-      const isCollapsed = range.collapsed;
-      
-      console.log('Selection info:', {
-        selectedText: `"${selectedText}"`,
-        length: selectedText.length,
-        collapsed: isCollapsed,
-        startContainer: range.startContainer.nodeName,
-        endContainer: range.endContainer.nodeName
-      });
-      
-      if (selectedText && selectedText.trim().length > 0) {
-        console.log('Processing selected text:', selectedText);
-        
-        // Use execCommand for better compatibility
-        document.execCommand('foreColor', false, color);
-        
-        // Also apply as inline style for better persistence
-        const span = document.createElement('span');
-        span.style.color = color;
-        span.textContent = selectedText;
-        
-        range.deleteContents();
-        range.insertNode(span);
-        
-        setSelectedColor(color);
-        setShowColorPicker(false);
-        handleInput();
-        
-        console.log('SUCCESS: Applied color via DOM manipulation');
-      } else {
-        console.log('No text selected, setting color for future text');
-        setSelectedColor(color);
-        setShowColorPicker(false);
-        
-        // Set color for future text input
-        document.execCommand('foreColor', false, color);
-      }
-      
-      console.log('=== COLOR APPLICATION END ===');
-      
-    } catch (error) {
-      console.error('FATAL ERROR in applyColor:', error);
+    console.log('🎨 APPLYING COLOR:', color);
+    
+    if (!editorRef.current) {
+      console.error('❌ No editor ref');
+      return;
     }
+    
+    // Get the saved selection from when color picker was opened
+    const savedSelection = (window as any).savedTextSelection;
+    console.log('💾 Retrieved saved selection:', savedSelection);
+    
+    if (!savedSelection || !savedSelection.text || savedSelection.text.length === 0) {
+      console.log('⚠️ NO TEXT SELECTED! Please select text first, then choose a color.');
+      alert('Bitte markieren Sie zuerst Text, dann wählen Sie eine Farbe!');
+      setShowColorPicker(false);
+      return;
+    }
+    
+    // Force focus first
+    editorRef.current.focus();
+    
+    // Restore the saved selection
+    restoreSelection(savedSelection);
+    
+    // Get the restored selection
+    const selection = window.getSelection();
+    const selectedText = selection?.toString() || '';
+    
+    console.log('📝 Restored text:', `"${selectedText}"`, 'Length:', selectedText.length);
+    
+    if (selectedText && selectedText.length > 0) {
+      // Text is selected - wrap it in a colored span
+      console.log('✅ Wrapping selected text in colored span');
+      
+      const range = selection!.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.color = color;
+      span.textContent = selectedText;
+      
+      // Replace the selected text with colored span
+      range.deleteContents();
+      range.insertNode(span);
+      
+      // Move cursor to end of span
+      range.setStartAfter(span);
+      range.collapse(true);
+      selection!.removeAllRanges();
+      selection!.addRange(range);
+      
+      console.log('🎯 SUCCESS: Color applied to selected text');
+      
+      // Clear the saved selection
+      (window as any).savedTextSelection = null;
+    } else {
+      console.log('❌ Failed to restore selection');
+      alert('Fehler beim Anwenden der Farbe. Bitte versuchen Sie es erneut.');
+      setShowColorPicker(false);
+      return;
+    }
+    
+    setSelectedColor(color);
+    setShowColorPicker(false);
+    handleInput();
+    
+    console.log('✅ Color application complete');
   };
 
   const applyAlignment = (align: 'left' | 'center' | 'right') => {
@@ -501,17 +541,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     img.onmousedown = null;
     img.oncontextmenu = null;
     
-    // Add resize functionality
-    img.onmousedown = (e) => {
-      if (e.button === 0) { // Left click only
-        e.preventDefault();
-        startImageResize(img, e);
-      }
-    };
-    
     // Right click to delete
     img.oncontextmenu = (e) => {
       e.preventDefault();
+      e.stopPropagation();
       if (window.confirm('Möchten Sie dieses Bild löschen?')) {
         img.remove();
         handleInput();
@@ -519,183 +552,126 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     };
     
     // Add visual indicators
-    img.style.cursor = 'nw-resize';
+    img.style.cursor = 'pointer';
     img.style.position = 'relative';
+    img.style.border = '2px solid transparent';
+    img.style.userSelect = 'none'; // Prevent text selection
     
-    // Add resize handles at all corners
-    const corners = ['nw', 'ne', 'sw', 'se'];
-    corners.forEach(corner => {
-      if (!img.querySelector(`.resize-handle-${corner}`)) {
-        const handle = document.createElement('div');
-        handle.className = `resize-handle-${corner}`;
+    // Add simple resize handle at bottom-right corner
+    if (!img.querySelector('.resize-handle')) {
+      const handle = document.createElement('div');
+      handle.className = 'resize-handle';
+      handle.style.cssText = `
+        position: absolute;
+        bottom: -8px;
+        right: -8px;
+        width: 16px;
+        height: 16px;
+        background: ${appColors.primary};
+        border: 2px solid white;
+        border-radius: 50%;
+        cursor: se-resize;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: all;
+        user-select: none;
+      `;
+      
+      // Add resize functionality - SIMPLE DRAG AND DROP
+      let isResizing = false;
+      let startX = 0;
+      let startWidth = 0;
+      let aspectRatio = 1;
+      
+      const startResize = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🎯 HANDLE CLICKED - Starting resize');
+        console.log('💡 TIP: Ziehen Sie nach rechts um das Bild zu vergrößern!');
         
-        // Position based on corner
-        let top, left, cursor, right, bottom;
-        switch (corner) {
-          case 'nw':
-            top = '-8px';
-            left = '-8px';
-            right = 'auto';
-            bottom = 'auto';
-            cursor = 'nw-resize';
-            break;
-          case 'ne':
-            top = '-8px';
-            left = 'auto';
-            right = '-8px';
-            bottom = 'auto';
-            cursor = 'ne-resize';
-            break;
-          case 'sw':
-            top = 'auto';
-            left = '-8px';
-            right = 'auto';
-            bottom = '-8px';
-            cursor = 'sw-resize';
-            break;
-          case 'se':
-            top = 'auto';
-            left = 'auto';
-            right = '-8px';
-            bottom = '-8px';
-            cursor = 'se-resize';
-            break;
-        }
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = img.offsetWidth;
+        aspectRatio = img.naturalWidth / img.naturalHeight;
         
-        handle.style.cssText = `
-          position: absolute;
-          top: ${top};
-          left: ${left};
-          right: ${right};
-          bottom: ${bottom};
-          width: 16px;
-          height: 16px;
-          background: ${appColors.primary};
-          border: 2px solid white;
-          border-radius: 50%;
-          cursor: ${cursor};
-          z-index: 1000;
-          opacity: 0;
-          transition: opacity 0.2s;
-        `;
+        document.body.style.cursor = 'se-resize';
+        document.body.style.userSelect = 'none';
         
-        // Add corner-specific resize functionality
-        handle.onmousedown = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          startImageResizeFromCorner(img, e, corner);
-        };
+        // Visual feedback
+        img.style.boxShadow = '0 0 20px rgba(46, 125, 50, 0.5)';
         
-        img.appendChild(handle);
-      }
-    });
+        console.log('📏 Initial:', { startX, startWidth, aspectRatio });
+      };
+      
+      const doResize = (e: MouseEvent) => {
+        if (!isResizing) return;
+        
+        const deltaX = e.clientX - startX;
+        const newWidth = Math.max(50, startWidth + deltaX);
+        const newHeight = newWidth / aspectRatio;
+        
+        img.style.width = `${newWidth}px`;
+        img.style.height = `${newHeight}px`;
+        
+        console.log('📐 Resizing:', { deltaX, newWidth, newHeight });
+      };
+      
+      const endResize = () => {
+        if (!isResizing) return;
+        
+        console.log('✅ Resize finished');
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        
+        // Remove visual feedback
+        img.style.boxShadow = '';
+        
+        handleInput();
+      };
+      
+      // Attach events directly to handle
+      handle.onmousedown = startResize;
+      document.addEventListener('mousemove', doResize);
+      document.addEventListener('mouseup', endResize);
+      
+      // Also add touch events for mobile
+      handle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const touch = e.touches[0];
+        // Create a fake mouse event for touch
+        startResize({
+          preventDefault: () => {},
+          stopPropagation: () => {},
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          button: 0
+        } as MouseEvent);
+      }, true);
+      
+      img.appendChild(handle);
+    }
     
-    // Show all handles on hover
+    // Show handle on hover
     img.onmouseenter = () => {
-      img.querySelectorAll('[class^="resize-handle-"]').forEach(handle => {
-        (handle as HTMLElement).style.opacity = '1';
-      });
+      img.style.border = `2px solid ${appColors.primary}`;
+      const handle = img.querySelector('.resize-handle') as HTMLElement;
+      if (handle) handle.style.opacity = '1';
     };
+    
     img.onmouseleave = () => {
-      img.querySelectorAll('[class^="resize-handle-"]').forEach(handle => {
-        (handle as HTMLElement).style.opacity = '0';
-      });
+      img.style.border = '2px solid transparent';
+      const handle = img.querySelector('.resize-handle') as HTMLElement;
+      if (handle) handle.style.opacity = '0';
     };
   }, [handleInput]);
 
-  const startImageResize = (img: HTMLImageElement, e: MouseEvent) => {
-    setResizingImage(img);
-    
-    const startX = e.clientX;
-    const startWidth = img.offsetWidth;
-    const aspectRatio = img.naturalWidth / img.naturalHeight;
-    
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!resizingImage) return;
-      
-      const deltaX = moveEvent.clientX - startX;
-      
-      // Calculate new dimensions maintaining aspect ratio
-      const newWidth = Math.max(50, startWidth + deltaX);
-      const newHeight = newWidth / aspectRatio;
-      
-      img.style.width = `${newWidth}px`;
-      img.style.height = `${newHeight}px`;
-      
-      // Update stored dimensions
-      img.setAttribute('data-original-width', img.naturalWidth.toString());
-      img.setAttribute('data-original-height', img.naturalHeight.toString());
-    };
-    
-    const handleMouseUp = () => {
-      setResizingImage(null);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      handleInput();
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
+  // Simple image resize function - removed complex corner handling
 
-  const startImageResizeFromCorner = (img: HTMLImageElement, e: MouseEvent, corner: string) => {
-    setResizingImage(img);
-    
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = img.offsetWidth;
-    const startHeight = img.offsetHeight;
-    const aspectRatio = img.naturalWidth / img.naturalHeight;
-    
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!resizingImage) return;
-      
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      
-      let newWidth, newHeight;
-      
-      // Calculate new dimensions based on corner
-      switch (corner) {
-        case 'nw':
-          newWidth = Math.max(50, startWidth - deltaX);
-          newHeight = newWidth / aspectRatio;
-          break;
-        case 'ne':
-          newWidth = Math.max(50, startWidth + deltaX);
-          newHeight = newWidth / aspectRatio;
-          break;
-        case 'sw':
-          newWidth = Math.max(50, startWidth - deltaX);
-          newHeight = newWidth / aspectRatio;
-          break;
-        case 'se':
-          newWidth = Math.max(50, startWidth + deltaX);
-          newHeight = newWidth / aspectRatio;
-          break;
-        default:
-          newWidth = startWidth;
-          newHeight = startHeight;
-      }
-      
-      img.style.width = `${newWidth}px`;
-      img.style.height = `${newHeight}px`;
-      
-      // Update stored dimensions
-      img.setAttribute('data-original-width', img.naturalWidth.toString());
-      img.setAttribute('data-original-height', img.naturalHeight.toString());
-    };
-    
-    const handleMouseUp = () => {
-      setResizingImage(null);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      handleInput();
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
+  // OLD RESIZE FUNCTION REMOVED - Using inline approach now
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
@@ -756,7 +732,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         borderRadius: 2,
         backgroundColor: appColors.cardBg,
         overflow: 'hidden',
-        ...(className && { className })
+        ...(className && { className }),
+        '& .resize-handle': {
+          pointerEvents: 'all !important',
+          zIndex: 9999,
+          position: 'absolute !important'
+        },
+        '& img': {
+          pointerEvents: 'auto !important',
+          userSelect: 'none !important'
+        }
       }}
     >
       {/* Toolbar */}
@@ -986,7 +971,19 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <Tooltip title="Textfarbe">
             <IconButton
               size="small"
-              onClick={() => setShowColorPicker(!showColorPicker)}
+              onClick={() => {
+                // Save selection before opening color picker
+                const savedSelection = saveSelection();
+                if (savedSelection && savedSelection.text && savedSelection.text.length > 0) {
+                  console.log('💾 Color picker opened with saved selection:', savedSelection.text);
+                  // Store the selection globally so applyColor can access it
+                  (window as any).savedTextSelection = savedSelection;
+                  setShowColorPicker(!showColorPicker);
+                } else {
+                  console.log('⚠️ No text selected for color picker');
+                  alert('Bitte markieren Sie zuerst Text, dann öffnen Sie die Farbpalette!');
+                }
+              }}
               sx={{
                 width: compact ? 28 : 32,
                 height: compact ? 28 : 32,
@@ -1007,6 +1004,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   borderRadius: '50%',
                   backgroundColor: selectedColor,
                   border: `1px solid ${appColors.border}`,
+                  borderColor: appColors.border,
                   position: 'absolute',
                   bottom: 1,
                   right: 1
