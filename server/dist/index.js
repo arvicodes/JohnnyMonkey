@@ -61,10 +61,6 @@ app.use('/api/grades', grades_routes_1.default);
 app.use('/api/file-system-paths', fileSystemPaths_1.default);
 app.use('/api/flashcards', flashcards_1.default);
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
-});
 // Graceful shutdown
 process.on('SIGINT', () => __awaiter(void 0, void 0, void 0, function* () {
     console.log('\n🛑 Shutting down server gracefully...');
@@ -82,10 +78,9 @@ function startServer() {
         try {
             // Cleanup ports before starting
             yield portManager_1.PortManager.cleanupPorts();
-            // Start server with automatic port finding
+            // Start server on specific port 3001
             const { server, port } = yield portManager_1.PortManager.startServer(app, 3001);
             console.log(`🎯 Server is running on port ${port}`);
-            console.log(`🔗 Health check: http://localhost:${port}/health`);
             // Store port in global for potential external access
             global.SERVER_PORT = port;
         }

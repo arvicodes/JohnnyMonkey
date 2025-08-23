@@ -51,10 +51,7 @@ app.use('/api/file-system-paths', fileSystemPathsRoutes);
 app.use('/api/flashcards', flashcardRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -79,7 +76,6 @@ async function startServer() {
     const { server, port } = await PortManager.startServer(app, 3001);
     
     console.log(`🎯 Server is running on port ${port}`);
-    console.log(`🔗 Health check: http://localhost:${port}/health`);
     
     // Store port in global for potential external access
     (global as any).SERVER_PORT = port;

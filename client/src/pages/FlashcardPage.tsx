@@ -12,7 +12,8 @@ import {
   Target,
   BarChart3,
   Play,
-  Clock
+  Clock,
+  Download
 } from 'lucide-react';
 
 import { FlashcardCreator } from '../components/FlashcardCreator';
@@ -225,6 +226,51 @@ export const FlashcardPage: React.FC<FlashcardPageProps> = ({
       } catch (error) {
         console.error('Fehler beim Löschen des Karteidecks:', error);
       }
+    }
+  };
+
+  const handleExportDeck = async (deck: FlashcardDeckDisplay) => {
+    try {
+      // Hier würde der API-Aufruf stehen, um die Karten zu laden
+      // const cards = await getDeckCards(deck.id);
+      
+      // Für jetzt verwenden wir die vorhandenen Karten oder Mock-Daten
+      const cards = deck.cards || [];
+      
+      if (!cards || cards.length === 0) {
+        alert('Keine Karten zum Exportieren gefunden.');
+        return;
+      }
+
+      // Erstelle ein einfaches Text-Format für den Export
+      const exportContent = [
+        `Deck: ${deck.title}`,
+        deck.description ? `Beschreibung: ${deck.description}` : '',
+        '',
+        ...cards.map((card, index) => [
+          `Karte ${index + 1}:`,
+          `Frage: ${card.front}`,
+          `Antwort: ${card.back}`,
+          card.hint ? `Hinweis: ${card.hint}` : '',
+          ''
+        ].filter(Boolean).join('\n'))
+      ].filter(Boolean).join('\n');
+
+      // Erstelle und lade die Datei herunter
+      const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${deck.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_karteideck.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      alert(`Deck "${deck.title}" erfolgreich exportiert!`);
+    } catch (error) {
+      console.error('Fehler beim Exportieren des Decks:', error);
+      alert('Fehler beim Exportieren des Decks. Bitte versuchen Sie es erneut.');
     }
   };
 
@@ -455,25 +501,38 @@ export const FlashcardPage: React.FC<FlashcardPageProps> = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{deck._count.cards} Karten</Badge>
-                        {userRole === 'TEACHER' && (
-                          <div className="flex gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditDeck(deck)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteDeck(deck)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExportDeck(deck);
+                            }}
+                            title="Als Text-Datei exportieren"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          {userRole === 'TEACHER' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditDeck(deck)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteDeck(deck)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
@@ -554,6 +613,17 @@ export const FlashcardPage: React.FC<FlashcardPageProps> = ({
                     ))}
                     
                     <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportDeck(deck);
+                        }}
+                        title="Als Text-Datei exportieren"
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

@@ -50,15 +50,13 @@ class PortManager {
      */
     static startServer(app, preferredPort) {
         return __awaiter(this, void 0, void 0, function* () {
-            const port = yield this.findFreePort(preferredPort);
+            // Force the preferred port if specified
+            const port = preferredPort || (yield this.findFreePort());
             return new Promise((resolve, reject) => {
                 const server = app.listen(port, () => {
                     var _a;
                     const actualPort = ((_a = server.address()) === null || _a === void 0 ? void 0 : _a.port) || port;
                     console.log(`🚀 Server started successfully on port ${actualPort}`);
-                    if (port !== actualPort) {
-                        console.log(`⚠️  Port ${port} was busy, using port ${actualPort} instead`);
-                    }
                     resolve({ server, port: actualPort });
                 });
                 server.on('error', (error) => {

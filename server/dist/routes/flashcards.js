@@ -12,6 +12,7 @@ const router = express_1.default.Router();
 router.post('/decks', FlashcardController_1.createDeck);
 router.get('/decks', FlashcardController_1.getDecks);
 router.get('/decks/:deckId', FlashcardController_1.getDeck);
+router.get('/decks/:deckId/cards', FlashcardController_1.getDeckCards);
 router.put('/decks/:deckId', FlashcardController_1.updateDeck);
 router.delete('/decks/:deckId', FlashcardController_1.deleteDeck);
 // Flashcard Routes

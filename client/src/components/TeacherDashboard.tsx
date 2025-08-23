@@ -2760,6 +2760,257 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  const handleExportDeck = async (deck: FlashcardDeck) => {
+    try {
+      // Lade die Karten für das Deck, falls noch nicht vorhanden
+      let cards = deck.cards || [];
+      if (cards.length === 0 && deck.id) {
+        cards = await fetchDeckCards(deck.id);
+      }
+      
+      if (!cards || cards.length === 0) {
+        setSnackbar({
+          open: true,
+          message: 'Keine Karten zum Exportieren gefunden.',
+          severity: 'error'
+        });
+        return;
+      }
+
+      // Direkt Word-Export starten (ohne Popup)
+      await exportToWord(deck, cards);
+
+    } catch (error) {
+      console.error('Fehler beim Exportieren des Decks:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Exportieren des Decks. Bitte versuchen Sie es erneut.',
+        severity: 'error'
+      });
+    }
+  };
+
+  const exportToWord = async (deck: FlashcardDeck, cards: Flashcard[]) => {
+    try {
+      // Importiere die benötigten docx-Module dynamisch
+      const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, TextRun, BorderStyle, WidthType, Table, TableRow, TableCell } = await import('docx');
+      
+      // Erstelle Word-Dokument mit verbessertem Styling
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            // Deck-Titel als Hauptüberschrift mit Styling
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: deck.title,
+                  bold: true,
+                  size: 32,
+                  color: "2E7D32" // Dunkelgrün wie in der App
+                })
+              ],
+              heading: HeadingLevel.HEADING_1,
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 400, after: 600 },
+              border: {
+                bottom: {
+                  color: "4CAF50", // Akzentfarbe
+                  space: 1,
+                  style: BorderStyle.SINGLE,
+                  size: 6
+                }
+              }
+            }),
+            
+            // Beschreibung falls vorhanden
+            ...(deck.description ? [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: deck.description,
+                    size: 20,
+                    color: "666666" // Grau für Beschreibung
+                  })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 600 }
+              })
+            ] : []),
+            
+            // Karten-Counter
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `${cards.length} Karteikarten`,
+                  bold: true,
+                  size: 18,
+                  color: "4CAF50"
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 }
+            }),
+            
+            // Alle Karteikarten mit verbessertem Styling
+            ...cards.map((card, index) => [
+              // Karten-Header mit Nummer
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Karte ${index + 1}`,
+                    bold: true,
+                    size: 24,
+                    color: "1976D2" // Blau für Karten-Header
+                  })
+                ],
+                spacing: { before: 400, after: 200 }
+              }),
+              
+              // Frage in einem schönen Box-Design
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "Frage:",
+                    bold: true,
+                    size: 18,
+                    color: "D32F2F" // Rot für Fragen
+                  })
+                ],
+                spacing: { before: 200, after: 100 }
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: card.front.replace(/<[^>]*>/g, ''), // HTML-Tags entfernen
+                    size: 20,
+                    color: "333333"
+                  })
+                ],
+                spacing: { after: 300 },
+                border: {
+                  left: {
+                    color: "D32F2F",
+                    space: 1,
+                    style: BorderStyle.SINGLE,
+                    size: 4
+                  }
+                },
+                indent: { left: 200 }
+              }),
+              
+              // Antwort in einem schönen Box-Design
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "Antwort:",
+                    bold: true,
+                    size: 18,
+                    color: "388E3C" // Grün für Antworten
+                  })
+                ],
+                spacing: { before: 200, after: 100 }
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: card.back.replace(/<[^>]*>/g, ''), // HTML-Tags entfernen
+                    size: 20,
+                    color: "333333"
+                  })
+                ],
+                spacing: { after: 300 },
+                border: {
+                  left: {
+                    color: "388E3C",
+                    space: 1,
+                    style: BorderStyle.SINGLE,
+                    size: 4
+                  }
+                },
+                indent: { left: 200 }
+              }),
+              
+              // Hinweis falls vorhanden
+              ...(card.hint ? [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: "Hinweis:",
+                      bold: true,
+                      size: 16,
+                      color: "FF9800" // Orange für Hinweise
+                    })
+                  ],
+                  spacing: { before: 200, after: 100 }
+                }),
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: card.hint.replace(/<[^>]*>/g, ''), // HTML-Tags entfernen
+                      size: 18,
+                      color: "666666",
+                      italics: true
+                    })
+                  ],
+                  spacing: { after: 300 },
+                  border: {
+                    left: {
+                      color: "FF9800",
+                      space: 1,
+                      style: BorderStyle.SINGLE,
+                      size: 3
+                    }
+                  },
+                  indent: { left: 200 }
+                })
+              ] : []),
+              
+              // Trennlinie zwischen Karten
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "─".repeat(50),
+                    size: 16,
+                    color: "CCCCCC"
+                  })
+                ],
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 200, after: 200 }
+              })
+            ]).flat()
+          ]
+        }]
+      });
+
+      // Generiere und lade das Dokument herunter
+      const blob = await Packer.toBlob(doc);
+      const fileName = `${deck.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_karteideck.docx`;
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      setSnackbar({
+        open: true,
+        message: `Deck "${deck.title}" erfolgreich als Word-Datei exportiert!`,
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Fehler beim Word-Export:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Word-Export. Bitte versuchen Sie es erneut.',
+        severity: 'error'
+      });
+    }
+  };
+
   const confirmDeleteDeck = async () => {
     if (!deckToDelete || deleteConfirmWord !== 'LÖSCHEN') {
       setSnackbar({
@@ -4066,6 +4317,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                handleExportDeck(deck);
+                              }}
+                              sx={{ 
+                                color: colors.accent2,
+                                bgcolor: colors.accent2 + '10',
+                                '&:hover': { 
+                                  bgcolor: colors.accent2 + '20',
+                                  transform: 'scale(1.05)'
+                                },
+                                transition: 'all 0.15s ease',
+                                width: 20,
+                                height: 20
+                              }}
+                              title="Deck exportieren"
+                            >
+                              <Description sx={{ fontSize: 11 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (deck.id) {
                                   handleDeleteDeck(deck.id || '');
                                 }
@@ -4546,6 +4818,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               title="Karteikarten bearbeiten"
                             >
                               <StyleIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExportDeck(deck);
+                              }}
+                              sx={{ 
+                                color: colors.accent2,
+                                bgcolor: colors.accent2 + '10',
+                                '&:hover': { 
+                                  bgcolor: colors.accent2 + '20',
+                                  transform: 'scale(1.05)'
+                                },
+                                transition: 'all 0.15s ease',
+                                width: 26,
+                                height: 26
+                              }}
+                              title="Deck exportieren"
+                            >
+                              <Description sx={{ fontSize: 14 }} />
                             </IconButton>
                             <IconButton
                               size="small"

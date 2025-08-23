@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeDeckAssignment = exports.getAssignments = exports.assignDeckToGroup = exports.getDueCards = exports.submitCardReview = exports.getStudentProgress = exports.deleteCard = exports.updateCard = exports.createCard = exports.deleteDeck = exports.updateDeck = exports.getDeck = exports.getDecks = exports.createDeck = void 0;
+exports.removeDeckAssignment = exports.getAssignments = exports.assignDeckToGroup = exports.getDueCards = exports.submitCardReview = exports.getStudentProgress = exports.deleteCard = exports.updateCard = exports.createCard = exports.deleteDeck = exports.updateDeck = exports.getDeckCards = exports.getDeck = exports.getDecks = exports.createDeck = void 0;
 const prisma_1 = require("../generated/prisma");
 const SpacedRepetitionService_1 = require("../services/SpacedRepetitionService");
 const prisma = new prisma_1.PrismaClient();
@@ -131,6 +131,54 @@ const getDeck = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.getDeck = getDeck;
+const getDeckCards = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    try {
+        const { deckId } = req.params;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        console.log(`Loading cards for deck ${deckId}...`);
+        // Prüfen ob das Deck existiert
+        const deck = yield prisma.flashcardDeck.findUnique({
+            where: { id: deckId },
+            select: {
+                id: true,
+                teacherId: true,
+                isPublic: true,
+                title: true
+            }
+        });
+        if (!deck) {
+            return res.status(404).json({ error: 'Karteideck nicht gefunden' });
+        }
+        // Prüfen ob der Benutzer Zugriff hat
+        if (!deck.isPublic && deck.teacherId !== userId && ((_b = req.user) === null || _b === void 0 ? void 0 : _b.role) === 'STUDENT') {
+            // Prüfen ob der Schüler das Deck zugewiesen bekommen hat
+            const hasAccess = yield prisma.flashcardAssignment.findFirst({
+                where: {
+                    deckId,
+                    group: {
+                        students: { some: { id: userId } }
+                    }
+                }
+            });
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Kein Zugriff auf dieses Karteideck' });
+            }
+        }
+        // Karten laden
+        const cards = yield prisma.flashcard.findMany({
+            where: { deckId },
+            orderBy: { order: 'asc' }
+        });
+        console.log(`Successfully loaded ${cards.length} cards for deck ${deck.title}`);
+        res.json(cards);
+    }
+    catch (error) {
+        console.error('Fehler beim Abrufen der Karten:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.getDeckCards = getDeckCards;
 const updateDeck = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { deckId } = req.params;
@@ -201,8 +249,11 @@ exports.deleteDeck = deleteDeck;
 const createCard = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const { deckId, front, back, hint, difficulty, order } = req.body;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const { deckId, front, back, hint, difficulty, order, teacherId } = req.body;
+        const userId = teacherId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id);
+        if (!userId) {
+            return res.status(400).json({ error: 'teacherId ist erforderlich' });
+        }
         // Prüfen ob der Benutzer der Besitzer des Decks ist
         const deck = yield prisma.flashcardDeck.findUnique({
             where: { id: deckId }
@@ -232,8 +283,11 @@ const updateCard = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     var _a;
     try {
         const { cardId } = req.params;
-        const { front, back, hint, difficulty, order } = req.body;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+        const { front, back, hint, difficulty, order, teacherId } = req.body;
+        const userId = teacherId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id);
+        if (!userId) {
+            return res.status(400).json({ error: 'teacherId ist erforderlich' });
+        }
         // Prüfen ob der Benutzer der Besitzer des Decks ist
         const card = yield prisma.flashcard.findUnique({
             where: { id: cardId },
