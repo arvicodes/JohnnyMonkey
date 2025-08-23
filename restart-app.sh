@@ -52,3 +52,4 @@ echo "🔗 Öffne http://localhost:3003 in deinem Browser"
 echo ""
 echo "💡 Tipp: Verwende 'ps aux | grep -E \"(node.*server|react-scripts)\"' um laufende Prozesse zu überprüfen"
 echo "💡 Tipp: Verwende 'pkill -f \"node.*server\" && pkill -f \"react-scripts\"' um alle Prozesse zu beenden"
+
