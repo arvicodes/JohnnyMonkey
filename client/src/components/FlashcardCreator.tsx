@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
 import { RichTextEditor } from './ui/rich-text-editor';
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, GripVertical } from 'lucide-react';
 
 // Unified interfaces for the entire flashcard system
 interface Flashcard {
@@ -66,6 +66,8 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
   });
 
   const [isEditing, setIsEditing] = useState(!!initialDeck);
+  const [draggedCardIndex, setDraggedCardIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (initialDeck) {
@@ -99,6 +101,9 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
   const startEditCard = (index: number) => {
     setEditingCardIndex(index);
     setEditingCard({ ...deck.cards[index] });
+    
+    // Scroll to top of the editor
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const saveCard = () => {
@@ -137,29 +142,64 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
   };
 
   const deleteCard = (index: number) => {
-    const updatedCards = deck.cards.filter((_, i) => i !== index);
-    // Reihenfolge neu nummerieren
-    const reorderedCards = updatedCards.map((card, i) => ({
-      ...card,
-      order: i
-    }));
-    
-    setDeck(prev => ({ ...prev, cards: reorderedCards }));
+    if (window.confirm('Möchten Sie diese Karte wirklich löschen?')) {
+      const updatedCards = deck.cards.filter((_, i) => i !== index);
+      // Reihenfolge neu nummerieren
+      const reorderedCards = updatedCards.map((card, i) => ({
+        ...card,
+        order: i
+      }));
+      
+      setDeck(prev => ({ ...prev, cards: reorderedCards }));
+      
+      // Wenn die gelöschte Karte gerade bearbeitet wird, Bearbeitung beenden
+      if (editingCardIndex === index) {
+        setEditingCardIndex(null);
+        setEditingCard({
+          front: '',
+          back: '',
+          hint: '',
+          difficulty: 1,
+          order: 0
+        });
+      }
+    }
   };
 
-  const moveCard = (index: number, direction: 'up' | 'down') => {
-    if (
-      (direction === 'up' && index === 0) ||
-      (direction === 'down' && index === deck.cards.length - 1)
-    ) {
+  // Drag & Drop Funktionen
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedCardIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedCardIndex === null || draggedCardIndex === dropIndex) {
+      setDraggedCardIndex(null);
+      setDragOverIndex(null);
       return;
     }
 
     const updatedCards = [...deck.cards];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    const draggedCard = updatedCards[draggedCardIndex];
     
-    // Karten tauschen
-    [updatedCards[index], updatedCards[newIndex]] = [updatedCards[newIndex], updatedCards[index]];
+    // Karte aus der ursprünglichen Position entfernen
+    updatedCards.splice(draggedCardIndex, 1);
+    
+    // Karte an der neuen Position einfügen
+    updatedCards.splice(dropIndex, 0, draggedCard);
     
     // Reihenfolge aktualisieren
     updatedCards.forEach((card, i) => {
@@ -167,6 +207,8 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
     });
     
     setDeck(prev => ({ ...prev, cards: updatedCards }));
+    setDraggedCardIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleSave = () => {
@@ -214,6 +256,7 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Deck-Informationen Card bleibt gleich */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -278,110 +321,11 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
         </CardContent>
       </Card>
 
-      {/* Karten-Verwaltung */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Karten ({deck.cards.length})</CardTitle>
-            <Button onClick={addCard} size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Karte hinzufügen
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {deck.cards.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>Noch keine Karten vorhanden.</p>
-              <p className="text-sm">Klicken Sie auf "Karte hinzufügen" um zu beginnen.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {deck.cards.map((card, index) => (
-                <div key={index} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">Karte {index + 1}</Badge>
-                      <Badge className={getDifficultyColor(card.difficulty)}>
-                        {getDifficultyText(card.difficulty)}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => moveCard(index, 'up')}
-                        disabled={index === 0}
-                      >
-                        ↑
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => moveCard(index, 'down')}
-                        disabled={index === deck.cards.length - 1}
-                      >
-                        ↓
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEditCard(index)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => deleteCard(index)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium">Vorderseite</Label>
-                      <div 
-                        className="mt-1 p-2 bg-gray-50 rounded border"
-                        dangerouslySetInnerHTML={{ 
-                          __html: card.front || '<span class="text-gray-400">Nicht ausgefüllt</span>' 
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Rückseite</Label>
-                      <div 
-                        className="mt-1 p-2 bg-gray-50 rounded border"
-                        dangerouslySetInnerHTML={{ 
-                          __html: card.back || '<span class="text-gray-400">Nicht ausgefüllt</span>' 
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {card.hint && (
-                    <div className="mt-3">
-                      <Label className="text-sm font-medium">Tipp</Label>
-                      <p className="mt-1 p-2 bg-blue-50 rounded border text-blue-800">
-                        {card.hint}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Karten-Editor */}
+      {/* Karten-Editor - Jetzt immer oben */}
       {editingCardIndex !== null && (
-        <Card>
+        <Card className="border-2 border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle>
+            <CardTitle className="text-blue-800">
               {editingCardIndex >= deck.cards.length ? 'Neue Karte' : `Karte ${editingCardIndex + 1} bearbeiten`}
             </CardTitle>
           </CardHeader>
@@ -452,6 +396,109 @@ export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Karten-Verwaltung */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Karten ({deck.cards.length})</CardTitle>
+            <Button onClick={addCard} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Karte hinzufügen
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {deck.cards.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Noch keine Karten vorhanden.</p>
+              <p className="text-sm">Klicken Sie auf "Karte hinzufügen" um zu beginnen.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {deck.cards.map((card, index) => (
+                <div 
+                  key={index} 
+                  className={`border rounded-lg p-4 transition-all duration-200 ${
+                    draggedCardIndex === index ? 'opacity-50 scale-95' : ''
+                  } ${
+                    dragOverIndex === index ? 'border-blue-400 bg-blue-50' : ''
+                  }`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="cursor-grab hover:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Karte verschieben"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+                      <Badge variant="outline">Karte {index + 1}</Badge>
+                      <Badge className={getDifficultyColor(card.difficulty)}>
+                        {getDifficultyText(card.difficulty)}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startEditCard(index)}
+                        title="Karte bearbeiten"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteCard(index)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Karte löschen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Vorderseite</Label>
+                      <div 
+                        className="mt-1 p-2 bg-gray-50 rounded border min-h-[100px]"
+                        dangerouslySetInnerHTML={{ 
+                          __html: card.front || '<span class="text-gray-400">Nicht ausgefüllt</span>' 
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Rückseite</Label>
+                      <div 
+                        className="mt-1 p-2 bg-gray-50 rounded border min-h-[100px]"
+                        dangerouslySetInnerHTML={{ 
+                          __html: card.back || '<span class="text-gray-400">Nicht ausgefüllt</span>' 
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {card.hint && (
+                    <div className="mt-3">
+                      <Label className="text-sm font-medium">Tipp</Label>
+                      <p className="mt-1 p-2 bg-blue-50 rounded border text-blue-800">
+                        {card.hint}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Aktions-Buttons */}
       <div className="flex justify-end gap-4">

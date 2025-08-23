@@ -57,6 +57,7 @@ import {
   Public,
   Lock
 } from '@mui/icons-material';
+import { GripVertical, Trash2 } from 'lucide-react';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
@@ -2965,12 +2966,64 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       setNewCardFront('');
       setNewCardBack('');
     } else {
-      // Starte den Bearbeitungsmodus für die neue Karte
+      // Bearbeitungsmodus sofort aktivieren - der useEffect kümmert sich um die Werte
       setEditingCard(card);
-      setNewCardFront(card.front);
-      setNewCardBack(card.back);
+      
+      console.log('Bearbeite Karte:', {
+        id: card.id,
+        front: card.front,
+        back: card.back,
+        hasFront: !!card.front,
+        hasBack: !!card.back,
+        frontLength: (card.front || '').length,
+        backLength: (card.back || '').length
+      });
     }
   };
+
+  // Hilfsfunktion um HTML-Content korrekt zu verarbeiten
+  const processHtmlContent = (htmlContent: string): string => {
+    if (!htmlContent) return '';
+    
+    // Falls es bereits HTML ist, direkt zurückgeben
+    if (htmlContent.includes('<p>') || htmlContent.includes('<br>') || htmlContent.includes('<div>')) {
+      return htmlContent;
+    }
+    
+    // Falls es Plain Text mit \n ist, in HTML umwandeln
+    if (htmlContent.includes('\n')) {
+      return htmlContent.split('\n').map(line => `<p>${line || '<br>'}</p>`).join('');
+    }
+    
+    // Falls es nur Text ist, in Paragraph wrappen
+    return `<p>${htmlContent}</p>`;
+  };
+
+  // useEffect um sicherzustellen, dass die RichTextEditor-Werte korrekt gesetzt werden
+  useEffect(() => {
+    if (editingCard) {
+      const frontContent = processHtmlContent(editingCard.front || '');
+      const backContent = processHtmlContent(editingCard.back || '');
+      
+      console.log('useEffect - Setting editor values:', {
+        cardId: editingCard.id,
+        originalFront: editingCard.front,
+        originalBack: editingCard.back,
+        processedFront: frontContent,
+        processedBack: backContent,
+        frontLength: frontContent.length,
+        backLength: backContent.length
+      });
+      
+      // Sofort setzen, ohne Verzögerung
+      setNewCardFront(frontContent);
+      setNewCardBack(backContent);
+    } else {
+      // Wenn kein editingCard mehr vorhanden ist, leere die Felder
+      setNewCardFront('');
+      setNewCardBack('');
+    }
+  }, [editingCard]);
 
   const handleUpdateCard = async () => {
     if (!editingCard || !newCardFront.trim() || !newCardBack.trim()) {
@@ -3095,27 +3148,58 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  const handleDragStart = (card: Flashcard) => {
+  const handleDragStart = (e: React.DragEvent, card: Flashcard) => {
     setDraggedCard(card);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', card.id || '');
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = async (targetCard: Flashcard) => {
-    if (!draggedCard || !selectedDeck || draggedCard.id === targetCard.id) return;
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    
+    if (!draggedCard || !selectedDeck || !selectedDeck.cards) return;
 
     try {
-      // Hier würde die Logik für das Verschieben implementiert
-      // Aktuell nur visueller Effekt
+      const draggedIndex = selectedDeck.cards.findIndex(card => card.id === draggedCard.id);
+      if (draggedIndex === -1 || draggedIndex === dropIndex) return;
+
+      // Karten neu ordnen
+      const updatedCards = [...selectedDeck.cards];
+      const cardToMove = updatedCards[draggedIndex];
+      
+      // Karte aus der ursprünglichen Position entfernen
+      updatedCards.splice(draggedIndex, 1);
+      
+      // Karte an der neuen Position einfügen
+      updatedCards.splice(dropIndex, 0, cardToMove);
+      
+      // Reihenfolge aktualisieren
+      updatedCards.forEach((card, i) => {
+        card.order = i;
+      });
+
+      // Deck aktualisieren
+      const updatedDeck = { ...selectedDeck, cards: updatedCards };
+      setSelectedDeck(updatedDeck);
+
+      // Hier würde die API-Aktualisierung erfolgen
       setSnackbar({
         open: true,
-        message: 'Drag & Drop Funktionalität wird implementiert',
+        message: 'Kartenreihenfolge aktualisiert',
         severity: 'success'
       });
     } catch (error) {
       console.error('Fehler beim Verschieben der Karte:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Verschieben der Karte',
+        severity: 'error'
+      });
     } finally {
       setDraggedCard(null);
     }
@@ -5288,12 +5372,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             setNewCardFront('');
             setNewCardBack('');
           }}
-          maxWidth="md"
+          maxWidth={false}
           fullWidth
           PaperProps={{
             sx: {
-              minHeight: '70vh',
-              maxHeight: '80vh',
+              minHeight: '85vh',
+              maxHeight: '95vh',
+              width: '98vw',
+              maxWidth: '1600px',
               borderRadius: '12px',
               boxShadow: '0 16px 48px rgba(0,0,0,0.15)',
               background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.background}dd 100%)`,
@@ -5534,134 +5620,238 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     </Card>
                 ) : (
                   <Box>
+                    {/* Bearbeitungsbereich - wird angezeigt wenn editingCard gesetzt ist */}
+                    {editingCard && (
+                      <Box sx={{ 
+                        mb: 3, 
+                        p: 2, 
+                        background: `linear-gradient(135deg, ${colors.cardBg} 0%, ${colors.background} 100%)`,
+                        border: `2px solid ${colors.primary}`,
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
+                      }}>
+                        <Typography variant="h6" sx={{ 
+                          mb: 2, 
+                          color: colors.primary, 
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
+                        }}>
+                          ✏️ Karte bearbeiten
+                        </Typography>
+                        
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" sx={{
+                            fontWeight: '700',
+                            mb: 1,
+                            color: colors.primary,
+                            fontSize: '0.8rem'
+                          }}>
+                            Frage:
+                          </Typography>
+                          <RichTextEditor
+                            value={newCardFront}
+                            onChange={(value) => setNewCardFront(value)}
+                            placeholder="Frage eingeben..."
+                            rows={3}
+                            compact={false}
+                            key={`front-${editingCard?.id || 'new'}`}
+                          />
+                        </Box>
+                        
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" sx={{
+                            fontWeight: '600',
+                            mb: 1,
+                            color: colors.secondary,
+                            fontSize: '0.8rem'
+                          }}>
+                            Antwort:
+                          </Typography>
+                          <RichTextEditor
+                            value={newCardBack}
+                            onChange={(value) => setNewCardBack(value)}
+                            placeholder="Antwort eingeben..."
+                            rows={3}
+                            compact={false}
+                            key={`back-${editingCard?.id || 'new'}`}
+                          />
+                        </Box>
+                        
+                        {/* Aktions-Buttons */}
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => {
+                              setEditingCard(null);
+                              setNewCardFront('');
+                              setNewCardBack('');
+                            }}
+                            sx={{
+                              borderColor: colors.textSecondary,
+                              color: colors.textSecondary,
+                              borderRadius: '8px',
+                              px: 2,
+                              py: 0.8,
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            Abbrechen
+                          </Button>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            onClick={handleUpdateCard}
+                            disabled={!newCardFront.trim() || !newCardBack.trim()}
+                            sx={{
+                              background: colors.primary,
+                              borderRadius: '8px',
+                              px: 2,
+                              py: 0.8,
+                              fontSize: '0.8rem',
+                              '&:disabled': {
+                                opacity: 0.6
+                              }
+                            }}
+                          >
+                            Speichern
+                          </Button>
+                        </Box>
+                      </Box>
+                    )}
 
-
-                    {/* Karteikarten-Grid */}
-                    <Grid container spacing={1}>
+                    {/* Karteikarten-Liste mit Drag & Drop und Löschen-Funktion - Vier Spalten */}
+                    <Grid container spacing={2}>
                       {selectedDeck.cards.map((card, index) => (
-                        <Grid item xs={6} sm={4} md={3} lg={2} key={card.id || index}>
-                                                                            <Card 
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={card.id || index}>
+                          <Card 
                             sx={{ 
                               height: '100%',
+                              minHeight: '320px',
                               background: `linear-gradient(135deg, ${colors.cardBg} 0%, ${colors.background} 100%)`,
                               border: `1px solid ${colors.border}`,
-                              borderRadius: '8px',
+                              borderRadius: '12px',
                               boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                               transition: 'all 0.2s ease',
                               cursor: editingCard?.id === card.id ? 'default' : 'pointer',
                               '&:hover': {
                                 borderColor: colors.primary,
-                                transform: editingCard?.id === card.id ? 'none' : 'translateY(-2px)',
+                                transform: editingCard?.id === card.id ? 'none' : 'translateY(-1px)',
                                 boxShadow: editingCard?.id === card.id ? '0 2px 8px rgba(0,0,0,0.06)' : '0 4px 16px rgba(0,0,0,0.12)'
                               },
                               position: 'relative',
                               overflow: 'hidden'
                             }}
-                              draggable
-                              onDragStart={() => handleDragStart(card)}
-                              onDragOver={handleDragOver}
-                              onDrop={() => handleDrop(card)}
-                              onClick={() => {
-                                if (editingCard?.id !== card.id) {
-                                  handleEditCard(card);
-                                }
-                              }}
-                            >
-
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, card)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDrop={(e) => handleDrop(e, index)}
+                            onClick={() => {
+                              if (editingCard?.id !== card.id) {
+                                handleEditCard(card);
+                              }
+                            }}
+                          >
+                          {/* Header mit Nummerierung und Aktionen */}
+                          <Box sx={{ 
+                            p: 1.5, 
+                            pb: 0.5,
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            borderBottom: `1px solid ${colors.border}20`
+                          }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {/* Drag Handle */}
+                              <Box 
+                                sx={{ 
+                                  cursor: 'grab',
+                                  color: colors.textSecondary,
+                                  '&:hover': { color: colors.primary },
+                                  transition: 'color 0.2s ease',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                title="Karte verschieben"
+                              >
+                                <GripVertical size={18} />
+                              </Box>
+                              
+                              {/* Karten-Nummer */}
+                              <Chip 
+                                label={`Karte ${index + 1}`}
+                                size="small"
+                                sx={{
+                                  bgcolor: colors.primary + '20',
+                                  color: colors.primary,
+                                  fontWeight: '600',
+                                  fontSize: '0.7rem',
+                                  height: '24px'
+                                }}
+                              />
+                            </Box>
                             
-                            {/* Karten-Inhalt */}
-                            <CardContent sx={{ p: 0.75, pt: 0.75, pb: 0.1, px: 1 }}>
-                              {editingCard?.id === card.id ? (
-                                // Bearbeitungsmodus
-                                <Box sx={{ mb: 0.05 }}>
-                                  <Typography variant="subtitle2" sx={{ 
-                                    fontWeight: '700', 
-                                    mb: 0.05, 
-                                    color: colors.primary,
-                                    fontSize: '0.7rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 0.5
-                                  }}>
-                                    Frage:
-                                  </Typography>
-                                  <RichTextEditor
-                                    value={newCardFront}
-                                    onChange={(value) => setNewCardFront(value)}
-                                    placeholder="Frage eingeben..."
-                                    rows={2}
-                                    compact={true}
-                                  />
-                                  
-                                  <Typography variant="subtitle2" sx={{ 
-                                    fontWeight: '600', 
-                                    mb: 0.05, 
-                                    mt: 0.25,
-                                    color: colors.secondary,
-                                    fontSize: '0.7rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 0.5
-                                  }}>
-                                    Antwort:
-                                  </Typography>
-                                  <RichTextEditor
-                                    value={newCardBack}
-                                    onChange={(value) => setNewCardBack(value)}
-                                    placeholder="Antwort eingeben..."
-                                    rows={2}
-                                    compact={true}
-                                  />
-                                  
-                                  {/* Aktions-Buttons */}
-                                  <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, justifyContent: 'flex-end' }}>
-                                    <Button
-                                      variant="outlined"
-                                      size="small"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingCard(null);
-                                        setNewCardFront('');
-                                        setNewCardBack('');
-                                      }}
-                                      sx={{
-                                        borderColor: colors.textSecondary,
-                                        color: colors.textSecondary,
-                                        borderRadius: '4px',
-                                        px: 1,
-                                        py: 0.3,
-                                        fontSize: '0.6rem',
-                                        minWidth: 'auto'
-                                      }}
-                                    >
-                                      ✕
-                                    </Button>
-                                    <Button
-                                      variant="contained"
-                                      size="small"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleUpdateCard();
-                                      }}
-                                      disabled={!newCardFront.trim() || !newCardBack.trim()}
-                                      sx={{
-                                        background: colors.primary,
-                                        borderRadius: '4px',
-                                        px: 1,
-                                        py: 0.3,
-                                        fontSize: '0.6rem',
-                                        minWidth: 'auto',
-                                        '&:disabled': {
-                                          opacity: 0.6
-                                        }
-                                      }}
-                                    >
-                                      ✓
-                                    </Button>
-                                  </Box>
-                                </Box>
-                              ) : (
-                                // Anzeigemodus
+                            {/* Aktions-Buttons */}
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditCard(card);
+                                }}
+                                sx={{
+                                  borderColor: colors.accent1,
+                                  color: colors.accent1,
+                                  bgcolor: colors.accent1 + '10',
+                                  '&:hover': { 
+                                    bgcolor: colors.accent1 + '20',
+                                    transform: 'scale(1.05)'
+                                  },
+                                  transition: 'all 0.15s ease',
+                                  width: 28,
+                                  height: 28,
+                                  minWidth: 'auto',
+                                  p: 0
+                                }}
+                                title="Karte bearbeiten"
+                              >
+                                <EditIcon sx={{ fontSize: 14 }} />
+                              </Button>
+                              
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCard(card.id || index.toString());
+                                }}
+                                sx={{
+                                  borderColor: colors.error,
+                                  color: colors.error,
+                                  bgcolor: colors.error + '10',
+                                  '&:hover': { 
+                                    bgcolor: colors.error + '20',
+                                    transform: 'scale(1.05)'
+                                  },
+                                  transition: 'all 0.15s ease',
+                                  width: 28,
+                                  height: 28,
+                                  minWidth: 'auto',
+                                  p: 0
+                                }}
+                                title="Karte löschen"
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </Box>
+                          </Box>
+                          
+                          {/* Karten-Inhalt */}
+                          <CardContent sx={{ p: 1.5, pt: 0.5 }}>
+                                                              {/* Anzeigemodus - immer sichtbar */}
                                 <Box sx={{ mb: 0.1 }}>
                                   <Typography variant="subtitle2" sx={{ 
                                     fontWeight: '700', 
@@ -5674,17 +5864,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                   }}>
                                     Frage:
                                   </Typography>
-                                  <Typography variant="caption" sx={{ 
+                                  <Box sx={{ 
                                     mb: 0.1,
                                     fontSize: '0.65rem',
                                     lineHeight: 1.1,
                                     color: colors.textPrimary,
                                     minHeight: '1.1em',
                                     fontWeight: '500',
-                                    whiteSpace: 'pre-wrap'
-                                  }}>
-                                    {htmlToPlainText(card.front)}
-                                  </Typography>
+                                    '& p': { margin: '0 0 0.5em 0' },
+                                    '& p:last-child': { margin: 0 },
+                                    '& br': { lineHeight: '1.1em' }
+                                  }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: card.front || 'Keine Frage eingegeben'
+                                  }}
+                                  />
                                   
                                   <Typography variant="subtitle2" sx={{ 
                                     fontWeight: '600', 
@@ -5698,22 +5892,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                   }}>
                                     Antwort:
                                   </Typography>
-                                  <Typography variant="caption" sx={{ 
+                                  <Box sx={{ 
                                     mb: 0,
                                     fontSize: '0.65rem',
                                     lineHeight: 1.1,
                                     color: colors.textPrimary,
                                     minHeight: '1.1em',
                                     fontWeight: '500',
-                                    whiteSpace: 'pre-wrap'
-                                  }}>
-                                    {htmlToPlainText(card.back)}
-                                  </Typography>
+                                    '& p': { margin: '0 0 0.5em 0' },
+                                    '& p:last-child': { margin: 0 },
+                                    '& br': { lineHeight: '1.1em' }
+                                  }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: card.back || 'Keine Antwort eingegeben'
+                                  }}
+                                  />
                                 </Box>
-                              )}
                             </CardContent>
-
-
                           </Card>
                         </Grid>
                       ))}

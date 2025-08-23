@@ -44,16 +44,13 @@ export class PortManager {
    * Startet den Server mit automatischer Port-Findung
    */
   static async startServer(app: any, preferredPort?: number): Promise<{ server: Server; port: number }> {
-    const port = await this.findFreePort(preferredPort);
+    // Force the preferred port if specified
+    const port = preferredPort || await this.findFreePort();
     
     return new Promise((resolve, reject) => {
       const server = app.listen(port, () => {
         const actualPort = (server.address() as AddressInfo)?.port || port;
         console.log(`🚀 Server started successfully on port ${actualPort}`);
-        
-        if (port !== actualPort) {
-          console.log(`⚠️  Port ${port} was busy, using port ${actualPort} instead`);
-        }
         
         resolve({ server, port: actualPort });
       });

@@ -75,7 +75,7 @@ async function startServer() {
     // Cleanup ports before starting
     await PortManager.cleanupPorts();
     
-    // Start server with automatic port finding
+    // Start server on specific port 3001
     const { server, port } = await PortManager.startServer(app, 3001);
     
     console.log(`🎯 Server is running on port ${port}`);

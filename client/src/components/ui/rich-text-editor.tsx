@@ -69,6 +69,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [alignment, setAlignment] = useState<'left' | 'center' | 'right'>('left');
   const [isUploading, setIsUploading] = useState(false);
+  const [resizingImage, setResizingImage] = useState<HTMLImageElement | null>(null);
   
   const editorRef = useRef<HTMLDivElement>(null);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -220,6 +221,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showColorPicker]);
+
+  // Add image resize handlers after content updates
+  useEffect(() => {
+    if (editorRef.current) {
+      const images = editorRef.current.querySelectorAll('img');
+      images.forEach(img => {
+        makeImageResizable(img);
+      });
+    }
+  }, [value]);
 
   const execCommand = (command: string, value?: string) => {
     if (!editorRef.current) return;
@@ -410,6 +421,19 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         imgElement.style.maxWidth = '100%';
         imgElement.style.height = 'auto';
         imgElement.style.margin = '8px 0';
+        imgElement.style.cursor = 'nw-resize';
+        imgElement.style.position = 'relative';
+        
+        // Store original dimensions
+        imgElement.setAttribute('data-original-width', '0');
+        imgElement.setAttribute('data-original-height', '0');
+        
+        // Wait for image to load to get natural dimensions
+        imgElement.onload = () => {
+          imgElement.setAttribute('data-original-width', imgElement.naturalWidth.toString());
+          imgElement.setAttribute('data-original-height', imgElement.naturalHeight.toString());
+          makeImageResizable(imgElement);
+        };
         
         // Bild an der aktuellen Cursor-Position einfügen
         const selection = window.getSelection();
@@ -475,6 +499,97 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         isUpdatingRef.current = false;
       }, 100);
     }
+  };
+
+  const makeImageResizable = useCallback((img: HTMLImageElement) => {
+    // Remove existing handlers
+    img.onmousedown = null;
+    img.oncontextmenu = null;
+    
+    // Add resize functionality
+    img.onmousedown = (e) => {
+      if (e.button === 0) { // Left click only
+        e.preventDefault();
+        startImageResize(img, e);
+      }
+    };
+    
+    // Right click to delete
+    img.oncontextmenu = (e) => {
+      e.preventDefault();
+      if (window.confirm('Möchten Sie dieses Bild löschen?')) {
+        img.remove();
+        handleInput();
+      }
+    };
+    
+    // Add visual indicators
+    img.style.cursor = 'nw-resize';
+    img.style.position = 'relative';
+    
+    // Add resize handle
+    if (!img.querySelector('.resize-handle')) {
+      const handle = document.createElement('div');
+      handle.className = 'resize-handle';
+      handle.style.cssText = `
+        position: absolute;
+        bottom: -8px;
+        right: -8px;
+        width: 16px;
+        height: 16px;
+        background: ${appColors.primary};
+        border: 2px solid white;
+        border-radius: 50%;
+        cursor: nw-resize;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s;
+      `;
+      img.appendChild(handle);
+      
+      // Show handle on hover
+      img.onmouseenter = () => {
+        handle.style.opacity = '1';
+      };
+      img.onmouseleave = () => {
+        handle.style.opacity = '0';
+      };
+    }
+  }, [handleInput]);
+
+  const startImageResize = (img: HTMLImageElement, e: MouseEvent) => {
+    setResizingImage(img);
+    
+    const startX = e.clientX;
+    const startWidth = img.offsetWidth;
+    const aspectRatio = img.naturalWidth / img.naturalHeight;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!resizingImage) return;
+      
+      const deltaX = moveEvent.clientX - startX;
+      
+      // Calculate new dimensions maintaining aspect ratio
+      const newWidth = Math.max(50, startWidth + deltaX);
+      const newHeight = newWidth / aspectRatio;
+      
+      img.style.width = `${newWidth}px`;
+      img.style.height = `${newHeight}px`;
+      
+      // Update stored dimensions
+      img.setAttribute('data-original-width', img.naturalWidth.toString());
+      img.setAttribute('data-original-height', img.naturalHeight.toString());
+    };
+    
+    const handleMouseUp = () => {
+      setResizingImage(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      handleInput();
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -844,6 +959,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             content: `"${placeholder || ''}"`,
             color: appColors.textSecondary,
             pointerEvents: 'none'
+          },
+          '& img': {
+            cursor: 'nw-resize',
+            transition: 'all 0.2s ease',
+            border: `2px solid transparent`,
+            borderRadius: '4px',
+            '&:hover': {
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              transform: 'scale(1.02)',
+              borderColor: appColors.primary
+            }
           }
         }}
         suppressContentEditableWarning
