@@ -293,82 +293,65 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       // Force focus first
       editorRef.current.focus();
       
-      // Wait a moment for focus to take effect
-      setTimeout(() => {
-        const selection = window.getSelection();
+      const selection = window.getSelection();
+      
+      if (!selection) {
+        console.error('No selection object available');
+        return;
+      }
+      
+      console.log('Selection range count:', selection.rangeCount);
+      
+      // Create selection if none exists
+      if (selection.rangeCount === 0) {
+        console.log('Creating new selection range');
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current!);
+        range.collapse(false);
+        selection.addRange(range);
+      }
+      
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString();
+      const isCollapsed = range.collapsed;
+      
+      console.log('Selection info:', {
+        selectedText: `"${selectedText}"`,
+        length: selectedText.length,
+        collapsed: isCollapsed,
+        startContainer: range.startContainer.nodeName,
+        endContainer: range.endContainer.nodeName
+      });
+      
+      if (selectedText && selectedText.trim().length > 0) {
+        console.log('Processing selected text:', selectedText);
         
-        if (!selection) {
-          console.error('No selection object available');
-          return;
-        }
+        // Use execCommand for better compatibility
+        document.execCommand('foreColor', false, color);
         
-        console.log('Selection range count:', selection.rangeCount);
+        // Also apply as inline style for better persistence
+        const span = document.createElement('span');
+        span.style.color = color;
+        span.textContent = selectedText;
         
-        // Create selection if none exists
-        if (selection.rangeCount === 0) {
-          console.log('Creating new selection range');
-          const range = document.createRange();
-          range.selectNodeContents(editorRef.current!);
-          range.collapse(false);
-          selection.addRange(range);
-        }
+        range.deleteContents();
+        range.insertNode(span);
         
-        const range = selection.getRangeAt(0);
-        const selectedText = selection.toString();
-        const isCollapsed = range.collapsed;
+        setSelectedColor(color);
+        setShowColorPicker(false);
+        handleInput();
         
-        console.log('Selection info:', {
-          selectedText: `"${selectedText}"`,
-          length: selectedText.length,
-          collapsed: isCollapsed,
-          startContainer: range.startContainer.nodeName,
-          endContainer: range.endContainer.nodeName
-        });
+        console.log('SUCCESS: Applied color via DOM manipulation');
+      } else {
+        console.log('No text selected, setting color for future text');
+        setSelectedColor(color);
+        setShowColorPicker(false);
         
-        if (selectedText && selectedText.trim().length > 0) {
-          console.log('Processing selected text:', selectedText);
-          
-          // Method 1: Try direct innerHTML manipulation
-          const currentHTML = editorRef.current!.innerHTML;
-          console.log('Current HTML before:', currentHTML);
-          
-          // Simple approach - just wrap the selected text
-          if (currentHTML.includes(selectedText)) {
-            const newHTML = currentHTML.replace(selectedText, `<span style="color: ${color};">${selectedText}</span>`);
-            console.log('New HTML after:', newHTML);
-            
-            editorRef.current!.innerHTML = newHTML;
-            
-            // Trigger update
-            setSelectedColor(color);
-            setShowColorPicker(false);
-            handleInput();
-            
-            console.log('SUCCESS: Applied color via HTML replacement');
-          } else {
-            console.log('Text not found in HTML, trying DOM manipulation');
-            
-            // Method 2: DOM manipulation fallback
-            range.deleteContents();
-            const span = document.createElement('span');
-            span.style.color = color;
-            span.textContent = selectedText;
-            range.insertNode(span);
-            
-            setSelectedColor(color);
-            setShowColorPicker(false);
-            handleInput();
-            
-            console.log('SUCCESS: Applied color via DOM manipulation');
-          }
-        } else {
-          console.log('No text selected, skipping color application');
-          setSelectedColor(color);
-          setShowColorPicker(false);
-        }
-        
-        console.log('=== COLOR APPLICATION END ===');
-      }, 10);
+        // Set color for future text input
+        document.execCommand('foreColor', false, color);
+      }
+      
+      console.log('=== COLOR APPLICATION END ===');
       
     } catch (error) {
       console.error('FATAL ERROR in applyColor:', error);
@@ -389,6 +372,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList');
     } catch (error) {
       console.warn('Error creating list:', error);
+    }
+  };
+
+  const indentList = (direction: 'in' | 'out') => {
+    try {
+      if (direction === 'in') {
+        execCommand('indent');
+      } else {
+        execCommand('outdent');
+      }
+    } catch (error) {
+      console.warn('Error indenting list:', error);
     }
   };
 
@@ -527,34 +522,85 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     img.style.cursor = 'nw-resize';
     img.style.position = 'relative';
     
-    // Add resize handle
-    if (!img.querySelector('.resize-handle')) {
-      const handle = document.createElement('div');
-      handle.className = 'resize-handle';
-      handle.style.cssText = `
-        position: absolute;
-        bottom: -8px;
-        right: -8px;
-        width: 16px;
-        height: 16px;
-        background: ${appColors.primary};
-        border: 2px solid white;
-        border-radius: 50%;
-        cursor: nw-resize;
-        z-index: 1000;
-        opacity: 0;
-        transition: opacity 0.2s;
-      `;
-      img.appendChild(handle);
-      
-      // Show handle on hover
-      img.onmouseenter = () => {
-        handle.style.opacity = '1';
-      };
-      img.onmouseleave = () => {
-        handle.style.opacity = '0';
-      };
-    }
+    // Add resize handles at all corners
+    const corners = ['nw', 'ne', 'sw', 'se'];
+    corners.forEach(corner => {
+      if (!img.querySelector(`.resize-handle-${corner}`)) {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle-${corner}`;
+        
+        // Position based on corner
+        let top, left, cursor, right, bottom;
+        switch (corner) {
+          case 'nw':
+            top = '-8px';
+            left = '-8px';
+            right = 'auto';
+            bottom = 'auto';
+            cursor = 'nw-resize';
+            break;
+          case 'ne':
+            top = '-8px';
+            left = 'auto';
+            right = '-8px';
+            bottom = 'auto';
+            cursor = 'ne-resize';
+            break;
+          case 'sw':
+            top = 'auto';
+            left = '-8px';
+            right = 'auto';
+            bottom = '-8px';
+            cursor = 'sw-resize';
+            break;
+          case 'se':
+            top = 'auto';
+            left = 'auto';
+            right = '-8px';
+            bottom = '-8px';
+            cursor = 'se-resize';
+            break;
+        }
+        
+        handle.style.cssText = `
+          position: absolute;
+          top: ${top};
+          left: ${left};
+          right: ${right};
+          bottom: ${bottom};
+          width: 16px;
+          height: 16px;
+          background: ${appColors.primary};
+          border: 2px solid white;
+          border-radius: 50%;
+          cursor: ${cursor};
+          z-index: 1000;
+          opacity: 0;
+          transition: opacity 0.2s;
+        `;
+        
+        // Add corner-specific resize functionality
+        handle.onmousedown = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          startImageResizeFromCorner(img, e, corner);
+        };
+        
+        img.appendChild(handle);
+      }
+    });
+    
+    // Show all handles on hover
+    img.onmouseenter = () => {
+      img.querySelectorAll('[class^="resize-handle-"]').forEach(handle => {
+        (handle as HTMLElement).style.opacity = '1';
+      });
+    };
+    img.onmouseleave = () => {
+      img.querySelectorAll('[class^="resize-handle-"]').forEach(handle => {
+        (handle as HTMLElement).style.opacity = '0';
+      });
+    };
   }, [handleInput]);
 
   const startImageResize = (img: HTMLImageElement, e: MouseEvent) => {
@@ -592,6 +638,65 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  const startImageResizeFromCorner = (img: HTMLImageElement, e: MouseEvent, corner: string) => {
+    setResizingImage(img);
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = img.offsetWidth;
+    const startHeight = img.offsetHeight;
+    const aspectRatio = img.naturalWidth / img.naturalHeight;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!resizingImage) return;
+      
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      
+      let newWidth, newHeight;
+      
+      // Calculate new dimensions based on corner
+      switch (corner) {
+        case 'nw':
+          newWidth = Math.max(50, startWidth - deltaX);
+          newHeight = newWidth / aspectRatio;
+          break;
+        case 'ne':
+          newWidth = Math.max(50, startWidth + deltaX);
+          newHeight = newWidth / aspectRatio;
+          break;
+        case 'sw':
+          newWidth = Math.max(50, startWidth - deltaX);
+          newHeight = newWidth / aspectRatio;
+          break;
+        case 'se':
+          newWidth = Math.max(50, startWidth + deltaX);
+          newHeight = newWidth / aspectRatio;
+          break;
+        default:
+          newWidth = startWidth;
+          newHeight = startHeight;
+      }
+      
+      img.style.width = `${newWidth}px`;
+      img.style.height = `${newHeight}px`;
+      
+      // Update stored dimensions
+      img.setAttribute('data-original-width', img.naturalWidth.toString());
+      img.setAttribute('data-original-height', img.naturalHeight.toString());
+    };
+    
+    const handleMouseUp = () => {
+      setResizingImage(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      handleInput();
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -602,6 +707,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     } else if (e.key === 'u' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       applyStyle('underline');
+    } else if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault();
+      indentList('out');
+    } else if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      indentList('in');
     }
   };
 
@@ -760,6 +871,87 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             }}
           >
             <FormatListNumbered fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        
+        {/* List Indentation */}
+        <Tooltip title="Liste einrücken">
+          <IconButton
+            size="small"
+            onClick={() => indentList('in')}
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.textPrimary,
+              border: `1px solid ${appColors.border}`,
+              '&:hover': {
+                backgroundColor: `${appColors.primary}10`,
+                borderColor: appColors.primary
+              }
+            }}
+          >
+            <Box sx={{ 
+              width: 16, 
+              height: 16, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Box sx={{ 
+                width: 12, 
+                height: 2, 
+                backgroundColor: 'currentColor',
+                mb: 0.5
+              }} />
+              <Box sx={{ 
+                width: 8, 
+                height: 2, 
+                backgroundColor: 'currentColor',
+                ml: 1
+              }} />
+            </Box>
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Liste ausrücken">
+          <IconButton
+            size="small"
+            onClick={() => indentList('out')}
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.textPrimary,
+              border: `1px solid ${appColors.border}`,
+              '&:hover': {
+                backgroundColor: `${appColors.primary}10`,
+                borderColor: appColors.primary
+              }
+            }}
+          >
+            <Box sx={{ 
+              width: 16, 
+              height: 16, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Box sx={{ 
+                width: 12, 
+                height: 2, 
+                backgroundColor: 'currentColor',
+                mb: 0.5
+              }} />
+              <Box sx={{ 
+                width: 8, 
+                height: 2, 
+                backgroundColor: 'currentColor',
+                mr: 1
+              }} />
+            </Box>
           </IconButton>
         </Tooltip>
         
