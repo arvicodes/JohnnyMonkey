@@ -343,16 +343,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Lade Karteikarten-Decks aus der Datenbank
   const fetchFlashcardDecks = async () => {
     try {
-      console.log('Lade Karteikarten-Decks...');
+  
       const response = await fetch(`/api/flashcards/teacher/${userId}`);
       
       if (response.ok) {
         const data = await response.json();
         const decks = data.decks || [];
-        console.log(`Erfolgreich ${decks.length} Karteikarten-Decks geladen:`, decks);
+
         
         setFlashcardDecks(decks);
-        console.log('Alle Decks mit Karten geladen:', decks);
+
       } else {
         console.error(`HTTP-Fehler beim Laden der Karteikarten-Decks: ${response.status} ${response.statusText}`);
       }
@@ -365,7 +365,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const fetchFlashcardAssignments = async () => {
     try {
       // Die Assignments sind bereits in den Decks enthalten, da wir sie mit den Decks laden
-      console.log('Flashcard-Assignments sind bereits in den Decks enthalten');
+      
     } catch (error) {
       console.error('Fehler beim Laden der Flashcard-Assignments:', error);
     }
@@ -473,7 +473,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Lade Daten beim ersten Laden und wenn sich userId ändert
   useEffect(() => {
     if (userId) {
-      console.log('Loading flashcard decks for userId:', userId);
+  
       fetchFlashcardDecks();
     }
   }, [userId]);
@@ -2494,8 +2494,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Verarbeitungshistorie beim Laden der Dateien prüfen
   useEffect(() => {
-    console.log('🔍 useEffect triggered, assignedFolderContents:', Object.keys(assignedFolderContents));
-    
     const loadDocumentHistory = async () => {
       if (Object.keys(assignedFolderContents).length > 0) {
         // Sammle alle Cards-Dateien aus allen Ordnern
@@ -2507,12 +2505,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           allCardsFiles.push(...cardsFiles);
         });
         
-        console.log('🔍 Found Cards files:', allCardsFiles.length);
-        
         // Lade Verarbeitungshistorie für alle Cards-Dateien
         for (const cardsFile of allCardsFiles) {
           const history = await fetchDocumentProcessingHistory(cardsFile.path);
-          console.log('🔍 History for', cardsFile.name, ':', history);
           setDocumentHistoryMap(prev => ({
             ...prev,
             [cardsFile.path]: history
@@ -2531,16 +2526,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen .../1. Ganz verschiedene Arten von Zahlen/Cards Didaktik_Bruchrechnung_Didaktikfokus.docx'
       ];
       
-      for (const filePath of knownCardsFiles) {
-        const history = await fetchDocumentProcessingHistory(filePath);
-        if (history.length > 0) {
-          console.log('🔍 Loading known Cards history for:', filePath, history);
-          setDocumentHistoryMap(prev => ({
-            ...prev,
-            [filePath]: history
-          }));
+              for (const filePath of knownCardsFiles) {
+          const history = await fetchDocumentProcessingHistory(filePath);
+          if (history.length > 0) {
+            setDocumentHistoryMap(prev => ({
+              ...prev,
+              [filePath]: history
+            }));
+          }
         }
-      }
     };
     
     loadKnownCardsHistory();

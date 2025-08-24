@@ -98,7 +98,6 @@ interface Note {
 }
 
 const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ teacherId }, ref) => {
-  console.log('MaterialCreator received teacherId:', teacherId, 'type:', typeof teacherId);
   const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -343,8 +342,6 @@ const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ 
 
   // Expose the function to parent components via ref
   useImperativeHandle(ref, () => {
-    console.log('MaterialCreator: useImperativeHandle called, exposing openQuizWithSource method');
-    console.log('handleQuizDialogOpenWithSource function:', handleQuizDialogOpenWithSource);
     return {
       openQuizWithSource: handleQuizDialogOpenWithSource,
     };
@@ -362,27 +359,22 @@ const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ 
 
   const handleCreateQuiz = async () => {
     try {
-      console.log('Creating quiz with teacherId:', teacherId);
-      
       let sourceFile: string;
       
       // Prüfe ob wir einen vorausgefüllten Pfad haben oder eine neue Datei hochladen müssen
       if (sourceFilePath) {
         // Verwende den vorausgefüllten Pfad
         sourceFile = sourceFilePath;
-        console.log('Using pre-filled source file path:', sourceFile);
       } else if (uploadedWordFile) {
         // Neue Datei hochladen
         const formData = new FormData();
         formData.append('wordFile', uploadedWordFile);
 
-        console.log('Uploading Word file:', uploadedWordFile.name);
         const uploadResponse = await fetch('/api/materials/word-upload', {
           method: 'POST',
           body: formData
         });
 
-        console.log('Upload response status:', uploadResponse.status);
         if (!uploadResponse.ok) {
           const error = await uploadResponse.json();
           console.error('Upload error:', error);
@@ -391,7 +383,6 @@ const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ 
         }
 
         const uploadResult = await uploadResponse.json();
-        console.log('Upload result:', uploadResult);
         sourceFile = uploadResult.sourceFile;
       } else {
         showSnackbar('Bitte wählen Sie eine Datei aus (.docx, .doc, oder .txt)', 'error');
@@ -411,17 +402,14 @@ const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ 
         gradeSchemaId: selectedGradeSchema || null
       };
       
-      console.log('Creating quiz with data:', quizData);
       const quizResponse = await fetch('/api/quizzes/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(quizData)
       });
 
-      console.log('Quiz response status:', quizResponse.status);
-              if (quizResponse.ok) {
-          const quizResult = await quizResponse.json();
-          console.log('Quiz created successfully:', quizResult);
+      if (quizResponse.ok) {
+        const quizResult = await quizResponse.json();
         showSnackbar('Quiz erfolgreich erstellt', 'success');
         handleQuizDialogClose();
         fetchQuizzes(); // Aktualisiere die Quiz-Liste
