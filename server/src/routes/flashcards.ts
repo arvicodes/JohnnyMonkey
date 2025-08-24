@@ -13,7 +13,8 @@ import {
   deleteCard,
   createAssignment,
   deleteAssignment,
-  getFlashcardAssignments
+  getFlashcardAssignments,
+  getDocumentProcessingHistory
 } from '../controllers/FlashcardController';
 
 const router = express.Router();
@@ -45,6 +46,9 @@ router.delete('/cards/:cardId', deleteCard);
 router.post('/assignments', createAssignment);
 router.get('/assignments', getFlashcardAssignments);
 router.delete('/assignments/:assignmentId', deleteAssignment);
+
+// Document processing history
+router.get('/document-history', getDocumentProcessingHistory);
 
 // Backward compatibility routes
 router.get('/:id', getFlashcardDeck);

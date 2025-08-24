@@ -146,6 +146,18 @@ interface FlashcardAssignment {
   group: LearningGroup;
 }
 
+interface DocumentProcessingHistory {
+  id: string;
+  sourceFile: string;
+  fileName: string;
+  teacherId: string;
+  action: 'created_deck' | 'added_to_deck';
+  deckId: string;
+  deckTitle: string;
+  cardsCount: number;
+  processedAt: string;
+}
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -188,7 +200,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const materialCreatorRef = useRef<any>(null);
   
   // Debug: Log userId
-  console.log('TeacherDashboard received userId:', userId);
+  
   const [groups, setGroups] = useState<LearningGroup[]>([]);
   const [subjectTabValue, setSubjectTabValue] = useState(0);
   const [blockTabValue, setBlockTabValue] = useState(0);
@@ -216,14 +228,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     });
   }, [groups]);
 
-  // Debug: Überprüfe den MaterialCreator-Ref
-  useEffect(() => {
-    console.log('MaterialCreator ref status:', {
-      ref: materialCreatorRef.current,
-      hasRef: !!materialCreatorRef.current,
-      hasOpenQuizWithSource: materialCreatorRef.current?.openQuizWithSource
-    });
-  }, [materialCreatorRef.current]);
+
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !(prev[groupId] ?? false) }));
@@ -289,6 +294,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [newCardBack, setNewCardBack] = useState('');
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [draggedCard, setDraggedCard] = useState<Flashcard | null>(null);
+
+  // Document Processing History States
+  const [documentHistoryMap, setDocumentHistoryMap] = useState<{[key: string]: DocumentProcessingHistory[]}>({});
 
 
   // Menü pro Schüler
@@ -360,6 +368,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       console.log('Flashcard-Assignments sind bereits in den Decks enthalten');
     } catch (error) {
       console.error('Fehler beim Laden der Flashcard-Assignments:', error);
+    }
+  };
+
+  // Lade Verarbeitungshistorie für ein Dokument
+  const fetchDocumentProcessingHistory = async (sourceFile: string): Promise<DocumentProcessingHistory[]> => {
+    try {
+      const response = await fetch(`/api/flashcards/document-history?teacherId=${userId}&sourceFile=${encodeURIComponent(sourceFile)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.history || [];
+      } else {
+        console.error(`HTTP-Fehler beim Laden der Verarbeitungshistorie: ${response.status} ${response.statusText}`);
+        return [];
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Verarbeitungshistorie:', error);
+      return [];
     }
   };
 
@@ -629,8 +655,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true`);
       if (response.ok) {
         const content = await response.json();
-        console.log('API Response for folder:', folderPath, content); // Debug-Ausgabe
-        
         let items: any[] = [];
         if (content.root) {
           items = content.root.children || [];
@@ -640,12 +664,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           items = content.items;
         }
         
-        console.log('Processed items:', items); // Debug-Ausgabe
-        
         setAssignedFolderContents(prev => ({
           ...prev,
           [`${groupId}:${folderPath}`]: items
         }));
+
+        // Verarbeitungshistorie wird jetzt im useEffect geladen
       }
     } catch (error) {
       console.error('Fehler beim Laden des Ordnerinhalts:', error);
@@ -1393,11 +1417,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     
-    console.log('Rendering folder preview for:', groupId, folderPath, 'Items:', items, 'Loading:', isLoading); // Debug-Ausgabe
-    
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
-      console.log(`Rendering item: ${item.name}, type: ${item.type}, level: ${level}`); // Debug
       
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -1414,50 +1435,50 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           icon = '📚'; // Bücher für Hauptthemen
           color = '#9c27b0'; // Lila
           fontWeight = 600;
-          console.log(`Level 0: ${item.name} -> Lila, Icon: ${icon}`); // Debug
+
         } else if (level === 1) {
           // Level 1: Second-Level (wie "1. Grundlagen", "Grundlagen")
           icon = '📖'; // Buch für Unterkategorien
           color = '#1976d2'; // Blau
           fontWeight = 500;
-          console.log(`Level 1: ${item.name} -> Blau, Icon: ${icon}`); // Debug
+
         } else if (level === 2) {
           // Level 2: Third-Level (wie "1. Blick in die Vergangenheit", "2. Technischer Aufbau")
           icon = '📚'; // Grüner Bücherstapel
           color = '#2e7d32'; // Grün
           fontWeight = 500;
-          console.log(`Level 2: ${item.name} -> Grün, Icon: ${icon}`); // Debug
+
         } else if (level === 3) {
           // Level 3: Fourth-Level und weitere Ebenen
           icon = '📁'; // Standard Ordner
           color = '#666'; // Grau
           fontWeight = 400;
-          console.log(`Level 3: ${item.name} -> Grau, Icon: ${icon}`); // Debug
+
         } else {
           // Weitere Ebenen
           icon = '📁'; // Standard Ordner
           color = '#666'; // Grau
           fontWeight = 400;
-          console.log(`Level ${level}: ${item.name} -> Grau, Icon: ${icon}`); // Debug
+
         }
       } else {
         // Dateien
         icon = '📄'; // Dokument
         color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
         fontWeight = 400;
-        console.log(`File: ${item.name} -> Hellblau, Icon: ${icon}`); // Debug
+
         
         // Prüfe ob es sich um Quiz- oder Cards-Dateien handelt
         if (item.name.startsWith('Quiz')) {
           showCreateIcon = true;
           createIcon = '🎯';
           createTooltip = 'Quiz erstellen';
-          console.log('Quiz-Datei erkannt:', item.name, 'showCreateIcon:', showCreateIcon);
+
         } else if (item.name.startsWith('Cards')) {
           showCreateIcon = true;
           createIcon = '🗂️';
           createTooltip = 'Karteikarten erstellen';
-          console.log('Cards-Datei erkannt:', item.name, 'showCreateIcon:', showCreateIcon);
+
         }
       }
       
@@ -1488,26 +1509,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             }}
             onClick={() => {
               if (item.type === 'file') {
-                console.log('File clicked:', item);
+  
                 handleFileClick(item);
               }
             }}
             >
-              {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
-              {item.type === 'directory' ? (
-                level === 0 ? (
-                  <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
-                ) : level === 1 ? (
-                  <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
-                ) : level === 2 ? (
-                  <span style={{ color: '#2e7d32' }}>▼</span> // Grün für Level 2
-                ) : level === 3 ? (
-                  <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
-                ) : (
-                  <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
-                )
-              ) : null} {/* Kein Dreieck für Dateien */}
-              {icon} {item.name}
+                                      {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+            {item.type === 'directory' ? (
+              level === 0 ? (
+                <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
+              ) : level === 1 ? (
+                <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
+              ) : level === 2 ? (
+                <span style={{ color: '#2e7d32' }}>▼</span> // Grün für Level 2
+              ) : level === 3 ? (
+                <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
+              ) : (
+                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
+              )
+            ) : null} {/* Kein Dreieck für Dateien */}
+            {icon} {item.name}
+            
+
             </Typography>
             
             {/* Erstellungs-Icons für Quiz- und Cards-Dateien */}
@@ -1527,19 +1550,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               }}
               title={createTooltip}
               onClick={() => {
-                console.log('Quiz-Icon clicked for:', item.name, 'Path:', item.path);
                 if (item.name.startsWith('Quiz')) {
                   // Öffne das Quiz-Erstellungsmodal direkt im Dashboard
-                  console.log('Opening quiz dialog for:', item.path, item.name);
                   handleQuizDialogOpen(item.path, item.name);
                 } else if (item.name.startsWith('Cards')) {
                   // Öffne das Karteikarten-Erstellungsmodal
-                  console.log('Opening flashcard dialog for:', item.path, item.name);
                   handleFlashcardDialogOpen(item.path, item.name);
                 }
               }}
               >
                 {createIcon}
+              </Typography>
+            )}
+
+            {/* Verarbeitungshistorie für Cards-Dateien als grünes Icon rechts neben dem Karteikarten-Icon */}
+            {item.type === 'file' && item.name.startsWith('Cards') && documentHistoryMap[item.path] && documentHistoryMap[item.path].length > 0 && (
+              <Typography variant="caption" sx={{ 
+                color: '#4caf50',
+                fontSize: '0.7rem',
+                ml: 0.2,
+                cursor: 'pointer',
+                userSelect: 'none',
+                '&:hover': {
+                  opacity: 0.8
+                }
+              }}
+              title={documentHistoryMap[item.path].map((history, index) => 
+                `${history.action === 'created_deck' ? '✅' : '➕'} ${history.deckTitle} (${history.cardsCount} Karten) - ${new Date(history.processedAt).toLocaleDateString('de-DE')}`
+              ).join('\n')}
+              onClick={() => {
+                const historyText = documentHistoryMap[item.path].map((history, index) => 
+                  `${history.action === 'created_deck' ? '✅' : '➕'} ${history.deckTitle} (${history.cardsCount} Karten) - ${new Date(history.processedAt).toLocaleDateString('de-DE')}`
+                ).join('\n');
+                
+                alert(`Verarbeitungshistorie für ${item.name}:\n\n${historyText}`);
+              }}
+              >
+                ✅
               </Typography>
             )}
             
@@ -2444,6 +2491,60 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       checkAllQuizStatuses();
     }
   }, [assignedFolderContents]);
+
+  // Verarbeitungshistorie beim Laden der Dateien prüfen
+  useEffect(() => {
+    console.log('🔍 useEffect triggered, assignedFolderContents:', Object.keys(assignedFolderContents));
+    
+    const loadDocumentHistory = async () => {
+      if (Object.keys(assignedFolderContents).length > 0) {
+        // Sammle alle Cards-Dateien aus allen Ordnern
+        const allCardsFiles: any[] = [];
+        Object.entries(assignedFolderContents).forEach(([key, items]) => {
+          const cardsFiles = items.filter((item: any) => 
+            item.type === 'file' && item.name.startsWith('Cards')
+          );
+          allCardsFiles.push(...cardsFiles);
+        });
+        
+        console.log('🔍 Found Cards files:', allCardsFiles.length);
+        
+        // Lade Verarbeitungshistorie für alle Cards-Dateien
+        for (const cardsFile of allCardsFiles) {
+          const history = await fetchDocumentProcessingHistory(cardsFile.path);
+          console.log('🔍 History for', cardsFile.name, ':', history);
+          setDocumentHistoryMap(prev => ({
+            ...prev,
+            [cardsFile.path]: history
+          }));
+        }
+      }
+    };
+    
+    loadDocumentHistory();
+  }, [assignedFolderContents]);
+
+  // Zusätzlich: Lade Verarbeitungshistorie für bekannte Cards-Dateien, auch wenn der Ordner noch nicht geladen ist
+  useEffect(() => {
+    const loadKnownCardsHistory = async () => {
+      const knownCardsFiles = [
+        '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen .../1. Ganz verschiedene Arten von Zahlen/Cards Didaktik_Bruchrechnung_Didaktikfokus.docx'
+      ];
+      
+      for (const filePath of knownCardsFiles) {
+        const history = await fetchDocumentProcessingHistory(filePath);
+        if (history.length > 0) {
+          console.log('🔍 Loading known Cards history for:', filePath, history);
+          setDocumentHistoryMap(prev => ({
+            ...prev,
+            [filePath]: history
+          }));
+        }
+      }
+    };
+    
+    loadKnownCardsHistory();
+  }, []); // Nur einmal beim Laden der Komponente
 
   // Quiz starten
   const handleStartQuiz = async (quizId: string) => {

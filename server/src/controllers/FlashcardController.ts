@@ -898,6 +898,19 @@ export const createFlashcardDeckFromWord = async (req: Request, res: Response) =
       }
     }
 
+    // Track document processing
+    await prisma.documentProcessingHistory.create({
+      data: {
+        sourceFile,
+        fileName: sourceFile.split('/').pop() || sourceFile,
+        teacherId,
+        action: 'created_deck',
+        deckId: deck.id,
+        deckTitle: deck.title,
+        cardsCount: createdCards.length
+      }
+    });
+
     // Return the created deck with cards
     const result = await prisma.flashcardDeck.findUnique({
       where: { id: deck.id },
@@ -998,6 +1011,19 @@ export const addFlashcardsToExistingDeck = async (req: Request, res: Response) =
 
     console.log(`Added ${createdCards.length} flashcards to existing deck`);
 
+    // Track document processing
+    await prisma.documentProcessingHistory.create({
+      data: {
+        sourceFile,
+        fileName: sourceFile.split('/').pop() || sourceFile,
+        teacherId,
+        action: 'added_to_deck',
+        deckId: deckId,
+        deckTitle: existingDeck.title,
+        cardsCount: createdCards.length
+      }
+    });
+
     // Return updated deck
     const result = await prisma.flashcardDeck.findUnique({
       where: { id: deckId },
@@ -1095,5 +1121,29 @@ export const getFlashcardDeck = async (req: Request, res: Response) => {
     res.status(500).json({ 
       error: `Fehler beim Abrufen des Karteikarten-Decks: ${error instanceof Error ? error.message : String(error)}` 
     });
+  }
+};
+
+// Neue Funktion: Verarbeitungshistorie für ein Dokument abrufen
+export const getDocumentProcessingHistory = async (req: Request, res: Response) => {
+  try {
+    const { teacherId, sourceFile } = req.query;
+    
+    if (!teacherId || !sourceFile) {
+      return res.status(400).json({ error: 'Lehrer-ID und Quelldatei sind erforderlich' });
+    }
+
+    const history = await prisma.documentProcessingHistory.findMany({
+      where: {
+        teacherId: teacherId as string,
+        sourceFile: sourceFile as string
+      },
+      orderBy: { processedAt: 'desc' }
+    });
+
+    res.json({ history });
+  } catch (error) {
+    console.error('Error fetching document processing history:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
   }
 };

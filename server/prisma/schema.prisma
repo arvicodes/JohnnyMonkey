@@ -26,6 +26,7 @@ model User {
   fileSystemPaths FileSystemPath[]
   flashcardDecks FlashcardDeck[]
   flashcardProgress FlashcardProgress[]
+  documentProcessingHistory DocumentProcessingHistory[]
 }
 
 model GradingSchema {
@@ -327,4 +328,21 @@ model FlashcardProgress {
   student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
   
   @@unique([cardId, studentId])
+}
+
+// Tracking für verarbeitete Word-Dokumente
+model DocumentProcessingHistory {
+  id          String       @id @default(uuid())
+  sourceFile  String       // Vollständiger Dateipfad
+  fileName    String       // Dateiname
+  teacherId   String
+  action      String       // "created_deck" oder "added_to_deck"
+  deckId      String       // ID des betroffenen Decks
+  deckTitle   String       // Titel des Decks
+  cardsCount  Int          // Anzahl der hinzugefügten Karten
+  processedAt DateTime     @default(now())
+  
+  teacher     User         @relation(fields: [teacherId], references: [id])
+  
+  @@unique([sourceFile, teacherId, action, deckId])
 }

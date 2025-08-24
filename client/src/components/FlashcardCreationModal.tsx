@@ -33,10 +33,7 @@ interface FlashcardCreationModalProps {
   onSuccess: () => void;
 }
 
-interface Subject {
-  id: string;
-  name: string;
-}
+
 
 interface LearningGroup {
   id: string;
@@ -66,14 +63,12 @@ export const FlashcardCreationModal: React.FC<FlashcardCreationModalProps> = ({
   // New deck form
   const [newDeckTitle, setNewDeckTitle] = useState('');
   const [newDeckDescription, setNewDeckDescription] = useState('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [selectedLearningGroupIds, setSelectedLearningGroupIds] = useState<string[]>([]);
   
   // Existing deck form
   const [selectedDeckId, setSelectedDeckId] = useState('');
   
   // Data
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [learningGroups, setLearningGroups] = useState<LearningGroup[]>([]);
   const [existingDecks, setExistingDecks] = useState<FlashcardDeck[]>([]);
 
@@ -88,13 +83,6 @@ export const FlashcardCreationModal: React.FC<FlashcardCreationModalProps> = ({
 
   const loadData = async () => {
     try {
-      // Load subjects
-      const subjectsResponse = await fetch(`/api/subjects?teacherId=${teacherId}`);
-      if (subjectsResponse.ok) {
-        const subjectsData = await subjectsResponse.json();
-        setSubjects(subjectsData || []);
-      }
-
       // Load learning groups
       const groupsResponse = await fetch(`/api/learning-groups/teacher/${teacherId}`);
       if (groupsResponse.ok) {
@@ -134,7 +122,6 @@ export const FlashcardCreationModal: React.FC<FlashcardCreationModalProps> = ({
           sourceFile,
           title: newDeckTitle.trim(),
           description: newDeckDescription.trim() || undefined,
-          subjectId: selectedSubjectId || undefined,
           learningGroupIds: selectedLearningGroupIds,
           isPublic: false
         }),
@@ -289,23 +276,7 @@ export const FlashcardCreationModal: React.FC<FlashcardCreationModalProps> = ({
               helperText="Zusätzliche Beschreibung für das Deck"
             />
 
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Fach (optional)</InputLabel>
-              <Select
-                value={selectedSubjectId}
-                onChange={(e) => setSelectedSubjectId(e.target.value)}
-                label="Fach (optional)"
-              >
-                <MenuItem value="">
-                  <em>Kein Fach zuordnen</em>
-                </MenuItem>
-                {subjects.map((subject) => (
-                  <MenuItem key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+
 
             <FormControl fullWidth margin="normal">
               <InputLabel>Lerngruppen zuordnen (optional)</InputLabel>
