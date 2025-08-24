@@ -194,9 +194,13 @@ export const getDeckCards = async (req: AuthenticatedRequest, res: Response) => 
 
 export const updateDeck = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { deckId } = req.params;
+    const { id: deckId } = req.params;
     const { title, description, subjectId, isPublic, teacherId } = req.body;
     const userId = teacherId;
+
+    if (!deckId) {
+      return res.status(400).json({ error: 'Deck-ID ist erforderlich' });
+    }
 
     // Prüfen ob der Benutzer der Besitzer ist
     const existingDeck = await prisma.flashcardDeck.findUnique({
