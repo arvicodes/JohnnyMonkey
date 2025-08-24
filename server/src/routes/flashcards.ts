@@ -1,55 +1,27 @@
 import express from 'express';
 import {
-  // Deck Controller
-  createDeck,
-  getDecks,
-  getDeck,
-  getDeckCards,
-  updateDeck,
-  deleteDeck,
-  
-  // Card Controller
-  createCard,
-  updateCard,
-  deleteCard,
-  
-  // Progress Controller
-  getStudentProgress,
-  submitCardReview,
-  getDueCards,
-  
-  // Assignment Controller
-  assignDeckToGroup,
-  getAssignments,
-  removeDeckAssignment
+  createFlashcardDeckFromWord,
+  addFlashcardsToExistingDeck,
+  getFlashcardDecks,
+  getFlashcardDeck,
+  deleteDeck
 } from '../controllers/FlashcardController';
 
 const router = express.Router();
 
-// Middleware für Authentifizierung (wird später hinzugefügt)
-// router.use(authMiddleware);
+// Create new flashcard deck from Word document
+router.post('/create-from-word', createFlashcardDeckFromWord);
 
-// FlashcardDeck Routes
-router.post('/decks', createDeck);
-router.get('/decks', getDecks);
-router.get('/decks/:deckId', getDeck);
-router.get('/decks/:deckId/cards', getDeckCards);
-router.put('/decks/:deckId', updateDeck);
-router.delete('/decks/:deckId', deleteDeck);
+// Add flashcards to existing deck
+router.post('/add-to-existing', addFlashcardsToExistingDeck);
 
-// Flashcard Routes
-router.post('/cards', createCard);
-router.put('/cards/:cardId', updateCard);
-router.delete('/cards/:cardId', deleteCard);
+// Get all flashcard decks for a teacher
+router.get('/teacher/:teacherId', getFlashcardDecks);
 
-// Progress Routes
-router.get('/decks/:deckId/progress', getStudentProgress);
-router.post('/cards/:cardId/review', submitCardReview);
-router.get('/decks/:deckId/due-cards', getDueCards);
+// Get specific flashcard deck
+router.get('/:id', getFlashcardDeck);
 
-// Assignment Routes
-router.post('/assignments', assignDeckToGroup);
-router.get('/assignments', getAssignments);
-router.delete('/assignments/:assignmentId', removeDeckAssignment);
+// Delete flashcard deck
+router.delete('/:id', deleteDeck);
 
 export default router;

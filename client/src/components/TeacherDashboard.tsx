@@ -67,6 +67,7 @@ import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
 import FolderAssignmentSelector from './FolderAssignmentSelector';
 import { RichTextEditor } from './ui/rich-text-editor';
+import { FlashcardCreationModal } from './FlashcardCreationModal';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -335,30 +336,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const fetchFlashcardDecks = async () => {
     try {
       console.log('Lade Karteikarten-Decks...');
-      const response = await fetch(`/api/flashcards/decks?teacherId=${userId}`);
+      const response = await fetch(`/api/flashcards/teacher/${userId}`);
       
       if (response.ok) {
-        const decks = await response.json();
+        const data = await response.json();
+        const decks = data.decks || [];
         console.log(`Erfolgreich ${decks.length} Karteikarten-Decks geladen:`, decks);
         
-        // Lade für jedes Deck auch die Karten
-        const decksWithCards = await Promise.all(
-          decks.map(async (deck: FlashcardDeck) => {
-            if (deck.id) {
-              try {
-                const cards = await fetchDeckCards(deck.id);
-                return { ...deck, cards: cards };
-              } catch (error) {
-                console.warn(`Konnte Karten für Deck ${deck.title} nicht laden:`, error);
-                return { ...deck, cards: [] };
-              }
-            }
-            return { ...deck, cards: [] };
-          })
-        );
-        
-        setFlashcardDecks(decksWithCards);
-        console.log('Alle Decks mit Karten geladen:', decksWithCards);
+        setFlashcardDecks(decks);
+        console.log('Alle Decks mit Karten geladen:', decks);
       } else {
         console.error(`HTTP-Fehler beim Laden der Karteikarten-Decks: ${response.status} ${response.statusText}`);
       }
@@ -370,16 +356,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Lade Flashcard-Assignments für alle Decks
   const fetchFlashcardAssignments = async () => {
     try {
-      const response = await fetch(`/api/flashcards/assignments?teacherId=${userId}`);
-      if (response.ok) {
-        const assignments = await response.json();
-        
-        // Füge Assignments zu den entsprechenden Decks hinzu
-        setFlashcardDecks(prev => prev.map(deck => ({
-          ...deck,
-          assignments: assignments.filter((a: any) => a.deckId === deck.id)
-        })));
-      }
+      // Die Assignments sind bereits in den Decks enthalten, da wir sie mit den Decks laden
+      console.log('Flashcard-Assignments sind bereits in den Decks enthalten');
     } catch (error) {
       console.error('Fehler beim Laden der Flashcard-Assignments:', error);
     }
@@ -389,20 +367,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const fetchDeckCards = async (deckId: string) => {
     try {
       console.log(`Lade Karten für Deck ${deckId}...`);
-      const response = await fetch(`/api/flashcards/decks/${deckId}/cards`);
+      const response = await fetch(`/api/flashcards/${deckId}`);
       
       if (response.ok) {
-        const cards = await response.json();
-        console.log(`Erfolgreich ${cards.length} Karten geladen:`, cards);
+        const data = await response.json();
+        const deck = data.deck;
+        console.log(`Erfolgreich Deck mit ${deck.cards.length} Karten geladen:`, deck);
         
         // Aktualisiere das Deck mit den Karten
-        setFlashcardDecks(prev => prev.map(deck => 
-          deck.id === deckId 
-            ? { ...deck, cards: cards }
-            : deck
+        setFlashcardDecks(prev => prev.map(d => 
+          d.id === deckId 
+            ? deck
+            : d
         ));
         
-        return cards;
+        return deck.cards || [];
       } else {
         console.error(`HTTP-Fehler beim Laden der Karten: ${response.status} ${response.statusText}`);
         return [];
@@ -422,70 +401,34 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     };
 
     try {
-      // 1. Lösche alle Gruppen-Zuweisungen
-      if (deck.assignments && deck.assignments.length > 0) {
-        console.log(`Lösche ${deck.assignments.length} Gruppen-Zuweisungen...`);
-        for (const assignment of deck.assignments) {
-          try {
-            const deleteResponse = await fetch(`/api/flashcards/assignments/${assignment.id}`, {
-              method: 'DELETE',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                teacherId: userId
-              })
-            });
-            if (deleteResponse.ok) {
-              results.assignmentsDeleted++;
-              console.log(`✓ Gruppen-Zuweisung ${assignment.id} gelöscht`);
-            } else {
-              const errorMsg = `Gruppen-Zuweisung ${assignment.id}: ${deleteResponse.status}`;
-              results.errors.push(errorMsg);
-              console.warn(`✗ ${errorMsg}`);
-            }
-          } catch (assignmentError) {
-            const errorMsg = `Gruppen-Zuweisung ${assignment.id}: ${assignmentError}`;
-            results.errors.push(errorMsg);
-            console.warn(`✗ ${errorMsg}`);
-          }
-        }
+      // Da wir das gesamte Deck löschen, werden alle verknüpften Daten automatisch gelöscht
+      // (durch die Cascade-Delete-Regeln in der Datenbank)
+      console.log(`Lösche Deck "${deck.title}" mit ${deck.cards?.length || 0} Karten und ${deck.assignments?.length || 0} Gruppen-Zuweisungen...`);
+      
+      // Lösche das Deck direkt - alle verknüpften Daten werden automatisch gelöscht
+      const deleteResponse = await fetch(`/api/flashcards/${deckId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          teacherId: userId
+        })
+      });
+
+      if (deleteResponse.ok) {
+        console.log(`✓ Deck "${deck.title}" erfolgreich gelöscht`);
+        // Aktualisiere die lokale Liste
+        setFlashcardDecks(prev => prev.filter(d => d.id !== deckId));
+        return results;
+      } else {
+        const errorData = await deleteResponse.json();
+        throw new Error(errorData.error || `HTTP ${deleteResponse.status}`);
       }
 
-      // 2. Lösche alle Karten des Decks
-      if (deck.cards && deck.cards.length > 0) {
-        console.log(`Lösche ${deck.cards.length} Karten...`);
-        for (const card of deck.cards) {
-          try {
-            const deleteResponse = await fetch(`/api/flashcards/cards/${card.id}`, {
-              method: 'DELETE',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                teacherId: userId
-              })
-            });
-            if (deleteResponse.ok) {
-              results.cardsDeleted++;
-              console.log(`✓ Karte ${card.id} gelöscht`);
-            } else {
-              const errorMsg = `Karte ${card.id}: ${deleteResponse.status}`;
-              results.errors.push(errorMsg);
-              console.warn(`✗ ${errorMsg}`);
-            }
-          } catch (cardError) {
-            const errorMsg = `Karte ${card.id}: ${cardError}`;
-            results.errors.push(errorMsg);
-            console.warn(`✗ ${errorMsg}`);
-          }
-        }
-      }
-
-      return results;
     } catch (error) {
-      console.error('Fehler beim Löschen der verknüpften Daten:', error);
-      results.errors.push(`Allgemeiner Fehler: ${error}`);
+      console.error('Fehler beim Löschen des Decks:', error);
+      results.errors.push(`Fehler beim Löschen des Decks: ${error}`);
       return results;
     }
   };
@@ -540,9 +483,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  // Lade Daten beim ersten Laden
+  // Lade Daten beim ersten Laden und wenn sich userId ändert
   useEffect(() => {
     if (userId) {
+      console.log('Loading flashcard decks for userId:', userId);
       fetchFlashcardDecks();
     }
   }, [userId]);
@@ -649,7 +593,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch(`/api/learning-groups/teacher/01ed6e10-397e-446c-9254-2ad7fd4ec777`);
+      const response = await fetch(`/api/learning-groups/teacher/${userId}`);
       if (!response.ok) {
         // Fallback: Mock-Gruppen verwenden wenn Server nicht erreichbar
         const mockGroups = [
@@ -729,6 +673,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         let items: any[] = [];
         if (content.root) {
           items = content.root.children || [];
+        } else if (content.root.children) {
+          items = content.root.children;
         } else if (content.items) {
           items = content.items;
         }
@@ -1626,8 +1572,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   console.log('Opening quiz dialog for:', item.path, item.name);
                   handleQuizDialogOpen(item.path, item.name);
                 } else if (item.name.startsWith('Cards')) {
-                  // TODO: Implementiere Karteikarten-Erstellung
-                  console.log('Karteikarten-Erstellung für:', item.name);
+                  // Öffne das Karteikarten-Erstellungsmodal
+                  console.log('Opening flashcard dialog for:', item.path, item.name);
+                  handleFlashcardDialogOpen(item.path, item.name);
                 }
               }}
               >
@@ -2277,6 +2224,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Neue States für Quiz-Erstellung direkt im Dashboard
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [selectedQuizFile, setSelectedQuizFile] = useState<{ path: string; name: string } | null>(null);
+  
+  // Flashcard creation modal state
+  const [flashcardModalOpen, setFlashcardModalOpen] = useState(false);
+  const [flashcardSourceFile, setFlashcardSourceFile] = useState('');
+  const [flashcardFileName, setFlashcardFileName] = useState('');
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('');
   const [quizTimeLimit, setQuizTimeLimit] = useState(30);
@@ -2319,6 +2271,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setShuffleAnswers(true);
     setGradeCategory('');
     setSelectedGradeSchema('');
+  };
+
+  // Flashcard creation handlers
+  const handleFlashcardDialogOpen = (filePath: string, fileName: string) => {
+    setFlashcardSourceFile(filePath);
+    setFlashcardFileName(fileName);
+    setFlashcardModalOpen(true);
+  };
+
+  const handleFlashcardDialogClose = () => {
+    setFlashcardModalOpen(false);
+    setFlashcardSourceFile('');
+    setFlashcardFileName('');
+  };
+
+  const handleFlashcardSuccess = () => {
+    // Refresh data if needed
+    console.log('Flashcard deck created/updated successfully');
   };
 
   const loadGradeSchemas = async () => {
@@ -6412,6 +6382,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Flashcard Creation Modal */}
+      <FlashcardCreationModal
+        open={flashcardModalOpen}
+        onClose={handleFlashcardDialogClose}
+        sourceFile={flashcardSourceFile}
+        fileName={flashcardFileName}
+        teacherId={userId}
+        onSuccess={handleFlashcardSuccess}
+      />
 
     </Box>
   );

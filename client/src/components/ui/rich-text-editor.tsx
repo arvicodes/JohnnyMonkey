@@ -272,31 +272,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     };
   }, [showColorPicker]);
 
-  // Add image resize handlers after content updates
-  useEffect(() => {
-    if (editorRef.current) {
-      // Wait a bit for DOM to be fully updated
-      const timeoutId = setTimeout(() => {
-        const images = editorRef.current?.querySelectorAll('img');
-        if (images) {
-          images.forEach(img => {
-            // Only add resize functionality if not already added
-            if (!img.hasAttribute('data-resizable')) {
-              img.setAttribute('data-resizable', 'true');
-              // We'll call makeImageResizable after it's defined
-              setTimeout(() => {
-                if (typeof makeImageResizable === 'function') {
-                  makeImageResizable(img);
-                }
-              }, 50);
-            }
-          });
-        }
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [value]);
+  // Add image resize handlers after content updates - moved after makeImageResizable definition
 
   const execCommand = (command: string, value?: string) => {
     if (!editorRef.current) return;
@@ -555,192 +531,163 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const makeImageResizable = useCallback((img: HTMLImageElement) => {
-    // Remove existing handlers
-    img.onmousedown = null;
-    img.oncontextmenu = null;
-    img.ontouchstart = null;
+    console.log('🎯 DEBUG: makeImageResizable aufgerufen für:', img.src);
+    
+    // Remove any existing resize functionality
+    const existingHandle = img.querySelector('.resize-handle');
+    if (existingHandle) {
+      console.log('🗑️ Entferne existierenden Handle');
+      existingHandle.remove();
+    }
+    
+    // Add visual styling
+    img.style.position = 'relative';
+    img.style.display = 'inline-block';
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    img.style.cursor = 'default';
+    
+    // Create resize handle (small square in bottom-right corner)
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    handle.style.cssText = `
+      position: absolute;
+      bottom: -8px;
+      right: -8px;
+      width: 16px;
+      height: 16px;
+      background: ${appColors.primary};
+      border: 2px solid white;
+      border-radius: 4px;
+      cursor: se-resize;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    `;
+    
+    console.log('🔧 Handle erstellt:', handle);
+    
+    // Show handle on hover
+    img.addEventListener('mouseenter', () => {
+      console.log('🖱️ Hover über Bild, zeige Handle');
+      handle.style.opacity = '1';
+    });
+    
+    img.addEventListener('mouseleave', () => {
+      console.log('🖱️ Hover verlassen, verstecke Handle');
+      handle.style.opacity = '0';
+    });
     
     // Right click to delete
-    img.oncontextmenu = (e) => {
+    img.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (window.confirm('Möchten Sie dieses Bild löschen?')) {
         img.remove();
         handleInput();
       }
-    };
+    });
     
-    // Add visual indicators
-    img.style.cursor = 'pointer';
-    img.style.position = 'relative';
-    img.style.border = '2px solid transparent';
-    img.style.userSelect = 'none'; // Prevent text selection
-    
-    // Remove existing resize handle
-    const existingHandle = img.querySelector('.resize-handle');
-    if (existingHandle) {
-      existingHandle.remove();
-    }
-    
-    // Add simple resize handle at bottom-right corner
-    const handle = document.createElement('div');
-    handle.className = 'resize-handle';
-    handle.style.cssText = `
-      position: absolute !important;
-      bottom: -8px !important;
-      right: -8px !important;
-      width: 16px !important;
-      height: 16px !important;
-      background: ${appColors.primary} !important;
-      border: 2px solid white !important;
-      border-radius: 50% !important;
-      cursor: se-resize !important;
-      z-index: 99999 !important;
-      opacity: 0;
-      transition: opacity 0.2s;
-      pointer-events: all !important;
-      user-select: none !important;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-    `;
-    
-    // Add resize functionality - IMPROVED VERSION
+    // Resize functionality
     let isResizing = false;
     let startX = 0;
     let startY = 0;
     let startWidth = 0;
     let startHeight = 0;
-    let aspectRatio = 1;
     
-    const startResize = (e: MouseEvent | TouchEvent) => {
+    const startResize = (e: MouseEvent) => {
+      console.log('🎯 Starte Resize');
       e.preventDefault();
       e.stopPropagation();
-      console.log('🎯 HANDLE CLICKED - Starting resize');
-      console.log('💡 TIP: Ziehen Sie nach rechts/unten um das Bild zu vergrößern!');
       
       isResizing = true;
-      
-      // Get coordinates
-      if (e instanceof TouchEvent) {
-        const touch = e.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
-      } else {
-        startX = e.clientX;
-        startY = e.clientY;
-      }
-      
+      startX = e.clientX;
+      startY = e.clientY;
       startWidth = img.offsetWidth;
       startHeight = img.offsetHeight;
-      aspectRatio = img.naturalWidth / img.naturalHeight;
       
+      // Change cursor
       document.body.style.cursor = 'se-resize';
       document.body.style.userSelect = 'none';
       
-      // Visual feedback
-      img.style.boxShadow = '0 0 20px rgba(46, 125, 50, 0.5)';
-      handle.style.background = '#ff6b35';
-      
-      console.log('📏 Initial:', { startX, startY, startWidth, startHeight, aspectRatio });
+      // Add event listeners
+      document.addEventListener('mousemove', doResize);
+      document.addEventListener('mouseup', endResize);
     };
     
-    const doResize = (e: MouseEvent | TouchEvent) => {
+    const doResize = (e: MouseEvent) => {
       if (!isResizing) return;
       
-      let clientX: number, clientY: number;
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
       
-      if (e instanceof TouchEvent) {
-        const touch = e.touches[0];
-        clientX = touch.clientX;
-        clientY = touch.clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-      
-      const deltaX = clientX - startX;
-      const deltaY = clientY - startY;
-      
-      // Calculate new dimensions maintaining aspect ratio
-      const newWidth = Math.max(50, startWidth + deltaX);
+      // Calculate new dimensions (maintain aspect ratio)
+      const aspectRatio = startWidth / startHeight;
+      const newWidth = Math.max(50, Math.min(800, startWidth + deltaX));
       const newHeight = newWidth / aspectRatio;
       
       // Apply new dimensions
       img.style.width = `${newWidth}px`;
       img.style.height = `${newHeight}px`;
-      
-      console.log('📐 Resizing:', { deltaX, deltaY, newWidth, newHeight });
     };
     
     const endResize = () => {
       if (!isResizing) return;
       
-      console.log('✅ Resize finished');
+      console.log('🏁 Beende Resize');
       isResizing = false;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       
-      // Remove visual feedback
-      img.style.boxShadow = '';
-      handle.style.background = appColors.primary;
+      // Remove event listeners
+      document.removeEventListener('mousemove', doResize);
+      document.removeEventListener('mouseup', endResize);
       
+      // Trigger change
       handleInput();
     };
     
-    // Mouse events
-    handle.onmousedown = startResize;
-    document.addEventListener('mousemove', doResize);
-    document.addEventListener('mouseup', endResize);
-    
-    // Touch events - IMPROVED
-    handle.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      startResize(e);
-    }, { passive: false });
-    
-    document.addEventListener('touchmove', (e) => {
-      if (isResizing) {
-        e.preventDefault();
-        doResize(e);
-      }
-    }, { passive: false });
-    
-    document.addEventListener('touchend', (e) => {
-      if (isResizing) {
-        endResize();
-      }
-    });
-    
-    // Add the handle to the image
+    // Add resize handle to image
     img.appendChild(handle);
+    console.log('✅ Handle zum Bild hinzugefügt');
+    console.log('🔍 Handle DOM-Element:', handle);
+    console.log('🔍 Handle im Bild gefunden:', img.querySelector('.resize-handle'));
+    console.log('🔍 Handle Computed Styles:', window.getComputedStyle(handle));
     
-    // Show handle on hover/touch
-    const showHandle = () => {
-      img.style.border = `2px solid ${appColors.primary}`;
-      handle.style.opacity = '1';
-    };
-    
-    const hideHandle = () => {
-      img.style.border = '2px solid transparent';
-      handle.style.opacity = '0';
-    };
-    
-    // Mouse events for handle visibility
-    img.onmouseenter = showHandle;
-    img.onmouseleave = hideHandle;
-    
-    // Touch events for handle visibility
-    img.addEventListener('touchstart', showHandle, { passive: true });
-    img.addEventListener('touchend', () => {
-      // Delay hiding to allow for resize interaction
-      setTimeout(hideHandle, 1000);
-    }, { passive: true });
-    
-    // Ensure handle is always clickable
-    handle.style.pointerEvents = 'all';
-    handle.style.zIndex = '99999';
+    // Add resize event listener to handle
+    handle.addEventListener('mousedown', startResize);
+    console.log('✅ Event Listener für Handle hinzugefügt');
     
   }, [handleInput]);
+
+  // Add image resize handlers after content updates
+  useEffect(() => {
+    console.log('🔍 DEBUG: useEffect für Bildgrößenänderung aufgerufen');
+    if (editorRef.current) {
+      console.log('✅ Editor ref gefunden');
+      // Wait a bit for DOM to be fully updated
+      const timeoutId = setTimeout(() => {
+        const images = editorRef.current?.querySelectorAll('img');
+        console.log('🔍 Gefundene Bilder:', images?.length || 0);
+        if (images) {
+          images.forEach((img, index) => {
+            console.log(`🖼️ Bild ${index}:`, img.src, img.hasAttribute('data-resizable'));
+            // Only add resize functionality if not already added
+            if (!img.hasAttribute('data-resizable')) {
+              console.log(`🔧 Mache Bild ${index} resizable`);
+              img.setAttribute('data-resizable', 'true');
+              makeImageResizable(img);
+            }
+          });
+        }
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    } else {
+      console.log('❌ Kein Editor ref gefunden');
+    }
+  }, [value, makeImageResizable]);
 
   // Simple image resize function - removed complex corner handling
 
@@ -806,23 +753,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         backgroundColor: appColors.cardBg,
         overflow: 'hidden',
         ...(className && { className }),
-        '& .resize-handle': {
-          pointerEvents: 'all !important',
-          zIndex: 99999,
-          position: 'absolute !important',
-          bottom: '-8px !important',
-          right: '-8px !important',
-          width: '16px !important',
-          height: '16px !important',
-          background: `${appColors.primary} !important`,
-          border: '2px solid white !important',
-          borderRadius: '50% !important',
-          cursor: 'se-resize !important',
-          opacity: 0,
-          transition: 'opacity 0.2s',
-          userSelect: 'none !important',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.3) !important'
-        },
         '& img': {
           pointerEvents: 'auto !important',
           userSelect: 'none !important',
@@ -837,14 +767,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           '&:hover': {
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             transform: 'scale(1.02)',
-            borderColor: appColors.primary,
-            '& .resize-handle': {
-              opacity: '1 !important'
-            }
-          },
-          '& .resize-handle': {
-            opacity: 0,
-            transition: 'opacity 0.2s ease'
+            borderColor: appColors.primary
           }
         }
       }}

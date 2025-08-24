@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '../generated/prisma';
 import { SpacedRepetitionService } from '../services/SpacedRepetitionService';
+import { parseFlashcardWordFile, ParsedFlashcardDocument } from '../utils/flashcardWordParser';
 
 const prisma = new PrismaClient();
 
@@ -229,16 +230,13 @@ export const updateDeck = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const deleteDeck = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteDeck = async (req: Request, res: Response) => {
   try {
-    const { deckId } = req.params;
+    const { id: deckId } = req.params;
     const { teacherId } = req.body;
     
-    // Fallback zu req.user?.id wenn teacherId nicht im Body ist
-    const userId = teacherId || req.user?.id;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'Keine Benutzer-ID gefunden' });
+    if (!teacherId) {
+      return res.status(400).json({ error: 'teacherId ist erforderlich' });
     }
 
     // Prüfen ob der Benutzer der Besitzer ist
@@ -250,10 +248,21 @@ export const deleteDeck = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: 'Karteideck nicht gefunden' });
     }
 
-    if (existingDeck.teacherId !== userId) {
+    if (existingDeck.teacherId !== teacherId) {
       return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieses Karteidecks' });
     }
 
+    // Lösche zuerst alle Zuweisungen, da sie keine Cascade-Delete-Regel haben
+    await prisma.flashcardAssignment.deleteMany({
+      where: { deckId }
+    });
+
+    // Lösche alle Karten (werden durch Cascade-Delete automatisch gelöscht)
+    await prisma.flashcard.deleteMany({
+      where: { deckId }
+    });
+
+    // Jetzt kann das Deck gelöscht werden
     await prisma.flashcardDeck.delete({
       where: { id: deckId }
     });
@@ -675,5 +684,332 @@ export const removeDeckAssignment = async (req: AuthenticatedRequest, res: Respo
   } catch (error) {
     console.error('Fehler beim Entfernen der Zuweisung:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+export const createFlashcardDeckFromWord = async (req: Request, res: Response) => {
+  try {
+    const { 
+      teacherId, 
+      sourceFile, 
+      title, 
+      description, 
+      subjectId, 
+      learningGroupIds,
+      isPublic = false 
+    } = req.body;
+    
+    if (!teacherId || !sourceFile) {
+      return res.status(400).json({ error: 'Lehrer-ID und Quelldatei sind erforderlich' });
+    }
+
+    console.log('Creating flashcard deck from Word file:', {
+      teacherId,
+      sourceFile,
+      title,
+      description,
+      subjectId,
+      learningGroupIds,
+      isPublic
+    });
+
+    // Parse the Word file to extract flashcards
+    console.log('Parsing Word file for flashcard creation:', sourceFile);
+    
+    let parsedDocument: ParsedFlashcardDocument;
+    try {
+      parsedDocument = await parseFlashcardWordFile(sourceFile);
+      console.log('Parsed flashcard document:', parsedDocument);
+    } catch (parseError) {
+      console.error('Error parsing Word file:', parseError);
+      return res.status(400).json({ 
+        error: `Fehler beim Parsen der Word-Datei: ${parseError instanceof Error ? parseError.message : String(parseError)}` 
+      });
+    }
+    
+    if (!parsedDocument.cards || parsedDocument.cards.length === 0) {
+      return res.status(400).json({ error: 'Keine Karteikarten in der Word-Datei gefunden. Bitte überprüfen Sie das Format.' });
+    }
+
+    console.log(`Found ${parsedDocument.cards.length} flashcards, creating deck...`);
+
+    // Use provided title or extracted title from document
+    const deckTitle = title || parsedDocument.title;
+    const deckDescription = description || `Importiert aus ${sourceFile} - ${parsedDocument.cards.length} Karten`;
+
+    // Validate subjectId if provided
+    let validatedSubjectId = null;
+    if (subjectId) {
+      const subject = await prisma.subject.findFirst({
+        where: {
+          id: subjectId,
+          teacherId: teacherId
+        }
+      });
+      if (subject) {
+        validatedSubjectId = subjectId;
+      } else {
+        console.warn(`Subject ID ${subjectId} not found or doesn't belong to teacher ${teacherId}`);
+      }
+    }
+
+    // Create the flashcard deck
+    const deck = await prisma.flashcardDeck.create({
+      data: {
+        title: deckTitle,
+        description: deckDescription,
+        teacherId,
+        subjectId: validatedSubjectId,
+        isPublic
+      }
+    });
+
+    console.log('Created flashcard deck:', deck);
+
+    // Create all flashcards
+    const createdCards = await Promise.all(
+      parsedDocument.cards.map((card, index) =>
+        prisma.flashcard.create({
+          data: {
+            deckId: deck.id,
+            front: card.front,
+            back: card.back,
+            hint: card.hint,
+            difficulty: 1, // Default difficulty
+            order: index
+          }
+        })
+      )
+    );
+
+    console.log(`Created ${createdCards.length} flashcards`);
+
+    // Assign to learning groups if specified
+    if (learningGroupIds && learningGroupIds.length > 0) {
+      // Validate that all learning group IDs exist and belong to the teacher
+      const validGroups = await prisma.learningGroup.findMany({
+        where: {
+          id: { in: learningGroupIds },
+          teacherId: teacherId
+        },
+        select: { id: true }
+      });
+
+      if (validGroups.length !== learningGroupIds.length) {
+        console.warn(`Some learning group IDs are invalid. Expected: ${learningGroupIds.length}, Found: ${validGroups.length}`);
+      }
+
+      if (validGroups.length > 0) {
+        const assignments = await Promise.all(
+          validGroups.map((group) =>
+            prisma.flashcardAssignment.create({
+              data: {
+                deckId: deck.id,
+                groupId: group.id
+              }
+            })
+          )
+        );
+        console.log(`Assigned deck to ${assignments.length} learning groups`);
+      }
+    }
+
+    // Return the created deck with cards
+    const result = await prisma.flashcardDeck.findUnique({
+      where: { id: deck.id },
+      include: {
+        cards: {
+          orderBy: { order: 'asc' }
+        },
+        subject: true,
+        assignments: {
+          include: {
+            group: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json({
+      message: `Karteikarten-Deck erfolgreich erstellt mit ${createdCards.length} Karten`,
+      deck: result
+    });
+
+  } catch (error) {
+    console.error('Error creating flashcard deck:', error);
+    res.status(500).json({ 
+      error: `Fehler beim Erstellen des Karteikarten-Decks: ${error instanceof Error ? error.message : String(error)}` 
+    });
+  }
+};
+
+export const addFlashcardsToExistingDeck = async (req: Request, res: Response) => {
+  try {
+    const { 
+      teacherId, 
+      sourceFile, 
+      deckId 
+    } = req.body;
+    
+    if (!teacherId || !sourceFile || !deckId) {
+      return res.status(400).json({ error: 'Lehrer-ID, Quelldatei und Deck-ID sind erforderlich' });
+    }
+
+    console.log('Adding flashcards to existing deck:', {
+      teacherId,
+      sourceFile,
+      deckId
+    });
+
+    // Verify the deck exists and belongs to the teacher
+    const existingDeck = await prisma.flashcardDeck.findFirst({
+      where: {
+        id: deckId,
+        teacherId
+      }
+    });
+
+    if (!existingDeck) {
+      return res.status(404).json({ error: 'Karteikarten-Deck nicht gefunden oder Sie haben keine Berechtigung dafür.' });
+    }
+
+    // Parse the Word file to extract flashcards
+    let parsedDocument: ParsedFlashcardDocument;
+    try {
+      parsedDocument = await parseFlashcardWordFile(sourceFile);
+    } catch (parseError) {
+      console.error('Error parsing Word file:', parseError);
+      return res.status(400).json({ 
+        error: `Fehler beim Parsen der Word-Datei: ${parseError instanceof Error ? parseError.message : String(parseError)}` 
+      });
+    }
+    
+    if (!parsedDocument.cards || parsedDocument.cards.length === 0) {
+      return res.status(400).json({ error: 'Keine Karteikarten in der Word-Datei gefunden. Bitte überprüfen Sie das Format.' });
+    }
+
+    // Get current highest order in the deck
+    const maxOrder = await prisma.flashcard.aggregate({
+      where: { deckId },
+      _max: { order: true }
+    });
+
+    const startOrder = (maxOrder._max.order || 0) + 1;
+
+    // Create new flashcards
+    const createdCards = await Promise.all(
+      parsedDocument.cards.map((card, index) =>
+        prisma.flashcard.create({
+          data: {
+            deckId,
+            front: card.front,
+            back: card.back,
+            hint: card.hint,
+            difficulty: 1, // Default difficulty
+            order: startOrder + index
+          }
+        })
+      )
+    );
+
+    console.log(`Added ${createdCards.length} flashcards to existing deck`);
+
+    // Return updated deck
+    const result = await prisma.flashcardDeck.findUnique({
+      where: { id: deckId },
+      include: {
+        cards: {
+          orderBy: { order: 'asc' }
+        },
+        subject: true,
+        assignments: {
+          include: {
+            group: true
+          }
+        }
+      }
+    });
+
+    res.status(200).json({
+      message: `${createdCards.length} Karteikarten erfolgreich zum bestehenden Deck hinzugefügt`,
+      deck: result
+    });
+
+  } catch (error) {
+    console.error('Error adding flashcards to existing deck:', error);
+    res.status(500).json({ 
+      error: `Fehler beim Hinzufügen der Karteikarten: ${error instanceof Error ? error.message : String(error)}` 
+    });
+  }
+};
+
+export const getFlashcardDecks = async (req: Request, res: Response) => {
+  try {
+    const { teacherId } = req.params;
+    
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+    }
+
+    const decks = await prisma.flashcardDeck.findMany({
+      where: { teacherId },
+      include: {
+        cards: {
+          orderBy: { order: 'asc' }
+        },
+        subject: true,
+        assignments: {
+          include: {
+            group: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.status(200).json({ decks });
+
+  } catch (error) {
+    console.error('Error fetching flashcard decks:', error);
+    res.status(500).json({ 
+      error: `Fehler beim Abrufen der Karteikarten-Decks: ${error instanceof Error ? error.message : String(error)}` 
+    });
+  }
+};
+
+export const getFlashcardDeck = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'Deck-ID ist erforderlich' });
+    }
+
+    const deck = await prisma.flashcardDeck.findUnique({
+      where: { id },
+      include: {
+        cards: {
+          orderBy: { order: 'asc' }
+        },
+        subject: true,
+        assignments: {
+          include: {
+            group: true
+          }
+        }
+      }
+    });
+
+    if (!deck) {
+      return res.status(404).json({ error: 'Karteikarten-Deck nicht gefunden' });
+    }
+
+    res.status(200).json({ deck });
+
+  } catch (error) {
+    console.error('Error fetching flashcard deck:', error);
+    res.status(500).json({ 
+      error: `Fehler beim Abrufen des Karteikarten-Decks: ${error instanceof Error ? error.message : String(error)}` 
+    });
   }
 };

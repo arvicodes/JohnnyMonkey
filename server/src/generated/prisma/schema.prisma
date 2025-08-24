@@ -308,7 +308,7 @@ model FlashcardAssignment {
   dueDate   DateTime?
   createdAt DateTime  @default(now())
 
-  deck  FlashcardDeck @relation(fields: [deckId], references: [id])
+  deck  FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
   group LearningGroup @relation(fields: [groupId], references: [id])
 }
 
