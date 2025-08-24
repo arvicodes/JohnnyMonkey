@@ -392,46 +392,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  // Hilfsfunktion: Lösche alle verknüpften Daten eines Decks
-  const deleteDeckRelatedData = async (deckId: string, deck: FlashcardDeck) => {
-    const results = {
-      assignmentsDeleted: 0,
-      cardsDeleted: 0,
-      errors: [] as string[]
-    };
 
-    try {
-      // Da wir das gesamte Deck löschen, werden alle verknüpften Daten automatisch gelöscht
-      // (durch die Cascade-Delete-Regeln in der Datenbank)
-      console.log(`Lösche Deck "${deck.title}" mit ${deck.cards?.length || 0} Karten und ${deck.assignments?.length || 0} Gruppen-Zuweisungen...`);
-      
-      // Lösche das Deck direkt - alle verknüpften Daten werden automatisch gelöscht
-      const deleteResponse = await fetch(`/api/flashcards/${deckId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          teacherId: userId
-        })
-      });
-
-      if (deleteResponse.ok) {
-        console.log(`✓ Deck "${deck.title}" erfolgreich gelöscht`);
-        // Aktualisiere die lokale Liste
-        setFlashcardDecks(prev => prev.filter(d => d.id !== deckId));
-        return results;
-      } else {
-        const errorData = await deleteResponse.json();
-        throw new Error(errorData.error || `HTTP ${deleteResponse.status}`);
-      }
-
-    } catch (error) {
-      console.error('Fehler beim Löschen des Decks:', error);
-      results.errors.push(`Fehler beim Löschen des Decks: ${error}`);
-      return results;
-    }
-  };
 
   // Erstelle oder aktualisiere Lerngruppen-Zuweisungen
   const handleAssignGroups = async (deckId: string, groupIds: string[]) => {
@@ -2993,6 +2954,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
     try {
       const deckId = deckToDelete!.id;
+      if (!deckId) {
+        throw new Error('Deck-ID ist nicht definiert');
+      }
       let deckToDeleteWithData = deckToDelete!;
 
       // Stelle sicher, dass alle verknüpften Daten geladen sind
@@ -3012,32 +2976,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         deckToDeleteWithData = flashcardDecks.find(d => d.id === deckId) || deckToDeleteWithData;
       }
 
-      // Lösche alle verknüpften Daten mit der Hilfsfunktion
-      console.log('Lösche verknüpfte Daten...');
-      const deleteResults = await deleteDeckRelatedData(deckId!, deckToDeleteWithData);
-      
-      // Zeige Zusammenfassung der Löschvorgänge
-      if (deleteResults.errors.length > 0) {
-        console.warn('Einige verknüpfte Daten konnten nicht gelöscht werden:', deleteResults.errors);
+      // Jetzt das Deck selbst löschen
+      if (!userId) {
+        throw new Error('Benutzer-ID ist nicht definiert');
       }
       
-      console.log(`Löschvorgang abgeschlossen: ${deleteResults.assignmentsDeleted} Zuweisungen, ${deleteResults.cardsDeleted} Karten gelöscht`);
-
-      // Kurze Pause, damit alle Löschvorgänge abgeschlossen werden können
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Jetzt das Deck selbst löschen
-      console.log('Lösche Karteideck...');
-      const response = await fetch(`/api/flashcards/decks/${deckId}`, {
+      const requestBody = { teacherId: userId };
+      console.log('Lösche Karteideck...', { deckId, userId, deckToDelete: deckToDelete?.title, requestBody });
+      const response = await fetch(`/api/flashcards/${deckId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          teacherId: userId
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('Server-Response:', { status: response.status, ok: response.ok });
+      
       if (response.ok) {
         // Aus dem lokalen State entfernen
         setFlashcardDecks(prev => prev.filter(d => d.id !== deckId));
@@ -3050,9 +3005,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           setEditingDeck(null);
         }
         
-      setSnackbar({
-        open: true,
-          message: `Karteideck erfolgreich gelöscht (${deleteResults.assignmentsDeleted} Zuweisungen, ${deleteResults.cardsDeleted} Karten entfernt)`,
+              setSnackbar({
+          open: true,
+          message: `Karteideck erfolgreich gelöscht`,
           severity: 'success'
         });
         
@@ -3063,6 +3018,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       } else {
         const errorData = await response.text();
         console.error('Server-Fehler beim Löschen:', response.status, errorData);
+        console.log('Error Response Body:', errorData);
         
         let errorMessage = 'Fehler beim Löschen des Karteidecks';
         switch (response.status) {

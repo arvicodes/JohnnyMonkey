@@ -4,7 +4,16 @@ import {
   addFlashcardsToExistingDeck,
   getFlashcardDecks,
   getFlashcardDeck,
-  deleteDeck
+  deleteDeck,
+  createDeck,
+  updateDeck,
+  getDeckCards,
+  createCard,
+  updateCard,
+  deleteCard,
+  createAssignment,
+  deleteAssignment,
+  getFlashcardAssignments
 } from '../controllers/FlashcardController';
 
 const router = express.Router();
@@ -18,10 +27,27 @@ router.post('/add-to-existing', addFlashcardsToExistingDeck);
 // Get all flashcard decks for a teacher
 router.get('/teacher/:teacherId', getFlashcardDecks);
 
-// Get specific flashcard deck
-router.get('/:id', getFlashcardDeck);
+// Deck routes
+router.post('/decks', createDeck);
+router.get('/decks/:id', getFlashcardDeck);
+router.put('/decks/:id', updateDeck);
+router.delete('/decks/:id', deleteDeck);
 
-// Delete flashcard deck
+// Deck cards routes
+router.get('/decks/:deckId/cards', getDeckCards);
+
+// Card routes
+router.post('/cards', createCard);
+router.put('/cards/:cardId', updateCard);
+router.delete('/cards/:cardId', deleteCard);
+
+// Assignment routes
+router.post('/assignments', createAssignment);
+router.get('/assignments', getFlashcardAssignments);
+router.delete('/assignments/:assignmentId', deleteAssignment);
+
+// Backward compatibility routes
+router.get('/:id', getFlashcardDeck);
 router.delete('/:id', deleteDeck);
 
 export default router;

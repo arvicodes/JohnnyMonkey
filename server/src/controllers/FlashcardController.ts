@@ -386,6 +386,115 @@ export const deleteCard = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+// Assignment Controller
+export const createAssignment = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { deckId, groupId, teacherId } = req.body;
+    
+    if (!teacherId) {
+      return res.status(400).json({ error: 'teacherId ist erforderlich' });
+    }
+
+    // Prüfen ob der Benutzer der Besitzer des Decks ist
+    const deck = await prisma.flashcardDeck.findUnique({
+      where: { id: deckId }
+    });
+
+    if (!deck || deck.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Keine Berechtigung zum Zuweisen dieses Karteidecks' });
+    }
+
+    // Prüfen ob die Gruppe existiert und dem Lehrer gehört
+    const group = await prisma.learningGroup.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group || group.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Keine Berechtigung für diese Lerngruppe' });
+    }
+
+    const assignment = await prisma.flashcardAssignment.create({
+      data: {
+        deckId,
+        groupId
+      },
+      include: {
+        deck: true,
+        group: true
+      }
+    });
+
+    res.status(201).json(assignment);
+  } catch (error) {
+    console.error('Fehler beim Erstellen der Zuweisung:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+export const deleteAssignment = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { assignmentId } = req.params;
+    const { teacherId } = req.body;
+    
+    if (!teacherId) {
+      return res.status(400).json({ error: 'teacherId ist erforderlich' });
+    }
+
+    // Prüfen ob die Zuweisung existiert und der Benutzer berechtigt ist
+    const assignment = await prisma.flashcardAssignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        deck: true,
+        group: true
+      }
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ error: 'Zuweisung nicht gefunden' });
+    }
+
+    if (assignment.deck.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieser Zuweisung' });
+    }
+
+    await prisma.flashcardAssignment.delete({
+      where: { id: assignmentId }
+    });
+
+    res.json({ message: 'Zuweisung erfolgreich gelöscht' });
+  } catch (error) {
+    console.error('Fehler beim Löschen der Zuweisung:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+export const getFlashcardAssignments = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { teacherId } = req.query;
+    
+    if (!teacherId) {
+      return res.status(400).json({ error: 'teacherId ist erforderlich' });
+    }
+
+    const assignments = await prisma.flashcardAssignment.findMany({
+      where: {
+        deck: {
+          teacherId: teacherId as string
+        }
+      },
+      include: {
+        deck: true,
+        group: true
+      }
+    });
+
+    res.json(assignments);
+  } catch (error) {
+    console.error('Fehler beim Abrufen der Zuweisungen:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
 // Flashcard Progress Controller
 export const getStudentProgress = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -619,36 +728,7 @@ export const assignDeckToGroup = async (req: AuthenticatedRequest, res: Response
   }
 };
 
-export const getAssignments = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { teacherId } = req.query;
-    const userId = req.user?.id;
 
-    const where: any = {};
-    
-    if (teacherId) {
-      where.deck = { teacherId: teacherId as string };
-    }
-
-    const assignments = await prisma.flashcardAssignment.findMany({
-      where,
-      include: {
-        deck: {
-          select: { id: true, title: true }
-        },
-        group: {
-          select: { id: true, name: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    res.json(assignments);
-  } catch (error) {
-    console.error('Fehler beim Abrufen der Zuweisungen:', error);
-    res.status(500).json({ error: 'Interner Serverfehler' });
-  }
-};
 
 export const removeDeckAssignment = async (req: AuthenticatedRequest, res: Response) => {
   try {
