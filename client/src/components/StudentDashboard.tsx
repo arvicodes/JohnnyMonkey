@@ -1944,26 +1944,37 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
                   <Grid item xs={4}>
                     <Box sx={{ 
-                      bgcolor: '#f5f5f5',
+                      bgcolor: '#fff3e0',
                       borderRadius: 1.4,
                       p: 1.4,
-                      textAlign: 'center'
-                    }}>
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      border: '2px solid #ffb74d',
+                      '&:hover': {
+                        bgcolor: '#ffe0b2',
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 2px 8px rgba(255, 107, 53, 0.2)',
+                        borderColor: '#ff6b35'
+                      }
+                    }}
+                    onClick={() => setFlashcardLearningOpen(true)}
+                    >
                       <Typography variant="h4" sx={{ 
-                        color: '#1976d2',
+                        color: '#ff6b35',
                         fontWeight: 'bold',
-                        fontSize: '1.5rem',
+                        fontSize: '1.8rem',
                         mb: 0.35
                       }}>
-                        {assignments.length}
+                        🗂️
                       </Typography>
                       <Typography variant="caption" sx={{ 
-                        color: '#333',
+                        color: '#e65100',
                         fontSize: '0.65rem',
                         fontWeight: 600,
                         textTransform: 'uppercase'
                       }}>
-                        Aufgaben
+                        Karteikarten lernen
                       </Typography>
                     </Box>
                   </Grid>
@@ -2066,45 +2077,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Box>
                 </Box>
 
-                {/* Flashcard Lern-Box */}
-                <Box sx={{ mt: 2.1 }}>
-                  <Box sx={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    p: 1,
-                    borderRadius: 1,
-                    bgcolor: '#f8f9fa',
-                    border: '1px solid #e0e0e0'
-                  }}>
-                    <Typography variant="body2" sx={{ 
-                      color: 'text.secondary',
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5
-                    }}>
-                      🗂️ Meine Karteikarten lernen
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      sx={{
-                        bgcolor: '#4caf50',
-                        color: 'white',
-                        fontSize: '0.65rem',
-                        py: 0.3,
-                        px: 1,
-                        minWidth: 'auto',
-                        '&:hover': { bgcolor: '#45a049' }
-                      }}
-                      onClick={() => setFlashcardLearningOpen(true)}
-                    >
-                      Lernen starten
-                    </Button>
-                  </Box>
-                </Box>
+
 
                 {/* Noten Anzeige */}
                 {lerngruppen.length > 0 && (
@@ -2543,6 +2516,57 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Tastatur-Shortcuts für Bewertungen
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (learningMode === 'learning' && showAnswer) {
+        switch (event.key) {
+          case '1':
+            handleNextCard(1);
+            break;
+          case '2':
+            handleNextCard(2);
+            break;
+          case '3':
+            handleNextCard(3);
+            break;
+          case ' ':
+            // Leertaste zum Umdrehen der Karte
+            event.preventDefault();
+            setShowAnswer(!showAnswer);
+            break;
+        }
+      } else if (learningMode === 'learning' && !showAnswer) {
+        if (event.key === ' ') {
+          // Leertaste zum Umdrehen der Karte
+          event.preventDefault();
+          setShowAnswer(true);
+        }
+      }
+    };
+
+    if (open) {
+      document.addEventListener('keydown', handleKeyPress);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [open, learningMode, showAnswer]);
+
+  // Funktion zum Formatieren von Karten-Text (Bold und Italic)
+  const formatCardText = (text: string) => {
+    if (!text) return '';
+    
+    // **text** wird zu <strong>text</strong> (nur der Text zwischen **)
+    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // *text* wird zu <em>text</em> (aber nur wenn es nicht bereits bold ist)
+    formattedText = formattedText.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<em>$1</em>');
+    
+    return formattedText;
+  };
+
   // Lade zugewiesene Karteikarten beim Öffnen
   useEffect(() => {
     if (open) {
@@ -2671,22 +2695,60 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
     >
       <Box
         sx={{
-          bgcolor: 'white',
-          borderRadius: 3,
+          background: 'linear-gradient(135deg, #fff 0%, #f8f9fa 100%)',
+          borderRadius: 6,
           p: 4,
-          maxWidth: '90%',
-          maxHeight: '90%',
+          width: '95%',
+          height: '95%',
+          maxWidth: '1200px',
+          maxHeight: '900px',
           overflow: 'auto',
-          position: 'relative'
+          position: 'relative',
+          boxShadow: '0 25px 70px rgba(255, 107, 53, 0.2)',
+          border: '3px solid #ffb74d',
+          backdropFilter: 'blur(10px)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            {learningMode === 'selection' ? 'Karteikarten lernen' : selectedDeck?.title}
-          </Typography>
-          <Button onClick={handleClose} sx={{ minWidth: 'auto' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 1,
+          pb: 0.5,
+          borderBottom: '1px solid #f0f0f0'
+        }}>
+          <Box>
+            <Typography variant="h6" sx={{ 
+              fontWeight: 'bold',
+              color: '#2c3e50',
+              mb: 0
+            }}>
+              {learningMode === 'selection' ? '🗂️ Karteikarten lernen' : `📚 ${selectedDeck?.title}`}
+            </Typography>
+            {learningMode === 'learning' && (
+              <Typography variant="body2" sx={{ 
+                color: '#7f8c8d',
+                fontStyle: 'italic',
+                fontSize: '0.65rem'
+              }}>
+                Klicke auf die Karte zum Umdrehen
+              </Typography>
+            )}
+          </Box>
+          <Button 
+            onClick={handleClose} 
+            sx={{ 
+              minWidth: 'auto',
+              borderRadius: '50%',
+              width: 28,
+              height: 28,
+              bgcolor: '#f8f9fa',
+              color: '#6c757d',
+              '&:hover': { bgcolor: '#e9ecef' }
+            }}
+          >
             ✕
           </Button>
         </Box>
@@ -2705,23 +2767,79 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                 </Typography>
               </Box>
             ) : (
-              <Grid container spacing={2}>
+              <Grid container spacing={3}>
                 {assignedDecks.map((deck) => (
                   <Grid item xs={12} sm={6} md={4} key={deck.id}>
-                    <Card sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#f5f5f5' } }}>
-                      <CardContent>
-                        <Typography variant="h6" sx={{ mb: 1 }}>
+                    <Card sx={{ 
+                      cursor: 'pointer', 
+                      transition: 'all 0.3s ease',
+                      borderRadius: 4,
+                      border: '2px solid #ffb74d',
+                      background: 'linear-gradient(135deg, #fff 0%, #fff3e0 100%)',
+                      boxShadow: '0 4px 20px rgba(255, 107, 53, 0.1)',
+                      '&:hover': { 
+                        transform: 'translateY(-2px) scale(1.01)',
+                        boxShadow: '0 6px 15px rgba(255, 107, 53, 0.15)',
+                        borderColor: '#ff6b35'
+                      }
+                    }}>
+                      <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                        <Box sx={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: '50%',
+                          bgcolor: '#ff6b35',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mx: 'auto',
+                          mb: 2,
+                          boxShadow: '0 4px 15px rgba(255, 107, 53, 0.3)'
+                        }}>
+                          <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                            📚
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6" sx={{ 
+                          mb: 1, 
+                          fontWeight: 700,
+                          color: '#2c3e50'
+                        }}>
                           {deck.title}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-                          {deck.cards?.length || 0} Karten
+                        <Typography variant="body2" sx={{ 
+                          color: '#7f8c8d', 
+                          mb: 3,
+                          fontSize: '0.9rem'
+                        }}>
+                          {deck.cards?.length || 0} Karten verfügbar
                         </Typography>
                         <Button
                           variant="contained"
                           fullWidth
+                          sx={{
+                            bgcolor: '#ff6b35',
+                            color: 'white',
+                            fontWeight: 600,
+                            py: 1.5,
+                            borderRadius: 3,
+                            fontSize: '0.9rem',
+                            textTransform: 'none',
+                            boxShadow: '0 4px 15px rgba(255, 107, 53, 0.3)',
+                            '&:hover': {
+                              bgcolor: '#e55a2b',
+                              transform: 'translateY(-1px)',
+                              boxShadow: '0 4px 12px rgba(255, 107, 53, 0.3)'
+                            }
+                          }}
                           onClick={() => startLearningSession(deck)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              startLearningSession(deck);
+                            }
+                          }}
                         >
-                          Lernen starten
+                          🚀 Lernen starten
                         </Button>
                       </CardContent>
                     </Card>
@@ -2736,74 +2854,157 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
             {selectedDeck && selectedDeck.cards && selectedDeck.cards[currentCardIndex] && (
               <>
                 {/* Fortschritt */}
-                <Box sx={{ mb: 3, textAlign: 'center' }}>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Karte {currentCardIndex + 1} von {selectedDeck.cards.length}
+                <Box sx={{ 
+                  mb: 1, 
+                  textAlign: 'center',
+                  bgcolor: '#f8f9fa',
+                  p: 0.5,
+                  borderRadius: 1
+                }}>
+                  <Typography variant="body2" sx={{ 
+                    color: '#2c3e50',
+                    mb: 0.25,
+                    fontWeight: 600,
+                    fontSize: '0.7rem'
+                  }}>
+                    {currentCardIndex + 1} / {selectedDeck.cards.length}
                   </Typography>
                   <LinearProgress 
                     variant="determinate" 
                     value={((currentCardIndex + 1) / selectedDeck.cards.length) * 100}
-                    sx={{ mt: 1 }}
+                    sx={{ 
+                      height: 3,
+                      borderRadius: 1.5,
+                      bgcolor: '#e9ecef',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 1.5,
+                        bgcolor: '#ff6b35'
+                      }
+                    }}
                   />
                 </Box>
 
                 {/* Karteikarte */}
-                <Card sx={{ mb: 3, minHeight: 200 }}>
-                  <CardContent sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                      {showAnswer ? selectedDeck.cards[currentCardIndex].back : selectedDeck.cards[currentCardIndex].front}
-                    </Typography>
-                    
-                    {!showAnswer && (
-                      <Button
-                        variant="outlined"
-                        onClick={() => setShowAnswer(true)}
-                        sx={{ mt: 2 }}
-                      >
-                        Antwort anzeigen
-                      </Button>
-                    )}
+                <Card sx={{ 
+                  mb: 0, 
+                  minHeight: 120,
+                  width: '70%',
+                  mx: 'auto',
+                  perspective: '1000px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  transformStyle: 'preserve-3d',
+                  borderRadius: 3,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: '1px solid #e0e0e0',
+                  background: !showAnswer 
+                    ? 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+                    : 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)',
+                  '&:hover': {
+                    transform: 'translateY(0px)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                  }
+                }}
+                  onClick={() => setShowAnswer(!showAnswer)}
+                >
+                  <CardContent sx={{ 
+                    textAlign: 'center', 
+                    py: 1,
+                    px: 3,
+                    position: 'relative',
+                    minHeight: 120,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
+                    alignItems: 'center',
+                    paddingTop: '25px'
+                  }}>
+                    <Box sx={{
+                      position: 'relative',
+                      width: '100%',
+                      height: '100%',
+                      transition: 'transform 0.6s',
+                      transformStyle: 'preserve-3d'
+                    }}>
+                      {/* Vorderseite */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: '100%',
+                        backfaceVisibility: 'hidden',
+                        transform: showAnswer ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                        transition: 'transform 0.6s'
+                      }}>
+                        <Typography variant="h6" sx={{ 
+                          mb: 0,
+                          fontWeight: 400,
+                          color: '#000000',
+                          fontSize: '1.1rem'
+                        }}
+                        dangerouslySetInnerHTML={{ __html: formatCardText(selectedDeck.cards[currentCardIndex].front) }}
+                        />
+                      </Box>
+                      
+                      {/* Rückseite */}
+                      <Box sx={{
+                        position: 'absolute',
+                        width: '100%',
+                        backfaceVisibility: 'hidden',
+                        transform: showAnswer ? 'rotateY(0deg)' : 'rotateY(-180deg)',
+                        transition: 'transform 0.6s'
+                      }}>
+                        <Typography variant="h6" sx={{ 
+                          mb: 0,
+                          fontWeight: 400,
+                          color: '#000000',
+                          fontSize: '1.1rem'
+                        }}
+                        dangerouslySetInnerHTML={{ __html: formatCardText(selectedDeck.cards[currentCardIndex].back) }}
+                        />
+                      </Box>
+                    </Box>
                   </CardContent>
                 </Card>
 
                 {/* Bewertungs-Buttons */}
                 {showAnswer && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      onClick={() => handleNextCard(1)}
-                    >
-                      Nicht gewusst (1)
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      onClick={() => handleNextCard(2)}
-                    >
-                      Schwierig (2)
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="info"
-                      onClick={() => handleNextCard(3)}
-                    >
-                      Teilweise (3)
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={() => handleNextCard(4)}
-                    >
-                      Gut (4)
-                    </Button>
-                    <Button
-                      variant="contained"
-                      sx={{ bgcolor: '#9c27b0' }}
-                      onClick={() => handleNextCard(5)}
-                    >
-                      Perfekt (5)
-                    </Button>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ 
+                      color: '#7f8c8d',
+                      mb: 1.5,
+                      fontSize: '0.7rem',
+                      fontStyle: 'italic'
+                    }}>
+                      Drücke 1, 2 oder 3 oder klicke auf die Buttons
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, flexWrap: 'nowrap' }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
+                        onClick={() => handleNextCard(1)}
+                      >
+                        Perfekt (1)
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        size="small"
+                        sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
+                        onClick={() => handleNextCard(2)}
+                      >
+                        Teilweise (2)
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
+                        onClick={() => handleNextCard(3)}
+                      >
+                        Nicht gewusst (3)
+                      </Button>
+                    </Box>
                   </Box>
                 )}
               </>
