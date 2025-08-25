@@ -26,6 +26,7 @@ model User {
   fileSystemPaths FileSystemPath[]
   flashcardDecks FlashcardDeck[]
   flashcardProgress FlashcardProgress[]
+  learningSessions FlashcardLearningSession[]
   documentProcessingHistory DocumentProcessingHistory[]
 }
 
@@ -285,6 +286,7 @@ model FlashcardDeck {
   teacher     User         @relation(fields: [teacherId], references: [id])
   cards       Flashcard[]
   assignments FlashcardAssignment[]
+  learningSessions FlashcardLearningSession[]
 }
 
 model Flashcard {
@@ -317,10 +319,13 @@ model FlashcardProgress {
   id          String       @id @default(uuid())
   cardId      String
   studentId   String
-  level       Int          @default(0) // Spaced Repetition Level
+  level       Int          @default(0) // Spaced Repetition Level (0-5)
   nextReview  DateTime     @default(now())
   lastReviewed DateTime?
   reviewCount Int          @default(0)
+  easeFactor  Float        @default(2.5) // Ease Factor für SM-2 Algorithmus
+  interval    Int          @default(1) // Tage bis zur nächsten Wiederholung
+  quality     Int?         // Letzte Bewertung der Karte (1-5)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   
@@ -345,4 +350,21 @@ model DocumentProcessingHistory {
   teacher     User         @relation(fields: [teacherId], references: [id])
   
   @@unique([sourceFile, teacherId, action, deckId])
+}
+
+// Lern-Sessions für Tracking und Statistiken
+model FlashcardLearningSession {
+  id          String       @id @default(uuid())
+  studentId   String
+  deckId      String
+  startTime   DateTime     @default(now())
+  endTime     DateTime?
+  cardsReviewed Int        @default(0)
+  correctAnswers Int       @default(0)
+  incorrectAnswers Int     @default(0)
+  sessionDuration Int?     // Dauer in Sekunden
+  createdAt   DateTime     @default(now())
+  
+  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  deck        FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
 }

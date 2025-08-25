@@ -14,7 +14,13 @@ import {
   createAssignment,
   deleteAssignment,
   getFlashcardAssignments,
-  getDocumentProcessingHistory
+  getDocumentProcessingHistory,
+  getStudentAssignedFlashcards,
+  updateCardProgress,
+  getStudentAllProgress,
+  getTodayCards,
+  startLearningSession,
+  endLearningSession
 } from '../controllers/FlashcardController';
 
 const router = express.Router();
@@ -49,6 +55,20 @@ router.delete('/assignments/:assignmentId', deleteAssignment);
 
 // Document processing history
 router.get('/document-history', getDocumentProcessingHistory);
+
+// ===== SPACED REPETITION SYSTEM ROUTEN =====
+
+// Schüler-spezifische Routen
+router.get('/student/:studentId/assigned', getStudentAssignedFlashcards);
+router.get('/student/:studentId/progress', getStudentAllProgress);
+router.get('/student/:studentId/today', getTodayCards);
+
+// Lernstand aktualisieren
+router.post('/student/progress', updateCardProgress);
+
+// Lern-Sessions verwalten
+router.post('/student/session/start', startLearningSession);
+router.post('/student/session/end', endLearningSession);
 
 // Backward compatibility routes
 router.get('/:id', getFlashcardDeck);

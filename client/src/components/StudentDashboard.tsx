@@ -10,7 +10,8 @@ import {
   CircularProgress,
   Avatar,
   IconButton,
-  Tooltip
+  Tooltip,
+  LinearProgress
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -135,6 +136,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   
   // Noten-Sektion aufklappbar
   const [gradesExpanded, setGradesExpanded] = useState(false);
+  
+  // Flashcard Learning States
+  const [flashcardLearningOpen, setFlashcardLearningOpen] = useState(false);
 
   // Neue States für echte Ordner-Vorschau (exakt wie im TeacherDashboard)
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
@@ -2062,6 +2066,46 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Box>
                 </Box>
 
+                {/* Flashcard Lern-Box */}
+                <Box sx={{ mt: 2.1 }}>
+                  <Box sx={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: 1,
+                    borderRadius: 1,
+                    bgcolor: '#f8f9fa',
+                    border: '1px solid #e0e0e0'
+                  }}>
+                    <Typography variant="body2" sx={{ 
+                      color: 'text.secondary',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5
+                    }}>
+                      🗂️ Meine Karteikarten lernen
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      sx={{
+                        bgcolor: '#4caf50',
+                        color: 'white',
+                        fontSize: '0.65rem',
+                        py: 0.3,
+                        px: 1,
+                        minWidth: 'auto',
+                        '&:hover': { bgcolor: '#45a049' }
+                      }}
+                      onClick={() => setFlashcardLearningOpen(true)}
+                    >
+                      Lernen starten
+                    </Button>
+                  </Box>
+                </Box>
+
                 {/* Noten Anzeige */}
                 {lerngruppen.length > 0 && (
                   <Box sx={{ mt: 2.1 }}>
@@ -2471,6 +2515,302 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         onSelect={handleEmojiSelect}
         currentEmoji={selectedEmoji}
       />
+
+      {/* Flashcard Learning Modal */}
+      <FlashcardLearningModal
+        open={flashcardLearningOpen}
+        onClose={() => setFlashcardLearningOpen(false)}
+        studentId={userId}
+      />
+    </Box>
+  );
+};
+
+// ===== FLASHCARD LEARNING MODAL KOMPONENTE =====
+
+interface FlashcardLearningModalProps {
+  open: boolean;
+  onClose: () => void;
+  studentId: string;
+}
+
+const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, onClose, studentId }) => {
+  const [assignedDecks, setAssignedDecks] = useState<any[]>([]);
+  const [selectedDeck, setSelectedDeck] = useState<any>(null);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [learningMode, setLearningMode] = useState<'selection' | 'learning'>('selection');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Lade zugewiesene Karteikarten beim Öffnen
+  useEffect(() => {
+    if (open) {
+      fetchAssignedDecks();
+    }
+  }, [open]);
+
+  const fetchAssignedDecks = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/flashcards/student/${studentId}/assigned`);
+      if (response.ok) {
+        const data = await response.json();
+        setAssignedDecks(data.decks || []);
+      }
+    } catch (error) {
+      console.error('Error fetching assigned decks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startLearningSession = async (deck: any) => {
+    try {
+      const response = await fetch('/api/flashcards/student/session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, deckId: deck.id })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSessionId(data.session.id);
+        setSelectedDeck(deck);
+        setCurrentCardIndex(0);
+        setShowAnswer(false);
+        setLearningMode('learning');
+      }
+    } catch (error) {
+      console.error('Error starting learning session:', error);
+    }
+  };
+
+  const updateCardProgress = async (quality: number) => {
+    if (!selectedDeck || !sessionId) return;
+
+    const currentCard = selectedDeck.cards[currentCardIndex];
+    
+    try {
+      await fetch('/api/flashcards/student/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          cardId: currentCard.id,
+          quality
+        })
+      });
+    } catch (error) {
+      console.error('Error updating card progress:', error);
+    }
+  };
+
+  const handleNextCard = (quality: number) => {
+    updateCardProgress(quality);
+    
+    if (currentCardIndex < selectedDeck.cards.length - 1) {
+      setCurrentCardIndex(currentCardIndex + 1);
+      setShowAnswer(false);
+    } else {
+      // Session beenden
+      endLearningSession();
+    }
+  };
+
+  const endLearningSession = async () => {
+    if (!sessionId) return;
+
+    try {
+      await fetch('/api/flashcards/student/session/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          cardsReviewed: selectedDeck.cards.length,
+          correctAnswers: 0, // TODO: Implementieren
+          incorrectAnswers: 0 // TODO: Implementieren
+        })
+      });
+    } catch (error) {
+      console.error('Error ending learning session:', error);
+    }
+
+    // Zurück zur Deck-Auswahl
+    setLearningMode('selection');
+    setSelectedDeck(null);
+    setCurrentCardIndex(0);
+    setShowAnswer(false);
+    setSessionId(null);
+  };
+
+  const handleClose = () => {
+    if (sessionId) {
+      endLearningSession();
+    }
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        bgcolor: 'rgba(0,0,0,0.8)',
+        zIndex: 10000,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}
+      onClick={handleClose}
+    >
+      <Box
+        sx={{
+          bgcolor: 'white',
+          borderRadius: 3,
+          p: 4,
+          maxWidth: '90%',
+          maxHeight: '90%',
+          overflow: 'auto',
+          position: 'relative'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            {learningMode === 'selection' ? 'Karteikarten lernen' : selectedDeck?.title}
+          </Typography>
+          <Button onClick={handleClose} sx={{ minWidth: 'auto' }}>
+            ✕
+          </Button>
+        </Box>
+
+        {learningMode === 'selection' ? (
+          /* Deck-Auswahl */
+          <Box>
+            {loading ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : assignedDecks.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                  Keine Karteikarten zugewiesen
+                </Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={2}>
+                {assignedDecks.map((deck) => (
+                  <Grid item xs={12} sm={6} md={4} key={deck.id}>
+                    <Card sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <CardContent>
+                        <Typography variant="h6" sx={{ mb: 1 }}>
+                          {deck.title}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                          {deck.cards?.length || 0} Karten
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          onClick={() => startLearningSession(deck)}
+                        >
+                          Lernen starten
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
+        ) : (
+          /* Lern-Modus */
+          <Box>
+            {selectedDeck && selectedDeck.cards && selectedDeck.cards[currentCardIndex] && (
+              <>
+                {/* Fortschritt */}
+                <Box sx={{ mb: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Karte {currentCardIndex + 1} von {selectedDeck.cards.length}
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={((currentCardIndex + 1) / selectedDeck.cards.length) * 100}
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
+
+                {/* Karteikarte */}
+                <Card sx={{ mb: 3, minHeight: 200 }}>
+                  <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                      {showAnswer ? selectedDeck.cards[currentCardIndex].back : selectedDeck.cards[currentCardIndex].front}
+                    </Typography>
+                    
+                    {!showAnswer && (
+                      <Button
+                        variant="outlined"
+                        onClick={() => setShowAnswer(true)}
+                        sx={{ mt: 2 }}
+                      >
+                        Antwort anzeigen
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Bewertungs-Buttons */}
+                {showAnswer && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={() => handleNextCard(1)}
+                    >
+                      Nicht gewusst (1)
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      onClick={() => handleNextCard(2)}
+                    >
+                      Schwierig (2)
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="info"
+                      onClick={() => handleNextCard(3)}
+                    >
+                      Teilweise (3)
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={() => handleNextCard(4)}
+                    >
+                      Gut (4)
+                    </Button>
+                    <Button
+                      variant="contained"
+                      sx={{ bgcolor: '#9c27b0' }}
+                      onClick={() => handleNextCard(5)}
+                    >
+                      Perfekt (5)
+                    </Button>
+                  </Box>
+                )}
+              </>
+            )}
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 };
