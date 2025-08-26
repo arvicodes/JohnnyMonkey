@@ -1921,23 +1921,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   }}>
                     {studentName || "Schüler"}
                   </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: '#333',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Schüler
-                  </Typography>
-                  <Typography variant="body2" sx={{ 
-                    color: 'text.secondary', 
-                    fontSize: '0.75rem',
-                    mt: 1,
-                    fontStyle: 'italic'
-                  }}>
-                    Ein fleißiger Schüler, der neues Wissen erobert und Herausforderungen meistert.
-                  </Typography>
+
                 </Box>
 
                 {/* Character Stats */}
