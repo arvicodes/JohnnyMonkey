@@ -3074,30 +3074,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                           {deck.totalCards || 0} Karten verfügbar
                         </Typography>
                         
-                        {/* Fortschrittsanzeige */}
-                        <Box sx={{ mb: 2 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="caption" sx={{ color: '#7f8c8d', fontSize: '0.7rem' }}>
-                              Fortschritt
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#7f8c8d', fontSize: '0.7rem' }}>
-                              {deck.progressPercentage || 0}%
-                            </Typography>
-                          </Box>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={deck.progressPercentage || 0}
-                            sx={{ 
-                              height: 4,
-                              borderRadius: 2,
-                              bgcolor: '#e9ecef',
-                              '& .MuiLinearProgress-bar': {
-                                borderRadius: 2,
-                                bgcolor: '#4caf50'
-                              }
-                            }}
-                          />
-                        </Box>
+
                         
                         {/* Detaillierte Statistiken */}
                         <Box sx={{ mb: 2 }}>
