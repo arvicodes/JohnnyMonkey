@@ -124,6 +124,37 @@ interface Flashcard {
   order: number;
 }
 
+// Flashcard Progress Interface
+interface FlashcardProgress {
+  cardId: string;
+  studentId: string;
+  level: number;
+  nextReview: string;
+  lastReviewed: string;
+  reviewCount: number;
+  quality: number;
+}
+
+interface StudentFlashcardStats {
+  totalCards: number;
+  completedCards: number;
+  dueCards: number;
+  progressPercentage: number;
+  qualityStats: {
+    perfect: number;
+    partial: number;
+    notKnown: number;
+  };
+  levelStats: {
+    level0: number;
+    level1: number;
+    level2: number;
+    level3: number;
+    level4: number;
+    level5: number;
+  };
+}
+
 interface FlashcardDeck {
   id?: string;
   title: string;
@@ -267,6 +298,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [editGroupName, setEditGroupName] = useState('');
   const [editGroupId, setEditGroupId] = useState<string | null>(null);
   const [gradingModalOpen, setGradingModalOpen] = useState(false);
+  
+  // Flashcard Progress State
+  const [studentFlashcardStats, setStudentFlashcardStats] = useState<Record<string, StudentFlashcardStats>>({});
+  const [flashcardStatsLoading, setFlashcardStatsLoading] = useState<Record<string, boolean>>({});
   const [gradingGroupId, setGradingGroupId] = useState<string | null>(null);
   const [gradingGroupName, setGradingGroupName] = useState('');
   const [gradesModalOpen, setGradesModalOpen] = useState(false);
@@ -615,9 +650,74 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       for (const group of groupsData) {
         await fetchAssignedFolders(group.id);
       }
+      
+      // Lade Karteikarten-Fortschritt für alle Schüler
+      for (const group of groupsData) {
+        for (const student of group.students) {
+          await fetchStudentFlashcardProgress(student.id);
+        }
+      }
     } catch (error) {
       console.error('Fehler beim Laden der Gruppen:', error);
       showSnackbar('Fehler beim Laden der Gruppen', 'error');
+    }
+  };
+
+  // Funktion zum Laden des Karteikarten-Fortschritts eines Schülers
+  const fetchStudentFlashcardProgress = async (studentId: string) => {
+    try {
+      setFlashcardStatsLoading(prev => ({ ...prev, [studentId]: true }));
+      
+      const response = await fetch(`/api/flashcards/student/${studentId}/progress`);
+      if (response.ok) {
+        const data = await response.json();
+        let progressData = data.progress || [];
+        
+        if (!Array.isArray(progressData)) {
+          progressData = [];
+        }
+        
+        // Berechne Statistiken
+        const totalCards = progressData.length;
+        const completedCards = progressData.filter((item: any) => item.level > 0).length;
+        const dueCards = progressData.filter((item: any) => {
+          if (!item.nextReview) return false;
+          const reviewDate = new Date(item.nextReview);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return reviewDate <= today;
+        }).length;
+        
+        const qualityStats = {
+          perfect: progressData.filter((item: any) => item.quality === 1).length,
+          partial: progressData.filter((item: any) => item.quality === 2).length,
+          notKnown: progressData.filter((item: any) => item.quality === 3).length
+        };
+        
+        const levelStats = {
+          level0: progressData.filter((item: any) => item.level === 0).length,
+          level1: progressData.filter((item: any) => item.level === 1).length,
+          level2: progressData.filter((item: any) => item.level === 2).length,
+          level3: progressData.filter((item: any) => item.level === 3).length,
+          level4: progressData.filter((item: any) => item.level === 4).length,
+          level5: progressData.filter((item: any) => item.level === 5).length
+        };
+        
+        const stats: StudentFlashcardStats = {
+          totalCards,
+          completedCards,
+          dueCards,
+          progressPercentage: totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0,
+          qualityStats,
+          levelStats
+        };
+        
+        setStudentFlashcardStats(prev => ({ ...prev, [studentId]: stats }));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden des Karteikarten-Fortschritts:', error);
+    } finally {
+      setFlashcardStatsLoading(prev => ({ ...prev, [studentId]: false }));
     }
   };
 
@@ -3953,6 +4053,152 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 </Typography>
                                               </Box>
                                             )}
+                                            
+                                            {/* Karteikarten-Fortschritt */}
+                                            <Box sx={{ mt: 1, p: 0.7, bgcolor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+                                              <Typography variant="caption" sx={{ 
+                                                color: '#6c757d', 
+                                                fontSize: '0.6rem', 
+                                                fontWeight: 600,
+                                                display: 'block',
+                                                mb: 0.5,
+                                                textAlign: 'center'
+                                              }}>
+                                                🗂️ Karteikarten
+                                              </Typography>
+                                              
+                                              {(() => {
+                                                const stats = studentFlashcardStats[student.id];
+                                                const loading = flashcardStatsLoading[student.id];
+                                                
+                                                if (loading) {
+                                                  return (
+                                                    <Box sx={{ textAlign: 'center', py: 0.5 }}>
+                                                      <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.5rem' }}>
+                                                        Lade...
+                                                      </Typography>
+                                                    </Box>
+                                                  );
+                                                }
+                                                
+                                                if (!stats || stats.totalCards === 0) {
+                                                  return (
+                                                    <Box sx={{ textAlign: 'center', py: 0.5 }}>
+                                                      <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.5rem' }}>
+                                                        Keine Karten
+                                                      </Typography>
+                                                    </Box>
+                                                  );
+                                                }
+                                                
+                                                return (
+                                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                                    {/* Fortschritt */}
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                      <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.5rem' }}>
+                                                        Fortschritt
+                                                      </Typography>
+                                                      <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.5rem', fontWeight: 'bold' }}>
+                                                        {stats.progressPercentage}%
+                                                      </Typography>
+                                                    </Box>
+                                                    
+                                                    {/* Bewertungen */}
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.3 }}>
+                                                      <Box sx={{ 
+                                                        textAlign: 'center', 
+                                                        flex: 1,
+                                                        p: 0.3,
+                                                        bgcolor: '#d4edda',
+                                                        borderRadius: 0.5,
+                                                        border: '1px solid #c3e6cb'
+                                                      }}>
+                                                        <Typography variant="caption" sx={{ 
+                                                          color: '#155724', 
+                                                          fontSize: '0.5rem', 
+                                                          fontWeight: 'bold',
+                                                          display: 'block'
+                                                        }}>
+                                                          {stats.qualityStats.perfect}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ 
+                                                          color: '#155724', 
+                                                          fontSize: '0.4rem'
+                                                        }}>
+                                                          ✅
+                                                        </Typography>
+                                                      </Box>
+                                                      <Box sx={{ 
+                                                        textAlign: 'center', 
+                                                        flex: 1,
+                                                        p: 0.3,
+                                                        bgcolor: '#fff3cd',
+                                                        borderRadius: 0.5,
+                                                        border: '1px solid #ffeaa7'
+                                                      }}>
+                                                        <Typography variant="caption" sx={{ 
+                                                          color: '#856404', 
+                                                          fontSize: '0.5rem', 
+                                                          fontWeight: 'bold',
+                                                          display: 'block'
+                                                        }}>
+                                                          {stats.qualityStats.partial}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ 
+                                                          color: '#856404', 
+                                                          fontSize: '0.4rem'
+                                                        }}>
+                                                          ⚠️
+                                                        </Typography>
+                                                      </Box>
+                                                      <Box sx={{ 
+                                                        textAlign: 'center', 
+                                                        flex: 1,
+                                                        p: 0.3,
+                                                        bgcolor: '#f8d7da',
+                                                        borderRadius: 0.5,
+                                                        border: '1px solid #f5c6cb'
+                                                      }}>
+                                                        <Typography variant="caption" sx={{ 
+                                                          color: '#721c24', 
+                                                          fontSize: '0.5rem', 
+                                                          fontWeight: 'bold',
+                                                          display: 'block'
+                                                        }}>
+                                                          {stats.qualityStats.notKnown}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ 
+                                                          color: '#721c24', 
+                                                          fontSize: '0.4rem'
+                                                        }}>
+                                                          ❌
+                                                        </Typography>
+                                                      </Box>
+                                                    </Box>
+                                                    
+                                                    {/* Fällige Karten */}
+                                                    {stats.dueCards > 0 && (
+                                                      <Box sx={{ 
+                                                        textAlign: 'center', 
+                                                        mt: 0.3,
+                                                        p: 0.3,
+                                                        bgcolor: '#fff3cd',
+                                                        borderRadius: 0.5,
+                                                        border: '1px solid #ffeaa7'
+                                                      }}>
+                                                        <Typography variant="caption" sx={{ 
+                                                          color: '#856404', 
+                                                          fontSize: '0.5rem', 
+                                                          fontWeight: 'bold'
+                                                        }}>
+                                                          {stats.dueCards} fällig
+                                                        </Typography>
+                                                      </Box>
+                                                    )}
+                                                  </Box>
+                                                );
+                                              })()}
+                                            </Box>
                                           </Box>
                                         );
                                       })()}
