@@ -20,7 +20,7 @@ export class SpacedRepetitionService {
   /**
    * Berechnet das nächste Review-Datum basierend auf der Antwortqualität
    * @param currentLevel Aktuelles Level (0-5)
-   * @param quality Antwortqualität (1-5, wobei 1=schlecht, 5=perfekt)
+   * @param quality Antwortqualität (1=Perfekt, 2=Teilweise, 3=Nicht gewusst)
    * @param config Konfiguration für den Algorithmus
    * @returns ReviewResult mit neuem Level und nächstem Review-Datum
    */
@@ -34,15 +34,15 @@ export class SpacedRepetitionService {
     let newLevel = currentLevel;
     let interval: number;
 
-    // Qualitätsbasierte Level-Anpassung
-    if (quality >= 4) {
-      // Richtige Antwort - Level erhöhen
+    // Qualitätsbasierte Level-Anpassung für 3-Stufen-System
+    if (quality === 1) {
+      // Perfekt - Level erhöhen
       newLevel = Math.min(currentLevel + 1, finalConfig.maxLevel);
-    } else if (quality <= 2) {
-      // Falsche Antwort - Level zurücksetzen
+    } else if (quality === 3) {
+      // Nicht gewusst - Level zurücksetzen
       newLevel = Math.max(0, currentLevel - 1);
     }
-    // Bei Qualität 3 bleibt das Level gleich
+    // Bei Qualität 2 (Teilweise) bleibt das Level gleich
 
     // Intervall basierend auf neuem Level berechnen
     if (newLevel === 0) {

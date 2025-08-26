@@ -2512,14 +2512,22 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
   const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [learningMode, setLearningMode] = useState<'selection' | 'learning'>('selection');
+  const [learningMode, setLearningMode] = useState<'selection' | 'learning' | 'viewing'>('selection');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Tastatur-Shortcuts für Bewertungen
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      // Leertaste zum Umdrehen der Karte (funktioniert in beiden Modi)
+      if (event.key === ' ') {
+        event.preventDefault();
+        setShowAnswer(!showAnswer);
+        return;
+      }
+      
       if (learningMode === 'learning' && showAnswer) {
+        // Bewertungen nur im Lern-Modus
         switch (event.key) {
           case '1':
             handleNextCard(1);
@@ -2530,17 +2538,20 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
           case '3':
             handleNextCard(3);
             break;
-          case ' ':
-            // Leertaste zum Umdrehen der Karte
-            event.preventDefault();
-            setShowAnswer(!showAnswer);
-            break;
         }
-      } else if (learningMode === 'learning' && !showAnswer) {
-        if (event.key === ' ') {
-          // Leertaste zum Umdrehen der Karte
-          event.preventDefault();
-          setShowAnswer(true);
+      } else if (learningMode === 'viewing') {
+        // Pfeiltasten für Navigation im Ansehen-Modus
+        switch (event.key) {
+          case 'ArrowLeft':
+            event.preventDefault();
+            setCurrentCardIndex(Math.max(0, currentCardIndex - 1));
+            setShowAnswer(false); // Karte zurücksetzen
+            break;
+          case 'ArrowRight':
+            event.preventDefault();
+            setCurrentCardIndex(Math.min(selectedDeck?.cards?.length - 1 || 0, currentCardIndex + 1));
+            setShowAnswer(false); // Karte zurücksetzen
+            break;
         }
       }
     };
@@ -2580,7 +2591,132 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
       const response = await fetch(`/api/flashcards/student/${studentId}/assigned`);
       if (response.ok) {
         const data = await response.json();
-        setAssignedDecks(data.decks || []);
+        const decks = data.decks || [];
+        
+        // Lade den Fortschritt für jedes Deck
+        const decksWithProgress = await Promise.all(
+          decks.map(async (deck: any) => {
+            try {
+              // Verwende den korrekten API-Endpoint für den Fortschritt
+              const progressResponse = await fetch(`/api/flashcards/student/${studentId}/progress`);
+              if (progressResponse.ok) {
+                let progressData = await progressResponse.json();
+                
+                // Extrahiere das progress Array aus der Antwort
+                if (progressData && progressData.progress && Array.isArray(progressData.progress)) {
+                  progressData = progressData.progress;
+                } else if (!Array.isArray(progressData)) {
+                  console.warn('Progress data is not an array:', progressData);
+                  progressData = [];
+                }
+                
+                // Filtere den Fortschritt für dieses spezifische Deck
+                const deckProgress = progressData.filter((item: any) => 
+                  item.card && item.card.deckId === deck.id
+                );
+                
+                // Berechne detaillierte Statistiken
+                const totalCards = deck.cards?.length || 0;
+                
+                // Bewertungs-Statistiken
+                const qualityStats = {
+                  perfect: deckProgress.filter((item: any) => item.quality === 1).length,
+                  partial: deckProgress.filter((item: any) => item.quality === 2).length,
+                  notKnown: deckProgress.filter((item: any) => item.quality === 3).length
+                };
+                
+                // Level-Statistiken
+                const levelStats = {
+                  level0: deckProgress.filter((item: any) => item.level === 0).length,
+                  level1: deckProgress.filter((item: any) => item.level === 1).length,
+                  level2: deckProgress.filter((item: any) => item.level === 2).length,
+                  level3: deckProgress.filter((item: any) => item.level === 3).length,
+                  level4: deckProgress.filter((item: any) => item.level === 4).length,
+                  level5: deckProgress.filter((item: any) => item.level === 5).length
+                };
+                
+                // Fällige Karten nach Datum gruppiert
+                const now = new Date();
+                console.log('Debug - Current time:', now.toISOString());
+                
+                const dueCardsByDate = {
+                  today: deckProgress.filter((item: any) => {
+                    if (!item.nextReview) return true;
+                    // nextReview ist ein ISO-Datums-String, konvertiere direkt zu Date
+                    const reviewDate = new Date(item.nextReview);
+                    const isDue = reviewDate <= now;
+                    console.log(`Debug - Card ${item.cardId}: nextReview=${item.nextReview}, reviewDate=${reviewDate.toISOString()}, isDue=${isDue}`);
+                    return isDue;
+                  }).length,
+                  tomorrow: deckProgress.filter((item: any) => {
+                    if (!item.nextReview) return false;
+                    const reviewDate = new Date(item.nextReview);
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    return reviewDate > now && reviewDate <= tomorrow;
+                  }).length,
+                  thisWeek: deckProgress.filter((item: any) => {
+                    if (!item.nextReview) return false;
+                    const reviewDate = new Date(item.nextReview);
+                    const weekEnd = new Date(now);
+                    weekEnd.setDate(weekEnd.getDate() + 7);
+                    return reviewDate > now && reviewDate <= weekEnd;
+                  }).length,
+                  later: deckProgress.filter((item: any) => {
+                    if (!item.nextReview) return false;
+                    const reviewDate = new Date(item.nextReview);
+                    const weekEnd = new Date(now);
+                    weekEnd.setDate(weekEnd.getDate() + 7);
+                    return reviewDate > weekEnd;
+                  }).length
+                };
+                
+                console.log('Debug - dueCardsByDate:', dueCardsByDate);
+                const dueCards = dueCardsByDate.today;
+                const completedCards = deckProgress.filter((item: any) => 
+                  item.level >= 3
+                ).length;
+                
+                // Review-Statistiken
+                const reviewStats = {
+                  totalReviews: deckProgress.reduce((sum: number, item: any) => sum + (item.reviewCount || 0), 0),
+                  avgReviewCount: deckProgress.length > 0 ? Math.round(deckProgress.reduce((sum: number, item: any) => sum + (item.reviewCount || 0), 0) / deckProgress.length) : 0,
+                  lastReviewDate: deckProgress.length > 0 ? new Date(Math.max(...deckProgress.map((item: any) => parseInt(item.lastReviewed || 0)))).toLocaleDateString('de-DE') : '-'
+                };
+                
+                return {
+                  ...deck,
+                  totalCards,
+                  dueCards: dueCards, // Verwende nur die tatsächlich fälligen Karten
+                  completedCards,
+                  progressPercentage: totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0,
+                  qualityStats,
+                  levelStats,
+                  dueCardsByDate,
+                  reviewStats
+                };
+              }
+              return {
+                ...deck,
+                totalCards: deck.cards?.length || 0,
+                dueCards: deck.cards?.length || 0, // Alle Karten sind fällig, wenn kein Fortschritt
+                completedCards: 0,
+                progressPercentage: 0
+              };
+            } catch (error) {
+              console.error(`Error loading progress for deck ${deck.id}:`, error);
+              return {
+                ...deck,
+                totalCards: deck.cards?.length || 0,
+                dueCards: deck.cards?.length || 0,
+                completedCards: 0,
+                progressPercentage: 0
+              };
+            }
+          })
+        );
+        
+        setAssignedDecks(decksWithProgress);
       }
     } catch (error) {
       console.error('Error fetching assigned decks:', error);
@@ -2591,76 +2727,190 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
 
   const startLearningSession = async (deck: any) => {
     try {
-      const response = await fetch('/api/flashcards/student/session/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, deckId: deck.id })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSessionId(data.session.id);
+      // Lade den aktuellen Fortschritt für das Deck
+      const progressResponse = await fetch(`/api/flashcards/student/${studentId}/progress`);
+      if (progressResponse.ok) {
+        const progressData = await progressResponse.json();
+        
+        // Filtere den Fortschritt für dieses spezifische Deck
+        const deckProgress = progressData.filter((item: any) => 
+          item.card && item.card.deckId === deck.id
+        );
+        
+        // Erstelle eine Map für schnellen Zugriff auf den Fortschritt
+        const progressMap = new Map();
+        deckProgress.forEach((item: any) => {
+          progressMap.set(item.cardId, item);
+        });
+        
+        // Filtere Karten basierend auf Fortschritt
+        let cardsToLearn = deck.cards || [];
+        
+        if (deck.dueCards > 0) {
+          // Es gibt fällige Karten - lade nur diese
+          cardsToLearn = deck.cards.filter((card: any) => {
+            const progress = progressMap.get(card.id);
+            if (!progress) return true; // Neue Karten sind immer fällig
+            return new Date(progress.nextReview) <= new Date();
+          });
+        }
+        
+        // Wenn keine fälligen Karten, lade alle Karten für Wiederholung
+        if (cardsToLearn.length === 0) {
+          cardsToLearn = deck.cards || [];
+        }
+        
+        // Erstelle eine Kopie des Decks mit den zu lernenden Karten
+        const deckWithCards = {
+          ...deck,
+          cards: cardsToLearn,
+          totalCards: deck.cards?.length || 0,
+          dueCards: cardsToLearn.length
+        };
+        
+        setSelectedDeck(deckWithCards);
+        setCurrentCardIndex(0);
+        setShowAnswer(false);
+        
+        // Bestimme den Modus basierend auf fälligen Karten
+        if (deck.dueCards > 0) {
+          setLearningMode('learning');
+          // Starte Session nur für fällige Karten
+          const sessionResponse = await fetch('/api/flashcards/student/session/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId, deckId: deck.id })
+          });
+          
+          if (sessionResponse.ok) {
+            const sessionData = await sessionResponse.json();
+            setSessionId(sessionData.session.id);
+          }
+        } else {
+          setLearningMode('viewing'); // Neuer Ansehen-Modus
+        }
+      } else {
+        // Fallback: Verwende alle Karten des Decks
         setSelectedDeck(deck);
         setCurrentCardIndex(0);
         setShowAnswer(false);
-        setLearningMode('learning');
+        setLearningMode('viewing'); // Ansehen-Modus als Fallback
       }
     } catch (error) {
       console.error('Error starting learning session:', error);
+      // Fallback: Verwende alle Karten des Decks
+      setSelectedDeck(deck);
+      setCurrentCardIndex(0);
+      setShowAnswer(false);
+      setLearningMode('viewing'); // Ansehen-Modus als Fallback
     }
   };
 
   const updateCardProgress = async (quality: number) => {
-    if (!selectedDeck || !sessionId) return;
+    if (!selectedDeck) return;
 
     const currentCard = selectedDeck.cards[currentCardIndex];
     
     try {
-      await fetch('/api/flashcards/student/progress', {
+      const response = await fetch(`/api/flashcards/student/${currentCard.id}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentId,
-          cardId: currentCard.id,
           quality
         })
       });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Card progress updated:', data);
+        
+        // Sofortige lokale Aktualisierung der Statistiken
+        setAssignedDecks(prevDecks => 
+          prevDecks.map(deck => {
+            if (deck.id === selectedDeck.id) {
+              // Aktualisiere die Statistiken für das aktuelle Deck
+              const updatedDeck = { ...deck };
+              
+              // Initialisiere Statistiken falls sie nicht existieren
+              if (!updatedDeck.qualityStats) {
+                updatedDeck.qualityStats = { perfect: 0, partial: 0, notKnown: 0 };
+              }
+              if (!updatedDeck.levelStats) {
+                updatedDeck.levelStats = { level0: 0, level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 };
+              }
+              if (!updatedDeck.dueCardsByDate) {
+                updatedDeck.dueCardsByDate = { today: 0, tomorrow: 0, thisWeek: 0, later: 0 };
+              }
+              
+              // Aktualisiere die Bewertungs-Statistiken
+              if (quality === 1) {
+                updatedDeck.qualityStats.perfect = (updatedDeck.qualityStats.perfect || 0) + 1;
+              } else if (quality === 2) {
+                updatedDeck.qualityStats.partial = (updatedDeck.qualityStats.partial || 0) + 1;
+              } else if (quality === 3) {
+                updatedDeck.qualityStats.notKnown = (updatedDeck.qualityStats.notKnown || 0) + 1;
+              }
+              
+              // Aktualisiere die Level-Statistiken (alle Karten sind auf Level 0)
+              updatedDeck.levelStats.level0 = (updatedDeck.levelStats.level0 || 0) + 1;
+              
+              // Aktualisiere die fälligen Karten (alle werden für morgen geplant)
+              updatedDeck.dueCardsByDate.tomorrow = (updatedDeck.dueCardsByDate.tomorrow || 0) + 1;
+              
+              console.log('Updated deck stats:', updatedDeck);
+              return updatedDeck;
+            }
+            return deck;
+          })
+        );
+        
+        // Aktualisiere auch den Backend-Fortschritt
+        await fetchAssignedDecks();
+        
+        // Force re-render der UI
+        setAssignedDecks(prevDecks => [...prevDecks]);
+      }
     } catch (error) {
       console.error('Error updating card progress:', error);
     }
   };
 
   const handleNextCard = (quality: number) => {
+    console.log(`handleNextCard called with quality: ${quality}, currentCardIndex: ${currentCardIndex}, totalCards: ${selectedDeck?.cards?.length}`);
+    
     updateCardProgress(quality);
     
     if (currentCardIndex < selectedDeck.cards.length - 1) {
+      console.log('Moving to next card...');
       setCurrentCardIndex(currentCardIndex + 1);
       setShowAnswer(false);
     } else {
-      // Session beenden
+      // Letzte Karte erreicht - Session beenden
+      console.log('Letzte Karte erreicht, beende Session...');
       endLearningSession();
     }
   };
 
   const endLearningSession = async () => {
-    if (!sessionId) return;
-
+    // Session beenden, auch wenn keine sessionId vorhanden ist
     try {
+      if (sessionId) {
       await fetch('/api/flashcards/student/session/end', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          cardsReviewed: selectedDeck.cards.length,
+            cardsReviewed: selectedDeck?.cards?.length || 0,
           correctAnswers: 0, // TODO: Implementieren
           incorrectAnswers: 0 // TODO: Implementieren
         })
       });
+      }
     } catch (error) {
       console.error('Error ending learning session:', error);
     }
 
-    // Zurück zur Deck-Auswahl
+    // Immer zur Deck-Auswahl zurückkehren
     setLearningMode('selection');
     setSelectedDeck(null);
     setCurrentCardIndex(0);
@@ -2736,6 +2986,15 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                 Klicke auf die Karte zum Umdrehen
               </Typography>
             )}
+            {learningMode === 'viewing' && (
+              <Typography variant="body2" sx={{ 
+                color: '#7f8c8d',
+                fontStyle: 'italic',
+                fontSize: '0.65rem'
+              }}>
+                Leertaste: Karte umdrehen | Pfeiltasten: Navigation
+              </Typography>
+            )}
           </Box>
           <Button 
             onClick={handleClose} 
@@ -2809,11 +3068,349 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                         </Typography>
                         <Typography variant="body2" sx={{ 
                           color: '#7f8c8d', 
-                          mb: 3,
+                          mb: 1,
                           fontSize: '0.9rem'
                         }}>
-                          {deck.cards?.length || 0} Karten verfügbar
+                          {deck.totalCards || 0} Karten verfügbar
                         </Typography>
+                        
+                        {/* Fortschrittsanzeige */}
+                        <Box sx={{ mb: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="caption" sx={{ color: '#7f8c8d', fontSize: '0.7rem' }}>
+                              Fortschritt
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#7f8c8d', fontSize: '0.7rem' }}>
+                              {deck.progressPercentage || 0}%
+                            </Typography>
+                          </Box>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={deck.progressPercentage || 0}
+                            sx={{ 
+                              height: 4,
+                              borderRadius: 2,
+                              bgcolor: '#e9ecef',
+                              '& .MuiLinearProgress-bar': {
+                                borderRadius: 2,
+                                bgcolor: '#4caf50'
+                              }
+                            }}
+                          />
+                        </Box>
+                        
+                        {/* Detaillierte Statistiken */}
+                        <Box sx={{ mb: 2 }}>
+                          {/* Bewertungs-Statistiken */}
+                          <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="caption" sx={{ 
+                              color: '#6c757d', 
+                              fontSize: '0.6rem', 
+                              fontWeight: 600,
+                              display: 'block',
+                              mb: 0.5
+                            }}>
+                              📊 Bewertungen
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: '#d4edda',
+                                borderRadius: 0.5,
+                                border: '1px solid #c3e6cb'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#155724', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.qualityStats?.perfect || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#155724', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  ✅
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: '#fff3cd',
+                                borderRadius: 0.5,
+                                border: '1px solid #ffeaa7'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#856404', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.qualityStats?.partial || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#856404', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  ⚠️
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: '#f8d7da',
+                                borderRadius: 0.5,
+                                border: '1px solid #f5c6cb'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#721c24', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.qualityStats?.notKnown || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#721c24', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  ❌
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </Box>
+                          
+                          {/* Level-Statistiken */}
+                          <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="caption" sx={{ 
+                              color: '#6c757d', 
+                              fontSize: '0.6rem', 
+                              fontWeight: 600,
+                              display: 'block',
+                              mb: 0.5
+                            }}>
+                              🎯 Level-Verteilung
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
+                              {[0, 1, 2, 3, 4, 5].map((level) => (
+                                <Box key={level} sx={{ 
+                                  textAlign: 'center', 
+                                  flex: 1,
+                                  p: 0.5,
+                                  bgcolor: level >= 3 ? '#d4edda' : '#e9ecef',
+                                  borderRadius: 0.5,
+                                  border: `1px solid ${level >= 3 ? '#c3e6cb' : '#dee2e6'}`
+                                }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: level >= 3 ? '#155724' : '#6c757d', 
+                                    fontSize: '0.6rem', 
+                                    fontWeight: 'bold',
+                                    display: 'block'
+                                  }}>
+                                    {deck.levelStats?.[`level${level}`] || 0}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: level >= 3 ? '#155724' : '#6c757d', 
+                                    fontSize: '0.5rem'
+                                  }}>
+                                    L{level}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          </Box>
+                          
+                          {/* Review-Status */}
+                          <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="caption" sx={{ 
+                              color: '#6c757d', 
+                              fontSize: '0.6rem', 
+                              fontWeight: 600,
+                              display: 'block',
+                              mb: 0.5
+                            }}>
+                              🔄 Review-Status
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: '#e3f2fd',
+                                borderRadius: 0.5,
+                                border: '1px solid #bbdefb'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#1976d2', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.reviewStats?.totalReviews || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#1976d2', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  Gesamt
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: '#e8f5e8',
+                                borderRadius: 0.5,
+                                border: '1px solid #c8e6c9'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#2e7d32', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.reviewStats?.avgReviewCount || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#2e7d32', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  Ø Reviews
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: '#fff3e0',
+                                borderRadius: 0.5,
+                                border: '1px solid #ffe0b2'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#f57c00', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.reviewStats?.lastReviewDate || '-'}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#f57c00', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  Letzte
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </Box>
+                          
+                          {/* Fällige Karten nach Datum */}
+                          <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="caption" sx={{ 
+                              color: '#6c757d', 
+                              fontSize: '0.6rem', 
+                              fontWeight: 600,
+                              display: 'block',
+                              mb: 0.5
+                            }}>
+                              📅 Nächste Reviews
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: deck.dueCardsByDate?.today > 0 ? '#fff3cd' : '#e9ecef',
+                                borderRadius: 0.5,
+                                border: `1px solid ${deck.dueCardsByDate?.today > 0 ? '#ffeaa7' : '#dee2e6'}`
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: deck.dueCardsByDate?.today > 0 ? '#856404' : '#6c757d', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.dueCardsByDate?.today || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: deck.dueCardsByDate?.today > 0 ? '#856404' : '#6c757d', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  Heute
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: deck.dueCardsByDate?.tomorrow > 0 ? '#fff3cd' : '#e9ecef',
+                                borderRadius: 0.5,
+                                border: `1px solid ${deck.dueCardsByDate?.tomorrow > 0 ? '#ffeaa7' : '#dee2e6'}`
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: deck.dueCardsByDate?.tomorrow > 0 ? '#856404' : '#6c757d', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.dueCardsByDate?.tomorrow || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: deck.dueCardsByDate?.tomorrow > 0 ? '#856404' : '#6c757d', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  Morgen
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                textAlign: 'center', 
+                                flex: 1,
+                                p: 0.5,
+                                bgcolor: deck.dueCardsByDate?.thisWeek > 0 ? '#fff3cd' : '#e9ecef',
+                                borderRadius: 0.5,
+                                border: `1px solid ${deck.dueCardsByDate?.thisWeek > 0 ? '#ffeaa7' : '#dee2e6'}`
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: deck.dueCardsByDate?.thisWeek > 0 ? '#856404' : '#6c757d', 
+                                  fontSize: '0.6rem', 
+                                  fontWeight: 'bold',
+                                  display: 'block'
+                                }}>
+                                  {deck.dueCardsByDate?.thisWeek || 0}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  color: deck.dueCardsByDate?.thisWeek > 0 ? '#856404' : '#6c757d', 
+                                  fontSize: '0.5rem'
+                                }}>
+                                  Woche
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Box>
+                        
+                        {/* Fällige Karten Zusammenfassung */}
+                        <Box sx={{ 
+                          mb: 3,
+                          p: 1,
+                          bgcolor: deck.dueCards > 0 ? '#fff3cd' : '#d4edda',
+                          borderRadius: 1,
+                          border: `1px solid ${deck.dueCards > 0 ? '#ffeaa7' : '#c3e6cb'}`
+                        }}>
+                          <Typography variant="body2" sx={{ 
+                            color: deck.dueCards > 0 ? '#856404' : '#155724',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            textAlign: 'center'
+                          }}>
+                            {deck.dueCards > 0 ? `📚 ${deck.dueCards} Karten fällig` : '✅ Alle Karten gelernt'}
+                          </Typography>
+                        </Box>
                         <Button
                           variant="contained"
                           fullWidth
@@ -2839,7 +3436,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                             }
                           }}
                         >
-                          🚀 Lernen starten
+                          {deck.dueCards > 0 ? '📚 Fällige Karten lernen' : '👁️ Karten einfach nur ansehen'}
                         </Button>
                       </CardContent>
                     </Card>
@@ -2853,22 +3450,53 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
           <Box>
             {selectedDeck && selectedDeck.cards && selectedDeck.cards[currentCardIndex] && (
               <>
-                {/* Fortschritt */}
+                {/* Fortschritt und Level */}
                 <Box sx={{ 
                   mb: 1, 
                   textAlign: 'center',
                   bgcolor: '#f8f9fa',
-                  p: 0.5,
+                  p: 1,
                   borderRadius: 1
                 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                   <Typography variant="body2" sx={{ 
                     color: '#2c3e50',
-                    mb: 0.25,
                     fontWeight: 600,
                     fontSize: '0.7rem'
                   }}>
                     {currentCardIndex + 1} / {selectedDeck.cards.length}
                   </Typography>
+                    
+                    {/* Level-Anzeige */}
+                    {selectedDeck.cards[currentCardIndex].progress && (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 0.5,
+                        bgcolor: '#e3f2fd',
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        border: '1px solid #bbdefb'
+                      }}>
+                        <Typography variant="caption" sx={{ 
+                          color: '#1976d2',
+                          fontSize: '0.6rem',
+                          fontWeight: 600
+                        }}>
+                          Level
+                        </Typography>
+                        <Typography variant="caption" sx={{ 
+                          color: '#1976d2',
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold'
+                        }}>
+                          {selectedDeck.cards[currentCardIndex].progress.level}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                  
                   <LinearProgress 
                     variant="determinate" 
                     value={((currentCardIndex + 1) / selectedDeck.cards.length) * 100}
@@ -2965,8 +3593,8 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                   </CardContent>
                 </Card>
 
-                {/* Bewertungs-Buttons */}
-                {showAnswer && (
+                {/* Bewertungs-Buttons - nur im Lern-Modus */}
+                {showAnswer && learningMode === 'learning' && (
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ 
                       color: '#7f8c8d',
@@ -2974,7 +3602,16 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                       fontSize: '0.7rem',
                       fontStyle: 'italic'
                     }}>
-                      Drücke 1, 2 oder 3 oder klicke auf die Buttons
+                      Bewerte deine Antwort: Drücke 1, 2 oder 3 oder klicke auf die Buttons
+                    </Typography>
+                    
+                    <Typography variant="caption" sx={{ 
+                      color: '#6c757d',
+                      mb: 1.5,
+                      fontSize: '0.6rem',
+                      display: 'block'
+                    }}>
+                      💡 Spaced Repetition: Perfekt = längere Pause, Nicht gewusst = kürzere Pause
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, flexWrap: 'nowrap' }}>
                       <Button
@@ -2984,16 +3621,16 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                         sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
                         onClick={() => handleNextCard(1)}
                       >
-                        Perfekt (1)
+                        ✅ Perfekt (1)
                       </Button>
                       <Button
                         variant="contained"
-                        color="primary"
+                        color="warning"
                         size="small"
                         sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
                         onClick={() => handleNextCard(2)}
                       >
-                        Teilweise (2)
+                        ⚠️ Teilweise (2)
                       </Button>
                       <Button
                         variant="contained"
@@ -3002,11 +3639,80 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                         sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
                         onClick={() => handleNextCard(3)}
                       >
-                        Nicht gewusst (3)
+                        ❌ Nicht gewusst (3)
                       </Button>
                     </Box>
                   </Box>
                 )}
+                
+                {/* Navigation für Ansehen-Modus */}
+                {learningMode === 'viewing' && (
+                  <Box sx={{ textAlign: 'center', mt: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mb: 2 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        sx={{ 
+                          fontSize: '0.7rem', 
+                          py: 0.5, 
+                          px: 2,
+                          borderColor: '#6c757d',
+                          color: '#6c757d',
+                          '&:hover': {
+                            borderColor: '#495057',
+                            color: '#495057'
+                          }
+                        }}
+                        onClick={() => setCurrentCardIndex(Math.max(0, currentCardIndex - 1))}
+                        disabled={currentCardIndex === 0}
+                      >
+                        ⬅️ Zurück
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        sx={{ 
+                          fontSize: '0.7rem', 
+                          py: 0.5, 
+                          px: 2,
+                          borderColor: '#6c757d',
+                          color: '#6c757d',
+                          '&:hover': {
+                            borderColor: '#495057',
+                            color: '#495057'
+                          }
+                        }}
+                        onClick={() => setCurrentCardIndex(Math.min(selectedDeck.cards.length - 1, currentCardIndex + 1))}
+                        disabled={currentCardIndex === selectedDeck.cards.length - 1}
+                      >
+                        Weiter ➡️
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+                
+                {/* Session beenden Button - immer sichtbar */}
+                <Box sx={{ textAlign: 'center', mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    size="small"
+                    sx={{ 
+                      fontSize: '0.7rem', 
+                      py: 0.5, 
+                      px: 2,
+                      borderColor: '#6c757d',
+                      color: '#6c757d',
+                      '&:hover': {
+                        borderColor: '#495057',
+                        color: '#495057'
+                      }
+                    }}
+                    onClick={endLearningSession}
+                  >
+                    🏁 Session beenden
+                  </Button>
+                </Box>
               </>
             )}
           </Box>

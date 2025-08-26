@@ -357,8 +357,36 @@ exports.Prisma.FlashcardProgressScalarFieldEnum = {
   nextReview: 'nextReview',
   lastReviewed: 'lastReviewed',
   reviewCount: 'reviewCount',
+  easeFactor: 'easeFactor',
+  interval: 'interval',
+  quality: 'quality',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.DocumentProcessingHistoryScalarFieldEnum = {
+  id: 'id',
+  sourceFile: 'sourceFile',
+  fileName: 'fileName',
+  teacherId: 'teacherId',
+  action: 'action',
+  deckId: 'deckId',
+  deckTitle: 'deckTitle',
+  cardsCount: 'cardsCount',
+  processedAt: 'processedAt'
+};
+
+exports.Prisma.FlashcardLearningSessionScalarFieldEnum = {
+  id: 'id',
+  studentId: 'studentId',
+  deckId: 'deckId',
+  startTime: 'startTime',
+  endTime: 'endTime',
+  cardsReviewed: 'cardsReviewed',
+  correctAnswers: 'correctAnswers',
+  incorrectAnswers: 'incorrectAnswers',
+  sessionDuration: 'sessionDuration',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -396,7 +424,9 @@ exports.Prisma.ModelName = {
   FlashcardDeck: 'FlashcardDeck',
   Flashcard: 'Flashcard',
   FlashcardAssignment: 'FlashcardAssignment',
-  FlashcardProgress: 'FlashcardProgress'
+  FlashcardProgress: 'FlashcardProgress',
+  DocumentProcessingHistory: 'DocumentProcessingHistory',
+  FlashcardLearningSession: 'FlashcardLearningSession'
 };
 
 /**

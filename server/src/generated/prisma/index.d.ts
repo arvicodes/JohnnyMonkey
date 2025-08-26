@@ -133,6 +133,16 @@ export type FlashcardAssignment = $Result.DefaultSelection<Prisma.$FlashcardAssi
  * 
  */
 export type FlashcardProgress = $Result.DefaultSelection<Prisma.$FlashcardProgressPayload>
+/**
+ * Model DocumentProcessingHistory
+ * 
+ */
+export type DocumentProcessingHistory = $Result.DefaultSelection<Prisma.$DocumentProcessingHistoryPayload>
+/**
+ * Model FlashcardLearningSession
+ * 
+ */
+export type FlashcardLearningSession = $Result.DefaultSelection<Prisma.$FlashcardLearningSessionPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -498,6 +508,26 @@ export class PrismaClient<
     * ```
     */
   get flashcardProgress(): Prisma.FlashcardProgressDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.documentProcessingHistory`: Exposes CRUD operations for the **DocumentProcessingHistory** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more DocumentProcessingHistories
+    * const documentProcessingHistories = await prisma.documentProcessingHistory.findMany()
+    * ```
+    */
+  get documentProcessingHistory(): Prisma.DocumentProcessingHistoryDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.flashcardLearningSession`: Exposes CRUD operations for the **FlashcardLearningSession** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more FlashcardLearningSessions
+    * const flashcardLearningSessions = await prisma.flashcardLearningSession.findMany()
+    * ```
+    */
+  get flashcardLearningSession(): Prisma.FlashcardLearningSessionDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -961,7 +991,9 @@ export namespace Prisma {
     FlashcardDeck: 'FlashcardDeck',
     Flashcard: 'Flashcard',
     FlashcardAssignment: 'FlashcardAssignment',
-    FlashcardProgress: 'FlashcardProgress'
+    FlashcardProgress: 'FlashcardProgress',
+    DocumentProcessingHistory: 'DocumentProcessingHistory',
+    FlashcardLearningSession: 'FlashcardLearningSession'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -980,7 +1012,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "fileSystemPath" | "flashcardDeck" | "flashcard" | "flashcardAssignment" | "flashcardProgress"
+      modelProps: "user" | "gradingSchema" | "grade" | "learningGroup" | "subject" | "block" | "unit" | "topic" | "lesson" | "groupAssignment" | "note" | "material" | "lessonMaterial" | "quiz" | "quizQuestion" | "lessonQuiz" | "quizSession" | "quizParticipation" | "quizAnswer" | "fileSystemPath" | "flashcardDeck" | "flashcard" | "flashcardAssignment" | "flashcardProgress" | "documentProcessingHistory" | "flashcardLearningSession"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2760,6 +2792,154 @@ export namespace Prisma {
           }
         }
       }
+      DocumentProcessingHistory: {
+        payload: Prisma.$DocumentProcessingHistoryPayload<ExtArgs>
+        fields: Prisma.DocumentProcessingHistoryFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.DocumentProcessingHistoryFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.DocumentProcessingHistoryFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>
+          }
+          findFirst: {
+            args: Prisma.DocumentProcessingHistoryFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.DocumentProcessingHistoryFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>
+          }
+          findMany: {
+            args: Prisma.DocumentProcessingHistoryFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>[]
+          }
+          create: {
+            args: Prisma.DocumentProcessingHistoryCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>
+          }
+          createMany: {
+            args: Prisma.DocumentProcessingHistoryCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.DocumentProcessingHistoryCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>[]
+          }
+          delete: {
+            args: Prisma.DocumentProcessingHistoryDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>
+          }
+          update: {
+            args: Prisma.DocumentProcessingHistoryUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>
+          }
+          deleteMany: {
+            args: Prisma.DocumentProcessingHistoryDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.DocumentProcessingHistoryUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.DocumentProcessingHistoryUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>[]
+          }
+          upsert: {
+            args: Prisma.DocumentProcessingHistoryUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$DocumentProcessingHistoryPayload>
+          }
+          aggregate: {
+            args: Prisma.DocumentProcessingHistoryAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateDocumentProcessingHistory>
+          }
+          groupBy: {
+            args: Prisma.DocumentProcessingHistoryGroupByArgs<ExtArgs>
+            result: $Utils.Optional<DocumentProcessingHistoryGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.DocumentProcessingHistoryCountArgs<ExtArgs>
+            result: $Utils.Optional<DocumentProcessingHistoryCountAggregateOutputType> | number
+          }
+        }
+      }
+      FlashcardLearningSession: {
+        payload: Prisma.$FlashcardLearningSessionPayload<ExtArgs>
+        fields: Prisma.FlashcardLearningSessionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.FlashcardLearningSessionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.FlashcardLearningSessionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>
+          }
+          findFirst: {
+            args: Prisma.FlashcardLearningSessionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.FlashcardLearningSessionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>
+          }
+          findMany: {
+            args: Prisma.FlashcardLearningSessionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>[]
+          }
+          create: {
+            args: Prisma.FlashcardLearningSessionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>
+          }
+          createMany: {
+            args: Prisma.FlashcardLearningSessionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.FlashcardLearningSessionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>[]
+          }
+          delete: {
+            args: Prisma.FlashcardLearningSessionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>
+          }
+          update: {
+            args: Prisma.FlashcardLearningSessionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>
+          }
+          deleteMany: {
+            args: Prisma.FlashcardLearningSessionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.FlashcardLearningSessionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.FlashcardLearningSessionUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>[]
+          }
+          upsert: {
+            args: Prisma.FlashcardLearningSessionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$FlashcardLearningSessionPayload>
+          }
+          aggregate: {
+            args: Prisma.FlashcardLearningSessionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateFlashcardLearningSession>
+          }
+          groupBy: {
+            args: Prisma.FlashcardLearningSessionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardLearningSessionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.FlashcardLearningSessionCountArgs<ExtArgs>
+            result: $Utils.Optional<FlashcardLearningSessionCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -2868,6 +3048,8 @@ export namespace Prisma {
     flashcard?: FlashcardOmit
     flashcardAssignment?: FlashcardAssignmentOmit
     flashcardProgress?: FlashcardProgressOmit
+    documentProcessingHistory?: DocumentProcessingHistoryOmit
+    flashcardLearningSession?: FlashcardLearningSessionOmit
   }
 
   /* Types for Logging */
@@ -2972,6 +3154,8 @@ export namespace Prisma {
     fileSystemPaths: number
     flashcardDecks: number
     flashcardProgress: number
+    learningSessions: number
+    documentProcessingHistory: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2985,6 +3169,8 @@ export namespace Prisma {
     fileSystemPaths?: boolean | UserCountOutputTypeCountFileSystemPathsArgs
     flashcardDecks?: boolean | UserCountOutputTypeCountFlashcardDecksArgs
     flashcardProgress?: boolean | UserCountOutputTypeCountFlashcardProgressArgs
+    learningSessions?: boolean | UserCountOutputTypeCountLearningSessionsArgs
+    documentProcessingHistory?: boolean | UserCountOutputTypeCountDocumentProcessingHistoryArgs
   }
 
   // Custom InputTypes
@@ -3066,6 +3252,20 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountFlashcardProgressArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: FlashcardProgressWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountLearningSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardLearningSessionWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountDocumentProcessingHistoryArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: DocumentProcessingHistoryWhereInput
   }
 
 
@@ -3511,11 +3711,13 @@ export namespace Prisma {
   export type FlashcardDeckCountOutputType = {
     cards: number
     assignments: number
+    learningSessions: number
   }
 
   export type FlashcardDeckCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     cards?: boolean | FlashcardDeckCountOutputTypeCountCardsArgs
     assignments?: boolean | FlashcardDeckCountOutputTypeCountAssignmentsArgs
+    learningSessions?: boolean | FlashcardDeckCountOutputTypeCountLearningSessionsArgs
   }
 
   // Custom InputTypes
@@ -3541,6 +3743,13 @@ export namespace Prisma {
    */
   export type FlashcardDeckCountOutputTypeCountAssignmentsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: FlashcardAssignmentWhereInput
+  }
+
+  /**
+   * FlashcardDeckCountOutputType without action
+   */
+  export type FlashcardDeckCountOutputTypeCountLearningSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardLearningSessionWhereInput
   }
 
 
@@ -3769,6 +3978,8 @@ export namespace Prisma {
     fileSystemPaths?: boolean | User$fileSystemPathsArgs<ExtArgs>
     flashcardDecks?: boolean | User$flashcardDecksArgs<ExtArgs>
     flashcardProgress?: boolean | User$flashcardProgressArgs<ExtArgs>
+    learningSessions?: boolean | User$learningSessionsArgs<ExtArgs>
+    documentProcessingHistory?: boolean | User$documentProcessingHistoryArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -3814,6 +4025,8 @@ export namespace Prisma {
     fileSystemPaths?: boolean | User$fileSystemPathsArgs<ExtArgs>
     flashcardDecks?: boolean | User$flashcardDecksArgs<ExtArgs>
     flashcardProgress?: boolean | User$flashcardProgressArgs<ExtArgs>
+    learningSessions?: boolean | User$learningSessionsArgs<ExtArgs>
+    documentProcessingHistory?: boolean | User$documentProcessingHistoryArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -3832,6 +4045,8 @@ export namespace Prisma {
       fileSystemPaths: Prisma.$FileSystemPathPayload<ExtArgs>[]
       flashcardDecks: Prisma.$FlashcardDeckPayload<ExtArgs>[]
       flashcardProgress: Prisma.$FlashcardProgressPayload<ExtArgs>[]
+      learningSessions: Prisma.$FlashcardLearningSessionPayload<ExtArgs>[]
+      documentProcessingHistory: Prisma.$DocumentProcessingHistoryPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -4245,6 +4460,8 @@ export namespace Prisma {
     fileSystemPaths<T extends User$fileSystemPathsArgs<ExtArgs> = {}>(args?: Subset<T, User$fileSystemPathsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FileSystemPathPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     flashcardDecks<T extends User$flashcardDecksArgs<ExtArgs> = {}>(args?: Subset<T, User$flashcardDecksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     flashcardProgress<T extends User$flashcardProgressArgs<ExtArgs> = {}>(args?: Subset<T, User$flashcardProgressArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardProgressPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    learningSessions<T extends User$learningSessionsArgs<ExtArgs> = {}>(args?: Subset<T, User$learningSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    documentProcessingHistory<T extends User$documentProcessingHistoryArgs<ExtArgs> = {}>(args?: Subset<T, User$documentProcessingHistoryArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4904,6 +5121,54 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: FlashcardProgressScalarFieldEnum | FlashcardProgressScalarFieldEnum[]
+  }
+
+  /**
+   * User.learningSessions
+   */
+  export type User$learningSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    where?: FlashcardLearningSessionWhereInput
+    orderBy?: FlashcardLearningSessionOrderByWithRelationInput | FlashcardLearningSessionOrderByWithRelationInput[]
+    cursor?: FlashcardLearningSessionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardLearningSessionScalarFieldEnum | FlashcardLearningSessionScalarFieldEnum[]
+  }
+
+  /**
+   * User.documentProcessingHistory
+   */
+  export type User$documentProcessingHistoryArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    where?: DocumentProcessingHistoryWhereInput
+    orderBy?: DocumentProcessingHistoryOrderByWithRelationInput | DocumentProcessingHistoryOrderByWithRelationInput[]
+    cursor?: DocumentProcessingHistoryWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: DocumentProcessingHistoryScalarFieldEnum | DocumentProcessingHistoryScalarFieldEnum[]
   }
 
   /**
@@ -26648,6 +26913,7 @@ export namespace Prisma {
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     cards?: boolean | FlashcardDeck$cardsArgs<ExtArgs>
     assignments?: boolean | FlashcardDeck$assignmentsArgs<ExtArgs>
+    learningSessions?: boolean | FlashcardDeck$learningSessionsArgs<ExtArgs>
     _count?: boolean | FlashcardDeckCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["flashcardDeck"]>
 
@@ -26694,6 +26960,7 @@ export namespace Prisma {
     teacher?: boolean | UserDefaultArgs<ExtArgs>
     cards?: boolean | FlashcardDeck$cardsArgs<ExtArgs>
     assignments?: boolean | FlashcardDeck$assignmentsArgs<ExtArgs>
+    learningSessions?: boolean | FlashcardDeck$learningSessionsArgs<ExtArgs>
     _count?: boolean | FlashcardDeckCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type FlashcardDeckIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -26712,6 +26979,7 @@ export namespace Prisma {
       teacher: Prisma.$UserPayload<ExtArgs>
       cards: Prisma.$FlashcardPayload<ExtArgs>[]
       assignments: Prisma.$FlashcardAssignmentPayload<ExtArgs>[]
+      learningSessions: Prisma.$FlashcardLearningSessionPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -27120,6 +27388,7 @@ export namespace Prisma {
     teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     cards<T extends FlashcardDeck$cardsArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeck$cardsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     assignments<T extends FlashcardDeck$assignmentsArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeck$assignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    learningSessions<T extends FlashcardDeck$learningSessionsArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeck$learningSessionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -27615,6 +27884,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: FlashcardAssignmentScalarFieldEnum | FlashcardAssignmentScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardDeck.learningSessions
+   */
+  export type FlashcardDeck$learningSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    where?: FlashcardLearningSessionWhereInput
+    orderBy?: FlashcardLearningSessionOrderByWithRelationInput | FlashcardLearningSessionOrderByWithRelationInput[]
+    cursor?: FlashcardLearningSessionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: FlashcardLearningSessionScalarFieldEnum | FlashcardLearningSessionScalarFieldEnum[]
   }
 
   /**
@@ -29891,11 +30184,17 @@ export namespace Prisma {
   export type FlashcardProgressAvgAggregateOutputType = {
     level: number | null
     reviewCount: number | null
+    easeFactor: number | null
+    interval: number | null
+    quality: number | null
   }
 
   export type FlashcardProgressSumAggregateOutputType = {
     level: number | null
     reviewCount: number | null
+    easeFactor: number | null
+    interval: number | null
+    quality: number | null
   }
 
   export type FlashcardProgressMinAggregateOutputType = {
@@ -29906,6 +30205,9 @@ export namespace Prisma {
     nextReview: Date | null
     lastReviewed: Date | null
     reviewCount: number | null
+    easeFactor: number | null
+    interval: number | null
+    quality: number | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -29918,6 +30220,9 @@ export namespace Prisma {
     nextReview: Date | null
     lastReviewed: Date | null
     reviewCount: number | null
+    easeFactor: number | null
+    interval: number | null
+    quality: number | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -29930,6 +30235,9 @@ export namespace Prisma {
     nextReview: number
     lastReviewed: number
     reviewCount: number
+    easeFactor: number
+    interval: number
+    quality: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -29939,11 +30247,17 @@ export namespace Prisma {
   export type FlashcardProgressAvgAggregateInputType = {
     level?: true
     reviewCount?: true
+    easeFactor?: true
+    interval?: true
+    quality?: true
   }
 
   export type FlashcardProgressSumAggregateInputType = {
     level?: true
     reviewCount?: true
+    easeFactor?: true
+    interval?: true
+    quality?: true
   }
 
   export type FlashcardProgressMinAggregateInputType = {
@@ -29954,6 +30268,9 @@ export namespace Prisma {
     nextReview?: true
     lastReviewed?: true
     reviewCount?: true
+    easeFactor?: true
+    interval?: true
+    quality?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -29966,6 +30283,9 @@ export namespace Prisma {
     nextReview?: true
     lastReviewed?: true
     reviewCount?: true
+    easeFactor?: true
+    interval?: true
+    quality?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -29978,6 +30298,9 @@ export namespace Prisma {
     nextReview?: true
     lastReviewed?: true
     reviewCount?: true
+    easeFactor?: true
+    interval?: true
+    quality?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -30077,6 +30400,9 @@ export namespace Prisma {
     nextReview: Date
     lastReviewed: Date | null
     reviewCount: number
+    easeFactor: number
+    interval: number
+    quality: number | null
     createdAt: Date
     updatedAt: Date
     _count: FlashcardProgressCountAggregateOutputType | null
@@ -30108,6 +30434,9 @@ export namespace Prisma {
     nextReview?: boolean
     lastReviewed?: boolean
     reviewCount?: boolean
+    easeFactor?: boolean
+    interval?: boolean
+    quality?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     card?: boolean | FlashcardDefaultArgs<ExtArgs>
@@ -30122,6 +30451,9 @@ export namespace Prisma {
     nextReview?: boolean
     lastReviewed?: boolean
     reviewCount?: boolean
+    easeFactor?: boolean
+    interval?: boolean
+    quality?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     card?: boolean | FlashcardDefaultArgs<ExtArgs>
@@ -30136,6 +30468,9 @@ export namespace Prisma {
     nextReview?: boolean
     lastReviewed?: boolean
     reviewCount?: boolean
+    easeFactor?: boolean
+    interval?: boolean
+    quality?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     card?: boolean | FlashcardDefaultArgs<ExtArgs>
@@ -30150,11 +30485,14 @@ export namespace Prisma {
     nextReview?: boolean
     lastReviewed?: boolean
     reviewCount?: boolean
+    easeFactor?: boolean
+    interval?: boolean
+    quality?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type FlashcardProgressOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "cardId" | "studentId" | "level" | "nextReview" | "lastReviewed" | "reviewCount" | "createdAt" | "updatedAt", ExtArgs["result"]["flashcardProgress"]>
+  export type FlashcardProgressOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "cardId" | "studentId" | "level" | "nextReview" | "lastReviewed" | "reviewCount" | "easeFactor" | "interval" | "quality" | "createdAt" | "updatedAt", ExtArgs["result"]["flashcardProgress"]>
   export type FlashcardProgressInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     card?: boolean | FlashcardDefaultArgs<ExtArgs>
     student?: boolean | UserDefaultArgs<ExtArgs>
@@ -30182,6 +30520,9 @@ export namespace Prisma {
       nextReview: Date
       lastReviewed: Date | null
       reviewCount: number
+      easeFactor: number
+      interval: number
+      quality: number | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["flashcardProgress"]>
@@ -30616,6 +30957,9 @@ export namespace Prisma {
     readonly nextReview: FieldRef<"FlashcardProgress", 'DateTime'>
     readonly lastReviewed: FieldRef<"FlashcardProgress", 'DateTime'>
     readonly reviewCount: FieldRef<"FlashcardProgress", 'Int'>
+    readonly easeFactor: FieldRef<"FlashcardProgress", 'Float'>
+    readonly interval: FieldRef<"FlashcardProgress", 'Int'>
+    readonly quality: FieldRef<"FlashcardProgress", 'Int'>
     readonly createdAt: FieldRef<"FlashcardProgress", 'DateTime'>
     readonly updatedAt: FieldRef<"FlashcardProgress", 'DateTime'>
   }
@@ -31031,6 +31375,2323 @@ export namespace Prisma {
 
 
   /**
+   * Model DocumentProcessingHistory
+   */
+
+  export type AggregateDocumentProcessingHistory = {
+    _count: DocumentProcessingHistoryCountAggregateOutputType | null
+    _avg: DocumentProcessingHistoryAvgAggregateOutputType | null
+    _sum: DocumentProcessingHistorySumAggregateOutputType | null
+    _min: DocumentProcessingHistoryMinAggregateOutputType | null
+    _max: DocumentProcessingHistoryMaxAggregateOutputType | null
+  }
+
+  export type DocumentProcessingHistoryAvgAggregateOutputType = {
+    cardsCount: number | null
+  }
+
+  export type DocumentProcessingHistorySumAggregateOutputType = {
+    cardsCount: number | null
+  }
+
+  export type DocumentProcessingHistoryMinAggregateOutputType = {
+    id: string | null
+    sourceFile: string | null
+    fileName: string | null
+    teacherId: string | null
+    action: string | null
+    deckId: string | null
+    deckTitle: string | null
+    cardsCount: number | null
+    processedAt: Date | null
+  }
+
+  export type DocumentProcessingHistoryMaxAggregateOutputType = {
+    id: string | null
+    sourceFile: string | null
+    fileName: string | null
+    teacherId: string | null
+    action: string | null
+    deckId: string | null
+    deckTitle: string | null
+    cardsCount: number | null
+    processedAt: Date | null
+  }
+
+  export type DocumentProcessingHistoryCountAggregateOutputType = {
+    id: number
+    sourceFile: number
+    fileName: number
+    teacherId: number
+    action: number
+    deckId: number
+    deckTitle: number
+    cardsCount: number
+    processedAt: number
+    _all: number
+  }
+
+
+  export type DocumentProcessingHistoryAvgAggregateInputType = {
+    cardsCount?: true
+  }
+
+  export type DocumentProcessingHistorySumAggregateInputType = {
+    cardsCount?: true
+  }
+
+  export type DocumentProcessingHistoryMinAggregateInputType = {
+    id?: true
+    sourceFile?: true
+    fileName?: true
+    teacherId?: true
+    action?: true
+    deckId?: true
+    deckTitle?: true
+    cardsCount?: true
+    processedAt?: true
+  }
+
+  export type DocumentProcessingHistoryMaxAggregateInputType = {
+    id?: true
+    sourceFile?: true
+    fileName?: true
+    teacherId?: true
+    action?: true
+    deckId?: true
+    deckTitle?: true
+    cardsCount?: true
+    processedAt?: true
+  }
+
+  export type DocumentProcessingHistoryCountAggregateInputType = {
+    id?: true
+    sourceFile?: true
+    fileName?: true
+    teacherId?: true
+    action?: true
+    deckId?: true
+    deckTitle?: true
+    cardsCount?: true
+    processedAt?: true
+    _all?: true
+  }
+
+  export type DocumentProcessingHistoryAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which DocumentProcessingHistory to aggregate.
+     */
+    where?: DocumentProcessingHistoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of DocumentProcessingHistories to fetch.
+     */
+    orderBy?: DocumentProcessingHistoryOrderByWithRelationInput | DocumentProcessingHistoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: DocumentProcessingHistoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` DocumentProcessingHistories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` DocumentProcessingHistories.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned DocumentProcessingHistories
+    **/
+    _count?: true | DocumentProcessingHistoryCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: DocumentProcessingHistoryAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: DocumentProcessingHistorySumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: DocumentProcessingHistoryMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: DocumentProcessingHistoryMaxAggregateInputType
+  }
+
+  export type GetDocumentProcessingHistoryAggregateType<T extends DocumentProcessingHistoryAggregateArgs> = {
+        [P in keyof T & keyof AggregateDocumentProcessingHistory]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateDocumentProcessingHistory[P]>
+      : GetScalarType<T[P], AggregateDocumentProcessingHistory[P]>
+  }
+
+
+
+
+  export type DocumentProcessingHistoryGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: DocumentProcessingHistoryWhereInput
+    orderBy?: DocumentProcessingHistoryOrderByWithAggregationInput | DocumentProcessingHistoryOrderByWithAggregationInput[]
+    by: DocumentProcessingHistoryScalarFieldEnum[] | DocumentProcessingHistoryScalarFieldEnum
+    having?: DocumentProcessingHistoryScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: DocumentProcessingHistoryCountAggregateInputType | true
+    _avg?: DocumentProcessingHistoryAvgAggregateInputType
+    _sum?: DocumentProcessingHistorySumAggregateInputType
+    _min?: DocumentProcessingHistoryMinAggregateInputType
+    _max?: DocumentProcessingHistoryMaxAggregateInputType
+  }
+
+  export type DocumentProcessingHistoryGroupByOutputType = {
+    id: string
+    sourceFile: string
+    fileName: string
+    teacherId: string
+    action: string
+    deckId: string
+    deckTitle: string
+    cardsCount: number
+    processedAt: Date
+    _count: DocumentProcessingHistoryCountAggregateOutputType | null
+    _avg: DocumentProcessingHistoryAvgAggregateOutputType | null
+    _sum: DocumentProcessingHistorySumAggregateOutputType | null
+    _min: DocumentProcessingHistoryMinAggregateOutputType | null
+    _max: DocumentProcessingHistoryMaxAggregateOutputType | null
+  }
+
+  type GetDocumentProcessingHistoryGroupByPayload<T extends DocumentProcessingHistoryGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<DocumentProcessingHistoryGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof DocumentProcessingHistoryGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], DocumentProcessingHistoryGroupByOutputType[P]>
+            : GetScalarType<T[P], DocumentProcessingHistoryGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type DocumentProcessingHistorySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceFile?: boolean
+    fileName?: boolean
+    teacherId?: boolean
+    action?: boolean
+    deckId?: boolean
+    deckTitle?: boolean
+    cardsCount?: boolean
+    processedAt?: boolean
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["documentProcessingHistory"]>
+
+  export type DocumentProcessingHistorySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceFile?: boolean
+    fileName?: boolean
+    teacherId?: boolean
+    action?: boolean
+    deckId?: boolean
+    deckTitle?: boolean
+    cardsCount?: boolean
+    processedAt?: boolean
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["documentProcessingHistory"]>
+
+  export type DocumentProcessingHistorySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    sourceFile?: boolean
+    fileName?: boolean
+    teacherId?: boolean
+    action?: boolean
+    deckId?: boolean
+    deckTitle?: boolean
+    cardsCount?: boolean
+    processedAt?: boolean
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["documentProcessingHistory"]>
+
+  export type DocumentProcessingHistorySelectScalar = {
+    id?: boolean
+    sourceFile?: boolean
+    fileName?: boolean
+    teacherId?: boolean
+    action?: boolean
+    deckId?: boolean
+    deckTitle?: boolean
+    cardsCount?: boolean
+    processedAt?: boolean
+  }
+
+  export type DocumentProcessingHistoryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "sourceFile" | "fileName" | "teacherId" | "action" | "deckId" | "deckTitle" | "cardsCount" | "processedAt", ExtArgs["result"]["documentProcessingHistory"]>
+  export type DocumentProcessingHistoryInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type DocumentProcessingHistoryIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type DocumentProcessingHistoryIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    teacher?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $DocumentProcessingHistoryPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "DocumentProcessingHistory"
+    objects: {
+      teacher: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      sourceFile: string
+      fileName: string
+      teacherId: string
+      action: string
+      deckId: string
+      deckTitle: string
+      cardsCount: number
+      processedAt: Date
+    }, ExtArgs["result"]["documentProcessingHistory"]>
+    composites: {}
+  }
+
+  type DocumentProcessingHistoryGetPayload<S extends boolean | null | undefined | DocumentProcessingHistoryDefaultArgs> = $Result.GetResult<Prisma.$DocumentProcessingHistoryPayload, S>
+
+  type DocumentProcessingHistoryCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<DocumentProcessingHistoryFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: DocumentProcessingHistoryCountAggregateInputType | true
+    }
+
+  export interface DocumentProcessingHistoryDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['DocumentProcessingHistory'], meta: { name: 'DocumentProcessingHistory' } }
+    /**
+     * Find zero or one DocumentProcessingHistory that matches the filter.
+     * @param {DocumentProcessingHistoryFindUniqueArgs} args - Arguments to find a DocumentProcessingHistory
+     * @example
+     * // Get one DocumentProcessingHistory
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends DocumentProcessingHistoryFindUniqueArgs>(args: SelectSubset<T, DocumentProcessingHistoryFindUniqueArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one DocumentProcessingHistory that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {DocumentProcessingHistoryFindUniqueOrThrowArgs} args - Arguments to find a DocumentProcessingHistory
+     * @example
+     * // Get one DocumentProcessingHistory
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends DocumentProcessingHistoryFindUniqueOrThrowArgs>(args: SelectSubset<T, DocumentProcessingHistoryFindUniqueOrThrowArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first DocumentProcessingHistory that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {DocumentProcessingHistoryFindFirstArgs} args - Arguments to find a DocumentProcessingHistory
+     * @example
+     * // Get one DocumentProcessingHistory
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends DocumentProcessingHistoryFindFirstArgs>(args?: SelectSubset<T, DocumentProcessingHistoryFindFirstArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first DocumentProcessingHistory that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {DocumentProcessingHistoryFindFirstOrThrowArgs} args - Arguments to find a DocumentProcessingHistory
+     * @example
+     * // Get one DocumentProcessingHistory
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends DocumentProcessingHistoryFindFirstOrThrowArgs>(args?: SelectSubset<T, DocumentProcessingHistoryFindFirstOrThrowArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more DocumentProcessingHistories that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {DocumentProcessingHistoryFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all DocumentProcessingHistories
+     * const documentProcessingHistories = await prisma.documentProcessingHistory.findMany()
+     * 
+     * // Get first 10 DocumentProcessingHistories
+     * const documentProcessingHistories = await prisma.documentProcessingHistory.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const documentProcessingHistoryWithIdOnly = await prisma.documentProcessingHistory.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends DocumentProcessingHistoryFindManyArgs>(args?: SelectSubset<T, DocumentProcessingHistoryFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a DocumentProcessingHistory.
+     * @param {DocumentProcessingHistoryCreateArgs} args - Arguments to create a DocumentProcessingHistory.
+     * @example
+     * // Create one DocumentProcessingHistory
+     * const DocumentProcessingHistory = await prisma.documentProcessingHistory.create({
+     *   data: {
+     *     // ... data to create a DocumentProcessingHistory
+     *   }
+     * })
+     * 
+     */
+    create<T extends DocumentProcessingHistoryCreateArgs>(args: SelectSubset<T, DocumentProcessingHistoryCreateArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many DocumentProcessingHistories.
+     * @param {DocumentProcessingHistoryCreateManyArgs} args - Arguments to create many DocumentProcessingHistories.
+     * @example
+     * // Create many DocumentProcessingHistories
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends DocumentProcessingHistoryCreateManyArgs>(args?: SelectSubset<T, DocumentProcessingHistoryCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many DocumentProcessingHistories and returns the data saved in the database.
+     * @param {DocumentProcessingHistoryCreateManyAndReturnArgs} args - Arguments to create many DocumentProcessingHistories.
+     * @example
+     * // Create many DocumentProcessingHistories
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many DocumentProcessingHistories and only return the `id`
+     * const documentProcessingHistoryWithIdOnly = await prisma.documentProcessingHistory.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends DocumentProcessingHistoryCreateManyAndReturnArgs>(args?: SelectSubset<T, DocumentProcessingHistoryCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a DocumentProcessingHistory.
+     * @param {DocumentProcessingHistoryDeleteArgs} args - Arguments to delete one DocumentProcessingHistory.
+     * @example
+     * // Delete one DocumentProcessingHistory
+     * const DocumentProcessingHistory = await prisma.documentProcessingHistory.delete({
+     *   where: {
+     *     // ... filter to delete one DocumentProcessingHistory
+     *   }
+     * })
+     * 
+     */
+    delete<T extends DocumentProcessingHistoryDeleteArgs>(args: SelectSubset<T, DocumentProcessingHistoryDeleteArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one DocumentProcessingHistory.
+     * @param {DocumentProcessingHistoryUpdateArgs} args - Arguments to update one DocumentProcessingHistory.
+     * @example
+     * // Update one DocumentProcessingHistory
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends DocumentProcessingHistoryUpdateArgs>(args: SelectSubset<T, DocumentProcessingHistoryUpdateArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more DocumentProcessingHistories.
+     * @param {DocumentProcessingHistoryDeleteManyArgs} args - Arguments to filter DocumentProcessingHistories to delete.
+     * @example
+     * // Delete a few DocumentProcessingHistories
+     * const { count } = await prisma.documentProcessingHistory.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends DocumentProcessingHistoryDeleteManyArgs>(args?: SelectSubset<T, DocumentProcessingHistoryDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more DocumentProcessingHistories.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {DocumentProcessingHistoryUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many DocumentProcessingHistories
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends DocumentProcessingHistoryUpdateManyArgs>(args: SelectSubset<T, DocumentProcessingHistoryUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more DocumentProcessingHistories and returns the data updated in the database.
+     * @param {DocumentProcessingHistoryUpdateManyAndReturnArgs} args - Arguments to update many DocumentProcessingHistories.
+     * @example
+     * // Update many DocumentProcessingHistories
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more DocumentProcessingHistories and only return the `id`
+     * const documentProcessingHistoryWithIdOnly = await prisma.documentProcessingHistory.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends DocumentProcessingHistoryUpdateManyAndReturnArgs>(args: SelectSubset<T, DocumentProcessingHistoryUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one DocumentProcessingHistory.
+     * @param {DocumentProcessingHistoryUpsertArgs} args - Arguments to update or create a DocumentProcessingHistory.
+     * @example
+     * // Update or create a DocumentProcessingHistory
+     * const documentProcessingHistory = await prisma.documentProcessingHistory.upsert({
+     *   create: {
+     *     // ... data to create a DocumentProcessingHistory
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the DocumentProcessingHistory we want to update
+     *   }
+     * })
+     */
+    upsert<T extends DocumentProcessingHistoryUpsertArgs>(args: SelectSubset<T, DocumentProcessingHistoryUpsertArgs<ExtArgs>>): Prisma__DocumentProcessingHistoryClient<$Result.GetResult<Prisma.$DocumentProcessingHistoryPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of DocumentProcessingHistories.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {DocumentProcessingHistoryCountArgs} args - Arguments to filter DocumentProcessingHistories to count.
+     * @example
+     * // Count the number of DocumentProcessingHistories
+     * const count = await prisma.documentProcessingHistory.count({
+     *   where: {
+     *     // ... the filter for the DocumentProcessingHistories we want to count
+     *   }
+     * })
+    **/
+    count<T extends DocumentProcessingHistoryCountArgs>(
+      args?: Subset<T, DocumentProcessingHistoryCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], DocumentProcessingHistoryCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a DocumentProcessingHistory.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {DocumentProcessingHistoryAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends DocumentProcessingHistoryAggregateArgs>(args: Subset<T, DocumentProcessingHistoryAggregateArgs>): Prisma.PrismaPromise<GetDocumentProcessingHistoryAggregateType<T>>
+
+    /**
+     * Group by DocumentProcessingHistory.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {DocumentProcessingHistoryGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends DocumentProcessingHistoryGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: DocumentProcessingHistoryGroupByArgs['orderBy'] }
+        : { orderBy?: DocumentProcessingHistoryGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, DocumentProcessingHistoryGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetDocumentProcessingHistoryGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the DocumentProcessingHistory model
+   */
+  readonly fields: DocumentProcessingHistoryFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for DocumentProcessingHistory.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__DocumentProcessingHistoryClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    teacher<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the DocumentProcessingHistory model
+   */
+  interface DocumentProcessingHistoryFieldRefs {
+    readonly id: FieldRef<"DocumentProcessingHistory", 'String'>
+    readonly sourceFile: FieldRef<"DocumentProcessingHistory", 'String'>
+    readonly fileName: FieldRef<"DocumentProcessingHistory", 'String'>
+    readonly teacherId: FieldRef<"DocumentProcessingHistory", 'String'>
+    readonly action: FieldRef<"DocumentProcessingHistory", 'String'>
+    readonly deckId: FieldRef<"DocumentProcessingHistory", 'String'>
+    readonly deckTitle: FieldRef<"DocumentProcessingHistory", 'String'>
+    readonly cardsCount: FieldRef<"DocumentProcessingHistory", 'Int'>
+    readonly processedAt: FieldRef<"DocumentProcessingHistory", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * DocumentProcessingHistory findUnique
+   */
+  export type DocumentProcessingHistoryFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * Filter, which DocumentProcessingHistory to fetch.
+     */
+    where: DocumentProcessingHistoryWhereUniqueInput
+  }
+
+  /**
+   * DocumentProcessingHistory findUniqueOrThrow
+   */
+  export type DocumentProcessingHistoryFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * Filter, which DocumentProcessingHistory to fetch.
+     */
+    where: DocumentProcessingHistoryWhereUniqueInput
+  }
+
+  /**
+   * DocumentProcessingHistory findFirst
+   */
+  export type DocumentProcessingHistoryFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * Filter, which DocumentProcessingHistory to fetch.
+     */
+    where?: DocumentProcessingHistoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of DocumentProcessingHistories to fetch.
+     */
+    orderBy?: DocumentProcessingHistoryOrderByWithRelationInput | DocumentProcessingHistoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for DocumentProcessingHistories.
+     */
+    cursor?: DocumentProcessingHistoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` DocumentProcessingHistories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` DocumentProcessingHistories.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of DocumentProcessingHistories.
+     */
+    distinct?: DocumentProcessingHistoryScalarFieldEnum | DocumentProcessingHistoryScalarFieldEnum[]
+  }
+
+  /**
+   * DocumentProcessingHistory findFirstOrThrow
+   */
+  export type DocumentProcessingHistoryFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * Filter, which DocumentProcessingHistory to fetch.
+     */
+    where?: DocumentProcessingHistoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of DocumentProcessingHistories to fetch.
+     */
+    orderBy?: DocumentProcessingHistoryOrderByWithRelationInput | DocumentProcessingHistoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for DocumentProcessingHistories.
+     */
+    cursor?: DocumentProcessingHistoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` DocumentProcessingHistories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` DocumentProcessingHistories.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of DocumentProcessingHistories.
+     */
+    distinct?: DocumentProcessingHistoryScalarFieldEnum | DocumentProcessingHistoryScalarFieldEnum[]
+  }
+
+  /**
+   * DocumentProcessingHistory findMany
+   */
+  export type DocumentProcessingHistoryFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * Filter, which DocumentProcessingHistories to fetch.
+     */
+    where?: DocumentProcessingHistoryWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of DocumentProcessingHistories to fetch.
+     */
+    orderBy?: DocumentProcessingHistoryOrderByWithRelationInput | DocumentProcessingHistoryOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing DocumentProcessingHistories.
+     */
+    cursor?: DocumentProcessingHistoryWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` DocumentProcessingHistories from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` DocumentProcessingHistories.
+     */
+    skip?: number
+    distinct?: DocumentProcessingHistoryScalarFieldEnum | DocumentProcessingHistoryScalarFieldEnum[]
+  }
+
+  /**
+   * DocumentProcessingHistory create
+   */
+  export type DocumentProcessingHistoryCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * The data needed to create a DocumentProcessingHistory.
+     */
+    data: XOR<DocumentProcessingHistoryCreateInput, DocumentProcessingHistoryUncheckedCreateInput>
+  }
+
+  /**
+   * DocumentProcessingHistory createMany
+   */
+  export type DocumentProcessingHistoryCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many DocumentProcessingHistories.
+     */
+    data: DocumentProcessingHistoryCreateManyInput | DocumentProcessingHistoryCreateManyInput[]
+  }
+
+  /**
+   * DocumentProcessingHistory createManyAndReturn
+   */
+  export type DocumentProcessingHistoryCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * The data used to create many DocumentProcessingHistories.
+     */
+    data: DocumentProcessingHistoryCreateManyInput | DocumentProcessingHistoryCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * DocumentProcessingHistory update
+   */
+  export type DocumentProcessingHistoryUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * The data needed to update a DocumentProcessingHistory.
+     */
+    data: XOR<DocumentProcessingHistoryUpdateInput, DocumentProcessingHistoryUncheckedUpdateInput>
+    /**
+     * Choose, which DocumentProcessingHistory to update.
+     */
+    where: DocumentProcessingHistoryWhereUniqueInput
+  }
+
+  /**
+   * DocumentProcessingHistory updateMany
+   */
+  export type DocumentProcessingHistoryUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update DocumentProcessingHistories.
+     */
+    data: XOR<DocumentProcessingHistoryUpdateManyMutationInput, DocumentProcessingHistoryUncheckedUpdateManyInput>
+    /**
+     * Filter which DocumentProcessingHistories to update
+     */
+    where?: DocumentProcessingHistoryWhereInput
+    /**
+     * Limit how many DocumentProcessingHistories to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * DocumentProcessingHistory updateManyAndReturn
+   */
+  export type DocumentProcessingHistoryUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * The data used to update DocumentProcessingHistories.
+     */
+    data: XOR<DocumentProcessingHistoryUpdateManyMutationInput, DocumentProcessingHistoryUncheckedUpdateManyInput>
+    /**
+     * Filter which DocumentProcessingHistories to update
+     */
+    where?: DocumentProcessingHistoryWhereInput
+    /**
+     * Limit how many DocumentProcessingHistories to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * DocumentProcessingHistory upsert
+   */
+  export type DocumentProcessingHistoryUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * The filter to search for the DocumentProcessingHistory to update in case it exists.
+     */
+    where: DocumentProcessingHistoryWhereUniqueInput
+    /**
+     * In case the DocumentProcessingHistory found by the `where` argument doesn't exist, create a new DocumentProcessingHistory with this data.
+     */
+    create: XOR<DocumentProcessingHistoryCreateInput, DocumentProcessingHistoryUncheckedCreateInput>
+    /**
+     * In case the DocumentProcessingHistory was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<DocumentProcessingHistoryUpdateInput, DocumentProcessingHistoryUncheckedUpdateInput>
+  }
+
+  /**
+   * DocumentProcessingHistory delete
+   */
+  export type DocumentProcessingHistoryDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+    /**
+     * Filter which DocumentProcessingHistory to delete.
+     */
+    where: DocumentProcessingHistoryWhereUniqueInput
+  }
+
+  /**
+   * DocumentProcessingHistory deleteMany
+   */
+  export type DocumentProcessingHistoryDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which DocumentProcessingHistories to delete
+     */
+    where?: DocumentProcessingHistoryWhereInput
+    /**
+     * Limit how many DocumentProcessingHistories to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * DocumentProcessingHistory without action
+   */
+  export type DocumentProcessingHistoryDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the DocumentProcessingHistory
+     */
+    select?: DocumentProcessingHistorySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the DocumentProcessingHistory
+     */
+    omit?: DocumentProcessingHistoryOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: DocumentProcessingHistoryInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model FlashcardLearningSession
+   */
+
+  export type AggregateFlashcardLearningSession = {
+    _count: FlashcardLearningSessionCountAggregateOutputType | null
+    _avg: FlashcardLearningSessionAvgAggregateOutputType | null
+    _sum: FlashcardLearningSessionSumAggregateOutputType | null
+    _min: FlashcardLearningSessionMinAggregateOutputType | null
+    _max: FlashcardLearningSessionMaxAggregateOutputType | null
+  }
+
+  export type FlashcardLearningSessionAvgAggregateOutputType = {
+    cardsReviewed: number | null
+    correctAnswers: number | null
+    incorrectAnswers: number | null
+    sessionDuration: number | null
+  }
+
+  export type FlashcardLearningSessionSumAggregateOutputType = {
+    cardsReviewed: number | null
+    correctAnswers: number | null
+    incorrectAnswers: number | null
+    sessionDuration: number | null
+  }
+
+  export type FlashcardLearningSessionMinAggregateOutputType = {
+    id: string | null
+    studentId: string | null
+    deckId: string | null
+    startTime: Date | null
+    endTime: Date | null
+    cardsReviewed: number | null
+    correctAnswers: number | null
+    incorrectAnswers: number | null
+    sessionDuration: number | null
+    createdAt: Date | null
+  }
+
+  export type FlashcardLearningSessionMaxAggregateOutputType = {
+    id: string | null
+    studentId: string | null
+    deckId: string | null
+    startTime: Date | null
+    endTime: Date | null
+    cardsReviewed: number | null
+    correctAnswers: number | null
+    incorrectAnswers: number | null
+    sessionDuration: number | null
+    createdAt: Date | null
+  }
+
+  export type FlashcardLearningSessionCountAggregateOutputType = {
+    id: number
+    studentId: number
+    deckId: number
+    startTime: number
+    endTime: number
+    cardsReviewed: number
+    correctAnswers: number
+    incorrectAnswers: number
+    sessionDuration: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type FlashcardLearningSessionAvgAggregateInputType = {
+    cardsReviewed?: true
+    correctAnswers?: true
+    incorrectAnswers?: true
+    sessionDuration?: true
+  }
+
+  export type FlashcardLearningSessionSumAggregateInputType = {
+    cardsReviewed?: true
+    correctAnswers?: true
+    incorrectAnswers?: true
+    sessionDuration?: true
+  }
+
+  export type FlashcardLearningSessionMinAggregateInputType = {
+    id?: true
+    studentId?: true
+    deckId?: true
+    startTime?: true
+    endTime?: true
+    cardsReviewed?: true
+    correctAnswers?: true
+    incorrectAnswers?: true
+    sessionDuration?: true
+    createdAt?: true
+  }
+
+  export type FlashcardLearningSessionMaxAggregateInputType = {
+    id?: true
+    studentId?: true
+    deckId?: true
+    startTime?: true
+    endTime?: true
+    cardsReviewed?: true
+    correctAnswers?: true
+    incorrectAnswers?: true
+    sessionDuration?: true
+    createdAt?: true
+  }
+
+  export type FlashcardLearningSessionCountAggregateInputType = {
+    id?: true
+    studentId?: true
+    deckId?: true
+    startTime?: true
+    endTime?: true
+    cardsReviewed?: true
+    correctAnswers?: true
+    incorrectAnswers?: true
+    sessionDuration?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type FlashcardLearningSessionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardLearningSession to aggregate.
+     */
+    where?: FlashcardLearningSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardLearningSessions to fetch.
+     */
+    orderBy?: FlashcardLearningSessionOrderByWithRelationInput | FlashcardLearningSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: FlashcardLearningSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardLearningSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardLearningSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned FlashcardLearningSessions
+    **/
+    _count?: true | FlashcardLearningSessionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: FlashcardLearningSessionAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: FlashcardLearningSessionSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: FlashcardLearningSessionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: FlashcardLearningSessionMaxAggregateInputType
+  }
+
+  export type GetFlashcardLearningSessionAggregateType<T extends FlashcardLearningSessionAggregateArgs> = {
+        [P in keyof T & keyof AggregateFlashcardLearningSession]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateFlashcardLearningSession[P]>
+      : GetScalarType<T[P], AggregateFlashcardLearningSession[P]>
+  }
+
+
+
+
+  export type FlashcardLearningSessionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: FlashcardLearningSessionWhereInput
+    orderBy?: FlashcardLearningSessionOrderByWithAggregationInput | FlashcardLearningSessionOrderByWithAggregationInput[]
+    by: FlashcardLearningSessionScalarFieldEnum[] | FlashcardLearningSessionScalarFieldEnum
+    having?: FlashcardLearningSessionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: FlashcardLearningSessionCountAggregateInputType | true
+    _avg?: FlashcardLearningSessionAvgAggregateInputType
+    _sum?: FlashcardLearningSessionSumAggregateInputType
+    _min?: FlashcardLearningSessionMinAggregateInputType
+    _max?: FlashcardLearningSessionMaxAggregateInputType
+  }
+
+  export type FlashcardLearningSessionGroupByOutputType = {
+    id: string
+    studentId: string
+    deckId: string
+    startTime: Date
+    endTime: Date | null
+    cardsReviewed: number
+    correctAnswers: number
+    incorrectAnswers: number
+    sessionDuration: number | null
+    createdAt: Date
+    _count: FlashcardLearningSessionCountAggregateOutputType | null
+    _avg: FlashcardLearningSessionAvgAggregateOutputType | null
+    _sum: FlashcardLearningSessionSumAggregateOutputType | null
+    _min: FlashcardLearningSessionMinAggregateOutputType | null
+    _max: FlashcardLearningSessionMaxAggregateOutputType | null
+  }
+
+  type GetFlashcardLearningSessionGroupByPayload<T extends FlashcardLearningSessionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<FlashcardLearningSessionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof FlashcardLearningSessionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], FlashcardLearningSessionGroupByOutputType[P]>
+            : GetScalarType<T[P], FlashcardLearningSessionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type FlashcardLearningSessionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    studentId?: boolean
+    deckId?: boolean
+    startTime?: boolean
+    endTime?: boolean
+    cardsReviewed?: boolean
+    correctAnswers?: boolean
+    incorrectAnswers?: boolean
+    sessionDuration?: boolean
+    createdAt?: boolean
+    student?: boolean | UserDefaultArgs<ExtArgs>
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardLearningSession"]>
+
+  export type FlashcardLearningSessionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    studentId?: boolean
+    deckId?: boolean
+    startTime?: boolean
+    endTime?: boolean
+    cardsReviewed?: boolean
+    correctAnswers?: boolean
+    incorrectAnswers?: boolean
+    sessionDuration?: boolean
+    createdAt?: boolean
+    student?: boolean | UserDefaultArgs<ExtArgs>
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardLearningSession"]>
+
+  export type FlashcardLearningSessionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    studentId?: boolean
+    deckId?: boolean
+    startTime?: boolean
+    endTime?: boolean
+    cardsReviewed?: boolean
+    correctAnswers?: boolean
+    incorrectAnswers?: boolean
+    sessionDuration?: boolean
+    createdAt?: boolean
+    student?: boolean | UserDefaultArgs<ExtArgs>
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["flashcardLearningSession"]>
+
+  export type FlashcardLearningSessionSelectScalar = {
+    id?: boolean
+    studentId?: boolean
+    deckId?: boolean
+    startTime?: boolean
+    endTime?: boolean
+    cardsReviewed?: boolean
+    correctAnswers?: boolean
+    incorrectAnswers?: boolean
+    sessionDuration?: boolean
+    createdAt?: boolean
+  }
+
+  export type FlashcardLearningSessionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "studentId" | "deckId" | "startTime" | "endTime" | "cardsReviewed" | "correctAnswers" | "incorrectAnswers" | "sessionDuration" | "createdAt", ExtArgs["result"]["flashcardLearningSession"]>
+  export type FlashcardLearningSessionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    student?: boolean | UserDefaultArgs<ExtArgs>
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }
+  export type FlashcardLearningSessionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    student?: boolean | UserDefaultArgs<ExtArgs>
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }
+  export type FlashcardLearningSessionIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    student?: boolean | UserDefaultArgs<ExtArgs>
+    deck?: boolean | FlashcardDeckDefaultArgs<ExtArgs>
+  }
+
+  export type $FlashcardLearningSessionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "FlashcardLearningSession"
+    objects: {
+      student: Prisma.$UserPayload<ExtArgs>
+      deck: Prisma.$FlashcardDeckPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      studentId: string
+      deckId: string
+      startTime: Date
+      endTime: Date | null
+      cardsReviewed: number
+      correctAnswers: number
+      incorrectAnswers: number
+      sessionDuration: number | null
+      createdAt: Date
+    }, ExtArgs["result"]["flashcardLearningSession"]>
+    composites: {}
+  }
+
+  type FlashcardLearningSessionGetPayload<S extends boolean | null | undefined | FlashcardLearningSessionDefaultArgs> = $Result.GetResult<Prisma.$FlashcardLearningSessionPayload, S>
+
+  type FlashcardLearningSessionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<FlashcardLearningSessionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: FlashcardLearningSessionCountAggregateInputType | true
+    }
+
+  export interface FlashcardLearningSessionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['FlashcardLearningSession'], meta: { name: 'FlashcardLearningSession' } }
+    /**
+     * Find zero or one FlashcardLearningSession that matches the filter.
+     * @param {FlashcardLearningSessionFindUniqueArgs} args - Arguments to find a FlashcardLearningSession
+     * @example
+     * // Get one FlashcardLearningSession
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends FlashcardLearningSessionFindUniqueArgs>(args: SelectSubset<T, FlashcardLearningSessionFindUniqueArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one FlashcardLearningSession that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {FlashcardLearningSessionFindUniqueOrThrowArgs} args - Arguments to find a FlashcardLearningSession
+     * @example
+     * // Get one FlashcardLearningSession
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends FlashcardLearningSessionFindUniqueOrThrowArgs>(args: SelectSubset<T, FlashcardLearningSessionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardLearningSession that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardLearningSessionFindFirstArgs} args - Arguments to find a FlashcardLearningSession
+     * @example
+     * // Get one FlashcardLearningSession
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends FlashcardLearningSessionFindFirstArgs>(args?: SelectSubset<T, FlashcardLearningSessionFindFirstArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first FlashcardLearningSession that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardLearningSessionFindFirstOrThrowArgs} args - Arguments to find a FlashcardLearningSession
+     * @example
+     * // Get one FlashcardLearningSession
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends FlashcardLearningSessionFindFirstOrThrowArgs>(args?: SelectSubset<T, FlashcardLearningSessionFindFirstOrThrowArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more FlashcardLearningSessions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardLearningSessionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all FlashcardLearningSessions
+     * const flashcardLearningSessions = await prisma.flashcardLearningSession.findMany()
+     * 
+     * // Get first 10 FlashcardLearningSessions
+     * const flashcardLearningSessions = await prisma.flashcardLearningSession.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const flashcardLearningSessionWithIdOnly = await prisma.flashcardLearningSession.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends FlashcardLearningSessionFindManyArgs>(args?: SelectSubset<T, FlashcardLearningSessionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a FlashcardLearningSession.
+     * @param {FlashcardLearningSessionCreateArgs} args - Arguments to create a FlashcardLearningSession.
+     * @example
+     * // Create one FlashcardLearningSession
+     * const FlashcardLearningSession = await prisma.flashcardLearningSession.create({
+     *   data: {
+     *     // ... data to create a FlashcardLearningSession
+     *   }
+     * })
+     * 
+     */
+    create<T extends FlashcardLearningSessionCreateArgs>(args: SelectSubset<T, FlashcardLearningSessionCreateArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many FlashcardLearningSessions.
+     * @param {FlashcardLearningSessionCreateManyArgs} args - Arguments to create many FlashcardLearningSessions.
+     * @example
+     * // Create many FlashcardLearningSessions
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends FlashcardLearningSessionCreateManyArgs>(args?: SelectSubset<T, FlashcardLearningSessionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many FlashcardLearningSessions and returns the data saved in the database.
+     * @param {FlashcardLearningSessionCreateManyAndReturnArgs} args - Arguments to create many FlashcardLearningSessions.
+     * @example
+     * // Create many FlashcardLearningSessions
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many FlashcardLearningSessions and only return the `id`
+     * const flashcardLearningSessionWithIdOnly = await prisma.flashcardLearningSession.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends FlashcardLearningSessionCreateManyAndReturnArgs>(args?: SelectSubset<T, FlashcardLearningSessionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a FlashcardLearningSession.
+     * @param {FlashcardLearningSessionDeleteArgs} args - Arguments to delete one FlashcardLearningSession.
+     * @example
+     * // Delete one FlashcardLearningSession
+     * const FlashcardLearningSession = await prisma.flashcardLearningSession.delete({
+     *   where: {
+     *     // ... filter to delete one FlashcardLearningSession
+     *   }
+     * })
+     * 
+     */
+    delete<T extends FlashcardLearningSessionDeleteArgs>(args: SelectSubset<T, FlashcardLearningSessionDeleteArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one FlashcardLearningSession.
+     * @param {FlashcardLearningSessionUpdateArgs} args - Arguments to update one FlashcardLearningSession.
+     * @example
+     * // Update one FlashcardLearningSession
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends FlashcardLearningSessionUpdateArgs>(args: SelectSubset<T, FlashcardLearningSessionUpdateArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more FlashcardLearningSessions.
+     * @param {FlashcardLearningSessionDeleteManyArgs} args - Arguments to filter FlashcardLearningSessions to delete.
+     * @example
+     * // Delete a few FlashcardLearningSessions
+     * const { count } = await prisma.flashcardLearningSession.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends FlashcardLearningSessionDeleteManyArgs>(args?: SelectSubset<T, FlashcardLearningSessionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardLearningSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardLearningSessionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many FlashcardLearningSessions
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends FlashcardLearningSessionUpdateManyArgs>(args: SelectSubset<T, FlashcardLearningSessionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more FlashcardLearningSessions and returns the data updated in the database.
+     * @param {FlashcardLearningSessionUpdateManyAndReturnArgs} args - Arguments to update many FlashcardLearningSessions.
+     * @example
+     * // Update many FlashcardLearningSessions
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more FlashcardLearningSessions and only return the `id`
+     * const flashcardLearningSessionWithIdOnly = await prisma.flashcardLearningSession.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends FlashcardLearningSessionUpdateManyAndReturnArgs>(args: SelectSubset<T, FlashcardLearningSessionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one FlashcardLearningSession.
+     * @param {FlashcardLearningSessionUpsertArgs} args - Arguments to update or create a FlashcardLearningSession.
+     * @example
+     * // Update or create a FlashcardLearningSession
+     * const flashcardLearningSession = await prisma.flashcardLearningSession.upsert({
+     *   create: {
+     *     // ... data to create a FlashcardLearningSession
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the FlashcardLearningSession we want to update
+     *   }
+     * })
+     */
+    upsert<T extends FlashcardLearningSessionUpsertArgs>(args: SelectSubset<T, FlashcardLearningSessionUpsertArgs<ExtArgs>>): Prisma__FlashcardLearningSessionClient<$Result.GetResult<Prisma.$FlashcardLearningSessionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of FlashcardLearningSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardLearningSessionCountArgs} args - Arguments to filter FlashcardLearningSessions to count.
+     * @example
+     * // Count the number of FlashcardLearningSessions
+     * const count = await prisma.flashcardLearningSession.count({
+     *   where: {
+     *     // ... the filter for the FlashcardLearningSessions we want to count
+     *   }
+     * })
+    **/
+    count<T extends FlashcardLearningSessionCountArgs>(
+      args?: Subset<T, FlashcardLearningSessionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], FlashcardLearningSessionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a FlashcardLearningSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardLearningSessionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends FlashcardLearningSessionAggregateArgs>(args: Subset<T, FlashcardLearningSessionAggregateArgs>): Prisma.PrismaPromise<GetFlashcardLearningSessionAggregateType<T>>
+
+    /**
+     * Group by FlashcardLearningSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {FlashcardLearningSessionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends FlashcardLearningSessionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: FlashcardLearningSessionGroupByArgs['orderBy'] }
+        : { orderBy?: FlashcardLearningSessionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, FlashcardLearningSessionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetFlashcardLearningSessionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the FlashcardLearningSession model
+   */
+  readonly fields: FlashcardLearningSessionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for FlashcardLearningSession.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__FlashcardLearningSessionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    student<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    deck<T extends FlashcardDeckDefaultArgs<ExtArgs> = {}>(args?: Subset<T, FlashcardDeckDefaultArgs<ExtArgs>>): Prisma__FlashcardDeckClient<$Result.GetResult<Prisma.$FlashcardDeckPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the FlashcardLearningSession model
+   */
+  interface FlashcardLearningSessionFieldRefs {
+    readonly id: FieldRef<"FlashcardLearningSession", 'String'>
+    readonly studentId: FieldRef<"FlashcardLearningSession", 'String'>
+    readonly deckId: FieldRef<"FlashcardLearningSession", 'String'>
+    readonly startTime: FieldRef<"FlashcardLearningSession", 'DateTime'>
+    readonly endTime: FieldRef<"FlashcardLearningSession", 'DateTime'>
+    readonly cardsReviewed: FieldRef<"FlashcardLearningSession", 'Int'>
+    readonly correctAnswers: FieldRef<"FlashcardLearningSession", 'Int'>
+    readonly incorrectAnswers: FieldRef<"FlashcardLearningSession", 'Int'>
+    readonly sessionDuration: FieldRef<"FlashcardLearningSession", 'Int'>
+    readonly createdAt: FieldRef<"FlashcardLearningSession", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * FlashcardLearningSession findUnique
+   */
+  export type FlashcardLearningSessionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardLearningSession to fetch.
+     */
+    where: FlashcardLearningSessionWhereUniqueInput
+  }
+
+  /**
+   * FlashcardLearningSession findUniqueOrThrow
+   */
+  export type FlashcardLearningSessionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardLearningSession to fetch.
+     */
+    where: FlashcardLearningSessionWhereUniqueInput
+  }
+
+  /**
+   * FlashcardLearningSession findFirst
+   */
+  export type FlashcardLearningSessionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardLearningSession to fetch.
+     */
+    where?: FlashcardLearningSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardLearningSessions to fetch.
+     */
+    orderBy?: FlashcardLearningSessionOrderByWithRelationInput | FlashcardLearningSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardLearningSessions.
+     */
+    cursor?: FlashcardLearningSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardLearningSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardLearningSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardLearningSessions.
+     */
+    distinct?: FlashcardLearningSessionScalarFieldEnum | FlashcardLearningSessionScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardLearningSession findFirstOrThrow
+   */
+  export type FlashcardLearningSessionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardLearningSession to fetch.
+     */
+    where?: FlashcardLearningSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardLearningSessions to fetch.
+     */
+    orderBy?: FlashcardLearningSessionOrderByWithRelationInput | FlashcardLearningSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for FlashcardLearningSessions.
+     */
+    cursor?: FlashcardLearningSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardLearningSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardLearningSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of FlashcardLearningSessions.
+     */
+    distinct?: FlashcardLearningSessionScalarFieldEnum | FlashcardLearningSessionScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardLearningSession findMany
+   */
+  export type FlashcardLearningSessionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which FlashcardLearningSessions to fetch.
+     */
+    where?: FlashcardLearningSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of FlashcardLearningSessions to fetch.
+     */
+    orderBy?: FlashcardLearningSessionOrderByWithRelationInput | FlashcardLearningSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing FlashcardLearningSessions.
+     */
+    cursor?: FlashcardLearningSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` FlashcardLearningSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` FlashcardLearningSessions.
+     */
+    skip?: number
+    distinct?: FlashcardLearningSessionScalarFieldEnum | FlashcardLearningSessionScalarFieldEnum[]
+  }
+
+  /**
+   * FlashcardLearningSession create
+   */
+  export type FlashcardLearningSessionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a FlashcardLearningSession.
+     */
+    data: XOR<FlashcardLearningSessionCreateInput, FlashcardLearningSessionUncheckedCreateInput>
+  }
+
+  /**
+   * FlashcardLearningSession createMany
+   */
+  export type FlashcardLearningSessionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many FlashcardLearningSessions.
+     */
+    data: FlashcardLearningSessionCreateManyInput | FlashcardLearningSessionCreateManyInput[]
+  }
+
+  /**
+   * FlashcardLearningSession createManyAndReturn
+   */
+  export type FlashcardLearningSessionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * The data used to create many FlashcardLearningSessions.
+     */
+    data: FlashcardLearningSessionCreateManyInput | FlashcardLearningSessionCreateManyInput[]
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardLearningSession update
+   */
+  export type FlashcardLearningSessionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a FlashcardLearningSession.
+     */
+    data: XOR<FlashcardLearningSessionUpdateInput, FlashcardLearningSessionUncheckedUpdateInput>
+    /**
+     * Choose, which FlashcardLearningSession to update.
+     */
+    where: FlashcardLearningSessionWhereUniqueInput
+  }
+
+  /**
+   * FlashcardLearningSession updateMany
+   */
+  export type FlashcardLearningSessionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update FlashcardLearningSessions.
+     */
+    data: XOR<FlashcardLearningSessionUpdateManyMutationInput, FlashcardLearningSessionUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardLearningSessions to update
+     */
+    where?: FlashcardLearningSessionWhereInput
+    /**
+     * Limit how many FlashcardLearningSessions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardLearningSession updateManyAndReturn
+   */
+  export type FlashcardLearningSessionUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * The data used to update FlashcardLearningSessions.
+     */
+    data: XOR<FlashcardLearningSessionUpdateManyMutationInput, FlashcardLearningSessionUncheckedUpdateManyInput>
+    /**
+     * Filter which FlashcardLearningSessions to update
+     */
+    where?: FlashcardLearningSessionWhereInput
+    /**
+     * Limit how many FlashcardLearningSessions to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * FlashcardLearningSession upsert
+   */
+  export type FlashcardLearningSessionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the FlashcardLearningSession to update in case it exists.
+     */
+    where: FlashcardLearningSessionWhereUniqueInput
+    /**
+     * In case the FlashcardLearningSession found by the `where` argument doesn't exist, create a new FlashcardLearningSession with this data.
+     */
+    create: XOR<FlashcardLearningSessionCreateInput, FlashcardLearningSessionUncheckedCreateInput>
+    /**
+     * In case the FlashcardLearningSession was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<FlashcardLearningSessionUpdateInput, FlashcardLearningSessionUncheckedUpdateInput>
+  }
+
+  /**
+   * FlashcardLearningSession delete
+   */
+  export type FlashcardLearningSessionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+    /**
+     * Filter which FlashcardLearningSession to delete.
+     */
+    where: FlashcardLearningSessionWhereUniqueInput
+  }
+
+  /**
+   * FlashcardLearningSession deleteMany
+   */
+  export type FlashcardLearningSessionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which FlashcardLearningSessions to delete
+     */
+    where?: FlashcardLearningSessionWhereInput
+    /**
+     * Limit how many FlashcardLearningSessions to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * FlashcardLearningSession without action
+   */
+  export type FlashcardLearningSessionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the FlashcardLearningSession
+     */
+    select?: FlashcardLearningSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the FlashcardLearningSession
+     */
+    omit?: FlashcardLearningSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: FlashcardLearningSessionInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -31350,11 +34011,45 @@ export namespace Prisma {
     nextReview: 'nextReview',
     lastReviewed: 'lastReviewed',
     reviewCount: 'reviewCount',
+    easeFactor: 'easeFactor',
+    interval: 'interval',
+    quality: 'quality',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
 
   export type FlashcardProgressScalarFieldEnum = (typeof FlashcardProgressScalarFieldEnum)[keyof typeof FlashcardProgressScalarFieldEnum]
+
+
+  export const DocumentProcessingHistoryScalarFieldEnum: {
+    id: 'id',
+    sourceFile: 'sourceFile',
+    fileName: 'fileName',
+    teacherId: 'teacherId',
+    action: 'action',
+    deckId: 'deckId',
+    deckTitle: 'deckTitle',
+    cardsCount: 'cardsCount',
+    processedAt: 'processedAt'
+  };
+
+  export type DocumentProcessingHistoryScalarFieldEnum = (typeof DocumentProcessingHistoryScalarFieldEnum)[keyof typeof DocumentProcessingHistoryScalarFieldEnum]
+
+
+  export const FlashcardLearningSessionScalarFieldEnum: {
+    id: 'id',
+    studentId: 'studentId',
+    deckId: 'deckId',
+    startTime: 'startTime',
+    endTime: 'endTime',
+    cardsReviewed: 'cardsReviewed',
+    correctAnswers: 'correctAnswers',
+    incorrectAnswers: 'incorrectAnswers',
+    sessionDuration: 'sessionDuration',
+    createdAt: 'createdAt'
+  };
+
+  export type FlashcardLearningSessionScalarFieldEnum = (typeof FlashcardLearningSessionScalarFieldEnum)[keyof typeof FlashcardLearningSessionScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -31437,6 +34132,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathListRelationFilter
     flashcardDecks?: FlashcardDeckListRelationFilter
     flashcardProgress?: FlashcardProgressListRelationFilter
+    learningSessions?: FlashcardLearningSessionListRelationFilter
+    documentProcessingHistory?: DocumentProcessingHistoryListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -31457,6 +34154,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathOrderByRelationAggregateInput
     flashcardDecks?: FlashcardDeckOrderByRelationAggregateInput
     flashcardProgress?: FlashcardProgressOrderByRelationAggregateInput
+    learningSessions?: FlashcardLearningSessionOrderByRelationAggregateInput
+    documentProcessingHistory?: DocumentProcessingHistoryOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -31480,6 +34179,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathListRelationFilter
     flashcardDecks?: FlashcardDeckListRelationFilter
     flashcardProgress?: FlashcardProgressListRelationFilter
+    learningSessions?: FlashcardLearningSessionListRelationFilter
+    documentProcessingHistory?: DocumentProcessingHistoryListRelationFilter
   }, "id" | "loginCode">
 
   export type UserOrderByWithAggregationInput = {
@@ -32859,6 +35560,7 @@ export namespace Prisma {
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     cards?: FlashcardListRelationFilter
     assignments?: FlashcardAssignmentListRelationFilter
+    learningSessions?: FlashcardLearningSessionListRelationFilter
   }
 
   export type FlashcardDeckOrderByWithRelationInput = {
@@ -32874,6 +35576,7 @@ export namespace Prisma {
     teacher?: UserOrderByWithRelationInput
     cards?: FlashcardOrderByRelationAggregateInput
     assignments?: FlashcardAssignmentOrderByRelationAggregateInput
+    learningSessions?: FlashcardLearningSessionOrderByRelationAggregateInput
   }
 
   export type FlashcardDeckWhereUniqueInput = Prisma.AtLeast<{
@@ -32892,6 +35595,7 @@ export namespace Prisma {
     teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
     cards?: FlashcardListRelationFilter
     assignments?: FlashcardAssignmentListRelationFilter
+    learningSessions?: FlashcardLearningSessionListRelationFilter
   }, "id">
 
   export type FlashcardDeckOrderByWithAggregationInput = {
@@ -33071,6 +35775,9 @@ export namespace Prisma {
     nextReview?: DateTimeFilter<"FlashcardProgress"> | Date | string
     lastReviewed?: DateTimeNullableFilter<"FlashcardProgress"> | Date | string | null
     reviewCount?: IntFilter<"FlashcardProgress"> | number
+    easeFactor?: FloatFilter<"FlashcardProgress"> | number
+    interval?: IntFilter<"FlashcardProgress"> | number
+    quality?: IntNullableFilter<"FlashcardProgress"> | number | null
     createdAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
     updatedAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
     card?: XOR<FlashcardScalarRelationFilter, FlashcardWhereInput>
@@ -33085,6 +35792,9 @@ export namespace Prisma {
     nextReview?: SortOrder
     lastReviewed?: SortOrderInput | SortOrder
     reviewCount?: SortOrder
+    easeFactor?: SortOrder
+    interval?: SortOrder
+    quality?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     card?: FlashcardOrderByWithRelationInput
@@ -33103,6 +35813,9 @@ export namespace Prisma {
     nextReview?: DateTimeFilter<"FlashcardProgress"> | Date | string
     lastReviewed?: DateTimeNullableFilter<"FlashcardProgress"> | Date | string | null
     reviewCount?: IntFilter<"FlashcardProgress"> | number
+    easeFactor?: FloatFilter<"FlashcardProgress"> | number
+    interval?: IntFilter<"FlashcardProgress"> | number
+    quality?: IntNullableFilter<"FlashcardProgress"> | number | null
     createdAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
     updatedAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
     card?: XOR<FlashcardScalarRelationFilter, FlashcardWhereInput>
@@ -33117,6 +35830,9 @@ export namespace Prisma {
     nextReview?: SortOrder
     lastReviewed?: SortOrderInput | SortOrder
     reviewCount?: SortOrder
+    easeFactor?: SortOrder
+    interval?: SortOrder
+    quality?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: FlashcardProgressCountOrderByAggregateInput
@@ -33137,8 +35853,174 @@ export namespace Prisma {
     nextReview?: DateTimeWithAggregatesFilter<"FlashcardProgress"> | Date | string
     lastReviewed?: DateTimeNullableWithAggregatesFilter<"FlashcardProgress"> | Date | string | null
     reviewCount?: IntWithAggregatesFilter<"FlashcardProgress"> | number
+    easeFactor?: FloatWithAggregatesFilter<"FlashcardProgress"> | number
+    interval?: IntWithAggregatesFilter<"FlashcardProgress"> | number
+    quality?: IntNullableWithAggregatesFilter<"FlashcardProgress"> | number | null
     createdAt?: DateTimeWithAggregatesFilter<"FlashcardProgress"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"FlashcardProgress"> | Date | string
+  }
+
+  export type DocumentProcessingHistoryWhereInput = {
+    AND?: DocumentProcessingHistoryWhereInput | DocumentProcessingHistoryWhereInput[]
+    OR?: DocumentProcessingHistoryWhereInput[]
+    NOT?: DocumentProcessingHistoryWhereInput | DocumentProcessingHistoryWhereInput[]
+    id?: StringFilter<"DocumentProcessingHistory"> | string
+    sourceFile?: StringFilter<"DocumentProcessingHistory"> | string
+    fileName?: StringFilter<"DocumentProcessingHistory"> | string
+    teacherId?: StringFilter<"DocumentProcessingHistory"> | string
+    action?: StringFilter<"DocumentProcessingHistory"> | string
+    deckId?: StringFilter<"DocumentProcessingHistory"> | string
+    deckTitle?: StringFilter<"DocumentProcessingHistory"> | string
+    cardsCount?: IntFilter<"DocumentProcessingHistory"> | number
+    processedAt?: DateTimeFilter<"DocumentProcessingHistory"> | Date | string
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type DocumentProcessingHistoryOrderByWithRelationInput = {
+    id?: SortOrder
+    sourceFile?: SortOrder
+    fileName?: SortOrder
+    teacherId?: SortOrder
+    action?: SortOrder
+    deckId?: SortOrder
+    deckTitle?: SortOrder
+    cardsCount?: SortOrder
+    processedAt?: SortOrder
+    teacher?: UserOrderByWithRelationInput
+  }
+
+  export type DocumentProcessingHistoryWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    sourceFile_teacherId_action_deckId?: DocumentProcessingHistorySourceFileTeacherIdActionDeckIdCompoundUniqueInput
+    AND?: DocumentProcessingHistoryWhereInput | DocumentProcessingHistoryWhereInput[]
+    OR?: DocumentProcessingHistoryWhereInput[]
+    NOT?: DocumentProcessingHistoryWhereInput | DocumentProcessingHistoryWhereInput[]
+    sourceFile?: StringFilter<"DocumentProcessingHistory"> | string
+    fileName?: StringFilter<"DocumentProcessingHistory"> | string
+    teacherId?: StringFilter<"DocumentProcessingHistory"> | string
+    action?: StringFilter<"DocumentProcessingHistory"> | string
+    deckId?: StringFilter<"DocumentProcessingHistory"> | string
+    deckTitle?: StringFilter<"DocumentProcessingHistory"> | string
+    cardsCount?: IntFilter<"DocumentProcessingHistory"> | number
+    processedAt?: DateTimeFilter<"DocumentProcessingHistory"> | Date | string
+    teacher?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id" | "sourceFile_teacherId_action_deckId">
+
+  export type DocumentProcessingHistoryOrderByWithAggregationInput = {
+    id?: SortOrder
+    sourceFile?: SortOrder
+    fileName?: SortOrder
+    teacherId?: SortOrder
+    action?: SortOrder
+    deckId?: SortOrder
+    deckTitle?: SortOrder
+    cardsCount?: SortOrder
+    processedAt?: SortOrder
+    _count?: DocumentProcessingHistoryCountOrderByAggregateInput
+    _avg?: DocumentProcessingHistoryAvgOrderByAggregateInput
+    _max?: DocumentProcessingHistoryMaxOrderByAggregateInput
+    _min?: DocumentProcessingHistoryMinOrderByAggregateInput
+    _sum?: DocumentProcessingHistorySumOrderByAggregateInput
+  }
+
+  export type DocumentProcessingHistoryScalarWhereWithAggregatesInput = {
+    AND?: DocumentProcessingHistoryScalarWhereWithAggregatesInput | DocumentProcessingHistoryScalarWhereWithAggregatesInput[]
+    OR?: DocumentProcessingHistoryScalarWhereWithAggregatesInput[]
+    NOT?: DocumentProcessingHistoryScalarWhereWithAggregatesInput | DocumentProcessingHistoryScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"DocumentProcessingHistory"> | string
+    sourceFile?: StringWithAggregatesFilter<"DocumentProcessingHistory"> | string
+    fileName?: StringWithAggregatesFilter<"DocumentProcessingHistory"> | string
+    teacherId?: StringWithAggregatesFilter<"DocumentProcessingHistory"> | string
+    action?: StringWithAggregatesFilter<"DocumentProcessingHistory"> | string
+    deckId?: StringWithAggregatesFilter<"DocumentProcessingHistory"> | string
+    deckTitle?: StringWithAggregatesFilter<"DocumentProcessingHistory"> | string
+    cardsCount?: IntWithAggregatesFilter<"DocumentProcessingHistory"> | number
+    processedAt?: DateTimeWithAggregatesFilter<"DocumentProcessingHistory"> | Date | string
+  }
+
+  export type FlashcardLearningSessionWhereInput = {
+    AND?: FlashcardLearningSessionWhereInput | FlashcardLearningSessionWhereInput[]
+    OR?: FlashcardLearningSessionWhereInput[]
+    NOT?: FlashcardLearningSessionWhereInput | FlashcardLearningSessionWhereInput[]
+    id?: StringFilter<"FlashcardLearningSession"> | string
+    studentId?: StringFilter<"FlashcardLearningSession"> | string
+    deckId?: StringFilter<"FlashcardLearningSession"> | string
+    startTime?: DateTimeFilter<"FlashcardLearningSession"> | Date | string
+    endTime?: DateTimeNullableFilter<"FlashcardLearningSession"> | Date | string | null
+    cardsReviewed?: IntFilter<"FlashcardLearningSession"> | number
+    correctAnswers?: IntFilter<"FlashcardLearningSession"> | number
+    incorrectAnswers?: IntFilter<"FlashcardLearningSession"> | number
+    sessionDuration?: IntNullableFilter<"FlashcardLearningSession"> | number | null
+    createdAt?: DateTimeFilter<"FlashcardLearningSession"> | Date | string
+    student?: XOR<UserScalarRelationFilter, UserWhereInput>
+    deck?: XOR<FlashcardDeckScalarRelationFilter, FlashcardDeckWhereInput>
+  }
+
+  export type FlashcardLearningSessionOrderByWithRelationInput = {
+    id?: SortOrder
+    studentId?: SortOrder
+    deckId?: SortOrder
+    startTime?: SortOrder
+    endTime?: SortOrderInput | SortOrder
+    cardsReviewed?: SortOrder
+    correctAnswers?: SortOrder
+    incorrectAnswers?: SortOrder
+    sessionDuration?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    student?: UserOrderByWithRelationInput
+    deck?: FlashcardDeckOrderByWithRelationInput
+  }
+
+  export type FlashcardLearningSessionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: FlashcardLearningSessionWhereInput | FlashcardLearningSessionWhereInput[]
+    OR?: FlashcardLearningSessionWhereInput[]
+    NOT?: FlashcardLearningSessionWhereInput | FlashcardLearningSessionWhereInput[]
+    studentId?: StringFilter<"FlashcardLearningSession"> | string
+    deckId?: StringFilter<"FlashcardLearningSession"> | string
+    startTime?: DateTimeFilter<"FlashcardLearningSession"> | Date | string
+    endTime?: DateTimeNullableFilter<"FlashcardLearningSession"> | Date | string | null
+    cardsReviewed?: IntFilter<"FlashcardLearningSession"> | number
+    correctAnswers?: IntFilter<"FlashcardLearningSession"> | number
+    incorrectAnswers?: IntFilter<"FlashcardLearningSession"> | number
+    sessionDuration?: IntNullableFilter<"FlashcardLearningSession"> | number | null
+    createdAt?: DateTimeFilter<"FlashcardLearningSession"> | Date | string
+    student?: XOR<UserScalarRelationFilter, UserWhereInput>
+    deck?: XOR<FlashcardDeckScalarRelationFilter, FlashcardDeckWhereInput>
+  }, "id">
+
+  export type FlashcardLearningSessionOrderByWithAggregationInput = {
+    id?: SortOrder
+    studentId?: SortOrder
+    deckId?: SortOrder
+    startTime?: SortOrder
+    endTime?: SortOrderInput | SortOrder
+    cardsReviewed?: SortOrder
+    correctAnswers?: SortOrder
+    incorrectAnswers?: SortOrder
+    sessionDuration?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: FlashcardLearningSessionCountOrderByAggregateInput
+    _avg?: FlashcardLearningSessionAvgOrderByAggregateInput
+    _max?: FlashcardLearningSessionMaxOrderByAggregateInput
+    _min?: FlashcardLearningSessionMinOrderByAggregateInput
+    _sum?: FlashcardLearningSessionSumOrderByAggregateInput
+  }
+
+  export type FlashcardLearningSessionScalarWhereWithAggregatesInput = {
+    AND?: FlashcardLearningSessionScalarWhereWithAggregatesInput | FlashcardLearningSessionScalarWhereWithAggregatesInput[]
+    OR?: FlashcardLearningSessionScalarWhereWithAggregatesInput[]
+    NOT?: FlashcardLearningSessionScalarWhereWithAggregatesInput | FlashcardLearningSessionScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"FlashcardLearningSession"> | string
+    studentId?: StringWithAggregatesFilter<"FlashcardLearningSession"> | string
+    deckId?: StringWithAggregatesFilter<"FlashcardLearningSession"> | string
+    startTime?: DateTimeWithAggregatesFilter<"FlashcardLearningSession"> | Date | string
+    endTime?: DateTimeNullableWithAggregatesFilter<"FlashcardLearningSession"> | Date | string | null
+    cardsReviewed?: IntWithAggregatesFilter<"FlashcardLearningSession"> | number
+    correctAnswers?: IntWithAggregatesFilter<"FlashcardLearningSession"> | number
+    incorrectAnswers?: IntWithAggregatesFilter<"FlashcardLearningSession"> | number
+    sessionDuration?: IntNullableWithAggregatesFilter<"FlashcardLearningSession"> | number | null
+    createdAt?: DateTimeWithAggregatesFilter<"FlashcardLearningSession"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -33159,6 +36041,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -33179,6 +36063,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUpdateInput = {
@@ -33199,6 +36085,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -33219,6 +36107,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -34652,6 +37542,7 @@ export namespace Prisma {
     teacher: UserCreateNestedOneWithoutFlashcardDecksInput
     cards?: FlashcardCreateNestedManyWithoutDeckInput
     assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckUncheckedCreateInput = {
@@ -34665,6 +37556,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
     assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckUpdateInput = {
@@ -34678,6 +37570,7 @@ export namespace Prisma {
     teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
     cards?: FlashcardUpdateManyWithoutDeckNestedInput
     assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckUncheckedUpdateInput = {
@@ -34691,6 +37584,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
     assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckCreateManyInput = {
@@ -34871,6 +37765,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     card: FlashcardCreateNestedOneWithoutProgressInput
@@ -34885,6 +37782,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -34895,6 +37795,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     card?: FlashcardUpdateOneRequiredWithoutProgressNestedInput
@@ -34909,6 +37812,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -34921,6 +37827,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -34931,6 +37840,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -34943,8 +37855,183 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type DocumentProcessingHistoryCreateInput = {
+    id?: string
+    sourceFile: string
+    fileName: string
+    action: string
+    deckId: string
+    deckTitle: string
+    cardsCount: number
+    processedAt?: Date | string
+    teacher: UserCreateNestedOneWithoutDocumentProcessingHistoryInput
+  }
+
+  export type DocumentProcessingHistoryUncheckedCreateInput = {
+    id?: string
+    sourceFile: string
+    fileName: string
+    teacherId: string
+    action: string
+    deckId: string
+    deckTitle: string
+    cardsCount: number
+    processedAt?: Date | string
+  }
+
+  export type DocumentProcessingHistoryUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceFile?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    deckTitle?: StringFieldUpdateOperationsInput | string
+    cardsCount?: IntFieldUpdateOperationsInput | number
+    processedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    teacher?: UserUpdateOneRequiredWithoutDocumentProcessingHistoryNestedInput
+  }
+
+  export type DocumentProcessingHistoryUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceFile?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    deckTitle?: StringFieldUpdateOperationsInput | string
+    cardsCount?: IntFieldUpdateOperationsInput | number
+    processedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type DocumentProcessingHistoryCreateManyInput = {
+    id?: string
+    sourceFile: string
+    fileName: string
+    teacherId: string
+    action: string
+    deckId: string
+    deckTitle: string
+    cardsCount: number
+    processedAt?: Date | string
+  }
+
+  export type DocumentProcessingHistoryUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceFile?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    deckTitle?: StringFieldUpdateOperationsInput | string
+    cardsCount?: IntFieldUpdateOperationsInput | number
+    processedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type DocumentProcessingHistoryUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceFile?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    teacherId?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    deckTitle?: StringFieldUpdateOperationsInput | string
+    cardsCount?: IntFieldUpdateOperationsInput | number
+    processedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardLearningSessionCreateInput = {
+    id?: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+    student: UserCreateNestedOneWithoutLearningSessionsInput
+    deck: FlashcardDeckCreateNestedOneWithoutLearningSessionsInput
+  }
+
+  export type FlashcardLearningSessionUncheckedCreateInput = {
+    id?: string
+    studentId: string
+    deckId: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardLearningSessionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    student?: UserUpdateOneRequiredWithoutLearningSessionsNestedInput
+    deck?: FlashcardDeckUpdateOneRequiredWithoutLearningSessionsNestedInput
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardLearningSessionCreateManyInput = {
+    id?: string
+    studentId: string
+    deckId: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardLearningSessionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type StringFilter<$PrismaModel = never> = {
@@ -35040,6 +38127,18 @@ export namespace Prisma {
     none?: FlashcardProgressWhereInput
   }
 
+  export type FlashcardLearningSessionListRelationFilter = {
+    every?: FlashcardLearningSessionWhereInput
+    some?: FlashcardLearningSessionWhereInput
+    none?: FlashcardLearningSessionWhereInput
+  }
+
+  export type DocumentProcessingHistoryListRelationFilter = {
+    every?: DocumentProcessingHistoryWhereInput
+    some?: DocumentProcessingHistoryWhereInput
+    none?: DocumentProcessingHistoryWhereInput
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -35078,6 +38177,14 @@ export namespace Prisma {
   }
 
   export type FlashcardProgressOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type FlashcardLearningSessionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type DocumentProcessingHistoryOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -36300,6 +39407,9 @@ export namespace Prisma {
     nextReview?: SortOrder
     lastReviewed?: SortOrder
     reviewCount?: SortOrder
+    easeFactor?: SortOrder
+    interval?: SortOrder
+    quality?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -36307,6 +39417,9 @@ export namespace Prisma {
   export type FlashcardProgressAvgOrderByAggregateInput = {
     level?: SortOrder
     reviewCount?: SortOrder
+    easeFactor?: SortOrder
+    interval?: SortOrder
+    quality?: SortOrder
   }
 
   export type FlashcardProgressMaxOrderByAggregateInput = {
@@ -36317,6 +39430,9 @@ export namespace Prisma {
     nextReview?: SortOrder
     lastReviewed?: SortOrder
     reviewCount?: SortOrder
+    easeFactor?: SortOrder
+    interval?: SortOrder
+    quality?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -36329,6 +39445,9 @@ export namespace Prisma {
     nextReview?: SortOrder
     lastReviewed?: SortOrder
     reviewCount?: SortOrder
+    easeFactor?: SortOrder
+    interval?: SortOrder
+    quality?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -36336,6 +39455,113 @@ export namespace Prisma {
   export type FlashcardProgressSumOrderByAggregateInput = {
     level?: SortOrder
     reviewCount?: SortOrder
+    easeFactor?: SortOrder
+    interval?: SortOrder
+    quality?: SortOrder
+  }
+
+  export type DocumentProcessingHistorySourceFileTeacherIdActionDeckIdCompoundUniqueInput = {
+    sourceFile: string
+    teacherId: string
+    action: string
+    deckId: string
+  }
+
+  export type DocumentProcessingHistoryCountOrderByAggregateInput = {
+    id?: SortOrder
+    sourceFile?: SortOrder
+    fileName?: SortOrder
+    teacherId?: SortOrder
+    action?: SortOrder
+    deckId?: SortOrder
+    deckTitle?: SortOrder
+    cardsCount?: SortOrder
+    processedAt?: SortOrder
+  }
+
+  export type DocumentProcessingHistoryAvgOrderByAggregateInput = {
+    cardsCount?: SortOrder
+  }
+
+  export type DocumentProcessingHistoryMaxOrderByAggregateInput = {
+    id?: SortOrder
+    sourceFile?: SortOrder
+    fileName?: SortOrder
+    teacherId?: SortOrder
+    action?: SortOrder
+    deckId?: SortOrder
+    deckTitle?: SortOrder
+    cardsCount?: SortOrder
+    processedAt?: SortOrder
+  }
+
+  export type DocumentProcessingHistoryMinOrderByAggregateInput = {
+    id?: SortOrder
+    sourceFile?: SortOrder
+    fileName?: SortOrder
+    teacherId?: SortOrder
+    action?: SortOrder
+    deckId?: SortOrder
+    deckTitle?: SortOrder
+    cardsCount?: SortOrder
+    processedAt?: SortOrder
+  }
+
+  export type DocumentProcessingHistorySumOrderByAggregateInput = {
+    cardsCount?: SortOrder
+  }
+
+  export type FlashcardLearningSessionCountOrderByAggregateInput = {
+    id?: SortOrder
+    studentId?: SortOrder
+    deckId?: SortOrder
+    startTime?: SortOrder
+    endTime?: SortOrder
+    cardsReviewed?: SortOrder
+    correctAnswers?: SortOrder
+    incorrectAnswers?: SortOrder
+    sessionDuration?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type FlashcardLearningSessionAvgOrderByAggregateInput = {
+    cardsReviewed?: SortOrder
+    correctAnswers?: SortOrder
+    incorrectAnswers?: SortOrder
+    sessionDuration?: SortOrder
+  }
+
+  export type FlashcardLearningSessionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    studentId?: SortOrder
+    deckId?: SortOrder
+    startTime?: SortOrder
+    endTime?: SortOrder
+    cardsReviewed?: SortOrder
+    correctAnswers?: SortOrder
+    incorrectAnswers?: SortOrder
+    sessionDuration?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type FlashcardLearningSessionMinOrderByAggregateInput = {
+    id?: SortOrder
+    studentId?: SortOrder
+    deckId?: SortOrder
+    startTime?: SortOrder
+    endTime?: SortOrder
+    cardsReviewed?: SortOrder
+    correctAnswers?: SortOrder
+    incorrectAnswers?: SortOrder
+    sessionDuration?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type FlashcardLearningSessionSumOrderByAggregateInput = {
+    cardsReviewed?: SortOrder
+    correctAnswers?: SortOrder
+    incorrectAnswers?: SortOrder
+    sessionDuration?: SortOrder
   }
 
   export type LearningGroupCreateNestedManyWithoutTeacherInput = {
@@ -36407,6 +39633,20 @@ export namespace Prisma {
     connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
   }
 
+  export type FlashcardLearningSessionCreateNestedManyWithoutStudentInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutStudentInput, FlashcardLearningSessionUncheckedCreateWithoutStudentInput> | FlashcardLearningSessionCreateWithoutStudentInput[] | FlashcardLearningSessionUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutStudentInput | FlashcardLearningSessionCreateOrConnectWithoutStudentInput[]
+    createMany?: FlashcardLearningSessionCreateManyStudentInputEnvelope
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+  }
+
+  export type DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput = {
+    create?: XOR<DocumentProcessingHistoryCreateWithoutTeacherInput, DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput> | DocumentProcessingHistoryCreateWithoutTeacherInput[] | DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput | DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput[]
+    createMany?: DocumentProcessingHistoryCreateManyTeacherInputEnvelope
+    connect?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+  }
+
   export type LearningGroupUncheckedCreateNestedManyWithoutTeacherInput = {
     create?: XOR<LearningGroupCreateWithoutTeacherInput, LearningGroupUncheckedCreateWithoutTeacherInput> | LearningGroupCreateWithoutTeacherInput[] | LearningGroupUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutTeacherInput | LearningGroupCreateOrConnectWithoutTeacherInput[]
@@ -36474,6 +39714,20 @@ export namespace Prisma {
     connectOrCreate?: FlashcardProgressCreateOrConnectWithoutStudentInput | FlashcardProgressCreateOrConnectWithoutStudentInput[]
     createMany?: FlashcardProgressCreateManyStudentInputEnvelope
     connect?: FlashcardProgressWhereUniqueInput | FlashcardProgressWhereUniqueInput[]
+  }
+
+  export type FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutStudentInput, FlashcardLearningSessionUncheckedCreateWithoutStudentInput> | FlashcardLearningSessionCreateWithoutStudentInput[] | FlashcardLearningSessionUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutStudentInput | FlashcardLearningSessionCreateOrConnectWithoutStudentInput[]
+    createMany?: FlashcardLearningSessionCreateManyStudentInputEnvelope
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+  }
+
+  export type DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput = {
+    create?: XOR<DocumentProcessingHistoryCreateWithoutTeacherInput, DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput> | DocumentProcessingHistoryCreateWithoutTeacherInput[] | DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput | DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput[]
+    createMany?: DocumentProcessingHistoryCreateManyTeacherInputEnvelope
+    connect?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -36627,6 +39881,34 @@ export namespace Prisma {
     deleteMany?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
   }
 
+  export type FlashcardLearningSessionUpdateManyWithoutStudentNestedInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutStudentInput, FlashcardLearningSessionUncheckedCreateWithoutStudentInput> | FlashcardLearningSessionCreateWithoutStudentInput[] | FlashcardLearningSessionUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutStudentInput | FlashcardLearningSessionCreateOrConnectWithoutStudentInput[]
+    upsert?: FlashcardLearningSessionUpsertWithWhereUniqueWithoutStudentInput | FlashcardLearningSessionUpsertWithWhereUniqueWithoutStudentInput[]
+    createMany?: FlashcardLearningSessionCreateManyStudentInputEnvelope
+    set?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    disconnect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    delete?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    update?: FlashcardLearningSessionUpdateWithWhereUniqueWithoutStudentInput | FlashcardLearningSessionUpdateWithWhereUniqueWithoutStudentInput[]
+    updateMany?: FlashcardLearningSessionUpdateManyWithWhereWithoutStudentInput | FlashcardLearningSessionUpdateManyWithWhereWithoutStudentInput[]
+    deleteMany?: FlashcardLearningSessionScalarWhereInput | FlashcardLearningSessionScalarWhereInput[]
+  }
+
+  export type DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput = {
+    create?: XOR<DocumentProcessingHistoryCreateWithoutTeacherInput, DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput> | DocumentProcessingHistoryCreateWithoutTeacherInput[] | DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput | DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput[]
+    upsert?: DocumentProcessingHistoryUpsertWithWhereUniqueWithoutTeacherInput | DocumentProcessingHistoryUpsertWithWhereUniqueWithoutTeacherInput[]
+    createMany?: DocumentProcessingHistoryCreateManyTeacherInputEnvelope
+    set?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    disconnect?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    delete?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    connect?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    update?: DocumentProcessingHistoryUpdateWithWhereUniqueWithoutTeacherInput | DocumentProcessingHistoryUpdateWithWhereUniqueWithoutTeacherInput[]
+    updateMany?: DocumentProcessingHistoryUpdateManyWithWhereWithoutTeacherInput | DocumentProcessingHistoryUpdateManyWithWhereWithoutTeacherInput[]
+    deleteMany?: DocumentProcessingHistoryScalarWhereInput | DocumentProcessingHistoryScalarWhereInput[]
+  }
+
   export type LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput = {
     create?: XOR<LearningGroupCreateWithoutTeacherInput, LearningGroupUncheckedCreateWithoutTeacherInput> | LearningGroupCreateWithoutTeacherInput[] | LearningGroupUncheckedCreateWithoutTeacherInput[]
     connectOrCreate?: LearningGroupCreateOrConnectWithoutTeacherInput | LearningGroupCreateOrConnectWithoutTeacherInput[]
@@ -36764,6 +40046,34 @@ export namespace Prisma {
     update?: FlashcardProgressUpdateWithWhereUniqueWithoutStudentInput | FlashcardProgressUpdateWithWhereUniqueWithoutStudentInput[]
     updateMany?: FlashcardProgressUpdateManyWithWhereWithoutStudentInput | FlashcardProgressUpdateManyWithWhereWithoutStudentInput[]
     deleteMany?: FlashcardProgressScalarWhereInput | FlashcardProgressScalarWhereInput[]
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutStudentInput, FlashcardLearningSessionUncheckedCreateWithoutStudentInput> | FlashcardLearningSessionCreateWithoutStudentInput[] | FlashcardLearningSessionUncheckedCreateWithoutStudentInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutStudentInput | FlashcardLearningSessionCreateOrConnectWithoutStudentInput[]
+    upsert?: FlashcardLearningSessionUpsertWithWhereUniqueWithoutStudentInput | FlashcardLearningSessionUpsertWithWhereUniqueWithoutStudentInput[]
+    createMany?: FlashcardLearningSessionCreateManyStudentInputEnvelope
+    set?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    disconnect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    delete?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    update?: FlashcardLearningSessionUpdateWithWhereUniqueWithoutStudentInput | FlashcardLearningSessionUpdateWithWhereUniqueWithoutStudentInput[]
+    updateMany?: FlashcardLearningSessionUpdateManyWithWhereWithoutStudentInput | FlashcardLearningSessionUpdateManyWithWhereWithoutStudentInput[]
+    deleteMany?: FlashcardLearningSessionScalarWhereInput | FlashcardLearningSessionScalarWhereInput[]
+  }
+
+  export type DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput = {
+    create?: XOR<DocumentProcessingHistoryCreateWithoutTeacherInput, DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput> | DocumentProcessingHistoryCreateWithoutTeacherInput[] | DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput[]
+    connectOrCreate?: DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput | DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput[]
+    upsert?: DocumentProcessingHistoryUpsertWithWhereUniqueWithoutTeacherInput | DocumentProcessingHistoryUpsertWithWhereUniqueWithoutTeacherInput[]
+    createMany?: DocumentProcessingHistoryCreateManyTeacherInputEnvelope
+    set?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    disconnect?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    delete?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    connect?: DocumentProcessingHistoryWhereUniqueInput | DocumentProcessingHistoryWhereUniqueInput[]
+    update?: DocumentProcessingHistoryUpdateWithWhereUniqueWithoutTeacherInput | DocumentProcessingHistoryUpdateWithWhereUniqueWithoutTeacherInput[]
+    updateMany?: DocumentProcessingHistoryUpdateManyWithWhereWithoutTeacherInput | DocumentProcessingHistoryUpdateManyWithWhereWithoutTeacherInput[]
+    deleteMany?: DocumentProcessingHistoryScalarWhereInput | DocumentProcessingHistoryScalarWhereInput[]
   }
 
   export type LearningGroupCreateNestedOneWithoutGradingSchemasInput = {
@@ -37940,6 +41250,13 @@ export namespace Prisma {
     connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
   }
 
+  export type FlashcardLearningSessionCreateNestedManyWithoutDeckInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutDeckInput, FlashcardLearningSessionUncheckedCreateWithoutDeckInput> | FlashcardLearningSessionCreateWithoutDeckInput[] | FlashcardLearningSessionUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutDeckInput | FlashcardLearningSessionCreateOrConnectWithoutDeckInput[]
+    createMany?: FlashcardLearningSessionCreateManyDeckInputEnvelope
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+  }
+
   export type FlashcardUncheckedCreateNestedManyWithoutDeckInput = {
     create?: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput> | FlashcardCreateWithoutDeckInput[] | FlashcardUncheckedCreateWithoutDeckInput[]
     connectOrCreate?: FlashcardCreateOrConnectWithoutDeckInput | FlashcardCreateOrConnectWithoutDeckInput[]
@@ -37952,6 +41269,13 @@ export namespace Prisma {
     connectOrCreate?: FlashcardAssignmentCreateOrConnectWithoutDeckInput | FlashcardAssignmentCreateOrConnectWithoutDeckInput[]
     createMany?: FlashcardAssignmentCreateManyDeckInputEnvelope
     connect?: FlashcardAssignmentWhereUniqueInput | FlashcardAssignmentWhereUniqueInput[]
+  }
+
+  export type FlashcardLearningSessionUncheckedCreateNestedManyWithoutDeckInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutDeckInput, FlashcardLearningSessionUncheckedCreateWithoutDeckInput> | FlashcardLearningSessionCreateWithoutDeckInput[] | FlashcardLearningSessionUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutDeckInput | FlashcardLearningSessionCreateOrConnectWithoutDeckInput[]
+    createMany?: FlashcardLearningSessionCreateManyDeckInputEnvelope
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
   }
 
   export type SubjectUpdateOneWithoutFlashcardDecksNestedInput = {
@@ -38000,6 +41324,20 @@ export namespace Prisma {
     deleteMany?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
   }
 
+  export type FlashcardLearningSessionUpdateManyWithoutDeckNestedInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutDeckInput, FlashcardLearningSessionUncheckedCreateWithoutDeckInput> | FlashcardLearningSessionCreateWithoutDeckInput[] | FlashcardLearningSessionUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutDeckInput | FlashcardLearningSessionCreateOrConnectWithoutDeckInput[]
+    upsert?: FlashcardLearningSessionUpsertWithWhereUniqueWithoutDeckInput | FlashcardLearningSessionUpsertWithWhereUniqueWithoutDeckInput[]
+    createMany?: FlashcardLearningSessionCreateManyDeckInputEnvelope
+    set?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    disconnect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    delete?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    update?: FlashcardLearningSessionUpdateWithWhereUniqueWithoutDeckInput | FlashcardLearningSessionUpdateWithWhereUniqueWithoutDeckInput[]
+    updateMany?: FlashcardLearningSessionUpdateManyWithWhereWithoutDeckInput | FlashcardLearningSessionUpdateManyWithWhereWithoutDeckInput[]
+    deleteMany?: FlashcardLearningSessionScalarWhereInput | FlashcardLearningSessionScalarWhereInput[]
+  }
+
   export type FlashcardUncheckedUpdateManyWithoutDeckNestedInput = {
     create?: XOR<FlashcardCreateWithoutDeckInput, FlashcardUncheckedCreateWithoutDeckInput> | FlashcardCreateWithoutDeckInput[] | FlashcardUncheckedCreateWithoutDeckInput[]
     connectOrCreate?: FlashcardCreateOrConnectWithoutDeckInput | FlashcardCreateOrConnectWithoutDeckInput[]
@@ -38026,6 +41364,20 @@ export namespace Prisma {
     update?: FlashcardAssignmentUpdateWithWhereUniqueWithoutDeckInput | FlashcardAssignmentUpdateWithWhereUniqueWithoutDeckInput[]
     updateMany?: FlashcardAssignmentUpdateManyWithWhereWithoutDeckInput | FlashcardAssignmentUpdateManyWithWhereWithoutDeckInput[]
     deleteMany?: FlashcardAssignmentScalarWhereInput | FlashcardAssignmentScalarWhereInput[]
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateManyWithoutDeckNestedInput = {
+    create?: XOR<FlashcardLearningSessionCreateWithoutDeckInput, FlashcardLearningSessionUncheckedCreateWithoutDeckInput> | FlashcardLearningSessionCreateWithoutDeckInput[] | FlashcardLearningSessionUncheckedCreateWithoutDeckInput[]
+    connectOrCreate?: FlashcardLearningSessionCreateOrConnectWithoutDeckInput | FlashcardLearningSessionCreateOrConnectWithoutDeckInput[]
+    upsert?: FlashcardLearningSessionUpsertWithWhereUniqueWithoutDeckInput | FlashcardLearningSessionUpsertWithWhereUniqueWithoutDeckInput[]
+    createMany?: FlashcardLearningSessionCreateManyDeckInputEnvelope
+    set?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    disconnect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    delete?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    connect?: FlashcardLearningSessionWhereUniqueInput | FlashcardLearningSessionWhereUniqueInput[]
+    update?: FlashcardLearningSessionUpdateWithWhereUniqueWithoutDeckInput | FlashcardLearningSessionUpdateWithWhereUniqueWithoutDeckInput[]
+    updateMany?: FlashcardLearningSessionUpdateManyWithWhereWithoutDeckInput | FlashcardLearningSessionUpdateManyWithWhereWithoutDeckInput[]
+    deleteMany?: FlashcardLearningSessionScalarWhereInput | FlashcardLearningSessionScalarWhereInput[]
   }
 
   export type FlashcardDeckCreateNestedOneWithoutCardsInput = {
@@ -38138,6 +41490,48 @@ export namespace Prisma {
     upsert?: UserUpsertWithoutFlashcardProgressInput
     connect?: UserWhereUniqueInput
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutFlashcardProgressInput, UserUpdateWithoutFlashcardProgressInput>, UserUncheckedUpdateWithoutFlashcardProgressInput>
+  }
+
+  export type UserCreateNestedOneWithoutDocumentProcessingHistoryInput = {
+    create?: XOR<UserCreateWithoutDocumentProcessingHistoryInput, UserUncheckedCreateWithoutDocumentProcessingHistoryInput>
+    connectOrCreate?: UserCreateOrConnectWithoutDocumentProcessingHistoryInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutDocumentProcessingHistoryNestedInput = {
+    create?: XOR<UserCreateWithoutDocumentProcessingHistoryInput, UserUncheckedCreateWithoutDocumentProcessingHistoryInput>
+    connectOrCreate?: UserCreateOrConnectWithoutDocumentProcessingHistoryInput
+    upsert?: UserUpsertWithoutDocumentProcessingHistoryInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutDocumentProcessingHistoryInput, UserUpdateWithoutDocumentProcessingHistoryInput>, UserUncheckedUpdateWithoutDocumentProcessingHistoryInput>
+  }
+
+  export type UserCreateNestedOneWithoutLearningSessionsInput = {
+    create?: XOR<UserCreateWithoutLearningSessionsInput, UserUncheckedCreateWithoutLearningSessionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutLearningSessionsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type FlashcardDeckCreateNestedOneWithoutLearningSessionsInput = {
+    create?: XOR<FlashcardDeckCreateWithoutLearningSessionsInput, FlashcardDeckUncheckedCreateWithoutLearningSessionsInput>
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutLearningSessionsInput
+    connect?: FlashcardDeckWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutLearningSessionsNestedInput = {
+    create?: XOR<UserCreateWithoutLearningSessionsInput, UserUncheckedCreateWithoutLearningSessionsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutLearningSessionsInput
+    upsert?: UserUpsertWithoutLearningSessionsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutLearningSessionsInput, UserUpdateWithoutLearningSessionsInput>, UserUncheckedUpdateWithoutLearningSessionsInput>
+  }
+
+  export type FlashcardDeckUpdateOneRequiredWithoutLearningSessionsNestedInput = {
+    create?: XOR<FlashcardDeckCreateWithoutLearningSessionsInput, FlashcardDeckUncheckedCreateWithoutLearningSessionsInput>
+    connectOrCreate?: FlashcardDeckCreateOrConnectWithoutLearningSessionsInput
+    upsert?: FlashcardDeckUpsertWithoutLearningSessionsInput
+    connect?: FlashcardDeckWhereUniqueInput
+    update?: XOR<XOR<FlashcardDeckUpdateToOneWithWhereWithoutLearningSessionsInput, FlashcardDeckUpdateWithoutLearningSessionsInput>, FlashcardDeckUncheckedUpdateWithoutLearningSessionsInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -38615,6 +42009,7 @@ export namespace Prisma {
     subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
     cards?: FlashcardCreateNestedManyWithoutDeckInput
     assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckUncheckedCreateWithoutTeacherInput = {
@@ -38627,6 +42022,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
     assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckCreateOrConnectWithoutTeacherInput = {
@@ -38644,6 +42040,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     card: FlashcardCreateNestedOneWithoutProgressInput
@@ -38656,6 +42055,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -38667,6 +42069,70 @@ export namespace Prisma {
 
   export type FlashcardProgressCreateManyStudentInputEnvelope = {
     data: FlashcardProgressCreateManyStudentInput | FlashcardProgressCreateManyStudentInput[]
+  }
+
+  export type FlashcardLearningSessionCreateWithoutStudentInput = {
+    id?: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+    deck: FlashcardDeckCreateNestedOneWithoutLearningSessionsInput
+  }
+
+  export type FlashcardLearningSessionUncheckedCreateWithoutStudentInput = {
+    id?: string
+    deckId: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardLearningSessionCreateOrConnectWithoutStudentInput = {
+    where: FlashcardLearningSessionWhereUniqueInput
+    create: XOR<FlashcardLearningSessionCreateWithoutStudentInput, FlashcardLearningSessionUncheckedCreateWithoutStudentInput>
+  }
+
+  export type FlashcardLearningSessionCreateManyStudentInputEnvelope = {
+    data: FlashcardLearningSessionCreateManyStudentInput | FlashcardLearningSessionCreateManyStudentInput[]
+  }
+
+  export type DocumentProcessingHistoryCreateWithoutTeacherInput = {
+    id?: string
+    sourceFile: string
+    fileName: string
+    action: string
+    deckId: string
+    deckTitle: string
+    cardsCount: number
+    processedAt?: Date | string
+  }
+
+  export type DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput = {
+    id?: string
+    sourceFile: string
+    fileName: string
+    action: string
+    deckId: string
+    deckTitle: string
+    cardsCount: number
+    processedAt?: Date | string
+  }
+
+  export type DocumentProcessingHistoryCreateOrConnectWithoutTeacherInput = {
+    where: DocumentProcessingHistoryWhereUniqueInput
+    create: XOR<DocumentProcessingHistoryCreateWithoutTeacherInput, DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput>
+  }
+
+  export type DocumentProcessingHistoryCreateManyTeacherInputEnvelope = {
+    data: DocumentProcessingHistoryCreateManyTeacherInput | DocumentProcessingHistoryCreateManyTeacherInput[]
   }
 
   export type LearningGroupUpsertWithWhereUniqueWithoutTeacherInput = {
@@ -38951,8 +42417,74 @@ export namespace Prisma {
     nextReview?: DateTimeFilter<"FlashcardProgress"> | Date | string
     lastReviewed?: DateTimeNullableFilter<"FlashcardProgress"> | Date | string | null
     reviewCount?: IntFilter<"FlashcardProgress"> | number
+    easeFactor?: FloatFilter<"FlashcardProgress"> | number
+    interval?: IntFilter<"FlashcardProgress"> | number
+    quality?: IntNullableFilter<"FlashcardProgress"> | number | null
     createdAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
     updatedAt?: DateTimeFilter<"FlashcardProgress"> | Date | string
+  }
+
+  export type FlashcardLearningSessionUpsertWithWhereUniqueWithoutStudentInput = {
+    where: FlashcardLearningSessionWhereUniqueInput
+    update: XOR<FlashcardLearningSessionUpdateWithoutStudentInput, FlashcardLearningSessionUncheckedUpdateWithoutStudentInput>
+    create: XOR<FlashcardLearningSessionCreateWithoutStudentInput, FlashcardLearningSessionUncheckedCreateWithoutStudentInput>
+  }
+
+  export type FlashcardLearningSessionUpdateWithWhereUniqueWithoutStudentInput = {
+    where: FlashcardLearningSessionWhereUniqueInput
+    data: XOR<FlashcardLearningSessionUpdateWithoutStudentInput, FlashcardLearningSessionUncheckedUpdateWithoutStudentInput>
+  }
+
+  export type FlashcardLearningSessionUpdateManyWithWhereWithoutStudentInput = {
+    where: FlashcardLearningSessionScalarWhereInput
+    data: XOR<FlashcardLearningSessionUpdateManyMutationInput, FlashcardLearningSessionUncheckedUpdateManyWithoutStudentInput>
+  }
+
+  export type FlashcardLearningSessionScalarWhereInput = {
+    AND?: FlashcardLearningSessionScalarWhereInput | FlashcardLearningSessionScalarWhereInput[]
+    OR?: FlashcardLearningSessionScalarWhereInput[]
+    NOT?: FlashcardLearningSessionScalarWhereInput | FlashcardLearningSessionScalarWhereInput[]
+    id?: StringFilter<"FlashcardLearningSession"> | string
+    studentId?: StringFilter<"FlashcardLearningSession"> | string
+    deckId?: StringFilter<"FlashcardLearningSession"> | string
+    startTime?: DateTimeFilter<"FlashcardLearningSession"> | Date | string
+    endTime?: DateTimeNullableFilter<"FlashcardLearningSession"> | Date | string | null
+    cardsReviewed?: IntFilter<"FlashcardLearningSession"> | number
+    correctAnswers?: IntFilter<"FlashcardLearningSession"> | number
+    incorrectAnswers?: IntFilter<"FlashcardLearningSession"> | number
+    sessionDuration?: IntNullableFilter<"FlashcardLearningSession"> | number | null
+    createdAt?: DateTimeFilter<"FlashcardLearningSession"> | Date | string
+  }
+
+  export type DocumentProcessingHistoryUpsertWithWhereUniqueWithoutTeacherInput = {
+    where: DocumentProcessingHistoryWhereUniqueInput
+    update: XOR<DocumentProcessingHistoryUpdateWithoutTeacherInput, DocumentProcessingHistoryUncheckedUpdateWithoutTeacherInput>
+    create: XOR<DocumentProcessingHistoryCreateWithoutTeacherInput, DocumentProcessingHistoryUncheckedCreateWithoutTeacherInput>
+  }
+
+  export type DocumentProcessingHistoryUpdateWithWhereUniqueWithoutTeacherInput = {
+    where: DocumentProcessingHistoryWhereUniqueInput
+    data: XOR<DocumentProcessingHistoryUpdateWithoutTeacherInput, DocumentProcessingHistoryUncheckedUpdateWithoutTeacherInput>
+  }
+
+  export type DocumentProcessingHistoryUpdateManyWithWhereWithoutTeacherInput = {
+    where: DocumentProcessingHistoryScalarWhereInput
+    data: XOR<DocumentProcessingHistoryUpdateManyMutationInput, DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherInput>
+  }
+
+  export type DocumentProcessingHistoryScalarWhereInput = {
+    AND?: DocumentProcessingHistoryScalarWhereInput | DocumentProcessingHistoryScalarWhereInput[]
+    OR?: DocumentProcessingHistoryScalarWhereInput[]
+    NOT?: DocumentProcessingHistoryScalarWhereInput | DocumentProcessingHistoryScalarWhereInput[]
+    id?: StringFilter<"DocumentProcessingHistory"> | string
+    sourceFile?: StringFilter<"DocumentProcessingHistory"> | string
+    fileName?: StringFilter<"DocumentProcessingHistory"> | string
+    teacherId?: StringFilter<"DocumentProcessingHistory"> | string
+    action?: StringFilter<"DocumentProcessingHistory"> | string
+    deckId?: StringFilter<"DocumentProcessingHistory"> | string
+    deckTitle?: StringFilter<"DocumentProcessingHistory"> | string
+    cardsCount?: IntFilter<"DocumentProcessingHistory"> | number
+    processedAt?: DateTimeFilter<"DocumentProcessingHistory"> | Date | string
   }
 
   export type LearningGroupCreateWithoutGradingSchemasInput = {
@@ -39077,6 +42609,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutGradesInput = {
@@ -39096,6 +42630,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutGradesInput = {
@@ -39156,6 +42692,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutGradesInput = {
@@ -39175,6 +42713,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type GradingSchemaUpsertWithoutGradesInput = {
@@ -39300,6 +42840,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutTeacherGroupsInput = {
@@ -39319,6 +42861,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutTeacherGroupsInput = {
@@ -39343,6 +42887,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutLearningGroupsInput = {
@@ -39362,6 +42908,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutLearningGroupsInput = {
@@ -39480,6 +43028,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutTeacherGroupsInput = {
@@ -39499,6 +43049,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUpsertWithWhereUniqueWithoutLearningGroupsInput = {
@@ -39576,6 +43128,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutSubjectsInput = {
@@ -39595,6 +43149,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutSubjectsInput = {
@@ -39612,6 +43168,7 @@ export namespace Prisma {
     teacher: UserCreateNestedOneWithoutFlashcardDecksInput
     cards?: FlashcardCreateNestedManyWithoutDeckInput
     assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckUncheckedCreateWithoutSubjectInput = {
@@ -39624,6 +43181,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
     assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckCreateOrConnectWithoutSubjectInput = {
@@ -39692,6 +43250,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutSubjectsInput = {
@@ -39711,6 +43271,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type FlashcardDeckUpsertWithWhereUniqueWithoutSubjectInput = {
@@ -40304,6 +43866,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutNotesInput = {
@@ -40323,6 +43887,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutNotesInput = {
@@ -40358,6 +43924,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutNotesInput = {
@@ -40377,6 +43945,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type LessonMaterialCreateWithoutMaterialInput = {
@@ -40566,6 +44136,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutQuizzesInput = {
@@ -40585,6 +44157,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutQuizzesInput = {
@@ -40702,6 +44276,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutQuizzesInput = {
@@ -40721,6 +44297,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type QuizQuestionUpsertWithWhereUniqueWithoutQuizInput = {
@@ -41234,6 +44812,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutParticipationsInput = {
@@ -41253,6 +44833,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutParticipationsInput = {
@@ -41331,6 +44913,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutParticipationsInput = {
@@ -41350,6 +44934,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type QuizSessionUpsertWithoutParticipationsInput = {
@@ -41534,6 +45120,8 @@ export namespace Prisma {
     grades?: GradeCreateNestedManyWithoutStudentInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutFileSystemPathsInput = {
@@ -41553,6 +45141,8 @@ export namespace Prisma {
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutFileSystemPathsInput = {
@@ -41588,6 +45178,8 @@ export namespace Prisma {
     grades?: GradeUpdateManyWithoutStudentNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutFileSystemPathsInput = {
@@ -41607,6 +45199,8 @@ export namespace Prisma {
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type SubjectCreateWithoutFlashcardDecksInput = {
@@ -41653,6 +45247,8 @@ export namespace Prisma {
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutFlashcardDecksInput = {
@@ -41672,6 +45268,8 @@ export namespace Prisma {
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutFlashcardDecksInput = {
@@ -41735,6 +45333,39 @@ export namespace Prisma {
     data: FlashcardAssignmentCreateManyDeckInput | FlashcardAssignmentCreateManyDeckInput[]
   }
 
+  export type FlashcardLearningSessionCreateWithoutDeckInput = {
+    id?: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+    student: UserCreateNestedOneWithoutLearningSessionsInput
+  }
+
+  export type FlashcardLearningSessionUncheckedCreateWithoutDeckInput = {
+    id?: string
+    studentId: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+  }
+
+  export type FlashcardLearningSessionCreateOrConnectWithoutDeckInput = {
+    where: FlashcardLearningSessionWhereUniqueInput
+    create: XOR<FlashcardLearningSessionCreateWithoutDeckInput, FlashcardLearningSessionUncheckedCreateWithoutDeckInput>
+  }
+
+  export type FlashcardLearningSessionCreateManyDeckInputEnvelope = {
+    data: FlashcardLearningSessionCreateManyDeckInput | FlashcardLearningSessionCreateManyDeckInput[]
+  }
+
   export type SubjectUpsertWithoutFlashcardDecksInput = {
     update: XOR<SubjectUpdateWithoutFlashcardDecksInput, SubjectUncheckedUpdateWithoutFlashcardDecksInput>
     create: XOR<SubjectCreateWithoutFlashcardDecksInput, SubjectUncheckedCreateWithoutFlashcardDecksInput>
@@ -41796,6 +45427,8 @@ export namespace Prisma {
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutFlashcardDecksInput = {
@@ -41815,6 +45448,8 @@ export namespace Prisma {
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type FlashcardUpsertWithWhereUniqueWithoutDeckInput = {
@@ -41864,6 +45499,22 @@ export namespace Prisma {
     data: XOR<FlashcardAssignmentUpdateManyMutationInput, FlashcardAssignmentUncheckedUpdateManyWithoutDeckInput>
   }
 
+  export type FlashcardLearningSessionUpsertWithWhereUniqueWithoutDeckInput = {
+    where: FlashcardLearningSessionWhereUniqueInput
+    update: XOR<FlashcardLearningSessionUpdateWithoutDeckInput, FlashcardLearningSessionUncheckedUpdateWithoutDeckInput>
+    create: XOR<FlashcardLearningSessionCreateWithoutDeckInput, FlashcardLearningSessionUncheckedCreateWithoutDeckInput>
+  }
+
+  export type FlashcardLearningSessionUpdateWithWhereUniqueWithoutDeckInput = {
+    where: FlashcardLearningSessionWhereUniqueInput
+    data: XOR<FlashcardLearningSessionUpdateWithoutDeckInput, FlashcardLearningSessionUncheckedUpdateWithoutDeckInput>
+  }
+
+  export type FlashcardLearningSessionUpdateManyWithWhereWithoutDeckInput = {
+    where: FlashcardLearningSessionScalarWhereInput
+    data: XOR<FlashcardLearningSessionUpdateManyMutationInput, FlashcardLearningSessionUncheckedUpdateManyWithoutDeckInput>
+  }
+
   export type FlashcardDeckCreateWithoutCardsInput = {
     id?: string
     title: string
@@ -41874,6 +45525,7 @@ export namespace Prisma {
     subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
     teacher: UserCreateNestedOneWithoutFlashcardDecksInput
     assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckUncheckedCreateWithoutCardsInput = {
@@ -41886,6 +45538,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckCreateOrConnectWithoutCardsInput = {
@@ -41899,6 +45552,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
     student: UserCreateNestedOneWithoutFlashcardProgressInput
@@ -41911,6 +45567,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -41945,6 +45604,7 @@ export namespace Prisma {
     subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
     teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
     assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckUncheckedUpdateWithoutCardsInput = {
@@ -41957,6 +45617,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardProgressUpsertWithWhereUniqueWithoutCardInput = {
@@ -41985,6 +45646,7 @@ export namespace Prisma {
     subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
     teacher: UserCreateNestedOneWithoutFlashcardDecksInput
     cards?: FlashcardCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckUncheckedCreateWithoutAssignmentsInput = {
@@ -41997,6 +45659,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutDeckInput
   }
 
   export type FlashcardDeckCreateOrConnectWithoutAssignmentsInput = {
@@ -42052,6 +45715,7 @@ export namespace Prisma {
     subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
     teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
     cards?: FlashcardUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckUncheckedUpdateWithoutAssignmentsInput = {
@@ -42064,6 +45728,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutDeckNestedInput
   }
 
   export type LearningGroupUpsertWithoutFlashcardAssignmentsInput = {
@@ -42145,6 +45810,8 @@ export namespace Prisma {
     grades?: GradeCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
   }
 
   export type UserUncheckedCreateWithoutFlashcardProgressInput = {
@@ -42164,6 +45831,8 @@ export namespace Prisma {
     grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
     fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
     flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
   }
 
   export type UserCreateOrConnectWithoutFlashcardProgressInput = {
@@ -42234,6 +45903,8 @@ export namespace Prisma {
     grades?: GradeUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutFlashcardProgressInput = {
@@ -42253,6 +45924,276 @@ export namespace Prisma {
     grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
+  }
+
+  export type UserCreateWithoutDocumentProcessingHistoryInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationCreateNestedManyWithoutStudentInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+    grades?: GradeCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionCreateNestedManyWithoutStudentInput
+  }
+
+  export type UserUncheckedCreateWithoutDocumentProcessingHistoryInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+    grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    learningSessions?: FlashcardLearningSessionUncheckedCreateNestedManyWithoutStudentInput
+  }
+
+  export type UserCreateOrConnectWithoutDocumentProcessingHistoryInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutDocumentProcessingHistoryInput, UserUncheckedCreateWithoutDocumentProcessingHistoryInput>
+  }
+
+  export type UserUpsertWithoutDocumentProcessingHistoryInput = {
+    update: XOR<UserUpdateWithoutDocumentProcessingHistoryInput, UserUncheckedUpdateWithoutDocumentProcessingHistoryInput>
+    create: XOR<UserCreateWithoutDocumentProcessingHistoryInput, UserUncheckedCreateWithoutDocumentProcessingHistoryInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutDocumentProcessingHistoryInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutDocumentProcessingHistoryInput, UserUncheckedUpdateWithoutDocumentProcessingHistoryInput>
+  }
+
+  export type UserUpdateWithoutDocumentProcessingHistoryInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutDocumentProcessingHistoryInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+  }
+
+  export type UserCreateWithoutLearningSessionsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupCreateNestedManyWithoutTeacherInput
+    notes?: NoteCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationCreateNestedManyWithoutStudentInput
+    subjects?: SubjectCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupCreateNestedManyWithoutStudentsInput
+    grades?: GradeCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryCreateNestedManyWithoutTeacherInput
+  }
+
+  export type UserUncheckedCreateWithoutLearningSessionsInput = {
+    id?: string
+    name: string
+    loginCode: string
+    role?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    avatarEmoji?: string | null
+    teacherGroups?: LearningGroupUncheckedCreateNestedManyWithoutTeacherInput
+    notes?: NoteUncheckedCreateNestedManyWithoutAuthorInput
+    quizzes?: QuizUncheckedCreateNestedManyWithoutTeacherInput
+    participations?: QuizParticipationUncheckedCreateNestedManyWithoutStudentInput
+    subjects?: SubjectUncheckedCreateNestedManyWithoutTeacherInput
+    learningGroups?: LearningGroupUncheckedCreateNestedManyWithoutStudentsInput
+    grades?: GradeUncheckedCreateNestedManyWithoutStudentInput
+    fileSystemPaths?: FileSystemPathUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardDecks?: FlashcardDeckUncheckedCreateNestedManyWithoutTeacherInput
+    flashcardProgress?: FlashcardProgressUncheckedCreateNestedManyWithoutStudentInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedCreateNestedManyWithoutTeacherInput
+  }
+
+  export type UserCreateOrConnectWithoutLearningSessionsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutLearningSessionsInput, UserUncheckedCreateWithoutLearningSessionsInput>
+  }
+
+  export type FlashcardDeckCreateWithoutLearningSessionsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    subject?: SubjectCreateNestedOneWithoutFlashcardDecksInput
+    teacher: UserCreateNestedOneWithoutFlashcardDecksInput
+    cards?: FlashcardCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckUncheckedCreateWithoutLearningSessionsInput = {
+    id?: string
+    title: string
+    description?: string | null
+    subjectId?: string | null
+    teacherId: string
+    isPublic?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    cards?: FlashcardUncheckedCreateNestedManyWithoutDeckInput
+    assignments?: FlashcardAssignmentUncheckedCreateNestedManyWithoutDeckInput
+  }
+
+  export type FlashcardDeckCreateOrConnectWithoutLearningSessionsInput = {
+    where: FlashcardDeckWhereUniqueInput
+    create: XOR<FlashcardDeckCreateWithoutLearningSessionsInput, FlashcardDeckUncheckedCreateWithoutLearningSessionsInput>
+  }
+
+  export type UserUpsertWithoutLearningSessionsInput = {
+    update: XOR<UserUpdateWithoutLearningSessionsInput, UserUncheckedUpdateWithoutLearningSessionsInput>
+    create: XOR<UserCreateWithoutLearningSessionsInput, UserUncheckedCreateWithoutLearningSessionsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutLearningSessionsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutLearningSessionsInput, UserUncheckedUpdateWithoutLearningSessionsInput>
+  }
+
+  export type UserUpdateWithoutLearningSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutLearningSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    loginCode?: StringFieldUpdateOperationsInput | string
+    role?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    avatarEmoji?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherGroups?: LearningGroupUncheckedUpdateManyWithoutTeacherNestedInput
+    notes?: NoteUncheckedUpdateManyWithoutAuthorNestedInput
+    quizzes?: QuizUncheckedUpdateManyWithoutTeacherNestedInput
+    participations?: QuizParticipationUncheckedUpdateManyWithoutStudentNestedInput
+    subjects?: SubjectUncheckedUpdateManyWithoutTeacherNestedInput
+    learningGroups?: LearningGroupUncheckedUpdateManyWithoutStudentsNestedInput
+    grades?: GradeUncheckedUpdateManyWithoutStudentNestedInput
+    fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
+    flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
+  }
+
+  export type FlashcardDeckUpsertWithoutLearningSessionsInput = {
+    update: XOR<FlashcardDeckUpdateWithoutLearningSessionsInput, FlashcardDeckUncheckedUpdateWithoutLearningSessionsInput>
+    create: XOR<FlashcardDeckCreateWithoutLearningSessionsInput, FlashcardDeckUncheckedCreateWithoutLearningSessionsInput>
+    where?: FlashcardDeckWhereInput
+  }
+
+  export type FlashcardDeckUpdateToOneWithWhereWithoutLearningSessionsInput = {
+    where?: FlashcardDeckWhereInput
+    data: XOR<FlashcardDeckUpdateWithoutLearningSessionsInput, FlashcardDeckUncheckedUpdateWithoutLearningSessionsInput>
+  }
+
+  export type FlashcardDeckUpdateWithoutLearningSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
+    teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
+    cards?: FlashcardUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+  }
+
+  export type FlashcardDeckUncheckedUpdateWithoutLearningSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    subjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    teacherId?: StringFieldUpdateOperationsInput | string
+    isPublic?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
+    assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
   }
 
   export type LearningGroupCreateManyTeacherInput = {
@@ -42341,8 +46282,34 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type FlashcardLearningSessionCreateManyStudentInput = {
+    id?: string
+    deckId: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+  }
+
+  export type DocumentProcessingHistoryCreateManyTeacherInput = {
+    id?: string
+    sourceFile: string
+    fileName: string
+    action: string
+    deckId: string
+    deckTitle: string
+    cardsCount: number
+    processedAt?: Date | string
   }
 
   export type LearningGroupUpdateWithoutTeacherInput = {
@@ -42612,6 +46579,7 @@ export namespace Prisma {
     subject?: SubjectUpdateOneWithoutFlashcardDecksNestedInput
     cards?: FlashcardUpdateManyWithoutDeckNestedInput
     assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckUncheckedUpdateWithoutTeacherInput = {
@@ -42624,6 +46592,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
     assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckUncheckedUpdateManyWithoutTeacherInput = {
@@ -42642,6 +46611,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     card?: FlashcardUpdateOneRequiredWithoutProgressNestedInput
@@ -42654,6 +46626,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -42665,8 +46640,80 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardLearningSessionUpdateWithoutStudentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    deck?: FlashcardDeckUpdateOneRequiredWithoutLearningSessionsNestedInput
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateWithoutStudentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateManyWithoutStudentInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type DocumentProcessingHistoryUpdateWithoutTeacherInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceFile?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    deckTitle?: StringFieldUpdateOperationsInput | string
+    cardsCount?: IntFieldUpdateOperationsInput | number
+    processedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type DocumentProcessingHistoryUncheckedUpdateWithoutTeacherInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceFile?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    deckTitle?: StringFieldUpdateOperationsInput | string
+    cardsCount?: IntFieldUpdateOperationsInput | number
+    processedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    sourceFile?: StringFieldUpdateOperationsInput | string
+    fileName?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    deckId?: StringFieldUpdateOperationsInput | string
+    deckTitle?: StringFieldUpdateOperationsInput | string
+    cardsCount?: IntFieldUpdateOperationsInput | number
+    processedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type GradeCreateManySchemaInput = {
@@ -42820,6 +46867,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateWithoutLearningGroupsInput = {
@@ -42839,6 +46888,8 @@ export namespace Prisma {
     fileSystemPaths?: FileSystemPathUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardDecks?: FlashcardDeckUncheckedUpdateManyWithoutTeacherNestedInput
     flashcardProgress?: FlashcardProgressUncheckedUpdateManyWithoutStudentNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutStudentNestedInput
+    documentProcessingHistory?: DocumentProcessingHistoryUncheckedUpdateManyWithoutTeacherNestedInput
   }
 
   export type UserUncheckedUpdateManyWithoutLearningGroupsInput = {
@@ -42909,6 +46960,7 @@ export namespace Prisma {
     teacher?: UserUpdateOneRequiredWithoutFlashcardDecksNestedInput
     cards?: FlashcardUpdateManyWithoutDeckNestedInput
     assignments?: FlashcardAssignmentUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckUncheckedUpdateWithoutSubjectInput = {
@@ -42921,6 +46973,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     cards?: FlashcardUncheckedUpdateManyWithoutDeckNestedInput
     assignments?: FlashcardAssignmentUncheckedUpdateManyWithoutDeckNestedInput
+    learningSessions?: FlashcardLearningSessionUncheckedUpdateManyWithoutDeckNestedInput
   }
 
   export type FlashcardDeckUncheckedUpdateManyWithoutSubjectInput = {
@@ -43373,6 +47426,18 @@ export namespace Prisma {
     createdAt?: Date | string
   }
 
+  export type FlashcardLearningSessionCreateManyDeckInput = {
+    id?: string
+    studentId: string
+    startTime?: Date | string
+    endTime?: Date | string | null
+    cardsReviewed?: number
+    correctAnswers?: number
+    incorrectAnswers?: number
+    sessionDuration?: number | null
+    createdAt?: Date | string
+  }
+
   export type FlashcardUpdateWithoutDeckInput = {
     id?: StringFieldUpdateOperationsInput | string
     front?: StringFieldUpdateOperationsInput | string
@@ -43429,6 +47494,42 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type FlashcardLearningSessionUpdateWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    student?: UserUpdateOneRequiredWithoutLearningSessionsNestedInput
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type FlashcardLearningSessionUncheckedUpdateManyWithoutDeckInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    studentId?: StringFieldUpdateOperationsInput | string
+    startTime?: DateTimeFieldUpdateOperationsInput | Date | string
+    endTime?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    cardsReviewed?: IntFieldUpdateOperationsInput | number
+    correctAnswers?: IntFieldUpdateOperationsInput | number
+    incorrectAnswers?: IntFieldUpdateOperationsInput | number
+    sessionDuration?: NullableIntFieldUpdateOperationsInput | number | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type FlashcardProgressCreateManyCardInput = {
     id?: string
     studentId: string
@@ -43436,6 +47537,9 @@ export namespace Prisma {
     nextReview?: Date | string
     lastReviewed?: Date | string | null
     reviewCount?: number
+    easeFactor?: number
+    interval?: number
+    quality?: number | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -43446,6 +47550,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     student?: UserUpdateOneRequiredWithoutFlashcardProgressNestedInput
@@ -43458,6 +47565,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -43469,6 +47579,9 @@ export namespace Prisma {
     nextReview?: DateTimeFieldUpdateOperationsInput | Date | string
     lastReviewed?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     reviewCount?: IntFieldUpdateOperationsInput | number
+    easeFactor?: FloatFieldUpdateOperationsInput | number
+    interval?: IntFieldUpdateOperationsInput | number
+    quality?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

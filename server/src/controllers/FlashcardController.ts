@@ -575,8 +575,8 @@ export const submitCardReview = async (req: AuthenticatedRequest, res: Response)
       return res.status(401).json({ error: 'Nicht autorisiert' });
     }
 
-    if (quality < 1 || quality > 5) {
-      return res.status(400).json({ error: 'Qualität muss zwischen 1 und 5 liegen' });
+    if (quality < 1 || quality > 3) {
+      return res.status(400).json({ error: 'Qualität muss zwischen 1 und 3 liegen (1=Perfekt, 2=Teilweise, 3=Nicht gewusst)' });
     }
 
     // Aktuellen Fortschritt abrufen oder erstellen
@@ -600,7 +600,8 @@ export const submitCardReview = async (req: AuthenticatedRequest, res: Response)
           level: reviewResult.newLevel,
           nextReview: reviewResult.nextReview,
           lastReviewed: new Date(),
-          reviewCount: progress.reviewCount + 1
+          reviewCount: progress.reviewCount + 1,
+          quality: quality // Speichere die aktuelle Bewertung
         }
       });
     } else {
@@ -612,7 +613,8 @@ export const submitCardReview = async (req: AuthenticatedRequest, res: Response)
           level: reviewResult.newLevel,
           nextReview: reviewResult.nextReview,
           lastReviewed: new Date(),
-          reviewCount: 1
+          reviewCount: 1,
+          quality: quality // Speichere die aktuelle Bewertung
         }
       });
     }
