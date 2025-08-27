@@ -4058,16 +4058,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                             
                                             {/* Karteikarten-Fortschritt */}
                                             <Box sx={{ mt: 1, p: 0.7, bgcolor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-                                              <Typography variant="caption" sx={{ 
-                                                color: '#6c757d', 
-                                                fontSize: '0.6rem', 
-                                                fontWeight: 600,
-                                                display: 'block',
-                                                mb: 0.5,
-                                                textAlign: 'center'
-                                              }}>
-                                                🗂️
-                                              </Typography>
                                               
                                                                                              {(() => {
                                                  const stats = studentFlashcardStats[student.id];
@@ -4098,7 +4088,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 
                                                 return (
                                                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                                    {/* Letzte Lern-Daten kompakt */}
+                                                    {/* Letzte Lern-Daten kompakt mit Icon */}
                                                     <Box sx={{ textAlign: 'center', mb: 0.5 }}>
                                                       {(() => {
                                                         const lastReviews = progressData
@@ -4109,7 +4099,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                         if (lastReviews.length === 0) {
                                                           return (
                                                             <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.4rem', fontStyle: 'italic' }}>
-                                                              Noch nie gelernt
+                                                              🗂️ Noch nie gelernt
                                                             </Typography>
                                                           );
                                                         }
@@ -4122,13 +4112,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                           
                                                           if (diffDays === 0) return 'Heute';
                                                           if (diffDays === 1) return 'Gestern';
-                                                          if (diffDays <= 7) return `vor ${diffDays} Tagen`;
+                                                          if (diffDays <= 7) return `${diffDays}`;
                                                           return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
                                                         });
                                                         
                                                         return (
                                                           <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.4rem', fontWeight: 'bold' }}>
-                                                            vor {dateTexts.join(', ')}
+                                                            🗂️ Gelernt vor {dateTexts.join(', ')} Tagen
                                                           </Typography>
                                                         );
                                                       })()}
