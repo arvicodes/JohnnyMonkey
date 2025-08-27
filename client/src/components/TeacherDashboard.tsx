@@ -4066,7 +4066,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 mb: 0.5,
                                                 textAlign: 'center'
                                               }}>
-                                                🗂️ Karteikarten
+                                                🗂️
                                               </Typography>
                                               
                                                                                              {(() => {
@@ -4098,11 +4098,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 
                                                 return (
                                                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                                    {/* Letzte Lern-Daten */}
-                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.2 }}>
-                                                      <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.5rem', fontWeight: 'bold', textAlign: 'center' }}>
-                                                        Letzte Lern-Daten
-                                                      </Typography>
+                                                    {/* Letzte Lern-Daten kompakt */}
+                                                    <Box sx={{ textAlign: 'center', mb: 0.5 }}>
                                                       {(() => {
                                                         const lastReviews = progressData
                                                           .filter((item: any) => item.lastReviewed)
@@ -4111,53 +4108,50 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                         
                                                         if (lastReviews.length === 0) {
                                                           return (
-                                                            <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.4rem', textAlign: 'center', fontStyle: 'italic' }}>
+                                                            <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.4rem', fontStyle: 'italic' }}>
                                                               Noch nie gelernt
                                                             </Typography>
                                                           );
                                                         }
                                                         
-                                                        return lastReviews.map((review: any, index: number) => {
+                                                        const dateTexts = lastReviews.map((review: any) => {
                                                           const date = new Date(review.lastReviewed);
                                                           const today = new Date();
                                                           const diffTime = Math.abs(today.getTime() - date.getTime());
                                                           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                                           
-                                                          let dateText = '';
-                                                          if (diffDays === 0) dateText = 'Heute';
-                                                          else if (diffDays === 1) dateText = 'Gestern';
-                                                          else if (diffDays <= 7) dateText = `vor ${diffDays} Tagen`;
-                                                          else dateText = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-                                                          
-                                                          return (
-                                                            <Typography key={index} variant="caption" sx={{ 
-                                                              color: index === 0 ? '#495057' : '#6c757d', 
-                                                              fontSize: '0.4rem', 
-                                                              textAlign: 'center',
-                                                              fontWeight: index === 0 ? 'bold' : 'normal'
-                                                            }}>
-                                                              {dateText}
-                                                            </Typography>
-                                                          );
+                                                          if (diffDays === 0) return 'Heute';
+                                                          if (diffDays === 1) return 'Gestern';
+                                                          if (diffDays <= 7) return `vor ${diffDays} Tagen`;
+                                                          return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
                                                         });
+                                                        
+                                                        return (
+                                                          <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.4rem', fontWeight: 'bold' }}>
+                                                            vor {dateTexts.join(', ')}
+                                                          </Typography>
+                                                        );
                                                       })()}
                                                     </Box>
                                                     
-                                                    {/* Bewertungen */}
+                                                    {/* Bewertungen kompakt */}
                                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.3 }}>
                                                       <Box sx={{ 
                                                         textAlign: 'center', 
                                                         flex: 1,
-                                                        p: 0.3,
+                                                        p: 0.2,
                                                         bgcolor: '#d4edda',
                                                         borderRadius: 0.5,
-                                                        border: '1px solid #c3e6cb'
+                                                        border: '1px solid #c3e6cb',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: 0.2
                                                       }}>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#155724', 
-                                                          fontSize: '0.5rem', 
-                                                          fontWeight: 'bold',
-                                                          display: 'block'
+                                                          fontSize: '0.4rem', 
+                                                          fontWeight: 'bold'
                                                         }}>
                                                           {stats.qualityStats.perfect}
                                                         </Typography>
@@ -4171,16 +4165,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       <Box sx={{ 
                                                         textAlign: 'center', 
                                                         flex: 1,
-                                                        p: 0.3,
+                                                        p: 0.2,
                                                         bgcolor: '#fff3cd',
                                                         borderRadius: 0.5,
-                                                        border: '1px solid #ffeaa7'
+                                                        border: '1px solid #ffeaa7',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: 0.2
                                                       }}>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#856404', 
-                                                          fontSize: '0.5rem', 
-                                                          fontWeight: 'bold',
-                                                          display: 'block'
+                                                          fontSize: '0.4rem', 
+                                                          fontWeight: 'bold'
                                                         }}>
                                                           {stats.qualityStats.partial}
                                                         </Typography>
@@ -4194,16 +4191,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       <Box sx={{ 
                                                         textAlign: 'center', 
                                                         flex: 1,
-                                                        p: 0.3,
+                                                        p: 0.2,
                                                         bgcolor: '#f8d7da',
                                                         borderRadius: 0.5,
-                                                        border: '1px solid #f5c6cb'
+                                                        border: '1px solid #f5c6cb',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: 0.2
                                                       }}>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#721c24', 
-                                                          fontSize: '0.5rem', 
-                                                          fontWeight: 'bold',
-                                                          display: 'block'
+                                                          fontSize: '0.4rem', 
+                                                          fontWeight: 'bold'
                                                         }}>
                                                           {stats.qualityStats.notKnown}
                                                         </Typography>
