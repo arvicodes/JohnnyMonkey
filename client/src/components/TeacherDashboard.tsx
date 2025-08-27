@@ -3980,30 +3980,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                         return (
                                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
                                             {/* Grade Stat Boxes */}
-                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.3 }}>
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
                                               {/* Klassenarbeiten */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 0.4, 
+                                                p: 0.3, 
                                                 borderRadius: 1,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.8rem', 
-                                                  fontWeight: 'bold', 
-                                                  color: colors.primary,
-                                                  mb: 0.1
-                                                }}>
-                                                  {formatGradeValue(stats.klassenarbeiten.values, mini.gradingSystem)}
-                                                </Typography>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.5rem', 
-                                                  color: colors.textSecondary,
-                                                  fontWeight: 600
-                                                }}>
-                                                  {stats.klassenarbeiten.label}
-                                                </Typography>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.2, mb: 0.1 }}>
+                                                  <Typography sx={{ 
+                                                    fontSize: '0.8rem', 
+                                                    fontWeight: 'bold', 
+                                                    color: colors.primary
+                                                  }}>
+                                                    {formatGradeValue(stats.klassenarbeiten.values, mini.gradingSystem)}
+                                                  </Typography>
+                                                  <Typography sx={{ 
+                                                    fontSize: '0.5rem', 
+                                                    color: colors.textSecondary,
+                                                    fontWeight: 600
+                                                  }}>
+                                                    {stats.klassenarbeiten.label}
+                                                  </Typography>
+                                                </Box>
                                                 {stats.klassenarbeiten.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
                                                     fontSize: '0.4rem', 
@@ -4019,97 +4020,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                               {/* EPO Noten */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 0.4, 
+                                                p: 0.3, 
                                                 borderRadius: 1,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.8rem', 
-                                                  fontWeight: 'bold', 
-                                                  color: colors.primary,
-                                                  mb: 0.1
-                                                }}>
-                                                  {formatGradeValue(stats.epo.values, mini.gradingSystem)}
-                                                </Typography>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.5rem', 
-                                                  color: colors.textSecondary,
-                                                  fontWeight: 600
-                                                }}>
-                                                  {stats.epo.label}
-                                                </Typography>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.2, mb: 0.1 }}>
+                                                  <Typography sx={{ 
+                                                    fontSize: '0.8rem', 
+                                                    fontWeight: 'bold', 
+                                                    color: colors.primary
+                                                  }}>
+                                                    {formatGradeValue(stats.epo.values, mini.gradingSystem)}
+                                                  </Typography>
+                                                  <Typography sx={{ 
+                                                    fontSize: '0.5rem', 
+                                                    color: colors.textSecondary,
+                                                    fontWeight: 600
+                                                  }}>
+                                                    {stats.epo.label}
+                                                  </Typography>
+                                                </Box>
                                                 {stats.epo.individualGrades.map((item, index) => (
-                                                  <Typography key={index} variant="body2" sx={{ 
-                                                    fontSize: '0.4rem', 
-                                                    color: index % 2 === 0 ? '#666666' : '#999999', 
-                                                    display: 'inline', 
-                                                    mr: 0.3 
-                                                  }}>
-                                                    {formatGermanMini(item.grade)}
-                                                  </Typography>
-                                                ))}
-                                              </Box>
-
-                                              {/* Quizze */}
-                                              <Box sx={{ 
-                                                bgcolor: '#f5f5f5', 
-                                                p: 0.4, 
-                                                borderRadius: 1,
-                                                textAlign: 'center',
-                                                border: '1px solid #e0e0e0'
-                                              }}>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.8rem', 
-                                                  fontWeight: 'bold', 
-                                                  color: colors.primary,
-                                                  mb: 0.1
-                                                }}>
-                                                  {formatGradeValue(stats.quizze.values, mini.gradingSystem)}
-                                                </Typography>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.5rem', 
-                                                  color: colors.textSecondary,
-                                                  fontWeight: 600
-                                                }}>
-                                                  {stats.quizze.label}
-                                                </Typography>
-                                                {stats.quizze.individualGrades.map((item, index) => (
-                                                  <Typography key={index} variant="body2" sx={{ 
-                                                    fontSize: '0.4rem', 
-                                                    color: index % 2 === 0 ? '#666666' : '#999999', 
-                                                    display: 'inline', 
-                                                    mr: 0.3 
-                                                  }}>
-                                                    {formatGermanMini(item.grade)}
-                                                  </Typography>
-                                                ))}
-                                              </Box>
-
-                                              {/* Sonstiges */}
-                                              <Box sx={{ 
-                                                bgcolor: '#f5f5f5', 
-                                                p: 0.4, 
-                                                borderRadius: 1,
-                                                textAlign: 'center',
-                                                border: '1px solid #e0e0e0'
-                                              }}>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.8rem', 
-                                                  fontWeight: 'bold', 
-                                                  color: colors.primary,
-                                                  mb: 0.1
-                                                }}>
-                                                  {formatGradeValue(stats.sonstiges.values, mini.gradingSystem)}
-                                                </Typography>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.5rem', 
-                                                  color: colors.textSecondary,
-                                                  fontWeight: 600
-                                                }}>
-                                                  {stats.sonstiges.label}
-                                                </Typography>
-                                                {stats.sonstiges.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
                                                     fontSize: '0.4rem', 
                                                     color: index % 2 === 0 ? '#666666' : '#999999', 
