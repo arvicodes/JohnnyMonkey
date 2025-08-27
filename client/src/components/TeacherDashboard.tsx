@@ -3996,7 +3996,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                   color: colors.primary,
                                                   mb: 0.1
                                                 }}>
-                                                  {formatGradeValue(stats.klassenarbeiten.values, mini.gradingSystem)} {stats.klassenarbeiten.label}
+                                                  {formatGradeValue(stats.klassenarbeiten.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.5rem', 
+                                                  color: '#000000',
+                                                  fontWeight: 'normal'
+                                                }}>
+                                                  {stats.klassenarbeiten.label}
                                                 </Typography>
                                                 {stats.klassenarbeiten.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
@@ -4025,7 +4032,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                   color: colors.primary,
                                                   mb: 0.1
                                                 }}>
-                                                  {formatGradeValue(stats.epo.values, mini.gradingSystem)} {stats.epo.label}
+                                                  {formatGradeValue(stats.epo.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.5rem', 
+                                                  color: '#000000',
+                                                  fontWeight: 'normal'
+                                                }}>
+                                                  {stats.epo.label}
                                                 </Typography>
                                                 {stats.epo.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
@@ -4054,7 +4068,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                   color: colors.primary,
                                                   mb: 0.1
                                                 }}>
-                                                  {formatGradeValue(stats.quizze.values, mini.gradingSystem)} {stats.quizze.label}
+                                                  {formatGradeValue(stats.quizze.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.5rem', 
+                                                  color: '#000000',
+                                                  fontWeight: 'normal'
+                                                }}>
+                                                  {stats.quizze.label}
                                                 </Typography>
                                                 {stats.quizze.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
@@ -4083,7 +4104,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                   color: colors.primary,
                                                   mb: 0.1
                                                 }}>
-                                                  {formatGradeValue(stats.sonstiges.values, mini.gradingSystem)} {stats.sonstiges.label}
+                                                  {formatGradeValue(stats.sonstiges.values, mini.gradingSystem)}
+                                                </Typography>
+                                                <Typography sx={{ 
+                                                  fontSize: '0.5rem', 
+                                                  color: '#000000',
+                                                  fontWeight: 'normal'
+                                                }}>
+                                                  {stats.sonstiges.label}
                                                 </Typography>
                                                 {stats.sonstiges.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
