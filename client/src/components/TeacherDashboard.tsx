@@ -715,11 +715,47 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         };
         
         setStudentFlashcardStats(prev => ({ ...prev, [studentId]: stats }));
+
+        // Check if learning is too old and start blinking
+        if (progressData.length > 0) {
+          const lastReviews = progressData
+            .filter((item: any) => item.lastReviewed)
+            .sort((a: any, b: any) => new Date(b.lastReviewed).getTime() - new Date(a.lastReviewed).getTime())
+            .slice(0, 3);
+          
+          if (lastReviews.length > 0) {
+            const oldestReview = lastReviews[lastReviews.length - 1];
+            const oldestDate = new Date(oldestReview.lastReviewed);
+            const today = new Date();
+            const oldestDiffTime = Math.abs(today.getTime() - oldestDate.getTime());
+            const oldestDiffDays = Math.ceil(oldestDiffTime / (1000 * 60 * 60 * 24));
+            const isTooOld = oldestDiffDays > 14;
+            
+            // Start blinking animation for old cards
+            startBlinkingForOldCards(studentId, isTooOld);
+          }
+        }
       }
     } catch (error) {
       console.error('Fehler beim Laden des Karteikarten-Fortschritts:', error);
     } finally {
       setFlashcardStatsLoading(prev => ({ ...prev, [studentId]: false }));
+    }
+  };
+
+  // Funktion zum Steuern der Aufblink-Animation für Karten mit altem Lernstand
+  const startBlinkingForOldCards = (studentId: string, isTooOld: boolean) => {
+    const cardElement = document.getElementById(`student-card-${studentId}`);
+    if (cardElement) {
+      if (isTooOld) {
+        cardElement.style.animation = 'cardBlink 2s infinite';
+        cardElement.style.borderColor = '#dc3545';
+        cardElement.style.borderWidth = '2px';
+      } else {
+        cardElement.style.animation = 'none';
+        cardElement.style.borderColor = '#e0e0e0';
+        cardElement.style.borderWidth = '1px';
+      }
     }
   };
 
@@ -3836,11 +3872,29 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     '&:hover': {
                                       boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
                                       transform: 'translateY(-1px)'
+                                    },
+                                    '@keyframes cardBlink': {
+                                      '0%': { 
+                                        opacity: 1,
+                                        borderColor: '#dc3545',
+                                        boxShadow: '0 2px 8px rgba(220, 53, 69, 0.3)'
+                                      },
+                                      '50%': { 
+                                        opacity: 0.7,
+                                        borderColor: '#dc3545',
+                                        boxShadow: '0 2px 8px rgba(220, 53, 69, 0.6)'
+                                      },
+                                      '100%': { 
+                                        opacity: 1,
+                                        borderColor: '#dc3545',
+                                        boxShadow: '0 2px 8px rgba(220, 53, 69, 0.3)'
+                                      }
                                     }
                                   }}
                                   onMouseEnter={() => ensureMiniGrades(group.id, student.id)}
                                   onClick={() => handleStudentCardClick(group.id, student)}
                                   data-student-id={student.id}
+                                  id={`student-card-${student.id}`}
                                 >
                                   <CardContent sx={{ p: 0, pb: 0, pt: 0, pl: 0, pr: 0, overflow: 'hidden' }}>
                                     {/* Top Section - Avatar and Name */}
@@ -4104,7 +4158,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                           );
                                                         }
                                                         
-                                                        const dateTexts = lastReviews.map((review: any) => {
+                                                                                                                const dateTexts = lastReviews.map((review: any) => {
                                                           const date = new Date(review.lastReviewed);
                                                           const today = new Date();
                                                           const diffTime = Math.abs(today.getTime() - date.getTime());
@@ -4115,10 +4169,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                           if (diffDays <= 7) return `${diffDays}`;
                                                           return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
                                                         });
-                                                        
+
+                                                        // Check if the oldest review is too old (more than 14 days)
+                                                        const oldestReview = lastReviews[lastReviews.length - 1];
+                                                        const oldestDate = new Date(oldestReview.lastReviewed);
+                                                        const today = new Date();
+                                                        const oldestDiffTime = Math.abs(today.getTime() - oldestDate.getTime());
+                                                        const oldestDiffDays = Math.ceil(oldestDiffTime / (1000 * 60 * 60 * 24));
+                                                        const isTooOld = oldestDiffDays > 14;
+
                                                         return (
-                                                          <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.6rem', fontWeight: 'bold' }}>
+                                                          <Typography 
+                                                            variant="caption" 
+                                                            sx={{ 
+                                                              color: isTooOld ? '#dc3545' : '#495057', 
+                                                              fontSize: '0.6rem', 
+                                                              fontWeight: 'bold',
+                                                              animation: isTooOld ? 'blink 2s infinite' : 'none',
+                                                              '@keyframes blink': {
+                                                                '0%': { opacity: 1 },
+                                                                '50%': { opacity: 0.3 },
+                                                                '100%': { opacity: 1 }
+                                                              }
+                                                            }}
+                                                          >
                                                             🗂️ Gelernt vor {dateTexts.join(', ')} Tagen
+                                                            {isTooOld && ' ⚠️'}
                                                           </Typography>
                                                         );
                                                       })()}
