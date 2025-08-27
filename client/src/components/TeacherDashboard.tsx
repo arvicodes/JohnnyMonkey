@@ -153,6 +153,7 @@ interface StudentFlashcardStats {
     level4: number;
     level5: number;
   };
+  progressData: any[]; // Speichere die ursprünglichen Progress-Daten
 }
 
 interface FlashcardDeck {
@@ -709,7 +710,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           dueCards,
           progressPercentage: totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0,
           qualityStats,
-          levelStats
+          levelStats,
+          progressData // Speichere die ursprünglichen Daten für die letzten Reviews
         };
         
         setStudentFlashcardStats(prev => ({ ...prev, [studentId]: stats }));
@@ -4067,9 +4069,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 🗂️ Karteikarten
                                               </Typography>
                                               
-                                              {(() => {
-                                                const stats = studentFlashcardStats[student.id];
-                                                const loading = flashcardStatsLoading[student.id];
+                                                                                             {(() => {
+                                                 const stats = studentFlashcardStats[student.id];
+                                                 const loading = flashcardStatsLoading[student.id];
+                                                 
+                                                 // Hole die ursprünglichen Progress-Daten für die letzten Reviews
+                                                 const progressData = stats?.progressData || [];
                                                 
                                                 if (loading) {
                                                   return (
@@ -4093,14 +4098,49 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 
                                                 return (
                                                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                                    {/* Fortschritt */}
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                      <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.5rem' }}>
-                                                        Fortschritt
+                                                    {/* Letzte Lern-Daten */}
+                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.2 }}>
+                                                      <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.5rem', fontWeight: 'bold', textAlign: 'center' }}>
+                                                        Letzte Lern-Daten
                                                       </Typography>
-                                                      <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.5rem', fontWeight: 'bold' }}>
-                                                        {stats.progressPercentage}%
-                                                      </Typography>
+                                                      {(() => {
+                                                        const lastReviews = progressData
+                                                          .filter((item: any) => item.lastReviewed)
+                                                          .sort((a: any, b: any) => new Date(b.lastReviewed).getTime() - new Date(a.lastReviewed).getTime())
+                                                          .slice(0, 3);
+                                                        
+                                                        if (lastReviews.length === 0) {
+                                                          return (
+                                                            <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.4rem', textAlign: 'center', fontStyle: 'italic' }}>
+                                                              Noch nie gelernt
+                                                            </Typography>
+                                                          );
+                                                        }
+                                                        
+                                                        return lastReviews.map((review: any, index: number) => {
+                                                          const date = new Date(review.lastReviewed);
+                                                          const today = new Date();
+                                                          const diffTime = Math.abs(today.getTime() - date.getTime());
+                                                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                          
+                                                          let dateText = '';
+                                                          if (diffDays === 0) dateText = 'Heute';
+                                                          else if (diffDays === 1) dateText = 'Gestern';
+                                                          else if (diffDays <= 7) dateText = `vor ${diffDays} Tagen`;
+                                                          else dateText = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                                                          
+                                                          return (
+                                                            <Typography key={index} variant="caption" sx={{ 
+                                                              color: index === 0 ? '#495057' : '#6c757d', 
+                                                              fontSize: '0.4rem', 
+                                                              textAlign: 'center',
+                                                              fontWeight: index === 0 ? 'bold' : 'normal'
+                                                            }}>
+                                                              {dateText}
+                                                            </Typography>
+                                                          );
+                                                        });
+                                                      })()}
                                                     </Box>
                                                     
                                                     {/* Bewertungen */}
