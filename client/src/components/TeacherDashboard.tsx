@@ -3900,27 +3900,29 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     {/* Top Section - Avatar and Name */}
                                     <Box sx={{ 
                                       background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-                                      p: 1,
-                                      textAlign: 'center',
+                                      p: 0.5,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
                                       position: 'relative'
                                     }}>
                                       <Avatar sx={{ 
                                         bgcolor: student.avatarEmoji ? 'transparent' : colors.accent1, 
-                                        width: 36, 
-                                        height: 36,
-                                        fontSize: student.avatarEmoji ? '1.2rem' : '1rem',
-                                        mx: 'auto',
-                                        mb: 0.7,
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                        width: 28, 
+                                        height: 28,
+                                        fontSize: student.avatarEmoji ? '1rem' : '0.8rem',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
                                       }}>
                                         {student.avatarEmoji || student.name.charAt(0)}
                                       </Avatar>
                                       <Typography variant="h6" sx={{ 
                                         fontWeight: 'bold', 
-                                        fontSize: '0.8rem',
+                                        fontSize: '0.7rem',
                                         color: colors.textPrimary,
-                                        mb: 0.3,
-                                        cursor: 'help'
+                                        cursor: 'help',
+                                        textAlign: 'right',
+                                        flex: 1,
+                                        pr: 0.5
                                       }}
                                       title={`Code: ${student.loginCode}`}
                                       >
@@ -3929,14 +3931,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     </Box>
 
                                     {/* Bottom Section - Grade Stats */}
-                                    <Box sx={{ p: 1, pb: 0 }}>
+                                    <Box sx={{ p: 0.5, pb: 0 }}>
                                       {(() => {
                                         const key = `${group.id}:${student.id}`;
                                         const mini = miniGradesMap[key];
                                         if (!mini || mini.loading) {
                                           return (
-                                            <Box sx={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                              <Typography variant="body2" sx={{ color: colors.textSecondary }}>
+                                            <Box sx={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                              <Typography variant="body2" sx={{ color: colors.textSecondary, fontSize: '0.6rem' }}>
                                                 Lade Noten...
                                               </Typography>
                                             </Box>
@@ -3946,27 +3948,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                         const stats = getGradeStats(mini.nodes, mini.gradingSystem);
                                         
                                         return (
-                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
                                             {/* Grade Stat Boxes */}
-                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.5 }}>
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.3 }}>
                                               {/* Klassenarbeiten */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 0.7, 
-                                                borderRadius: 1.4,
+                                                p: 0.4, 
+                                                borderRadius: 1,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1rem', 
+                                                  fontSize: '0.8rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.3
+                                                  mb: 0.1
                                                 }}>
                                                   {formatGradeValue(stats.klassenarbeiten.values, mini.gradingSystem)}
                                                 </Typography>
                                                 <Typography sx={{ 
-                                                  fontSize: '0.6rem', 
+                                                  fontSize: '0.5rem', 
                                                   color: colors.textSecondary,
                                                   fontWeight: 600
                                                 }}>
@@ -3974,10 +3976,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 </Typography>
                                                 {stats.klassenarbeiten.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
-                                                    fontSize: '0.5rem', 
+                                                    fontSize: '0.4rem', 
                                                     color: index % 2 === 0 ? '#666666' : '#999999', 
                                                     display: 'inline', 
-                                                    mr: 0.5 
+                                                    mr: 0.3 
                                                   }}>
                                                     {formatGermanMini(item.grade)}
                                                   </Typography>
@@ -3987,21 +3989,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                               {/* EPO Noten */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 0.7, 
-                                                borderRadius: 1.4,
+                                                p: 0.4, 
+                                                borderRadius: 1,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1rem', 
+                                                  fontSize: '0.8rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.3
+                                                  mb: 0.1
                                                 }}>
                                                   {formatGradeValue(stats.epo.values, mini.gradingSystem)}
                                                 </Typography>
                                                 <Typography sx={{ 
-                                                  fontSize: '0.6rem', 
+                                                  fontSize: '0.5rem', 
                                                   color: colors.textSecondary,
                                                   fontWeight: 600
                                                 }}>
@@ -4009,10 +4011,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 </Typography>
                                                 {stats.epo.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
-                                                    fontSize: '0.5rem', 
+                                                    fontSize: '0.4rem', 
                                                     color: index % 2 === 0 ? '#666666' : '#999999', 
                                                     display: 'inline', 
-                                                    mr: 0.5 
+                                                    mr: 0.3 
                                                   }}>
                                                     {formatGermanMini(item.grade)}
                                                   </Typography>
@@ -4022,21 +4024,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                               {/* Quizze */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 0.7, 
-                                                borderRadius: 1.4,
+                                                p: 0.4, 
+                                                borderRadius: 1,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1rem', 
+                                                  fontSize: '0.8rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.3
+                                                  mb: 0.1
                                                 }}>
                                                   {formatGradeValue(stats.quizze.values, mini.gradingSystem)}
                                                 </Typography>
                                                 <Typography sx={{ 
-                                                  fontSize: '0.6rem', 
+                                                  fontSize: '0.5rem', 
                                                   color: colors.textSecondary,
                                                   fontWeight: 600
                                                 }}>
@@ -4044,10 +4046,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 </Typography>
                                                 {stats.quizze.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
-                                                    fontSize: '0.5rem', 
+                                                    fontSize: '0.4rem', 
                                                     color: index % 2 === 0 ? '#666666' : '#999999', 
                                                     display: 'inline', 
-                                                    mr: 0.5 
+                                                    mr: 0.3 
                                                   }}>
                                                     {formatGermanMini(item.grade)}
                                                   </Typography>
@@ -4057,21 +4059,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                               {/* Sonstiges */}
                                               <Box sx={{ 
                                                 bgcolor: '#f5f5f5', 
-                                                p: 0.7, 
-                                                borderRadius: 1.4,
+                                                p: 0.4, 
+                                                borderRadius: 1,
                                                 textAlign: 'center',
                                                 border: '1px solid #e0e0e0'
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '1rem', 
+                                                  fontSize: '0.8rem', 
                                                   fontWeight: 'bold', 
                                                   color: colors.primary,
-                                                  mb: 0.3
+                                                  mb: 0.1
                                                 }}>
                                                   {formatGradeValue(stats.sonstiges.values, mini.gradingSystem)}
                                                 </Typography>
                                                 <Typography sx={{ 
-                                                  fontSize: '0.6rem', 
+                                                  fontSize: '0.5rem', 
                                                   color: colors.textSecondary,
                                                   fontWeight: 600
                                                 }}>
@@ -4079,10 +4081,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                 </Typography>
                                                 {stats.sonstiges.individualGrades.map((item, index) => (
                                                   <Typography key={index} variant="body2" sx={{ 
-                                                    fontSize: '0.5rem', 
+                                                    fontSize: '0.4rem', 
                                                     color: index % 2 === 0 ? '#666666' : '#999999', 
                                                     display: 'inline', 
-                                                    mr: 0.5 
+                                                    mr: 0.3 
                                                   }}>
                                                     {formatGermanMini(item.grade)}
                                                   </Typography>
@@ -4094,14 +4096,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                             {mini.overall !== null && mini.overall !== undefined && (
                                               <Box sx={{ 
                                                 textAlign: 'center', 
-                                                mt: 0,
-                                                p: 0.3,
+                                                mt: 0.2,
+                                                p: 0.2,
                                                 bgcolor: `${getGradeColorMini(mini.overall, mini.gradingSystem)}15`,
-                                                borderRadius: 0.7,
+                                                borderRadius: 0.5,
                                                 border: `1px solid ${getGradeColorMini(mini.overall, mini.gradingSystem)}30`
                                               }}>
                                                 <Typography sx={{ 
-                                                  fontSize: '0.8rem', 
+                                                  fontSize: '0.7rem', 
                                                   fontWeight: 'bold', 
                                                   color: getGradeColorMini(mini.overall, mini.gradingSystem)
                                                 }}>
@@ -4111,7 +4113,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                             )}
                                             
                                             {/* Karteikarten-Fortschritt */}
-                                            <Box sx={{ mt: 1, p: 0.7, bgcolor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+                                            <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f8f9fa', borderRadius: 0.8, border: '1px solid #e9ecef' }}>
                                               
                                                                                              {(() => {
                                                  const stats = studentFlashcardStats[student.id];
