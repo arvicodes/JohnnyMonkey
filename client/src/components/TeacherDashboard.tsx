@@ -4139,25 +4139,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       <Box sx={{ 
                                                         textAlign: 'center', 
                                                         flex: 1,
-                                                        p: 0.2,
+                                                        p: 0.3,
                                                         bgcolor: '#d4edda',
                                                         borderRadius: 0.5,
                                                         border: '1px solid #c3e6cb',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        gap: 0.2
+                                                        gap: 0.3
                                                       }}>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#155724', 
-                                                          fontSize: '0.4rem', 
+                                                          fontSize: '0.6rem', 
                                                           fontWeight: 'bold'
                                                         }}>
                                                           {stats.qualityStats.perfect}
                                                         </Typography>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#155724', 
-                                                          fontSize: '0.4rem'
+                                                          fontSize: '0.6rem'
                                                         }}>
                                                           ✅
                                                         </Typography>
@@ -4165,25 +4165,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       <Box sx={{ 
                                                         textAlign: 'center', 
                                                         flex: 1,
-                                                        p: 0.2,
+                                                        p: 0.3,
                                                         bgcolor: '#fff3cd',
                                                         borderRadius: 0.5,
                                                         border: '1px solid #ffeaa7',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        gap: 0.2
+                                                        gap: 0.3
                                                       }}>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#856404', 
-                                                          fontSize: '0.4rem', 
+                                                          fontSize: '0.6rem', 
                                                           fontWeight: 'bold'
                                                         }}>
                                                           {stats.qualityStats.partial}
                                                         </Typography>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#856404', 
-                                                          fontSize: '0.4rem'
+                                                          fontSize: '0.6rem'
                                                         }}>
                                                           ⚠️
                                                         </Typography>
@@ -4191,25 +4191,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                       <Box sx={{ 
                                                         textAlign: 'center', 
                                                         flex: 1,
-                                                        p: 0.2,
+                                                        p: 0.3,
                                                         bgcolor: '#f8d7da',
                                                         borderRadius: 0.5,
                                                         border: '1px solid #f5c6cb',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        gap: 0.2
+                                                        gap: 0.3
                                                       }}>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#721c24', 
-                                                          fontSize: '0.4rem', 
+                                                          fontSize: '0.6rem', 
                                                           fontWeight: 'bold'
                                                         }}>
                                                           {stats.qualityStats.notKnown}
                                                         </Typography>
                                                         <Typography variant="caption" sx={{ 
                                                           color: '#721c24', 
-                                                          fontSize: '0.4rem'
+                                                          fontSize: '0.6rem'
                                                         }}>
                                                           ❌
                                                         </Typography>
