@@ -3897,7 +3897,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                   id={`student-card-${student.id}`}
                                 >
                                   <CardContent sx={{ p: 0, pb: 0, pt: 0, pl: 0, pr: 0, overflow: 'hidden' }}>
-                                    {/* Top Section - Avatar and Name */}
+                                    {/* Top Section - Avatar, Name and Overall Grade */}
                                     <Box sx={{ 
                                       background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
                                       p: 0.5,
@@ -3906,28 +3906,58 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                       justifyContent: 'space-between',
                                       position: 'relative'
                                     }}>
+                                      {/* Avatar - Left */}
                                       <Avatar sx={{ 
                                         bgcolor: student.avatarEmoji ? 'transparent' : colors.accent1, 
-                                        width: 28, 
-                                        height: 28,
-                                        fontSize: student.avatarEmoji ? '1rem' : '0.8rem',
+                                        width: 32, 
+                                        height: 32,
+                                        fontSize: student.avatarEmoji ? '1.1rem' : '0.9rem',
                                         boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
                                       }}>
                                         {student.avatarEmoji || student.name.charAt(0)}
                                       </Avatar>
+                                      
+                                      {/* Name - Center */}
                                       <Typography variant="h6" sx={{ 
                                         fontWeight: 'bold', 
                                         fontSize: '0.7rem',
                                         color: colors.textPrimary,
                                         cursor: 'help',
-                                        textAlign: 'right',
+                                        textAlign: 'center',
                                         flex: 1,
-                                        pr: 0.5
+                                        mx: 0.5
                                       }}
                                       title={`Code: ${student.loginCode}`}
                                       >
                                         {student.name}
                                       </Typography>
+                                      
+                                      {/* Overall Grade - Right */}
+                                      {(() => {
+                                        const key = `${group.id}:${student.id}`;
+                                        const mini = miniGradesMap[key];
+                                        if (mini && mini.overall !== null && mini.overall !== undefined) {
+                                          return (
+                                            <Box sx={{ 
+                                              textAlign: 'center',
+                                              p: 0.2,
+                                              minWidth: 24,
+                                              bgcolor: `${getGradeColorMini(mini.overall, mini.gradingSystem)}15`,
+                                              borderRadius: 0.5,
+                                              border: `1px solid ${getGradeColorMini(mini.overall, mini.gradingSystem)}30`
+                                            }}>
+                                              <Typography sx={{ 
+                                                fontSize: '0.6rem', 
+                                                fontWeight: 'bold', 
+                                                color: getGradeColorMini(mini.overall, mini.gradingSystem)
+                                              }}>
+                                                {mini.gradingSystem === 'MSS' ? mini.overall.toFixed(0) : formatGermanMini(mini.overall)}
+                                              </Typography>
+                                            </Box>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
                                     </Box>
 
                                     {/* Bottom Section - Grade Stats */}
