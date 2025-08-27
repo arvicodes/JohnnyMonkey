@@ -4126,25 +4126,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                               </Box>
                                             </Box>
 
-                                            {/* Overall Grade if available */}
-                                            {mini.overall !== null && mini.overall !== undefined && (
-                                              <Box sx={{ 
-                                                textAlign: 'center', 
-                                                mt: 0.2,
-                                                p: 0.2,
-                                                bgcolor: `${getGradeColorMini(mini.overall, mini.gradingSystem)}15`,
-                                                borderRadius: 0.5,
-                                                border: `1px solid ${getGradeColorMini(mini.overall, mini.gradingSystem)}30`
-                                              }}>
-                                                <Typography sx={{ 
-                                                  fontSize: '0.7rem', 
-                                                  fontWeight: 'bold', 
-                                                  color: getGradeColorMini(mini.overall, mini.gradingSystem)
-                                                }}>
-                                                  {mini.gradingSystem === 'MSS' ? mini.overall.toFixed(0) : formatGermanMini(mini.overall)}
-                                                </Typography>
-                                              </Box>
-                                            )}
+                                            {/* Gesamtnote wird bereits oben angezeigt - hier entfernt */}
                                             
                                             {/* Karteikarten-Fortschritt */}
                                             <Box sx={{ mt: 0.5, p: 0.5, bgcolor: '#f8f9fa', borderRadius: 0.8, border: '1px solid #e9ecef' }}>
