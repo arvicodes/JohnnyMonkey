@@ -3869,6 +3869,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     transition: 'all 0.2s ease-in-out',
                                     cursor: 'pointer',
                                     p: 0,
+                                    '& .MuiCardContent-root': {
+                                      padding: '8px',
+                                      '&:last-child': {
+                                        paddingBottom: '8px'
+                                      }
+                                    },
                                     '&:hover': {
                                       boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
                                       transform: 'translateY(-1px)'
@@ -3961,7 +3967,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                     </Box>
 
                                     {/* Bottom Section - Grade Stats */}
-                                    <Box sx={{ p: 0.5, pb: 0 }}>
+                                    <Box sx={{ p: 0.5, pb: 0, mb: 0 }}>
                                       {(() => {
                                         const key = `${group.id}:${student.id}`;
                                         const mini = miniGradesMap[key];
