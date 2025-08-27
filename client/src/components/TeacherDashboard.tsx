@@ -4098,7 +4098,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                         
                                                         if (lastReviews.length === 0) {
                                                           return (
-                                                            <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.4rem', fontStyle: 'italic' }}>
+                                                            <Typography variant="caption" sx={{ color: '#6c757d', fontSize: '0.6rem', fontStyle: 'italic' }}>
                                                               🗂️ Noch nie gelernt
                                                             </Typography>
                                                           );
@@ -4117,7 +4117,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                                         });
                                                         
                                                         return (
-                                                          <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.4rem', fontWeight: 'bold' }}>
+                                                          <Typography variant="caption" sx={{ color: '#495057', fontSize: '0.6rem', fontWeight: 'bold' }}>
                                                             🗂️ Gelernt vor {dateTexts.join(', ')} Tagen
                                                           </Typography>
                                                         );
