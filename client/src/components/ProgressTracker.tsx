@@ -83,7 +83,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
 
     const totalReviews = filteredProgress.reduce((sum, p) => sum + p.reviewCount, 0);
     const correctReviews = filteredProgress.reduce((sum, p) => {
-      // Schätzung: Level 4-5 = korrekte Antworten
+      // Schätzung: Level 4-5 = korrekte Antworten (Gut/Sehr gut)
       return sum + (p.level >= 4 ? p.reviewCount : 0);
     }, 0);
 

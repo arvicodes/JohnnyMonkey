@@ -20,7 +20,7 @@ export class SpacedRepetitionService {
   /**
    * Berechnet das nächste Review-Datum basierend auf der Antwortqualität
    * @param currentLevel Aktuelles Level (0-5)
-   * @param quality Antwortqualität (1=Perfekt, 2=Teilweise, 3=Nicht gewusst)
+   * @param quality Antwortqualität (1=Sehr schlecht, 2=Schlecht, 3=Mittelmäßig, 4=Gut, 5=Sehr gut)
    * @param config Konfiguration für den Algorithmus
    * @returns ReviewResult mit neuem Level und nächstem Review-Datum
    */
@@ -34,15 +34,15 @@ export class SpacedRepetitionService {
     let newLevel = currentLevel;
     let interval: number;
 
-    // Qualitätsbasierte Level-Anpassung für 3-Stufen-System
-    if (quality === 1) {
-      // Perfekt - Level erhöhen
+    // Qualitätsbasierte Level-Anpassung für 5-Stufen-System
+    if (quality >= 4) {
+      // Gut/Sehr gut - Level erhöhen
       newLevel = Math.min(currentLevel + 1, finalConfig.maxLevel);
-    } else if (quality === 3) {
-      // Nicht gewusst - Level zurücksetzen
+    } else if (quality <= 2) {
+      // Sehr schlecht/Schlecht - Level zurücksetzen
       newLevel = Math.max(0, currentLevel - 1);
     }
-    // Bei Qualität 2 (Teilweise) bleibt das Level gleich
+    // Bei Qualität 3 (Mittelmäßig) bleibt das Level gleich
 
     // Intervall basierend auf neuem Level berechnen
     if (newLevel === 0) {
@@ -59,8 +59,13 @@ export class SpacedRepetitionService {
       interval = finalConfig.baseInterval * 30; // 30 Tage
     }
 
-    const nextReview = new Date();
+    // Erstelle das nächste Review-Datum in Mitteleuropa-Zeit
+    const now = new Date();
+    const nextReview = new Date(now);
     nextReview.setDate(nextReview.getDate() + interval);
+    
+    // Setze die Zeit auf Mitternacht (00:00:00) in Mitteleuropa
+    nextReview.setHours(0, 0, 0, 0);
 
     return {
       newLevel,
@@ -75,7 +80,12 @@ export class SpacedRepetitionService {
    * @returns true wenn die Karte reviewbar ist
    */
   static isCardReadyForReview(nextReview: Date): boolean {
-    return new Date() >= nextReview;
+    const now = new Date();
+    // Setze aktuelle Zeit auf Mitternacht für korrekten Vergleich
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const reviewDate = new Date(nextReview.getFullYear(), nextReview.getMonth(), nextReview.getDate());
+    
+    return reviewDate <= today;
   }
 
   /**
@@ -85,9 +95,12 @@ export class SpacedRepetitionService {
    */
   static getDueCardsCount(progressList: Array<{ nextReview: Date }>): number {
     const now = new Date();
-    return progressList.filter(progress => 
-      new Date(progress.nextReview) <= now
-    ).length;
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    return progressList.filter(progress => {
+      const reviewDate = new Date(progress.nextReview.getFullYear(), progress.nextReview.getMonth(), progress.nextReview.getDate());
+      return reviewDate <= today;
+    }).length;
   }
 
   /**
@@ -106,9 +119,12 @@ export class SpacedRepetitionService {
     priority: number;
   }> {
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     return progressList.map(progress => {
-      const isDue = new Date(progress.nextReview) <= now;
+      const reviewDate = new Date(progress.nextReview.getFullYear(), progress.nextReview.getMonth(), progress.nextReview.getDate());
+      const isDue = reviewDate <= today;
+      
       const daysSinceLastReview = progress.lastReviewed 
         ? Math.floor((now.getTime() - new Date(progress.lastReviewed).getTime()) / (1000 * 60 * 60 * 24))
         : 999;

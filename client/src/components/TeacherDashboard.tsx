@@ -144,6 +144,8 @@ interface StudentFlashcardStats {
     perfect: number;
     partial: number;
     notKnown: number;
+    partiallyKnown: number;
+    wellKnown: number;
   };
   levelStats: {
     level0: number;
@@ -692,7 +694,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const qualityStats = {
           perfect: progressData.filter((item: any) => item.quality === 1).length,
           partial: progressData.filter((item: any) => item.quality === 2).length,
-          notKnown: progressData.filter((item: any) => item.quality === 3).length
+          notKnown: progressData.filter((item: any) => item.quality === 1 || item.quality === 2).length, // Sehr schlecht/Schlecht
+          partiallyKnown: progressData.filter((item: any) => item.quality === 3).length, // Mittelmäßig
+          wellKnown: progressData.filter((item: any) => item.quality === 4 || item.quality === 5).length // Gut/Sehr gut
         };
         
         const levelStats = {

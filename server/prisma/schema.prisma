@@ -316,21 +316,21 @@ model FlashcardAssignment {
 }
 
 model FlashcardProgress {
-  id          String       @id @default(uuid())
+  id          String   @id @default(uuid())
   cardId      String
   studentId   String
-  level       Int          @default(0) // Spaced Repetition Level (0-5)
-  nextReview  DateTime     @default(now())
+  level       Int      @default(0) // Spaced Repetition Level (0-5)
+  nextReview  DateTime @default(now())
   lastReviewed DateTime?
-  reviewCount Int          @default(0)
-  easeFactor  Float        @default(2.5) // Ease Factor für SM-2 Algorithmus
-  interval    Int          @default(1) // Tage bis zur nächsten Wiederholung
-  quality     Int?         // Letzte Bewertung der Karte (1-5)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  reviewCount Int      @default(0)
+  easeFactor  Float    @default(2.5) // Ease Factor für SM-2 Algorithmus
+  interval    Int      @default(1) // Tage bis zur nächsten Wiederholung
+  quality     Int?     // Letzte Bewertung der Karte (1=Sehr schlecht, 2=Schlecht, 3=Mittelmäßig, 4=Gut, 5=Sehr gut)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
-  card        Flashcard    @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  card        Flashcard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   
   @@unique([cardId, studentId])
 }

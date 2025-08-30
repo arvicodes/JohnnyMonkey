@@ -2499,6 +2499,53 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
   const [learningMode, setLearningMode] = useState<'selection' | 'learning' | 'viewing'>('selection');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sessionStats, setSessionStats] = useState({
+    cardsReviewed: 0,
+    correctAnswers: 0,
+    incorrectAnswers: 0
+  });
+
+  // Export-Funktionen für Lern-Fortschritt
+  const exportLearningProgress = async (format: 'json' | 'csv', deckId?: string) => {
+    try {
+      const params = new URLSearchParams({
+        format,
+        ...(deckId && { deckId })
+      });
+      
+      const response = await fetch(`/api/flashcards/student/${studentId}/export?${params}`);
+      
+      if (response.ok) {
+        if (format === 'csv') {
+          // CSV-Download
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `learning-progress-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else {
+          // JSON-Download
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `learning-progress-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }
+      } else {
+        console.error('Export fehlgeschlagen:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Fehler beim Exportieren:', error);
+    }
+  };
 
   // Tastatur-Shortcuts für Bewertungen
   useEffect(() => {
@@ -2511,16 +2558,22 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
       }
       
       if (learningMode === 'learning' && showAnswer) {
-        // Bewertungen nur im Lern-Modus
+        // Bewertungen nur im Lern-Modus (5-Stufen-System) - umgedreht für bessere UX
         switch (event.key) {
           case '1':
-            handleNextCard(1);
+            handleNextCard(5); // Taste 1 = Beste Bewertung (5)
             break;
           case '2':
-            handleNextCard(2);
+            handleNextCard(4); // Taste 2 = Gute Bewertung (4)
             break;
           case '3':
-            handleNextCard(3);
+            handleNextCard(3); // Taste 3 = Mittelmäßige Bewertung (3)
+            break;
+          case '4':
+            handleNextCard(2); // Taste 4 = Schlechte Bewertung (2)
+            break;
+          case '5':
+            handleNextCard(1); // Taste 5 = Schlechteste Bewertung (1)
             break;
         }
       } else if (learningMode === 'viewing') {
@@ -2584,29 +2637,32 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
               // Verwende den korrekten API-Endpoint für den Fortschritt
               const progressResponse = await fetch(`/api/flashcards/student/${studentId}/progress`);
               if (progressResponse.ok) {
-                let progressData = await progressResponse.json();
+                const progressData = await progressResponse.json();
                 
                 // Extrahiere das progress Array aus der Antwort
+                let progressArray = [];
                 if (progressData && progressData.progress && Array.isArray(progressData.progress)) {
-                  progressData = progressData.progress;
-                } else if (!Array.isArray(progressData)) {
+                  progressArray = progressData.progress;
+                } else if (Array.isArray(progressData)) {
+                  progressArray = progressData;
+                } else {
                   console.warn('Progress data is not an array:', progressData);
-                  progressData = [];
+                  progressArray = [];
                 }
                 
                 // Filtere den Fortschritt für dieses spezifische Deck
-                const deckProgress = progressData.filter((item: any) => 
+                const deckProgress = progressArray.filter((item: any) => 
                   item.card && item.card.deckId === deck.id
                 );
                 
                 // Berechne detaillierte Statistiken
                 const totalCards = deck.cards?.length || 0;
                 
-                // Bewertungs-Statistiken
+                // Bewertungs-Statistiken für 5-Stufen-System
                 const qualityStats = {
-                  perfect: deckProgress.filter((item: any) => item.quality === 1).length,
-                  partial: deckProgress.filter((item: any) => item.quality === 2).length,
-                  notKnown: deckProgress.filter((item: any) => item.quality === 3).length
+                  perfect: deckProgress.filter((item: any) => item.quality === 4 || item.quality === 5).length, // Gut/Sehr gut
+                  partial: deckProgress.filter((item: any) => item.quality === 3).length, // Mittelmäßig
+                  notKnown: deckProgress.filter((item: any) => item.quality === 1 || item.quality === 2).length // Sehr schlecht/Schlecht
                 };
                 
                 // Level-Statistiken
@@ -2656,7 +2712,8 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                 };
                 
                 console.log('Debug - dueCardsByDate:', dueCardsByDate);
-                const dueCards = dueCardsByDate.today;
+                // Wenn kein Fortschritt vorhanden ist, sind alle Karten fällig
+                const dueCards = deckProgress.length === 0 ? (deck.cards?.length || 0) : dueCardsByDate.today;
                 const completedCards = deckProgress.filter((item: any) => 
                   item.level >= 3
                 ).length;
@@ -2685,7 +2742,13 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                 totalCards: deck.cards?.length || 0,
                 dueCards: deck.cards?.length || 0, // Alle Karten sind fällig, wenn kein Fortschritt
                 completedCards: 0,
-                progressPercentage: 0
+                progressPercentage: 0,
+                dueCardsByDate: {
+                  today: deck.cards?.length || 0, // Alle Karten sind heute fällig
+                  tomorrow: 0,
+                  thisWeek: 0,
+                  later: 0
+                }
               };
             } catch (error) {
               console.error(`Error loading progress for deck ${deck.id}:`, error);
@@ -2716,8 +2779,12 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
       if (progressResponse.ok) {
         const progressData = await progressResponse.json();
         
+        // progressData ist ein Objekt mit progress-Property, nicht ein Array
+        const progressArray = progressData.progress || [];
+        console.log('DEBUG - progressData:', progressData, 'progressArray:', progressArray);
+        
         // Filtere den Fortschritt für dieses spezifische Deck
-        const deckProgress = progressData.filter((item: any) => 
+        const deckProgress = progressArray.filter((item: any) => 
           item.card && item.card.deckId === deck.id
         );
         
@@ -2756,6 +2823,9 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
         setCurrentCardIndex(0);
         setShowAnswer(false);
         
+        // Debug: Was steht in deck.dueCards?
+        console.log('DEBUG startLearningSession - deck.dueCards:', deck.dueCards, 'deck:', deck);
+        
         // Bestimme den Modus basierend auf fälligen Karten
         if (deck.dueCards > 0) {
           setLearningMode('learning');
@@ -2766,10 +2836,16 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
             body: JSON.stringify({ studentId, deckId: deck.id })
           });
           
-          if (sessionResponse.ok) {
-            const sessionData = await sessionResponse.json();
-            setSessionId(sessionData.session.id);
-          }
+                  if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          setSessionId(sessionData.session.id);
+          // Session-Statistiken zurücksetzen
+          setSessionStats({
+            cardsReviewed: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0
+          });
+        }
         } else {
           setLearningMode('viewing'); // Neuer Ansehen-Modus
         }
@@ -2796,10 +2872,12 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
     const currentCard = selectedDeck.cards[currentCardIndex];
     
     try {
-      const response = await fetch(`/api/flashcards/student/${currentCard.id}/review`, {
+      const response = await fetch(`/api/flashcards/student/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          studentId: studentId,
+          cardId: currentCard.id,
           quality
         })
       });
@@ -2807,6 +2885,13 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
       if (response.ok) {
         const data = await response.json();
         console.log('Card progress updated:', data);
+        
+        // Aktualisiere Session-Statistiken
+        setSessionStats(prev => ({
+          cardsReviewed: prev.cardsReviewed + 1,
+          correctAnswers: prev.correctAnswers + (quality >= 4 ? 1 : 0), // 4-5 = korrekt
+          incorrectAnswers: prev.incorrectAnswers + (quality <= 2 ? 1 : 0) // 1-2 = inkorrekt
+        }));
         
         // Sofortige lokale Aktualisierung der Statistiken
         setAssignedDecks(prevDecks => 
@@ -2826,13 +2911,13 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                 updatedDeck.dueCardsByDate = { today: 0, tomorrow: 0, thisWeek: 0, later: 0 };
               }
               
-              // Aktualisiere die Bewertungs-Statistiken
-              if (quality === 1) {
-                updatedDeck.qualityStats.perfect = (updatedDeck.qualityStats.perfect || 0) + 1;
-              } else if (quality === 2) {
-                updatedDeck.qualityStats.partial = (updatedDeck.qualityStats.partial || 0) + 1;
+              // Aktualisiere die Bewertungs-Statistiken für 5-Stufen-System
+              if (quality === 1 || quality === 2) {
+                updatedDeck.qualityStats.notKnown = (updatedDeck.qualityStats.notKnown || 0) + 1; // Sehr schlecht/Schlecht
               } else if (quality === 3) {
-                updatedDeck.qualityStats.notKnown = (updatedDeck.qualityStats.notKnown || 0) + 1;
+                updatedDeck.qualityStats.partial = (updatedDeck.qualityStats.partial || 0) + 1; // Mittelmäßig
+              } else if (quality === 4 || quality === 5) {
+                updatedDeck.qualityStats.perfect = (updatedDeck.qualityStats.perfect || 0) + 1; // Gut/Sehr gut = Perfekt
               }
               
               // Aktualisiere die Level-Statistiken (alle Karten sind auf Level 0)
@@ -2884,9 +2969,9 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-            cardsReviewed: selectedDeck?.cards?.length || 0,
-          correctAnswers: 0, // TODO: Implementieren
-          incorrectAnswers: 0 // TODO: Implementieren
+          cardsReviewed: sessionStats.cardsReviewed,
+          correctAnswers: sessionStats.correctAnswers,
+          incorrectAnswers: sessionStats.incorrectAnswers
         })
       });
       }
@@ -2900,6 +2985,12 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
     setCurrentCardIndex(0);
     setShowAnswer(false);
     setSessionId(null);
+    // Session-Statistiken zurücksetzen
+    setSessionStats({
+      cardsReviewed: 0,
+      correctAnswers: 0,
+      incorrectAnswers: 0
+    });
   };
 
   const handleClose = () => {
@@ -2980,20 +3071,66 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
               </Typography>
             )}
           </Box>
-          <Button 
-            onClick={handleClose} 
-            sx={{ 
-              minWidth: 'auto',
-              borderRadius: '50%',
-              width: 28,
-              height: 28,
-              bgcolor: '#f8f9fa',
-              color: '#6c757d',
-              '&:hover': { bgcolor: '#e9ecef' }
-            }}
-          >
-            ✕
-          </Button>
+          
+          {/* Header-Actions */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {/* Export-Buttons nur im Selection-Modus */}
+            {learningMode === 'selection' && (
+              <>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => exportLearningProgress('json')}
+                  sx={{
+                    color: '#6c757d',
+                    fontSize: '0.6rem',
+                    py: 0.25,
+                    px: 0.75,
+                    minWidth: 'auto',
+                    '&:hover': {
+                      color: '#495057',
+                      bgcolor: '#f8f9fa'
+                    }
+                  }}
+                >
+                  📊 Alle
+                </Button>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => exportLearningProgress('csv')}
+                  sx={{
+                    color: '#6c757d',
+                    fontSize: '0.6rem',
+                    py: 0.25,
+                    px: 0.75,
+                    minWidth: 'auto',
+                    '&:hover': {
+                      color: '#495057',
+                      bgcolor: '#f8f9fa'
+                    }
+                  }}
+                >
+                  📈 Alle
+                </Button>
+              </>
+            )}
+            
+            <Button 
+              onClick={handleClose} 
+              sx={{ 
+                minWidth: 'auto',
+                borderRadius: '50%',
+                width: 28,
+                height: 28,
+                bgcolor: '#f8f9fa',
+                color: '#6c757d',
+                '&:hover': { bgcolor: '#e9ecef' }
+              }}
+            >
+              ✕
+            </Button>
+          </Box>
         </Box>
 
         {learningMode === 'selection' ? (
@@ -3094,7 +3231,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                                   color: '#155724', 
                                   fontSize: '0.5rem'
                                 }}>
-                                  ✅
+                                  ✅ 4-5
                                 </Typography>
                               </Box>
                               <Box sx={{ 
@@ -3117,7 +3254,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                                   color: '#856404', 
                                   fontSize: '0.5rem'
                                 }}>
-                                  ⚠️
+                                  ℹ️ 3
                                 </Typography>
                               </Box>
                               <Box sx={{ 
@@ -3140,7 +3277,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                                   color: '#721c24', 
                                   fontSize: '0.5rem'
                                 }}>
-                                  ❌
+                                  ❌ 1-2
                                 </Typography>
                               </Box>
                             </Box>
@@ -3273,6 +3410,51 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                           </Box>
                         </Box>
                         
+                        {/* Export-Buttons */}
+                        <Box sx={{ 
+                          mb: 1.5,
+                          display: 'flex',
+                          gap: 0.5,
+                          justifyContent: 'center'
+                        }}>
+                          <Button
+                            variant="text"
+                            size="small"
+                            onClick={() => exportLearningProgress('json', deck.id)}
+                            sx={{
+                              color: '#6c757d',
+                              fontSize: '0.6rem',
+                              py: 0.25,
+                              px: 0.75,
+                              minWidth: 'auto',
+                              '&:hover': {
+                                color: '#495057',
+                                bgcolor: '#f8f9fa'
+                              }
+                            }}
+                          >
+                            📊 JSON
+                          </Button>
+                          <Button
+                            variant="text"
+                            size="small"
+                            onClick={() => exportLearningProgress('csv', deck.id)}
+                            sx={{
+                              color: '#6c757d',
+                              fontSize: '0.6rem',
+                              py: 0.25,
+                              px: 0.75,
+                              minWidth: 'auto',
+                              '&:hover': {
+                                color: '#495057',
+                                bgcolor: '#f8f9fa'
+                              }
+                            }}
+                          >
+                            📈 CSV
+                          </Button>
+                        </Box>
+
                         {/* Fällige Karten Zusammenfassung */}
                         <Box sx={{ 
                           mb: 3,
@@ -3481,7 +3663,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                       fontSize: '0.7rem',
                       fontStyle: 'italic'
                     }}>
-                      Bewerte deine Antwort: Drücke 1, 2 oder 3 oder klicke auf die Buttons
+                      Bewerte deine Antwort: Drücke 1-5 auf der Tastatur oder klicke auf die Buttons
                     </Typography>
                     
                     <Typography variant="caption" sx={{ 
@@ -3490,37 +3672,63 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                       fontSize: '0.6rem',
                       display: 'block'
                     }}>
-                      💡 Spaced Repetition: Perfekt = längere Pause, Nicht gewusst = kürzere Pause
+                      💡 Spaced Repetition: 1-2 = Level sinkt, 3 = bleibt gleich, 4-5 = Level steigt
                     </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, flexWrap: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
                       <Button
                         variant="contained"
                         color="success"
                         size="small"
-                        sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
-                        onClick={() => handleNextCard(1)}
+                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
+                        onClick={() => handleNextCard(5)}
                       >
-                        ✅ Perfekt (1)
+                        🌟 5
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
+                        onClick={() => handleNextCard(4)}
+                      >
+                        ✅ 4
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="info"
+                        size="small"
+                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
+                        onClick={() => handleNextCard(3)}
+                      >
+                        ℹ️ 3
                       </Button>
                       <Button
                         variant="contained"
                         color="warning"
                         size="small"
-                        sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
+                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
                         onClick={() => handleNextCard(2)}
                       >
-                        ⚠️ Teilweise (2)
+                        ⚠️ 2
                       </Button>
                       <Button
                         variant="contained"
                         color="error"
                         size="small"
-                        sx={{ width: '140px', fontSize: '0.65rem', py: 0.6, px: 1, flexShrink: 0 }}
-                        onClick={() => handleNextCard(3)}
+                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
+                        onClick={() => handleNextCard(1)}
                       >
-                        ❌ Nicht gewusst (3)
+                        ❌ 1
                       </Button>
                     </Box>
+                    <Typography variant="caption" sx={{ 
+                      color: '#6c757d',
+                      mt: 1,
+                      fontSize: '0.5rem',
+                      display: 'block'
+                    }}>
+                      1=Sehr schlecht, 2=Schlecht, 3=Mittelmäßig, 4=Gut, 5=Sehr gut
+                    </Typography>
                   </Box>
                 )}
                 

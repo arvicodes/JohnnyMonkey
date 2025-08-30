@@ -19,8 +19,12 @@ import {
   updateCardProgress,
   getStudentAllProgress,
   getTodayCards,
+  getAllAssignedCards,
   startLearningSession,
-  endLearningSession
+  endLearningSession,
+  migrateToNewSpacedRepetitionSystem,
+  markAllDueCardsAsLearned,
+  submitCardReview
 } from '../controllers/FlashcardController';
 
 const router = express.Router();
@@ -58,13 +62,23 @@ router.get('/document-history', getDocumentProcessingHistory);
 
 // ===== SPACED REPETITION SYSTEM ROUTEN =====
 
+// Migration zum neuen System (nur für Administratoren)
+router.post('/migrate-spaced-repetition', migrateToNewSpacedRepetitionSystem);
+
+// Alle fälligen Karten als gelernt markieren
+router.post('/student/mark-all-learned', markAllDueCardsAsLearned);
+
 // Schüler-spezifische Routen
 router.get('/student/:studentId/assigned', getStudentAssignedFlashcards);
 router.get('/student/:studentId/progress', getStudentAllProgress);
 router.get('/student/:studentId/today', getTodayCards);
+router.get('/student/:studentId/all-assigned', getAllAssignedCards);
 
 // Lernstand aktualisieren
 router.post('/student/progress', updateCardProgress);
+
+// Karten-Review (Bewertung 1-2-3)
+router.post('/student/:cardId/review', submitCardReview);
 
 // Lern-Sessions verwalten
 router.post('/student/session/start', startLearningSession);

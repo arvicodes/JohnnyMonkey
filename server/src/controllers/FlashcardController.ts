@@ -1396,3 +1396,116 @@ export const endLearningSession = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 };
+
+// Alle zugewiesenen Karten für einen Schüler abrufen
+export const getAllAssignedCards = async (req: Request, res: Response) => {
+  try {
+    const { studentId } = req.params;
+    
+    if (!studentId) {
+      return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+    }
+
+    const assignedCards = await prisma.flashcardAssignment.findMany({
+      where: {
+        group: {
+          students: {
+            some: { id: studentId }
+          }
+        }
+      },
+      include: {
+        deck: {
+          include: {
+            cards: true,
+            subject: true
+          }
+        },
+        group: {
+          select: { name: true }
+        }
+      }
+    });
+
+    res.json({ assignedCards });
+  } catch (error) {
+    console.error('Error fetching all assigned cards:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+// Migration zum neuen Spaced Repetition System
+export const migrateToNewSpacedRepetitionSystem = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Prüfen ob der Benutzer Administrator ist
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Nur Administratoren können diese Aktion durchführen' });
+    }
+
+    // Alle bestehenden Fortschritte migrieren
+    const allProgress = await prisma.flashcardProgress.findMany();
+    
+    for (const progress of allProgress) {
+      // Standardwerte für das neue System setzen
+      await prisma.flashcardProgress.update({
+        where: { id: progress.id },
+        data: {
+          level: progress.level || 0,
+          nextReview: new Date(),
+          lastReviewed: progress.lastReviewed || new Date(),
+          reviewCount: progress.reviewCount || 0
+        }
+      });
+    }
+
+    res.json({ message: 'Migration erfolgreich abgeschlossen', migratedCount: allProgress.length });
+  } catch (error) {
+    console.error('Error during migration:', error);
+    res.status(500).json({ error: 'Fehler bei der Migration' });
+  }
+};
+
+// Alle fälligen Karten als gelernt markieren
+export const markAllDueCardsAsLearned = async (req: Request, res: Response) => {
+  try {
+    const { studentId } = req.body;
+    
+    if (!studentId) {
+      return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Alle fälligen Karten finden
+    const dueCards = await prisma.flashcardProgress.findMany({
+      where: {
+        studentId,
+        nextReview: {
+          lte: today
+        }
+      }
+    });
+
+    // Alle fälligen Karten als gelernt markieren
+    for (const progress of dueCards) {
+      await prisma.flashcardProgress.update({
+        where: { id: progress.id },
+        data: {
+          level: Math.min(progress.level + 1, 5), // Level erhöhen, max 5
+          nextReview: new Date(Date.now() + 24 * 60 * 60 * 1000), // Nächster Review in 24 Stunden
+          lastReviewed: new Date(),
+          reviewCount: progress.reviewCount + 1
+        }
+      });
+    }
+
+    res.json({ 
+      message: 'Alle fälligen Karten wurden als gelernt markiert', 
+      updatedCount: dueCards.length 
+    });
+  } catch (error) {
+    console.error('Error marking cards as learned:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};

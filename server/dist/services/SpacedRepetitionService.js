@@ -5,7 +5,7 @@ class SpacedRepetitionService {
     /**
      * Berechnet das nächste Review-Datum basierend auf der Antwortqualität
      * @param currentLevel Aktuelles Level (0-5)
-     * @param quality Antwortqualität (1-5, wobei 1=schlecht, 5=perfekt)
+     * @param quality Antwortqualität (1=Sehr schlecht, 2=Schlecht, 3=Mittelmäßig, 4=Gut, 5=Sehr gut)
      * @param config Konfiguration für den Algorithmus
      * @returns ReviewResult mit neuem Level und nächstem Review-Datum
      */
@@ -13,16 +13,16 @@ class SpacedRepetitionService {
         const finalConfig = Object.assign(Object.assign({}, this.DEFAULT_CONFIG), config);
         let newLevel = currentLevel;
         let interval;
-        // Qualitätsbasierte Level-Anpassung
+        // Qualitätsbasierte Level-Anpassung für 5-Stufen-System
         if (quality >= 4) {
-            // Richtige Antwort - Level erhöhen
+            // Gut/Sehr gut - Level erhöhen
             newLevel = Math.min(currentLevel + 1, finalConfig.maxLevel);
         }
         else if (quality <= 2) {
-            // Falsche Antwort - Level zurücksetzen
+            // Sehr schlecht/Schlecht - Level zurücksetzen
             newLevel = Math.max(0, currentLevel - 1);
         }
-        // Bei Qualität 3 bleibt das Level gleich
+        // Bei Qualität 3 (Mittelmäßig) bleibt das Level gleich
         // Intervall basierend auf neuem Level berechnen
         if (newLevel === 0) {
             interval = finalConfig.baseInterval; // 1 Tag
@@ -42,8 +42,12 @@ class SpacedRepetitionService {
         else {
             interval = finalConfig.baseInterval * 30; // 30 Tage
         }
-        const nextReview = new Date();
+        // Erstelle das nächste Review-Datum in Mitteleuropa-Zeit
+        const now = new Date();
+        const nextReview = new Date(now);
         nextReview.setDate(nextReview.getDate() + interval);
+        // Setze die Zeit auf Mitternacht (00:00:00) in Mitteleuropa
+        nextReview.setHours(0, 0, 0, 0);
         return {
             newLevel,
             nextReview,
@@ -56,7 +60,11 @@ class SpacedRepetitionService {
      * @returns true wenn die Karte reviewbar ist
      */
     static isCardReadyForReview(nextReview) {
-        return new Date() >= nextReview;
+        const now = new Date();
+        // Setze aktuelle Zeit auf Mitternacht für korrekten Vergleich
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const reviewDate = new Date(nextReview.getFullYear(), nextReview.getMonth(), nextReview.getDate());
+        return reviewDate <= today;
     }
     /**
      * Berechnet die Anzahl der fälligen Karten für einen Schüler
@@ -65,7 +73,11 @@ class SpacedRepetitionService {
      */
     static getDueCardsCount(progressList) {
         const now = new Date();
-        return progressList.filter(progress => new Date(progress.nextReview) <= now).length;
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return progressList.filter(progress => {
+            const reviewDate = new Date(progress.nextReview.getFullYear(), progress.nextReview.getMonth(), progress.nextReview.getDate());
+            return reviewDate <= today;
+        }).length;
     }
     /**
      * Sortiert Karten nach Priorität (fällige zuerst, dann nach Level)
@@ -74,8 +86,10 @@ class SpacedRepetitionService {
      */
     static sortCardsByPriority(progressList) {
         const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         return progressList.map(progress => {
-            const isDue = new Date(progress.nextReview) <= now;
+            const reviewDate = new Date(progress.nextReview.getFullYear(), progress.nextReview.getMonth(), progress.nextReview.getDate());
+            const isDue = reviewDate <= today;
             const daysSinceLastReview = progress.lastReviewed
                 ? Math.floor((now.getTime() - new Date(progress.lastReviewed).getTime()) / (1000 * 60 * 60 * 24))
                 : 999;

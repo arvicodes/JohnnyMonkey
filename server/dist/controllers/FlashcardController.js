@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFlashcardDeck = exports.getFlashcardDecks = exports.addFlashcardsToExistingDeck = exports.createFlashcardDeckFromWord = exports.removeDeckAssignment = exports.getAssignments = exports.assignDeckToGroup = exports.getDueCards = exports.submitCardReview = exports.getStudentProgress = exports.deleteCard = exports.updateCard = exports.createCard = exports.deleteDeck = exports.updateDeck = exports.getDeckCards = exports.getDeck = exports.getDecks = exports.createDeck = void 0;
+exports.markAllDueCardsAsLearned = exports.migrateToNewSpacedRepetitionSystem = exports.getAllAssignedCards = exports.endLearningSession = exports.startLearningSession = exports.getTodayCards = exports.getStudentAllProgress = exports.updateCardProgress = exports.getStudentAssignedFlashcards = exports.getDocumentProcessingHistory = exports.getFlashcardDeck = exports.getFlashcardDecks = exports.addFlashcardsToExistingDeck = exports.createFlashcardDeckFromWord = exports.removeDeckAssignment = exports.assignDeckToGroup = exports.getDueCards = exports.submitCardReview = exports.getStudentProgress = exports.getFlashcardAssignments = exports.deleteAssignment = exports.createAssignment = exports.deleteCard = exports.updateCard = exports.createCard = exports.deleteDeck = exports.updateDeck = exports.getDeckCards = exports.getDeck = exports.getDecks = exports.createDeck = void 0;
 const prisma_1 = require("../generated/prisma");
 const SpacedRepetitionService_1 = require("../services/SpacedRepetitionService");
 const flashcardWordParser_1 = require("../utils/flashcardWordParser");
@@ -182,9 +182,12 @@ const getDeckCards = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 exports.getDeckCards = getDeckCards;
 const updateDeck = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { deckId } = req.params;
+        const { id: deckId } = req.params;
         const { title, description, subjectId, isPublic, teacherId } = req.body;
         const userId = teacherId;
+        if (!deckId) {
+            return res.status(400).json({ error: 'Deck-ID ist erforderlich' });
+        }
         // Prüfen ob der Benutzer der Besitzer ist
         const existingDeck = yield prisma.flashcardDeck.findUnique({
             where: { id: deckId }
@@ -353,6 +356,102 @@ const deleteCard = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.deleteCard = deleteCard;
+// Assignment Controller
+const createAssignment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { deckId, groupId, teacherId } = req.body;
+        if (!teacherId) {
+            return res.status(400).json({ error: 'teacherId ist erforderlich' });
+        }
+        // Prüfen ob der Benutzer der Besitzer des Decks ist
+        const deck = yield prisma.flashcardDeck.findUnique({
+            where: { id: deckId }
+        });
+        if (!deck || deck.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Keine Berechtigung zum Zuweisen dieses Karteidecks' });
+        }
+        // Prüfen ob die Gruppe existiert und dem Lehrer gehört
+        const group = yield prisma.learningGroup.findUnique({
+            where: { id: groupId }
+        });
+        if (!group || group.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Keine Berechtigung für diese Lerngruppe' });
+        }
+        const assignment = yield prisma.flashcardAssignment.create({
+            data: {
+                deckId,
+                groupId
+            },
+            include: {
+                deck: true,
+                group: true
+            }
+        });
+        res.status(201).json(assignment);
+    }
+    catch (error) {
+        console.error('Fehler beim Erstellen der Zuweisung:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.createAssignment = createAssignment;
+const deleteAssignment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { assignmentId } = req.params;
+        const { teacherId } = req.body;
+        if (!teacherId) {
+            return res.status(400).json({ error: 'teacherId ist erforderlich' });
+        }
+        // Prüfen ob die Zuweisung existiert und der Benutzer berechtigt ist
+        const assignment = yield prisma.flashcardAssignment.findUnique({
+            where: { id: assignmentId },
+            include: {
+                deck: true,
+                group: true
+            }
+        });
+        if (!assignment) {
+            return res.status(404).json({ error: 'Zuweisung nicht gefunden' });
+        }
+        if (assignment.deck.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Keine Berechtigung zum Löschen dieser Zuweisung' });
+        }
+        yield prisma.flashcardAssignment.delete({
+            where: { id: assignmentId }
+        });
+        res.json({ message: 'Zuweisung erfolgreich gelöscht' });
+    }
+    catch (error) {
+        console.error('Fehler beim Löschen der Zuweisung:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.deleteAssignment = deleteAssignment;
+const getFlashcardAssignments = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { teacherId } = req.query;
+        if (!teacherId) {
+            return res.status(400).json({ error: 'teacherId ist erforderlich' });
+        }
+        const assignments = yield prisma.flashcardAssignment.findMany({
+            where: {
+                deck: {
+                    teacherId: teacherId
+                }
+            },
+            include: {
+                deck: true,
+                group: true
+            }
+        });
+        res.json(assignments);
+    }
+    catch (error) {
+        console.error('Fehler beim Abrufen der Zuweisungen:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.getFlashcardAssignments = getFlashcardAssignments;
 // Flashcard Progress Controller
 const getStudentProgress = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -420,8 +519,8 @@ const submitCardReview = (req, res) => __awaiter(void 0, void 0, void 0, functio
         if (!studentId) {
             return res.status(401).json({ error: 'Nicht autorisiert' });
         }
-        if (quality < 1 || quality > 5) {
-            return res.status(400).json({ error: 'Qualität muss zwischen 1 und 5 liegen' });
+        if (quality < 1 || quality > 3) {
+            return res.status(400).json({ error: 'Qualität muss zwischen 1 und 3 liegen (1=Perfekt, 2=Teilweise, 3=Nicht gewusst)' });
         }
         // Aktuellen Fortschritt abrufen oder erstellen
         let progress = yield prisma.flashcardProgress.findUnique({
@@ -442,7 +541,8 @@ const submitCardReview = (req, res) => __awaiter(void 0, void 0, void 0, functio
                     level: reviewResult.newLevel,
                     nextReview: reviewResult.nextReview,
                     lastReviewed: new Date(),
-                    reviewCount: progress.reviewCount + 1
+                    reviewCount: progress.reviewCount + 1,
+                    quality: quality // Speichere die aktuelle Bewertung
                 }
             });
         }
@@ -455,7 +555,8 @@ const submitCardReview = (req, res) => __awaiter(void 0, void 0, void 0, functio
                     level: reviewResult.newLevel,
                     nextReview: reviewResult.nextReview,
                     lastReviewed: new Date(),
-                    reviewCount: 1
+                    reviewCount: 1,
+                    quality: quality // Speichere die aktuelle Bewertung
                 }
             });
         }
@@ -559,35 +660,6 @@ const assignDeckToGroup = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.assignDeckToGroup = assignDeckToGroup;
-const getAssignments = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    try {
-        const { teacherId } = req.query;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-        const where = {};
-        if (teacherId) {
-            where.deck = { teacherId: teacherId };
-        }
-        const assignments = yield prisma.flashcardAssignment.findMany({
-            where,
-            include: {
-                deck: {
-                    select: { id: true, title: true }
-                },
-                group: {
-                    select: { id: true, name: true }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-        res.json(assignments);
-    }
-    catch (error) {
-        console.error('Fehler beim Abrufen der Zuweisungen:', error);
-        res.status(500).json({ error: 'Interner Serverfehler' });
-    }
-});
-exports.getAssignments = getAssignments;
 const removeDeckAssignment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -717,6 +789,18 @@ const createFlashcardDeckFromWord = (req, res) => __awaiter(void 0, void 0, void
                 console.log(`Assigned deck to ${assignments.length} learning groups`);
             }
         }
+        // Track document processing
+        yield prisma.documentProcessingHistory.create({
+            data: {
+                sourceFile,
+                fileName: sourceFile.split('/').pop() || sourceFile,
+                teacherId,
+                action: 'created_deck',
+                deckId: deck.id,
+                deckTitle: deck.title,
+                cardsCount: createdCards.length
+            }
+        });
         // Return the created deck with cards
         const result = yield prisma.flashcardDeck.findUnique({
             where: { id: deck.id },
@@ -798,6 +882,18 @@ const addFlashcardsToExistingDeck = (req, res) => __awaiter(void 0, void 0, void
             }
         })));
         console.log(`Added ${createdCards.length} flashcards to existing deck`);
+        // Track document processing
+        yield prisma.documentProcessingHistory.create({
+            data: {
+                sourceFile,
+                fileName: sourceFile.split('/').pop() || sourceFile,
+                teacherId,
+                action: 'added_to_deck',
+                deckId: deckId,
+                deckTitle: existingDeck.title,
+                cardsCount: createdCards.length
+            }
+        });
         // Return updated deck
         const result = yield prisma.flashcardDeck.findUnique({
             where: { id: deckId },
@@ -890,3 +986,363 @@ const getFlashcardDeck = (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
 });
 exports.getFlashcardDeck = getFlashcardDeck;
+// Neue Funktion: Verarbeitungshistorie für ein Dokument abrufen
+const getDocumentProcessingHistory = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { teacherId, sourceFile } = req.query;
+        if (!teacherId || !sourceFile) {
+            return res.status(400).json({ error: 'Lehrer-ID und Quelldatei sind erforderlich' });
+        }
+        const history = yield prisma.documentProcessingHistory.findMany({
+            where: {
+                teacherId: teacherId,
+                sourceFile: sourceFile
+            },
+            orderBy: { processedAt: 'desc' }
+        });
+        res.json({ history });
+    }
+    catch (error) {
+        console.error('Error fetching document processing history:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.getDocumentProcessingHistory = getDocumentProcessingHistory;
+// ===== SPACED REPETITION SYSTEM FUNKTIONEN =====
+// Zugewiesene Karteikarten für einen Schüler abrufen
+const getStudentAssignedFlashcards = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+        }
+        // Finde alle Lerngruppen des Schülers
+        const student = yield prisma.user.findUnique({
+            where: { id: studentId },
+            include: {
+                learningGroups: {
+                    include: {
+                        flashcardAssignments: {
+                            include: {
+                                deck: {
+                                    include: {
+                                        cards: {
+                                            orderBy: { order: 'asc' }
+                                        },
+                                        subject: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        if (!student) {
+            return res.status(404).json({ error: 'Schüler nicht gefunden' });
+        }
+        // Sammle alle zugewiesenen Karteikarten
+        const assignedDecks = [];
+        for (const group of student.learningGroups) {
+            for (const assignment of group.flashcardAssignments) {
+                assignedDecks.push(assignment.deck);
+            }
+        }
+        res.json({ decks: assignedDecks });
+    }
+    catch (error) {
+        console.error('Error fetching student assigned flashcards:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.getStudentAssignedFlashcards = getStudentAssignedFlashcards;
+// Lernstand für eine Karte aktualisieren (mit SM-2 Algorithmus)
+const updateCardProgress = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { studentId, cardId, quality } = req.body;
+        if (!studentId || !cardId || quality === undefined) {
+            return res.status(400).json({ error: 'Schüler-ID, Karten-ID und Qualität sind erforderlich' });
+        }
+        if (quality < 1 || quality > 5) {
+            return res.status(400).json({ error: 'Qualität muss zwischen 1 und 5 liegen' });
+        }
+        // Finde oder erstelle den Lernstand
+        let progress = yield prisma.flashcardProgress.findUnique({
+            where: { cardId_studentId: { cardId, studentId } }
+        });
+        if (!progress) {
+            // Erste Wiederholung - erstelle neuen Eintrag
+            progress = yield prisma.flashcardProgress.create({
+                data: {
+                    cardId,
+                    studentId,
+                    level: 0,
+                    easeFactor: 2.5,
+                    interval: 1,
+                    reviewCount: 1,
+                    lastReviewed: new Date(),
+                    nextReview: new Date(Date.now() + 24 * 60 * 60 * 1000) // +1 Tag
+                }
+            });
+        }
+        else {
+            // SM-2 Algorithmus anwenden
+            const newEaseFactor = Math.max(1.3, progress.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+            let newInterval;
+            if (quality >= 4) {
+                // Karte gut gewusst
+                if (progress.level === 0) {
+                    newInterval = 1;
+                }
+                else if (progress.level === 1) {
+                    newInterval = 6;
+                }
+                else {
+                    newInterval = Math.round(progress.interval * progress.easeFactor);
+                }
+                progress.level = Math.min(5, progress.level + 1);
+            }
+            else if (quality >= 3) {
+                // Karte teilweise gewusst
+                newInterval = Math.max(1, Math.round(progress.interval * 0.5));
+                progress.level = Math.max(0, progress.level - 1);
+            }
+            else {
+                // Karte nicht gewusst
+                newInterval = 1;
+                progress.level = 0;
+            }
+            // Aktualisiere den Lernstand
+            progress = yield prisma.flashcardProgress.update({
+                where: { id: progress.id },
+                data: {
+                    level: progress.level,
+                    easeFactor: newEaseFactor,
+                    interval: newInterval,
+                    reviewCount: progress.reviewCount + 1,
+                    lastReviewed: new Date(),
+                    nextReview: new Date(Date.now() + newInterval * 24 * 60 * 60 * 1000),
+                    quality
+                }
+            });
+        }
+        res.json({ progress });
+    }
+    catch (error) {
+        console.error('Error updating card progress:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.updateCardProgress = updateCardProgress;
+// Lernstand für einen Schüler abrufen (alle Karten)
+const getStudentAllProgress = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+        }
+        const progress = yield prisma.flashcardProgress.findMany({
+            where: { studentId },
+            include: {
+                card: {
+                    include: {
+                        deck: true
+                    }
+                }
+            },
+            orderBy: { nextReview: 'asc' }
+        });
+        res.json({ progress });
+    }
+    catch (error) {
+        console.error('Error fetching student progress:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.getStudentAllProgress = getStudentAllProgress;
+// Karten für heute zum Lernen abrufen
+const getTodayCards = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayCards = yield prisma.flashcardProgress.findMany({
+            where: {
+                studentId,
+                nextReview: {
+                    lte: today
+                }
+            },
+            include: {
+                card: {
+                    include: {
+                        deck: true
+                    }
+                }
+            },
+            orderBy: { nextReview: 'asc' }
+        });
+        res.json({ cards: todayCards });
+    }
+    catch (error) {
+        console.error('Error fetching today cards:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.getTodayCards = getTodayCards;
+// Lern-Session starten
+const startLearningSession = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { studentId, deckId } = req.body;
+        if (!studentId || !deckId) {
+            return res.status(400).json({ error: 'Schüler-ID und Deck-ID sind erforderlich' });
+        }
+        const session = yield prisma.flashcardLearningSession.create({
+            data: {
+                studentId,
+                deckId,
+                startTime: new Date()
+            }
+        });
+        res.json({ session });
+    }
+    catch (error) {
+        console.error('Error starting learning session:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.startLearningSession = startLearningSession;
+// Lern-Session beenden
+const endLearningSession = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { sessionId, cardsReviewed, correctAnswers, incorrectAnswers } = req.body;
+        if (!sessionId) {
+            return res.status(400).json({ error: 'Session-ID ist erforderlich' });
+        }
+        const session = yield prisma.flashcardLearningSession.update({
+            where: { id: sessionId },
+            data: {
+                endTime: new Date(),
+                cardsReviewed: cardsReviewed || 0,
+                correctAnswers: correctAnswers || 0,
+                incorrectAnswers: incorrectAnswers || 0,
+                sessionDuration: Math.floor((Date.now() - new Date().getTime()) / 1000)
+            }
+        });
+        res.json({ session });
+    }
+    catch (error) {
+        console.error('Error ending learning session:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.endLearningSession = endLearningSession;
+// Alle zugewiesenen Karten für einen Schüler abrufen
+const getAllAssignedCards = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+        }
+        const assignedCards = yield prisma.flashcardAssignment.findMany({
+            where: {
+                group: {
+                    students: {
+                        some: { id: studentId }
+                    }
+                }
+            },
+            include: {
+                deck: {
+                    include: {
+                        cards: true,
+                        subject: true
+                    }
+                },
+                group: {
+                    select: { name: true }
+                }
+            }
+        });
+        res.json({ assignedCards });
+    }
+    catch (error) {
+        console.error('Error fetching all assigned cards:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.getAllAssignedCards = getAllAssignedCards;
+// Migration zum neuen Spaced Repetition System
+const migrateToNewSpacedRepetitionSystem = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        // Prüfen ob der Benutzer Administrator ist
+        if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== 'ADMIN') {
+            return res.status(403).json({ error: 'Nur Administratoren können diese Aktion durchführen' });
+        }
+        // Alle bestehenden Fortschritte migrieren
+        const allProgress = yield prisma.flashcardProgress.findMany();
+        for (const progress of allProgress) {
+            // Standardwerte für das neue System setzen
+            yield prisma.flashcardProgress.update({
+                where: { id: progress.id },
+                data: {
+                    level: progress.level || 0,
+                    nextReview: new Date(),
+                    lastReviewed: progress.lastReviewed || new Date(),
+                    reviewCount: progress.reviewCount || 0
+                }
+            });
+        }
+        res.json({ message: 'Migration erfolgreich abgeschlossen', migratedCount: allProgress.length });
+    }
+    catch (error) {
+        console.error('Error during migration:', error);
+        res.status(500).json({ error: 'Fehler bei der Migration' });
+    }
+});
+exports.migrateToNewSpacedRepetitionSystem = migrateToNewSpacedRepetitionSystem;
+// Alle fälligen Karten als gelernt markieren
+const markAllDueCardsAsLearned = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { studentId } = req.body;
+        if (!studentId) {
+            return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        // Alle fälligen Karten finden
+        const dueCards = yield prisma.flashcardProgress.findMany({
+            where: {
+                studentId,
+                nextReview: {
+                    lte: today
+                }
+            }
+        });
+        // Alle fälligen Karten als gelernt markieren
+        for (const progress of dueCards) {
+            yield prisma.flashcardProgress.update({
+                where: { id: progress.id },
+                data: {
+                    level: Math.min(progress.level + 1, 5), // Level erhöhen, max 5
+                    nextReview: new Date(Date.now() + 24 * 60 * 60 * 1000), // Nächster Review in 24 Stunden
+                    lastReviewed: new Date(),
+                    reviewCount: progress.reviewCount + 1
+                }
+            });
+        }
+        res.json({
+            message: 'Alle fälligen Karten wurden als gelernt markiert',
+            updatedCount: dueCards.length
+        });
+    }
+    catch (error) {
+        console.error('Error marking cards as learned:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+});
+exports.markAllDueCardsAsLearned = markAllDueCardsAsLearned;
