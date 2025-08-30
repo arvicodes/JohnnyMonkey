@@ -2,90 +2,171 @@
 
 A comprehensive learning management system built with React, Node.js, and Prisma.
 
-## Tech Stack
+## 🚀 Quick Start
 
-- **Frontend**: React, Material-UI, React Router
-- **Backend**: Node.js, Express, TypeScript
-- **Database**: SQLite with Prisma ORM
-- **Development**: Nodemon, Concurrently
+### Prerequisites
+- Node.js (Version 18 or higher)
+- npm or yarn
+- Git
 
-## Getting Started
-
-1. Install dependencies:
-   ```bash
-   npm install
-   npm install --prefix client
-   npm install --prefix server
-   ```
-
-2. Start the application:
-   ```bash
-   npm start
-   ```
-
-## Database Management
-
-**⚠️ Wichtig: Keine Seed-Datei mehr erforderlich!**
-
-Die Anwendung verwendet echte Daten aus der Datenbank. Für eine saubere Installation:
-
-1. **Datenbank wiederherstellen:**
-   ```bash
-   cp server/prisma/basis2_backup_20250805_112847.db server/prisma/dev.db
-   ```
-
-2. **Oder neuestes Backup verwenden:**
-   ```bash
-   cp server/prisma/backup_ohne_seed_20250805_121702.db server/prisma/dev.db
-   ```
-
-### Aktuelle DB-Konfiguration
-
-- Provider: SQLite (Datei-basierte DB)
-- ORM: Prisma Client
-- Schema/Config: `server/prisma/schema.prisma`
-  - `datasource db { provider = "sqlite"; url = "file:./prisma/dev.db" }`
-- Laufzeit-Datei: `server/prisma/dev.db` (368 KB, aktuelle Arbeitsdatenbank)
-- Generierter Prisma-Client: `server/src/generated/prisma/`
-- Backups: im Repo (z. B. `db-backup-full_YYYYMMDD_HHMMSS.sqlite3`)
-
-### Häufige DB-Befehle
-
+### 1. Clone Repository
 ```bash
-# Prisma Schema-Änderungen ohne Datenverlust synchronisieren (dev)
-cd server && npx prisma db push
-
-# Prisma Client neu generieren (falls nötig)
-cd server && npx prisma generate
-
-# SQLite inspizieren (Beispiel)
-cd server && sqlite3 prisma/dev.db ".tables"
-cd server && sqlite3 prisma/dev.db "SELECT * FROM Subject;"
+git clone https://github.com/arvicodes/JohnnyMonkey.git
+cd JohnnyMonkey
 ```
 
-### Wichtige Hinweise
-- Keine destructive Resets/Migrations ohne Absprache (keine `prisma migrate reset`).
-- Vor größeren Änderungen ein Backup erstellen und committen.
-- Prod/Dev unterscheiden: aktuell nutzen wir eine lokale Datei `dev.db`.
+### 2. Install Dependencies
+```bash
+# Server dependencies
+cd server
+npm install
 
-**Warum kein Seed-Script:**
-- Komplexe Beziehungen zwischen Tabellen
-- TypeScript-Kompatibilitätsprobleme
-- Backups sind einfacher und zuverlässiger
-- Echte Daten sind bereits vorhanden
+# Client dependencies
+cd ../client
+npm install
 
-## Available Scripts
+# Back to root directory
+cd ..
+```
 
+### 3. Start Application
+
+#### Option A: One-Command Startup (Recommended)
+```bash
+# Start both server and client automatically
+./start-all.sh
+```
+
+#### Option B: Manual Startup
+```bash
+# Terminal 1: Start server
+cd server
+npm run dev
+
+# Terminal 2: Start client
+cd client
+npm start
+```
+
+### 4. Access Application
+- **Frontend**: http://localhost:3003
+- **Backend API**: http://localhost:3001
+- **Database**: server/prisma/dev.db
+
+## 🗄️ Database
+
+### Current Setup
+- **Provider**: SQLite (file-based database)
+- **ORM**: Prisma Client
+- **Schema**: `server/prisma/schema.prisma`
+- **Database File**: `server/prisma/dev.db`
+- **Generated Client**: `server/src/generated/prisma/`
+
+### Database Management
+```bash
+# Push schema changes (development)
+cd server && npx prisma db push
+
+# Generate Prisma client
+cd server && npx prisma generate
+
+# Inspect database
+cd server && sqlite3 prisma/dev.db ".tables"
+```
+
+### Backup System
+- Automatic backups on each commit
+- Manual backups: `./scripts/backup-manager.sh`
+- Backup location: `server/prisma/backups/`
+
+## 📁 Project Structure
+
+```
+JohnnyMonkey/
+├── client/                 # React Frontend
+│   ├── src/
+│   │   ├── components/    # React Components
+│   │   ├── pages/         # Page Components
+│   │   └── hooks/         # Custom React Hooks
+│   └── package.json
+├── server/                 # Node.js Backend
+│   ├── src/
+│   │   ├── controllers/   # API Controllers
+│   │   ├── routes/        # API Routes
+│   │   └── services/      # Business Logic
+│   ├── prisma/            # Database Schema & Backups
+│   └── package.json
+├── scripts/                # Utility Scripts
+├── material/               # Learning Materials
+└── README.md
+```
+
+## 🛠️ Available Scripts
+
+### Startup Scripts
+- `./start-all.sh` - Start both client and server (recommended)
+- `./start-app.sh` - Alternative startup script
+- `./stop-app.sh` - Stop all services
+- `./restart-app.sh` - Restart all services
+
+### Development Scripts
 - `npm start` - Start both client and server
 - `npm run dev` - Start in development mode
 - `npm run build` - Build for production
 
-## Project Structure
+## 🔧 Features
 
+- **Flashcard System** - Spaced repetition learning
+- **Quiz Management** - Interactive quizzes with grading
+- **File Management** - Organized learning materials
+- **User Management** - Students and teachers
+- **Grading System** - Comprehensive assessment tools
+- **Progress Tracking** - Learning analytics
+
+## 📚 Documentation
+
+- `INSTALLATION.md` - Detailed setup instructions
+- `FLASHCARD_SYSTEM_FIX.md` - Flashcard system documentation
+- `GRADING_FEATURE.md` - Grading system guide
+- `BACKUP_SYSTEM.md` - Database backup procedures
+- `DEVELOPMENT_SCRIPTS.md` - Development workflow
+
+## 🚨 Important Notes
+
+- **No seed files required** - Database uses real data
+- **Automatic port management** - Ports 3001 (server) and 3003 (client)
+- **Database backups** - Automatic on commits, manual available
+- **Production ready** - Complete with startup scripts and documentation
+
+## 🆘 Troubleshooting
+
+### Port Conflicts
+```bash
+# Check port usage
+lsof -i :3001 -i :3003
+
+# Kill conflicting processes
+./stop-app.sh
 ```
-├── client/          # React frontend
-├── server/          # Node.js backend
-│   ├── prisma/      # Database schema and backups
-│   └── src/         # Server source code
-└── README.md
-``` 
+
+### Database Issues
+```bash
+# Restore from backup
+cp server/prisma/backup_latest.db server/prisma/dev.db
+
+# Regenerate Prisma client
+cd server && npx prisma generate
+```
+
+### Dependencies Issues
+```bash
+# Clean install
+rm -rf node_modules package-lock.json
+npm install
+cd client && npm install
+cd ../server && npm install
+```
+
+## 📞 Support
+
+For issues or questions, check the documentation files or create an issue in the repository. 
