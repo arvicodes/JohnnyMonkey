@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
+const express_2 = __importDefault(require("express"));
 const prisma_1 = require("./generated/prisma");
 const portManager_1 = require("./utils/portManager");
 const auth_1 = __importDefault(require("./routes/auth"));
@@ -38,7 +38,7 @@ const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const prisma = new prisma_1.PrismaClient();
-app.use((0, cors_1.default)());
+app.use((0, express_2.default)());
 app.use(express_1.default.json());
 // Routes
 app.use('/api/auth', auth_1.default);
@@ -61,6 +61,10 @@ app.use('/api/grades', grades_routes_1.default);
 app.use('/api/file-system-paths', fileSystemPaths_1.default);
 app.use('/api/flashcards', flashcards_1.default);
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 // Graceful shutdown
 process.on('SIGINT', () => __awaiter(void 0, void 0, void 0, function* () {
     console.log('\n🛑 Shutting down server gracefully...');
@@ -72,17 +76,25 @@ process.on('SIGTERM', () => __awaiter(void 0, void 0, void 0, function* () {
     yield prisma.$disconnect();
     process.exit(0);
 }));
-// Start server with automatic port management
+// Start server with Render compatibility
 function startServer() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // Cleanup ports before starting
-            yield portManager_1.PortManager.cleanupPorts();
-            // Start server on specific port 3001
-            const { server, port } = yield portManager_1.PortManager.startServer(app, 3001);
-            console.log(`🎯 Server is running on port ${port}`);
-            // Store port in global for potential external access
-            global.SERVER_PORT = port;
+            const port = parseInt(process.env.PORT || '3001', 10);
+            // For Render, use simple server start
+            if (process.env.NODE_ENV === 'production') {
+                const server = app.listen(port, () => {
+                    console.log(`🎯 Server is running on port ${port}`);
+                    console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
+                    console.log(`🔗 Health check: http://localhost:${port}/health`);
+                });
+            }
+            else {
+                // Development mode with PortManager
+                yield portManager_1.PortManager.cleanupPorts();
+                const { server, port: managedPort } = yield portManager_1.PortManager.startServer(app, port);
+                console.log(`🎯 Server is running on port ${managedPort}`);
+            }
         }
         catch (error) {
             console.error('❌ Failed to start server:', error);

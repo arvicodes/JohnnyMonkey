@@ -72,7 +72,7 @@ process.on('SIGTERM', async () => {
 // Start server with Render compatibility
 async function startServer() {
   try {
-    const port = process.env.PORT || 3001;
+    const port = parseInt(process.env.PORT || '3001', 10);
     
     // For Render, use simple server start
     if (process.env.NODE_ENV === 'production') {
