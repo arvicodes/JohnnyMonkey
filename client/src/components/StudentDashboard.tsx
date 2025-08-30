@@ -2682,47 +2682,96 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                 const dueCardsByDate = {
                   today: deckProgress.filter((item: any) => {
                     if (!item.nextReview) return true;
-                    // nextReview ist ein ISO-Datums-String, konvertiere direkt zu Date
-                    const reviewDate = new Date(item.nextReview);
-                    const isDue = reviewDate <= now;
+                    // nextReview kann ein ISO-Datums-String oder Millisekunden-Timestamp sein
+                    let reviewDate: Date;
+                    if (typeof item.nextReview === 'number') {
+                      // Wenn es ein Millisekunden-Timestamp ist
+                      reviewDate = new Date(item.nextReview);
+                    } else {
+                      // Wenn es ein ISO-String ist
+                      reviewDate = new Date(item.nextReview);
+                    }
+                    
+                    // Setze beide Daten auf Mitternacht für korrekten Vergleich
+                    const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
+                    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const isDue = reviewDateMidnight <= nowMidnight;
+                    
                     console.log(`Debug - Card ${item.cardId}: nextReview=${item.nextReview}, reviewDate=${reviewDate.toISOString()}, isDue=${isDue}`);
                     return isDue;
                   }).length,
                   tomorrow: deckProgress.filter((item: any) => {
                     if (!item.nextReview) return false;
-                    const reviewDate = new Date(item.nextReview);
+                    let reviewDate: Date;
+                    if (typeof item.nextReview === 'number') {
+                      reviewDate = new Date(item.nextReview);
+                    } else {
+                      reviewDate = new Date(item.nextReview);
+                    }
+                    
+                    const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
                     const tomorrow = new Date(now);
                     tomorrow.setDate(tomorrow.getDate() + 1);
-                    return reviewDate > now && reviewDate <= tomorrow;
+                    tomorrow.setHours(0, 0, 0, 0);
+                    return reviewDateMidnight > now && reviewDateMidnight <= tomorrow;
                   }).length,
                   thisWeek: deckProgress.filter((item: any) => {
                     if (!item.nextReview) return false;
-                    const reviewDate = new Date(item.nextReview);
+                    let reviewDate: Date;
+                    if (typeof item.nextReview === 'number') {
+                      reviewDate = new Date(item.nextReview);
+                    } else {
+                      reviewDate = new Date(item.nextReview);
+                    }
+                    
+                    const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
                     const weekEnd = new Date(now);
                     weekEnd.setDate(weekEnd.getDate() + 7);
-                    return reviewDate > now && reviewDate <= weekEnd;
+                    weekEnd.setHours(0, 0, 0, 0);
+                    return reviewDateMidnight > now && reviewDateMidnight <= weekEnd;
                   }).length,
                   later: deckProgress.filter((item: any) => {
                     if (!item.nextReview) return false;
-                    const reviewDate = new Date(item.nextReview);
+                    let reviewDate: Date;
+                    if (typeof item.nextReview === 'number') {
+                      reviewDate = new Date(item.nextReview);
+                    } else {
+                      reviewDate = new Date(item.nextReview);
+                    }
+                    
+                    const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
                     const weekEnd = new Date(now);
                     weekEnd.setDate(weekEnd.getDate() + 7);
-                    return reviewDate > weekEnd;
+                    weekEnd.setHours(0, 0, 0, 0);
+                    return reviewDateMidnight > weekEnd;
                   }).length
                 };
                 
                 console.log('Debug - dueCardsByDate:', dueCardsByDate);
-                // Wenn kein Fortschritt vorhanden ist, sind alle Karten fällig
-                const dueCards = deckProgress.length === 0 ? (deck.cards?.length || 0) : dueCardsByDate.today;
+                
+                // Berechne fällige Karten: 
+                // 1. Gelernte Karten die fällig sind (mit Qualitätsbewertung)
+                // 2. Karten ohne Qualitätsbewertung (müssen noch bewertet werden)
+                const learnedCardsDue = dueCardsByDate.today;
+                const cardsWithoutQuality = deckProgress.filter((item: any) => item.quality === null || item.quality === undefined).length;
+                const unlearnedCards = (deck.cards?.length || 0) - deckProgress.length;
+                const dueCards = learnedCardsDue + cardsWithoutQuality + unlearnedCards;
+                
                 const completedCards = deckProgress.filter((item: any) => 
-                  item.level >= 3
+                  item.level >= 3 && item.quality !== null && item.quality !== undefined
                 ).length;
                 
                 // Review-Statistiken
                 const reviewStats = {
                   totalReviews: deckProgress.reduce((sum: number, item: any) => sum + (item.reviewCount || 0), 0),
                   avgReviewCount: deckProgress.length > 0 ? Math.round(deckProgress.reduce((sum: number, item: any) => sum + (item.reviewCount || 0), 0) / deckProgress.length) : 0,
-                  lastReviewDate: deckProgress.length > 0 ? new Date(Math.max(...deckProgress.map((item: any) => parseInt(item.lastReviewed || 0)))).toLocaleDateString('de-DE') : '-'
+                  lastReviewDate: deckProgress.length > 0 ? new Date(Math.max(...deckProgress.map((item: any) => {
+                    if (typeof item.lastReviewed === 'number') {
+                      return item.lastReviewed;
+                    } else {
+                      return new Date(item.lastReviewed).getTime();
+                    }
+                  }))).toLocaleDateString('de-DE') : '-'
                 };
                 
                 return {
@@ -2748,7 +2797,10 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                   tomorrow: 0,
                   thisWeek: 0,
                   later: 0
-                }
+                },
+                qualityStats: { perfect: 0, partial: 0, notKnown: 0 },
+                levelStats: { level0: 0, level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 },
+                reviewStats: { totalReviews: 0, avgReviewCount: 0, lastReviewDate: '-' }
               };
             } catch (error) {
               console.error(`Error loading progress for deck ${deck.id}:`, error);

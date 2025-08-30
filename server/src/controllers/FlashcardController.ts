@@ -522,7 +522,8 @@ export const getStudentProgress = async (req: AuthenticatedRequest, res: Respons
             back: true,
             hint: true,
             difficulty: true,
-            order: true
+            order: true,
+            deckId: true
           }
         }
       },
@@ -531,34 +532,9 @@ export const getStudentProgress = async (req: AuthenticatedRequest, res: Respons
       }
     });
 
-    // Karten ohne Fortschritt hinzufügen
-    const allCards = await prisma.flashcard.findMany({
-      where: { deckId },
-      orderBy: { order: 'asc' }
-    });
-
-    const cardsWithProgress = allCards.map(card => {
-      const existingProgress = progress.find(p => p.cardId === card.id);
-      if (existingProgress) {
-        return {
-          ...card,
-          progress: existingProgress
-        };
-      } else {
-        return {
-          ...card,
-          progress: {
-            id: null,
-            level: 0,
-            nextReview: new Date(),
-            lastReviewed: null,
-            reviewCount: 0
-          }
-        };
-      }
-    });
-
-    res.json(cardsWithProgress);
+    // Nur Karten mit tatsächlichem Fortschritt zurückgeben
+    // Ungelernte Karten werden NICHT mit Dummy-Fortschritt versehen
+    res.json({ progress });
   } catch (error) {
     console.error('Fehler beim Abrufen des Fortschritts:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
@@ -674,10 +650,11 @@ export const getDueCards = async (req: AuthenticatedRequest, res: Response) => {
 
     // Karten mit Fortschritt kombinieren
     const dueCardsWithProgress = sortedCards.map(sorted => {
-      const cardProgress = progress.find(p => 
-        p.level === sorted.level && 
-        p.nextReview.getTime() === sorted.nextReview.getTime()
-      );
+      const cardProgress = progress.find(p => {
+        const pTime = typeof p.nextReview === 'number' ? p.nextReview : p.nextReview.getTime();
+        const sortedTime = typeof sorted.nextReview === 'number' ? sorted.nextReview : sorted.nextReview.getTime();
+        return p.level === sorted.level && pTime === sortedTime;
+      });
       return cardProgress;
     }).filter(Boolean);
 

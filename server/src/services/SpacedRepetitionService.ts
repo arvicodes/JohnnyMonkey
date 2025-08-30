@@ -37,12 +37,24 @@ export class SpacedRepetitionService {
     // Qualitätsbasierte Level-Anpassung für 5-Stufen-System
     if (quality >= 4) {
       // Gut/Sehr gut - Level erhöhen
-      newLevel = Math.min(currentLevel + 1, finalConfig.maxLevel);
+      if (currentLevel === 0) {
+        // Bei erstem Review mit guter Qualität direkt auf Level 3
+        newLevel = 3;
+      } else {
+        // Bei höheren Leveln schrittweise erhöhen
+        newLevel = Math.min(currentLevel + 1, finalConfig.maxLevel);
+      }
+    } else if (quality === 3) {
+      // Mittelmäßig - Level leicht erhöhen oder beibehalten
+      if (currentLevel === 0) {
+        newLevel = 1;
+      } else {
+        newLevel = currentLevel; // Beibehalten
+      }
     } else if (quality <= 2) {
       // Sehr schlecht/Schlecht - Level zurücksetzen
       newLevel = Math.max(0, currentLevel - 1);
     }
-    // Bei Qualität 3 (Mittelmäßig) bleibt das Level gleich
 
     // Intervall basierend auf neuem Level berechnen
     if (newLevel === 0) {
@@ -76,16 +88,26 @@ export class SpacedRepetitionService {
 
   /**
    * Prüft, ob eine Karte für Review bereit ist
-   * @param nextReview Nächstes Review-Datum
+   * @param nextReview Nächstes Review-Datum (kann Date oder Millisekunden-Timestamp sein)
    * @returns true wenn die Karte reviewbar ist
    */
-  static isCardReadyForReview(nextReview: Date): boolean {
+  static isCardReadyForReview(nextReview: Date | number): boolean {
     const now = new Date();
     // Setze aktuelle Zeit auf Mitternacht für korrekten Vergleich
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const reviewDate = new Date(nextReview.getFullYear(), nextReview.getMonth(), nextReview.getDate());
     
-    return reviewDate <= today;
+    let reviewDate: Date;
+    if (typeof nextReview === 'number') {
+      // Wenn es ein Millisekunden-Timestamp ist
+      reviewDate = new Date(nextReview);
+    } else {
+      // Wenn es bereits ein Date-Objekt ist
+      reviewDate = nextReview;
+    }
+    
+    const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
+    
+    return reviewDateMidnight <= today;
   }
 
   /**
@@ -93,13 +115,22 @@ export class SpacedRepetitionService {
    * @param progressList Liste aller Karten-Fortschritte eines Schülers
    * @returns Anzahl der fälligen Karten
    */
-  static getDueCardsCount(progressList: Array<{ nextReview: Date }>): number {
+  static getDueCardsCount(progressList: Array<{ nextReview: Date | number }>): number {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     return progressList.filter(progress => {
-      const reviewDate = new Date(progress.nextReview.getFullYear(), progress.nextReview.getMonth(), progress.nextReview.getDate());
-      return reviewDate <= today;
+      let reviewDate: Date;
+      if (typeof progress.nextReview === 'number') {
+        // Wenn es ein Millisekunden-Timestamp ist
+        reviewDate = new Date(progress.nextReview);
+      } else {
+        // Wenn es bereits ein Date-Objekt ist
+        reviewDate = progress.nextReview;
+      }
+      
+      const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
+      return reviewDateMidnight <= today;
     }).length;
   }
 
@@ -109,25 +140,39 @@ export class SpacedRepetitionService {
    * @returns Sortierte Liste
    */
   static sortCardsByPriority(progressList: Array<{
-    nextReview: Date;
+    nextReview: Date | number;
     level: number;
-    lastReviewed?: Date;
+    lastReviewed?: Date | number;
   }>): Array<{
-    nextReview: Date;
+    nextReview: Date | number;
     level: number;
-    lastReviewed?: Date;
+    lastReviewed?: Date | number;
     priority: number;
   }> {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     return progressList.map(progress => {
-      const reviewDate = new Date(progress.nextReview.getFullYear(), progress.nextReview.getMonth(), progress.nextReview.getDate());
-      const isDue = reviewDate <= today;
+      let reviewDate: Date;
+      if (typeof progress.nextReview === 'number') {
+        reviewDate = new Date(progress.nextReview);
+      } else {
+        reviewDate = progress.nextReview;
+      }
       
-      const daysSinceLastReview = progress.lastReviewed 
-        ? Math.floor((now.getTime() - new Date(progress.lastReviewed).getTime()) / (1000 * 60 * 60 * 24))
-        : 999;
+      const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
+      const isDue = reviewDateMidnight <= today;
+      
+      let daysSinceLastReview = 999;
+      if (progress.lastReviewed) {
+        let lastReviewedDate: Date;
+        if (typeof progress.lastReviewed === 'number') {
+          lastReviewedDate = new Date(progress.lastReviewed);
+        } else {
+          lastReviewedDate = progress.lastReviewed;
+        }
+        daysSinceLastReview = Math.floor((now.getTime() - lastReviewedDate.getTime()) / (1000 * 60 * 60 * 24));
+      }
       
       // Priorität: fällige Karten zuerst, dann nach Level und letztem Review
       let priority = 0;
