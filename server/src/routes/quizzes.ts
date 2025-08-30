@@ -6,7 +6,10 @@ import {
   getQuiz, 
   updateQuiz, 
   deleteQuiz,
-  getQuizzesByTeacher 
+  getQuizzesByTeacher,
+  updateQuizQuestions,
+  checkQuizExists,
+  reloadQuizFromSource
 } from '../controllers/QuizController';
 
 const router = express.Router();
@@ -17,7 +20,12 @@ router.post('/create', createQuiz);
 router.get('/', getQuizzes);
 router.get('/:id', getQuiz);
 router.put('/:id/settings', updateQuiz);
+router.put('/:id/questions', updateQuizQuestions);
+router.post('/:id/reload-from-source', reloadQuizFromSource);
 router.delete('/:id', deleteQuiz);
+
+// Quiz existence check
+router.get('/check/exists', checkQuizExists);
 
 // Teacher-specific quiz operations
 router.get('/teacher/:teacherId', getQuizzesByTeacher);

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopQuizSession = exports.getSessionResults = exports.getSessionsForQuiz = exports.getSessionById = exports.getQuizForSession = exports.getActiveSession = exports.startQuizSession = void 0;
+exports.releaseResults = exports.stopQuizSession = exports.getSessionResults = exports.getSessionsForQuiz = exports.getSessionById = exports.getQuizForSession = exports.getActiveSession = exports.startQuizSession = void 0;
 const prisma_1 = require("../generated/prisma");
 const prisma = new prisma_1.PrismaClient();
 // Start a quiz session (teacher only)
@@ -137,6 +137,8 @@ const getQuizForSession = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 id: q.id,
                 question: q.question,
                 options: JSON.parse(q.options),
+                tip: q.tip,
+                explanation: q.explanation,
                 order: q.order
             }))
         };
@@ -291,3 +293,45 @@ const stopQuizSession = (req, res) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.stopQuizSession = stopQuizSession;
+// Release quiz results (teacher only)
+const releaseResults = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { sessionId } = req.params;
+        const { teacherId } = req.body;
+        if (!teacherId) {
+            return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+        }
+        const session = yield prisma.quizSession.findUnique({
+            where: { id: sessionId },
+            include: {
+                quiz: true
+            }
+        });
+        if (!session) {
+            return res.status(404).json({ error: 'Session nicht gefunden' });
+        }
+        if (session.quiz.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Nur der Quiz-Ersteller kann die Ergebnisse freigeben' });
+        }
+        // Lehrer kann Ergebnisse jederzeit freigeben, auch wenn Session noch läuft
+        // Toggle-Funktionalität: Wenn bereits freigegeben, dann zurücknehmen
+        const newResultsReleased = !session.resultsReleased;
+        const actionText = newResultsReleased ? 'freigegeben' : 'zurückgenommen';
+        yield prisma.quizSession.update({
+            where: { id: sessionId },
+            data: {
+                resultsReleased: newResultsReleased,
+                updatedAt: new Date()
+            }
+        });
+        res.json({
+            message: `Quiz-Ergebnisse erfolgreich ${actionText}`,
+            resultsReleased: newResultsReleased
+        });
+    }
+    catch (error) {
+        console.error('Error toggling results release:', error);
+        res.status(500).json({ error: 'Fehler beim Freigeben/Zurücknehmen der Ergebnisse' });
+    }
+});
+exports.releaseResults = releaseResults;

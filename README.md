@@ -1,217 +1,91 @@
-# JohnnyMonkey - Lernplattform
+# JohnnyMonkey - Fullstack Learning Platform
 
-Eine moderne Lernplattform für Schüler und Lehrer mit Flashcard-System, Quiz-Funktionalität und Dateiverwaltung.
+A comprehensive learning management system built with React, Node.js, and Prisma.
 
-## 🚀 Schnellstart
+## Tech Stack
 
-### Voraussetzungen
-- Node.js (Version 18 oder höher)
-- npm oder yarn
-- Git
+- **Frontend**: React, Material-UI, React Router
+- **Backend**: Node.js, Express, TypeScript
+- **Database**: SQLite with Prisma ORM
+- **Development**: Nodemon, Concurrently
 
-### 1. Repository klonen
+## Getting Started
+
+1. Install dependencies:
+   ```bash
+   npm install
+   npm install --prefix client
+   npm install --prefix server
+   ```
+
+2. Start the application:
+   ```bash
+   npm start
+   ```
+
+## Database Management
+
+**⚠️ Wichtig: Keine Seed-Datei mehr erforderlich!**
+
+Die Anwendung verwendet echte Daten aus der Datenbank. Für eine saubere Installation:
+
+1. **Datenbank wiederherstellen:**
+   ```bash
+   cp server/prisma/basis2_backup_20250805_112847.db server/prisma/dev.db
+   ```
+
+2. **Oder neuestes Backup verwenden:**
+   ```bash
+   cp server/prisma/backup_ohne_seed_20250805_121702.db server/prisma/dev.db
+   ```
+
+### Aktuelle DB-Konfiguration
+
+- Provider: SQLite (Datei-basierte DB)
+- ORM: Prisma Client
+- Schema/Config: `server/prisma/schema.prisma`
+  - `datasource db { provider = "sqlite"; url = "file:./prisma/dev.db" }`
+- Laufzeit-Datei: `server/prisma/dev.db` (368 KB, aktuelle Arbeitsdatenbank)
+- Generierter Prisma-Client: `server/src/generated/prisma/`
+- Backups: im Repo (z. B. `db-backup-full_YYYYMMDD_HHMMSS.sqlite3`)
+
+### Häufige DB-Befehle
+
 ```bash
-git clone https://github.com/arvicodes/JohnnyMonkey.git
-cd JohnnyMonkey
+# Prisma Schema-Änderungen ohne Datenverlust synchronisieren (dev)
+cd server && npx prisma db push
+
+# Prisma Client neu generieren (falls nötig)
+cd server && npx prisma generate
+
+# SQLite inspizieren (Beispiel)
+cd server && sqlite3 prisma/dev.db ".tables"
+cd server && sqlite3 prisma/dev.db "SELECT * FROM Subject;"
 ```
 
-### 2. Dependencies installieren
-```bash
-# Server-Dependencies
-cd server
-npm install
+### Wichtige Hinweise
+- Keine destructive Resets/Migrations ohne Absprache (keine `prisma migrate reset`).
+- Vor größeren Änderungen ein Backup erstellen und committen.
+- Prod/Dev unterscheiden: aktuell nutzen wir eine lokale Datei `dev.db`.
 
-# Client-Dependencies
-cd ../client
-npm install
-```
+**Warum kein Seed-Script:**
+- Komplexe Beziehungen zwischen Tabellen
+- TypeScript-Kompatibilitätsprobleme
+- Backups sind einfacher und zuverlässiger
+- Echte Daten sind bereits vorhanden
 
-### 3. Datenbank einrichten
-```bash
-# Zurück zum Hauptverzeichnis
-cd ..
+## Available Scripts
 
-# Datenbank wird automatisch beim ersten Start erstellt
-# Falls manuell: SQLite3-Datenbank liegt in server/prisma/dev.db
-```
+- `npm start` - Start both client and server
+- `npm run dev` - Start in development mode
+- `npm run build` - Build for production
 
-### 4. Anwendung starten
-
-#### Option A: Beide Services gleichzeitig starten
-```bash
-# Im Hauptverzeichnis
-./start-all.sh
-```
-
-#### Option B: Services einzeln starten
-```bash
-# Terminal 1: Server starten
-cd server
-npm run dev
-
-# Terminal 2: Client starten
-cd client
-npm start
-```
-
-### 5. Anwendung aufrufen
-- **Frontend**: http://localhost:3003
-- **Backend API**: http://localhost:3001
-- **Datenbank**: server/prisma/dev.db
-
-## 📁 Projektstruktur
+## Project Structure
 
 ```
-JohnnyMonkey/
-├── client/                 # React Frontend
-│   ├── src/
-│   │   ├── components/    # React Komponenten
-│   │   ├── pages/         # Seitenkomponenten
-│   │   └── hooks/         # Custom React Hooks
-│   └── package.json
-├── server/                 # Node.js Backend
-│   ├── src/
-│   │   ├── controllers/   # API Controller
-│   │   ├── routes/        # API Routen
-│   │   └── services/      # Business Logic
-│   ├── prisma/            # Datenbankschema & Migrationen
-│   └── package.json
-├── scripts/                # Hilfsskripte
+├── client/          # React frontend
+├── server/          # Node.js backend
+│   ├── prisma/      # Database schema and backups
+│   └── src/         # Server source code
 └── README.md
-```
-
-## 🗄️ Datenbank
-
-### Schema
-Die Anwendung verwendet Prisma ORM mit SQLite3. Das Schema definiert:
-
-- **User**: Schüler und Lehrer
-- **FlashcardDeck**: Karteikarten-Sammlungen
-- **Flashcard**: Einzelne Karteikarten
-- **FlashcardProgress**: Lernfortschritt der Schüler
-- **Quiz**: Quiz-Definitionen
-- **QuizParticipation**: Quiz-Teilnahmen
-
-### Backup-System
-```bash
-# Automatische Backups bei jedem Commit
-./scripts/backup-manager.sh
-
-# Manuelles Backup
-cp server/prisma/dev.db backup_$(date +%Y%m%d_%H%M%S).db
-```
-
-## 🔧 Entwicklung
-
-### Scripts
-```bash
-# Entwicklung starten
-npm run dev
-
-# Build erstellen
-npm run build
-
-# Tests ausführen
-npm test
-
-# Linting
-npm run lint
-```
-
-### Umgebungsvariablen
-Erstelle eine `.env` Datei im server-Verzeichnis:
-```env
-DATABASE_URL="file:./dev.db"
-PORT=3001
-NODE_ENV=development
-```
-
-## 📚 Features
-
-### Flashcard-System
-- **Spaced Repetition Algorithmus** (SM-2 Variante)
-- **Fortschrittsverfolgung** für jeden Schüler
-- **Qualitätsbewertung** (1-5 Skala)
-- **Automatische Wiederholungsplanung**
-
-### Quiz-System
-- **Dokumentenbasierte Quiz-Erstellung**
-- **Automatische Bewertung**
-- **Fortschrittsverfolgung**
-
-### Dateiverwaltung
-- **Hierarchische Ordnerstruktur**
-- **Unterstützte Formate**: PDF, DOCX, PPTX, Bilder
-- **Drag & Drop Upload**
-
-## 🐛 Troubleshooting
-
-### Häufige Probleme
-
-#### Server startet nicht
-```bash
-# Port-Konflikte prüfen
-lsof -i :3001
-
-# Node-Prozesse beenden
-pkill -f "node dist/index.js"
-```
-
-#### Client startet nicht
-```bash
-# Port 3003 bereits belegt
-# Lösung: Anderen Port wählen oder bestehenden Prozess beenden
-lsof -i :3003
-kill -9 <PID>
-```
-
-#### Datenbank-Probleme
-```bash
-# Datenbank zurücksetzen (VORSICHT: Alle Daten gehen verloren!)
-cd server
-rm prisma/dev.db
-npx prisma db push
-```
-
-### Logs prüfen
-```bash
-# Server-Logs
-cd server
-npm run dev
-
-# Client-Logs
-cd client
-npm start
-```
-
-## 📝 Changelog
-
-### Version 1.0.0 (2025-08-30)
-- ✅ Flashcard-System mit Spaced Repetition
-- ✅ Quiz-System mit automatischer Bewertung
-- ✅ Dateiverwaltung mit Ordnerstruktur
-- ✅ Benutzerverwaltung (Schüler/Lehrer)
-- ✅ Fortschrittsverfolgung
-- ✅ Responsive UI
-
-## 🤝 Beitragen
-
-1. Fork das Repository
-2. Erstelle einen Feature-Branch (`git checkout -b feature/AmazingFeature`)
-3. Committe deine Änderungen (`git commit -m 'Add some AmazingFeature'`)
-4. Push zum Branch (`git push origin feature/AmazingFeature`)
-5. Öffne einen Pull Request
-
-## 📄 Lizenz
-
-Dieses Projekt ist unter der MIT-Lizenz lizenziert.
-
-## 📞 Support
-
-Bei Fragen oder Problemen:
-- Erstelle ein Issue auf GitHub
-- Kontaktiere das Entwicklungsteam
-
----
-
-**Viel Erfolg beim Lernen mit JohnnyMonkey! 🐵📚** 
+``` 

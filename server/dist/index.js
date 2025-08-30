@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -6,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const prisma_1 = require("./generated/prisma");
+const portManager_1 = require("./utils/portManager");
 const auth_1 = __importDefault(require("./routes/auth"));
 const users_1 = __importDefault(require("./routes/users"));
 const learningGroups_1 = __importDefault(require("./routes/learningGroups"));
@@ -22,10 +32,12 @@ const quizzes_1 = __importDefault(require("./routes/quizzes"));
 const lessonQuizzes_1 = __importDefault(require("./routes/lessonQuizzes"));
 const quizSessions_1 = __importDefault(require("./routes/quizSessions"));
 const quizParticipations_1 = __importDefault(require("./routes/quizParticipations"));
+const grades_routes_1 = __importDefault(require("./routes/grades.routes"));
+const fileSystemPaths_1 = __importDefault(require("./routes/fileSystemPaths"));
+const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const prisma = new prisma_1.PrismaClient();
-const port = 3005;
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 // Routes
@@ -45,11 +57,37 @@ app.use('/api/quizzes', quizzes_1.default);
 app.use('/api/lesson-quizzes', lessonQuizzes_1.default);
 app.use('/api/quiz-sessions', quizSessions_1.default);
 app.use('/api/quiz-participations', quizParticipations_1.default);
+app.use('/api/grades', grades_routes_1.default);
+app.use('/api/file-system-paths', fileSystemPaths_1.default);
+app.use('/api/flashcards', flashcards_1.default);
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
-});
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
+// Graceful shutdown
+process.on('SIGINT', () => __awaiter(void 0, void 0, void 0, function* () {
+    console.log('\n🛑 Shutting down server gracefully...');
+    yield prisma.$disconnect();
+    process.exit(0);
+}));
+process.on('SIGTERM', () => __awaiter(void 0, void 0, void 0, function* () {
+    console.log('\n🛑 Shutting down server gracefully...');
+    yield prisma.$disconnect();
+    process.exit(0);
+}));
+// Start server with automatic port management
+function startServer() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            // Cleanup ports before starting
+            yield portManager_1.PortManager.cleanupPorts();
+            // Start server on specific port 3001
+            const { server, port } = yield portManager_1.PortManager.startServer(app, 3001);
+            console.log(`🎯 Server is running on port ${port}`);
+            // Store port in global for potential external access
+            global.SERVER_PORT = port;
+        }
+        catch (error) {
+            console.error('❌ Failed to start server:', error);
+            process.exit(1);
+        }
+    });
+}
+startServer();

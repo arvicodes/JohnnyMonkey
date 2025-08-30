@@ -14,4 +14,5 @@ router.get('/:sessionId/quiz', QuizSessionController_1.getQuizForSession);
 router.get('/:sessionId/results', QuizSessionController_1.getSessionResults);
 router.get('/:quizId/sessions', QuizSessionController_1.getSessionsForQuiz);
 router.post('/:sessionId/stop', QuizSessionController_1.stopQuizSession);
+router.post('/:sessionId/release-results', QuizSessionController_1.releaseResults);
 exports.default = router;

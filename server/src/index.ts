@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from './generated/prisma';
+import { PortManager } from './utils/portManager';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import learningGroupRoutes from './routes/learningGroups';
@@ -17,11 +18,13 @@ import quizRoutes from './routes/quizzes';
 import lessonQuizRoutes from './routes/lessonQuizzes';
 import quizSessionRoutes from './routes/quizSessions';
 import quizParticipationRoutes from './routes/quizParticipations';
+import gradesRoutes from './routes/grades.routes';
+import fileSystemPathsRoutes from './routes/fileSystemPaths';
+import flashcardRoutes from './routes/flashcards';
 import path from 'path';
 
 const app = express();
 const prisma = new PrismaClient();
-const port = 3005;
 
 app.use(cors());
 app.use(express.json());
@@ -43,13 +46,44 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/lesson-quizzes', lessonQuizRoutes);
 app.use('/api/quiz-sessions', quizSessionRoutes);
 app.use('/api/quiz-participations', quizParticipationRoutes);
+app.use('/api/grades', gradesRoutes);
+app.use('/api/file-system-paths', fileSystemPathsRoutes);
+app.use('/api/flashcards', flashcardRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-}); 
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Shutting down server gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+// Start server with automatic port management
+async function startServer() {
+  try {
+    // Cleanup ports before starting
+    await PortManager.cleanupPorts();
+    
+    // Start server on specific port 3001
+    const { server, port } = await PortManager.startServer(app, 3001);
+    
+    console.log(`🎯 Server is running on port ${port}`);
+    
+    // Store port in global for potential external access
+    (global as any).SERVER_PORT = port;
+    
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer(); 

@@ -1,0 +1,216 @@
+
+> client@0.1.0 start
+> PORT=3003 react-scripts start
+
+(node:11000) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:11000) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+Starting the development server...
+
+Compiled with warnings.
+
+[eslint] 
+src/components/GradingSchemaManager.tsx
+  Line 54:6:  React Hook useEffect has a missing dependency: 'fetchSchemas'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/LessonContentDialog.tsx
+  Line 324:6:  React Hook useEffect has missing dependencies: 'fetchLessonMaterials' and 'fetchLessonQuiz'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/MaterialCreator.tsx
+  Line 26:3:   'FormHelperText' is defined but never used        @typescript-eslint/no-unused-vars
+  Line 37:13:  'FolderIcon' is defined but never used            @typescript-eslint/no-unused-vars
+  Line 41:16:  'PlayIcon' is defined but never used              @typescript-eslint/no-unused-vars
+  Line 52:11:  'FileInfo' is defined but never used              @typescript-eslint/no-unused-vars
+  Line 377:9:  'queryClient' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+src/components/QuizAssignmentDialog.tsx
+  Line 58:6:  React Hook useEffect has a missing dependency: 'fetchAvailableQuizzes'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/QuizParticipationPlayer.tsx
+  Line 116:6:  React Hook useEffect has missing dependencies: 'loadQuizData' and 'loadResults'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 220:6:  React Hook useEffect has a missing dependency: 'finishQuiz'. Either include it or remove the dependency array                        react-hooks/exhaustive-deps
+
+src/components/QuizPlayer.tsx
+  Line 96:6:  React Hook useEffect has a missing dependency: 'finishQuiz'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/QuizSessionManager.tsx
+  Line 24:13:  'CancelIcon' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+  Line 72:6:   React Hook useEffect has a missing dependency: 'fetchQuizData'. Either include it or remove the dependency array            react-hooks/exhaustive-deps
+  Line 79:6:   React Hook useEffect has a missing dependency: 'fetchLastSessionResults'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 86:6:   React Hook useEffect has a missing dependency: 'fetchActiveSession'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
+
+src/components/QuizStatisticsModal.tsx
+  Line 14:3:   'Divider' is defined but never used           @typescript-eslint/no-unused-vars
+  Line 18:17:  'TrendingUpIcon' is defined but never used    @typescript-eslint/no-unused-vars
+  Line 19:19:  'TrendingDownIcon' is defined but never used  @typescript-eslint/no-unused-vars
+  Line 20:18:  'CheckIcon' is defined but never used         @typescript-eslint/no-unused-vars
+  Line 21:13:  'CancelIcon' is defined but never used        @typescript-eslint/no-unused-vars
+
+src/components/StudentDashboard.tsx
+  Line 451:6:  React Hook useEffect has a missing dependency: 'fetchAllContent'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/SubjectManager.tsx
+  Line 2:35:    'Card' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+  Line 2:41:    'CardContent' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+  Line 3:17:    'AddIcon' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+  Line 3:34:    'EditIcon' is defined but never used                                                                                                             @typescript-eslint/no-unused-vars
+  Line 3:54:    'DeleteIcon' is defined but never used                                                                                                           @typescript-eslint/no-unused-vars
+  Line 3:77:    'StorageIcon' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+  Line 3:172:   'CloseIcon' is defined but never used                                                                                                            @typescript-eslint/no-unused-vars
+  Line 880:6:   React Hook useEffect has missing dependencies: 'fetchLessonMaterials' and 'fetchLessonQuiz'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 1113:9:  'colors' is assigned a value but never used                                                                                                      @typescript-eslint/no-unused-vars
+  Line 1193:6:  React Hook useEffect has a missing dependency: 'fetchSubjects'. Either include it or remove the dependency array                                 react-hooks/exhaustive-deps
+  Line 1202:6:  React Hook useEffect has missing dependencies: 'blocks' and 'fetchBlocks'. Either include them or remove the dependency array                    react-hooks/exhaustive-deps
+  Line 1211:6:  React Hook useEffect has missing dependencies: 'fetchUnits' and 'units'. Either include them or remove the dependency array                      react-hooks/exhaustive-deps
+  Line 1220:6:  React Hook useEffect has missing dependencies: 'fetchTopics' and 'topics'. Either include them or remove the dependency array                    react-hooks/exhaustive-deps
+  Line 1229:6:  React Hook useEffect has missing dependencies: 'fetchLessons' and 'lessons'. Either include them or remove the dependency array                  react-hooks/exhaustive-deps
+
+src/components/TeacherDashboard.tsx
+  Line 29:3:    'Paper' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  Line 32:17:   'TimeIcon' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 34:17:   'VisibilityIcon' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+  Line 35:13:   'CreateIcon' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  Line 36:17:   'AssessmentIcon' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+  Line 45:11:   'QuizIcon' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 51:10:   'QuizSessionManager' is defined but never used                                                                  @typescript-eslint/no-unused-vars
+  Line 112:10:  'groupContents' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  Line 112:25:  'setGroupContents' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  Line 113:10:  'contentInputs' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  Line 113:25:  'setContentInputs' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  Line 153:6:   React Hook useEffect has a missing dependency: 'fetchGroups'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/game/BottomNavigation.tsx
+  Line 39:6:  React Hook useEffect has a missing dependency: 'tabs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/game/MapContainer.tsx
+  Line 1:10:  'useState' is defined but never used   @typescript-eslint/no-unused-vars
+  Line 1:28:  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+src/components/game/TopicSelector.tsx
+  Line 3:10:  'Card' is defined but never used             @typescript-eslint/no-unused-vars
+  Line 3:16:  'CardContent' is defined but never used      @typescript-eslint/no-unused-vars
+  Line 3:29:  'CardDescription' is defined but never used  @typescript-eslint/no-unused-vars
+  Line 3:46:  'CardHeader' is defined but never used       @typescript-eslint/no-unused-vars
+  Line 3:58:  'CardTitle' is defined but never used        @typescript-eslint/no-unused-vars
+  Line 7:10:  'Tabs' is defined but never used             @typescript-eslint/no-unused-vars
+  Line 7:16:  'TabsContent' is defined but never used      @typescript-eslint/no-unused-vars
+  Line 7:29:  'TabsList' is defined but never used         @typescript-eslint/no-unused-vars
+  Line 7:39:  'TabsTrigger' is defined but never used      @typescript-eslint/no-unused-vars
+  Line 12:3:  'Shield' is defined but never used           @typescript-eslint/no-unused-vars
+
+src/components/ui/card.tsx
+  Line 32:3:  Headings must have content and the content must be accessible by a screen reader  jsx-a11y/heading-has-content
+
+src/pages/GeoCodingQuest.tsx
+  Line 61:9:   'navigate' is assigned a value but never used                                                                              @typescript-eslint/no-unused-vars
+  Line 185:6:  React Hook useEffect has a missing dependency: 'updatePositionMutation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/LearningGroupPage.tsx
+  Line 8:3:    'Paper' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+  Line 125:6:  React Hook useEffect has missing dependencies: 'fetchAssignments' and 'fetchGroupDetails'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/GradingSchemaManager.tsx
+  Line 54:6:  React Hook useEffect has a missing dependency: 'fetchSchemas'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/LessonContentDialog.tsx
+  Line 324:6:  React Hook useEffect has missing dependencies: 'fetchLessonMaterials' and 'fetchLessonQuiz'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/MaterialCreator.tsx
+  Line 26:3:   'FormHelperText' is defined but never used        @typescript-eslint/no-unused-vars
+  Line 37:13:  'FolderIcon' is defined but never used            @typescript-eslint/no-unused-vars
+  Line 41:16:  'PlayIcon' is defined but never used              @typescript-eslint/no-unused-vars
+  Line 52:11:  'FileInfo' is defined but never used              @typescript-eslint/no-unused-vars
+  Line 377:9:  'queryClient' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+src/components/QuizAssignmentDialog.tsx
+  Line 58:6:  React Hook useEffect has a missing dependency: 'fetchAvailableQuizzes'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/QuizParticipationPlayer.tsx
+  Line 116:6:  React Hook useEffect has missing dependencies: 'loadQuizData' and 'loadResults'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 220:6:  React Hook useEffect has a missing dependency: 'finishQuiz'. Either include it or remove the dependency array                        react-hooks/exhaustive-deps
+
+src/components/QuizPlayer.tsx
+  Line 96:6:  React Hook useEffect has a missing dependency: 'finishQuiz'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/QuizSessionManager.tsx
+  Line 24:13:  'CancelIcon' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+  Line 72:6:   React Hook useEffect has a missing dependency: 'fetchQuizData'. Either include it or remove the dependency array            react-hooks/exhaustive-deps
+  Line 79:6:   React Hook useEffect has a missing dependency: 'fetchLastSessionResults'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 86:6:   React Hook useEffect has a missing dependency: 'fetchActiveSession'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
+
+src/components/QuizStatisticsModal.tsx
+  Line 14:3:   'Divider' is defined but never used           @typescript-eslint/no-unused-vars
+  Line 18:17:  'TrendingUpIcon' is defined but never used    @typescript-eslint/no-unused-vars
+  Line 19:19:  'TrendingDownIcon' is defined but never used  @typescript-eslint/no-unused-vars
+  Line 20:18:  'CheckIcon' is defined but never used         @typescript-eslint/no-unused-vars
+  Line 21:13:  'CancelIcon' is defined but never used        @typescript-eslint/no-unused-vars
+
+src/components/StudentDashboard.tsx
+  Line 451:6:  React Hook useEffect has a missing dependency: 'fetchAllContent'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/SubjectManager.tsx
+  Line 2:35:    'Card' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+  Line 2:41:    'CardContent' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+  Line 3:17:    'AddIcon' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+  Line 3:34:    'EditIcon' is defined but never used                                                                                                             @typescript-eslint/no-unused-vars
+  Line 3:54:    'DeleteIcon' is defined but never used                                                                                                           @typescript-eslint/no-unused-vars
+  Line 3:77:    'StorageIcon' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+  Line 3:172:   'CloseIcon' is defined but never used                                                                                                            @typescript-eslint/no-unused-vars
+  Line 880:6:   React Hook useEffect has missing dependencies: 'fetchLessonMaterials' and 'fetchLessonQuiz'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 1113:9:  'colors' is assigned a value but never used                                                                                                      @typescript-eslint/no-unused-vars
+  Line 1193:6:  React Hook useEffect has a missing dependency: 'fetchSubjects'. Either include it or remove the dependency array                                 react-hooks/exhaustive-deps
+  Line 1202:6:  React Hook useEffect has missing dependencies: 'blocks' and 'fetchBlocks'. Either include them or remove the dependency array                    react-hooks/exhaustive-deps
+  Line 1211:6:  React Hook useEffect has missing dependencies: 'fetchUnits' and 'units'. Either include them or remove the dependency array                      react-hooks/exhaustive-deps
+  Line 1220:6:  React Hook useEffect has missing dependencies: 'fetchTopics' and 'topics'. Either include them or remove the dependency array                    react-hooks/exhaustive-deps
+  Line 1229:6:  React Hook useEffect has missing dependencies: 'fetchLessons' and 'lessons'. Either include them or remove the dependency array                  react-hooks/exhaustive-deps
+
+src/components/TeacherDashboard.tsx
+  Line 29:3:    'Paper' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  Line 32:17:   'TimeIcon' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 34:17:   'VisibilityIcon' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+  Line 35:13:   'CreateIcon' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+  Line 36:17:   'AssessmentIcon' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+  Line 45:11:   'QuizIcon' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  Line 51:10:   'QuizSessionManager' is defined but never used                                                                  @typescript-eslint/no-unused-vars
+  Line 112:10:  'groupContents' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  Line 112:25:  'setGroupContents' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  Line 113:10:  'contentInputs' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  Line 113:25:  'setContentInputs' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  Line 153:6:   React Hook useEffect has a missing dependency: 'fetchGroups'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/game/BottomNavigation.tsx
+  Line 39:6:  React Hook useEffect has a missing dependency: 'tabs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/components/game/MapContainer.tsx
+  Line 1:10:  'useState' is defined but never used   @typescript-eslint/no-unused-vars
+  Line 1:28:  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+src/components/game/TopicSelector.tsx
+  Line 3:10:  'Card' is defined but never used             @typescript-eslint/no-unused-vars
+  Line 3:16:  'CardContent' is defined but never used      @typescript-eslint/no-unused-vars
+  Line 3:29:  'CardDescription' is defined but never used  @typescript-eslint/no-unused-vars
+  Line 3:46:  'CardHeader' is defined but never used       @typescript-eslint/no-unused-vars
+  Line 3:58:  'CardTitle' is defined but never used        @typescript-eslint/no-unused-vars
+  Line 7:10:  'Tabs' is defined but never used             @typescript-eslint/no-unused-vars
+  Line 7:16:  'TabsContent' is defined but never used      @typescript-eslint/no-unused-vars
+  Line 7:29:  'TabsList' is defined but never used         @typescript-eslint/no-unused-vars
+  Line 7:39:  'TabsTrigger' is defined but never used      @typescript-eslint/no-unused-vars
+  Line 12:3:  'Shield' is defined but never used           @typescript-eslint/no-unused-vars
+
+src/components/ui/card.tsx
+  Line 32:3:  Headings must have content and the content must be accessible by a screen reader  jsx-a11y/heading-has-content
+
+src/pages/GeoCodingQuest.tsx
+  Line 61:9:   'navigate' is assigned a value but never used                                                                              @typescript-eslint/no-unused-vars
+  Line 185:6:  React Hook useEffect has a missing dependency: 'updatePositionMutation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/LearningGroupPage.tsx
+  Line 8:3:    'Paper' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+  Line 125:6:  React Hook useEffect has missing dependencies: 'fetchAssignments' and 'fetchGroupDetails'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+No issues found.

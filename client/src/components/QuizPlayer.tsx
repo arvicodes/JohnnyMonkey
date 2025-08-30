@@ -33,6 +33,8 @@ interface QuizQuestion {
   question: string;
   correctAnswer: string;
   options: string[];
+  tip: string;
+  explanation: string;
   order: number;
 }
 
@@ -61,6 +63,9 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [wasAborted, setWasAborted] = useState(false);
   const [focusedOptionIndex, setFocusedOptionIndex] = useState(0);
+  const [showTip, setShowTip] = useState(false);
+  const [usedTips, setUsedTips] = useState<Set<string>>(new Set()); // Neue State für verwendete Tipps
+  const [tipPenalty, setTipPenalty] = useState(0); // Neue State für Tipp-Punkteabzug
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -107,8 +112,32 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex + 1].id] || '');
-      setFocusedOptionIndex(0);
+    } else {
+      finishQuiz();
     }
+  };
+
+  // Tipp-Funktionalität mit Punkteabzug
+  const handleTipUse = (questionId: string) => {
+    if (!usedTips.has(questionId)) {
+      setUsedTips(prev => new Set(Array.from(prev).concat(questionId)));
+      // Punkteabzug für Tipp: 10% der möglichen Punkte pro Frage
+      const pointsPerQuestion = 100 / questions.length;
+      const penalty = pointsPerQuestion * 0.1; // 10% Abzug
+      setTipPenalty(prev => prev + penalty);
+    }
+    setShowTip(!showTip);
+  };
+
+  const calculateFinalScore = (): number => {
+    const correctAnswers = Object.keys(answers).filter(
+      questionId => answers[questionId] === questions.find(q => q.id === questionId)?.correctAnswer
+    ).length;
+    
+    const baseScore = (correctAnswers / questions.length) * 100;
+    const finalScore = Math.max(0, baseScore - tipPenalty); // Mindestens 0 Punkte
+    
+    return Math.round(finalScore * 100) / 100; // Auf 2 Dezimalstellen runden
   };
 
   const handlePreviousQuestion = () => {
@@ -116,12 +145,17 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex - 1].id] || '');
       setFocusedOptionIndex(0);
+      setShowTip(false);
     }
   };
 
   const finishQuiz = () => {
     const correctAnswers = questions.filter(q => answers[q.id] === q.correctAnswer).length;
-    setScore(correctAnswers);
+    const baseScore = correctAnswers;
+    
+    // Berechne den finalen Score mit Tipp-Punkteabzug
+    const finalScore = calculateFinalScore();
+    setScore(finalScore);
     setShowResults(true);
   };
 
@@ -284,9 +318,35 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                 mb: 1, 
                 color: getPerformanceColor(percentage),
                 fontWeight: 600,
-                fontSize: '0.8rem'
+                fontSize: '0.9rem'
               }}>
                 {getPerformanceText(percentage)}
+              </Typography>
+              
+              {/* Tipp-Punkteabzug anzeigen */}
+              {tipPenalty > 0 && (
+                <Box sx={{ 
+                  mt: 1, 
+                  p: 1, 
+                  background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                  borderRadius: 1, 
+                  border: '1px solid #ff9800'
+                }}>
+                  <Typography variant="body2" sx={{ 
+                    color: '#e65100', 
+                    fontWeight: 500,
+                    fontSize: '0.8rem'
+                  }}>
+                    ⚠️ <strong>Tipp-Punkteabzug:</strong> -{Math.round(tipPenalty * 10) / 10}%
+                  </Typography>
+                </Box>
+              )}
+              
+              <Typography variant="body2" sx={{ 
+                color: '#666',
+                fontSize: '0.8rem'
+              }}>
+                {score} von {questions.length} Fragen richtig beantwortet
               </Typography>
 
               <Box sx={{ mb: 1.5 }}>
@@ -414,6 +474,25 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                                 <CheckIcon sx={{ fontSize: 16 }} />
                                 Richtige Antwort: {question.correctAnswer}
                               </Typography>
+                            )}
+                            
+                            {/* Erklärung anzeigen */}
+                            {question.explanation && (
+                              <Box sx={{ 
+                                mt: 2, 
+                                p: 2, 
+                                background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
+                                borderRadius: 2, 
+                                border: '2px solid #2196f3'
+                              }}>
+                                <Typography variant="body2" sx={{ 
+                                  color: '#1565c0', 
+                                  fontWeight: 500,
+                                  fontStyle: 'italic'
+                                }}>
+                                  📚 <strong>Erklärung:</strong> {question.explanation}
+                                </Typography>
+                              </Box>
                             )}
                           </Box>
                         </Box>
@@ -671,6 +750,64 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
                   ))}
                 </RadioGroup>
               </FormControl>
+
+              {/* Tip-Button - nach unten verschoben und kleiner */}
+              {currentQuestion.tip && (
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleTipUse(currentQuestion.id)}
+                    sx={{
+                      color: '#ff9800',
+                      borderColor: '#ff9800',
+                      fontSize: '0.7rem',
+                      py: 0.5,
+                      px: 1.5,
+                      minHeight: 'auto',
+                      '&:hover': {
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
+                  </Button>
+                  
+                  {/* Warnung über Punkteabzug */}
+                  {!usedTips.has(currentQuestion.id) && (
+                    <Typography variant="caption" sx={{ 
+                      display: 'block', 
+                      mt: 0.5, 
+                      color: '#f57c00', 
+                      fontSize: '0.6rem',
+                      fontStyle: 'italic'
+                    }}>
+                      ⚠️ Verwendung kostet {Math.round((100 / questions.length) * 0.1 * 10) / 10}% der Gesamtpunktzahl
+                    </Typography>
+                  )}
+                  
+                  {showTip && (
+                    <Box sx={{ 
+                      mt: 2, 
+                      p: 2, 
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                      borderRadius: 2, 
+                      border: '2px solid #ff9800'
+                    }}>
+                      <Typography variant="body1" sx={{ 
+                        color: '#e65100', 
+                        fontWeight: 500,
+                        fontStyle: 'italic'
+                      }}>
+                        💡 <strong>Tip:</strong> {currentQuestion.tip.replace(/^p:\s*/, '')}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
+              {/* Erklärungen werden nur noch in den Ergebnissen angezeigt, nicht während des Quiz */}
             </CardContent>
           </Card>
 

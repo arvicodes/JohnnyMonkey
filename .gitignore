@@ -36,4 +36,16 @@ yarn-error.log*
 .env.production.local
 
 # Prisma
-prisma/*.db 
+prisma/*.db
+
+# Database backups (keep only important ones)
+backup_*.db
+backup_*.sqlite3
+db-backup-*.sqlite3
+db-checkpoint-*.sqlite3
+db-backup-*.db
+db-checkpoint-*.db
+
+# Keep only the most recent backup
+!backup_latest.db
+!db-latest.sqlite3

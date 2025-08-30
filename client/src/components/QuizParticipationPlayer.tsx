@@ -36,6 +36,8 @@ interface QuizQuestion {
   question: string;
   correctAnswer: string;
   options: string[];
+  tip: string;
+  explanation: string;
   order: number;
 }
 
@@ -74,12 +76,17 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   const [timeLeft, setTimeLeft] = useState(0);
 
   const [showResults, setShowResults] = useState(false);
+  const [finalPercentage, setFinalPercentage] = useState<number | null>(null);
+  const [resultAnswersByQuestionId, setResultAnswersByQuestionId] = useState<Record<string, { selected: string; correct: string; isCorrect: boolean }>>({});
   const [score, setScore] = useState(0);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [wasAborted, setWasAborted] = useState(false);
   const [focusedOptionIndex, setFocusedOptionIndex] = useState(0);
+  const [showTip, setShowTip] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usedTips, setUsedTips] = useState<Set<string>>(new Set()); // Neue State für verwendete Tipps
+  const [tipPenalty, setTipPenalty] = useState(0); // Neue State für Tipp-Punkteabzug
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Prüfe den Status der Teilnahme beim Laden
@@ -121,6 +128,13 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       if (response.ok) {
         const quizData = await response.json();
         setQuiz(quizData);
+        setQuestions(quizData.questions);
+        
+        // Debug: Überprüfe die geladenen Fragen
+        console.log('🔍 Quiz-Daten geladen:', quizData);
+        console.log('🔍 Fragen geladen:', quizData.questions.length);
+        console.log('🔍 Fragen mit Erklärungen:', quizData.questions.filter((q: any) => q.explanation).length);
+        console.log('🔍 Beispiel-Frage:', quizData.questions[0]);
         
         // Fragen mischen wenn gewünscht
         let shuffledQuestions = [...quizData.questions];
@@ -139,6 +153,16 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
         setQuestions(shuffledQuestions);
         setTimeLeft(quizData.timeLimit * 60);
         setLoading(false);
+        
+        // Überprüfe, ob es bereits eine aktive Teilnahme gibt
+        if (quizData.participations && quizData.participations.length > 0) {
+          const activeParticipation = quizData.participations.find((p: any) => p.studentId === studentId);
+          if (activeParticipation) {
+            console.log('🔍 Aktive Teilnahme gefunden:', activeParticipation);
+            setParticipation(activeParticipation);
+            await loadResults(activeParticipation.id);
+          }
+        }
       } else {
         setError('Quiz konnte nicht geladen werden');
       }
@@ -161,22 +185,66 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
           maxScore: results.participation.maxScore
         });
         
-        // Convert answers back to the format expected by the component
+        // Map results to current question ids
         const answersMap: { [key: string]: string } = {};
+        const resultsMap: Record<string, { selected: string; correct: string; isCorrect: boolean }> = {};
+        
+        // Verwende die bereits geladenen Quiz-Fragen mit Tips und Erklärungen
         results.answers.forEach((answer: any) => {
-          // Find the question ID by matching the question text
+          // Suche nach der Frage basierend auf dem Fragetext
           const question = questions.find(q => q.question === answer.question);
           if (question) {
             answersMap[question.id] = answer.selectedAnswer;
+            resultsMap[question.id] = {
+              selected: answer.selectedAnswer,
+              correct: answer.correctAnswer,
+              isCorrect: answer.selectedAnswer === answer.correctAnswer
+            };
           }
         });
+        
         setAnswers(answersMap);
+        setResultAnswersByQuestionId(resultsMap);
+        
+        // Berechne den finalen Prozentsatz
+        const correctCount = Object.values(resultsMap).filter(r => r.isCorrect).length;
+        const basePercentage = (correctCount / questions.length) * 100;
+        
+        // Berechne den finalen Prozentsatz mit Tipp-Punkteabzug
+        const finalScore = calculateFinalScore();
+        setFinalPercentage(finalScore);
+        
+        setShowResults(true);
+        setLoading(false);
       } else {
-        setError('Ergebnisse konnten nicht geladen werden');
+        setError('Die Ergebnisse werden in Kürze von deiner Lehrkraft freigeschaltet');
       }
     } catch (err) {
-      setError('Fehler beim Laden der Ergebnisse');
+      setError('Die Ergebnisse werden in Kürze von deiner Lehrkraft freigeschaltet');
     }
+  };
+
+  // Tipp-Funktionalität mit Punkteabzug
+  const handleTipUse = (questionId: string) => {
+    if (!usedTips.has(questionId)) {
+      setUsedTips(prev => new Set(Array.from(prev).concat(questionId)));
+      // Punkteabzug für Tipp: 10% der möglichen Punkte pro Frage
+      const pointsPerQuestion = 100 / questions.length;
+      const penalty = pointsPerQuestion * 0.1; // 10% Abzug
+      setTipPenalty(prev => prev + penalty);
+    }
+    setShowTip(!showTip);
+  };
+
+  const calculateFinalScore = (): number => {
+    const correctAnswers = Object.keys(resultAnswersByQuestionId).filter(
+      questionId => resultAnswersByQuestionId[questionId].isCorrect
+    ).length;
+    
+    const baseScore = (correctAnswers / questions.length) * 100;
+    const finalScore = Math.max(0, baseScore - tipPenalty); // Mindestens 0 Punkte
+    
+    return Math.round(finalScore * 100) / 100; // Auf 2 Dezimalstellen runden
   };
 
   const handleStartParticipation = async () => {
@@ -232,6 +300,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex + 1].id] || '');
       setFocusedOptionIndex(0);
+      setShowTip(false);
     }
   };
 
@@ -240,13 +309,15 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
       setCurrentQuestionIndex(currentQuestionIndex - 1);
       setSelectedAnswer(answers[questions[currentQuestionIndex - 1].id] || '');
       setFocusedOptionIndex(0);
+      setShowTip(false);
     }
   };
 
   const finishQuiz = async () => {
     const correctAnswers = questions.filter(q => answers[q.id] === q.correctAnswer).length;
     setScore(correctAnswers);
-    setShowResults(true);
+    // Pre-fill participation.maxScore if missing so percentage fallback works immediately
+    setParticipation(prev => prev ? { ...prev, maxScore: prev.maxScore || questions.length } : prev);
 
     if (!participation?.id) {
       console.error('Keine participation ID verfügbar');
@@ -267,7 +338,12 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Quiz submission successful:', result);
+        if (typeof result.percentage === 'number') {
+          setFinalPercentage(result.percentage);
+        }
+        // Ensure we have authoritative answers/correctness before showing
+        await loadResults(participation.id);
+        setShowResults(true);
       } else {
         const error = await response.text();
         console.error('Quiz submission failed:', error);
@@ -448,7 +524,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
   }
 
   if (showResults) {
-    const percentage = Math.round((score / questions.length) * 100);
+    const percentage = finalPercentage ?? Math.round((score / questions.length) * 100);
     
     const getPerformanceColor = (percentage: number) => {
       if (percentage >= 90) return '#4caf50';
@@ -600,9 +676,31 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
               </Typography>
               
               <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+                {/* Debug-Info */}
+                <Box sx={{ 
+                  mb: 1, 
+                  p: 1, 
+                  background: 'rgba(255,255,0,0.1)', 
+                  border: '1px solid orange',
+                  borderRadius: 1
+                }}>
+                  <Typography variant="caption" sx={{ color: 'orange', fontSize: '0.6rem' }}>
+                    🔍 DEBUG: {questions.length} Fragen geladen, {questions.filter(q => q.explanation).length} mit Erklärungen
+                  </Typography>
+                  {questions.length > 0 && (
+                    <Typography variant="caption" sx={{ color: 'orange', fontSize: '0.6rem', display: 'block', mt: 0.5 }}>
+                      Beispiel: explanation = "{questions[0].explanation || 'UNDEFINED'}"
+                    </Typography>
+                  )}
+                </Box>
+                
                 {questions.map((question, index) => {
-                  const userAnswer = answers[question.id];
-                  const isCorrect = userAnswer === question.correctAnswer;
+                  const resultForQ = resultAnswersByQuestionId[question.id];
+                  const userAnswer = resultForQ?.selected ?? answers[question.id];
+                  const isCorrect = resultForQ ? resultForQ.isCorrect : userAnswer === question.correctAnswer;
+                  const userAnswerText = userAnswer ? `${userAnswer}: ${question.options.find((opt: string) => opt.startsWith(userAnswer + ')'))?.replace(/^[a-d]\)\s*/, '') || ''}` : 'Keine Antwort';
+                  const correctKey = resultForQ?.correct ?? question.correctAnswer;
+                  const correctAnswerText = `${correctKey}: ${question.options.find((opt: string) => opt.startsWith(correctKey + ')'))?.replace(/^[a-d]\)\s*/, '') || ''}`;
                   
                   return (
                     <Card 
@@ -643,14 +741,14 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                               {question.question}
                             </Typography>
                             
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                              <Typography variant="caption" sx={{ 
-                                color: isCorrect ? '#4caf50' : '#f44336',
-                                fontWeight: 600,
-                                fontSize: '0.6rem'
-                              }}>
-                                Ihre Antwort: {userAnswer || 'Keine Antwort'}
-                              </Typography>
+                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                               <Typography variant="caption" sx={{ 
+                                 color: isCorrect ? '#4caf50' : '#f44336',
+                                 fontWeight: 600,
+                                 fontSize: '0.6rem'
+                               }}>
+                                 Deine Antwort: {userAnswerText}
+                               </Typography>
                               {isCorrect ? (
                                 <CheckIcon sx={{ color: '#4caf50', fontSize: 14 }} />
                               ) : (
@@ -658,7 +756,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                               )}
                             </Box>
                             
-                            {!isCorrect && (
+                             {!isCorrect && (
                               <Typography variant="caption" sx={{ 
                                 color: '#4caf50',
                                 fontWeight: 600,
@@ -668,7 +766,37 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                                 fontSize: '0.6rem'
                               }}>
                                 <CheckIcon sx={{ fontSize: 12 }} />
-                                Richtige Antwort: {question.correctAnswer}
+                                Richtige Antwort: {correctAnswerText}
+                              </Typography>
+                            )}
+                            
+                            {/* Erklärung anzeigen */}
+                            {question.explanation ? (
+                              <Box sx={{ 
+                                mt: 1, 
+                                p: 1, 
+                                background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
+                                borderRadius: 0.5, 
+                                border: '1px solid #2196f3'
+                              }}>
+                                <Typography variant="caption" sx={{ 
+                                  color: '#1565c0', 
+                                  fontWeight: 500,
+                                  fontStyle: 'italic',
+                                  fontSize: '0.6rem'
+                                }}>
+                                  📚 <strong>Erklärung:</strong> {question.explanation}
+                                </Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="caption" sx={{ 
+                                color: 'orange', 
+                                fontStyle: 'italic',
+                                fontSize: '0.6rem',
+                                mt: 1,
+                                display: 'block'
+                              }}>
+                                ⚠️ Keine Erklärung verfügbar (Debug: explanation = "{question.explanation}")
                               </Typography>
                             )}
                           </Box>
@@ -928,6 +1056,65 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
                   ))}
                 </RadioGroup>
               </FormControl>
+
+              {/* Tip-Button - nach unten verschoben und kleiner */}
+              {currentQuestion.tip && (
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleTipUse(currentQuestion.id)}
+                    sx={{
+                      color: '#ff9800',
+                      borderColor: '#ff9800',
+                      fontSize: '0.65rem',
+                      py: 0.25,
+                      px: 1,
+                      minHeight: 'auto',
+                      '&:hover': {
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(255, 152, 0, 0.04)'
+                      }
+                    }}
+                  >
+                    {showTip ? 'Tip ausblenden' : 'Tip erhalten'}
+                  </Button>
+                  
+                  {/* Warnung über Punkteabzug */}
+                  {!usedTips.has(currentQuestion.id) && (
+                    <Typography variant="caption" sx={{ 
+                      display: 'block', 
+                      mt: 0.5, 
+                      color: '#f57c00', 
+                      fontSize: '0.6rem',
+                      fontStyle: 'italic'
+                    }}>
+                      ⚠️ Verwendung kostet {Math.round((100 / questions.length) * 0.1 * 10) / 10}% der Gesamtpunktzahl
+                    </Typography>
+                  )}
+                  
+                  {showTip && (
+                    <Box sx={{ 
+                      mt: 1, 
+                      p: 1, 
+                      background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', 
+                      borderRadius: 1, 
+                      border: '1px solid #ff9800'
+                    }}>
+                      <Typography variant="body2" sx={{ 
+                        color: '#e65100', 
+                        fontWeight: 500,
+                        fontStyle: 'italic',
+                        fontSize: '0.7rem'
+                      }}>
+                        💡 <strong>Tip:</strong> {currentQuestion.tip.replace(/^p:\s*/, '')}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
+              {/* Erklärungen werden nur noch in den Ergebnissen angezeigt, nicht während des Quiz */}
             </CardContent>
           </Card>
 

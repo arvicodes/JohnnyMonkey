@@ -9,6 +9,8 @@ import { QuizPlayerPage } from './pages/QuizPlayerPage';
 import { QuizSessionPage } from './pages/QuizSessionPage';
 import { QuizParticipationPage } from './pages/QuizParticipationPage';
 
+import { FlashcardImportExportPage } from './pages/FlashcardImportExportPage';
+
 import { Snackbar, Alert } from '@mui/material';
 
 interface User {
@@ -133,6 +135,8 @@ function AppContent() {
         <Route path="/quiz-player/:quizId" element={<QuizPlayerPage />} />
         <Route path="/quiz-session/:quizId" element={<QuizSessionPage />} />
         <Route path="/quiz-participation/:sessionId" element={<QuizParticipationPage />} />
+
+        <Route path="/flashcard-import-export" element={<FlashcardImportExportPage />} />
 
       </Routes>
       <Snackbar

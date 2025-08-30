@@ -19,9 +19,25 @@ const path_1 = __importDefault(require("path"));
 function parseWordFile(filePath) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // Convert relative path to absolute path
-            const absolutePath = path_1.default.join(__dirname, '../../../', filePath.replace('/material/', 'material/'));
+            let absolutePath;
+            // Handle different path formats
+            if (filePath.startsWith('/Users/')) {
+                // Absolute path - use as is
+                absolutePath = filePath;
+            }
+            else if (filePath.startsWith('/material/')) {
+                // Relative path from material directory
+                absolutePath = path_1.default.join(process.cwd(), '..', filePath.replace('/material/', 'material/'));
+            }
+            else {
+                // Fallback: assume it's relative to material directory
+                absolutePath = path_1.default.join(process.cwd(), '..', 'material', filePath);
+            }
             console.log('Parsing file at:', absolutePath);
+            // Check if file exists
+            if (!fs_1.default.existsSync(absolutePath)) {
+                throw new Error(`Datei nicht gefunden: ${absolutePath}`);
+            }
             let text;
             // Check file extension
             const ext = path_1.default.extname(absolutePath).toLowerCase();
@@ -45,7 +61,7 @@ function parseWordFile(filePath) {
         }
         catch (error) {
             console.error('Error parsing file:', error);
-            throw new Error('Fehler beim Parsen der Datei');
+            throw new Error(`Fehler beim Parsen der Datei: ${error instanceof Error ? error.message : String(error)}`);
         }
     });
 }
@@ -54,6 +70,10 @@ function parseQuizText(text) {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     let currentQuestion = null;
     let currentOptions = [];
+    let currentTip = '';
+    let currentExplanation = '';
+    let inTipSection = false;
+    let inExplanationSection = false;
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         // Check if this line starts a new question (bullet point)
@@ -63,7 +83,9 @@ function parseQuizText(text) {
                 questions.push({
                     question: currentQuestion.question,
                     correctAnswer: currentOptions[0], // First answer is always correct
-                    options: currentOptions
+                    options: currentOptions,
+                    tip: currentTip.trim(),
+                    explanation: currentExplanation.trim()
                 });
             }
             // Start new question
@@ -71,6 +93,10 @@ function parseQuizText(text) {
                 question: line.replace(/^[•\-*\d\.\s]+/, '').trim()
             };
             currentOptions = [];
+            currentTip = '';
+            currentExplanation = '';
+            inTipSection = false;
+            inExplanationSection = false;
         }
         // Check if this line is an answer option (a), b), c), etc.)
         else if (/^[a-z]\)/.test(line.toLowerCase())) {
@@ -78,10 +104,35 @@ function parseQuizText(text) {
             if (option.length > 0) {
                 currentOptions.push(option);
             }
+            inTipSection = false;
+            inExplanationSection = false;
         }
-        // If it's not a bullet point or answer option, it might be part of the question
-        else if (currentQuestion && currentQuestion.question && !currentQuestion.question.includes(line)) {
-            currentQuestion.question += ' ' + line;
+        // Check if this line starts a tip section
+        else if (line.toLowerCase().includes('tip') || line.toLowerCase().includes('hinweis')) {
+            inTipSection = true;
+            inExplanationSection = false;
+            let tipContent = line.replace(/^(tip|hinweis)[:\s]*/i, '').trim();
+            // Remove "p:" prefix if present
+            tipContent = tipContent.replace(/^p:\s*/, '').trim();
+            currentTip = tipContent;
+        }
+        // Check if this line starts an explanation section
+        else if (line.toLowerCase().includes('erklärung') || line.toLowerCase().includes('explanation') || line.toLowerCase().includes('lösung')) {
+            inTipSection = false;
+            inExplanationSection = true;
+            currentExplanation = line.replace(/^(erklärung|explanation|lösung)[:\s]*/i, '').trim();
+        }
+        // If it's not a bullet point or answer option, it might be part of the question, tip, or explanation
+        else if (currentQuestion && currentQuestion.question) {
+            if (inTipSection) {
+                currentTip += (currentTip ? ' ' : '') + line;
+            }
+            else if (inExplanationSection) {
+                currentExplanation += (currentExplanation ? ' ' : '') + line;
+            }
+            else if (!currentQuestion.question.includes(line)) {
+                currentQuestion.question += ' ' + line;
+            }
         }
     }
     // Don't forget the last question
@@ -89,7 +140,9 @@ function parseQuizText(text) {
         questions.push({
             question: currentQuestion.question,
             correctAnswer: currentOptions[0], // First answer is always correct
-            options: currentOptions
+            options: currentOptions,
+            tip: currentTip.trim(),
+            explanation: currentExplanation.trim()
         });
     }
     return questions;

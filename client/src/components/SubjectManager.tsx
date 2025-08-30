@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Box, Typography, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar, Alert } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon, GroupAdd as GroupAddIcon, Group as GroupIcon, Close as CloseIcon, Description as DescriptionIcon } from '@mui/icons-material';
 import { Menu, MenuItem, Chip, Tooltip } from '@mui/material';
@@ -79,6 +79,12 @@ interface SubjectManagerProps {
   setUnits?: React.Dispatch<React.SetStateAction<any[]>>;
   setTopics?: React.Dispatch<React.SetStateAction<any[]>>;
   setLessons?: React.Dispatch<React.SetStateAction<any[]>>;
+  // Optional: Zeige nur dieses Fach (für Tabs-Ansicht)
+  visibleSubjectId?: string;
+  // Optional: Zeige nur diesen Block (für Untertabs-Ansicht)
+  visibleBlockId?: string;
+  // Optional: Callback für das Öffnen des Fach-Dialogs
+  onOpenSubjectDialog?: () => void;
 }
 
 // Hilfsfunktion für Chips
@@ -206,22 +212,22 @@ const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, o
       ref={setNodeRef}
       style={style}
       sx={{
-        mb: 1,
+        mb: 0.5,
         borderRadius: 2,
         background: '#ffffff',
         border: '1px solid #e0e0e0',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.035)',
         display: 'flex',
         alignItems: 'center',
-        minHeight: 36,
-        px: 1.5,
-        py: 0.7,
+        minHeight: 30,
+        px: 1.0,
+        py: 0.5,
         borderLeft: '3px solid #1976D2',
         fontWeight: 600,
         position: 'relative',
         transition: 'all 0.2s ease-in-out',
         '&:hover': {
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
           transform: 'translateY(-1px)',
           '& .plus-btn': { display: 'inline-flex' }
         }
@@ -259,19 +265,19 @@ const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, o
       >
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
-      <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 700, color: '#0066cc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subject.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(subject)}>✏️</IconButton>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(subject.id)}>🗑️</IconButton>
+      <Typography variant="subtitle2" sx={{ flex: 1, fontWeight: 700, color: '#0066cc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8rem' }}>{subject.name}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, ml: 1, mr: 4, position: 'relative' }}>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 22, height: 22, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(subject)}>✏️</IconButton>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 22, height: 22, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(subject.id)}>🗑️</IconButton>
         <IconButton
           size="small"
           sx={{
             color: '#b0b8c1',
             borderRadius: 1,
-            width: 22,
-            height: 22,
-            p: 0.2,
-            ml: 0.5,
+            width: 18,
+            height: 18,
+            p: 0.15,
+            ml: 0.4,
             // Entferne position: 'absolute', right: 36
             '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
           }}
@@ -300,7 +306,7 @@ const SortableSubject = ({ subject, onEdit, onDelete, onAddBlock, isCollapsed, o
           ml: 0.5,
           display: 'none',
           position: 'absolute',
-          right: 4,
+          right: 2,
           '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
         }}
         onClick={() => onAddBlock(subject.id)}
@@ -429,19 +435,19 @@ const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onTogg
       >
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
-      <Typography variant="subtitle1" sx={{ flex: 1, fontWeight: 600, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(block)}>✏️</IconButton>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(block.id)}>🗑️</IconButton>
+      <Typography variant="subtitle2" sx={{ flex: 1, fontWeight: 600, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.78rem' }}>{block.name}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, ml: 1, mr: 4, position: 'relative' }}>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 22, height: 22, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(block)}>✏️</IconButton>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 22, height: 22, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(block.id)}>🗑️</IconButton>
         <IconButton
           size="small"
           sx={{
             color: '#b0b8c1',
             borderRadius: 1,
-            width: 22,
-            height: 22,
-            p: 0.2,
-            ml: 0.5,
+            width: 18,
+            height: 18,
+            p: 0.15,
+            ml: 0.4,
             // Entferne position: 'absolute', right: 36
             '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
           }}
@@ -470,7 +476,7 @@ const SortableBlock = ({ block, onEdit, onDelete, onAddUnit, isCollapsed, onTogg
           ml: 0.5,
           display: 'none',
           position: 'absolute',
-          right: 4,
+          right: 2,
           '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
         }}
         onClick={() => onAddUnit(block.id)}
@@ -599,19 +605,19 @@ const SortableUnit = ({ unit, onEdit, onDelete, onAddTopic, isCollapsed, onToggl
       >
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
-      <Typography variant="body2" sx={{ flex: 1, fontStyle: 'italic', color: '#3a4a5d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{unit.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(unit)}>✏️</IconButton>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(unit.id)}>🗑️</IconButton>
+      <Typography variant="caption" sx={{ flex: 1, fontStyle: 'italic', color: '#3a4a5d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.72rem' }}>{unit.name}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, ml: 1, mr: 4, position: 'relative' }}>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 20, height: 20, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(unit)}>✏️</IconButton>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 20, height: 20, p: 0.3, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(unit.id)}>🗑️</IconButton>
         <IconButton
           size="small"
           sx={{
             color: '#b0b8c1',
             borderRadius: 1,
-            width: 22,
-            height: 22,
-            p: 0.2,
-            ml: 0.5,
+            width: 18,
+            height: 18,
+            p: 0.15,
+            ml: 0.4,
             // Entferne position: 'absolute', right: 36
             '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
           }}
@@ -769,19 +775,19 @@ const SortableTopic = ({ topic, onEdit, onDelete, onAddLesson, isCollapsed, onTo
       >
         {isCollapsed ? '▶️' : '🔽'}
       </IconButton>
-      <Typography variant="body2" sx={{ flex: 1, fontWeight: 500, color: '#4a5a6d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{topic.name}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 2, mr: 8, position: 'relative' }}>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(topic)}>✏️</IconButton>
-        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(topic.id)}>🗑️</IconButton>
+      <Typography variant="caption" sx={{ flex: 1, fontWeight: 500, color: '#4a5a6d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.7rem' }}>{topic.name}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, ml: 1, mr: 4, position: 'relative' }}>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 18, height: 18, p: 0.25, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onEdit(topic)}>✏️</IconButton>
+        <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 18, height: 18, p: 0.25, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => onDelete(topic.id)}>🗑️</IconButton>
         <IconButton
           size="small"
           sx={{
             color: '#b0b8c1',
             borderRadius: 1,
-            width: 22,
-            height: 22,
-            p: 0.2,
-            ml: 0.5,
+            width: 18,
+            height: 18,
+            p: 0.15,
+            ml: 0.4,
             // Entferne position: 'absolute', right: 36
             '&:hover': { bgcolor: '#f0f4f8', color: '#3399ff', borderRadius: 1 }
           }}
@@ -886,9 +892,9 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
       const materialPath = lessonMaterials[0].material.filePath;
       const ext = materialPath.split('.').pop()?.toLowerCase();
       
-      // Verwende den Server-Port (3005) für HTML-Dateien
+      // Verwende den Server-Port (3001) für HTML-Dateien
       const fullUrl = ext === 'html' 
-        ? 'http://localhost:3005' + materialPath 
+        ? 'http://localhost:3001' + materialPath 
         : window.location.origin + materialPath;
       
       // Versuche zuerst, die Datei in einem neuen Tab zu öffnen
@@ -1091,7 +1097,7 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
   );
 };
 
-const SubjectManager: React.FC<SubjectManagerProps> = ({
+const SubjectManager = forwardRef<any, SubjectManagerProps>(({
   teacherId,
   subjectAssignments: subjectAssignmentsProp,
   setSubjectAssignments: setSubjectAssignmentsProp,
@@ -1108,7 +1114,10 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
   setUnits: setUnitsProp,
   setTopics: setTopicsProp,
   setLessons: setLessonsProp,
-}) => {
+  visibleSubjectId,
+  visibleBlockId,
+  onOpenSubjectDialog,
+}, ref) => {
   // Spielerische Farbpalette
   const colors = {
     primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
@@ -1625,6 +1634,11 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
     setSnackbar({ open: true, message, severity });
   };
 
+  // Expose handleOpenDialog to parent component via ref
+  useImperativeHandle(ref, () => ({
+    handleOpenDialog: () => handleOpenDialog()
+  }));
+
   // Drag & Drop Sensors
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1764,27 +1778,15 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, minHeight: 40 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-          Meine Fächer
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={refreshAllData}>
-            🔄
-          </IconButton>
-          <IconButton size="small" sx={{ color: '#3399ff', borderRadius: 1, width: 28, height: 28, p: 0.5, '&:hover': { bgcolor: '#e3f0fc', borderRadius: 1 } }} onClick={() => handleOpenDialog()}>
-            ➕
-          </IconButton>
-        </Box>
-      </Box>
-      
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleSubjectReorder}
       >
         <SortableContext items={subjects.map(s => s.id)} strategy={verticalListSortingStrategy}>
-          {subjects.map(subject => (
+          {subjects
+            .filter(s => !visibleSubjectId || s.id === visibleSubjectId)
+            .map(subject => (
             <React.Fragment key={subject.id}>
               <SortableSubject
                 subject={subject}
@@ -1809,8 +1811,8 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
                     collisionDetection={closestCenter}
                     onDragEnd={(event) => handleBlockReorder(event, subject.id)}
                   >
-                    <SortableContext items={(blocks[subject.id] || []).map(b => b.id)} strategy={verticalListSortingStrategy}>
-                      {(blocks[subject.id] || []).map(block => (
+                    <SortableContext items={((blocks[subject.id] || []).filter(b => !visibleBlockId || b.id === visibleBlockId)).map(b => b.id)} strategy={verticalListSortingStrategy}>
+                      {(blocks[subject.id] || []).filter(b => !visibleBlockId || b.id === visibleBlockId).map(block => (
                         <React.Fragment key={block.id}>
                           <SortableBlock
                             block={block}
@@ -2311,6 +2313,6 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({
       </Snackbar>
     </Box>
   );
-};
+});
 
 export default SubjectManager; 

@@ -1,0 +1,34 @@
+
+> server@1.0.0 dev
+> nodemon src/index.ts
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+Error: listen EADDRINUSE: addreLogin attempt with code: 1
+Login attempt with code: STUD001
+s _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/express/lib/application.js:635:24)
+    at Object.<anonymous> (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src/index.ts:53:5)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1618:23)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at phase4 (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:649:14)
+    at bootstrap (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:95:10)
+    at main (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:55:10)
+    at Object.<anonymous> (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:800:3) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3005
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m

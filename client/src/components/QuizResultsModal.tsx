@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -31,6 +31,60 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
   onClose,
   results
 }) => {
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Lade die vollständigen Quiz-Fragen mit Tips und Erklärungen
+  useEffect(() => {
+    if (open && results) {
+      // Versuche die Quiz-ID aus verschiedenen Quellen zu holen
+      let quizId = results.participation?.quizId;
+      
+      // Fallback: Suche nach der Quiz-ID in den answers
+      if (!quizId && results.answers && results.answers.length > 0) {
+        // Die erste Antwort sollte die Quiz-ID enthalten
+        const firstAnswer = results.answers[0];
+        
+        // Versuche verschiedene Felder
+        quizId = firstAnswer.quizId || firstAnswer.quizSessionId || firstAnswer.sessionId;
+        
+        if (quizId) {
+        } else {
+        }
+      }
+      
+      if (quizId) {
+        loadQuizQuestions(quizId);
+      } else {
+        console.error('🔍 Keine Quiz-ID gefunden in results:', results);
+        console.log('🔍 Versuche es mit der bekannten Session-ID...');
+        // Fallback: Verwende die bekannte Session-ID
+        const knownSessionId = 'test-session-ti';
+        loadQuizQuestions(knownSessionId);
+      }
+    }
+  }, [open, results]);
+
+  const loadQuizQuestions = async (sessionId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/quiz-sessions/${sessionId}/quiz`);
+      
+      if (response.ok) {
+        const quizData = await response.json();
+        setQuizQuestions(quizData.questions || []);
+      } else {
+        console.error('🔍 Fehler beim Laden der Quiz-Fragen:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('🔍 Error Response:', errorText);
+      }
+    } catch (error) {
+      console.error('🔍 Fehler beim Laden der Quiz-Fragen:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!results) return null;
 
   const { answers, participation, student } = results;
@@ -215,8 +269,33 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
             </Typography>
             
             <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+              {/* Debug-Info */}
+              <Box sx={{ 
+                mb: 1, 
+                p: 1, 
+                background: 'rgba(255,255,0,0.1)', 
+                border: '1px solid orange',
+                borderRadius: 1
+              }}>
+                <Typography variant="caption" sx={{ color: 'orange', fontSize: '0.6rem' }}>
+                  🔍 DEBUG: {quizQuestions.length} Quiz-Fragen geladen, {quizQuestions.filter(q => q.explanation).length} mit Erklärungen
+                </Typography>
+                {loading && (
+                  <Typography variant="caption" sx={{ color: 'orange', fontSize: '0.6rem', display: 'block', mt: 0.5 }}>
+                    ⏳ Lade Quiz-Fragen...
+                  </Typography>
+                )}
+              </Box>
+              
               {answers.map((answer: any, index: number) => {
                 const isCorrect = answer.isCorrect;
+                const selected = answer.selectedAnswer;
+                const correct = answer.correctAnswer;
+                const opts: string[] = answer.questionOptions || [];
+                const findText = (key: string) => {
+                  const opt = opts.find((o: string) => o.startsWith(key + ')'));
+                  return opt ? opt.replace(/^[a-d]\)\s*/, '') : '';
+                };
                 
                 return (
                   <Card 
@@ -263,7 +342,7 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                               fontWeight: 600,
                               fontSize: '0.6rem'
                             }}>
-                              Ihre Antwort: {answer.selectedAnswer || 'Keine Antwort'}
+                              Deine Antwort: {selected ? `${selected}: ${findText(selected)}` : 'Keine Antwort'}
                             </Typography>
                             {isCorrect ? (
                               <CheckIcon sx={{ color: '#4caf50', fontSize: 14 }} />
@@ -282,9 +361,41 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                               fontSize: '0.6rem'
                             }}>
                               <CheckIcon sx={{ fontSize: 12 }} />
-                              Richtige Antwort: {answer.correctAnswer}
+                              Richtige Antwort: {correct}: {findText(correct)}
                             </Typography>
                           )}
+                          
+                          {/* Erklärung anzeigen */}
+                          {(() => {
+                            // Finde die entsprechende Quiz-Frage mit Erklärung
+                            const quizQuestion = quizQuestions.find(q => q.question === answer.question);
+                            const explanation = quizQuestion?.explanation;
+                            
+                            // Prüfe, ob die Erklärung existiert und nicht leer ist
+                            if (explanation && explanation.trim() !== '') {
+                              return (
+                                <Box sx={{ 
+                                  mt: 1, 
+                                  p: 1, 
+                                  background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
+                                  borderRadius: 0.5, 
+                                  border: '1px solid #2196f3'
+                                }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: '#1565c0', 
+                                    fontWeight: 500,
+                                    fontStyle: 'italic',
+                                    fontSize: '0.6rem'
+                                  }}>
+                                    📚 <strong>Erklärung:</strong> {explanation}
+                                  </Typography>
+                                </Box>
+                              );
+                            }
+                            
+                            // Keine Erklärung verfügbar
+                            return null;
+                          })()}
                         </Box>
                       </Box>
                     </CardContent>

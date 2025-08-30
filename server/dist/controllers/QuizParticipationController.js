@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteParticipation = exports.getQuizStatistics = exports.resetParticipation = exports.getParticipationStatus = exports.getParticipationResultsForTeacher = exports.getParticipationResults = exports.submitAnswers = exports.startParticipation = void 0;
 const prisma_1 = require("../generated/prisma");
+const gradeConverter_1 = require("../utils/gradeConverter");
 const prisma = new prisma_1.PrismaClient();
 // Start participation in a quiz session (student only)
 const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -199,6 +200,84 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 }
             })
         ]);
+        // Calculate percentage and create grade if quiz has a gradeCategory
+        const percentage = participation.maxScore ? Math.round((totalScore / participation.maxScore) * 100) : 0;
+        if (participation.session.quiz.gradeCategory) {
+            try {
+                // Get the student's learning group and grading schema
+                const student = yield prisma.user.findUnique({
+                    where: { id: participation.studentId },
+                    include: {
+                        learningGroups: {
+                            include: {
+                                gradingSchemas: true
+                            }
+                        }
+                    }
+                });
+                if (student && student.learningGroups.length > 0) {
+                    const group = student.learningGroups[0]; // Assuming student is in one group
+                    const gradingSchema = group.gradingSchemas[0]; // Assuming one schema per group
+                    if (gradingSchema) {
+                        let grade;
+                        let weight = 1.0; // Default weight
+                        // Convert percentage to appropriate grade system
+                        if (gradingSchema.gradingSystem === 'MSS') {
+                            grade = (0, gradeConverter_1.percentageToMSSPoints)(percentage);
+                            // Try to find the weight from the schema structure
+                            try {
+                                const schemaStructure = gradingSchema.structure;
+                                const lines = schemaStructure.split('\n');
+                                // Find the line that matches the gradeCategory and extract weight
+                                for (const line of lines) {
+                                    if (line.includes(participation.session.quiz.gradeCategory)) {
+                                        const weightMatch = line.match(/\((\d+(?:\.\d+)?)%\)/);
+                                        if (weightMatch) {
+                                            weight = parseFloat(weightMatch[1]) / 100; // Convert percentage to decimal
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            catch (weightError) {
+                                console.log(`Could not extract weight for ${participation.session.quiz.gradeCategory}, using default 1.0`);
+                            }
+                        }
+                        else {
+                            // German grading system
+                            grade = (0, gradeConverter_1.percentageToGrade)(percentage);
+                        }
+                        console.log(`Converting quiz result: ${percentage}% -> ${grade} (${gradingSchema.gradingSystem}) with weight ${weight}`);
+                        // Create or update the grade
+                        yield prisma.grade.upsert({
+                            where: {
+                                studentId_schemaId_categoryName: {
+                                    studentId: participation.studentId,
+                                    schemaId: gradingSchema.id,
+                                    categoryName: participation.session.quiz.gradeCategory
+                                }
+                            },
+                            update: {
+                                grade: grade,
+                                weight: weight
+                            },
+                            create: {
+                                studentId: participation.studentId,
+                                schemaId: gradingSchema.id,
+                                categoryName: participation.session.quiz.gradeCategory,
+                                grade: grade,
+                                weight: weight
+                            }
+                        });
+                        console.log(`Grade ${grade} created for student ${participation.studentId} in category ${participation.session.quiz.gradeCategory} with weight ${weight}`);
+                    }
+                }
+            }
+            catch (gradeError) {
+                console.error('Error creating grade:', gradeError);
+                // Don't fail the quiz submission if grade creation fails
+            }
+        }
         // Get updated participation with answers
         const updatedParticipation = yield prisma.quizParticipation.findUnique({
             where: { id: participationId },
@@ -214,7 +293,7 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             participation: updatedParticipation,
             score: totalScore,
             maxScore: participation.maxScore,
-            percentage: participation.maxScore ? Math.round((totalScore / (participation.maxScore || 0)) * 100) : 0
+            percentage: percentage
         });
     }
     catch (error) {
@@ -258,6 +337,10 @@ const getParticipationResults = (req, res) => __awaiter(void 0, void 0, void 0, 
         }
         if (!participation.completedAt) {
             return res.status(400).json({ error: 'Quiz noch nicht abgeschlossen' });
+        }
+        // Check if results are released by teacher
+        if (!participation.session.resultsReleased) {
+            return res.status(403).json({ error: 'Die Ergebnisse wurden noch nicht vom Lehrer freigegeben' });
         }
         // Prepare results with correct answers
         const results = {
@@ -370,6 +453,9 @@ const getParticipationStatus = (req, res) => __awaiter(void 0, void 0, void 0, f
                     sessionId: sessionId,
                     studentId: studentId
                 }
+            },
+            include: {
+                session: true
             }
         });
         if (!participation) {
@@ -378,11 +464,13 @@ const getParticipationStatus = (req, res) => __awaiter(void 0, void 0, void 0, f
         res.json({
             hasParticipated: true,
             isCompleted: !!participation.completedAt,
+            completed: !!participation.completedAt, // Alias für Kompatibilität
             participationId: participation.id,
             score: participation.score,
             maxScore: participation.maxScore,
             startedAt: participation.startedAt,
-            completedAt: participation.completedAt
+            completedAt: participation.completedAt,
+            resultsReleased: participation.session.resultsReleased || false
         });
     }
     catch (error) {

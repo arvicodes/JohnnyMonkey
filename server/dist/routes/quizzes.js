@@ -13,7 +13,11 @@ router.post('/create', QuizController_1.createQuiz);
 router.get('/', QuizController_1.getQuizzes);
 router.get('/:id', QuizController_1.getQuiz);
 router.put('/:id/settings', QuizController_1.updateQuiz);
+router.put('/:id/questions', QuizController_1.updateQuizQuestions);
+router.post('/:id/reload-from-source', QuizController_1.reloadQuizFromSource);
 router.delete('/:id', QuizController_1.deleteQuiz);
+// Quiz existence check
+router.get('/check/exists', QuizController_1.checkQuizExists);
 // Teacher-specific quiz operations
 router.get('/teacher/:teacherId', QuizController_1.getQuizzesByTeacher);
 exports.default = router;

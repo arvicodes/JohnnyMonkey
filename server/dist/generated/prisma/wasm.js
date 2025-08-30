@@ -20,12 +20,12 @@ exports.Prisma = Prisma
 exports.$Enums = {}
 
 /**
- * Prisma Client JS version: 6.12.0
- * Query Engine version: 8047c96bbd92db98a2abc7c9323ce77c02c89dbc
+ * Prisma Client JS version: 6.11.1
+ * Query Engine version: f40f79ec31188888a2e33acda0ecc8fd10a853a9
  */
 Prisma.prismaVersion = {
-  client: "6.12.0",
-  engine: "8047c96bbd92db98a2abc7c9323ce77c02c89dbc"
+  client: "6.11.1",
+  engine: "f40f79ec31188888a2e33acda0ecc8fd10a853a9"
 }
 
 Prisma.PrismaClientKnownRequestError = () => {
@@ -123,7 +123,8 @@ exports.Prisma.UserScalarFieldEnum = {
   loginCode: 'loginCode',
   role: 'role',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  avatarEmoji: 'avatarEmoji'
 };
 
 exports.Prisma.GradingSchemaScalarFieldEnum = {
@@ -131,6 +132,18 @@ exports.Prisma.GradingSchemaScalarFieldEnum = {
   name: 'name',
   structure: 'structure',
   groupId: 'groupId',
+  gradingSystem: 'gradingSystem',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.GradeScalarFieldEnum = {
+  id: 'id',
+  studentId: 'studentId',
+  schemaId: 'schemaId',
+  categoryName: 'categoryName',
+  grade: 'grade',
+  weight: 'weight',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -138,9 +151,9 @@ exports.Prisma.GradingSchemaScalarFieldEnum = {
 exports.Prisma.LearningGroupScalarFieldEnum = {
   id: 'id',
   name: 'name',
-  teacherId: 'teacherId',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  teacherId: 'teacherId'
 };
 
 exports.Prisma.SubjectScalarFieldEnum = {
@@ -193,6 +206,189 @@ exports.Prisma.LessonScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.GroupAssignmentScalarFieldEnum = {
+  id: 'id',
+  groupId: 'groupId',
+  type: 'type',
+  refId: 'refId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.NoteScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  content: 'content',
+  authorId: 'authorId',
+  isPrivate: 'isPrivate',
+  tags: 'tags',
+  order: 'order',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.MaterialScalarFieldEnum = {
+  id: 'id',
+  fileName: 'fileName',
+  filePath: 'filePath',
+  type: 'type',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.LessonMaterialScalarFieldEnum = {
+  id: 'id',
+  lessonId: 'lessonId',
+  materialId: 'materialId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.QuizScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  description: 'description',
+  sourceFile: 'sourceFile',
+  shuffleQuestions: 'shuffleQuestions',
+  shuffleAnswers: 'shuffleAnswers',
+  timeLimit: 'timeLimit',
+  teacherId: 'teacherId',
+  gradeCategory: 'gradeCategory',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.QuizQuestionScalarFieldEnum = {
+  id: 'id',
+  question: 'question',
+  correctAnswer: 'correctAnswer',
+  options: 'options',
+  tip: 'tip',
+  explanation: 'explanation',
+  order: 'order',
+  quizId: 'quizId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.LessonQuizScalarFieldEnum = {
+  id: 'id',
+  lessonId: 'lessonId',
+  quizId: 'quizId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.QuizSessionScalarFieldEnum = {
+  id: 'id',
+  quizId: 'quizId',
+  isActive: 'isActive',
+  startedAt: 'startedAt',
+  endedAt: 'endedAt',
+  resultsReleased: 'resultsReleased',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.QuizParticipationScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  studentId: 'studentId',
+  startedAt: 'startedAt',
+  completedAt: 'completedAt',
+  score: 'score',
+  maxScore: 'maxScore',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.QuizAnswerScalarFieldEnum = {
+  id: 'id',
+  participationId: 'participationId',
+  questionId: 'questionId',
+  selectedAnswer: 'selectedAnswer',
+  isCorrect: 'isCorrect',
+  points: 'points',
+  answeredAt: 'answeredAt'
+};
+
+exports.Prisma.FileSystemPathScalarFieldEnum = {
+  id: 'id',
+  path: 'path',
+  name: 'name',
+  teacherId: 'teacherId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.FlashcardDeckScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  description: 'description',
+  subjectId: 'subjectId',
+  teacherId: 'teacherId',
+  isPublic: 'isPublic',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.FlashcardScalarFieldEnum = {
+  id: 'id',
+  deckId: 'deckId',
+  front: 'front',
+  back: 'back',
+  hint: 'hint',
+  difficulty: 'difficulty',
+  order: 'order',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.FlashcardAssignmentScalarFieldEnum = {
+  id: 'id',
+  deckId: 'deckId',
+  groupId: 'groupId',
+  dueDate: 'dueDate',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.FlashcardProgressScalarFieldEnum = {
+  id: 'id',
+  cardId: 'cardId',
+  studentId: 'studentId',
+  level: 'level',
+  nextReview: 'nextReview',
+  lastReviewed: 'lastReviewed',
+  reviewCount: 'reviewCount',
+  easeFactor: 'easeFactor',
+  interval: 'interval',
+  quality: 'quality',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.DocumentProcessingHistoryScalarFieldEnum = {
+  id: 'id',
+  sourceFile: 'sourceFile',
+  fileName: 'fileName',
+  teacherId: 'teacherId',
+  action: 'action',
+  deckId: 'deckId',
+  deckTitle: 'deckTitle',
+  cardsCount: 'cardsCount',
+  processedAt: 'processedAt'
+};
+
+exports.Prisma.FlashcardLearningSessionScalarFieldEnum = {
+  id: 'id',
+  studentId: 'studentId',
+  deckId: 'deckId',
+  startTime: 'startTime',
+  endTime: 'endTime',
+  cardsReviewed: 'cardsReviewed',
+  correctAnswers: 'correctAnswers',
+  incorrectAnswers: 'incorrectAnswers',
+  sessionDuration: 'sessionDuration',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -207,12 +403,30 @@ exports.Prisma.NullsOrder = {
 exports.Prisma.ModelName = {
   User: 'User',
   GradingSchema: 'GradingSchema',
+  Grade: 'Grade',
   LearningGroup: 'LearningGroup',
   Subject: 'Subject',
   Block: 'Block',
   Unit: 'Unit',
   Topic: 'Topic',
-  Lesson: 'Lesson'
+  Lesson: 'Lesson',
+  GroupAssignment: 'GroupAssignment',
+  Note: 'Note',
+  Material: 'Material',
+  LessonMaterial: 'LessonMaterial',
+  Quiz: 'Quiz',
+  QuizQuestion: 'QuizQuestion',
+  LessonQuiz: 'LessonQuiz',
+  QuizSession: 'QuizSession',
+  QuizParticipation: 'QuizParticipation',
+  QuizAnswer: 'QuizAnswer',
+  FileSystemPath: 'FileSystemPath',
+  FlashcardDeck: 'FlashcardDeck',
+  Flashcard: 'Flashcard',
+  FlashcardAssignment: 'FlashcardAssignment',
+  FlashcardProgress: 'FlashcardProgress',
+  DocumentProcessingHistory: 'DocumentProcessingHistory',
+  FlashcardLearningSession: 'FlashcardLearningSession'
 };
 
 /**

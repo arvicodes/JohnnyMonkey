@@ -1,3 +1,13 @@
 node_modules
 # Keep environment variables out of version control
 .env
+
+# Database backups (keep only important ones)
+backup_*.db
+backup_*.sqlite3
+db-backup-*.sqlite3
+db-checkpoint-*.sqlite3
+
+# Keep only the most recent backup
+!backup_latest.db
+!db-latest.sqlite3

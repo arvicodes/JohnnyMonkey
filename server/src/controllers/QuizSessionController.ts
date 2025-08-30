@@ -139,6 +139,8 @@ export const getQuizForSession = async (req: Request, res: Response) => {
         id: q.id,
         question: q.question,
         options: JSON.parse(q.options),
+        tip: q.tip,
+        explanation: q.explanation,
         order: q.order
       }))
     };
@@ -301,5 +303,53 @@ export const stopQuizSession = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error stopping quiz session:', error);
     res.status(500).json({ error: 'Fehler beim Beenden der Session' });
+  }
+};
+
+// Release quiz results (teacher only)
+export const releaseResults = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const { teacherId } = req.body;
+
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+    }
+
+    const session = await prisma.quizSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        quiz: true
+      }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session nicht gefunden' });
+    }
+
+    if (session.quiz.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Nur der Quiz-Ersteller kann die Ergebnisse freigeben' });
+    }
+
+    // Lehrer kann Ergebnisse jederzeit freigeben, auch wenn Session noch läuft
+    // Toggle-Funktionalität: Wenn bereits freigegeben, dann zurücknehmen
+    const newResultsReleased = !session.resultsReleased;
+    const actionText = newResultsReleased ? 'freigegeben' : 'zurückgenommen';
+
+    await prisma.quizSession.update({
+      where: { id: sessionId },
+      data: {
+        resultsReleased: newResultsReleased,
+        updatedAt: new Date()
+      }
+    });
+
+    res.json({ 
+      message: `Quiz-Ergebnisse erfolgreich ${actionText}`,
+      resultsReleased: newResultsReleased
+    });
+  } catch (error) {
+    console.error('Error toggling results release:', error);
+    res.status(500).json({ error: 'Fehler beim Freigeben/Zurücknehmen der Ergebnisse' });
   }
 }; 

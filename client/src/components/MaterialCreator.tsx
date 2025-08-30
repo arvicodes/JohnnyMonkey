@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -42,11 +42,18 @@ import {
   Edit as EditIcon,
   Note as NoteIcon,
   DragIndicator as DragIcon,
-  ContentCopy as CopyIcon
+  ContentCopy as CopyIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon
 } from '@mui/icons-material';
+import { FormControlLabel, Radio } from '@mui/material';
 
 interface MaterialCreatorProps {
   teacherId: string;
+}
+
+interface MaterialCreatorRef {
+  openQuizWithSource: (sourceFilePath: string, fileName: string) => void;
 }
 
 interface FileInfo {
@@ -64,6 +71,7 @@ interface Quiz {
   shuffleQuestions: boolean;
   shuffleAnswers: boolean;
   timeLimit: number;
+  gradeCategory?: string;
   questions: QuizQuestion[];
   createdAt: string;
 }
@@ -73,6 +81,8 @@ interface QuizQuestion {
   question: string;
   correctAnswer: string;
   options: string[];
+  tip: string;
+  explanation: string;
   order: number;
 }
 
@@ -87,8 +97,7 @@ interface Note {
   updatedAt: string;
 }
 
-const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
-  console.log('MaterialCreator received teacherId:', teacherId, 'type:', typeof teacherId);
+const MaterialCreator = forwardRef<MaterialCreatorRef, MaterialCreatorProps>(({ teacherId }, ref) => {
   const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -100,10 +109,21 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const [quizzesLoading, setQuizzesLoading] = useState(false);
   const [uploadedWordFile, setUploadedWordFile] = useState<File | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
-  const [quizDescription, setQuizDescription] = useState('Eine neue Frage beginnt immer mit einem Listenpunkt. Die möglichen Antworten darunter sind mit a), b) etc. bezeichnet. Die erste Antwort ist immer die richtige.');
+  const [quizDescription, setQuizDescription] = useState('');
   const [quizTimeLimit, setQuizTimeLimit] = useState(30);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
   const [shuffleAnswers, setShuffleAnswers] = useState(true);
+  const [gradeCategory, setGradeCategory] = useState<string>('');
+  const [selectedGradeSchema, setSelectedGradeSchema] = useState<string>('');
+  const [sourceFilePath, setSourceFilePath] = useState<string>(''); // Neue Variable für den Quellpfad
+  
+  // Available grade categories with schemas
+  const [availableGradeCategories, setAvailableGradeCategories] = useState<Array<{
+    category: string;
+    schemaName: string;
+    schemaId: string;
+  }>>([]);
+
   
   // Quiz editing states
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
@@ -221,21 +241,111 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   // Load quizzes on component mount
   useEffect(() => {
     fetchQuizzes();
+    loadGradeSchemas(); // Load grade schemas when component mounts
   }, [fetchQuizzes]);
+
+
+
+  const loadGradeSchemas = async () => {
+    try {
+      const response = await fetch('/api/grading-schemas/all');
+      if (!response.ok) {
+        throw new Error('Failed to fetch grading schemas');
+      }
+      
+      const schemas = await response.json();
+      
+      // Extract ONLY quiz-related grade categories from all schemas
+      const quizCategories: Array<{category: string, schemaName: string, schemaId: string}> = [];
+      
+      schemas.forEach((schema: any) => {
+        const structure = schema.structure;
+        const lines = structure.split('\n');
+        
+        lines.forEach((line: string) => {
+          const trimmedLine = line.trim();
+          // ONLY look for lines that contain the word "Quiz" (case insensitive) AND exclude "Hüs"
+          if (trimmedLine.toLowerCase().includes('quiz') && !trimmedLine.toLowerCase().includes('hüs')) {
+            
+            // Extract the category name (remove percentages and extra info)
+            const categoryMatch = trimmedLine.match(/^([^(]+)/);
+            if (categoryMatch) {
+              const category = categoryMatch[1].trim();
+              quizCategories.push({
+                category,
+                schemaName: schema.name,
+                schemaId: schema.id
+              });
+            }
+          }
+        });
+      });
+      
+      setAvailableGradeCategories(quizCategories);
+      
+    } catch (error) {
+      console.error('Error loading grade schemas:', error);
+      showSnackbar('Fehler beim Laden der Notenschemata', 'error');
+    }
+  };
 
   const handleQuizDialogOpen = () => {
     setQuizDialogOpen(true);
     setUploadedWordFile(null);
     setQuizTitle('');
-    setQuizDescription('Eine neue Frage beginnt immer mit einem Listenpunkt (•, -, *, oder 1.). Die möglichen Antworten darunter sind mit a), b) etc. bezeichnet. Die erste Antwort ist immer die richtige. Unterstützte Dateiformate: .docx, .doc, .txt');
+    setQuizDescription('');
     setQuizTimeLimit(30);
     setShuffleQuestions(true);
     setShuffleAnswers(true);
+    setGradeCategory('');
+    loadGradeSchemas(); // Load grade schemas when opening quiz dialog
   };
+
+  // Neue Funktion: Quiz-Modal mit vorausgefüllter Quelldatei öffnen
+  const handleQuizDialogOpenWithSource = (sourceFilePath: string, fileName: string) => {
+    setQuizDialogOpen(true);
+    
+    // Erstelle ein File-Objekt aus dem Pfad (für die Anzeige)
+    const mockFile = new File([''], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    setUploadedWordFile(mockFile);
+    
+    // Setze den Titel aus dem Dateinamen
+    const title = fileName.replace(/\.[^/.]+$/, ""); // Entferne Dateiendung
+    setQuizTitle(title);
+    
+    // Speichere den tatsächlichen Pfad für die Quiz-Erstellung
+    setSourceFilePath(sourceFilePath);
+    
+    setQuizDescription('');
+    setQuizTimeLimit(30);
+    setShuffleQuestions(true);
+    setShuffleAnswers(true);
+    setGradeCategory('');
+    loadGradeSchemas();
+  };
+
+
 
   const handleQuizDialogClose = () => {
     setQuizDialogOpen(false);
+    // Reset all quiz fields to empty/default values
+    setUploadedWordFile(null);
+    setQuizTitle('');
+    setQuizDescription('');
+    setQuizTimeLimit(30);
+    setShuffleQuestions(true);
+    setShuffleAnswers(true);
+    setGradeCategory('');
+    setSelectedGradeSchema('');
+    setSourceFilePath(''); // Reset source file path
   };
+
+  // Expose the function to parent components via ref
+  useImperativeHandle(ref, () => {
+    return {
+      openQuizWithSource: handleQuizDialogOpenWithSource,
+    };
+  });
 
   const handleWordFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -249,56 +359,57 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
 
   const handleCreateQuiz = async () => {
     try {
-      console.log('Creating quiz with teacherId:', teacherId);
+      let sourceFile: string;
       
-      if (!uploadedWordFile) {
+      // Prüfe ob wir einen vorausgefüllten Pfad haben oder eine neue Datei hochladen müssen
+      if (sourceFilePath) {
+        // Verwende den vorausgefüllten Pfad
+        sourceFile = sourceFilePath;
+      } else if (uploadedWordFile) {
+        // Neue Datei hochladen
+        const formData = new FormData();
+        formData.append('wordFile', uploadedWordFile);
+
+        const uploadResponse = await fetch('/api/materials/word-upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!uploadResponse.ok) {
+          const error = await uploadResponse.json();
+          console.error('Upload error:', error);
+          showSnackbar(error.error || 'Fehler beim Hochladen der Datei', 'error');
+          return;
+        }
+
+        const uploadResult = await uploadResponse.json();
+        sourceFile = uploadResult.sourceFile;
+      } else {
         showSnackbar('Bitte wählen Sie eine Datei aus (.docx, .doc, oder .txt)', 'error');
         return;
       }
 
-      // 1. Word-Datei hochladen
-      const formData = new FormData();
-      formData.append('wordFile', uploadedWordFile);
-
-      console.log('Uploading Word file:', uploadedWordFile.name);
-      const uploadResponse = await fetch('/api/materials/word-upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      console.log('Upload response status:', uploadResponse.status);
-      if (!uploadResponse.ok) {
-        const error = await uploadResponse.json();
-        console.error('Upload error:', error);
-        showSnackbar(error.error || 'Fehler beim Hochladen der Datei', 'error');
-        return;
-      }
-
-      const uploadResult = await uploadResponse.json();
-      console.log('Upload result:', uploadResult);
-
       // 2. Quiz erstellen
       const quizData = {
         teacherId,
-        sourceFile: uploadResult.sourceFile,
+        sourceFile: sourceFile,
         title: quizTitle,
         description: quizDescription,
         timeLimit: quizTimeLimit,
         shuffleQuestions,
-        shuffleAnswers
+        shuffleAnswers,
+        gradeCategory: gradeCategory || null,
+        gradeSchemaId: selectedGradeSchema || null
       };
       
-      console.log('Creating quiz with data:', quizData);
       const quizResponse = await fetch('/api/quizzes/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(quizData)
       });
 
-      console.log('Quiz response status:', quizResponse.status);
       if (quizResponse.ok) {
         const quizResult = await quizResponse.json();
-        console.log('Quiz created successfully:', quizResult);
         showSnackbar('Quiz erfolgreich erstellt', 'success');
         handleQuizDialogClose();
         fetchQuizzes(); // Aktualisiere die Quiz-Liste
@@ -334,9 +445,58 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   };
 
   // Quiz editing functions
-  const handleEditQuiz = (quiz: Quiz) => {
-    setEditingQuiz(quiz);
-    setEditDialogOpen(true);
+  const handleEditQuiz = async (quiz: Quiz) => {
+    try {
+      console.log('Original quiz data:', quiz);
+      
+      // Lade das vollständige Quiz mit allen Feldern
+      const response = await fetch(`/api/quizzes/${quiz.id}`);
+      if (response.ok) {
+        const fullQuiz = await response.json();
+        console.log('Full quiz data loaded:', fullQuiz);
+        
+        // Prüfe, ob Tips und Erklärungen fehlen
+        const hasMissingData = fullQuiz.questions.some((q: any) => 
+          !q.tip || !q.explanation || q.tip === '' || q.explanation === ''
+        );
+        
+        if (hasMissingData && quiz.sourceFile) {
+          console.log('Missing tip/explanation data, attempting to reload from source file');
+          
+          // Versuche, die Quiz-Daten aus der Quelldatei neu zu laden
+          try {
+            const reloadResponse = await fetch(`/api/quizzes/${quiz.id}/reload-from-source`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sourceFile: quiz.sourceFile })
+            });
+            
+            if (reloadResponse.ok) {
+              const reloadedQuiz = await reloadResponse.json();
+              console.log('Quiz reloaded from source:', reloadedQuiz);
+              setEditingQuiz(reloadedQuiz);
+              setEditDialogOpen(true);
+              return;
+            }
+          } catch (reloadError) {
+            console.log('Failed to reload from source, using existing data:', reloadError);
+          }
+        }
+        
+        setEditingQuiz(fullQuiz);
+        setEditDialogOpen(true);
+      } else {
+        console.log('Failed to load full quiz, using existing data');
+        // Fallback: Verwende die vorhandenen Daten
+        setEditingQuiz(quiz);
+        setEditDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Error loading full quiz:', error);
+      // Fallback: Verwende die vorhandenen Daten
+      setEditingQuiz(quiz);
+      setEditDialogOpen(true);
+    }
   };
 
   const handleEditDialogClose = () => {
@@ -347,8 +507,21 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
   const handleUpdateQuiz = async () => {
     if (!editingQuiz) return;
 
+    // Validierung der Fragen
+    const invalidQuestions = editingQuiz.questions.filter(q => 
+      !q.question.trim() || 
+      !q.correctAnswer.trim() || 
+      q.options.some(opt => !opt.trim())
+    );
+
+    if (invalidQuestions.length > 0) {
+      showSnackbar('Bitte füllen Sie alle Fragen und Antwortoptionen vollständig aus', 'error');
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/quizzes/${editingQuiz.id}/settings`, {
+      // Zuerst Quiz-Einstellungen aktualisieren
+      const settingsResponse = await fetch(`/api/quizzes/${editingQuiz.id}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -356,19 +529,39 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
           description: editingQuiz.description,
           timeLimit: editingQuiz.timeLimit,
           shuffleQuestions: editingQuiz.shuffleQuestions,
-          shuffleAnswers: editingQuiz.shuffleAnswers
+          shuffleAnswers: editingQuiz.shuffleAnswers,
+          gradeCategory: editingQuiz.gradeCategory
         })
       });
 
-      if (response.ok) {
-        showSnackbar('Quiz erfolgreich aktualisiert', 'success');
+      if (!settingsResponse.ok) {
+        const error = await settingsResponse.json();
+        showSnackbar(error.error || 'Fehler beim Aktualisieren der Quiz-Einstellungen', 'error');
+        return;
+      }
+
+      // Dann Quiz-Fragen aktualisieren
+      const questionsResponse = await fetch(`/api/quizzes/${editingQuiz.id}/questions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questions: editingQuiz.questions.map((q, index) => ({
+            ...q,
+            order: index
+          }))
+        })
+      });
+
+      if (questionsResponse.ok) {
+        showSnackbar('Quiz und Fragen erfolgreich aktualisiert', 'success');
         handleEditDialogClose();
         fetchQuizzes(); // Aktualisiere die Quiz-Liste
       } else {
-        const error = await response.json();
-        showSnackbar(error.error || 'Fehler beim Aktualisieren', 'error');
+        const error = await questionsResponse.json();
+        showSnackbar(error.error || 'Fehler beim Aktualisieren der Fragen', 'error');
       }
     } catch (error) {
+      console.error('Error updating quiz:', error);
       showSnackbar('Fehler beim Aktualisieren des Quiz', 'error');
     }
   };
@@ -648,106 +841,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
 
   return (
     <Box sx={{ p: 0.8 }}>
-      <Typography variant="h5" component="h2" sx={{ 
-        fontWeight: 'bold', 
-        color: '#2C3E50',
-        mb: 1.2,
-        fontSize: '0.9rem'
-      }}>
-        Material & Quiz erstellen
-      </Typography>
 
-      <Grid container spacing={1.2}>
-        {/* Material hinzufügen Box */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ 
-            borderRadius: 1.5,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            bgcolor: '#ffffff',
-            height: '100%'
-          }}>
-            <CardContent sx={{ p: 1.2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.2 }}>
-                <DescriptionIcon sx={{ mr: 0.8, color: '#1976D2', fontSize: 20 }} />
-                <Typography variant="h6" component="h3" sx={{ 
-                  fontWeight: 'bold', 
-                  color: '#1976D2',
-                  fontSize: '0.8rem'
-                }}>
-                  Material hinzufügen
-                </Typography>
-              </Box>
-              
-              <Typography variant="body2" sx={{ mb: 1.2, color: '#7F8C8D', fontSize: '0.75rem' }}>
-                Laden Sie Dateien aus der Dateistruktur und speichern Sie diese im Material-Ordner.
-              </Typography>
-
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleMaterialDialogOpen}
-                sx={{
-                  bgcolor: '#1976D2',
-                  '&:hover': { bgcolor: '#1565c0' },
-                  borderRadius: 1.2,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.75rem',
-                  py: 0.4,
-                  px: 1
-                }}
-              >
-                Material hinzufügen
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Quiz erstellen Box */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ 
-            borderRadius: 1.5,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            bgcolor: '#ffffff',
-            height: '100%'
-          }}>
-            <CardContent sx={{ p: 1.2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.2 }}>
-                <QuizIcon sx={{ mr: 0.8, color: '#F57C00', fontSize: 20 }} />
-                <Typography variant="h6" component="h3" sx={{ 
-                  fontWeight: 'bold', 
-                  color: '#F57C00',
-                  fontSize: '0.8rem'
-                }}>
-                  Quiz erstellen
-                </Typography>
-              </Box>
-              
-              <Typography variant="body2" sx={{ mb: 1.2, color: '#7F8C8D', fontSize: '0.75rem' }}>
-                Erstellen Sie Quizze aus Word-Dateien mit automatischer Fragen-Generierung.
-              </Typography>
-
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleQuizDialogOpen}
-                sx={{
-                  bgcolor: '#F57C00',
-                  '&:hover': { bgcolor: '#E65100' },
-                  borderRadius: 1.2,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  fontSize: '0.75rem',
-                  py: 0.4,
-                  px: 1
-                }}
-              >
-                Quiz erstellen
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
 
       {/* Quiz-Liste und Notizzettel */}
         <Grid container spacing={1.2} sx={{ mt: 0.3 }}>
@@ -871,7 +965,7 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
               )}
 
               {/* Anzeige der Notizen */}
-              <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+              <Box>
                 {notes.length === 0 ? (
                   <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 3, fontSize: '0.75rem' }}>
                     Noch keine Notizen vorhanden. Füge deine erste Notiz hinzu!
@@ -1051,7 +1145,58 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                           </Typography>
                           <Typography variant="caption" component="div" sx={{ color: '#666', fontSize: '0.65rem' }}>
                             Fragen: {quiz.questions.length} | Zeit: {quiz.timeLimit} Min.
+                            {quiz.gradeCategory && (
+                              <span style={{ marginLeft: '8px', color: '#ff9800', fontWeight: 'bold' }}>
+                                | Note: {quiz.gradeCategory}
+                              </span>
+                            )}
                           </Typography>
+                          
+                          {/* Erstellungszeit und Quellpfad */}
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography variant="caption" component="div" sx={{ 
+                              color: '#888', 
+                              fontSize: '0.6rem',
+                              fontFamily: 'monospace',
+                              backgroundColor: '#f5f5f5',
+                              padding: '2px 4px',
+                              borderRadius: '2px',
+                              display: 'inline-block',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              📅 {new Date(quiz.createdAt).toLocaleString('de-DE', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ mt: 0.3 }}>
+                            <Typography variant="caption" component="div" sx={{ 
+                              color: '#666', 
+                              fontSize: '0.6rem',
+                              fontFamily: 'monospace',
+                              backgroundColor: '#f0f0f0',
+                              padding: '4px 6px',
+                              borderRadius: '3px',
+                              display: 'block',
+                              maxWidth: '100%',
+                              border: '1px solid #e0e0e0',
+                              lineHeight: '1.3',
+                              whiteSpace: 'pre-wrap', // Erlaubt Zeilenumbrüche
+                              wordBreak: 'break-all' // Bricht lange Pfade um
+                            }}
+                            title={quiz.sourceFile} // Tooltip mit vollständigem Pfad
+                            >
+                              📁 {quiz.sourceFile}
+                            </Typography>
+                          </Box>
                         </Box>
                       </Box>
                       <Box sx={{ 
@@ -1354,6 +1499,38 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
                 </Select>
               </FormControl>
             </Grid>
+
+            <Grid item xs={12}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Quiz-Note auswählen</InputLabel>
+                <Select
+                  value={gradeCategory}
+                  onChange={(e) => {
+                    setGradeCategory(e.target.value);
+                    // Find the corresponding schema for the selected category
+                    const selectedItem = availableGradeCategories.find(item => item.category === e.target.value);
+                    setSelectedGradeSchema(selectedItem?.schemaId || '');
+                  }}
+                >
+                  <MenuItem value="">
+                    <em>Keine Note zuordnen</em>
+                  </MenuItem>
+                  {availableGradeCategories.length > 0 ? (
+                    availableGradeCategories.map((item) => (
+                      <MenuItem key={`${item.schemaId}-${item.category}`} value={item.category}>
+                        {item.category} ({item.schemaName})
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                        Keine Quiz-Noten verfügbar
+                      </Typography>
+                    </MenuItem>
+                  )}
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
@@ -1399,103 +1576,579 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Titel des Quiz"
-                value={editingQuiz?.title || ''}
-                onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, title: e.target.value } : null)}
-                sx={{ mb: 2 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleUpdateQuiz();
-                  }
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Zeitlimit (Minuten)"
-                type="number"
-                value={editingQuiz?.timeLimit || 30}
-                onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, timeLimit: parseInt(e.target.value) || 30 } : null)}
-                sx={{ mb: 2 }}
-              />
-            </Grid>
-
+            {/* Kompaktere Grundinformationen in einer Reihe */}
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Beschreibung"
-                multiline
-                rows={3}
-                value={editingQuiz?.description || ''}
-                onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, description: e.target.value } : null)}
-                sx={{ mb: 2 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleUpdateQuiz();
-                  }
-                }}
-              />
+              <Paper sx={{ p: 1, bgcolor: '#fafafa', border: '1px solid #e8e8e8', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold', color: '#ff9800', display: 'flex', alignItems: 'center', fontSize: '0.8rem' }}>
+                  <EditIcon sx={{ 
+                    mr: 0.5, 
+                    fontSize: '12px',
+                    width: '12px',
+                    height: '12px'
+                  }} />
+                  Grundinformationen
+                </Typography>
+                
+                <Grid container spacing={1}>
+                  <Grid item xs={12} md={8}>
+                    <TextField
+                      fullWidth
+                      label="Titel des Quiz"
+                      value={editingQuiz?.title || ''}
+                      onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, title: e.target.value } : null)}
+                      size="small"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleUpdateQuiz();
+                        }
+                      }}
+                      inputProps={{
+                        style: { fontSize: '0.75rem', padding: '8px 10px' }
+                      }}
+                      InputLabelProps={{
+                        style: { fontSize: '0.7rem' }
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Zeitlimit (Min)"
+                      type="number"
+                      value={editingQuiz?.timeLimit || 30}
+                      onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, timeLimit: parseInt(e.target.value) || 30 } : null)}
+                      size="small"
+                      inputProps={{ 
+                        min: 1, 
+                        max: 180,
+                        style: { fontSize: '0.75rem', padding: '8px 10px' }
+                      }}
+                      InputLabelProps={{
+                        style: { fontSize: '0.7rem' }
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+                
+                <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Beschreibung"
+                      multiline
+                      rows={1}
+                      value={editingQuiz?.description || ''}
+                      onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, description: e.target.value } : null)}
+                      size="small"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleUpdateQuiz();
+                        }
+                      }}
+                      inputProps={{
+                        style: { fontSize: '0.75rem', padding: '8px 10px' }
+                      }}
+                      InputLabelProps={{
+                        style: { fontSize: '0.7rem' }
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </Paper>
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Fragen mischen</InputLabel>
-                <Select
-                  value={editingQuiz?.shuffleQuestions ? 'true' : 'false'}
-                  label="Fragen mischen"
-                  onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, shuffleQuestions: e.target.value === 'true' } : null)}
-                >
-                  <MenuItem value="true">Ja</MenuItem>
-                  <MenuItem value="false">Nein</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Antworten mischen</InputLabel>
-                <Select
-                  value={editingQuiz?.shuffleAnswers ? 'true' : 'false'}
-                  label="Antworten mischen"
-                  onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, shuffleAnswers: e.target.value === 'true' } : null)}
-                >
-                  <MenuItem value="true">Ja</MenuItem>
-                  <MenuItem value="false">Nein</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Quiz-Fragen anzeigen */}
+            {/* Quiz-Einstellungen kompakt in einer Reihe */}
             <Grid item xs={12}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#ff9800' }}>
-                Quiz-Fragen ({editingQuiz?.questions.length || 0})
-              </Typography>
-              {editingQuiz?.questions.map((question, index) => (
-                <Paper key={question.id} sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                    Frage {index + 1}: {question.question}
-                  </Typography>
-                  <Box sx={{ ml: 2 }}>
-                    {question.options.map((option, optIndex) => (
-                      <Typography 
-                        key={optIndex} 
-                        variant="body2" 
-                        sx={{ 
-                          color: option === question.correctAnswer ? '#4caf50' : '#666',
-                          fontWeight: option === question.correctAnswer ? 'bold' : 'normal'
+              <Paper sx={{ p: 1, bgcolor: '#fafafa', border: '1px solid #e8e8e8', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold', color: '#ff9800', display: 'flex', alignItems: 'center', fontSize: '0.8rem' }}>
+                  <QuizIcon sx={{ 
+                    mr: 0.5, 
+                    fontSize: '12px',
+                    width: '12px',
+                    height: '12px'
+                  }} />
+                  Quiz-Einstellungen
+                </Typography>
+                
+                <Grid container spacing={1}>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel sx={{ fontSize: '0.7rem' }}>Fragen mischen</InputLabel>
+                      <Select
+                        value={editingQuiz?.shuffleQuestions ? 'true' : 'false'}
+                        label="Fragen mischen"
+                        onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, shuffleQuestions: e.target.value === 'true' } : null)}
+                        sx={{
+                          '& .MuiSelect-select': {
+                            fontSize: '0.75rem',
+                            padding: '8px 10px'
+                          }
                         }}
                       >
-                        {String.fromCharCode(97 + optIndex)}) {option}
-                        {option === question.correctAnswer && ' ✓'}
+                        <MenuItem sx={{ fontSize: '0.75rem' }} value="true">Ja</MenuItem>
+                        <MenuItem sx={{ fontSize: '0.75rem' }} value="false">Nein</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel sx={{ fontSize: '0.7rem' }}>Antworten mischen</InputLabel>
+                      <Select
+                        value={editingQuiz?.shuffleAnswers ? 'true' : 'false'}
+                        label="Antworten mischen"
+                        onChange={(e) => setEditingQuiz(prev => prev ? { ...prev, shuffleAnswers: e.target.value === 'true' } : null)}
+                        sx={{
+                          '& .MuiSelect-select': {
+                            fontSize: '0.75rem',
+                            padding: '8px 10px'
+                          }
+                        }}
+                      >
+                        <MenuItem sx={{ fontSize: '0.75rem' }} value="true">Ja</MenuItem>
+                        <MenuItem sx={{ fontSize: '0.75rem' }} value="false">Nein</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+
+            {/* Notenschema kompakt und visuell ansprechend */}
+            <Grid item xs={12}>
+              <Paper sx={{ p: 1, bgcolor: '#f0f8ff', border: '1px solid #bbdefb', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold', color: '#1976d2', display: 'flex', alignItems: 'center', fontSize: '0.8rem' }}>
+                  <NoteIcon sx={{ 
+                    mr: 0.5, 
+                    fontSize: '12px',
+                    width: '12px',
+                    height: '12px'
+                  }} />
+                  Notenschema
+                </Typography>
+                
+                <Grid container spacing={1} alignItems="center">
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ 
+                      p: 0.5, 
+                      bgcolor: editingQuiz?.gradeCategory ? '#e8f5e8' : '#fff3e0', 
+                      borderRadius: 0.5,
+                      border: `1px solid ${editingQuiz?.gradeCategory ? '#4caf50' : '#ff9800'}`
+                    }}>
+                      <Typography variant="body2" sx={{ 
+                        color: editingQuiz?.gradeCategory ? '#2e7d32' : '#e65100',
+                        fontWeight: 500,
+                        textAlign: 'center',
+                        fontSize: '0.7rem'
+                      }}>
+                        {editingQuiz?.gradeCategory ? editingQuiz.gradeCategory : 'Keine Note zugeordnet'}
                       </Typography>
-                    ))}
+                    </Box>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={8}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel sx={{ fontSize: '0.7rem' }}>Notenschema ändern</InputLabel>
+                      <Select
+                        value={editingQuiz?.gradeCategory || ''}
+                        onChange={(e) => {
+                          if (editingQuiz) {
+                            setEditingQuiz({
+                              ...editingQuiz,
+                              gradeCategory: e.target.value
+                            });
+                          }
+                        }}
+                        sx={{
+                          '& .MuiSelect-select': {
+                            fontSize: '0.75rem',
+                            padding: '8px 10px'
+                          }
+                        }}
+                      >
+                        <MenuItem sx={{ fontSize: '0.75rem' }} value="">
+                          <em>Keine Note zuordnen</em>
+                        </MenuItem>
+                        {availableGradeCategories.length > 0 ? (
+                          availableGradeCategories.map((item) => (
+                            <MenuItem key={`${item.schemaId}-${item.category}`} value={item.category} sx={{ fontSize: '0.75rem' }}>
+                              {item.category} ({item.schemaName})
+                            </MenuItem>
+                          ))
+                        ) : (
+                          <MenuItem disabled sx={{ fontSize: '0.75rem' }}>
+                            <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                              Keine Quiz-Noten verfügbar
+                            </Typography>
+                          </MenuItem>
+                        )}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Grid>
+
+            {/* Quiz-Fragen bearbeiten */}
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#ff9800', fontSize: '0.8rem' }}>
+                  Quiz-Fragen ({editingQuiz?.questions.length || 0})
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    if (editingQuiz) {
+                      const newQuestion: QuizQuestion = {
+                        id: `temp-${Date.now()}`,
+                        question: '',
+                        correctAnswer: '',
+                        options: ['', '', '', ''],
+                        tip: '',
+                        explanation: '',
+                        order: editingQuiz.questions.length
+                      };
+                      setEditingQuiz({
+                        ...editingQuiz,
+                        questions: [...editingQuiz.questions, newQuestion]
+                      });
+                    }
+                  }}
+                  sx={{ 
+                    color: '#ff9800', 
+                    borderColor: '#ff9800',
+                    width: 'auto',
+                    px: 0.8,
+                    py: 0.3,
+                    fontSize: '0.6rem',
+                    height: '20px'
+                  }}
+                >
+                  Frage hinzufügen
+                </Button>
+              </Box>
+              
+              {editingQuiz?.questions.map((question, index) => (
+                <Paper 
+                  key={question.id} 
+                  sx={{ 
+                    p: 1, 
+                    mb: 1, 
+                    bgcolor: index % 2 === 0 ? '#f8f9fa' : '#f0f8ff',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    boxShadow: index % 2 === 0 ? '0 1px 2px rgba(0,0,0,0.05)' : '0 1px 4px rgba(0,0,0,0.08)',
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '2px',
+                      backgroundColor: index % 2 === 0 ? '#ff9800' : '#1976d2',
+                      borderRadius: '1px 0 0 1px'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Box sx={{ 
+                        mr: 0.8,
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        bgcolor: index % 2 === 0 ? '#ff9800' : '#1976d2',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '0.7rem'
+                      }}>
+                        {index + 1}
+                      </Box>
+                      <Typography variant="body2" sx={{ 
+                        fontWeight: 'bold', 
+                        color: index % 2 === 0 ? '#ff9800' : '#1976d2',
+                        fontSize: '0.8rem'
+                      }}>
+                        Frage {index + 1}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.2 }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          if (editingQuiz && index > 0) {
+                            const updatedQuestions = [...editingQuiz.questions];
+                            [updatedQuestions[index], updatedQuestions[index - 1]] = [updatedQuestions[index - 1], updatedQuestions[index]];
+                            setEditingQuiz({
+                              ...editingQuiz,
+                              questions: updatedQuestions
+                            });
+                          }
+                        }}
+                        disabled={index === 0}
+                        sx={{ 
+                          p: 0.5, 
+                          width: '24px',
+                          height: '24px',
+                          '& .MuiSvgIcon-root': { 
+                            fontSize: '16px',
+                            width: '16px',
+                            height: '16px'
+                          }
+                        }}
+                      >
+                        <KeyboardArrowUpIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          if (editingQuiz && index < editingQuiz.questions.length - 1) {
+                            const updatedQuestions = [...editingQuiz.questions];
+                            [updatedQuestions[index], updatedQuestions[index + 1]] = [updatedQuestions[index + 1], updatedQuestions[index]];
+                            setEditingQuiz({
+                              ...editingQuiz,
+                              questions: updatedQuestions
+                            });
+                          }
+                        }}
+                        disabled={index === editingQuiz.questions.length - 1}
+                        sx={{ 
+                          p: 0.5, 
+                          width: '24px',
+                          height: '24px',
+                          '& .MuiSvgIcon-root': { 
+                            fontSize: '16px',
+                            width: '16px',
+                            height: '16px'
+                          }
+                        }}
+                      >
+                        <KeyboardArrowDownIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          if (editingQuiz) {
+                            const updatedQuestions = editingQuiz.questions
+                              .filter((_, i) => i !== index)
+                              .map((q, newIndex) => ({ ...q, order: newIndex }));
+                            setEditingQuiz({
+                              ...editingQuiz,
+                              questions: updatedQuestions
+                            });
+                          }
+                        }}
+                        color="error"
+                        sx={{ 
+                          p: 0.5, 
+                          width: '24px',
+                          height: '24px',
+                          '& .MuiSvgIcon-root': { 
+                            fontSize: '16px',
+                            width: '16px',
+                            height: '16px'
+                          }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                  
+                  <TextField
+                    fullWidth
+                    label="Frage"
+                    value={question.question}
+                    onChange={(e) => {
+                      if (editingQuiz) {
+                        const updatedQuestions = [...editingQuiz.questions];
+                        updatedQuestions[index] = { ...question, question: e.target.value };
+                        setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                      }
+                    }}
+                    sx={{ mb: 0.8 }}
+                    multiline
+                    rows={1}
+                    size="small"
+                    inputProps={{
+                      style: { fontSize: '0.75rem', padding: '8px 10px' }
+                    }}
+                    InputLabelProps={{
+                      style: { fontSize: '0.7rem' }
+                    }}
+                  />
+                  
+                  <Typography variant="caption" sx={{ mb: 0.4, fontWeight: 'bold', fontSize: '0.65rem' }}>
+                    Antwortoptionen:
+                  </Typography>
+                  
+                  {question.options.map((option, optIndex) => (
+                    <Box key={optIndex} sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      mb: 0.4,
+                      p: 0.3,
+                      bgcolor: index % 2 === 0 ? '#f0f0f0' : '#e3f2fd',
+                      borderRadius: 0.3,
+                      border: `1px solid ${index % 2 === 0 ? '#e0e0e0' : '#bbdefb'}`
+                    }}>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          minWidth: '16px',
+                          fontWeight: 'bold',
+                          color: index % 2 === 0 ? '#ff9800' : '#1976d2',
+                          fontSize: '0.65rem'
+                        }}
+                      >
+                        {String.fromCharCode(97 + optIndex)})
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        value={option}
+                        onChange={(e) => {
+                          if (editingQuiz) {
+                            const updatedQuestions = [...editingQuiz.questions];
+                            const updatedOptions = [...updatedQuestions[index].options];
+                            updatedOptions[optIndex] = e.target.value;
+                            updatedQuestions[index] = { ...question, options: updatedOptions };
+                            setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                          }
+                        }}
+                        sx={{ ml: 0.3 }}
+                        placeholder={`Option ${optIndex + 1}`}
+                        inputProps={{
+                          style: { fontSize: '0.7rem', padding: '6px 8px' }
+                        }}
+                        InputLabelProps={{
+                          style: { fontSize: '0.65rem' }
+                        }}
+                      />
+                      <FormControlLabel
+                        control={
+                          <Radio
+                            checked={option === question.correctAnswer}
+                            onChange={() => {
+                              if (editingQuiz) {
+                                const updatedQuestions = [...editingQuiz.questions];
+                                updatedQuestions[index] = { ...question, correctAnswer: option };
+                                setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                              }
+                            }}
+                            value={option}
+                            color="primary"
+                            size="small"
+                            sx={{ '& .MuiSvgIcon-root': { fontSize: '14px' } }}
+                          />
+                        }
+                        label="Richtig"
+                        sx={{ 
+                          ml: 0.3,
+                          '& .MuiFormControlLabel-label': {
+                            fontSize: '0.6rem',
+                            fontWeight: 500
+                          }
+                        }}
+                      />
+                    </Box>
+                  ))}
+                  
+                  <Box sx={{ 
+                    mt: 0.8, 
+                    p: 0.3, 
+                    bgcolor: index % 2 === 0 ? '#e8f5e8' : '#e3f2fd', 
+                    borderRadius: 0.3,
+                    border: `1px solid ${index % 2 === 0 ? '#4caf50' : '#1976d2'}`
+                  }}>
+                    <Typography variant="caption" sx={{ 
+                      color: index % 2 === 0 ? '#2e7d32' : '#1565c0', 
+                      fontWeight: 'bold',
+                      fontSize: '0.65rem'
+                    }}>
+                      ✅ Richtige Antwort: {question.correctAnswer || 'Nicht gesetzt'}
+                    </Typography>
+                  </Box>
+                  
+                  {/* Tip-Feld */}
+                  <Box sx={{ mt: 0.8 }}>
+                    <Typography variant="caption" sx={{ 
+                      mb: 0.4, 
+                      fontWeight: 'bold', 
+                      color: index % 2 === 0 ? '#ff9800' : '#1976d2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '0.65rem'
+                    }}>
+                      💡 Tip für diese Frage:
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      label="Tip"
+                      value={question.tip || ''}
+                      onChange={(e) => {
+                        if (editingQuiz) {
+                          const updatedQuestions = [...editingQuiz.questions];
+                          updatedQuestions[index] = { ...question, tip: e.target.value };
+                          setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                        }
+                      }}
+                      multiline
+                      rows={1}
+                      placeholder="Geben Sie einen Tip für diese Frage ein..."
+                      sx={{ mb: 0.8 }}
+                      size="small"
+                      inputProps={{
+                        style: { fontSize: '0.75rem', padding: '8px 10px' }
+                      }}
+                      InputLabelProps={{
+                        style: { fontSize: '0.7rem' }
+                      }}
+                    />
+                  </Box>
+                  
+                  {/* Erklärungs-Feld */}
+                  <Box sx={{ mt: 0.8 }}>
+                    <Typography variant="caption" sx={{ 
+                      mb: 0.4, 
+                      fontWeight: 'bold', 
+                      color: index % 2 === 0 ? '#ff9800' : '#1976d2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '0.65rem'
+                    }}>
+                      📚 Erklärung (wird nach der Beantwortung angezeigt):
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      label="Erklärung"
+                      value={question.explanation || ''}
+                      onChange={(e) => {
+                        if (editingQuiz) {
+                          const updatedQuestions = [...editingQuiz.questions];
+                          updatedQuestions[index] = { ...question, explanation: e.target.value };
+                          setEditingQuiz({ ...editingQuiz, questions: updatedQuestions });
+                        }
+                      }}
+                      multiline
+                      rows={1.2}
+                      placeholder="Geben Sie eine Erklärung für diese Frage ein..."
+                      size="small"
+                      inputProps={{
+                        style: { fontSize: '0.75rem', padding: '8px 10px' }
+                      }}
+                      InputLabelProps={{
+                        style: { fontSize: '0.7rem' }
+                      }}
+                    />
                   </Box>
                 </Paper>
               ))}
@@ -1685,6 +2338,6 @@ const MaterialCreator: React.FC<MaterialCreatorProps> = ({ teacherId }) => {
       </Dialog>
     </Box>
   );
-};
+});
 
 export default MaterialCreator; 
