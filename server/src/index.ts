@@ -1,5 +1,5 @@
 import express from 'express';
-import cors from 'cors';
+import cors from 'express';
 import { PrismaClient } from './generated/prisma';
 import { PortManager } from './utils/portManager';
 import authRoutes from './routes/auth';
@@ -51,7 +51,10 @@ app.use('/api/file-system-paths', fileSystemPathsRoutes);
 app.use('/api/flashcards', flashcardRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
-
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -66,19 +69,24 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// Start server with automatic port management
+// Start server with Render compatibility
 async function startServer() {
   try {
-    // Cleanup ports before starting
-    await PortManager.cleanupPorts();
+    const port = process.env.PORT || 3001;
     
-    // Start server on specific port 3001
-    const { server, port } = await PortManager.startServer(app, 3001);
-    
-    console.log(`🎯 Server is running on port ${port}`);
-    
-    // Store port in global for potential external access
-    (global as any).SERVER_PORT = port;
+    // For Render, use simple server start
+    if (process.env.NODE_ENV === 'production') {
+      const server = app.listen(port, () => {
+        console.log(`🎯 Server is running on port ${port}`);
+        console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
+        console.log(`🔗 Health check: http://localhost:${port}/health`);
+      });
+    } else {
+      // Development mode with PortManager
+      await PortManager.cleanupPorts();
+      const { server, port: managedPort } = await PortManager.startServer(app, port);
+      console.log(`🎯 Server is running on port ${managedPort}`);
+    }
     
   } catch (error) {
     console.error('❌ Failed to start server:', error);

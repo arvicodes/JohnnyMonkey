@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  johnnymonkey:
+    build: .
+    ports:
+      - "3001:3001"  # Server API
+      - "3003:3003"  # Client Frontend
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - ./server/prisma:/app/server/prisma
+      - ./material:/app/material
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Separate database service (for PostgreSQL)
+  # postgres:
+  #   image: postgres:15
+  #   environment:
+  #     POSTGRES_DB: johnnymonkey
+  #     POSTGRES_USER: johnnymonkey
+  #     POSTGRES_PASSWORD: your_password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:

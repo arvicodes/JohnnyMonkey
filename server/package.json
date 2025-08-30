@@ -12,10 +12,12 @@
     "cleanup": "node -e \"const { exec } = require('child_process'); exec('lsof -ti:3001 | xargs kill -9 2>/dev/null || echo \\\"No process on port 3001\\\"', console.log);\"",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:prod": "NODE_ENV=production node dist/index.js",
     "start:smart": "node -e \"const { PortManager } = require('./dist/utils/portManager'); PortManager.cleanupPorts().then(() => require('./dist/index.js'));\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
@@ -48,5 +50,9 @@
     "@types/pdf-parse": "^1.1.5",
     "nodemon": "^3.1.0",
     "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

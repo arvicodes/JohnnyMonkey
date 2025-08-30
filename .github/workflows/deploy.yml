@@ -1,0 +1,47 @@
+name: Deploy JohnnyMonkey
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm install
+        cd server && npm install
+        cd ../client && npm install
+        
+    - name: Build application
+      run: |
+        cd server && npm run build
+        cd ../client && npm run build
+        
+    - name: Deploy to Render
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "🚀 Deploying to Render..."
+        # Render deployt automatisch bei Git-Push
+        # Keine zusätzlichen Aktionen nötig
+        echo "✅ Render will automatically deploy from Git push"
+        
+    - name: Notify deployment
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "🎉 Deployment triggered successfully!"
+        echo "📱 Check Render dashboard for deployment status"
+        echo "🌐 App will be available at your Render URL"
