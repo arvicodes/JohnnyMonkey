@@ -2846,21 +2846,46 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
           progressMap.set(item.cardId, item);
         });
         
-        // Filtere Karten basierend auf Fortschritt
+        // Filtere Karten basierend auf Fortschritt - GLEICHE LOGIK WIE IM DASHBOARD
         let cardsToLearn = deck.cards || [];
         
         if (deck.dueCards > 0) {
-          // Es gibt fällige Karten - lade nur diese
-          cardsToLearn = deck.cards.filter((card: any) => {
+          // Verwende die gleiche Logik wie im Dashboard
+          const now = new Date();
+          
+          // 1. Gelernte Karten die fällig sind (mit Qualitätsbewertung)
+          const learnedCardsDue = deck.cards.filter((card: any) => {
             const progress = progressMap.get(card.id);
-            if (!progress) return true; // Neue Karten sind immer fällig
-            return new Date(progress.nextReview) <= new Date();
+            if (!progress || !progress.nextReview) return false;
+            
+            let reviewDate: Date;
+            if (typeof progress.nextReview === 'number') {
+              reviewDate = new Date(progress.nextReview);
+            } else {
+              reviewDate = new Date(progress.nextReview);
+            }
+            
+            // Setze beide Daten auf Mitternacht für korrekten Vergleich
+            const reviewDateMidnight = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
+            const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            return reviewDateMidnight <= nowMidnight;
           });
-        }
-        
-        // Wenn keine fälligen Karten, lade alle Karten für Wiederholung
-        if (cardsToLearn.length === 0) {
-          cardsToLearn = deck.cards || [];
+          
+          // 2. Karten ohne Qualitätsbewertung (müssen noch bewertet werden)
+          const cardsWithoutQuality = deck.cards.filter((card: any) => {
+            const progress = progressMap.get(card.id);
+            return progress && (progress.quality === null || progress.quality === undefined);
+          });
+          
+          // 3. Ungelernte Karten (kein Fortschritt)
+          const unlearnedCards = deck.cards.filter((card: any) => !progressMap.has(card.id));
+          
+          // Kombiniere alle fälligen Karten
+          cardsToLearn = [...learnedCardsDue, ...cardsWithoutQuality, ...unlearnedCards];
+          
+          console.log(`DEBUG - Filtered cards: ${cardsToLearn.length} of ${deck.cards.length} are due`);
+          console.log(`DEBUG - Breakdown: ${learnedCardsDue.length} learned due, ${cardsWithoutQuality.length} without quality, ${unlearnedCards.length} unlearned`);
         }
         
         // Erstelle eine Kopie des Decks mit den zu lernenden Karten
@@ -2868,11 +2893,23 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
           ...deck,
           cards: cardsToLearn,
           totalCards: deck.cards?.length || 0,
-          dueCards: cardsToLearn.length
+          dueCards: cardsToLearn.length // ← Verwende die tatsächlich gefilterten Karten
         };
         
+        // Versuche den Session-Fortschritt wiederherzustellen
+        const progressRestored = await restoreSessionProgress(deckWithCards);
+        
+        if (!progressRestored) {
+          // Kein Fortschritt wiederhergestellt - starte von vorne
+          setCurrentCardIndex(0);
+          setSessionStats({
+            cardsReviewed: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0
+          });
+        }
+        
         setSelectedDeck(deckWithCards);
-        setCurrentCardIndex(0);
         setShowAnswer(false);
         
         // Debug: Was steht in deck.dueCards?
@@ -3031,6 +3068,11 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
       console.error('Error ending learning session:', error);
     }
 
+    // Lösche den gespeicherten Session-Fortschritt
+    if (selectedDeck) {
+      localStorage.removeItem(`flashcard_progress_${selectedDeck.id}_${studentId}`);
+    }
+    
     // Immer zur Deck-Auswahl zurückkehren
     setLearningMode('selection');
     setSelectedDeck(null);
@@ -3046,10 +3088,66 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
   };
 
   const handleClose = () => {
+    // Speichere den aktuellen Fortschritt bevor die Session beendet wird
+    if (selectedDeck && currentCardIndex > 0) {
+      saveSessionProgress();
+    }
+    
     if (sessionId) {
       endLearningSession();
     }
     onClose();
+  };
+
+  // Neue Funktion zum Speichern des Session-Fortschritts
+  const saveSessionProgress = async () => {
+    if (!selectedDeck) return;
+    
+    try {
+      const progressData = {
+        deckId: selectedDeck.id,
+        studentId: studentId,
+        currentCardIndex: currentCardIndex,
+        cardsReviewed: sessionStats.cardsReviewed,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Speichere in localStorage für lokale Wiederherstellung
+      localStorage.setItem(`flashcard_progress_${selectedDeck.id}_${studentId}`, JSON.stringify(progressData));
+      
+      console.log('Session progress saved:', progressData);
+    } catch (error) {
+      console.error('Error saving session progress:', error);
+    }
+  };
+
+  // Neue Funktion zum Wiederherstellen des Session-Fortschritts
+  const restoreSessionProgress = async (deck: any) => {
+    try {
+      const savedProgress = localStorage.getItem(`flashcard_progress_${deck.id}_${studentId}`);
+      if (savedProgress) {
+        const progress = JSON.parse(savedProgress);
+        const isRecent = new Date(progress.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000); // Max 24h alt
+        
+        if (isRecent) {
+          // Frage den Benutzer, ob er den Fortschritt wiederherstellen möchte
+          if (window.confirm(`Du hattest eine unvollständige Lernsession für dieses Deck. Möchtest du bei Karte ${progress.currentCardIndex + 1} von ${deck.cards.length} weitermachen?`)) {
+            setCurrentCardIndex(progress.currentCardIndex);
+            setSessionStats({
+              cardsReviewed: progress.cardsReviewed,
+              correctAnswers: 0, // Reset für neue Session
+              incorrectAnswers: 0
+            });
+            console.log('Session progress restored:', progress);
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error restoring session progress:', error);
+      return false;
+    }
   };
 
   if (!open) return null;
@@ -3721,65 +3819,67 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                     <Typography variant="caption" sx={{ 
                       color: '#6c757d',
                       mb: 1.5,
-                      fontSize: '0.6rem',
-                      display: 'block'
+                      fontSize: '0.7rem',
+                      display: 'block',
+                      fontWeight: 'bold'
                     }}>
-                      💡 Spaced Repetition: 1-2 = Level sinkt, 3 = bleibt gleich, 4-5 = Level steigt
+                      💡 Bewerte deine Antwort: Wie gut hast du die Karte gewusst?
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
                       <Button
                         variant="contained"
                         color="success"
                         size="small"
-                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
-                        onClick={() => handleNextCard(5)}
+                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        onClick={() => handleNextCard(1)}
                       >
-                        🌟 5
+                        🌟 Perfekt
                       </Button>
                       <Button
                         variant="contained"
                         color="success"
                         size="small"
-                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
-                        onClick={() => handleNextCard(4)}
+                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        onClick={() => handleNextCard(2)}
                       >
-                        ✅ 4
+                        ✅ Sehr gut
                       </Button>
                       <Button
                         variant="contained"
                         color="info"
                         size="small"
-                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
+                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
                         onClick={() => handleNextCard(3)}
                       >
-                        ℹ️ 3
+                        ℹ️ Gut
                       </Button>
                       <Button
                         variant="contained"
                         color="warning"
                         size="small"
-                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
-                        onClick={() => handleNextCard(2)}
+                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        onClick={() => handleNextCard(4)}
                       >
-                        ⚠️ 2
+                        ⚠️ Schwierig
                       </Button>
                       <Button
                         variant="contained"
                         color="error"
                         size="small"
-                        sx={{ width: '100px', fontSize: '0.6rem', py: 0.5, px: 0.5, flexShrink: 0 }}
-                        onClick={() => handleNextCard(1)}
+                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        onClick={() => handleNextCard(5)}
                       >
-                        ❌ 1
+                        ❌ Nicht gewusst
                       </Button>
                     </Box>
                     <Typography variant="caption" sx={{ 
                       color: '#6c757d',
-                      mt: 1,
-                      fontSize: '0.5rem',
-                      display: 'block'
+                      mt: 1.5,
+                      fontSize: '0.6rem',
+                      display: 'block',
+                      fontStyle: 'italic'
                     }}>
-                      1=Sehr schlecht, 2=Schlecht, 3=Mittelmäßig, 4=Gut, 5=Sehr gut
+                      💡 Spaced Repetition: 1-2 = Level steigt, 3 = bleibt gleich, 4-5 = Level sinkt
                     </Typography>
                   </Box>
                 )}

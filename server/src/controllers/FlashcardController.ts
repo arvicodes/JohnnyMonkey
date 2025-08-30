@@ -1209,7 +1209,8 @@ export const updateCardProgress = async (req: Request, res: Response) => {
           interval: 1,
           reviewCount: 1,
           lastReviewed: new Date(),
-          nextReview: new Date(Date.now() + 24 * 60 * 60 * 1000) // +1 Tag
+          nextReview: new Date(Date.now() + 24 * 60 * 60 * 1000), // +1 Tag
+          quality // ← Qualität wird jetzt auch bei der ersten Wiederholung gespeichert!
         }
       });
     } else {
