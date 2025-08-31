@@ -4,6 +4,45 @@ import { PrismaClient } from '@prisma/client';
 const router = Router();
 const prisma = new PrismaClient();
 
+// Get all users (for teachers)
+const getAllUsers: RequestHandler = async (req, res) => {
+  try {
+    // Check if teacher ID is provided in query or body
+    const teacherId = req.query.teacherId || req.body.teacherId;
+    
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID fehlt' });
+    }
+    
+    // Verify the teacher exists and has teacher role
+    const teacher = await prisma.user.findUnique({
+      where: { id: teacherId as string },
+      select: { role: true }
+    });
+    
+    if (!teacher || teacher.role !== 'TEACHER') {
+      return res.status(403).json({ error: 'Nur Lehrer können alle Benutzer einsehen' });
+    }
+    
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        loginCode: true,
+        avatarEmoji: true,
+        createdAt: true
+      },
+      orderBy: { name: 'asc' }
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error getting all users:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 // Get a single user by ID
 const getUserById: RequestHandler = async (req, res) => {
   try {
@@ -89,6 +128,7 @@ const updateUserAvatarEmoji: RequestHandler = async (req, res) => {
   }
 };
 
+router.get('/', getAllUsers);
 router.get('/:id', getUserById);
 router.put('/:id/avatar-emoji', updateUserAvatarEmoji);
 router.get('/teacher/:id/groups', getTeacherGroups);
