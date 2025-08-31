@@ -10,7 +10,7 @@
     "backup:restore": "bash scripts/backup-manager.sh restore",
     "git:commit": "bash scripts/backup-manager.sh create && git add . && git commit -m \"Auto-backup: $(date)\"",
     "git:push": "git push",
-    "build": "npm install && cd server && npm install && npm run prisma:generate && cd ../client && npm install && npm install --save-dev @types/file-saver && npm run build && cd ../server && cp -r ../client/build ./client-build && npm run build",
+    "build": "npm install && cd server && npm install && npm run prisma:generate && cd ../client && npm install && npm install --save-dev @types/file-saver && npm run build && cd ../server && rm -rf client-build && cp -r ../client/build ./client-build && npm run build",
     "build:server": "cd server && npm install && npm run prisma:generate && npm run build",
     "build:client": "cd client && npm install && npm install --save-dev @types/file-saver && npm run build"
   },

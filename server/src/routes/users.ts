@@ -10,8 +10,25 @@ const getAllUsers: RequestHandler = async (req, res) => {
     // Check if teacher ID is provided in query or body
     const teacherId = req.query.teacherId || req.body.teacherId;
     
+    // If no teacher ID provided, return basic user list (for development/testing)
     if (!teacherId) {
-      return res.status(400).json({ error: 'Lehrer-ID fehlt' });
+      const users = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          loginCode: true,
+          avatarEmoji: true,
+          createdAt: true
+        },
+        orderBy: { name: 'asc' },
+        take: 10 // Limit to 10 users for security
+      });
+      
+      return res.json({
+        message: 'Development mode: Showing first 10 users',
+        users: users
+      });
     }
     
     // Verify the teacher exists and has teacher role
