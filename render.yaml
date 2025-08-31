@@ -24,7 +24,7 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        value: postgresql://johnnymonkey_user:password@dpg-abc123-a.frankfurt-postgres.render.com/johnnymonkey
+        value: postgresql://johnnymonkey_user:D7ZB4mXFR77t1fShEWC0UKhhy60rsHCN@dpg-d2qau7be5dus73brrtbg-a/johnnymonkey
       - key: REACT_APP_API_URL
         value: https://johnnymonkey.onrender.com
     healthCheckPath: /health
