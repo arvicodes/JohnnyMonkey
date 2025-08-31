@@ -6,8 +6,12 @@ const prisma = new PrismaClient();
 export const createSubject = async (req: Request, res: Response) => {
   try {
     const { name, description } = req.body;
-    const teacherId = req.body.teacherId || req.query.teacherId || req.headers['x-user-id'];
-    if (!teacherId) return res.status(400).json({ error: 'Lehrer-ID fehlt' });
+    const teacherId = req.user?.id; // Use authenticated user's ID
+    
+    if (!teacherId) {
+      return res.status(401).json({ error: 'Nicht authentifiziert' });
+    }
+    
     const subject = await prisma.subject.create({
       data: { name, description, teacherId }
     });
@@ -19,19 +23,10 @@ export const createSubject = async (req: Request, res: Response) => {
 
 export const getSubjects = async (req: Request, res: Response) => {
   try {
-    const teacherId = req.query.teacherId || req.headers['x-user-id'];
+    const teacherId = req.user?.id; // Use authenticated user's ID
     
-    // If no teacher ID provided, return basic subjects list (for development/testing)
     if (!teacherId) {
-      const subjects = await prisma.subject.findMany({
-        orderBy: { order: 'asc' },
-        take: 10 // Limit to 10 subjects for security
-      });
-      
-      return res.json({
-        message: 'Development mode: Showing first 10 subjects',
-        subjects: subjects
-      });
+      return res.status(401).json({ error: 'Nicht authentifiziert' });
     }
     
     const subjects = await prisma.subject.findMany({
@@ -82,9 +77,11 @@ export const deleteSubject = async (req: Request, res: Response) => {
 export const reorderSubjects = async (req: Request, res: Response) => {
   try {
     const { subjectIds } = req.body;
-    const teacherId = req.body.teacherId || req.query.teacherId || req.headers['x-user-id'];
+    const teacherId = req.user?.id; // Use authenticated user's ID
     
-    if (!teacherId) return res.status(400).json({ error: 'Lehrer-ID fehlt' });
+    if (!teacherId) {
+      return res.status(401).json({ error: 'Nicht authentifiziert' });
+    }
     if (!Array.isArray(subjectIds)) return res.status(400).json({ error: 'Ungültige Reihenfolge' });
 
     // Update order for each subject
