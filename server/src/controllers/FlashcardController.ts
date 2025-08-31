@@ -5,16 +5,8 @@ import { parseFlashcardWordFile, ParsedFlashcardDocument } from '../utils/flashc
 
 const prisma = new PrismaClient();
 
-// Erweitere den Request-Typ um user
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
-}
-
 // FlashcardDeck Controller
-export const createDeck = async (req: AuthenticatedRequest, res: Response) => {
+export const createDeck = async (req: Request, res: Response) => {
   try {
     const { title, description, subjectId, isPublic, teacherId } = req.body;
     
@@ -45,7 +37,7 @@ export const createDeck = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const getDecks = async (req: AuthenticatedRequest, res: Response) => {
+export const getDecks = async (req: Request, res: Response) => {
   try {
     const { teacherId, subjectId, isPublic } = req.query;
     const userId = req.user?.id;
@@ -92,7 +84,7 @@ export const getDecks = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const getDeck = async (req: AuthenticatedRequest, res: Response) => {
+export const getDeck = async (req: Request, res: Response) => {
   try {
     const { deckId } = req.params;
     const userId = req.user?.id;
@@ -138,7 +130,7 @@ export const getDeck = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const getDeckCards = async (req: AuthenticatedRequest, res: Response) => {
+export const getDeckCards = async (req: Request, res: Response) => {
   try {
     const { deckId } = req.params;
     const userId = req.user?.id;
@@ -192,7 +184,7 @@ export const getDeckCards = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
-export const updateDeck = async (req: AuthenticatedRequest, res: Response) => {
+export const updateDeck = async (req: Request, res: Response) => {
   try {
     const { id: deckId } = req.params;
     const { title, description, subjectId, isPublic, teacherId } = req.body;
@@ -279,7 +271,7 @@ export const deleteDeck = async (req: Request, res: Response) => {
 };
 
 // Flashcard Controller
-export const createCard = async (req: AuthenticatedRequest, res: Response) => {
+export const createCard = async (req: Request, res: Response) => {
   try {
     const { deckId, front, back, hint, difficulty, order, teacherId } = req.body;
     const userId = teacherId || req.user?.id;
@@ -315,7 +307,7 @@ export const createCard = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const updateCard = async (req: AuthenticatedRequest, res: Response) => {
+export const updateCard = async (req: Request, res: Response) => {
   try {
     const { cardId } = req.params;
     const { front, back, hint, difficulty, order, teacherId } = req.body;
@@ -353,7 +345,7 @@ export const updateCard = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const deleteCard = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteCard = async (req: Request, res: Response) => {
   try {
     const { cardId } = req.params;
     const { teacherId } = req.body;
@@ -391,7 +383,7 @@ export const deleteCard = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 // Assignment Controller
-export const createAssignment = async (req: AuthenticatedRequest, res: Response) => {
+export const createAssignment = async (req: Request, res: Response) => {
   try {
     const { deckId, groupId, teacherId } = req.body;
     
@@ -435,7 +427,7 @@ export const createAssignment = async (req: AuthenticatedRequest, res: Response)
   }
 };
 
-export const deleteAssignment = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteAssignment = async (req: Request, res: Response) => {
   try {
     const { assignmentId } = req.params;
     const { teacherId } = req.body;
@@ -472,7 +464,7 @@ export const deleteAssignment = async (req: AuthenticatedRequest, res: Response)
   }
 };
 
-export const getFlashcardAssignments = async (req: AuthenticatedRequest, res: Response) => {
+export const getFlashcardAssignments = async (req: Request, res: Response) => {
   try {
     const { teacherId } = req.query;
     
@@ -500,7 +492,7 @@ export const getFlashcardAssignments = async (req: AuthenticatedRequest, res: Re
 };
 
 // Flashcard Progress Controller
-export const getStudentProgress = async (req: AuthenticatedRequest, res: Response) => {
+export const getStudentProgress = async (req: Request, res: Response) => {
   try {
     const { deckId } = req.params;
     const studentId = req.user?.id;
@@ -541,7 +533,7 @@ export const getStudentProgress = async (req: AuthenticatedRequest, res: Respons
   }
 };
 
-export const submitCardReview = async (req: AuthenticatedRequest, res: Response) => {
+export const submitCardReview = async (req: Request, res: Response) => {
   try {
     const { cardId } = req.params;
     const { quality } = req.body;
@@ -606,7 +598,7 @@ export const submitCardReview = async (req: AuthenticatedRequest, res: Response)
   }
 };
 
-export const getDueCards = async (req: AuthenticatedRequest, res: Response) => {
+export const getDueCards = async (req: Request, res: Response) => {
   try {
     const { deckId } = req.params;
     const studentId = req.user?.id;
@@ -666,7 +658,7 @@ export const getDueCards = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 // Flashcard Assignment Controller
-export const assignDeckToGroup = async (req: AuthenticatedRequest, res: Response) => {
+export const assignDeckToGroup = async (req: Request, res: Response) => {
   try {
     const { deckId, groupId, dueDate, teacherId } = req.body;
     
@@ -713,7 +705,7 @@ export const assignDeckToGroup = async (req: AuthenticatedRequest, res: Response
 
 
 
-export const removeDeckAssignment = async (req: AuthenticatedRequest, res: Response) => {
+export const removeDeckAssignment = async (req: Request, res: Response) => {
   try {
     const { assignmentId } = req.params;
     const { teacherId } = req.body;
@@ -1413,7 +1405,7 @@ export const getAllAssignedCards = async (req: Request, res: Response) => {
 };
 
 // Migration zum neuen Spaced Repetition System
-export const migrateToNewSpacedRepetitionSystem = async (req: AuthenticatedRequest, res: Response) => {
+export const migrateToNewSpacedRepetitionSystem = async (req: Request, res: Response) => {
   try {
     // Prüfen ob der Benutzer Administrator ist
     if (req.user?.role !== 'ADMIN') {
