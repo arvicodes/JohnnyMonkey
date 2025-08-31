@@ -1,10 +1,16 @@
 // Zentrale API-Utility für alle API-Aufrufe mit Login-Code Header
 
+// API Base URL aus Umgebungsvariable oder Fallback auf localhost
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 export const apiCall = async (url: string, options: RequestInit = {}) => {
   const loginCode = localStorage.getItem('loginCode');
   if (!loginCode) {
     throw new Error('Kein Login-Code gefunden. Bitte melden Sie sich erneut an.');
   }
+
+  // Vollständige URL erstellen
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -12,7 +18,7 @@ export const apiCall = async (url: string, options: RequestInit = {}) => {
     ...options.headers,
   };
 
-  return fetch(url, {
+  return fetch(fullUrl, {
     ...options,
     headers,
   });
