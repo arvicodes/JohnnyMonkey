@@ -12,7 +12,8 @@
     "git:push": "git push",
     "build": "npm install && cd server && npm install && npm run prisma:generate && cd ../client && npm install && npm install --save-dev @types/file-saver && npm run build && cd ../server && rm -rf client-build && cp -r ../client/build ./client-build && npm run build",
     "build:server": "cd server && npm install && npm run prisma:generate && npm run build",
-    "build:client": "cd client && npm install && npm install --save-dev @types/file-saver && npm run build"
+    "build:client": "cd client && npm install && npm install --save-dev @types/file-saver && npm run build",
+    "deploy:build": "npm install && cd server && npm install && npm run build && cd ../client && npm install && npm run build && cd ../server && rm -rf client-build && cp -r ../client/build ./client-build"
   },
   "keywords": ["education", "database", "backup", "git"],
   "author": "",
