@@ -12,6 +12,8 @@ services:
       cd ../client && npm install && npm run build
       echo "📁 Copying client build to server..."
       cd ../server && rm -rf client-build && cp -r ../client/build ./client-build
+      echo "🔍 Verifying client-build contents..."
+      ls -la client-build/
       echo "✅ Build completed successfully!"
     startCommand: cd server && npm start
     envVars:
