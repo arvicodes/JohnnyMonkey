@@ -23,6 +23,8 @@ services:
         value: 10000
       - key: DATABASE_URL
         value: file:./prisma/render.db
+      - key: REACT_APP_API_URL
+        value: https://johnnymonkey.onrender.com
     healthCheckPath: /health
     autoDeploy: true
     branch: main
