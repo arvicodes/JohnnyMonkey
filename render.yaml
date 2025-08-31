@@ -5,8 +5,10 @@ services:
     plan: free
     buildCommand: |
       npm install
-      cd server && npm install && npm run build
-      cd ../client && npm install && npm run build
+      cd server && npm install
+      cd ../client && npm install
+      cd ../server && npm run build
+      cd ../client && npm run build
     startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
