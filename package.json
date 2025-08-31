@@ -9,7 +9,10 @@
     "backup:cleanup": "bash scripts/backup-manager.sh cleanup",
     "backup:restore": "bash scripts/backup-manager.sh restore",
     "git:commit": "bash scripts/backup-manager.sh create && git add . && git commit -m \"Auto-backup: $(date)\"",
-    "git:push": "git push"
+    "git:push": "git push",
+    "build": "npm install && cd server && npm install && cd ../client && npm install && cd ../server && npm run build && cd ../client && npm run build",
+    "build:server": "cd server && npm install && npm run build",
+    "build:client": "cd client && npm install && npm run build"
   },
   "keywords": ["education", "database", "backup", "git"],
   "author": "",
