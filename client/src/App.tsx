@@ -50,6 +50,7 @@ function AppContent() {
         } else {
           localStorage.setItem('studentId', data.user.id);
         }
+        localStorage.setItem('loginCode', loginCode); // Speichere den Login-Code
         
         setShowSuccessMessage(true);
         setTimeout(() => setShowSuccessMessage(false), 3000); // Hide after 3 seconds
@@ -65,9 +66,10 @@ function AppContent() {
 
   const handleLogout = () => {
     setUser(null);
-    // Clear stored user IDs
+    // Clear stored user IDs and login code
     localStorage.removeItem('teacherId');
     localStorage.removeItem('studentId');
+    localStorage.removeItem('loginCode'); // Lösche auch den Login-Code
     navigate('/');
   };
 
