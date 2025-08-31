@@ -56,6 +56,52 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root route - serve React app
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>JohnnyMonkey - Educational Platform</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
+          .container { max-width: 600px; margin: 0 auto; }
+          .status { color: #22c55e; font-weight: bold; }
+          .url { color: #3b82f6; text-decoration: none; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🎓 JohnnyMonkey</h1>
+          <p class="status">✅ Server is running successfully!</p>
+          <p>Educational platform with database backup integration</p>
+          <br>
+          <p><strong>API Endpoints:</strong></p>
+          <ul style="text-align: left; display: inline-block;">
+            <li><a href="/health" class="url">/health</a> - Server status</li>
+            <li><a href="/api/auth" class="url">/api/auth</a> - Authentication</li>
+            <li><a href="/api/users" class="url">/api/users</a> - User management</li>
+            <li><a href="/api/subjects" class="url">/api/subjects</a> - Subject management</li>
+            <li><a href="/api/flashcards" class="url">/api/flashcards</a> - Flashcard system</li>
+          </ul>
+          <br>
+          <p><strong>Frontend:</strong> <a href="/client" class="url">/client</a></p>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
+// Serve static files from client build
+app.use('/client', express.static(path.join(__dirname, '../../client/build')));
+
+// Catch-all route for React app
+app.get('/client/*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../client/build/index.html'));
+});
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down server gracefully...');
