@@ -1974,7 +1974,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       
       // Verwende den Server-Port (3001) für HTML-Dateien
       const fullUrl = ext === 'html' 
-        ? 'http://localhost:3001' + material.filePath 
+        ? 'https://johnnymonkey.onrender.com' + material.filePath 
         : window.location.origin + material.filePath;
       
       const newWindow = window.open(fullUrl, '_blank');

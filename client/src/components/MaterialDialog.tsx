@@ -143,7 +143,7 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
     
     // Verwende den Server-Port (3001) für HTML-Dateien
     const fullUrl = ext === 'html' 
-      ? 'http://localhost:3001' + filePath 
+      ? 'https://johnnymonkey.onrender.com' + filePath 
       : window.location.origin + filePath;
     
     const newWindow = window.open(fullUrl, '_blank');
@@ -165,7 +165,7 @@ const MaterialDialog: React.FC<MaterialDialogProps> = ({
     const ext = filePath.split('.').pop()?.toLowerCase();
     if (ext === 'html') {
       // Verwende den Server-Port (3001) für HTML-Dateien
-      const fullUrl = 'http://localhost:3001' + filePath;
+      const fullUrl = 'https://johnnymonkey.onrender.com' + filePath;
       setPreviewMaterial(fullUrl);
     } else {
       // Für andere Dateitypen: Download oder externe Vorschau

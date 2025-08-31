@@ -894,7 +894,7 @@ const SortableLesson = ({ lesson, subject, onOpenMaterialDialog, ...props }: any
       
       // Verwende den Server-Port (3001) für HTML-Dateien
       const fullUrl = ext === 'html' 
-        ? 'http://localhost:3001' + materialPath 
+        ? 'https://johnnymonkey.onrender.com' + materialPath 
         : window.location.origin + materialPath;
       
       // Versuche zuerst, die Datei in einem neuen Tab zu öffnen
