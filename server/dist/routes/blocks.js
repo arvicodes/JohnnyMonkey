@@ -14,3 +14,4 @@ router.delete('/:id', BlockController_1.deleteBlock);
 // Block per ID holen
 router.get('/:id', BlockController_1.getBlock);
 exports.default = router;
+//# sourceMappingURL=blocks.js.map

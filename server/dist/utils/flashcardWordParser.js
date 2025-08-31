@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,54 +7,52 @@ exports.parseFlashcardWordFile = parseFlashcardWordFile;
 const mammoth_1 = __importDefault(require("mammoth"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-function parseFlashcardWordFile(filePath) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            let absolutePath;
-            // Handle different path formats
-            if (filePath.startsWith('/Users/')) {
-                // Absolute path - use as is
-                absolutePath = filePath;
-            }
-            else if (filePath.startsWith('/material/')) {
-                // Relative path from material directory
-                absolutePath = path_1.default.join(process.cwd(), '..', filePath.replace('/material/', 'material/'));
-            }
-            else {
-                // Fallback: assume it's relative to material directory
-                absolutePath = path_1.default.join(process.cwd(), '..', 'material', filePath);
-            }
-            console.log('Parsing flashcard file at:', absolutePath);
-            // Check if file exists
-            if (!fs_1.default.existsSync(absolutePath)) {
-                throw new Error(`Datei nicht gefunden: ${absolutePath}`);
-            }
-            let text;
-            // Check file extension
-            const ext = path_1.default.extname(absolutePath).toLowerCase();
-            if (ext === '.docx' || ext === '.doc') {
-                // Read Word document
-                const result = yield mammoth_1.default.extractRawText({ path: absolutePath });
-                text = result.value;
-            }
-            else if (ext === '.txt') {
-                // Read text file
-                text = fs_1.default.readFileSync(absolutePath, 'utf-8');
-            }
-            else {
-                throw new Error('Nicht unterstütztes Dateiformat. Nur .docx, .doc und .txt Dateien werden unterstützt.');
-            }
-            console.log('Extracted text:', text);
-            // Parse the text according to the schema
-            const parsedDocument = parseFlashcardText(text);
-            console.log('Parsed flashcard document:', parsedDocument);
-            return parsedDocument;
+async function parseFlashcardWordFile(filePath) {
+    try {
+        let absolutePath;
+        // Handle different path formats
+        if (filePath.startsWith('/Users/')) {
+            // Absolute path - use as is
+            absolutePath = filePath;
         }
-        catch (error) {
-            console.error('Error parsing flashcard file:', error);
-            throw new Error(`Fehler beim Parsen der Karteikarten-Datei: ${error instanceof Error ? error.message : String(error)}`);
+        else if (filePath.startsWith('/material/')) {
+            // Relative path from material directory
+            absolutePath = path_1.default.join(process.cwd(), '..', filePath.replace('/material/', 'material/'));
         }
-    });
+        else {
+            // Fallback: assume it's relative to material directory
+            absolutePath = path_1.default.join(process.cwd(), '..', 'material', filePath);
+        }
+        console.log('Parsing flashcard file at:', absolutePath);
+        // Check if file exists
+        if (!fs_1.default.existsSync(absolutePath)) {
+            throw new Error(`Datei nicht gefunden: ${absolutePath}`);
+        }
+        let text;
+        // Check file extension
+        const ext = path_1.default.extname(absolutePath).toLowerCase();
+        if (ext === '.docx' || ext === '.doc') {
+            // Read Word document
+            const result = await mammoth_1.default.extractRawText({ path: absolutePath });
+            text = result.value;
+        }
+        else if (ext === '.txt') {
+            // Read text file
+            text = fs_1.default.readFileSync(absolutePath, 'utf-8');
+        }
+        else {
+            throw new Error('Nicht unterstütztes Dateiformat. Nur .docx, .doc und .txt Dateien werden unterstützt.');
+        }
+        console.log('Extracted text:', text);
+        // Parse the text according to the schema
+        const parsedDocument = parseFlashcardText(text);
+        console.log('Parsed flashcard document:', parsedDocument);
+        return parsedDocument;
+    }
+    catch (error) {
+        console.error('Error parsing flashcard file:', error);
+        throw new Error(`Fehler beim Parsen der Karteikarten-Datei: ${error instanceof Error ? error.message : String(error)}`);
+    }
 }
 function parseFlashcardText(text) {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
@@ -208,3 +197,4 @@ function parseGenericFormat(lines) {
     }
     return cards;
 }
+//# sourceMappingURL=flashcardWordParser.js.map

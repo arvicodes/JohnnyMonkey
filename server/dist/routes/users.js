@@ -1,22 +1,36 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const prisma_1 = require("../generated/prisma");
+const client_1 = require("@prisma/client");
+const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
-const prisma = new prisma_1.PrismaClient();
-// Get a single user by ID
-const getUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const prisma = new client_1.PrismaClient();
+// Get all users (for teachers only)
+const getAllUsers = async (req, res) => {
     try {
-        const user = yield prisma.user.findUnique({
+        // User is already authenticated and verified as teacher by middleware
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                name: true,
+                role: true,
+                loginCode: true,
+                avatarEmoji: true,
+                createdAt: true
+            },
+            orderBy: { name: 'asc' }
+        });
+        res.json(users);
+    }
+    catch (error) {
+        console.error('Error getting all users:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+// Get a single user by ID
+const getUserById = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
             where: { id: req.params.id },
             select: {
                 id: true,
@@ -34,11 +48,11 @@ const getUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-});
+};
 // Get all learning groups for a teacher
-const getTeacherGroups = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getTeacherGroups = async (req, res) => {
     try {
-        const groups = yield prisma.learningGroup.findMany({
+        const groups = await prisma.learningGroup.findMany({
             where: { teacherId: req.params.id },
             include: { students: true },
         });
@@ -47,11 +61,11 @@ const getTeacherGroups = (req, res) => __awaiter(void 0, void 0, void 0, functio
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-});
+};
 // Get all learning groups for a student
-const getStudentGroups = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getStudentGroups = async (req, res) => {
     try {
-        const user = yield prisma.user.findUnique({
+        const user = await prisma.user.findUnique({
             where: { id: req.params.id },
             include: {
                 learningGroups: {
@@ -67,15 +81,15 @@ const getStudentGroups = (req, res) => __awaiter(void 0, void 0, void 0, functio
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-});
+};
 // Update user avatar emoji
-const updateUserAvatarEmoji = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updateUserAvatarEmoji = async (req, res) => {
     try {
         const { avatarEmoji } = req.body;
         if (!avatarEmoji) {
             return res.status(400).json({ error: 'Avatar emoji is required' });
         }
-        const user = yield prisma.user.update({
+        const user = await prisma.user.update({
             where: { id: req.params.id },
             data: { avatarEmoji },
             select: {
@@ -92,9 +106,11 @@ const updateUserAvatarEmoji = (req, res) => __awaiter(void 0, void 0, void 0, fu
         console.error('Error updating user avatar emoji:', error);
         res.status(500).json({ error: 'Server error' });
     }
-});
-router.get('/:id', getUserById);
-router.put('/:id/avatar-emoji', updateUserAvatarEmoji);
-router.get('/teacher/:id/groups', getTeacherGroups);
-router.get('/student/:id/groups', getStudentGroups);
+};
+router.get('/', auth_1.authenticateUser, auth_1.requireTeacher, getAllUsers);
+router.get('/:id', auth_1.authenticateUser, getUserById);
+router.put('/:id/avatar-emoji', auth_1.authenticateUser, updateUserAvatarEmoji);
+router.get('/teacher/:id/groups', auth_1.authenticateUser, auth_1.requireTeacher, getTeacherGroups);
+router.get('/student/:id/groups', auth_1.authenticateUser, getStudentGroups);
 exports.default = router;
+//# sourceMappingURL=users.js.map

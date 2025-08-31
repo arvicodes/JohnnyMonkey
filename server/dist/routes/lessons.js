@@ -13,3 +13,4 @@ router.put('/:id', LessonController_1.updateLesson);
 router.delete('/:id', LessonController_1.deleteLesson);
 router.get('/:id', LessonController_1.getLesson);
 exports.default = router;
+//# sourceMappingURL=lessons.js.map

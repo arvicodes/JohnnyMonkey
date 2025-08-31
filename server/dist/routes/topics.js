@@ -14,3 +14,4 @@ router.delete('/:id', TopicController_1.deleteTopic);
 // Einzelnes Topic abrufen
 router.get('/:id', TopicController_1.getTopic);
 exports.default = router;
+//# sourceMappingURL=topics.js.map

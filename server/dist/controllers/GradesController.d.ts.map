@@ -1,0 +1,1 @@
+{"version":3,"file":"GradesController.d.ts","sourceRoot":"","sources":["../../src/controllers/GradesController.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAK5C,eAAO,MAAM,UAAU,GAAU,KAAK,OAAO,EAAE,KAAK,QAAQ,gDAuC3D,CAAC;AAEF,eAAO,MAAM,SAAS,GAAU,KAAK,OAAO,EAAE,KAAK,QAAQ,gDAuB1D,CAAC;AAEF,eAAO,MAAM,kBAAkB,GAAU,KAAK,OAAO,EAAE,KAAK,QAAQ,gDAyBnE,CAAC"}

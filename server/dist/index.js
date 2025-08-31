@@ -1,20 +1,11 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const express_2 = __importDefault(require("express"));
-const prisma_1 = require("./generated/prisma");
+const client_1 = require("@prisma/client");
 const portManager_1 = require("./utils/portManager");
 const auth_1 = __importDefault(require("./routes/auth"));
 const users_1 = __importDefault(require("./routes/users"));
@@ -37,10 +28,10 @@ const fileSystemPaths_1 = __importDefault(require("./routes/fileSystemPaths"));
 const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
-const prisma = new prisma_1.PrismaClient();
+const prisma = new client_1.PrismaClient();
 app.use((0, express_2.default)());
 app.use(express_1.default.json());
-// Routes
+// API Routes - ALWAYS before static middleware
 app.use('/api/auth', auth_1.default);
 app.use('/api/users', users_1.default);
 app.use('/api/learning-groups', learningGroups_1.default);
@@ -60,46 +51,56 @@ app.use('/api/quiz-participations', quizParticipations_1.default);
 app.use('/api/grades', grades_routes_1.default);
 app.use('/api/file-system-paths', fileSystemPaths_1.default);
 app.use('/api/flashcards', flashcards_1.default);
+// Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+// Serve static files from client build
+const clientBuildPath = path_1.default.join(__dirname, '..', 'client-build');
+app.use(express_1.default.static(clientBuildPath));
+// React Router Fallback - ALWAYS last
+app.get('*', (req, res) => {
+    res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
+});
+// Debug: Log the build path
+console.log('🔍 Client build path:', clientBuildPath);
+console.log('🔍 Current directory:', __dirname);
 // Graceful shutdown
-process.on('SIGINT', () => __awaiter(void 0, void 0, void 0, function* () {
+process.on('SIGINT', async () => {
     console.log('\n🛑 Shutting down server gracefully...');
-    yield prisma.$disconnect();
+    await prisma.$disconnect();
     process.exit(0);
-}));
-process.on('SIGTERM', () => __awaiter(void 0, void 0, void 0, function* () {
+});
+process.on('SIGTERM', async () => {
     console.log('\n🛑 Shutting down server gracefully...');
-    yield prisma.$disconnect();
+    await prisma.$disconnect();
     process.exit(0);
-}));
+});
 // Start server with Render compatibility
-function startServer() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const port = parseInt(process.env.PORT || '3001', 10);
-            // For Render, use simple server start
-            if (process.env.NODE_ENV === 'production') {
-                const server = app.listen(port, () => {
-                    console.log(`🎯 Server is running on port ${port}`);
-                    console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
-                    console.log(`🔗 Health check: http://localhost:${port}/health`);
-                });
-            }
-            else {
-                // Development mode with PortManager
-                yield portManager_1.PortManager.cleanupPorts();
-                const { server, port: managedPort } = yield portManager_1.PortManager.startServer(app, port);
-                console.log(`🎯 Server is running on port ${managedPort}`);
-            }
+async function startServer() {
+    try {
+        const port = parseInt(process.env.PORT || '3001', 10);
+        // For Render, use simple server start
+        if (process.env.NODE_ENV === 'production') {
+            const server = app.listen(port, () => {
+                console.log(`🎯 Server is running on port ${port}`);
+                console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
+                console.log(`🔗 Health check: http://localhost:${port}/health`);
+            });
         }
-        catch (error) {
-            console.error('❌ Failed to start server:', error);
-            process.exit(1);
+        else {
+            // Development mode with PortManager
+            await portManager_1.PortManager.cleanupPorts();
+            const { server, port: managedPort } = await portManager_1.PortManager.startServer(app, port);
+            console.log(`🎯 Server is running on port ${managedPort}`);
         }
-    });
+    }
+    catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
 }
 startServer();
+//# sourceMappingURL=index.js.map

@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,9 +7,9 @@ const express_1 = __importDefault(require("express"));
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-const prisma_1 = require("../generated/prisma");
+const client_1 = require("@prisma/client");
 const router = express_1.default.Router();
-const prisma = new prisma_1.PrismaClient();
+const prisma = new client_1.PrismaClient();
 // Configure multer for file uploads
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
@@ -203,10 +194,10 @@ router.get('/available', (req, res) => {
     }
 });
 // Get materials for a specific lesson
-router.get('/lesson/:lessonId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/lesson/:lessonId', async (req, res) => {
     try {
         const lessonId = req.params.lessonId;
-        const lessonMaterials = yield prisma.lessonMaterial.findMany({
+        const lessonMaterials = await prisma.lessonMaterial.findMany({
             where: { lessonId },
             include: {
                 material: true
@@ -218,21 +209,21 @@ router.get('/lesson/:lessonId', (req, res) => __awaiter(void 0, void 0, void 0, 
         console.error('Error fetching lesson materials:', error);
         res.status(500).json({ error: 'Failed to fetch lesson materials' });
     }
-}));
+});
 // Add material to lesson
-router.post('/lesson', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/lesson', async (req, res) => {
     try {
         const { lessonId, fileName, filePath } = req.body;
         // Remove all existing quizzes from this lesson first
-        yield prisma.lessonQuiz.deleteMany({
+        await prisma.lessonQuiz.deleteMany({
             where: { lessonId }
         });
         // First, create or find the material
-        let material = yield prisma.material.findFirst({
+        let material = await prisma.material.findFirst({
             where: { fileName }
         });
         if (!material) {
-            material = yield prisma.material.create({
+            material = await prisma.material.create({
                 data: {
                     fileName,
                     filePath,
@@ -241,7 +232,7 @@ router.post('/lesson', (req, res) => __awaiter(void 0, void 0, void 0, function*
             });
         }
         // Then create the lesson-material relationship
-        const lessonMaterial = yield prisma.lessonMaterial.create({
+        const lessonMaterial = await prisma.lessonMaterial.create({
             data: {
                 lessonId,
                 materialId: material.id
@@ -256,12 +247,12 @@ router.post('/lesson', (req, res) => __awaiter(void 0, void 0, void 0, function*
         console.error('Error adding material to lesson:', error);
         res.status(500).json({ error: 'Failed to add material to lesson' });
     }
-}));
+});
 // Remove material from lesson
-router.delete('/lesson/:lessonId/:materialId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.delete('/lesson/:lessonId/:materialId', async (req, res) => {
     try {
         const { lessonId, materialId } = req.params;
-        yield prisma.lessonMaterial.deleteMany({
+        await prisma.lessonMaterial.deleteMany({
             where: {
                 lessonId,
                 materialId
@@ -273,5 +264,6 @@ router.delete('/lesson/:lessonId/:materialId', (req, res) => __awaiter(void 0, v
         console.error('Error removing material from lesson:', error);
         res.status(500).json({ error: 'Failed to remove material from lesson' });
     }
-}));
+});
 exports.default = router;
+//# sourceMappingURL=materials.js.map

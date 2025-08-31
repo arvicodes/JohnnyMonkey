@@ -1,25 +1,16 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteParticipation = exports.getQuizStatistics = exports.resetParticipation = exports.getParticipationStatus = exports.getParticipationResultsForTeacher = exports.getParticipationResults = exports.submitAnswers = exports.startParticipation = void 0;
-const prisma_1 = require("../generated/prisma");
+const client_1 = require("@prisma/client");
 const gradeConverter_1 = require("../utils/gradeConverter");
-const prisma = new prisma_1.PrismaClient();
+const prisma = new client_1.PrismaClient();
 // Start participation in a quiz session (student only)
-const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const startParticipation = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const { studentId } = req.body;
         // Check if session is active
-        const session = yield prisma.quizSession.findFirst({
+        const session = await prisma.quizSession.findFirst({
             where: {
                 id: sessionId,
                 isActive: true
@@ -40,7 +31,7 @@ const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
             return res.status(404).json({ error: 'Keine aktive Quiz-Session gefunden' });
         }
         // Check if student already participated and completed
-        const existingParticipation = yield prisma.quizParticipation.findUnique({
+        const existingParticipation = await prisma.quizParticipation.findUnique({
             where: {
                 sessionId_studentId: {
                     sessionId: sessionId,
@@ -54,7 +45,7 @@ const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
         // If participation exists but is not completed (was reset), return existing participation
         if (existingParticipation && !existingParticipation.completedAt) {
             // Update the start time to now
-            const updatedParticipation = yield prisma.quizParticipation.update({
+            const updatedParticipation = await prisma.quizParticipation.update({
                 where: {
                     id: existingParticipation.id
                 },
@@ -78,12 +69,15 @@ const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 }
             });
             // Prepare quiz data for student (without correct answers)
-            const quizForStudent = Object.assign(Object.assign({}, updatedParticipation.session.quiz), { questions: updatedParticipation.session.quiz.questions.map((q) => ({
+            const quizForStudent = {
+                ...updatedParticipation.session.quiz,
+                questions: updatedParticipation.session.quiz.questions.map((q) => ({
                     id: q.id,
                     question: q.question,
                     options: JSON.parse(q.options),
                     order: q.order
-                })) });
+                }))
+            };
             res.json({
                 participation: {
                     id: updatedParticipation.id,
@@ -95,7 +89,7 @@ const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
             return;
         }
         // Create participation
-        const participation = yield prisma.quizParticipation.create({
+        const participation = await prisma.quizParticipation.create({
             data: {
                 sessionId: sessionId,
                 studentId: studentId,
@@ -119,12 +113,15 @@ const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
             }
         });
         // Prepare quiz data for student (without correct answers)
-        const quizForStudent = Object.assign(Object.assign({}, participation.session.quiz), { questions: participation.session.quiz.questions.map((q) => ({
+        const quizForStudent = {
+            ...participation.session.quiz,
+            questions: participation.session.quiz.questions.map((q) => ({
                 id: q.id,
                 question: q.question,
                 options: JSON.parse(q.options),
                 order: q.order
-            })) });
+            }))
+        };
         res.json({
             participation: {
                 id: participation.id,
@@ -138,15 +135,15 @@ const startParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
         console.error('Error starting participation:', error);
         res.status(500).json({ error: 'Fehler beim Starten der Quiz-Teilnahme' });
     }
-});
+};
 exports.startParticipation = startParticipation;
 // Submit quiz answers (student only)
-const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const submitAnswers = async (req, res) => {
     try {
         const { participationId } = req.params;
         const { answers } = req.body; // Array of { questionId, selectedAnswer }
         // Get participation and quiz data
-        const participation = yield prisma.quizParticipation.findUnique({
+        const participation = await prisma.quizParticipation.findUnique({
             where: { id: participationId },
             include: {
                 session: {
@@ -190,7 +187,7 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             });
         }
         // Create all answers in a transaction
-        yield prisma.$transaction([
+        await prisma.$transaction([
             ...answerRecords.map(answer => prisma.quizAnswer.create({ data: answer })),
             prisma.quizParticipation.update({
                 where: { id: participationId },
@@ -205,7 +202,7 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         if (participation.session.quiz.gradeCategory) {
             try {
                 // Get the student's learning group and grading schema
-                const student = yield prisma.user.findUnique({
+                const student = await prisma.user.findUnique({
                     where: { id: participation.studentId },
                     include: {
                         learningGroups: {
@@ -249,7 +246,7 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                         }
                         console.log(`Converting quiz result: ${percentage}% -> ${grade} (${gradingSchema.gradingSystem}) with weight ${weight}`);
                         // Create or update the grade
-                        yield prisma.grade.upsert({
+                        await prisma.grade.upsert({
                             where: {
                                 studentId_schemaId_categoryName: {
                                     studentId: participation.studentId,
@@ -279,7 +276,7 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             }
         }
         // Get updated participation with answers
-        const updatedParticipation = yield prisma.quizParticipation.findUnique({
+        const updatedParticipation = await prisma.quizParticipation.findUnique({
             where: { id: participationId },
             include: {
                 answers: {
@@ -300,17 +297,17 @@ const submitAnswers = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         console.error('Error submitting answers:', error);
         res.status(500).json({ error: 'Fehler beim Einreichen der Antworten' });
     }
-});
+};
 exports.submitAnswers = submitAnswers;
 // Get participation results (student only)
-const getParticipationResults = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getParticipationResults = async (req, res) => {
     try {
         const { participationId } = req.params;
         const studentId = req.query.studentId;
         if (!studentId) {
             return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
         }
-        const participation = yield prisma.quizParticipation.findFirst({
+        const participation = await prisma.quizParticipation.findFirst({
             where: {
                 id: participationId,
                 studentId: studentId
@@ -366,17 +363,17 @@ const getParticipationResults = (req, res) => __awaiter(void 0, void 0, void 0, 
         console.error('Error getting participation results:', error);
         res.status(500).json({ error: 'Fehler beim Abrufen der Teilnahme-Ergebnisse' });
     }
-});
+};
 exports.getParticipationResults = getParticipationResults;
 // Get participation results for teacher (no studentId check)
-const getParticipationResultsForTeacher = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getParticipationResultsForTeacher = async (req, res) => {
     try {
         const { participationId } = req.params;
         const teacherId = req.body.teacherId;
         if (!teacherId) {
             return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
         }
-        const participation = yield prisma.quizParticipation.findFirst({
+        const participation = await prisma.quizParticipation.findFirst({
             where: {
                 id: participationId,
                 session: {
@@ -437,17 +434,17 @@ const getParticipationResultsForTeacher = (req, res) => __awaiter(void 0, void 0
         console.error('Error getting participation results for teacher:', error);
         res.status(500).json({ error: 'Fehler beim Abrufen der Teilnahme-Ergebnisse' });
     }
-});
+};
 exports.getParticipationResultsForTeacher = getParticipationResultsForTeacher;
 // Get student's participation status
-const getParticipationStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getParticipationStatus = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const studentId = req.query.studentId;
         if (!studentId) {
             return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
         }
-        const participation = yield prisma.quizParticipation.findUnique({
+        const participation = await prisma.quizParticipation.findUnique({
             where: {
                 sessionId_studentId: {
                     sessionId: sessionId,
@@ -477,10 +474,10 @@ const getParticipationStatus = (req, res) => __awaiter(void 0, void 0, void 0, f
         console.error('Error getting participation status:', error);
         res.status(500).json({ error: 'Fehler beim Abrufen des Teilnahme-Status' });
     }
-});
+};
 exports.getParticipationStatus = getParticipationStatus;
 // Reset student's participation (teacher only) - allows student to retake
-const resetParticipation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const resetParticipation = async (req, res) => {
     try {
         const { participationId } = req.params;
         const teacherId = req.body.teacherId;
@@ -488,7 +485,7 @@ const resetParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
             return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
         }
         // Verify the participation belongs to a session owned by the teacher
-        const participation = yield prisma.quizParticipation.findFirst({
+        const participation = await prisma.quizParticipation.findFirst({
             where: {
                 id: participationId,
                 session: {
@@ -509,7 +506,7 @@ const resetParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
             return res.status(404).json({ error: 'Teilnahme nicht gefunden oder Sie haben keine Berechtigung' });
         }
         // Reset participation by deleting answers and resetting completion status
-        yield prisma.$transaction([
+        await prisma.$transaction([
             prisma.quizAnswer.deleteMany({
                 where: {
                     participationId: participationId
@@ -536,10 +533,10 @@ const resetParticipation = (req, res) => __awaiter(void 0, void 0, void 0, funct
         console.error('Error resetting participation:', error);
         res.status(500).json({ error: 'Fehler beim Zurücksetzen der Teilnahme' });
     }
-});
+};
 exports.resetParticipation = resetParticipation;
 // Get quiz statistics for all questions
-const getQuizStatistics = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getQuizStatistics = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const teacherId = req.body.teacherId;
@@ -547,7 +544,7 @@ const getQuizStatistics = (req, res) => __awaiter(void 0, void 0, void 0, functi
             return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
         }
         // Get all completed participations for this session
-        const participations = yield prisma.quizParticipation.findMany({
+        const participations = await prisma.quizParticipation.findMany({
             where: {
                 sessionId: sessionId,
                 completedAt: { not: null },
@@ -621,10 +618,10 @@ const getQuizStatistics = (req, res) => __awaiter(void 0, void 0, void 0, functi
         console.error('Error getting quiz statistics:', error);
         res.status(500).json({ error: 'Fehler beim Abrufen der Quiz-Statistik' });
     }
-});
+};
 exports.getQuizStatistics = getQuizStatistics;
 // Delete student's participation (teacher only)
-const deleteParticipation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const deleteParticipation = async (req, res) => {
     try {
         const { participationId } = req.params;
         const teacherId = req.body.teacherId;
@@ -632,7 +629,7 @@ const deleteParticipation = (req, res) => __awaiter(void 0, void 0, void 0, func
             return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
         }
         // Verify the participation belongs to a session owned by the teacher
-        const participation = yield prisma.quizParticipation.findFirst({
+        const participation = await prisma.quizParticipation.findFirst({
             where: {
                 id: participationId,
                 session: {
@@ -653,7 +650,7 @@ const deleteParticipation = (req, res) => __awaiter(void 0, void 0, void 0, func
             return res.status(404).json({ error: 'Teilnahme nicht gefunden oder Sie haben keine Berechtigung' });
         }
         // Delete all answers first, then the participation
-        yield prisma.$transaction([
+        await prisma.$transaction([
             prisma.quizAnswer.deleteMany({
                 where: {
                     participationId: participationId
@@ -675,5 +672,6 @@ const deleteParticipation = (req, res) => __awaiter(void 0, void 0, void 0, func
         console.error('Error deleting participation:', error);
         res.status(500).json({ error: 'Fehler beim Löschen der Teilnahme' });
     }
-});
+};
 exports.deleteParticipation = deleteParticipation;
+//# sourceMappingURL=QuizParticipationController.js.map

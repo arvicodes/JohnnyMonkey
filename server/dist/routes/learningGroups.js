@@ -1,22 +1,13 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const prisma_1 = require("../generated/prisma");
+const client_1 = require("@prisma/client");
 const router = (0, express_1.Router)();
-const prisma = new prisma_1.PrismaClient();
+const prisma = new client_1.PrismaClient();
 // Get all learning groups (for testing purposes)
-router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/', async (req, res) => {
     try {
-        const groups = yield prisma.learningGroup.findMany({
+        const groups = await prisma.learningGroup.findMany({
             include: {
                 students: {
                     orderBy: { loginCode: 'asc' },
@@ -34,11 +25,11 @@ router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Get all learning groups for a teacher
-router.get('/teacher/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/teacher/:id', async (req, res) => {
     try {
-        const groups = yield prisma.learningGroup.findMany({
+        const groups = await prisma.learningGroup.findMany({
             where: { teacherId: req.params.id },
             include: {
                 students: {
@@ -57,11 +48,11 @@ router.get('/teacher/:id', (req, res) => __awaiter(void 0, void 0, void 0, funct
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Get all learning groups for a student
-router.get('/student/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/student/:id', async (req, res) => {
     try {
-        const groups = yield prisma.learningGroup.findMany({
+        const groups = await prisma.learningGroup.findMany({
             where: {
                 students: {
                     some: {
@@ -87,11 +78,11 @@ router.get('/student/:id', (req, res) => __awaiter(void 0, void 0, void 0, funct
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Get a single learning group by ID
-router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/:id', async (req, res) => {
     try {
-        const group = yield prisma.learningGroup.findUnique({
+        const group = await prisma.learningGroup.findUnique({
             where: { id: req.params.id },
             include: {
                 teacher: true,
@@ -115,15 +106,15 @@ router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         console.error('Error fetching learning group:', error);
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Update a learning group
-router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.put('/:id', async (req, res) => {
     try {
         const { name } = req.body;
         if (!name || name.trim() === '') {
             return res.status(400).json({ error: 'Name ist erforderlich' });
         }
-        const group = yield prisma.learningGroup.update({
+        const group = await prisma.learningGroup.update({
             where: { id: req.params.id },
             data: { name: name.trim() },
             include: {
@@ -145,12 +136,12 @@ router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         console.error('Error updating learning group:', error);
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Create a new learning group
-router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/', async (req, res) => {
     const { name, teacherId } = req.body;
     try {
-        const group = yield prisma.learningGroup.create({
+        const group = await prisma.learningGroup.create({
             data: {
                 name,
                 teacher: {
@@ -174,12 +165,12 @@ router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Add students to a learning group
-router.post('/:id/students', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/:id/students', async (req, res) => {
     const { studentIds } = req.body;
     try {
-        const group = yield prisma.learningGroup.update({
+        const group = await prisma.learningGroup.update({
             where: { id: req.params.id },
             data: {
                 students: {
@@ -203,11 +194,11 @@ router.post('/:id/students', (req, res) => __awaiter(void 0, void 0, void 0, fun
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Remove a student from a learning group
-router.delete('/:groupId/students/:studentId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.delete('/:groupId/students/:studentId', async (req, res) => {
     try {
-        const group = yield prisma.learningGroup.update({
+        const group = await prisma.learningGroup.update({
             where: { id: req.params.groupId },
             data: {
                 students: {
@@ -231,13 +222,13 @@ router.delete('/:groupId/students/:studentId', (req, res) => __awaiter(void 0, v
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Get all available students (not in the specific group)
-router.get('/:groupId/available-students', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/:groupId/available-students', async (req, res) => {
     const { groupId } = req.params;
     try {
         // Get the current group's students
-        const currentGroup = yield prisma.learningGroup.findUnique({
+        const currentGroup = await prisma.learningGroup.findUnique({
             where: { id: groupId },
             include: {
                 students: {
@@ -255,7 +246,7 @@ router.get('/:groupId/available-students', (req, res) => __awaiter(void 0, void 
             return res.status(404).json({ message: 'Lerngruppe nicht gefunden' });
         }
         // Get all students not in this group
-        const availableStudents = yield prisma.user.findMany({
+        const availableStudents = await prisma.user.findMany({
             where: {
                 role: 'STUDENT',
                 AND: {
@@ -277,12 +268,12 @@ router.get('/:groupId/available-students', (req, res) => __awaiter(void 0, void 
         console.error('Error fetching available students:', error);
         res.status(500).json({ message: 'Server-Fehler beim Laden der verfügbaren Schüler' });
     }
-}));
+});
 // Zuordnung von Inhalten zu Lerngruppen
-router.post('/:groupId/assign', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/:groupId/assign', async (req, res) => {
     const { type, refId } = req.body;
     try {
-        const assignment = yield prisma.groupAssignment.create({
+        const assignment = await prisma.groupAssignment.create({
             data: {
                 groupId: req.params.groupId,
                 type,
@@ -294,11 +285,11 @@ router.post('/:groupId/assign', (req, res) => __awaiter(void 0, void 0, void 0, 
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
-router.delete('/:groupId/assign', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+});
+router.delete('/:groupId/assign', async (req, res) => {
     const { type, refId } = req.body;
     try {
-        const deleted = yield prisma.groupAssignment.deleteMany({
+        const deleted = await prisma.groupAssignment.deleteMany({
             where: {
                 groupId: req.params.groupId,
                 type,
@@ -310,10 +301,10 @@ router.delete('/:groupId/assign', (req, res) => __awaiter(void 0, void 0, void 0
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
-router.get('/:groupId/assignments', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+});
+router.get('/:groupId/assignments', async (req, res) => {
     try {
-        const assignments = yield prisma.groupAssignment.findMany({
+        const assignments = await prisma.groupAssignment.findMany({
             where: { groupId: req.params.groupId },
         });
         res.json(assignments);
@@ -321,27 +312,27 @@ router.get('/:groupId/assignments', (req, res) => __awaiter(void 0, void 0, void
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Delete a learning group by ID
-router.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.delete('/:id', async (req, res) => {
     try {
         // Zuerst alle zugehörigen GroupAssignments löschen
-        yield prisma.groupAssignment.deleteMany({ where: { groupId: req.params.id } });
+        await prisma.groupAssignment.deleteMany({ where: { groupId: req.params.id } });
         // Dann alle zugehörigen GradingSchemas löschen
-        yield prisma.gradingSchema.deleteMany({ where: { groupId: req.params.id } });
+        await prisma.gradingSchema.deleteMany({ where: { groupId: req.params.id } });
         // Jetzt die Lerngruppe selbst löschen
-        yield prisma.learningGroup.delete({ where: { id: req.params.id } });
+        await prisma.learningGroup.delete({ where: { id: req.params.id } });
         res.json({ success: true });
     }
     catch (error) {
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Get assigned folders for a learning group
-router.get('/:id/folders', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/:id/folders', async (req, res) => {
     try {
         const groupId = req.params.id;
-        const assignments = yield prisma.groupAssignment.findMany({
+        const assignments = await prisma.groupAssignment.findMany({
             where: {
                 groupId: groupId,
                 type: 'FOLDER'
@@ -360,9 +351,9 @@ router.get('/:id/folders', (req, res) => __awaiter(void 0, void 0, void 0, funct
         console.error('Error fetching assigned folders:', error);
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Assign a folder to a learning group
-router.post('/:id/folders', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/:id/folders', async (req, res) => {
     try {
         const groupId = req.params.id;
         const { path } = req.body;
@@ -370,7 +361,7 @@ router.post('/:id/folders', (req, res) => __awaiter(void 0, void 0, void 0, func
             return res.status(400).json({ error: 'Pfad ist erforderlich' });
         }
         // Check if folder is already assigned
-        const existingAssignment = yield prisma.groupAssignment.findFirst({
+        const existingAssignment = await prisma.groupAssignment.findFirst({
             where: {
                 groupId: groupId,
                 type: 'FOLDER',
@@ -381,7 +372,7 @@ router.post('/:id/folders', (req, res) => __awaiter(void 0, void 0, void 0, func
             return res.status(400).json({ error: 'Ordner ist bereits zugeordnet' });
         }
         // Create new assignment
-        const assignment = yield prisma.groupAssignment.create({
+        const assignment = await prisma.groupAssignment.create({
             data: {
                 groupId: groupId,
                 type: 'FOLDER',
@@ -394,14 +385,14 @@ router.post('/:id/folders', (req, res) => __awaiter(void 0, void 0, void 0, func
         console.error('Error assigning folder:', error);
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 // Remove a folder assignment from a learning group
-router.delete('/:id/folders/:path(*)', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.delete('/:id/folders/:path(*)', async (req, res) => {
     try {
         const groupId = req.params.id;
         const folderPath = req.params.path;
         // Find and delete the assignment
-        const assignment = yield prisma.groupAssignment.findFirst({
+        const assignment = await prisma.groupAssignment.findFirst({
             where: {
                 groupId: groupId,
                 type: 'FOLDER',
@@ -411,7 +402,7 @@ router.delete('/:id/folders/:path(*)', (req, res) => __awaiter(void 0, void 0, v
         if (!assignment) {
             return res.status(404).json({ error: 'Ordner-Zuordnung nicht gefunden' });
         }
-        yield prisma.groupAssignment.delete({
+        await prisma.groupAssignment.delete({
             where: { id: assignment.id }
         });
         res.json({ message: 'Ordner-Zuordnung erfolgreich entfernt' });
@@ -420,5 +411,6 @@ router.delete('/:id/folders/:path(*)', (req, res) => __awaiter(void 0, void 0, v
         console.error('Error removing folder assignment:', error);
         res.status(500).json({ error: 'Server error' });
     }
-}));
+});
 exports.default = router;
+//# sourceMappingURL=learningGroups.js.map

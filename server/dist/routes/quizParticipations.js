@@ -17,3 +17,4 @@ router.post('/:participationId/reset', QuizParticipationController_1.resetPartic
 router.delete('/:participationId', QuizParticipationController_1.deleteParticipation);
 router.post('/:sessionId/statistics', QuizParticipationController_1.getQuizStatistics);
 exports.default = router;
+//# sourceMappingURL=quizParticipations.js.map

@@ -50,3 +50,4 @@ router.post('/student/session/end', FlashcardController_1.endLearningSession);
 router.get('/:id', FlashcardController_1.getFlashcardDeck);
 router.delete('/:id', FlashcardController_1.deleteDeck);
 exports.default = router;
+//# sourceMappingURL=flashcards.js.map

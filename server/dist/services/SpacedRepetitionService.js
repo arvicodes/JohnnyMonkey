@@ -10,7 +10,7 @@ class SpacedRepetitionService {
      * @returns ReviewResult mit neuem Level und nächstem Review-Datum
      */
     static calculateNextReview(currentLevel, quality, config = {}) {
-        const finalConfig = Object.assign(Object.assign({}, this.DEFAULT_CONFIG), config);
+        const finalConfig = { ...this.DEFAULT_CONFIG, ...config };
         let newLevel = currentLevel;
         let interval;
         // Qualitätsbasierte Level-Anpassung für 5-Stufen-System
@@ -149,7 +149,10 @@ class SpacedRepetitionService {
             else {
                 priority = progress.level; // Niedrigere Priorität für höhere Level
             }
-            return Object.assign(Object.assign({}, progress), { priority });
+            return {
+                ...progress,
+                priority
+            };
         }).sort((a, b) => b.priority - a.priority);
     }
 }
@@ -159,3 +162,4 @@ SpacedRepetitionService.DEFAULT_CONFIG = {
     maxLevel: 5,
     easeFactor: 2.5
 };
+//# sourceMappingURL=SpacedRepetitionService.js.map

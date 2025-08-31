@@ -1,0 +1,1 @@
+{"version":3,"file":"wordParser.d.ts","sourceRoot":"","sources":["../../src/utils/wordParser.ts"],"names":[],"mappings":"AAIA,UAAU,YAAY;IACpB,QAAQ,EAAE,MAAM,CAAC;IACjB,aAAa,EAAE,MAAM,CAAC;IACtB,OAAO,EAAE,MAAM,EAAE,CAAC;IAClB,GAAG,EAAE,MAAM,CAAC;IACZ,WAAW,EAAE,MAAM,CAAC;CACrB;AAED,wBAAsB,aAAa,CAAC,QAAQ,EAAE,MAAM,GAAG,OAAO,CAAC,YAAY,EAAE,CAAC,CAmD7E"}

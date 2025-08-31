@@ -13,3 +13,4 @@ router.get('/:studentId/:schemaId', GradesController_1.getGrades);
 // GET /api/grades/:studentId - Hole alle Noten für einen Schüler
 router.get('/:studentId', GradesController_1.getGradesByStudent);
 exports.default = router;
+//# sourceMappingURL=grades.routes.js.map

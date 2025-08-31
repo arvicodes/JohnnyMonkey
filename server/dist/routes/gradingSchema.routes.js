@@ -13,3 +13,4 @@ router.get('/:groupId', GradingSchemaController_1.getGradingSchemas);
 router.put('/:id', GradingSchemaController_1.updateGradingSchema);
 router.delete('/:id', GradingSchemaController_1.deleteGradingSchema);
 exports.default = router;
+//# sourceMappingURL=gradingSchema.routes.js.map

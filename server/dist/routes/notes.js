@@ -1,21 +1,12 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const prisma_1 = require("../generated/prisma");
+const client_1 = require("@prisma/client");
 const router = express_1.default.Router();
-const prisma = new prisma_1.PrismaClient();
+const prisma = new client_1.PrismaClient();
 // Middleware to log all requests to this router
 router.use((req, res, next) => {
     console.log(`=== NOTES ROUTER REQUEST ===`);
@@ -30,13 +21,13 @@ router.use((req, res, next) => {
     next();
 });
 // GET /api/notes - Alle Notizen des Benutzers abrufen
-router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/', async (req, res) => {
     try {
         const { userId } = req.query;
         if (!userId) {
             return res.status(400).json({ error: 'userId ist erforderlich' });
         }
-        const notes = yield prisma.note.findMany({
+        const notes = await prisma.note.findMany({
             where: {
                 authorId: userId,
             },
@@ -59,9 +50,9 @@ router.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         console.error('Fehler beim Abrufen der Notizen:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-}));
+});
 // PUT /api/notes/reorder - Notizen-Reihenfolge aktualisieren
-router.put('/reorder', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.put('/reorder', async (req, res) => {
     try {
         console.log('=== REORDER REQUEST DEBUG ===');
         console.log('Reorder request received at:', new Date().toISOString());
@@ -103,7 +94,7 @@ router.put('/reorder', (req, res) => __awaiter(void 0, void 0, void 0, function*
         }
         console.log('Updating notes order for user:', userId, 'with noteIds:', noteIds);
         // Überprüfe zuerst, ob alle Notizen existieren
-        const existingNotes = yield prisma.note.findMany({
+        const existingNotes = await prisma.note.findMany({
             where: {
                 id: { in: noteIds },
                 authorId: userId
@@ -128,7 +119,7 @@ router.put('/reorder', (req, res) => __awaiter(void 0, void 0, void 0, function*
         for (let i = 0; i < noteIds.length; i++) {
             const noteId = noteIds[i];
             console.log(`Updating note ${i + 1}/${noteIds.length}:`, noteId);
-            const result = yield prisma.note.updateMany({
+            const result = await prisma.note.updateMany({
                 where: {
                     id: noteId,
                     authorId: userId
@@ -147,16 +138,16 @@ router.put('/reorder', (req, res) => __awaiter(void 0, void 0, void 0, function*
         console.error('Fehler beim Aktualisieren der Notizen-Reihenfolge:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-}));
+});
 // GET /api/notes/:id - Eine spezifische Notiz abrufen
-router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { userId } = req.query;
         if (!userId) {
             return res.status(400).json({ error: 'userId ist erforderlich' });
         }
-        const note = yield prisma.note.findFirst({
+        const note = await prisma.note.findFirst({
             where: {
                 id,
                 authorId: userId,
@@ -179,9 +170,9 @@ router.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         console.error('Fehler beim Abrufen der Notiz:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-}));
+});
 // POST /api/notes - Neue Notiz erstellen
-router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post('/', async (req, res) => {
     var _a;
     try {
         const { title, content, authorId, isPrivate = true, tags } = req.body;
@@ -192,13 +183,13 @@ router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             });
         }
         // Get the highest order value for this user's notes
-        const maxOrderNote = yield prisma.note.findFirst({
+        const maxOrderNote = await prisma.note.findFirst({
             where: { authorId },
             orderBy: { order: 'desc' },
             select: { order: true },
         });
         const newOrder = ((_a = maxOrderNote === null || maxOrderNote === void 0 ? void 0 : maxOrderNote.order) !== null && _a !== void 0 ? _a : -1) + 1;
-        const note = yield prisma.note.create({
+        const note = await prisma.note.create({
             data: {
                 title,
                 content,
@@ -222,9 +213,9 @@ router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         console.error('Fehler beim Erstellen der Notiz:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-}));
+});
 // PUT /api/notes/:id - Notiz aktualisieren
-router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { title, content, isPrivate, tags, order } = req.body;
@@ -233,7 +224,7 @@ router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             return res.status(400).json({ error: 'userId ist erforderlich' });
         }
         // Prüfen, ob die Notiz dem Benutzer gehört
-        const existingNote = yield prisma.note.findFirst({
+        const existingNote = await prisma.note.findFirst({
             where: {
                 id,
                 authorId: userId,
@@ -255,7 +246,7 @@ router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             updateData.tags = tags;
         if (order !== undefined)
             updateData.order = order;
-        const updatedNote = yield prisma.note.update({
+        const updatedNote = await prisma.note.update({
             where: { id },
             data: updateData,
             include: {
@@ -273,9 +264,9 @@ router.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         console.error('Fehler beim Aktualisieren der Notiz:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-}));
+});
 // DELETE /api/notes/:id - Notiz löschen
-router.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { userId } = req.query;
@@ -283,7 +274,7 @@ router.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* 
             return res.status(400).json({ error: 'userId ist erforderlich' });
         }
         // Prüfen, ob die Notiz dem Benutzer gehört
-        const existingNote = yield prisma.note.findFirst({
+        const existingNote = await prisma.note.findFirst({
             where: {
                 id,
                 authorId: userId,
@@ -292,7 +283,7 @@ router.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         if (!existingNote) {
             return res.status(404).json({ error: 'Notiz nicht gefunden' });
         }
-        yield prisma.note.delete({
+        await prisma.note.delete({
             where: { id },
         });
         res.status(204).send();
@@ -301,9 +292,9 @@ router.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         console.error('Fehler beim Löschen der Notiz:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-}));
+});
 // GET /api/notes/search - Notizen durchsuchen
-router.get('/search', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get('/search', async (req, res) => {
     try {
         const { userId, query, tags } = req.query;
         if (!userId) {
@@ -321,7 +312,7 @@ router.get('/search', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         if (tags) {
             whereClause.tags = { contains: tags };
         }
-        const notes = yield prisma.note.findMany({
+        const notes = await prisma.note.findMany({
             where: whereClause,
             include: {
                 author: {
@@ -342,5 +333,6 @@ router.get('/search', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         console.error('Fehler beim Durchsuchen der Notizen:', error);
         res.status(500).json({ error: 'Interner Serverfehler' });
     }
-}));
+});
 exports.default = router;
+//# sourceMappingURL=notes.js.map

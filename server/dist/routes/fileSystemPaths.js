@@ -35,3 +35,4 @@ router.get('/download', FileSystemPathController_1.FileSystemPathController.down
 // Pfad löschen
 router.delete('/:id', FileSystemPathController_1.FileSystemPathController.deletePath);
 exports.default = router;
+//# sourceMappingURL=fileSystemPaths.js.map

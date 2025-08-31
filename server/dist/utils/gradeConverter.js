@@ -207,3 +207,4 @@ function calculateGermanWeightedAverage(grades) {
     const weightedSum = validGrades.reduce((sum, g) => sum + (g.grade * g.weight), 0);
     return Math.round((weightedSum / totalWeight) * 100) / 100; // Auf 2 Dezimalstellen runden
 }
+//# sourceMappingURL=gradeConverter.js.map
