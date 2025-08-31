@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'express';
-import { PrismaClient } from './generated/prisma';
+import { PrismaClient } from '@prisma/client';
 import { PortManager } from './utils/portManager';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
