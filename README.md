@@ -53,6 +53,63 @@ npm start
 - **Backend API**: http://localhost:3001
 - **Database**: server/prisma/dev.db
 
+## 🚀 Production Deployment
+
+### Render.com Deployment
+
+This project is configured for deployment on Render.com with automatic builds and deployments.
+
+#### Critical Configuration Requirements
+
+**⚠️ IMPORTANT: Express.js Static File Configuration**
+
+The most common issue causing blank pages in production is **incorrect Express.js configuration for static files and React Router**.
+
+**Correct Configuration (server/src/index.ts):**
+```typescript
+import express from 'express';
+import path from 'path';
+
+const app = express();
+
+// 1. API Routes FIRST (before static middleware)
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+// ... other API routes
+
+// 2. Static files from client build
+const clientBuildPath = path.join(__dirname, '..', 'client-build');
+app.use(express.static(clientBuildPath));
+
+// 3. React Router Fallback LAST (always last!)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
+```
+
+**❌ Common Mistakes to Avoid:**
+- Don't put static middleware before API routes
+- Don't use multiple conflicting static middleware configurations
+- Don't forget the React Router fallback route
+- Don't use incorrect paths to client-build folder
+
+#### Build Configuration (render.yaml)
+
+The `render.yaml` file ensures:
+1. **Client build** is created correctly
+2. **Client build** is copied to server's `client-build` folder
+3. **Server build** includes the client build
+4. **Static files** are served correctly
+
+#### Troubleshooting Blank Pages
+
+If you see blank pages in production:
+
+1. **Check Express configuration** - Ensure static middleware and React Router fallback are correct
+2. **Verify client-build path** - Should be `../client-build` from compiled server
+3. **Check build logs** - Ensure client build is copied successfully
+4. **Verify API routes** - Ensure they're defined before static middleware
+
 ## 🗄️ Database
 
 ### Current Setup
