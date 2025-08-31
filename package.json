@@ -9,8 +9,7 @@
     "backup:cleanup": "bash scripts/backup-manager.sh cleanup",
     "backup:restore": "bash scripts/backup-manager.sh restore",
     "git:commit": "bash scripts/backup-manager.sh create && git add . && git commit -m \"Auto-backup: $(date)\"",
-    "git:push": "git push",
-    "postinstall": "chmod +x scripts/backup-manager.sh && chmod +x .git/hooks/pre-commit && chmod +x .git/hooks/pre-push"
+    "git:push": "git push"
   },
   "keywords": ["education", "database", "backup", "git"],
   "author": "",
