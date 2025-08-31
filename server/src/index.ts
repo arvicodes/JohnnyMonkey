@@ -95,20 +95,24 @@ app.get('/', (req, res) => {
 });
 
 // Serve static files from client build
-app.use('/client', express.static(path.join(__dirname, '../../client/build')));
+app.use('/client', express.static(path.join(__dirname, '../client-build')));
 
 // Catch-all route for React app
 app.get('/client/*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../client/build/index.html'));
+  res.sendFile(path.join(__dirname, '../client-build/index.html'));
 });
 
 // Alternative: Serve React app directly at root
-app.use(express.static(path.join(__dirname, '../../client/build')));
+app.use(express.static(path.join(__dirname, '../client-build')));
 
 // Catch-all route for React app at root level
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../client/build/index.html'));
+  res.sendFile(path.join(__dirname, '../client-build/index.html'));
 });
+
+// Debug: Log the build path
+console.log('🔍 Client build path:', path.join(__dirname, '../client-build'));
+console.log('🔍 Current directory:', __dirname);
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
