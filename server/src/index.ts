@@ -102,6 +102,14 @@ app.get('/client/*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/build/index.html'));
 });
 
+// Alternative: Serve React app directly at root
+app.use(express.static(path.join(__dirname, '../../client/build')));
+
+// Catch-all route for React app at root level
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../client/build/index.html'));
+});
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down server gracefully...');
