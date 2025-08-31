@@ -9,11 +9,13 @@ services:
       echo "📦 Building server..."
       cd server && npm install && npm run build
       echo "📦 Building client..."
-      cd ../client && npm install && REACT_APP_API_URL=https://johnnymonkey.onrender.com npm run build
+      cd ../client && npm install && npm run build
       echo "📁 Copying client build to server..."
       cd ../server && rm -rf client-build && cp -r ../client/build ./client-build
       echo "🔍 Verifying client-build contents..."
       ls -la client-build/
+      echo "📁 Verifying server structure..."
+      ls -la
       echo "✅ Build completed successfully!"
     startCommand: cd server && npm start
     envVars:
