@@ -24,13 +24,9 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        value: file:./prisma/render.db
+        value: postgresql://johnnymonkey_user:password@dpg-abc123-a.frankfurt-postgres.render.com/johnnymonkey
       - key: REACT_APP_API_URL
         value: https://johnnymonkey.onrender.com
     healthCheckPath: /health
     autoDeploy: true
     branch: main
-    disk:
-      name: johnnymonkey-data
-      mountPath: /opt/render/project/src/server/prisma
-      sizeGB: 1
