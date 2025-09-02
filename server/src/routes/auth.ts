@@ -8,6 +8,8 @@ const prisma = new PrismaClient();
 router.post('/login', async (req: Request, res: Response) => {
   const { loginCode } = req.body;
   console.log('Login attempt with code:', loginCode);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+  console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
 
   try {
     const user = await prisma.user.findUnique({
