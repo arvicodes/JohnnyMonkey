@@ -553,8 +553,6 @@ const GradesModal: React.FC<GradesModalProps> = ({
         nodes.forEach(node => {
           if (node.grade !== undefined) {
             gradesToSave.push({
-              studentId: student.id,
-              schemaId: gradingSchema!.id,
               categoryName: node.name,
               grade: node.grade,
               weight: node.weight
@@ -567,16 +565,20 @@ const GradesModal: React.FC<GradesModalProps> = ({
       };
       collectGrades(gradeNodes);
 
-      // Speichere alle Noten
-      const savePromises = gradesToSave.map(gradeData =>
-        fetch('/api/grades', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(gradeData)
+      // Speichere alle Noten in einem Request
+      const response = await fetch('/api/grades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: student.id,
+          schemaId: gradingSchema!.id,
+          grades: gradesToSave
         })
-      );
+      });
 
-      await Promise.all(savePromises);
+      if (!response.ok) {
+        throw new Error('Fehler beim Speichern der Noten');
+      }
       
       // Aktualisiere die gesperrten Noten
       const newLockedGrades = new Set<string>();
@@ -586,15 +588,10 @@ const GradesModal: React.FC<GradesModalProps> = ({
           newLockedGrades.add(node.id);
         }
       });
-      setLockedGrades(newLockedGrades);
+      setLockedGrades(prev => new Set([...prev, ...newLockedGrades]));
 
       setSuccess('Noten erfolgreich gespeichert!');
       setTimeout(() => setSuccess(''), 3000);
-      
-      // Aktualisiere die Anzeige
-      if (gradingSchema) {
-        await loadExistingGrades(gradeNodes, gradingSchema);
-      }
       
     } catch (error) {
       console.error('Error saving grades:', error);
