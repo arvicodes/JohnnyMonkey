@@ -7,28 +7,413 @@
 [33m[nodemon] watching path(s): *.*[39m
 [33m[nodemon] watching extensions: ts,json[39m
 [32m[nodemon] starting `ts-node src/index.ts`[39m
-Error: listen EADDRINUSE: addreLogin attempt with code: 1
-Login attempt with code: STUD001
-s _listen2] (node:net:1908:16)
-    at listenInCluster (node:net:1965:12)
-    at Server.listen (node:net:2067:7)
-    at Function.listen (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/express/lib/application.js:635:24)
-    at Object.<anonymous> (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src/index.ts:53:5)
-    at Module._compile (node:internal/modules/cjs/loader:1529:14)
-    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1618:23)
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/index.ts(130,35): error TS2341: Property 'logError' is private and only accessible within class 'MonitoringService'.
+src/index.ts(141,35): error TS2341: Property 'logError' is private and only accessible within class 'MonitoringService'.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
     at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
     at Module.load (node:internal/modules/cjs/loader:1275:32)
     at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
-    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
-    at phase4 (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:649:14)
-    at bootstrap (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:95:10)
-    at main (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:55:10)
-    at Object.<anonymous> (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/bin.ts:800:3) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3005
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12) {
+  diagnosticCodes: [ 2341, 2341 ]
 }
 [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/index.ts(5,31): error TS2306: File '/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src/utils/monitoring.ts' is not a module.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12) {
+  diagnosticCodes: [ 2306 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/utils/monitoring.ts(35,7): error TS2322: Type '(data: any) => void' is not assignable to type 'Send<any, Response<any, Record<string, any>>>'.
+  Type 'void' is not assignable to type 'Response<any, Record<string, any>>'.
+src/utils/monitoring.ts(153,50): error TS2365: Operator '<' cannot be applied to types 'string | number' and 'number'.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Module.require (node:internal/modules/cjs/loader:1298:19) {
+  diagnosticCodes: [ 2322, 2365 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/utils/monitoring.ts(35,7): error TS2322: Type '(data: any) => void' is not assignable to type 'Send<any, Response<any, Record<string, any>>>'.
+  Type 'void' is not assignable to type 'Response<any, Record<string, any>>'.
+src/utils/monitoring.ts(153,50): error TS2365: Operator '<' cannot be applied to types 'string | number' and 'number'.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Module.require (node:internal/modules/cjs/loader:1298:19) {
+  diagnosticCodes: [ 2322, 2365 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/index.ts(5,31): error TS2306: File '/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src/utils/monitoring.ts' is not a module.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12) {
+  diagnosticCodes: [ 2306 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/utils/monitoring.ts(153,61): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'string'.
+  Type 'number' is not assignable to type 'string'.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Module.require (node:internal/modules/cjs/loader:1298:19) {
+  diagnosticCodes: [ 2345 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/utils/monitoring.ts(153,61): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'string'.
+  Type 'number' is not assignable to type 'string'.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Module.require (node:internal/modules/cjs/loader:1298:19) {
+  diagnosticCodes: [ 2345 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/index.ts(5,31): error TS2306: File '/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src/utils/monitoring.ts' is not a module.
+
+    at createTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/verachrist/Documents/Monkey/JohnnyMonkey/server/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12) {
+  diagnosticCodes: [ 2306 ]
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Environment check:
+NODE_ENV: undefined
+DATABASE_URL exists: false
+DATABASE_URL length: 0
+DATABASE_URL starts with postgresql: undefined
+🔧 Creating PrismaClient...
+✅ PrismaClient created successfully
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Environment check:
+NODE_ENV: undefined
+DATABASE_URL exists: false
+DATABASE_URL length: 0
+DATABASE_URL starts with postgresql: undefined
+🔧 Creating PrismaClient...
+✅ PrismaClient created successfully
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+🔍 Environment check:
+NODE_ENV: undefined
+DATABASE_URL exists: false
+DATABASE_URL length: 0
+DATABASE_URL starts with postgresql: undefined
+🔧 Creating PrismaClient...
+✅ PrismaClient created successfully
+🔍 Client build path: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/client-build
+🔍 Current directory: /Users/verachrist/Documents/Monkey/JohnnyMonkey/server/src
+🧹 Checking for port conflicts...
+✅ Port cleanup completed
+🚀 Server started successfully on port 3001
+🎯 Server is running on port 3001
+📊 Monitoring: http://localhost:3001/api/monitoring/stats
+✅ Monitoring system initialized

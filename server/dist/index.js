@@ -4,9 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const express_2 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
 const client_1 = require("@prisma/client");
 const portManager_1 = require("./utils/portManager");
+const monitoring_1 = __importDefault(require("./utils/monitoring"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const users_1 = __importDefault(require("./routes/users"));
 const learningGroups_1 = __importDefault(require("./routes/learningGroups"));
@@ -29,8 +30,19 @@ const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
-app.use((0, express_2.default)());
-app.use(express_1.default.json());
+// Enable CORS with better configuration
+app.use((0, cors_1.default)({
+    origin: process.env.NODE_ENV === 'production'
+        ? ['https://johnnymonkey.onrender.com', 'https://www.johnnymonkey.onrender.com']
+        : true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+app.use(express_1.default.json({ limit: '50mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
+// Monitoring middleware (must be first)
+app.use(monitoring_1.default.requestMonitor());
 // API Routes - ALWAYS before static middleware
 app.use('/api/auth', auth_1.default);
 app.use('/api/users', users_1.default);
@@ -53,9 +65,32 @@ app.use('/api/file-system-paths', fileSystemPaths_1.default);
 app.use('/api/flashcards', flashcards_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
-// Health check endpoint
+// Enhanced health check endpoint with monitoring
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    try {
+        const healthStatus = monitoring_1.default.getInstance().getHealthStatus();
+        res.json(healthStatus);
+    }
+    catch (error) {
+        res.status(500).json({
+            status: 'error',
+            error: 'Health check failed',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+// Monitoring endpoint (protected in production)
+app.get('/api/monitoring/stats', (req, res) => {
+    if (process.env.NODE_ENV === 'production' && req.headers.authorization !== `Bearer ${process.env.MONITORING_TOKEN || 'default'}`) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    try {
+        const stats = monitoring_1.default.getInstance().getStats();
+        res.json(stats);
+    }
+    catch (error) {
+        res.status(500).json({ error: 'Failed to get monitoring stats' });
+    }
 });
 // Serve static files from client build
 const clientBuildPath = path_1.default.join(__dirname, '..', 'client-build');
@@ -64,6 +99,8 @@ app.use(express_1.default.static(clientBuildPath));
 app.get('*', (req, res) => {
     res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
 });
+// Error monitoring middleware (must be last)
+app.use(monitoring_1.default.errorMonitor());
 // Debug: Log the build path
 console.log('🔍 Client build path:', clientBuildPath);
 console.log('🔍 Current directory:', __dirname);
@@ -78,6 +115,26 @@ process.on('SIGTERM', async () => {
     await prisma.$disconnect();
     process.exit(0);
 });
+// Unhandled error handling
+process.on('uncaughtException', (error) => {
+    console.error('🚨 Uncaught Exception:', error);
+    monitoring_1.default.getInstance().logError({
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        stack: error.stack,
+        type: 'uncaughtException'
+    });
+    process.exit(1);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+    monitoring_1.default.getInstance().logError({
+        timestamp: new Date().toISOString(),
+        error: String(reason),
+        type: 'unhandledRejection',
+        promise: promise.toString()
+    });
+});
 // Start server with Render compatibility
 async function startServer() {
     try {
@@ -88,6 +145,8 @@ async function startServer() {
                 console.log(`🎯 Server is running on port ${port}`);
                 console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
                 console.log(`🔗 Health check: http://localhost:${port}/health`);
+                console.log(`📊 Monitoring: http://localhost:${port}/api/monitoring/stats`);
+                console.log('✅ Monitoring system initialized');
             });
         }
         else {
@@ -95,6 +154,8 @@ async function startServer() {
             await portManager_1.PortManager.cleanupPorts();
             const { server, port: managedPort } = await portManager_1.PortManager.startServer(app, port);
             console.log(`🎯 Server is running on port ${managedPort}`);
+            console.log(`📊 Monitoring: http://localhost:${managedPort}/api/monitoring/stats`);
+            console.log('✅ Monitoring system initialized');
         }
     }
     catch (error) {
