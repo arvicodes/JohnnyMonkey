@@ -2,7 +2,24 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
 const router = Router();
-const prisma = new PrismaClient();
+
+// Debug: Log environment variables
+console.log('🔍 Environment check:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
+console.log('DATABASE_URL starts with postgresql:', process.env.DATABASE_URL?.startsWith('postgresql://'));
+
+// Debug: Try to create PrismaClient
+let prisma: PrismaClient;
+try {
+  console.log('🔧 Creating PrismaClient...');
+  prisma = new PrismaClient();
+  console.log('✅ PrismaClient created successfully');
+} catch (error) {
+  console.error('❌ Failed to create PrismaClient:', error);
+  throw error;
+}
 
 // Login route
 router.post('/login', async (req: Request, res: Response) => {
