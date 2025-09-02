@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -55,9 +55,9 @@ const QuizAssignmentDialog: React.FC<QuizAssignmentDialogProps> = ({
     if (open) {
       fetchAvailableQuizzes();
     }
-  }, [open, teacherId]);
+  }, [open, teacherId, fetchAvailableQuizzes]);
 
-  const fetchAvailableQuizzes = async () => {
+  const fetchAvailableQuizzes = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/lesson-quizzes/available/${teacherId}`);
@@ -73,7 +73,7 @@ const QuizAssignmentDialog: React.FC<QuizAssignmentDialogProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [teacherId]);
 
   const handleAssignQuiz = async (quizId: string) => {
     try {

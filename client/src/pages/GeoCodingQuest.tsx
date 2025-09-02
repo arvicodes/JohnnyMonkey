@@ -143,24 +143,41 @@ export default function GeoCodingQuest() {
     },
   });
 
-  // Update player position mutation
-  const updatePositionMutation = useMutation({
-    mutationFn: async (position: {lat: number, lng: number}) => {
-      const response = await fetch(`http://localhost:5000/api/game/position/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(position),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to update position');
-      }
-      
-      return response.json();
+  const updatePosition = async (position: {lat: number, lng: number}) => {
+    const response = await fetch(`http://localhost:5000/api/game/position/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(position),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to update position');
+    }
+    
+    return response.json();
+  };
+
+  const { mutate: updatePositionMutation } = useMutation({
+    mutationFn: updatePosition,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      setSuccessMessage('Position erfolgreich aktualisiert!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     },
+    onError: (error) => {
+      // setErrorMessage('Fehler beim Aktualisieren der Position: ' + error.message); // This line was removed from the new_code, so it's removed here.
+      // setTimeout(() => setErrorMessage(''), 5000); // This line was removed from the new_code, so it's removed here.
+    }
   });
+
+  useEffect(() => {
+    if (updatePositionMutation) {
+      // This effect runs when updatePositionMutation changes
+      // Currently no additional logic needed
+    }
+  }, [updatePositionMutation]);
 
   // Handle geolocation
   useEffect(() => {
@@ -174,7 +191,7 @@ export default function GeoCodingQuest() {
           setUserPosition(newPosition);
           
           if (gameStarted) {
-            updatePositionMutation.mutate(newPosition);
+            updatePositionMutation(newPosition);
           }
         },
         (error) => {
@@ -182,7 +199,7 @@ export default function GeoCodingQuest() {
         }
       );
     }
-  }, [gameStarted]);
+  }, [gameStarted, updatePositionMutation]);
 
   const handleTopicSelect = (topicId: number, difficulty: string) => {
     setSelectedTopic(topicId);

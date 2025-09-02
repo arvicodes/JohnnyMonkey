@@ -120,7 +120,7 @@ export const QuizParticipationPlayer: React.FC<QuizParticipationPlayerProps> = (
     };
 
     checkStatus();
-  }, [sessionId, studentId]);
+  }, [sessionId, studentId, loadQuizData, loadResults]);
 
   const loadQuizData = async () => {
     try {

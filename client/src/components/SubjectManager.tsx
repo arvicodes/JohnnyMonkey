@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Box, Typography, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar, Alert } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon, GroupAdd as GroupAddIcon, Group as GroupIcon, Close as CloseIcon, Description as DescriptionIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Storage as StorageIcon, DragIndicator as DragIcon, GroupAdd as GroupAddIcon, Group as GroupIcon, Close as CloseIcon, Description as DescriptionIcon, LocalZone as ZoneIcon } from '@mui/icons-material';
 import { Menu, MenuItem, Chip, Tooltip } from '@mui/material';
 import {
   DndContext,

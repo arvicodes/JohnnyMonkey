@@ -154,6 +154,27 @@ export const QuizStartButton: React.FC<QuizStartButtonProps> = ({ quizFile, user
     return () => clearInterval(interval);
   }, [quizFile.path, userId]);
 
+  useEffect(() => {
+    if (quizId) {
+      fetchQuizStatus();
+    }
+  }, [quizId, quizStatus]);
+
+  const fetchQuizStatus = async () => {
+    if (!quizId || !userId) return;
+    
+    try {
+      const response = await fetch(`/api/quiz-sessions/${quizId}/status/${userId}`);
+      if (response.ok) {
+        const status = await response.json();
+        setQuizStatus(status.status || 'PENDING');
+      }
+    } catch (error) {
+      console.error('Error fetching quiz status:', error);
+      setQuizStatus('PENDING');
+    }
+  };
+
   const handleQuizStart = async () => {
     if (!quizId) return;
     

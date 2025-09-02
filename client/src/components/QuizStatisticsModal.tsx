@@ -7,19 +7,24 @@ import {
   Button,
   Typography,
   Box,
-  Card,
-  CardContent,
-  LinearProgress,
+  Grid,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
   Chip,
-  Divider,
-  Grid
+  LinearProgress,
+  Alert,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
+  Close as CloseIcon,
   CheckCircle as CheckIcon,
   Cancel as CancelIcon,
-  Analytics as AnalyticsIcon
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon
 } from '@mui/icons-material';
 
 interface QuizStatisticsModalProps {
@@ -72,7 +77,7 @@ export const QuizStatisticsModal: React.FC<QuizStatisticsModalProps> = ({
         backdropFilter: 'blur(10px)'
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
-          <AnalyticsIcon sx={{ fontSize: 24 }} />
+          <TrendingUpIcon sx={{ fontSize: 24 }} />
           <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
             Quiz-Statistik
           </Typography>
@@ -84,13 +89,13 @@ export const QuizStatisticsModal: React.FC<QuizStatisticsModalProps> = ({
 
       <DialogContent sx={{ p: 2 }}>
         {/* Overall Statistics */}
-        <Card sx={{ 
+        <Paper sx={{ 
           mb: 2, 
           background: 'rgba(255,255,255,0.95)',
           borderRadius: 1.5,
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
         }}>
-          <CardContent sx={{ p: 1.5 }}>
+          <Box sx={{ p: 1.5 }}>
             <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.9rem', color: '#333' }}>
               Gesamtübersicht
             </Typography>
@@ -144,8 +149,8 @@ export const QuizStatisticsModal: React.FC<QuizStatisticsModalProps> = ({
                 }} 
               />
             </Box>
-          </CardContent>
-        </Card>
+          </Box>
+        </Paper>
 
         {/* Question Statistics */}
         <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, fontSize: '0.9rem', color: 'white' }}>
@@ -153,13 +158,13 @@ export const QuizStatisticsModal: React.FC<QuizStatisticsModalProps> = ({
         </Typography>
 
         {questionStats.map((question: any, index: number) => (
-          <Card key={question.questionId} sx={{ 
+          <Paper key={question.questionId} sx={{ 
             mb: 1.5, 
             background: 'rgba(255,255,255,0.95)',
             borderRadius: 1.5,
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            <CardContent sx={{ p: 1.5 }}>
+            <Box sx={{ p: 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="subtitle1" sx={{ 
                   fontWeight: 600, 
@@ -251,8 +256,8 @@ export const QuizStatisticsModal: React.FC<QuizStatisticsModalProps> = ({
                   ))}
                 </Box>
               </Box>
-            </CardContent>
-          </Card>
+            </Box>
+          </Paper>
         ))}
       </DialogContent>
 

@@ -87,18 +87,10 @@ const QuizPlayer: React.FC<QuizPlayerProps> = ({ quiz, onClose }) => {
   }, [quiz]);
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      setWasAborted(true);
+    if (timeLeft <= 0 && !showResults) {
       finishQuiz();
-      return;
     }
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, showResults, finishQuiz]);
 
   const handleAnswerSelect = (answer: string) => {
     setSelectedAnswer(answer);

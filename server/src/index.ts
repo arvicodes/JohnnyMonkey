@@ -1,7 +1,8 @@
 import express from 'express';
-import cors from 'express';
+import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import { PortManager } from './utils/portManager';
+import MonitoringService from './utils/monitoring';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import learningGroupRoutes from './routes/learningGroups';
@@ -26,8 +27,21 @@ import path from 'path';
 const app = express();
 const prisma = new PrismaClient();
 
-app.use(cors());
-app.use(express.json());
+// Enable CORS with better configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://johnnymonkey.onrender.com', 'https://www.johnnymonkey.onrender.com']
+    : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Monitoring middleware (must be first)
+app.use(MonitoringService.requestMonitor());
 
 // API Routes - ALWAYS before static middleware
 app.use('/api/auth', authRoutes);
@@ -53,9 +67,32 @@ app.use('/api/flashcards', flashcardRoutes);
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
-// Health check endpoint
+// Enhanced health check endpoint with monitoring
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  try {
+    const healthStatus = MonitoringService.getInstance().getHealthStatus();
+    res.json(healthStatus);
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      error: 'Health check failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Monitoring endpoint (protected in production)
+app.get('/api/monitoring/stats', (req, res) => {
+  if (process.env.NODE_ENV === 'production' && req.headers.authorization !== `Bearer ${process.env.MONITORING_TOKEN || 'default'}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const stats = MonitoringService.getInstance().getStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get monitoring stats' });
+  }
 });
 
 // Serve static files from client build
@@ -66,6 +103,9 @@ app.use(express.static(clientBuildPath));
 app.get('*', (req, res) => {
   res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
+
+// Error monitoring middleware (must be last)
+app.use(MonitoringService.errorMonitor());
 
 // Debug: Log the build path
 console.log('🔍 Client build path:', clientBuildPath);
@@ -84,6 +124,28 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
+// Unhandled error handling
+process.on('uncaughtException', (error) => {
+  console.error('🚨 Uncaught Exception:', error);
+  MonitoringService.getInstance().logError({
+    timestamp: new Date().toISOString(),
+    error: error.message,
+    stack: error.stack,
+    type: 'uncaughtException'
+  });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+  MonitoringService.getInstance().logError({
+    timestamp: new Date().toISOString(),
+    error: String(reason),
+    type: 'unhandledRejection',
+    promise: promise.toString()
+  });
+});
+
 // Start server with Render compatibility
 async function startServer() {
   try {
@@ -95,12 +157,16 @@ async function startServer() {
         console.log(`🎯 Server is running on port ${port}`);
         console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
         console.log(`🔗 Health check: http://localhost:${port}/health`);
+        console.log(`📊 Monitoring: http://localhost:${port}/api/monitoring/stats`);
+        console.log('✅ Monitoring system initialized');
       });
     } else {
       // Development mode with PortManager
       await PortManager.cleanupPorts();
       const { server, port: managedPort } = await PortManager.startServer(app, port);
       console.log(`🎯 Server is running on port ${managedPort}`);
+      console.log(`📊 Monitoring: http://localhost:${managedPort}/api/monitoring/stats`);
+      console.log('✅ Monitoring system initialized');
     }
     
   } catch (error) {

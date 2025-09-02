@@ -513,7 +513,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  const handleInput = () => {
+  const handleInput = useCallback(() => {
     if (editorRef.current && !isUpdatingRef.current) {
       isUpdatingRef.current = true;
       const newValue = editorRef.current.innerHTML;
@@ -528,7 +528,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         isUpdatingRef.current = false;
       }, 100);
     }
-  };
+  }, [value, debouncedOnChange]);
 
   const makeImageResizable = useCallback((img: HTMLImageElement) => {
     console.log('🎯 DEBUG: makeImageResizable aufgerufen für:', img.src);

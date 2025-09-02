@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import React from 'react';
+import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface PointOfInterest {
   id: number;
@@ -36,7 +38,7 @@ export default function MapContainer({
   onPointClick,
   distanceToTarget,
 }: MapContainerProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
+  const mapRef = React.useRef<HTMLDivElement>(null);
 
   const formatDistance = (distance: number) => {
     if (distance < 1000) {

@@ -1,44 +1,47 @@
 import React, { useState } from 'react';
 import { FlashcardImportExport } from '../components/FlashcardImportExport';
 
+// Define types
+interface FlashcardCard {
+  id: string;
+  front: string;
+  back: string;
+}
+
+interface FlashcardDeck {
+  id: string;
+  title: string;
+  description: string;
+  cards: FlashcardCard[];
+}
+
 // Demo deck for testing
-const demoDeck = {
+const demoDeck: FlashcardDeck = {
   id: 'demo-1',
   title: 'Demo Karteideck',
-  description: 'Ein Beispiel-Deck zum Testen der Import/Export-Funktionalität',
-  subjectId: 'demo-subject',
-  isPublic: true,
+  description: 'Ein Beispiel-Karteideck zum Testen der Import/Export-Funktionalität',
   cards: [
     {
-      id: 'card-1',
+      id: '1',
       front: 'Was ist die Hauptstadt von Deutschland?',
-      back: 'Berlin',
-      hint: 'Die größte Stadt Deutschlands',
-      difficulty: 1,
-      order: 0
+      back: 'Berlin'
     },
     {
-      id: 'card-2',
+      id: '2',
       front: 'Wie viele Planeten hat unser Sonnensystem?',
-      back: '8',
-      hint: 'Pluto zählt nicht mehr als Planet',
-      difficulty: 2,
-      order: 1
+      back: '8 (seit 2006, als Pluto zum Zwergplaneten degradiert wurde)'
     },
     {
-      id: 'card-3',
-      front: 'Was ist 2 + 2?',
-      back: '4',
-      hint: 'Grundrechenart Addition',
-      difficulty: 1,
-      order: 2
+      id: '3',
+      front: 'Was ist die chemische Formel für Wasser?',
+      back: 'H₂O'
     }
   ]
 };
 
 export const FlashcardImportExportPage: React.FC = () => {
-  const [currentDeck, setCurrentDeck] = useState(demoDeck);
-  const [importedDeck, setImportedDeck] = useState<any>(null);
+  const [currentDeck, setCurrentDeck] = useState<FlashcardDeck | null>(demoDeck);
+  const [importedDeck, setImportedDeck] = useState<FlashcardDeck | null>(null);
 
   const handleImport = (deck: any) => {
     setImportedDeck(deck);
@@ -68,13 +71,13 @@ export const FlashcardImportExportPage: React.FC = () => {
               <h2 className="text-xl font-semibold mb-4">Aktuelles Deck</h2>
               <div className="space-y-3">
                 <div>
-                  <h3 className="font-medium">{currentDeck.title}</h3>
-                  <p className="text-sm text-gray-600">{currentDeck.description}</p>
-                  <p className="text-sm text-gray-500">{currentDeck.cards.length} Karten</p>
+                  <h3 className="font-medium">{currentDeck?.title}</h3>
+                  <p className="text-sm text-gray-600">{currentDeck?.description}</p>
+                  <p className="text-sm text-gray-500">{currentDeck?.cards.length} Karten</p>
                 </div>
                 
                 <div className="space-y-2">
-                  {currentDeck.cards.map((card, index) => (
+                  {currentDeck?.cards.map((card, index) => (
                     <div key={card.id} className="border rounded p-3 bg-gray-50">
                       <div className="grid grid-cols-1 gap-2">
                         <div>
@@ -85,15 +88,7 @@ export const FlashcardImportExportPage: React.FC = () => {
                           <span className="text-xs font-medium text-gray-500">Rückseite:</span>
                           <p className="text-sm">{card.back}</p>
                         </div>
-                        {card.hint && (
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Tipp:</span>
-                            <p className="text-sm text-blue-600">{card.hint}</p>
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-500">
-                          Schwierigkeit: {card.difficulty}/5
-                        </div>
+                        {/* Removed hint and difficulty as they are not in the new demoDeck structure */}
                       </div>
                     </div>
                   ))}
@@ -124,7 +119,7 @@ export const FlashcardImportExportPage: React.FC = () => {
               </div>
               
               <div className="space-y-2">
-                {importedDeck.cards.map((card: any, index: number) => (
+                {importedDeck.cards.map((card: FlashcardCard, index: number) => (
                   <div key={index} className="border rounded p-3 bg-green-50">
                     <div className="grid grid-cols-1 gap-2">
                       <div>
@@ -135,15 +130,7 @@ export const FlashcardImportExportPage: React.FC = () => {
                         <span className="text-xs font-medium text-gray-500">Rückseite:</span>
                         <p className="text-sm">{card.back}</p>
                       </div>
-                      {card.hint && (
-                        <div>
-                          <span className="text-xs font-medium text-gray-500">Tipp:</span>
-                          <p className="text-sm text-blue-600">{card.hint}</p>
-                        </div>
-                      )}
-                      <div className="text-xs text-gray-500">
-                        Schwierigkeit: {card.difficulty}/5
-                      </div>
+                      {/* Removed hint and difficulty as they are not in the new demoDeck structure */}
                     </div>
                   </div>
                 ))}

@@ -2,31 +2,58 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
+  Button,
   Card,
   CardContent,
-  Button,
-  Alert,
-  CircularProgress,
-  List,
-  ListItem,
+  Grid,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Alert,
   IconButton,
   Tooltip,
-  Avatar,
   LinearProgress,
   Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  CircularProgress,
+  Avatar,
   Paper
 } from '@mui/material';
 import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
   PlayArrow as StartIcon,
-  People as PeopleIcon,
-  CheckCircle as CheckIcon,
-  Cancel as CancelIcon,
-  Refresh as ResetIcon,
-  Visibility as ViewIcon,
-  Timer as TimerIcon,
-  School as SchoolIcon,
   Stop as StopIcon,
+  Visibility as ViewIcon,
+  Assignment as AssignmentIcon,
+  Group as GroupIcon,
+  Timer as TimerIcon,
+  CheckCircle as CompletedIcon,
+  Schedule as PendingIcon,
+  Error as ErrorIcon,
+  Refresh as RefreshIcon,
+  Settings as SettingsIcon,
+  Assessment as AssessmentIcon,
+  School as SchoolIcon,
+  Person as PersonIcon,
+  CalendarToday as CalendarIcon,
+  AccessTime as TimeIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+  People as PeopleIcon,
   Analytics as AnalyticsIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
@@ -732,7 +759,7 @@ export const QuizSessionManager: React.FC<QuizSessionManagerProps> = ({
                                   }
                                 }}
                               >
-                                    <ResetIcon sx={{ fontSize: 14 }} />
+                                    <RefreshIcon sx={{ fontSize: 14 }} />
                               </IconButton>
                             </Tooltip>
                           </>

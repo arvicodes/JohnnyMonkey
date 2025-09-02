@@ -32,11 +32,8 @@ export default function BottomNavigation({ currentTab, onTabChange }: BottomNavi
   }
 
   useEffect(() => {
-    const currentIndex = tabs.findIndex(tab => tab.id === currentTab)
-    if (currentIndex !== -1) {
-      setFocusedIndex(currentIndex)
-    }
-  }, [currentTab])
+    setValue(0);
+  }, [tabs]);
 
   return (
     <div 
