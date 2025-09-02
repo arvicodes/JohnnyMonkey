@@ -24,7 +24,7 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        value: postgresql://johnnymonkey_user:D7ZB4mXFR77t1fShEWC0UKhhy60rsHCN@dpg-d2qau7be5dus73brrtbg-a/johnnymonkey
+        value: DEINE_NEUE_DATABASE_URL_HIER_EINFÜGEN
       - key: REACT_APP_API_URL
         value: https://johnnymonkey.onrender.com
     healthCheckPath: /health
