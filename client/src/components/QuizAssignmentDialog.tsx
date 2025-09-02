@@ -51,12 +51,6 @@ const QuizAssignmentDialog: React.FC<QuizAssignmentDialogProps> = ({
   const [focusedIndex, setFocusedIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      fetchAvailableQuizzes();
-    }
-  }, [open, teacherId, fetchAvailableQuizzes]);
-
   const fetchAvailableQuizzes = useCallback(async () => {
     try {
       setLoading(true);
@@ -74,6 +68,12 @@ const QuizAssignmentDialog: React.FC<QuizAssignmentDialogProps> = ({
       setLoading(false);
     }
   }, [teacherId]);
+
+  useEffect(() => {
+    if (open) {
+      fetchAvailableQuizzes();
+    }
+  }, [open, teacherId, fetchAvailableQuizzes]);
 
   const handleAssignQuiz = async (quizId: string) => {
     try {

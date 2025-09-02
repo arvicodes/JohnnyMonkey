@@ -32,7 +32,7 @@ export default function BottomNavigation({ currentTab, onTabChange }: BottomNavi
   }
 
   useEffect(() => {
-    setValue(0);
+    // This effect is not needed
   }, [tabs]);
 
   return (

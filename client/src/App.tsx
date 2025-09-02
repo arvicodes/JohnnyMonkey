@@ -3,13 +3,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
-import { LearningGroupPage } from './pages/LearningGroupPage';
+import LearningGroupPage from './pages/LearningGroupPage';
 import GeoCodingQuest from './pages/GeoCodingQuest';
-import { QuizPlayerPage } from './pages/QuizPlayerPage';
-import { QuizSessionPage } from './pages/QuizSessionPage';
-import { QuizParticipationPage } from './pages/QuizParticipationPage';
+import QuizPlayerPage from './pages/QuizPlayerPage';
+import QuizSessionPage from './pages/QuizSessionPage';
+import QuizParticipationPage from './pages/QuizParticipationPage';
 
-import { FlashcardImportExportPage } from './pages/FlashcardImportExportPage';
+import FlashcardImportExportPage from './pages/FlashcardImportExportPage';
 
 import { Snackbar, Alert } from '@mui/material';
 
