@@ -5,6 +5,7 @@ import * as path from 'path';
 import mammoth from 'mammoth';
 import pdf from 'pdf-parse';
 import * as XLSX from 'xlsx';
+import { StorageManager } from '../utils/storageManager';
 
 const prisma = new PrismaClient();
 
@@ -329,11 +330,11 @@ export class FileSystemPathController {
       };
 
       // Verzeichnisinhalt lesen (rekursiv oder flach)
-      let result: RecursiveDirectoryContent | DirectoryContent;
+      let directoryContent: RecursiveDirectoryContent | DirectoryContent;
       if (recursive === 'true') {
         console.log('Reading directory recursively...');
         const rootItem = readDirectoryRecursive(normalizedPath, 10, 0);
-        result = {
+        directoryContent = {
           path: normalizedPath,
           root: rootItem,
           totalItems: FileSystemPathController.countTotalItems(rootItem),
@@ -360,7 +361,7 @@ export class FileSystemPathController {
             return a.type === 'directory' ? -1 : 1;
           });
 
-        result = {
+        directoryContent = {
           path: normalizedPath,
           items: directoryItems,
           totalItems: directoryItems.length
