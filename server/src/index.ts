@@ -99,8 +99,12 @@ app.get('/api/monitoring/stats', (req, res) => {
 const clientBuildPath = path.join(__dirname, '..', 'client-build');
 app.use(express.static(clientBuildPath));
 
-// React Router Fallback - ALWAYS last
+// React Router Fallback - ALWAYS last (but exclude API routes)
 app.get('*', (req, res) => {
+  // Don't serve React app for API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
   res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 

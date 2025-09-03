@@ -588,7 +588,11 @@ const GradesModal: React.FC<GradesModalProps> = ({
           newLockedGrades.add(node.id);
         }
       });
-      setLockedGrades(prev => new Set([...prev, ...newLockedGrades]));
+      setLockedGrades(prev => {
+        const combined = new Set(prev);
+        newLockedGrades.forEach(grade => combined.add(grade));
+        return combined;
+      });
 
       setSuccess('Noten erfolgreich gespeichert!');
       setTimeout(() => setSuccess(''), 3000);
