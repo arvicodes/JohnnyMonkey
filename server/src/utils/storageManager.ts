@@ -45,7 +45,7 @@ export class StorageManager {
    */
   static async readDirectory(dirPath: string, recursive: boolean = false): Promise<any> {
     // Check if this is a OneDrive URL or if we're in production mode
-    if (this.config.type === 'onedrive' || dirPath.includes('sharepoint.com')) {
+    if (this.config.type === 'onedrive' || dirPath.includes('sharepoint.com') || dirPath.includes('onedrive')) {
       // For OneDrive, return a mock structure or call OneDrive API
       return this.getOneDriveMockStructure();
     }
@@ -111,25 +111,28 @@ export class StorageManager {
    * Get OneDrive mock structure (placeholder for real OneDrive API)
    */
   private static getOneDriveMockStructure(): any {
-    const baseUrl = this.config.onedriveUrl || 'https://johannesgym-my.sharepoint.com';
+    const onedriveUrl = this.config.onedriveUrl || 'https://johannesgym-my.sharepoint.com/:f:/g/personal/christvera_johannesgym_onmicrosoft_com/EufDzsV4pudIq3VRwxiLM4MB8hqGxt5Cq1HomjLJKy-ftg?e=OblDUf';
+    
     return {
-      name: 'J-M-Reihen',
-      path: baseUrl,
-      type: 'directory',
+      path: onedriveUrl,
+      root: {
+        name: 'J-M-Reihen',
+        path: onedriveUrl,
+        type: 'directory',
       children: [
         {
           name: 'Informatik',
-          path: `${baseUrl}/Informatik`,
+          path: `${onedriveUrl}/Informatik`,
           type: 'directory',
           children: [
             {
               name: 'MSS Grundthemen',
-              path: `${baseUrl}/Informatik/MSS Grundthemen`,
+              path: `${onedriveUrl}/Informatik/MSS Grundthemen`,
               type: 'directory',
               children: [
                 {
                   name: 'Quiz TechnischeInfo1.docx',
-                  path: `${baseUrl}/Informatik/MSS Grundthemen/Quiz TechnischeInfo1.docx`,
+                  path: `${onedriveUrl}/Informatik/MSS Grundthemen/Quiz TechnischeInfo1.docx`,
                   type: 'file',
                   size: 39338,
                   extension: '.docx'
@@ -139,19 +142,19 @@ export class StorageManager {
             },
             {
               name: 'MSS Wahl-und Projektthemen',
-              path: `${baseUrl}/Informatik/MSS Wahl-und Projektthemen`,
+              path: `${onedriveUrl}/Informatik/MSS Wahl-und Projektthemen`,
               type: 'directory',
               children: [
                 {
                   name: '3D Druck',
-                  path: `${baseUrl}/Informatik/MSS Wahl-und Projektthemen/3D Druck`,
+                  path: `${onedriveUrl}/Informatik/MSS Wahl-und Projektthemen/3D Druck`,
                   type: 'directory',
                   children: [],
                   totalItems: 0
                 },
                 {
                   name: 'Micro Bit',
-                  path: `${baseUrl}/Informatik/MSS Wahl-und Projektthemen/Micro Bit`,
+                  path: `${onedriveUrl}/Informatik/MSS Wahl-und Projektthemen/Micro Bit`,
                   type: 'directory',
                   children: [],
                   totalItems: 0
@@ -161,19 +164,19 @@ export class StorageManager {
             },
             {
               name: 'ITB - Klasse 6',
-              path: `${baseUrl}/Informatik/ITB - Klasse 6`,
+              path: `${onedriveUrl}/Informatik/ITB - Klasse 6`,
               type: 'directory',
               children: [
                 {
                   name: 'Quiz TechnischeInfo1.docx',
-                  path: `${baseUrl}/Informatik/ITB - Klasse 6/Quiz TechnischeInfo1.docx`,
+                  path: `${onedriveUrl}/Informatik/ITB - Klasse 6/Quiz TechnischeInfo1.docx`,
                   type: 'file',
                   size: 39338,
                   extension: '.docx'
                 },
                 {
                   name: 'Spielesammlung.pptx',
-                  path: `${baseUrl}/Informatik/ITB - Klasse 6/Spielesammlung.pptx`,
+                  path: `${onedriveUrl}/Informatik/ITB - Klasse 6/Spielesammlung.pptx`,
                   type: 'file',
                   size: 3038937,
                   extension: '.pptx'
@@ -186,17 +189,17 @@ export class StorageManager {
         },
         {
           name: 'Mathe',
-          path: `${baseUrl}/Mathe`,
+          path: `${onedriveUrl}/Mathe`,
           type: 'directory',
           children: [
             {
               name: 'Klasse 7',
-              path: `${baseUrl}/Mathe/Klasse 7`,
+              path: `${onedriveUrl}/Mathe/Klasse 7`,
               type: 'directory',
               children: [
                 {
                   name: '1. Ganze und rationale Zahlen (Kapitel 5)',
-                  path: `${baseUrl}/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)`,
+                  path: `${onedriveUrl}/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)`,
                   type: 'directory',
                   children: [],
                   totalItems: 0
@@ -209,6 +212,9 @@ export class StorageManager {
         }
       ],
       totalItems: 6
+      },
+      totalItems: 6,
+      maxDepth: 10
     };
   }
 
