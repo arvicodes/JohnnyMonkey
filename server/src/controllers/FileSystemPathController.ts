@@ -369,7 +369,7 @@ export class FileSystemPathController {
       }
 
       console.log('Directory read successfully');
-      res.json(result);
+      res.json(directoryContent);
     } catch (error) {
       console.error('Fehler beim Lesen des Verzeichnisses:', error);
       res.status(500).json({ error: 'Interner Serverfehler' });
