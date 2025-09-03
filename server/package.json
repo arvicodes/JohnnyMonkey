@@ -6,7 +6,7 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "scripts": {
-    "dev": "nodemon src/index.ts",
+    "dev": "./scripts/setup-local.sh && DATABASE_URL=\"file:./dev.db\" nodemon src/index.ts",
     "dev:smart": "./scripts/start-dev.sh",
     "dev:clean": "npm run cleanup && npm run dev",
     "cleanup": "node -e \"const { exec } = require('child_process'); exec('lsof -ti:3001 | xargs kill -9 2>/dev/null || echo \\\"No process on port 3001\\\"', console.log);\"",
@@ -16,9 +16,12 @@
     "start:prod": "NODE_ENV=production prisma generate && node dist/index.js",
     "start:smart": "node -e \"const { PortManager } = require('./dist/utils/portManager'); PortManager.cleanupPorts().then(() => require('./dist/index.js'));\"",
     "prisma:generate": "prisma generate",
+    "prisma:generate:local": "./scripts/setup-local.sh",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "setup:local": "./scripts/setup-local.sh",
+    "setup:production": "./scripts/setup-production.sh"
   },
   "keywords": [],
   "author": "",

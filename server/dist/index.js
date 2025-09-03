@@ -95,8 +95,12 @@ app.get('/api/monitoring/stats', (req, res) => {
 // Serve static files from client build
 const clientBuildPath = path_1.default.join(__dirname, '..', 'client-build');
 app.use(express_1.default.static(clientBuildPath));
-// React Router Fallback - ALWAYS last
+// React Router Fallback - ALWAYS last (but exclude API routes)
 app.get('*', (req, res) => {
+    // Don't serve React app for API routes
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
     res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
 });
 // Error monitoring middleware (must be last)

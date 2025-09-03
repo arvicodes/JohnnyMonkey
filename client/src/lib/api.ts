@@ -1,7 +1,9 @@
 // Zentrale API-Utility für alle API-Aufrufe mit Login-Code Header
 
-// API Base URL - Hardcodiert für Production
-const API_BASE_URL = 'https://johnnymonkey.onrender.com';
+// API Base URL - Development vs Production
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://johnnymonkey.onrender.com' 
+  : 'http://localhost:3001';
 
 export const apiCall = async (url: string, options: RequestInit = {}) => {
   const loginCode = localStorage.getItem('loginCode');

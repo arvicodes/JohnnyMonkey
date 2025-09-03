@@ -71,7 +71,7 @@ export default function TopicSelector({ onTopicSelect, userProgress = [] }: Topi
 
   const { data: topics = [], isLoading } = useQuery<Topic[]>({
     queryKey: ['/api/topics'],
-    queryFn: () => fetch('http://localhost:5000/api/topics').then(res => res.json()),
+    queryFn: () => fetch('/api/topics').then(res => res.json()),
     retry: false,
   });
 
