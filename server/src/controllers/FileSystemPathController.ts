@@ -488,7 +488,7 @@ export class FileSystemPathController {
           `;
           
           // Alle Arbeitsblätter durchgehen
-          workbook.SheetNames.forEach((sheetName, index) => {
+          workbook.SheetNames.forEach((sheetName: string, index: number) => {
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             

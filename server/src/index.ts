@@ -51,7 +51,10 @@ app.use('/api/file-system-paths', fileSystemPathsRoutes);
 app.use('/api/flashcards', flashcardRoutes);
 app.use('/material', express.static(path.join(__dirname, '../../material')));
 
-
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
