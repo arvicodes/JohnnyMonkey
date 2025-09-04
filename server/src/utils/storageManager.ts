@@ -2,283 +2,230 @@ import fs from 'fs';
 import path from 'path';
 
 export interface StorageConfig {
-  type: 'local' | 'onedrive';
+  type: 'local' | 'git-intern';
   basePath?: string;
-  onedriveUrl?: string;
 }
 
 export class StorageManager {
   private static config: StorageConfig = {
-    type: process.env.NODE_ENV === 'production' ? 'onedrive' : 'local',
-    basePath: process.env.LOCAL_MATERIALS_PATH || '/Users/verachrist/Documents/Z. UNTERRICHT',
-    onedriveUrl: process.env.ONEDRIVE_URL
+    type: 'local',
+    basePath: process.env.LOCAL_MATERIALS_PATH || '/Users/verachrist/Documents/Z. UNTERRICHT'
   };
-
-  /**
-   * Get the appropriate path based on environment
-   */
-  static getPath(relativePath: string): string {
-    if (this.config.type === 'onedrive' && this.config.onedriveUrl) {
-      // For OneDrive, we'll use the URL directly
-      return this.config.onedriveUrl;
-    }
-    
-    // For local development, use the local path
-    return path.join(this.config.basePath || '', relativePath);
-  }
-
-  /**
-   * Check if a path exists (only works for local paths)
-   */
-  static pathExists(filePath: string): boolean {
-    if (this.config.type === 'onedrive') {
-      // For OneDrive, we assume the path exists
-      // In a real implementation, you'd check via OneDrive API
-      return true;
-    }
-    
-    return fs.existsSync(filePath);
-  }
 
   /**
    * Read directory contents
    */
   static async readDirectory(dirPath: string, recursive: boolean = false): Promise<any> {
-    // Check if this is a OneDrive URL or if we're in production mode
-    if (this.config.type === 'onedrive' || dirPath.includes('sharepoint.com') || dirPath.includes('onedrive')) {
-      // For OneDrive, return a mock structure or call OneDrive API
-      return this.getOneDriveMockStructure();
+    console.log('StorageManager.readDirectory called with:', dirPath, 'recursive:', recursive);
+    
+    // Check if this is a git-intern path (exact match or contains J-M-Reihen)
+    if (dirPath === 'git-intern' || dirPath.includes('J-M-Reihen') || dirPath.startsWith('git-intern/')) {
+      console.log('Git-intern path detected, using J-M-Reihen directory...');
+      return this.readGitInternDirectory(dirPath, recursive);
     }
     
+    // Check if this is an old OneDrive URL and return error
+    if (dirPath.includes('sharepoint.com') || dirPath.includes('onedrive')) {
+      console.log('Old OneDrive URL detected, returning error...');
+      return { error: 'OneDrive-Integration wurde entfernt. Bitte verwenden Sie die Git-Intern-Option.' };
+    }
+    
+    // Local file system handling
     return this.readLocalDirectory(dirPath, recursive);
+  }
+
+  /**
+   * Read git-intern directory (J-M-Reihen)
+   */
+  private static readGitInternDirectory(dirPath: string, recursive: boolean): any {
+    // Always use the J-M-Reihen directory from the project root
+    const projectRoot = path.resolve(__dirname, '../../../');
+    const jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
+    
+    console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
+    
+    if (!fs.existsSync(jmReihenPath)) {
+      return { error: 'J-M-Reihen directory not found in project root' };
+    }
+    
+    const stats = fs.statSync(jmReihenPath);
+    if (!stats.isDirectory()) {
+      return { error: 'J-M-Reihen is not a directory' };
+    }
+    
+    // Handle subdirectories if path is git-intern/subfolder
+    let targetPath = jmReihenPath;
+    let displayPath = 'git-intern';
+    
+    if (dirPath.startsWith('git-intern/') && dirPath !== 'git-intern') {
+      const subPath = dirPath.replace('git-intern/', '');
+      targetPath = path.join(jmReihenPath, subPath);
+      displayPath = dirPath;
+      
+      if (!fs.existsSync(targetPath)) {
+        return { error: `Subdirectory ${subPath} not found in J-M-Reihen` };
+      }
+    }
+    
+    // Recursive function to build directory tree
+    const buildDirectoryTree = (currentPath: string, currentDisplayPath: string, currentDepth: number = 0): any => {
+      const items = fs.readdirSync(currentPath);
+      const children = items
+        .filter(item => !item.startsWith('.')) // Filter out hidden files like .DS_Store
+        .map(item => {
+          const itemPath = path.join(currentPath, item);
+          const itemStats = fs.statSync(itemPath);
+          const itemDisplayPath = `${currentDisplayPath}/${item}`;
+          
+          const result: any = {
+            name: item,
+            path: itemDisplayPath,
+            type: itemStats.isDirectory() ? 'directory' : 'file',
+            size: itemStats.size,
+            extension: this.getFileExtension(item)
+          };
+          
+          // If it's a directory and we want recursive or it's the root level, add children
+          if (itemStats.isDirectory() && (recursive || currentDepth === 0)) {
+            result.children = buildDirectoryTree(itemPath, itemDisplayPath, currentDepth + 1).children;
+          }
+          
+          return result;
+        });
+      
+      return { children, totalItems: children.length };
+    };
+    
+    const tree = buildDirectoryTree(targetPath, displayPath);
+    
+    return {
+      path: displayPath,
+      root: {
+        name: path.basename(targetPath),
+        path: displayPath,
+        type: 'directory',
+        children: tree.children,
+        totalItems: tree.totalItems
+      },
+      totalItems: tree.totalItems,
+      maxDepth: recursive ? 10 : 1 // Allow deeper nesting for recursive calls
+    };
   }
 
   /**
    * Read local directory
    */
   private static readLocalDirectory(dirPath: string, recursive: boolean): any {
-    if (!fs.existsSync(dirPath)) {
+    const normalizedPath = path.resolve(dirPath);
+    
+    if (!fs.existsSync(normalizedPath)) {
       return { error: 'Path does not exist' };
     }
-
-    const stats = fs.statSync(dirPath);
+    
+    const stats = fs.statSync(normalizedPath);
     if (!stats.isDirectory()) {
       return { error: 'Path is not a directory' };
     }
-
-    const items = fs.readdirSync(dirPath);
-    const result = {
-      name: path.basename(dirPath),
-      path: dirPath,
-      type: 'directory',
-      children: [] as any[],
-      totalItems: 0
-    };
-
-    for (const item of items) {
-      const itemPath = path.join(dirPath, item);
+    
+    const items = fs.readdirSync(normalizedPath);
+    const children = items.map(item => {
+      const itemPath = path.join(normalizedPath, item);
       const itemStats = fs.statSync(itemPath);
       
-      if (itemStats.isDirectory()) {
-        if (recursive) {
-          const subDir = this.readLocalDirectory(itemPath, recursive);
-          result.children.push(subDir);
-        } else {
-          result.children.push({
-            name: item,
-            path: itemPath,
-            type: 'directory',
-            children: [],
-            totalItems: 0
-          });
-        }
-      } else {
-        result.children.push({
-          name: item,
-          path: itemPath,
-          type: 'file',
-          size: itemStats.size,
-          extension: path.extname(item).toLowerCase()
-        });
-      }
-    }
-
-    result.totalItems = this.countTotalItems(result);
-    return result;
-  }
-
-  /**
-   * Get OneDrive mock structure (placeholder for real OneDrive API)
-   */
-  private static getOneDriveMockStructure(): any {
-    const onedriveUrl = this.config.onedriveUrl || 'https://johannesgym-my.sharepoint.com/:f:/g/personal/christvera_johannesgym_onmicrosoft_com/EufDzsV4pudIq3VRwxiLM4MB8hqGxt5Cq1HomjLJKy-ftg?e=OblDUf';
+      return {
+        name: item,
+        path: path.join(dirPath, item),
+        type: itemStats.isDirectory() ? 'directory' : 'file',
+        size: itemStats.size,
+        extension: this.getFileExtension(item)
+      };
+    });
     
     return {
-      path: onedriveUrl,
+      path: dirPath,
       root: {
-        name: 'J-M-Reihen',
-        path: onedriveUrl,
+        name: path.basename(dirPath) || 'Root',
+        path: dirPath,
         type: 'directory',
-      children: [
-        {
-          name: 'Informatik',
-          path: `${onedriveUrl}/Informatik`,
-          type: 'directory',
-          children: [
-            {
-              name: 'MSS Grundthemen',
-              path: `${onedriveUrl}/Informatik/MSS Grundthemen`,
-              type: 'directory',
-              children: [
-                {
-                  name: 'Quiz TechnischeInfo1.docx',
-                  path: `${onedriveUrl}/Informatik/MSS Grundthemen/Quiz TechnischeInfo1.docx`,
-                  type: 'file',
-                  size: 39338,
-                  extension: '.docx'
-                }
-              ],
-              totalItems: 1
-            },
-            {
-              name: 'MSS Wahl-und Projektthemen',
-              path: `${onedriveUrl}/Informatik/MSS Wahl-und Projektthemen`,
-              type: 'directory',
-              children: [
-                {
-                  name: '3D Druck',
-                  path: `${onedriveUrl}/Informatik/MSS Wahl-und Projektthemen/3D Druck`,
-                  type: 'directory',
-                  children: [],
-                  totalItems: 0
-                },
-                {
-                  name: 'Micro Bit',
-                  path: `${onedriveUrl}/Informatik/MSS Wahl-und Projektthemen/Micro Bit`,
-                  type: 'directory',
-                  children: [],
-                  totalItems: 0
-                }
-              ],
-              totalItems: 2
-            },
-            {
-              name: 'ITB - Klasse 6',
-              path: `${onedriveUrl}/Informatik/ITB - Klasse 6`,
-              type: 'directory',
-              children: [
-                {
-                  name: 'Quiz TechnischeInfo1.docx',
-                  path: `${onedriveUrl}/Informatik/ITB - Klasse 6/Quiz TechnischeInfo1.docx`,
-                  type: 'file',
-                  size: 39338,
-                  extension: '.docx'
-                },
-                {
-                  name: 'Spielesammlung.pptx',
-                  path: `${onedriveUrl}/Informatik/ITB - Klasse 6/Spielesammlung.pptx`,
-                  type: 'file',
-                  size: 3038937,
-                  extension: '.pptx'
-                }
-              ],
-              totalItems: 2
-            }
-          ],
-          totalItems: 5
-        },
-        {
-          name: 'Mathe',
-          path: `${onedriveUrl}/Mathe`,
-          type: 'directory',
-          children: [
-            {
-              name: 'Klasse 7',
-              path: `${onedriveUrl}/Mathe/Klasse 7`,
-              type: 'directory',
-              children: [
-                {
-                  name: '1. Ganze und rationale Zahlen (Kapitel 5)',
-                  path: `${onedriveUrl}/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)`,
-                  type: 'directory',
-                  children: [],
-                  totalItems: 0
-                }
-              ],
-              totalItems: 1
-            }
-          ],
-          totalItems: 1
-        }
-      ],
-      totalItems: 6
+        children: children,
+        totalItems: children.length
       },
-      totalItems: 6,
-      maxDepth: 10
+      totalItems: children.length,
+      maxDepth: 1
     };
   }
 
   /**
-   * Count total items recursively
-   */
-  private static countTotalItems(item: any): number {
-    let count = 0;
-    if (item.children) {
-      for (const child of item.children) {
-        count += this.countTotalItems(child);
-        if (child.type === 'file') {
-          count++;
-        }
-      }
-    }
-    return count;
-  }
-
-  /**
-   * Read file content
+   * Read file contents
    */
   static async readFile(filePath: string): Promise<Buffer | null> {
-    if (this.config.type === 'onedrive') {
-      // For OneDrive, you'd fetch the file via OneDrive API
-      // For now, return null to indicate file not found
+    try {
+      // Handle git-intern paths
+      if (filePath.startsWith('git-intern/')) {
+        const projectRoot = path.resolve(__dirname, '../../../');
+        const relativePath = filePath.replace('git-intern/', '');
+        const fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+        
+        if (fs.existsSync(fullPath)) {
+          return fs.readFileSync(fullPath);
+        }
+        return null;
+      }
+      
+      // Handle local paths
+      const normalizedPath = path.resolve(filePath);
+      if (fs.existsSync(normalizedPath)) {
+        return fs.readFileSync(normalizedPath);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error reading file:', error);
       return null;
     }
-    
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-    
-    return fs.readFileSync(filePath);
   }
 
   /**
-   * Get file info
+   * Get file information
    */
   static getFileInfo(filePath: string): any {
-    if (this.config.type === 'onedrive') {
-      // For OneDrive, return mock info
-      return {
-        name: path.basename(filePath),
-        path: filePath,
-        type: 'file',
-        size: 0,
-        extension: path.extname(filePath).toLowerCase()
-      };
-    }
-    
-    if (!fs.existsSync(filePath)) {
+    try {
+      let fullPath: string;
+      
+      // Handle git-intern paths
+      if (filePath.startsWith('git-intern/')) {
+        const projectRoot = path.resolve(__dirname, '../../../');
+        const relativePath = filePath.replace('git-intern/', '');
+        fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+      } else {
+        fullPath = path.resolve(filePath);
+      }
+      
+      if (fs.existsSync(fullPath)) {
+        const stats = fs.statSync(fullPath);
+        return {
+          name: path.basename(filePath),
+          path: filePath,
+          type: stats.isDirectory() ? 'directory' : 'file',
+          size: stats.size,
+          extension: this.getFileExtension(path.basename(filePath)),
+          lastModified: stats.mtime
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting file info:', error);
       return null;
     }
-    
-    const stats = fs.statSync(filePath);
-    return {
-      name: path.basename(filePath),
-      path: filePath,
-      type: stats.isDirectory() ? 'directory' : 'file',
-      size: stats.size,
-      extension: path.extname(filePath).toLowerCase(),
-      modified: stats.mtime
-    };
+  }
+
+  /**
+   * Get file extension from filename
+   */
+  private static getFileExtension(filename: string): string {
+    const lastDot = filename.lastIndexOf('.');
+    return lastDot > 0 ? filename.substring(lastDot).toLowerCase() : '';
   }
 
   /**

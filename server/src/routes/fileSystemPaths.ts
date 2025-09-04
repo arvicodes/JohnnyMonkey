@@ -15,6 +15,7 @@ router.get('/teacher/:teacherId', FileSystemPathController.getPathsByTeacher);
 // Verzeichnisstruktur eines Pfades lesen
 router.get('/read', FileSystemPathController.readDirectory);
 
+
 // HTML-Datei lesen
 router.get('/read-html', FileSystemPathController.readHtmlFile);
 
