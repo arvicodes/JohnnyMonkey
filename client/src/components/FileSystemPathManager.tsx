@@ -18,7 +18,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  RadioGroup,
+  Radio
 } from '@mui/material';
 import { 
   Delete as DeleteIcon,
@@ -70,6 +77,9 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pathToDelete, setPathToDelete] = useState<FileSystemPath | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  
+  // Storage-Auswahl
+  const [storageType, setStorageType] = useState<'local' | 'git-intern'>('local');
 
   // Alle Ordner standardmäßig aufgeklappt
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -100,7 +110,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
 
   // Pfad speichern
   const savePathMutation = useMutation({
-    mutationFn: async (data: { path: string; name: string; teacherId: string }) => {
+    mutationFn: async (data: { path: string; name: string; teacherId: string; credentials?: { username: string; password: string } }) => {
       const response = await fetch('/api/file-system-paths/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,8 +181,15 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       });
       return;
     }
+
+    // If it's git-intern, use the special path
+    if (storageType === 'git-intern') {
+      setNewPath('git-intern');
+    }
+
     savePathMutation.mutate({ path: newPath.trim(), name: newPathName.trim(), teacherId });
   };
+
 
   const handleDeletePath = (path: FileSystemPath) => {
     setPathToDelete(path);
@@ -754,6 +771,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     // Funktion zum Öffnen von Dateien
     const handleItemClick = async () => {
       if (isFile) {
+        
         // Datei öffnen - verschiedene Ansätze je nach Dateityp
         const fileExtension = item.name.split('.').pop()?.toLowerCase();
         
@@ -1074,12 +1092,52 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                 <Typography variant="body2" sx={{ mb: 1, fontWeight: 'medium', fontSize: '0.75rem' }}>
                   Neuen Pfad hinzufügen
                 </Typography>
+                
+                {/* Storage-Auswahl */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: '0.7rem', color: '#666' }}>
+                    Speicher-Typ wählen:
+                  </Typography>
+                  <RadioGroup
+                    value={storageType}
+                    onChange={(e) => setStorageType(e.target.value as 'local' | 'git-intern')}
+                    row
+                    sx={{ '& .MuiFormControlLabel-root': { mr: 2 } }}
+                  >
+                    <FormControlLabel
+                      value="local"
+                      control={<Radio size="small" />}
+                      label={
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
+                          📁 Lokaler Pfad
+                        </Typography>
+                      }
+                    />
+                    <FormControlLabel
+                      value="git-intern"
+                      control={<Radio size="small" />}
+                      label={
+                        <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
+                          📁 Git-Intern (J-M-Reihen)
+                        </Typography>
+                      }
+                    />
+                  </RadioGroup>
+                </Box>
+                
                 <Grid container spacing={1} alignItems="center">
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Absoluter Dateipfad"
-                      placeholder="/Users/username/Documents"
+                      label={
+                        storageType === 'local' ? "Absoluter Dateipfad" : 
+                        "Git-Intern Pfad"
+                      }
+                      placeholder={
+                        storageType === 'local' ? "/Users/username/Documents" : 
+                        "git-intern"
+                      }
+                      disabled={storageType === 'git-intern'}
                       value={newPath}
                       onChange={(e) => setNewPath(e.target.value)}
                       size="small"
@@ -1337,6 +1395,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
           </Button>
         </DialogActions>
       </Dialog>
+
 
       {/* Snackbar für Benachrichtigungen */}
       <Snackbar
