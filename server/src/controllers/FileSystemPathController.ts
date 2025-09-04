@@ -248,6 +248,22 @@ export class FileSystemPathController {
         return res.status(400).json({ error: 'Pfad ist erforderlich' });
       }
 
+      // Check if this is a OneDrive URL (before path normalization)
+      if (filePath.includes('sharepoint.com') || filePath.includes('onedrive')) {
+        console.log('OneDrive URL detected, using StorageManager...');
+        const isRecursive = recursive === 'true';
+        const directoryResult = await StorageManager.readDirectory(filePath, isRecursive);
+        
+        if (directoryResult.error) {
+          console.log('OneDrive error:', directoryResult.error);
+          return res.status(404).json({ error: directoryResult.error });
+        }
+        
+        console.log('OneDrive directory read successfully');
+        res.json(directoryResult);
+        return;
+      }
+
       // Pfad normalisieren
       const normalizedPath = path.resolve(filePath);
       console.log('Normalized path:', normalizedPath);
