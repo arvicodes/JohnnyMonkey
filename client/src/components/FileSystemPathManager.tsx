@@ -104,7 +104,14 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   // Automatisch J-M-Reihen Pfad erstellen, wenn noch keine Pfade vorhanden sind
   useEffect(() => {
     const createDefaultJmReihenPath = async () => {
-      if (savedPaths && savedPaths.length === 0 && teacherId) {
+      console.log('Checking for auto-creation of J-M-Reihen path:', { 
+        savedPaths: savedPaths?.length, 
+        teacherId, 
+        isLoading: pathsLoading 
+      });
+      
+      if (!pathsLoading && savedPaths && savedPaths.length === 0 && teacherId) {
+        console.log('Creating default J-M-Reihen path...');
         try {
           const response = await fetch('/api/file-system-paths', {
             method: 'POST',
@@ -119,10 +126,13 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
           });
           
           if (response.ok) {
+            console.log('J-M-Reihen path created successfully');
             // Refetch paths to update the list
-            queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
+            await queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
             // Automatisch den J-M-Reihen Pfad auswählen
             setSelectedPath('git-intern');
+          } else {
+            console.error('Failed to create J-M-Reihen path:', response.status);
           }
         } catch (error) {
           console.error('Fehler beim Erstellen des Standard J-M-Reihen Pfads:', error);
@@ -131,7 +141,21 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     };
 
     createDefaultJmReihenPath();
-  }, [savedPaths, teacherId, queryClient]);
+  }, [savedPaths, teacherId, queryClient, pathsLoading]);
+
+  // Automatisch J-M-Reihen Pfad auswählen, wenn er existiert
+  useEffect(() => {
+    if (savedPaths && savedPaths.length > 0 && !selectedPath) {
+      const jmReihenPath = savedPaths.find(path => path.path === 'git-intern');
+      if (jmReihenPath) {
+        console.log('Auto-selecting existing J-M-Reihen path');
+        setSelectedPath('git-intern');
+      } else {
+        // Fallback: ersten verfügbaren Pfad auswählen
+        setSelectedPath(savedPaths[0].path);
+      }
+    }
+  }, [savedPaths, selectedPath]);
 
   // Verzeichnisinhalt abrufen
   const { data: directoryContent, isLoading: directoryLoading, refetch: refetchDirectory } = useQuery({
