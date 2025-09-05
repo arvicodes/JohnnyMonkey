@@ -38,18 +38,12 @@ export class StorageManager {
    * Read git-intern directory (J-M-Reihen)
    */
   private static readGitInternDirectory(dirPath: string, recursive: boolean): any {
-    // In production, use relative path from project root
-    // In development, use absolute path
-    let jmReihenPath: string;
+    // Always use absolute path to project root
+    const projectRoot = process.env.NODE_ENV === 'production' 
+      ? process.cwd()  // In production, cwd is the project root
+      : path.resolve(process.cwd(), '..');  // In development, go up one level
     
-    if (process.env.NODE_ENV === 'production') {
-      // Production: Use relative path from project root
-      jmReihenPath = path.join(process.cwd(), 'J-M-Reihen');
-    } else {
-      // Development: Use absolute path from project root
-      const projectRoot = path.resolve(process.cwd(), '..');
-      jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
-    }
+    const jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
     
     console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
     
@@ -176,7 +170,10 @@ export class StorageManager {
         
         if (process.env.NODE_ENV === 'production') {
           // Production: Use relative path from project root
-          fullPath = path.join(process.cwd(), 'J-M-Reihen', relativePath);
+          const projectRoot = process.env.NODE_ENV === 'production' 
+            ? process.cwd()  // In production, cwd is the project root
+            : path.resolve(process.cwd(), '..');  // In development, go up one level
+          fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
         } else {
           // Development: Use absolute path from project root
           const projectRoot = path.resolve(process.cwd(), '..');
@@ -215,7 +212,10 @@ export class StorageManager {
         
         if (process.env.NODE_ENV === 'production') {
           // Production: Use relative path from project root
-          fullPath = path.join(process.cwd(), 'J-M-Reihen', relativePath);
+          const projectRoot = process.env.NODE_ENV === 'production' 
+            ? process.cwd()  // In production, cwd is the project root
+            : path.resolve(process.cwd(), '..');  // In development, go up one level
+          fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
         } else {
           // Development: Use absolute path from project root
           const projectRoot = path.resolve(__dirname, '../../../');
