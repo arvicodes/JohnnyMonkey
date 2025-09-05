@@ -43,5 +43,9 @@ export declare class FileSystemPathController {
     static readImageFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readTextFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static downloadFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Get J-M-Reihen path for current environment
+     */
+    static getJmReihenPath(req: Request, res: Response): Promise<void>;
 }
 //# sourceMappingURL=FileSystemPathController.d.ts.map

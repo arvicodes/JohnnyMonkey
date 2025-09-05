@@ -16,6 +16,8 @@ router.get('/teacher/:teacherId', FileSystemPathController_1.FileSystemPathContr
 router.get('/read', FileSystemPathController_1.FileSystemPathController.readDirectory);
 // HTML-Datei lesen
 router.get('/read-html', FileSystemPathController_1.FileSystemPathController.readHtmlFile);
+// J-M-Reihen Pfad für aktuelle Umgebung abrufen
+router.get('/jm-reihen-path', FileSystemPathController_1.FileSystemPathController.getJmReihenPath);
 // DOCX-Datei lesen
 router.get('/read-docx', FileSystemPathController_1.FileSystemPathController.readDocxFile);
 // Excel-Datei lesen

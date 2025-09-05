@@ -38,12 +38,27 @@ export class StorageManager {
    * Read git-intern directory (J-M-Reihen)
    */
   private static readGitInternDirectory(dirPath: string, recursive: boolean): any {
-    // Always use absolute path to project root
-    const projectRoot = process.env.NODE_ENV === 'production' 
-      ? process.cwd()  // In production, cwd is the project root
-      : path.resolve(process.cwd(), '..');  // In development, go up one level
+    // In production, look for J-M-Reihen in server directory
+    // In development, use absolute path from project root
+    let jmReihenPath: string;
     
-    const jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
+    if (process.env.NODE_ENV === 'production') {
+      // Production: Look in server directory first, then project root
+      const serverPath = path.join(process.cwd(), 'J-M-Reihen');
+      const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
+      
+      if (fs.existsSync(serverPath)) {
+        jmReihenPath = serverPath;
+      } else if (fs.existsSync(projectPath)) {
+        jmReihenPath = projectPath;
+      } else {
+        jmReihenPath = serverPath; // Default to server path for error message
+      }
+    } else {
+      // Development: Use absolute path from project root
+      const projectRoot = path.resolve(process.cwd(), '..');
+      jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
+    }
     
     console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
     console.log('Project root:', projectRoot);
@@ -172,10 +187,25 @@ export class StorageManager {
         
         if (process.env.NODE_ENV === 'production') {
           // Production: Use relative path from project root
-          const projectRoot = process.env.NODE_ENV === 'production' 
-            ? process.cwd()  // In production, cwd is the project root
-            : path.resolve(process.cwd(), '..');  // In development, go up one level
-          fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+          let jmReihenPath: string;
+          if (process.env.NODE_ENV === 'production') {
+            // Production: Look in server directory first, then project root
+            const serverPath = path.join(process.cwd(), 'J-M-Reihen');
+            const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
+            
+            if (fs.existsSync(serverPath)) {
+              jmReihenPath = serverPath;
+            } else if (fs.existsSync(projectPath)) {
+              jmReihenPath = projectPath;
+            } else {
+              jmReihenPath = serverPath; // Default to server path
+            }
+          } else {
+            // Development: Use absolute path from project root
+            const projectRoot = path.resolve(process.cwd(), '..');
+            jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
+          }
+          fullPath = path.join(jmReihenPath, relativePath);
         } else {
           // Development: Use absolute path from project root
           const projectRoot = path.resolve(process.cwd(), '..');
@@ -214,10 +244,25 @@ export class StorageManager {
         
         if (process.env.NODE_ENV === 'production') {
           // Production: Use relative path from project root
-          const projectRoot = process.env.NODE_ENV === 'production' 
-            ? process.cwd()  // In production, cwd is the project root
-            : path.resolve(process.cwd(), '..');  // In development, go up one level
-          fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+          let jmReihenPath: string;
+          if (process.env.NODE_ENV === 'production') {
+            // Production: Look in server directory first, then project root
+            const serverPath = path.join(process.cwd(), 'J-M-Reihen');
+            const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
+            
+            if (fs.existsSync(serverPath)) {
+              jmReihenPath = serverPath;
+            } else if (fs.existsSync(projectPath)) {
+              jmReihenPath = projectPath;
+            } else {
+              jmReihenPath = serverPath; // Default to server path
+            }
+          } else {
+            // Development: Use absolute path from project root
+            const projectRoot = path.resolve(process.cwd(), '..');
+            jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
+          }
+          fullPath = path.join(jmReihenPath, relativePath);
         } else {
           // Development: Use absolute path from project root
           const projectRoot = path.resolve(__dirname, '../../../');
