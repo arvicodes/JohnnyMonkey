@@ -19,10 +19,6 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   FormControlLabel,
   RadioGroup,
   Radio
@@ -191,20 +187,10 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   };
 
 
-  const handleDeletePath = (path: FileSystemPath) => {
-    setPathToDelete(path);
-    setDeleteDialogOpen(true);
-  };
-
   const confirmDelete = () => {
     if (pathToDelete) {
       deletePathMutation.mutate(pathToDelete.id);
     }
-  };
-
-  const handlePathSelect = (path: string) => {
-    setSelectedPath(path);
-    setExpandedItems(new Set()); // Reset expanded items when selecting new path
   };
 
   const toggleItemExpanded = (itemPath: string) => {
@@ -1137,9 +1123,15 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                         storageType === 'local' ? "/Users/username/Documents" : 
                         "git-intern"
                       }
-                      disabled={storageType === 'git-intern'}
-                      value={newPath}
-                      onChange={(e) => setNewPath(e.target.value)}
+                      disabled={false}
+                      value={storageType === 'git-intern' ? 'git-intern' : newPath}
+                      onChange={(e) => {
+                        if (storageType === 'git-intern') {
+                          setNewPath('git-intern');
+                        } else {
+                          setNewPath(e.target.value);
+                        }
+                      }}
                       size="small"
                       sx={{ '& .MuiInputLabel-root': { fontSize: '0.7rem' }, '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
                     />
