@@ -29,9 +29,18 @@ class StorageManager {
      * Read git-intern directory (J-M-Reihen)
      */
     static readGitInternDirectory(dirPath, recursive) {
-        // Use process.cwd() to get the current directory, then go up one level to project root
-        const projectRoot = path_1.default.resolve(process.cwd(), '..');
-        const jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
+        // In production, use relative path from project root
+        // In development, use absolute path
+        let jmReihenPath;
+        if (process.env.NODE_ENV === 'production') {
+            // Production: Use relative path from project root
+            jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+        }
+        else {
+            // Development: Use absolute path from project root
+            const projectRoot = path_1.default.resolve(process.cwd(), '..');
+            jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
+        }
         console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
         if (!fs_1.default.existsSync(jmReihenPath)) {
             return { error: 'J-M-Reihen directory not found in project root' };
@@ -133,9 +142,17 @@ class StorageManager {
         try {
             // Handle git-intern paths
             if (filePath.startsWith('git-intern/')) {
-                const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                let fullPath;
                 const relativePath = filePath.replace('git-intern/', '');
-                const fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                if (process.env.NODE_ENV === 'production') {
+                    // Production: Use relative path from project root
+                    fullPath = path_1.default.join(process.cwd(), 'J-M-Reihen', relativePath);
+                }
+                else {
+                    // Development: Use absolute path from project root
+                    const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                    fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
                 if (fs_1.default.existsSync(fullPath)) {
                     return fs_1.default.readFileSync(fullPath);
                 }
@@ -161,9 +178,16 @@ class StorageManager {
             let fullPath;
             // Handle git-intern paths
             if (filePath.startsWith('git-intern/')) {
-                const projectRoot = path_1.default.resolve(__dirname, '../../../');
                 const relativePath = filePath.replace('git-intern/', '');
-                fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                if (process.env.NODE_ENV === 'production') {
+                    // Production: Use relative path from project root
+                    fullPath = path_1.default.join(process.cwd(), 'J-M-Reihen', relativePath);
+                }
+                else {
+                    // Development: Use absolute path from project root
+                    const projectRoot = path_1.default.resolve(__dirname, '../../../');
+                    fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
             }
             else {
                 fullPath = path_1.default.resolve(filePath);
