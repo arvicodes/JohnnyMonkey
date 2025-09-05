@@ -38,8 +38,8 @@ export class StorageManager {
    * Read git-intern directory (J-M-Reihen)
    */
   private static readGitInternDirectory(dirPath: string, recursive: boolean): any {
-    // Always use the J-M-Reihen directory from the project root
-    const projectRoot = path.resolve(__dirname, '../../../');
+    // Use process.cwd() to get the current directory, then go up one level to project root
+    const projectRoot = path.resolve(process.cwd(), '..');
     const jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
     
     console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
@@ -162,7 +162,7 @@ export class StorageManager {
     try {
       // Handle git-intern paths
       if (filePath.startsWith('git-intern/')) {
-        const projectRoot = path.resolve(__dirname, '../../../');
+        const projectRoot = path.resolve(process.cwd(), '..');
         const relativePath = filePath.replace('git-intern/', '');
         const fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
         

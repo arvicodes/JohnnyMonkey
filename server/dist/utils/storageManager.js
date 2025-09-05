@@ -29,8 +29,8 @@ class StorageManager {
      * Read git-intern directory (J-M-Reihen)
      */
     static readGitInternDirectory(dirPath, recursive) {
-        // Always use the J-M-Reihen directory from the project root
-        const projectRoot = path_1.default.resolve(__dirname, '../../../');
+        // Use process.cwd() to get the current directory, then go up one level to project root
+        const projectRoot = path_1.default.resolve(process.cwd(), '..');
         const jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
         console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
         if (!fs_1.default.existsSync(jmReihenPath)) {
@@ -51,29 +51,42 @@ class StorageManager {
                 return { error: `Subdirectory ${subPath} not found in J-M-Reihen` };
             }
         }
-        const items = fs_1.default.readdirSync(targetPath);
-        const children = items.map(item => {
-            const itemPath = path_1.default.join(targetPath, item);
-            const itemStats = fs_1.default.statSync(itemPath);
-            return {
-                name: item,
-                path: itemStats.isDirectory() ? `${displayPath}/${item}` : `${displayPath}/${item}`,
-                type: itemStats.isDirectory() ? 'directory' : 'file',
-                size: itemStats.size,
-                extension: this.getFileExtension(item)
-            };
-        });
+        // Recursive function to build directory tree
+        const buildDirectoryTree = (currentPath, currentDisplayPath, currentDepth = 0) => {
+            const items = fs_1.default.readdirSync(currentPath);
+            const children = items
+                .filter(item => !item.startsWith('.')) // Filter out hidden files like .DS_Store
+                .map(item => {
+                const itemPath = path_1.default.join(currentPath, item);
+                const itemStats = fs_1.default.statSync(itemPath);
+                const itemDisplayPath = `${currentDisplayPath}/${item}`;
+                const result = {
+                    name: item,
+                    path: itemDisplayPath,
+                    type: itemStats.isDirectory() ? 'directory' : 'file',
+                    size: itemStats.size,
+                    extension: this.getFileExtension(item)
+                };
+                // If it's a directory and we want recursive or it's the root level, add children
+                if (itemStats.isDirectory() && (recursive || currentDepth === 0)) {
+                    result.children = buildDirectoryTree(itemPath, itemDisplayPath, currentDepth + 1).children;
+                }
+                return result;
+            });
+            return { children, totalItems: children.length };
+        };
+        const tree = buildDirectoryTree(targetPath, displayPath);
         return {
             path: displayPath,
             root: {
                 name: path_1.default.basename(targetPath),
                 path: displayPath,
                 type: 'directory',
-                children: children,
-                totalItems: children.length
+                children: tree.children,
+                totalItems: tree.totalItems
             },
-            totalItems: children.length,
-            maxDepth: 1
+            totalItems: tree.totalItems,
+            maxDepth: recursive ? 10 : 1 // Allow deeper nesting for recursive calls
         };
     }
     /**
@@ -120,7 +133,7 @@ class StorageManager {
         try {
             // Handle git-intern paths
             if (filePath.startsWith('git-intern/')) {
-                const projectRoot = path_1.default.resolve(__dirname, '../../../');
+                const projectRoot = path_1.default.resolve(process.cwd(), '..');
                 const relativePath = filePath.replace('git-intern/', '');
                 const fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
                 if (fs_1.default.existsSync(fullPath)) {
