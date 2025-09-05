@@ -88,49 +88,65 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     }
   });
 
-  // Automatisch J-M-Reihen Pfad erstellen, wenn noch keine Pfade vorhanden sind
-  useEffect(() => {
-    const createDefaultJmReihenPath = async () => {
-      console.log('Checking for auto-creation of J-M-Reihen path:', { 
-        savedPaths: savedPaths?.length, 
-        teacherId, 
-        isLoading: pathsLoading 
+  // Funktion zum Erstellen des J-M-Reihen Pfads
+  const createJmReihenPath = async () => {
+    console.log('Creating J-M-Reihen path...');
+    try {
+      const jmReihenPath = '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
+      
+      const response = await fetch('/api/file-system-paths', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: jmReihenPath,
+          name: 'J-M-Reihen',
+          teacherId: teacherId
+        })
       });
       
-      if (!pathsLoading && savedPaths && savedPaths.length === 0 && teacherId) {
-        console.log('Creating default J-M-Reihen path...');
-        try {
-          // Verwende den absoluten Pfad zum J-M-Reihen Ordner
-          const jmReihenPath = '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
-          
-          const response = await fetch('/api/file-system-paths', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              path: jmReihenPath,
-              name: 'J-M-Reihen',
-              teacherId: teacherId
-            })
-          });
-          
-          if (response.ok) {
-            console.log('J-M-Reihen path created successfully');
-            // Refetch paths to update the list
-            await queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
-            // Automatisch den J-M-Reihen Pfad auswählen
-            setSelectedPath(jmReihenPath);
-          } else {
-            console.error('Failed to create J-M-Reihen path:', response.status);
-          }
-        } catch (error) {
-          console.error('Fehler beim Erstellen des Standard J-M-Reihen Pfads:', error);
-        }
+      if (response.ok) {
+        console.log('J-M-Reihen path created successfully');
+        // Refetch paths to update the list
+        await queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
+        // Automatisch den J-M-Reihen Pfad auswählen
+        setSelectedPath(jmReihenPath);
+        setSnackbar({
+          open: true,
+          message: 'J-M-Reihen Pfad wurde erstellt',
+          severity: 'success'
+        });
+      } else {
+        console.error('Failed to create J-M-Reihen path:', response.status);
+        setSnackbar({
+          open: true,
+          message: 'Fehler beim Erstellen des J-M-Reihen Pfads',
+          severity: 'error'
+        });
       }
-    };
+    } catch (error) {
+      console.error('Fehler beim Erstellen des Standard J-M-Reihen Pfads:', error);
+      setSnackbar({
+        open: true,
+        message: 'Fehler beim Erstellen des J-M-Reihen Pfads',
+        severity: 'error'
+      });
+    }
+  };
 
-    createDefaultJmReihenPath();
+  // Automatisch J-M-Reihen Pfad erstellen, wenn noch keine Pfade vorhanden sind
+  useEffect(() => {
+    console.log('Checking for auto-creation of J-M-Reihen path:', { 
+      savedPaths: savedPaths?.length, 
+      teacherId, 
+      isLoading: pathsLoading 
+    });
+    
+    if (!pathsLoading && savedPaths && savedPaths.length === 0 && teacherId) {
+      console.log('Auto-creating J-M-Reihen path...');
+      createJmReihenPath();
+    }
   }, [savedPaths, teacherId, queryClient, pathsLoading]);
 
   // Automatisch J-M-Reihen Pfad auswählen, wenn er existiert
@@ -1285,9 +1301,23 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                   ))}
                 </List>
               ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1, fontSize: '0.7rem' }}>
-                  Keine Pfade gespeichert
-                </Typography>
+                <Box sx={{ textAlign: 'center', py: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem', mb: 1 }}>
+                    Keine Pfade gespeichert
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={createJmReihenPath}
+                    sx={{ 
+                      fontSize: '0.65rem',
+                      height: 24,
+                      px: 1
+                    }}
+                  >
+                    J-M-Reihen hinzufügen
+                  </Button>
+                </Box>
               )}
             </CardContent>
           </Card>
