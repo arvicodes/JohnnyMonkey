@@ -46,6 +46,8 @@ export class StorageManager {
     const jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
     
     console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
+    console.log('Project root:', projectRoot);
+    console.log('Directory exists:', fs.existsSync(jmReihenPath));
     
     if (!fs.existsSync(jmReihenPath)) {
       return { error: 'J-M-Reihen directory not found in project root' };
