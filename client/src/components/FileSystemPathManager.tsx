@@ -94,7 +94,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     try {
       const jmReihenPath = '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
       
-      const response = await fetch('/api/file-system-paths', {
+      const response = await fetch('/api/file-system-paths/save', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
