@@ -101,6 +101,38 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     }
   });
 
+  // Automatisch J-M-Reihen Pfad erstellen, wenn noch keine Pfade vorhanden sind
+  useEffect(() => {
+    const createDefaultJmReihenPath = async () => {
+      if (savedPaths && savedPaths.length === 0 && teacherId) {
+        try {
+          const response = await fetch('/api/file-system-paths', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              path: 'git-intern',
+              name: 'J-M-Reihen (Git-Intern)',
+              teacherId: teacherId
+            })
+          });
+          
+          if (response.ok) {
+            // Refetch paths to update the list
+            queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
+            // Automatisch den J-M-Reihen Pfad auswählen
+            setSelectedPath('git-intern');
+          }
+        } catch (error) {
+          console.error('Fehler beim Erstellen des Standard J-M-Reihen Pfads:', error);
+        }
+      }
+    };
+
+    createDefaultJmReihenPath();
+  }, [savedPaths, teacherId, queryClient]);
+
   // Verzeichnisinhalt abrufen
   const { data: directoryContent, isLoading: directoryLoading, refetch: refetchDirectory } = useQuery({
     queryKey: ['directoryContent', selectedPath, true], // recursiveView is now always true
@@ -1173,9 +1205,16 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
               
               {/* Gespeicherte Pfade */}
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                <Typography variant="body2" sx={{ fontWeight: 'medium', fontSize: '0.75rem' }}>
-                  Gespeicherte Pfade
-                </Typography>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 'medium', fontSize: '0.75rem' }}>
+                    Gespeicherte Pfade
+                  </Typography>
+                  {savedPaths && savedPaths.length === 0 && (
+                    <Typography variant="caption" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                      J-M-Reihen wird automatisch geladen...
+                    </Typography>
+                  )}
+                </Box>
                 <IconButton
                   size="small"
                   onClick={() => queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] })}
