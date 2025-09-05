@@ -47,12 +47,19 @@ export class StorageManager {
       const serverPath = path.join(process.cwd(), 'J-M-Reihen');
       const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
       
+      console.log('Production paths:');
+      console.log('Server path:', serverPath, 'exists:', fs.existsSync(serverPath));
+      console.log('Project path:', projectPath, 'exists:', fs.existsSync(projectPath));
+      
       if (fs.existsSync(serverPath)) {
         jmReihenPath = serverPath;
+        console.log('Using server path');
       } else if (fs.existsSync(projectPath)) {
         jmReihenPath = projectPath;
+        console.log('Using project path');
       } else {
         jmReihenPath = serverPath; // Default to server path for error message
+        console.log('Using default server path (will fail)');
       }
     } else {
       // Development: Use absolute path from project root
@@ -61,7 +68,6 @@ export class StorageManager {
     }
     
     console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
-    console.log('Project root:', projectRoot);
     console.log('Directory exists:', fs.existsSync(jmReihenPath));
     
     if (!fs.existsSync(jmReihenPath)) {
