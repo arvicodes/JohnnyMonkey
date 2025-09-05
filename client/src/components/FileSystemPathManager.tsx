@@ -82,6 +82,15 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
 
   const queryClient = useQueryClient();
 
+  // Setze Standardwert basierend auf Storage-Typ
+  useEffect(() => {
+    if (storageType === 'git-intern' && newPath !== 'git-intern') {
+      setNewPath('git-intern');
+    } else if (storageType === 'local' && newPath === 'git-intern') {
+      setNewPath('');
+    }
+  }, [storageType, newPath]);
+
   // Gespeicherte Pfade abrufen
   const { data: savedPaths, isLoading: pathsLoading } = useQuery({
     queryKey: ['fileSystemPaths', teacherId],
@@ -1124,14 +1133,8 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                         "git-intern"
                       }
                       disabled={false}
-                      value={storageType === 'git-intern' ? 'git-intern' : newPath}
-                      onChange={(e) => {
-                        if (storageType === 'git-intern') {
-                          setNewPath('git-intern');
-                        } else {
-                          setNewPath(e.target.value);
-                        }
-                      }}
+                      value={newPath}
+                      onChange={(e) => setNewPath(e.target.value)}
                       size="small"
                       sx={{ '& .MuiInputLabel-root': { fontSize: '0.7rem' }, '& .MuiInputBase-input': { fontSize: '0.7rem' } }}
                     />
