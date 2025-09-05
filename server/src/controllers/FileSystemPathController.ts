@@ -892,4 +892,21 @@ export class FileSystemPathController {
       res.status(500).json({ error: 'Failed to download file' });
     }
   }
+
+  /**
+   * Get J-M-Reihen path for current environment
+   */
+  static async getJmReihenPath(req: Request, res: Response) {
+    try {
+      // Verwende relativen Pfad für Produktion, absoluten für Entwicklung
+      const jmReihenPath = process.env.NODE_ENV === 'production' 
+        ? 'J-M-Reihen' 
+        : '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
+      
+      res.json({ path: jmReihenPath });
+    } catch (error) {
+      console.error('Error getting J-M-Reihen path:', error);
+      res.status(500).json({ error: 'Failed to get J-M-Reihen path' });
+    }
+  }
 }

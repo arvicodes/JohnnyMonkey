@@ -92,7 +92,9 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   const createJmReihenPath = useCallback(async () => {
     console.log('Creating J-M-Reihen path...');
     try {
-      const jmReihenPath = '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
+      // Hole den korrekten Pfad vom Server
+      const pathResponse = await fetch('/api/file-system-paths/jm-reihen-path');
+      const { path: jmReihenPath } = await pathResponse.json();
       
       const response = await fetch('/api/file-system-paths/save', {
         method: 'POST',
