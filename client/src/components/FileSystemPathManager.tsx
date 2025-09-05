@@ -18,10 +18,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
-  FormControlLabel,
-  RadioGroup,
-  Radio
+  CircularProgress
 } from '@mui/material';
 import { 
   Delete as DeleteIcon,
@@ -74,8 +71,6 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   const [pathToDelete, setPathToDelete] = useState<FileSystemPath | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   
-  // Storage-Auswahl (nur noch lokale Pfade)
-  const [storageType, setStorageType] = useState<'local'>('local');
 
   // Alle Ordner standardmäßig aufgeklappt
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -1261,26 +1256,29 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                             {path.path}
                           </Typography>
                         </Box>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPathToDelete(path);
-                            setDeleteDialogOpen(true);
-                          }}
-                          sx={{ 
-                            color: 'error.main',
-                            p: 0,
-                            width: 16,
-                            height: 16,
-                            position: 'absolute',
-                            right: 0,
-                            top: 0,
-                            borderRadius: 0,
-                          }}
-                        >
-                          <DeleteIcon sx={{ fontSize: '0.6rem' }} />
-                        </IconButton>
+                        {/* J-M-Reihen Pfad ist nicht löschbar */}
+                        {!path.path.includes('J-M-Reihen') && (
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPathToDelete(path);
+                              setDeleteDialogOpen(true);
+                            }}
+                            sx={{ 
+                              color: 'error.main',
+                              p: 0,
+                              width: 16,
+                              height: 16,
+                              position: 'absolute',
+                              right: 0,
+                              top: 0,
+                              borderRadius: 0,
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: '0.6rem' }} />
+                          </IconButton>
+                        )}
                       </ListItem>
                       <Divider sx={{ my: 0.25 }} />
                     </React.Fragment>
