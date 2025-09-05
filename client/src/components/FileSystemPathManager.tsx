@@ -74,22 +74,14 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   const [pathToDelete, setPathToDelete] = useState<FileSystemPath | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   
-  // Storage-Auswahl
-  const [storageType, setStorageType] = useState<'local' | 'git-intern'>('local');
+  // Storage-Auswahl (nur noch lokale Pfade)
+  const [storageType, setStorageType] = useState<'local'>('local');
 
   // Alle Ordner standardmäßig aufgeklappt
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const queryClient = useQueryClient();
 
-  // Setze Standardwert basierend auf Storage-Typ
-  useEffect(() => {
-    if (storageType === 'git-intern' && newPath !== 'git-intern') {
-      setNewPath('git-intern');
-    } else if (storageType === 'local' && newPath === 'git-intern') {
-      setNewPath('');
-    }
-  }, [storageType, newPath]);
 
   // Gespeicherte Pfade abrufen
   const { data: savedPaths, isLoading: pathsLoading } = useQuery({
@@ -113,14 +105,17 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       if (!pathsLoading && savedPaths && savedPaths.length === 0 && teacherId) {
         console.log('Creating default J-M-Reihen path...');
         try {
+          // Verwende den absoluten Pfad zum J-M-Reihen Ordner
+          const jmReihenPath = '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
+          
           const response = await fetch('/api/file-system-paths', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              path: 'git-intern',
-              name: 'J-M-Reihen (Git-Intern)',
+              path: jmReihenPath,
+              name: 'J-M-Reihen',
               teacherId: teacherId
             })
           });
@@ -130,7 +125,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
             // Refetch paths to update the list
             await queryClient.invalidateQueries({ queryKey: ['fileSystemPaths', teacherId] });
             // Automatisch den J-M-Reihen Pfad auswählen
-            setSelectedPath('git-intern');
+            setSelectedPath(jmReihenPath);
           } else {
             console.error('Failed to create J-M-Reihen path:', response.status);
           }
@@ -146,10 +141,10 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   // Automatisch J-M-Reihen Pfad auswählen, wenn er existiert
   useEffect(() => {
     if (savedPaths && savedPaths.length > 0 && !selectedPath) {
-      const jmReihenPath = savedPaths.find(path => path.path === 'git-intern');
+      const jmReihenPath = savedPaths.find(path => path.path.includes('J-M-Reihen'));
       if (jmReihenPath) {
         console.log('Auto-selecting existing J-M-Reihen path');
-        setSelectedPath('git-intern');
+        setSelectedPath(jmReihenPath.path);
       } else {
         // Fallback: ersten verfügbaren Pfad auswählen
         setSelectedPath(savedPaths[0].path);
@@ -241,11 +236,6 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
         severity: 'error'
       });
       return;
-    }
-
-    // If it's git-intern, use the special path
-    if (storageType === 'git-intern') {
-      setNewPath('git-intern');
     }
 
     savePathMutation.mutate({ path: newPath.trim(), name: newPathName.trim(), teacherId });
@@ -1144,51 +1134,19 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
                   Neuen Pfad hinzufügen
                 </Typography>
                 
-                {/* Storage-Auswahl */}
+                {/* Vereinfachte Eingabe - nur lokale Pfade */}
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" sx={{ mb: 1, fontSize: '0.7rem', color: '#666' }}>
-                    Speicher-Typ wählen:
+                    Neuen Materialordner hinzufügen:
                   </Typography>
-                  <RadioGroup
-                    value={storageType}
-                    onChange={(e) => setStorageType(e.target.value as 'local' | 'git-intern')}
-                    row
-                    sx={{ '& .MuiFormControlLabel-root': { mr: 2 } }}
-                  >
-                    <FormControlLabel
-                      value="local"
-                      control={<Radio size="small" />}
-                      label={
-                        <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
-                          📁 Lokaler Pfad
-                        </Typography>
-                      }
-                    />
-                    <FormControlLabel
-                      value="git-intern"
-                      control={<Radio size="small" />}
-                      label={
-                        <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
-                          📁 Git-Intern (J-M-Reihen)
-                        </Typography>
-                      }
-                    />
-                  </RadioGroup>
                 </Box>
                 
                 <Grid container spacing={1} alignItems="center">
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label={
-                        storageType === 'local' ? "Absoluter Dateipfad" : 
-                        "Git-Intern Pfad"
-                      }
-                      placeholder={
-                        storageType === 'local' ? "/Users/username/Documents" : 
-                        "git-intern"
-                      }
-                      disabled={false}
+                      label="Absoluter Dateipfad"
+                      placeholder="/Users/username/Documents oder /path/to/materials"
                       value={newPath}
                       onChange={(e) => setNewPath(e.target.value)}
                       size="small"
