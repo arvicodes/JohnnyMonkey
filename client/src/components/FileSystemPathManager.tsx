@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
@@ -89,7 +89,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
   });
 
   // Funktion zum Erstellen des J-M-Reihen Pfads
-  const createJmReihenPath = async () => {
+  const createJmReihenPath = useCallback(async () => {
     console.log('Creating J-M-Reihen path...');
     try {
       const jmReihenPath = '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
@@ -133,7 +133,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
         severity: 'error'
       });
     }
-  };
+  }, [teacherId, queryClient]);
 
   // Automatisch J-M-Reihen Pfad erstellen, wenn noch keine Pfade vorhanden sind
   useEffect(() => {
@@ -147,7 +147,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       console.log('Auto-creating J-M-Reihen path...');
       createJmReihenPath();
     }
-  }, [savedPaths, teacherId, queryClient, pathsLoading]);
+  }, [savedPaths, teacherId, queryClient, pathsLoading, createJmReihenPath]);
 
   // Automatisch J-M-Reihen Pfad auswählen, wenn er existiert
   useEffect(() => {
