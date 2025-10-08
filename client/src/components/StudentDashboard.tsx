@@ -165,10 +165,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     setIsUpdatingEmoji(true);
     
     try {
+      const loginCode = localStorage.getItem('loginCode');
       const response = await fetch(`/api/users/${userId}/avatar-emoji`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'x-login-code': loginCode || ''
         },
         body: JSON.stringify({ avatarEmoji: emoji }),
       });
@@ -200,7 +202,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Hilfsfunktion zum Laden des Student-Namens und Avatar-Emojis
   const fetchStudentData = async (userId: string) => {
     try {
-      const response = await fetch(`/api/users/${userId}`);
+      const loginCode = localStorage.getItem('loginCode');
+      const response = await fetch(`/api/users/${userId}`, {
+        headers: {
+          'x-login-code': loginCode || ''
+        }
+      });
       if (response.ok) {
         const userData = await response.json();
         setStudentName(userData.name);
@@ -208,6 +215,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         if (userData.avatarEmoji) {
           setSelectedEmoji(userData.avatarEmoji);
         }
+      } else {
+        console.error('Failed to fetch student data:', response.status);
+        setStudentName("Schüler"); // Fallback
       }
     } catch (error) {
       console.error('Error fetching student data:', error);
