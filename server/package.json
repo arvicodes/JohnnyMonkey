@@ -32,7 +32,6 @@
     "@types/adm-zip": "^0.5.7",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
-    "@types/multer": "^2.0.0",
     "adm-zip": "^0.5.16",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -48,9 +47,11 @@
     "prisma": "^6.11.1",
     "sqlite3": "^5.1.7",
     "typescript": "^5.3.3",
+    "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/multer": "^2.0.0",
     "@types/node": "^22.15.18",
     "@types/pdf-parse": "^1.1.5",
     "nodemon": "^3.1.0",

@@ -22,6 +22,7 @@ import quizParticipationRoutes from './routes/quizParticipations';
 import gradesRoutes from './routes/grades.routes';
 import fileSystemPathsRoutes from './routes/fileSystemPaths';
 import flashcardRoutes from './routes/flashcards';
+import submissionRoutes from './routes/submissions';
 import path from 'path';
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/quiz-participations', quizParticipationRoutes);
 app.use('/api/grades', gradesRoutes);
 app.use('/api/file-system-paths', fileSystemPathsRoutes);
 app.use('/api/flashcards', flashcardRoutes);
+app.use('/api/submissions', submissionRoutes);
 
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));

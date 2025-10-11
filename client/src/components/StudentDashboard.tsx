@@ -24,6 +24,7 @@ import {
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
 import QuizStartButton from './QuizStartButton';
+import SubmissionUpload from './SubmissionUpload';
 
 interface Teacher {
   id: string;
@@ -145,6 +146,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
   const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
   const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
+
+  // Submission States (Abgabesystem für H__ Dateien)
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [selectedSubmissionFile, setSelectedSubmissionFile] = useState<any>(null);
+  const [submissionStatuses, setSubmissionStatuses] = useState<{[filePath: string]: boolean}>({});
 
   // Spielerische Farbpalette
   const colors = {
@@ -469,6 +475,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               )
             ) : null} {/* Kein Dreieck für Dateien */}
             {icon} {item.name}
+            {/* Check-Icon für H__ Dateien mit Abgabe */}
+            {item.type === 'file' && item.name.startsWith('H__') && submissionStatuses[item.path] && (
+              <span style={{ marginLeft: '8px', color: '#4caf50', fontSize: '1.2em' }}>✓</span>
+            )}
           </Typography>
           
           {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
@@ -1113,9 +1123,156 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     document.addEventListener('keydown', handleModalKeyDown);
   };
 
+  // Prüfe Submission-Status für H__ Dateien
+  const checkSubmissionStatus = async (filePath: string) => {
+    try {
+      const response = await fetch(
+        `/api/submissions/check?filePath=${encodeURIComponent(filePath)}&studentId=${userId}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.hasSubmission;
+      }
+    } catch (err) {
+      console.error('Fehler beim Prüfen der Abgabe:', err);
+    }
+    return false;
+  };
+
+  // Vorschau-Funktion für Dateien (ohne H__ Check) - für Submission Upload Modal
+  const previewFile = async (item: any) => {
+    if (item.type !== 'file') return;
+    
+    const fileExtension = item.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExtension === 'html' || fileExtension === 'htm') {
+      try {
+        const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der HTML-Datei:', error);
+        alert('HTML-Datei konnte nicht geöffnet werden.');
+      }
+    } else if (fileExtension === 'pdf') {
+      try {
+        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PDF-Datei:', error);
+        alert('PDF-Datei konnte nicht geöffnet werden.');
+      }
+    } else if (fileExtension === 'docx') {
+      try {
+        const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der DOCX-Datei:', error);
+        alert('DOCX-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      try {
+        const response = await fetch(`/api/file-system-paths/read-excel?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'excel');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Excel-Datei:', error);
+        alert('Excel-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
+      try {
+        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const htmlContent = await response.text();
+          showFilePreviewModal(item.name, htmlContent, item.path, 'powerpoint');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PowerPoint-Datei:', error);
+        alert('PowerPoint-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
+      try {
+        const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const imageData = await response.json();
+          showImagePreviewModal(item.name, imageData, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden des Bildes:', error);
+        alert('Bild-Vorschau konnte nicht geladen werden.');
+      }
+    } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
+      try {
+        const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        if (response.ok) {
+          const textContent = await response.text();
+          showTextPreviewModal(item.name, textContent, item.path);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Textdatei:', error);
+        alert('Text-Vorschau konnte nicht geladen werden.');
+      }
+    } else {
+      try {
+        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = item.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        console.error('Fehler beim Download:', error);
+        alert('Datei konnte nicht heruntergeladen werden.');
+      }
+    }
+  };
+
   // Funktion zum Öffnen von Dateien - nutzt die bereits vorhandenen, schönen Vorschau-Methoden
   const handleFileClick = async (item: any) => {
     if (item.type !== 'file') return;
+    
+    // Prüfe ob es eine H__ Datei (Hausaufgaben-Abgabe) ist
+    if (item.name.startsWith('H__')) {
+      // Finde den Lehrer für diese Datei (aus den Lerngruppen)
+      let teacherId = null;
+      
+      for (const gruppe of lerngruppen) {
+        if (gruppe.teacher?.id) {
+          teacherId = gruppe.teacher.id;
+          break;
+        }
+      }
+      
+      if (teacherId) {
+        setSelectedSubmissionFile({ ...item, teacherId });
+        setShowSubmissionModal(true);
+        return;
+      } else {
+        alert('Fehler: Kein Lehrer gefunden. Bitte melde dich ab und wieder an.');
+        return;
+      }
+    }
     
     const fileExtension = item.name.split('.').pop()?.toLowerCase();
     
@@ -1736,6 +1893,38 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       console.error('Error fetching content:', error);
     }
   };
+
+  // Lade Submission-Status für alle H__ Dateien
+  useEffect(() => {
+    const loadSubmissionStatuses = async () => {
+      const statuses: {[filePath: string]: boolean} = {};
+      
+      // Durchsuche alle geladenen Ordnerinhalte nach H__ Dateien
+      for (const key in assignedFolderContents) {
+        const items = assignedFolderContents[key];
+        
+        const checkFilesRecursively = async (fileItems: any[]) => {
+          for (const item of fileItems) {
+            if (item.type === 'file' && item.name.startsWith('H__')) {
+              const hasSubmission = await checkSubmissionStatus(item.path);
+              statuses[item.path] = hasSubmission;
+            }
+            if (item.type === 'directory' && item.children) {
+              await checkFilesRecursively(item.children);
+            }
+          }
+        };
+        
+        await checkFilesRecursively(items);
+      }
+      
+      setSubmissionStatuses(statuses);
+    };
+    
+    if (Object.keys(assignedFolderContents).length > 0) {
+      loadSubmissionStatuses();
+    }
+  }, [assignedFolderContents, userId]);
 
   useEffect(() => {
     const fetchLerngruppen = async () => {
@@ -2489,6 +2678,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         onClose={() => setFlashcardLearningOpen(false)}
         studentId={userId}
       />
+
+      {/* Submission Upload Modal für H__ Dateien */}
+      {showSubmissionModal && selectedSubmissionFile && (
+        <SubmissionUpload
+          fileName={selectedSubmissionFile.name}
+          filePath={selectedSubmissionFile.path}
+          teacherId={selectedSubmissionFile.teacherId}
+          studentId={userId}
+          onViewFile={(item: any) => previewFile(item)}
+          onClose={() => {
+            setShowSubmissionModal(false);
+            setSelectedSubmissionFile(null);
+            // Aktualisiere Submission-Status nach dem Schließen
+            if (selectedSubmissionFile.path) {
+              checkSubmissionStatus(selectedSubmissionFile.path).then((hasSubmission: boolean) => {
+                setSubmissionStatuses((prev: {[filePath: string]: boolean}) => ({
+                  ...prev,
+                  [selectedSubmissionFile.path]: hasSubmission
+                }));
+              });
+            }
+          }}
+        />
+      )}
     </Box>
   );
 };

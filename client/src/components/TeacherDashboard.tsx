@@ -279,6 +279,7 @@ import FileSystemPathManager from './FileSystemPathManager';
 import FolderAssignmentSelector from './FolderAssignmentSelector';
 import { RichTextEditor } from './ui/rich-text-editor';
 import { FlashcardCreationModal } from './FlashcardCreationModal';
+import SubmissionViewer from './SubmissionViewer';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -566,6 +567,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
   const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
+
+  // Submission States (Abgabesystem für H__ Dateien)
+  const [showSubmissionViewer, setShowSubmissionViewer] = useState(false);
+  const [selectedSubmissionFile, setSelectedSubmissionFile] = useState<any>(null);
+  const [submissionCounts, setSubmissionCounts] = useState<{[filePath: string]: number}>({});
 
   // Spielerische Farbpalette
   const colors = {
