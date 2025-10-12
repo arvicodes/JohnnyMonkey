@@ -222,27 +222,41 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
       }}
     >
       <DialogTitle sx={{ 
-        background: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)',
-        color: 'white',
-        py: 2
+        bgcolor: '#f5f5f5',
+        color: '#333',
+        py: 1,
+        px: 2,
+        borderBottom: '1px solid #e0e0e0',
+        position: 'relative'
       }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-              📝 Hausaufgaben-Abgabe
-            </Typography>
-          </Box>
-          <IconButton onClick={onClose} sx={{ color: 'white', p: 0.5 }} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem', pr: 3 }}>
+          Abgabe
+        </Typography>
+        <IconButton 
+          onClick={onClose} 
+          sx={{ 
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            width: 24,
+            height: 24,
+            padding: 0,
+            color: '#666',
+            '&:hover': {
+              bgcolor: '#e0e0e0',
+              color: '#333'
+            }
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 18 }} />
+        </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 2, pb: 2 }}>
+      <DialogContent sx={{ pt: 3, pb: 1.5, px: 2 }}>
         {loading && (
-          <Box sx={{ py: 3 }}>
+          <Box sx={{ py: 2 }}>
             <LinearProgress />
-            <Typography sx={{ textAlign: 'center', mt: 2, color: 'text.secondary' }}>
+            <Typography sx={{ textAlign: 'center', mt: 1.5, color: 'text.secondary', fontSize: '0.85rem' }}>
               Lade...
             </Typography>
           </Box>
@@ -251,71 +265,71 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
         {!loading && (
           <>
             {/* Aufgabentext oben anzeigen */}
-            <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e3f2fd', border: '1px solid #90caf9' }}>
-              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1976d2', mb: 0.5 }}>
+            <Paper elevation={0} sx={{ p: 1.5, mb: 1.5, mt: 1, bgcolor: '#e3f2fd', border: '1px solid #90caf9' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2', mb: 0.3, fontSize: '0.8rem' }}>
                 📄 Aufgabe:
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: '0.9rem', mb: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.85rem', mb: 0.8 }}>
                 {fileName}
               </Typography>
               <Button
                 variant="text"
                 size="small"
-                startIcon={<VisibilityIcon />}
+                startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
                 onClick={handleViewAssignment}
-                sx={{ fontSize: '0.75rem' }}
+                sx={{ fontSize: '0.7rem', py: 0.3, px: 1 }}
               >
                 Aufgabenstellung anzeigen
               </Button>
             </Paper>
 
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert severity="error" sx={{ mb: 1.5, py: 0.5 }}>
                 {error}
               </Alert>
             )}
 
             {/* Bereits hochgeladene Abgabe */}
             {submission && (
-              <Paper elevation={2} sx={{ p: 2, mb: 2, bgcolor: '#e8f5e9', border: '1px solid #4caf50' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                  <CheckCircle sx={{ color: '#4caf50' }} />
-                  <Typography variant="subtitle1" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
+              <Paper elevation={1} sx={{ p: 1.5, mb: 1.5, bgcolor: '#e8f5e9', border: '1px solid #4caf50' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8 }}>
+                  <CheckCircle sx={{ color: '#4caf50', fontSize: 20 }} />
+                  <Typography variant="subtitle2" sx={{ color: '#2e7d32', fontWeight: 600, fontSize: '0.85rem' }}>
                     ✅ Abgabe eingereicht
                   </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ mb: 0.3, fontSize: '0.85rem' }}>
+                <Typography variant="body2" sx={{ mb: 0.2, fontSize: '0.8rem' }}>
                   <strong>Datei:</strong> {submission.originalFileName}
                 </Typography>
-                <Typography variant="body2" sx={{ mb: 0.3, fontSize: '0.85rem' }}>
+                <Typography variant="body2" sx={{ mb: 0.2, fontSize: '0.8rem' }}>
                   <strong>Größe:</strong> {formatFileSize(submission.fileSize)}
                 </Typography>
-                <Typography variant="body2" sx={{ mb: 1.5, fontSize: '0.85rem' }}>
+                <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem' }}>
                   <strong>Eingereicht:</strong> {formatDate(submission.submittedAt)}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
                     variant="contained"
                     color="primary"
-                    startIcon={<VisibilityIcon />}
+                    startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
                     onClick={handleViewMySubmission}
                     size="small"
-                    sx={{ flex: 1 }}
+                    sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
                   >
                     Meine Abgabe
                   </Button>
                   <Button
                     variant="outlined"
                     color="error"
-                    startIcon={<DeleteIcon />}
+                    startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
                     onClick={handleDeleteSubmission}
                     size="small"
-                    sx={{ flex: 1 }}
+                    sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
                   >
                     Löschen
                   </Button>
                 </Box>
-                <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary', fontStyle: 'italic' }}>
+                <Typography variant="caption" sx={{ display: 'block', mt: 0.8, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
                   💡 Du kannst eine neue Datei hochladen, um deine Abgabe zu ersetzen.
                 </Typography>
               </Paper>
@@ -325,7 +339,7 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
             <Paper 
               elevation={0} 
               sx={{ 
-                p: 3, 
+                p: 2, 
                 border: '2px dashed #bdbdbd',
                 borderRadius: 2,
                 textAlign: 'center',
@@ -338,14 +352,14 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
             >
               {selectedFile ? (
                 <Box>
-                  <Paper elevation={1} sx={{ p: 2, mb: 2, bgcolor: '#e3f2fd' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                      <FileIcon sx={{ color: '#1976d2' }} />
+                  <Paper elevation={1} sx={{ p: 1.5, mb: 1.5, bgcolor: '#e3f2fd' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
+                      <FileIcon sx={{ color: '#1976d2', fontSize: 20 }} />
                       <Box sx={{ textAlign: 'left' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
                           {selectedFile.name}
                         </Typography>
-                        <Typography variant="caption" color="textSecondary">
+                        <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
                           {formatFileSize(selectedFile.size)}
                         </Typography>
                       </Box>
@@ -355,10 +369,10 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
                     <Button
                       variant="contained"
                       color="success"
-                      startIcon={<UploadIcon />}
+                      startIcon={<UploadIcon sx={{ fontSize: 16 }} />}
                       onClick={handleUpload}
                       disabled={uploading}
-                      sx={{ flex: 1 }}
+                      sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
                     >
                       {uploading ? 'Lädt...' : (submission ? 'Ersetzen' : 'Hochladen')}
                     </Button>
@@ -366,7 +380,7 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
                       variant="outlined"
                       onClick={() => setSelectedFile(null)}
                       disabled={uploading}
-                      sx={{ flex: 1 }}
+                      sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
                     >
                       Abbrechen
                     </Button>
@@ -374,11 +388,11 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
                 </Box>
               ) : (
                 <Box>
-                  <UploadIcon sx={{ fontSize: 48, color: '#1976d2', mb: 1 }} />
-                  <Typography variant="body1" sx={{ mb: 0.5, fontWeight: 600 }}>
+                  <UploadIcon sx={{ fontSize: 40, color: '#1976d2', mb: 0.8 }} />
+                  <Typography variant="body2" sx={{ mb: 0.3, fontWeight: 600, fontSize: '0.85rem' }}>
                     {submission ? 'Neue Datei hochladen' : 'Datei auswählen'}
                   </Typography>
-                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 2 }}>
+                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5, fontSize: '0.7rem' }}>
                     Word, Excel, PowerPoint, PDF, Bilder (max. 50 MB)
                   </Typography>
                   <input
@@ -393,8 +407,10 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
                     <Button
                       variant="contained"
                       component="span"
-                      startIcon={<FileIcon />}
+                      startIcon={<FileIcon sx={{ fontSize: 16 }} />}
                       disabled={uploading}
+                      size="small"
+                      sx={{ fontSize: '0.75rem' }}
                     >
                       Datei auswählen
                     </Button>

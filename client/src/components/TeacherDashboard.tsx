@@ -1827,7 +1827,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         fontWeight = 400;
 
         
-        // Prüfe ob es sich um Quiz- oder Cards-Dateien handelt
+        // Prüfe ob es sich um Quiz-, Cards- oder H__ Dateien handelt
         if (item.name.startsWith('Quiz')) {
           showCreateIcon = true;
           createIcon = '🎯';
@@ -1837,6 +1837,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           showCreateIcon = true;
           createIcon = '🗂️';
           createTooltip = 'Karteikarten erstellen';
+
+        } else if (item.name.startsWith('H__')) {
+          showCreateIcon = true;
+          createIcon = '📥';
+          createTooltip = 'Abgaben ansehen';
 
         }
       }
@@ -1915,6 +1920,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 } else if (item.name.startsWith('Cards')) {
                   // Öffne das Karteikarten-Erstellungsmodal
                   handleFlashcardDialogOpen(item.path, item.name);
+                } else if (item.name.startsWith('H__')) {
+                  // Öffne Submissions-Grid in neuem Tab - übergebe groupId
+                  window.open(`/submissions-grid?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name)}&teacherId=${userId}&groupId=${groupId}`, '_blank');
                 }
               }}
               >

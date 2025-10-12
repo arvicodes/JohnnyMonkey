@@ -10,6 +10,7 @@ import QuizSessionPage from './pages/QuizSessionPage';
 import QuizParticipationPage from './pages/QuizParticipationPage';
 
 import FlashcardImportExportPage from './pages/FlashcardImportExportPage';
+import SubmissionsGridPage from './pages/SubmissionsGridPage';
 
 import { Snackbar, Alert } from '@mui/material';
 
@@ -139,6 +140,7 @@ function AppContent() {
         <Route path="/quiz-participation/:sessionId" element={<QuizParticipationPage />} />
 
         <Route path="/flashcard-import-export" element={<FlashcardImportExportPage />} />
+        <Route path="/submissions-grid" element={<SubmissionsGridPage />} />
 
       </Routes>
       <Snackbar
