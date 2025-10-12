@@ -81,6 +81,17 @@ export const getOrCreateAssignment = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Nur Dateien die mit H__ beginnen sind Abgabedateien' });
     }
 
+    // Prüfe ob der Teacher existiert
+    const teacher = await prisma.user.findUnique({
+      where: { id: teacherId }
+    });
+
+    if (!teacher) {
+      return res.status(404).json({ 
+        error: 'Lehrkraft nicht gefunden. Bitte melden Sie sich ab und wieder an.' 
+      });
+    }
+
     // Finde oder erstelle Assignment - verwende findFirst statt findUnique für composite constraint
     let assignment = await prisma.assignment.findFirst({
       where: {
@@ -330,6 +341,14 @@ export const downloadSubmission = async (req: Request, res: Response) => {
       // Zeige im Browser an
       res.setHeader('Content-Type', submission.fileType);
       res.setHeader('Content-Disposition', `inline; filename="${submission.originalFileName}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      // Für PDFs: Erlaube Einbettung in iframe
+      if (submission.fileType.includes('pdf')) {
+        res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+      }
+      
       const fileBuffer = await fs.readFile(submission.filePath);
       res.send(fileBuffer);
     } else {
@@ -381,6 +400,59 @@ export const checkStudentSubmission = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Fehler beim Prüfen der Abgabe:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+/**
+ * Fügt einen Lehrer-Kommentar zu einer Submission hinzu
+ */
+export const addTeacherComment = async (req: Request, res: Response) => {
+  try {
+    const { submissionId } = req.params;
+    const { comment, teacherId } = req.body;
+
+    if (!comment) {
+      return res.status(400).json({ error: 'Kommentar ist erforderlich' });
+    }
+
+    const submission = await prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: {
+        assignment: true
+      }
+    });
+
+    if (!submission) {
+      return res.status(404).json({ error: 'Abgabe nicht gefunden' });
+    }
+
+    // Prüfe ob der Lehrer berechtigt ist (ist der Ersteller des Assignments)
+    if (submission.assignment.teacherId !== teacherId) {
+      return res.status(403).json({ error: 'Keine Berechtigung' });
+    }
+
+    // Aktualisiere Submission mit Kommentar
+    const updatedSubmission = await prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        teacherComment: comment,
+        commentedAt: new Date()
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            avatarEmoji: true
+          }
+        }
+      }
+    });
+
+    res.json(updatedSubmission);
+  } catch (error) {
+    console.error('Fehler beim Hinzufügen des Kommentars:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
   }
 };

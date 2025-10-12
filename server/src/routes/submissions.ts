@@ -7,6 +7,7 @@ import {
   downloadSubmission,
   checkStudentSubmission,
   deleteSubmission,
+  addTeacherComment,
   upload
 } from '../controllers/submissionController';
 
@@ -29,6 +30,9 @@ router.get('/download/:submissionId', downloadSubmission);
 
 // Prüfen ob Schüler bereits abgegeben hat
 router.get('/check', checkStudentSubmission);
+
+// Lehrer-Kommentar hinzufügen
+router.post('/submission/:submissionId/comment', addTeacherComment);
 
 // Submission löschen
 router.delete('/submission/:submissionId', deleteSubmission);

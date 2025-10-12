@@ -291,48 +291,67 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
 
             {/* Bereits hochgeladene Abgabe */}
             {submission && (
-              <Paper elevation={1} sx={{ p: 1.5, mb: 1.5, bgcolor: '#e8f5e9', border: '1px solid #4caf50' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8 }}>
-                  <CheckCircle sx={{ color: '#4caf50', fontSize: 20 }} />
-                  <Typography variant="subtitle2" sx={{ color: '#2e7d32', fontWeight: 600, fontSize: '0.85rem' }}>
-                    ✅ Abgabe eingereicht
+              <>
+                <Paper elevation={1} sx={{ p: 1.5, mb: 1.5, bgcolor: '#e8f5e9', border: '1px solid #4caf50' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8 }}>
+                    <CheckCircle sx={{ color: '#4caf50', fontSize: 20 }} />
+                    <Typography variant="subtitle2" sx={{ color: '#2e7d32', fontWeight: 600, fontSize: '0.85rem' }}>
+                      ✅ Abgabe eingereicht
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ mb: 0.2, fontSize: '0.8rem' }}>
+                    <strong>Datei:</strong> {submission.originalFileName}
                   </Typography>
-                </Box>
-                <Typography variant="body2" sx={{ mb: 0.2, fontSize: '0.8rem' }}>
-                  <strong>Datei:</strong> {submission.originalFileName}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.2, fontSize: '0.8rem' }}>
-                  <strong>Größe:</strong> {formatFileSize(submission.fileSize)}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem' }}>
-                  <strong>Eingereicht:</strong> {formatDate(submission.submittedAt)}
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
-                    onClick={handleViewMySubmission}
-                    size="small"
-                    sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
-                  >
-                    Meine Abgabe
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
-                    onClick={handleDeleteSubmission}
-                    size="small"
-                    sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
-                  >
-                    Löschen
-                  </Button>
-                </Box>
-                <Typography variant="caption" sx={{ display: 'block', mt: 0.8, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
-                  💡 Du kannst eine neue Datei hochladen, um deine Abgabe zu ersetzen.
-                </Typography>
-              </Paper>
+                  <Typography variant="body2" sx={{ mb: 0.2, fontSize: '0.8rem' }}>
+                    <strong>Größe:</strong> {formatFileSize(submission.fileSize)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: '0.8rem' }}>
+                    <strong>Eingereicht:</strong> {formatDate(submission.submittedAt)}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+                      onClick={handleViewMySubmission}
+                      size="small"
+                      sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
+                    >
+                      Meine Abgabe
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+                      onClick={handleDeleteSubmission}
+                      size="small"
+                      sx={{ flex: 1, fontSize: '0.75rem', py: 0.5 }}
+                    >
+                      Löschen
+                    </Button>
+                  </Box>
+                  <Typography variant="caption" sx={{ display: 'block', mt: 0.8, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                    💡 Du kannst eine neue Datei hochladen, um deine Abgabe zu ersetzen.
+                  </Typography>
+                </Paper>
+
+                {/* Lehrer-Kommentar anzeigen */}
+                {submission.teacherComment && (
+                  <Paper elevation={1} sx={{ p: 1.5, mb: 1.5, bgcolor: '#fff3e0', border: '1px solid #ff9800' }}>
+                    <Typography variant="subtitle2" sx={{ color: '#e65100', fontWeight: 600, fontSize: '0.85rem', mb: 0.8 }}>
+                      💬 Kommentar deiner Lehrkraft:
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>
+                      {submission.teacherComment}
+                    </Typography>
+                    {submission.commentedAt && (
+                      <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.8, fontSize: '0.65rem', fontStyle: 'italic' }}>
+                        Kommentiert am: {formatDate(submission.commentedAt)}
+                      </Typography>
+                    )}
+                  </Paper>
+                )}
+              </>
             )}
 
             {/* Upload-Bereich */}

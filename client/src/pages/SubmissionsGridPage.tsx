@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -12,13 +12,24 @@ import {
   Button,
   ToggleButtonGroup,
   ToggleButton,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  IconButton
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
   Person as PersonIcon,
   SortByAlpha as SortByAlphaIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  RateReview as RateReviewIcon,
+  Close as CloseIcon,
+  NavigateBefore as NavigateBeforeIcon,
+  NavigateNext as NavigateNextIcon,
+  Check as CheckIcon
 } from '@mui/icons-material';
 
 interface Student {
@@ -35,6 +46,8 @@ interface Submission {
   submittedAt?: string;
   student: Student;
   missing?: boolean;
+  teacherComment?: string;
+  commentedAt?: string;
 }
 
 const SubmissionsGridPage: React.FC = () => {
@@ -49,12 +62,125 @@ const SubmissionsGridPage: React.FC = () => {
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'date'>('name');
   const [error, setError] = useState<string | null>(null);
+  
+  // Bewertungs-Modus States
+  const [reviewMode, setReviewMode] = useState(false);
+  const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
+  const [currentComment, setCurrentComment] = useState('');
+  const [savingComment, setSavingComment] = useState(false);
+  const [expandedPreview, setExpandedPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const commentFieldRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (filePath && teacherId && groupId) {
       loadSubmissions();
     }
   }, [filePath, teacherId, groupId]);
+
+  // PDF als Blob laden für bessere Darstellung
+  useEffect(() => {
+    const loadPdfBlob = async () => {
+      const sortedSubmissions = [...submissions].sort((a, b) => {
+        if (sortBy === 'name') {
+          const nameA = a.student.name.split(' ').pop() || '';
+          const nameB = b.student.name.split(' ').pop() || '';
+          return nameA.localeCompare(nameB);
+        } else {
+          if (a.missing && !b.missing) return 1;
+          if (!a.missing && b.missing) return -1;
+          if (a.missing && b.missing) return 0;
+          return new Date(b.submittedAt!).getTime() - new Date(a.submittedAt!).getTime();
+        }
+      });
+      const submissionsToReview = sortedSubmissions.filter(s => !s.missing);
+      
+      if (!reviewMode || !submissionsToReview[currentReviewIndex]) {
+        setPdfBlobUrl(null);
+        return;
+      }
+
+      const submission = submissionsToReview[currentReviewIndex];
+      if (!submission.fileType?.includes('pdf')) {
+        setPdfBlobUrl(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/submissions/download/${submission.id}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          setPdfBlobUrl(url);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der PDF:', error);
+        setPdfBlobUrl(null);
+      }
+    };
+
+    loadPdfBlob();
+
+    // Cleanup: Revoke blob URL when changing submission
+    return () => {
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+    };
+  }, [reviewMode, currentReviewIndex, submissions, sortBy]);
+
+  // Tastatursteuerung für Bewertungs-Modal
+  useEffect(() => {
+    if (!reviewMode) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Wenn vergrößerte Vorschau offen ist, nur Esc erlauben
+      if (expandedPreview) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setExpandedPreview(false);
+        }
+        return;
+      }
+
+      // Ignoriere Tastatureingaben wenn in einem Input-Feld
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
+        // Erlaube nur Enter im Textfeld
+        if (e.key === 'Enter' && !e.shiftKey && target.tagName === 'TEXTAREA') {
+          e.preventDefault();
+          handleSaveComment();
+        }
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'arrowleft':
+          e.preventDefault();
+          handlePreviousSubmission();
+          break;
+        case 'arrowright':
+          e.preventDefault();
+          handleNextSubmission();
+          break;
+        case 'enter':
+          e.preventDefault();
+          handleSaveComment();
+          break;
+        case 'k':
+          e.preventDefault();
+          commentFieldRef.current?.focus();
+          break;
+        case 'escape':
+          e.preventDefault();
+          setReviewMode(false);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [reviewMode, currentReviewIndex, currentComment, savingComment, expandedPreview]);
 
   const loadSubmissions = async () => {
     try {
@@ -164,6 +290,74 @@ const SubmissionsGridPage: React.FC = () => {
   // Schüler ohne Abgabe
   const missingStudents = submissions.filter(s => s.missing);
 
+  // Nur Submissions mit tatsächlichen Abgaben für Bewertung
+  const submissionsToReview = sortedSubmissions.filter(s => !s.missing);
+
+  const handleStartReview = () => {
+    if (submissionsToReview.length === 0) {
+      alert('Keine Abgaben zum Bewerten vorhanden');
+      return;
+    }
+    setCurrentReviewIndex(0);
+    setCurrentComment(submissionsToReview[0].teacherComment || '');
+    setReviewMode(true);
+  };
+
+  const handleSaveComment = async () => {
+    const submission = submissionsToReview[currentReviewIndex];
+    if (!submission || submission.missing) return;
+
+    try {
+      setSavingComment(true);
+      
+      const response = await fetch(`/api/submissions/submission/${submission.id}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          comment: currentComment,
+          teacherId: teacherId
+        })
+      });
+
+      if (!response.ok) throw new Error('Fehler beim Speichern');
+
+      const updatedSubmission = await response.json();
+      
+      // Aktualisiere lokale Submissions
+      setSubmissions(prev => prev.map(s => 
+        s.id === submission.id ? { ...s, teacherComment: currentComment, commentedAt: new Date().toISOString() } : s
+      ));
+
+      // Gehe zur nächsten Abgabe oder schließe
+      if (currentReviewIndex < submissionsToReview.length - 1) {
+        setCurrentReviewIndex(currentReviewIndex + 1);
+        setCurrentComment(submissionsToReview[currentReviewIndex + 1].teacherComment || '');
+      } else {
+        alert('✅ Alle Abgaben bewertet!');
+        setReviewMode(false);
+      }
+    } catch (err) {
+      console.error('Fehler beim Speichern des Kommentars:', err);
+      alert('Fehler beim Speichern des Kommentars');
+    } finally {
+      setSavingComment(false);
+    }
+  };
+
+  const handlePreviousSubmission = () => {
+    if (currentReviewIndex > 0) {
+      setCurrentReviewIndex(currentReviewIndex - 1);
+      setCurrentComment(submissionsToReview[currentReviewIndex - 1].teacherComment || '');
+    }
+  };
+
+  const handleNextSubmission = () => {
+    if (currentReviewIndex < submissionsToReview.length - 1) {
+      setCurrentReviewIndex(currentReviewIndex + 1);
+      setCurrentComment(submissionsToReview[currentReviewIndex + 1].teacherComment || '');
+    }
+  };
+
   const handleViewSubmission = async (submission: Submission) => {
     if (submission.missing || !submission.originalFileName) return;
     
@@ -229,23 +423,36 @@ const SubmissionsGridPage: React.FC = () => {
             </Typography>
           </Box>
           
-          {/* Sortier-Optionen */}
-          <ToggleButtonGroup
-            value={sortBy}
-            exclusive
-            onChange={handleSortChange}
-            size="small"
-            sx={{ height: 'fit-content' }}
-          >
-            <ToggleButton value="name" sx={{ px: 2, py: 0.5, fontSize: '0.75rem' }}>
-              <SortByAlphaIcon sx={{ mr: 0.5, fontSize: 16 }} />
-              Name
-            </ToggleButton>
-            <ToggleButton value="date" sx={{ px: 2, py: 0.5, fontSize: '0.75rem' }}>
-              <CalendarIcon sx={{ mr: 0.5, fontSize: 16 }} />
-              Datum
-            </ToggleButton>
-          </ToggleButtonGroup>
+          {/* Sortier-Optionen und Bewerten-Button */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<RateReviewIcon />}
+              onClick={handleStartReview}
+              disabled={submissionsToReview.length === 0}
+              sx={{ fontSize: '0.75rem', py: 0.5 }}
+            >
+              Bewerten
+            </Button>
+            
+            <ToggleButtonGroup
+              value={sortBy}
+              exclusive
+              onChange={handleSortChange}
+              size="small"
+              sx={{ height: 'fit-content' }}
+            >
+              <ToggleButton value="name" sx={{ px: 2, py: 0.5, fontSize: '0.75rem' }}>
+                <SortByAlphaIcon sx={{ mr: 0.5, fontSize: 16 }} />
+                Name
+              </ToggleButton>
+              <ToggleButton value="date" sx={{ px: 2, py: 0.5, fontSize: '0.75rem' }}>
+                <CalendarIcon sx={{ mr: 0.5, fontSize: 16 }} />
+                Datum
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
         </Box>
 
         {/* Fehlende Abgaben */}
@@ -411,6 +618,271 @@ const SubmissionsGridPage: React.FC = () => {
         </Grid>
         )}
       </Box>
+
+      {/* Bewertungs-Modal */}
+      <Dialog
+        open={reviewMode}
+        onClose={() => setReviewMode(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1, position: 'relative' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Avatar sx={{ bgcolor: '#1976d2', width: 36, height: 36, fontSize: '0.9rem' }}>
+              {submissionsToReview[currentReviewIndex]?.student.avatarEmoji || 
+               submissionsToReview[currentReviewIndex]?.student.name.charAt(0)}
+            </Avatar>
+            <Box>
+              <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 'bold', lineHeight: 1.2 }}>
+                {submissionsToReview[currentReviewIndex]?.student.name}
+              </Typography>
+              <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
+                Abgabe {currentReviewIndex + 1} / {submissionsToReview.length} • {formatDate(submissionsToReview[currentReviewIndex]?.submittedAt!)}
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton
+            onClick={() => setReviewMode(false)}
+            sx={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, p: 0 }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ mt: '1%', pt: 0, pb: 1.5 }}>
+          {submissionsToReview[currentReviewIndex] && (
+            <>
+              {/* Layout: Vorschau links, Kommentar rechts */}
+              <Box sx={{ display: 'flex', gap: 1.5, mb: 1, alignItems: 'flex-start' }}>
+                {/* Datei-Vorschau */}
+                <Paper 
+                  elevation={2}
+                  sx={{ 
+                    flex: '1 1 75%',
+                    height: 500,
+                    flexShrink: 0,
+                    bgcolor: '#fafafa',
+                    borderRadius: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    '&:hover': { 
+                      bgcolor: '#f5f5f5',
+                      '&::after': {
+                        content: '"🔍 Klicken zum Vergrößern"',
+                        position: 'absolute',
+                        bottom: 8,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        bgcolor: 'rgba(0,0,0,0.7)',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        pointerEvents: 'none'
+                      }
+                    }
+                  }}
+                  onClick={() => setExpandedPreview(true)}
+                >
+                  {submissionsToReview[currentReviewIndex].fileType?.includes('image') ? (
+                    <img 
+                      src={`/api/submissions/download/${submissionsToReview[currentReviewIndex].id}`}
+                      alt={submissionsToReview[currentReviewIndex].originalFileName}
+                      style={{ 
+                        maxWidth: '100%', 
+                        maxHeight: '100%', 
+                        objectFit: 'contain'
+                      }}
+                    />
+                  ) : submissionsToReview[currentReviewIndex].fileType?.includes('pdf') ? (
+                    pdfBlobUrl ? (
+                      <iframe
+                        src={`${pdfBlobUrl}#view=FitH`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: 'none'
+                        }}
+                        title={submissionsToReview[currentReviewIndex].originalFileName}
+                      />
+                    ) : (
+                      <Box sx={{ textAlign: 'center' }}>
+                        <CircularProgress sx={{ mb: 1 }} />
+                        <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                          PDF wird geladen...
+                        </Typography>
+                      </Box>
+                    )
+                  ) : (
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography sx={{ fontSize: 48, mb: 0.5 }}>
+                        📝
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 0.8, fontSize: '0.85rem' }}>
+                        {submissionsToReview[currentReviewIndex].originalFileName}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+                        sx={{ fontSize: '0.75rem', py: 0.5 }}
+                      >
+                        Klicken zum Öffnen
+                      </Button>
+                    </Box>
+                  )}
+                </Paper>
+
+                {/* Kommentar-Bereich rechts */}
+                <Box sx={{ flex: '1 1 25%', display: 'flex', flexDirection: 'column', alignSelf: 'flex-start', mt: 0 }}>
+                  <Typography variant="caption" sx={{ mb: 0.5, fontSize: '0.75rem', color: '#666', fontWeight: 500 }}>
+                    Dein Kommentar zur Abgabe
+                  </Typography>
+                  <TextField
+                    multiline
+                    rows={10}
+                    fullWidth
+                    inputRef={commentFieldRef}
+                    value={currentComment}
+                    onChange={(e) => setCurrentComment(e.target.value)}
+                    placeholder="Schreibe einen Kommentar für den Schüler..."
+                    variant="outlined"
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        alignItems: 'flex-start',
+                        fontSize: '0.85rem'
+                      }
+                    }}
+                  />
+
+                  {submissionsToReview[currentReviewIndex].commentedAt && (
+                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.8, fontStyle: 'italic', fontSize: '0.7rem' }}>
+                      Zuletzt kommentiert: {formatDate(submissionsToReview[currentReviewIndex].commentedAt!)}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 1.5, py: 1, bgcolor: '#f5f5f5', justifyContent: 'space-between' }}>
+          <Box>
+            <Button
+              startIcon={<NavigateBeforeIcon sx={{ fontSize: 18 }} />}
+              onClick={handlePreviousSubmission}
+              disabled={currentReviewIndex === 0}
+              size="small"
+              sx={{ fontSize: '0.8rem', py: 0.5 }}
+            >
+              Zurück
+            </Button>
+          </Box>
+
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<CheckIcon sx={{ fontSize: 18 }} />}
+            onClick={handleSaveComment}
+            disabled={savingComment}
+            size="small"
+            sx={{ fontSize: '0.8rem', py: 0.5, px: 2 }}
+          >
+            {savingComment ? 'Speichert...' : 'Speichern & Weiter'}
+          </Button>
+
+          <Box>
+            <Button
+              endIcon={<NavigateNextIcon sx={{ fontSize: 18 }} />}
+              onClick={handleNextSubmission}
+              disabled={currentReviewIndex === submissionsToReview.length - 1}
+              size="small"
+              sx={{ fontSize: '0.8rem', py: 0.5 }}
+            >
+              Weiter
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      {/* Vergrößerte Vorschau Dialog */}
+      <Dialog
+        open={expandedPreview}
+        onClose={() => setExpandedPreview(false)}
+        maxWidth="xl"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" sx={{ fontSize: '0.9rem' }}>
+            {submissionsToReview[currentReviewIndex]?.originalFileName}
+          </Typography>
+          <IconButton
+            onClick={() => setExpandedPreview(false)}
+            sx={{ width: 24, height: 24, p: 0 }}
+          >
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+          {submissionsToReview[currentReviewIndex] && (
+            <>
+              {submissionsToReview[currentReviewIndex].fileType?.includes('image') ? (
+                <img 
+                  src={`/api/submissions/download/${submissionsToReview[currentReviewIndex].id}`}
+                  alt={submissionsToReview[currentReviewIndex].originalFileName}
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '85vh', 
+                    objectFit: 'contain'
+                  }}
+                />
+              ) : submissionsToReview[currentReviewIndex].fileType?.includes('pdf') ? (
+                pdfBlobUrl ? (
+                  <iframe
+                    src={`${pdfBlobUrl}#view=FitH`}
+                    style={{
+                      width: '100%',
+                      height: '85vh',
+                      border: 'none'
+                    }}
+                    title={submissionsToReview[currentReviewIndex].originalFileName}
+                  />
+                ) : (
+                  <Box sx={{ textAlign: 'center', color: 'white' }}>
+                    <CircularProgress sx={{ mb: 2, color: 'white' }} />
+                    <Typography variant="body1">
+                      PDF wird geladen...
+                    </Typography>
+                  </Box>
+                )
+              ) : (
+                <Box sx={{ textAlign: 'center', color: 'white', p: 4 }}>
+                  <Typography sx={{ fontSize: 64, mb: 2 }}>
+                    📝
+                  </Typography>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    {submissionsToReview[currentReviewIndex].originalFileName}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => {
+                      setExpandedPreview(false);
+                      handleViewSubmission(submissionsToReview[currentReviewIndex]);
+                    }}
+                  >
+                    Datei öffnen
+                  </Button>
+                </Box>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

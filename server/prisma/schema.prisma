@@ -396,6 +396,8 @@ model Submission {
   fileSize        Int          // Größe in Bytes
   submittedAt     DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+  teacherComment  String?      // Kommentar der Lehrkraft
+  commentedAt     DateTime?    // Wann wurde kommentiert
   
   assignment      Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   student         User         @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
