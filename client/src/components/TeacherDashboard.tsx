@@ -277,6 +277,7 @@ import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
 import FolderAssignmentSelector from './FolderAssignmentSelector';
+import { SubmissionStatistics } from './StudentDashboard';
 import { RichTextEditor } from './ui/rich-text-editor';
 import { FlashcardCreationModal } from './FlashcardCreationModal';
 import SubmissionViewer from './SubmissionViewer';
@@ -552,6 +553,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Menü pro Schüler
   const [studentMenuAnchorEl, setStudentMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [studentMenuCtx, setStudentMenuCtx] = useState<null | { groupId: string; student: Student }>(null);
+  
+  // Abgabestatistik für Schüler
+  const [showStudentSubmissionStats, setShowStudentSubmissionStats] = useState(false);
+  const [selectedStudentForStats, setSelectedStudentForStats] = useState<Student | null>(null);
+  const [studentSubmissionStats, setStudentSubmissionStats] = useState<any[]>([]);
   
   // Student removal confirmation
   const [removeStudentDialogOpen, setRemoveStudentDialogOpen] = useState(false);
@@ -5912,10 +5918,51 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         <MenuItem onClick={() => { if (studentMenuCtx) handleGradesDialogOpen(studentMenuCtx.groupId, groups.find(g=>g.id===studentMenuCtx.groupId)?.name || '', studentMenuCtx.student); handleStudentMenuClose(); }}>
           <GradeIcon fontSize="small" style={{ marginRight: 8 }} /> Noten eintragen
         </MenuItem>
+        <MenuItem onClick={() => { 
+          if (studentMenuCtx) {
+            setSelectedStudentForStats(studentMenuCtx.student);
+            setShowStudentSubmissionStats(true);
+          }
+          handleStudentMenuClose(); 
+        }}>
+          <AssignmentIcon fontSize="small" style={{ marginRight: 8 }} /> Abgabestatistik
+        </MenuItem>
         <MenuItem onClick={() => { if (studentMenuCtx) handleRemoveStudentDialogOpen(studentMenuCtx.groupId, studentMenuCtx.student); handleStudentMenuClose(); }}>
           <DeleteIcon fontSize="small" style={{ marginRight: 8 }} /> Entfernen
         </MenuItem>
       </Menu>
+
+      {/* Abgabestatistik Dialog für Schüler */}
+      <Dialog
+        open={showStudentSubmissionStats}
+        onClose={() => setShowStudentSubmissionStats(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
+              📊 Abgabestatistik: {selectedStudentForStats?.name}
+            </Typography>
+            <IconButton
+              onClick={() => setShowStudentSubmissionStats(false)}
+              sx={{ width: 24, height: 24, p: 0 }}
+            >
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 2 }}>
+          {selectedStudentForStats && (
+            <SubmissionStatistics 
+              userId={selectedStudentForStats.id} 
+              submissionStats={studentSubmissionStats} 
+              setSubmissionStats={setStudentSubmissionStats}
+              isTeacherView={true}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Schüler Entfernung Bestätigungsdialog */}
       <Dialog open={removeStudentDialogOpen} onClose={handleRemoveStudentDialogClose}>

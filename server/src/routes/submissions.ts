@@ -8,6 +8,7 @@ import {
   checkStudentSubmission,
   deleteSubmission,
   addTeacherComment,
+  getStudentSubmissionStats,
   upload
 } from '../controllers/submissionController';
 
@@ -36,6 +37,9 @@ router.post('/submission/:submissionId/comment', addTeacherComment);
 
 // Submission löschen
 router.delete('/submission/:submissionId', deleteSubmission);
+
+// Abgabestatistik für einen Schüler
+router.get('/student/:studentId/stats', getStudentSubmissionStats);
 
 export default router;
 

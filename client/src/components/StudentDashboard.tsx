@@ -11,13 +11,19 @@ import {
   Avatar,
   IconButton,
   Tooltip,
-  LinearProgress
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Chip,
+  Paper
 } from '@mui/material';
 import {
   School as SchoolIcon,
   QuestionAnswer as QuizIcon,
   Edit as EditIcon,
   Grade as GradeIcon,
+  Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
@@ -140,6 +146,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   
   // Flashcard Learning States
   const [flashcardLearningOpen, setFlashcardLearningOpen] = useState(false);
+  
+  // Abgabestatistik States
+  const [showSubmissionStats, setShowSubmissionStats] = useState(false);
+  const [submissionStats, setSubmissionStats] = useState<any[]>([]);
 
   // Neue States für echte Ordner-Vorschau (exakt wie im TeacherDashboard)
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
@@ -2166,23 +2176,31 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       bgcolor: '#f5f5f5',
                       borderRadius: 1.4,
                       p: 1.4,
-                      textAlign: 'center'
-                    }}>
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        bgcolor: '#e3f2fd',
+                        transform: 'translateY(-2px)'
+                      }
+                    }}
+                    onClick={() => setShowSubmissionStats(true)}
+                    >
                       <Typography variant="h4" sx={{ 
-                        color: '#1976d2',
+                        color: '#4caf50',
                         fontWeight: 'bold',
-                        fontSize: '1.5rem',
+                        fontSize: '1.8rem',
                         mb: 0.35
                       }}>
-                        {lerngruppen.length}
+                        📊
                       </Typography>
                       <Typography variant="caption" sx={{ 
-                        color: '#333',
+                        color: '#2e7d32',
                         fontSize: '0.65rem',
                         fontWeight: 600,
                         textTransform: 'uppercase'
                       }}>
-                        Gruppen
+                        Abgabestatistik
                       </Typography>
                     </Box>
                   </Grid>
@@ -2702,6 +2720,31 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           }}
         />
       )}
+
+      {/* Abgabestatistik Dialog */}
+      <Dialog
+        open={showSubmissionStats}
+        onClose={() => setShowSubmissionStats(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
+              📊 Deine Abgabestatistik
+            </Typography>
+            <IconButton
+              onClick={() => setShowSubmissionStats(false)}
+              sx={{ width: 24, height: 24, p: 0 }}
+            >
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 2 }}>
+          <SubmissionStatistics userId={userId} submissionStats={submissionStats} setSubmissionStats={setSubmissionStats} />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
@@ -4179,6 +4222,155 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
             )}
           </Box>
         )}
+      </Box>
+    </Box>
+  );
+};
+
+// Abgabestatistik Komponente (exportiert für Verwendung im TeacherDashboard)
+export const SubmissionStatistics: React.FC<{
+  userId: string, 
+  submissionStats: any[], 
+  setSubmissionStats: (stats: any[]) => void,
+  isTeacherView?: boolean
+}> = ({ userId, submissionStats, setSubmissionStats, isTeacherView = false }) => {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/submissions/student/${userId}/stats`);
+        if (response.ok) {
+          const data = await response.json();
+          setSubmissionStats(data);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Statistik:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (submissionStats.length === 0) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 6 }}>
+        <Typography variant="body1" color="textSecondary">
+          {isTeacherView 
+            ? '📭 Dieser Schüler hat noch keine Abgaben getätigt.'
+            : '📭 Du hast noch keine Abgaben getätigt.'
+          }
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      {/* Statistik-Übersicht */}
+      <Grid container spacing={1.5} sx={{ mt: '1%', mb: 2 }}>
+        <Grid item xs={4}>
+          <Paper sx={{ p: 1.5, textAlign: 'center', bgcolor: '#e3f2fd' }}>
+            <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 'bold', fontSize: '1.8rem' }}>
+              {submissionStats.length}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+              Abgaben insgesamt
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={4}>
+          <Paper sx={{ p: 1.5, textAlign: 'center', bgcolor: '#fff3e0' }}>
+            <Typography variant="h4" sx={{ color: '#f57c00', fontWeight: 'bold', fontSize: '1.8rem' }}>
+              {submissionStats.filter(s => s.hasComment).length}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+              Mit Kommentar
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={4}>
+          <Paper sx={{ p: 1.5, textAlign: 'center', bgcolor: '#f3e5f5' }}>
+            <Typography variant="h4" sx={{ color: '#7b1fa2', fontWeight: 'bold', fontSize: '1.8rem' }}>
+              {submissionStats.filter(s => !s.hasComment).length}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+              Noch ohne Kommentar
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Liste der Abgaben */}
+      <Typography variant="h6" sx={{ mb: 1.5, fontSize: '0.9rem', fontWeight: 600 }}>
+        {isTeacherView ? 'Abgaben im Detail' : 'Deine Abgaben im Detail'}
+      </Typography>
+      
+      <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
+        {submissionStats.map((stat, index) => (
+          <Paper key={stat.id} elevation={2} sx={{ p: 1.5, mb: 1.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                  {stat.fileName}
+                </Typography>
+                <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>
+                  Hochgeladen: {new Date(stat.submittedAt).toLocaleDateString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Typography>
+                {!isTeacherView && (
+                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                    Lehrkraft: {stat.teacherName}
+                  </Typography>
+                )}
+              </Box>
+              <Chip
+                label={stat.hasComment ? '💬 Kommentar' : '⏳ Kein Kommentar'}
+                size="small"
+                color={stat.hasComment ? 'success' : 'default'}
+                sx={{ fontSize: '0.65rem', height: '20px' }}
+              />
+            </Box>
+
+            {stat.hasComment && stat.teacherComment && (
+              <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, borderLeft: '3px solid #f57c00' }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: '#e65100', display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
+                  {isTeacherView ? '💬 Dein Kommentar:' : '💬 Kommentar deiner Lehrkraft:'}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#5d4037', whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>
+                  {stat.teacherComment}
+                </Typography>
+                {stat.commentedAt && (
+                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.8, fontStyle: 'italic', fontSize: '0.65rem' }}>
+                    Kommentiert am: {new Date(stat.commentedAt).toLocaleDateString('de-DE', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </Paper>
+        ))}
       </Box>
     </Box>
   );

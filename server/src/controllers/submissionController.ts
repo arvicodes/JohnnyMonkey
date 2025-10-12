@@ -497,3 +497,57 @@ export const deleteSubmission = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Holt alle Abgaben eines Schülers mit Kommentaren für die Statistik
+ */
+export const getStudentSubmissionStats = async (req: Request, res: Response) => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId) {
+      return res.status(400).json({ error: 'studentId ist erforderlich' });
+    }
+
+    // Hole alle Submissions des Schülers
+    const submissions = await prisma.submission.findMany({
+      where: {
+        studentId: studentId
+      },
+      include: {
+        assignment: {
+          include: {
+            teacher: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        submittedAt: 'desc'
+      }
+    });
+
+    // Formatiere die Daten für die Statistik
+    const stats = submissions.map(submission => ({
+      id: submission.id,
+      fileName: submission.assignment.fileName,
+      filePath: submission.assignment.filePath,
+      originalFileName: submission.originalFileName,
+      fileType: submission.fileType,
+      submittedAt: submission.submittedAt,
+      teacherComment: submission.teacherComment,
+      commentedAt: submission.commentedAt,
+      teacherName: submission.assignment.teacher.name,
+      hasComment: !!submission.teacherComment
+    }));
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Fehler beim Abrufen der Abgabestatistik:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
