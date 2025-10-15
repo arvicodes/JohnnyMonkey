@@ -66,7 +66,7 @@ export const upload = multer({
 });
 
 /**
- * Erstellt oder findet ein Assignment für eine H__ Datei
+ * Erstellt oder findet ein Assignment für eine H_ Datei
  */
 export const getOrCreateAssignment = async (req: Request, res: Response) => {
   try {
@@ -76,9 +76,9 @@ export const getOrCreateAssignment = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'filePath, fileName und teacherId sind erforderlich' });
     }
 
-    // Prüfe ob die Datei mit H__ beginnt
-    if (!fileName.startsWith('H__')) {
-      return res.status(400).json({ error: 'Nur Dateien die mit H__ beginnen sind Abgabedateien' });
+    // Prüfe ob die Datei mit H_ beginnt
+    if (!fileName.startsWith('H_')) {
+      return res.status(400).json({ error: 'Nur Dateien die mit H_ beginnen sind Abgabedateien' });
     }
 
     // Prüfe ob der Teacher existiert
@@ -114,26 +114,54 @@ export const getOrCreateAssignment = async (req: Request, res: Response) => {
     });
 
     if (!assignment) {
-      assignment = await prisma.assignment.create({
-        data: {
-          fileName: fileName,
-          filePath: filePath,
-          teacherId: teacherId
-        },
-        include: {
-          submissions: {
-            include: {
-              student: {
-                select: {
-                  id: true,
-                  name: true,
-                  avatarEmoji: true
+      // Versuche Assignment zu erstellen, oder hole es wenn es bereits existiert
+      try {
+        assignment = await prisma.assignment.create({
+          data: {
+            fileName: fileName,
+            filePath: filePath,
+            teacherId: teacherId
+          },
+          include: {
+            submissions: {
+              include: {
+                student: {
+                  select: {
+                    id: true,
+                    name: true,
+                    avatarEmoji: true
+                  }
                 }
               }
             }
           }
+        });
+      } catch (createError: any) {
+        // Bei Unique Constraint Error: Assignment existiert bereits, hole es erneut
+        if (createError.code === 'P2002') {
+          assignment = await prisma.assignment.findFirst({
+            where: {
+              filePath: filePath,
+              teacherId: teacherId
+            },
+            include: {
+              submissions: {
+                include: {
+                  student: {
+                    select: {
+                      id: true,
+                      name: true,
+                      avatarEmoji: true
+                    }
+                  }
+                }
+              }
+            }
+          });
+        } else {
+          throw createError;
         }
-      });
+      }
     }
 
     res.json(assignment);

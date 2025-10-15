@@ -73,6 +73,9 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: DirectoryItem[]}>({});
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<Set<string>>(new Set());
 
+  // File Share States
+  const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
+
   // Lade gespeicherte Pfade
   useEffect(() => {
     fetchSavedPaths();
@@ -118,6 +121,9 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
         folderPaths.forEach((folderPath: string) => {
           fetchAssignedFolderContent(folderPath);
         });
+
+        // Lade die File Shares für diese Gruppe
+        fetchFileSharesForGroup();
       }
     } catch (error) {
       console.error('Fehler beim Laden der zugeordneten Ordner:', error);
@@ -226,6 +232,45 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
 
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  // File Share Functions
+  const fetchFileSharesForGroup = async () => {
+    try {
+      const response = await fetch(`/api/file-shares/group/${groupId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const shareMap: {[key: string]: boolean} = {};
+        data.filePaths.forEach((filePath: string) => {
+          shareMap[`${filePath}:${groupId}`] = true;
+        });
+        setFileShares(shareMap);
+      }
+    } catch (error) {
+      console.error('Error fetching file shares:', error);
+    }
+  };
+
+  const toggleFileShare = async (filePath: string) => {
+    try {
+      const response = await fetch('/api/file-shares/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath, groupId })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const key = `${filePath}:${groupId}`;
+        setFileShares(prev => ({ ...prev, [key]: data.shared }));
+        showSnackbar(data.message, 'success');
+      } else {
+        showSnackbar('Fehler beim Ändern der Datei-Freigabe', 'error');
+      }
+    } catch (error) {
+      console.error('Error toggling file share:', error);
+      showSnackbar('Fehler beim Ändern der Datei-Freigabe', 'error');
+    }
   };
 
   const handleCloseSnackbar = () => {
@@ -1076,6 +1121,58 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
                         }}
                         onMouseDown={(e) => e.preventDefault()}
                       >
+                        {/* Checkbox/Grüner Punkt LINKS - nur für Dateien */}
+                        {item.type === 'file' && (
+                          item.name.startsWith('K_') ? (
+                            // Grüner Punkt für K_ Dateien (automatisch freigegeben)
+                            <Box sx={{ 
+                              width: '12px', 
+                              height: '12px', 
+                              borderRadius: '50%', 
+                              bgcolor: '#4caf50',
+                              flexShrink: 0,
+                              mr: 0.5
+                            }} title="Karteikarten-Datei (automatisch freigegeben)" />
+                          ) : (
+                            // Checkbox für alle anderen Dateien
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                flexShrink: 0,
+                                mr: 0.5
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                toggleFileShare(item.path);
+                              }}
+                              title={fileShares[`${item.path}:${groupId}`] ? 'Für Schüler freigegeben (klicken zum Deaktivieren)' : 'Nicht für Schüler sichtbar (klicken zum Freigeben)'}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!fileShares[`${item.path}:${groupId}`]}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleFileShare(item.path);
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                }}
+                                style={{
+                                  width: '12px',
+                                  height: '12px',
+                                  cursor: 'pointer',
+                                  accentColor: '#4caf50'
+                                }}
+                              />
+                            </Box>
+                          )
+                        )}
+
                         <Box sx={{ 
                           mr: 0.5, 
                           fontSize: '0.8rem',
@@ -1088,6 +1185,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
                           fontSize: '0.7rem',
                           textDecoration: item.type === 'file' ? 'underline' : 'none',
                           fontWeight: item.type === 'file' ? 'medium' : 'normal',
+                          flex: 1,
                           '&:hover': item.type === 'file' ? {
                             color: 'primary.dark',
                             textDecoration: 'underline'

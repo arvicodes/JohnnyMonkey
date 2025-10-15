@@ -574,10 +574,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
   const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
 
-  // Submission States (Abgabesystem für H__ Dateien)
+  // Submission States (Abgabesystem für H_ Dateien)
   const [showSubmissionViewer, setShowSubmissionViewer] = useState(false);
   const [selectedSubmissionFile, setSelectedSubmissionFile] = useState<any>(null);
   const [submissionCounts, setSubmissionCounts] = useState<{[filePath: string]: number}>({});
+
+  // File Share States (Datei-Freigaben für Lerngruppen)
+  const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
 
   // Spielerische Farbpalette
   const colors = {
@@ -1033,6 +1036,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           ...prev,
           [`${groupId}:${folderPath}`]: items
         }));
+
+        // Lade die File Shares für diese Gruppe
+        fetchFileSharesForGroup(groupId);
 
         // Verarbeitungshistorie wird jetzt im useEffect geladen
       }
@@ -1777,6 +1783,45 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // File Share Functions
+  const fetchFileSharesForGroup = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/file-shares/group/${groupId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const shareMap: {[key: string]: boolean} = {};
+        data.filePaths.forEach((filePath: string) => {
+          shareMap[`${filePath}:${groupId}`] = true;
+        });
+        setFileShares(prev => ({ ...prev, ...shareMap }));
+      }
+    } catch (error) {
+      console.error('Error fetching file shares:', error);
+    }
+  };
+
+  const toggleFileShare = async (filePath: string, groupId: string) => {
+    try {
+      const response = await fetch('/api/file-shares/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath, groupId })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const key = `${filePath}:${groupId}`;
+        setFileShares(prev => ({ ...prev, [key]: data.shared }));
+        showSnackbar(data.message, 'success');
+      } else {
+        showSnackbar('Fehler beim Ändern der Datei-Freigabe', 'error');
+      }
+    } catch (error) {
+      console.error('Error toggling file share:', error);
+      showSnackbar('Fehler beim Ändern der Datei-Freigabe', 'error');
+    }
+  };
+
   // Neue Funktion zum Rendern der echten Ordner-Vorschau
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
@@ -1839,12 +1884,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           createIcon = '🎯';
           createTooltip = 'Quiz erstellen';
 
-        } else if (item.name.startsWith('Cards')) {
+        } else if (item.name.startsWith('K_')) {
           showCreateIcon = true;
           createIcon = '🗂️';
           createTooltip = 'Karteikarten erstellen';
 
-        } else if (item.name.startsWith('H__')) {
+        } else if (item.name.startsWith('H_')) {
           showCreateIcon = true;
           createIcon = '📥';
           createTooltip = 'Abgaben ansehen';
@@ -1860,6 +1905,53 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             justifyContent: 'space-between',
             gap: 0.5
           }}>
+            {/* Checkbox/Grüner Punkt LINKS - nur für Dateien */}
+            {item.type === 'file' && (
+              item.name.startsWith('K_') ? (
+                // Grüner Punkt für K_ Dateien (automatisch freigegeben)
+                <Box sx={{ 
+                  width: '14px', 
+                  height: '14px', 
+                  borderRadius: '50%', 
+                  bgcolor: '#4caf50',
+                  flexShrink: 0,
+                  mt: 0.2
+                }} title="Karteikarten-Datei (automatisch freigegeben)" />
+              ) : (
+                // Checkbox für alle anderen Dateien
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    flexShrink: 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFileShare(item.path, groupId);
+                  }}
+                  title={fileShares[`${item.path}:${groupId}`] ? 'Für Schüler freigegeben (klicken zum Deaktivieren)' : 'Nicht für Schüler sichtbar (klicken zum Freigeben)'}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!fileShares[`${item.path}:${groupId}`]}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleFileShare(item.path, groupId);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      cursor: 'pointer',
+                      accentColor: '#4caf50'
+                    }}
+                  />
+                </Box>
+              )
+            )}
+
             <Typography variant="body2" sx={{ 
               color: color,
               fontSize: '0.75rem',
@@ -1884,7 +1976,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               }
             }}
             >
-                                      {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
             {item.type === 'directory' ? (
               level === 0 ? (
                 <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
@@ -1923,10 +2015,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 if (item.name.startsWith('Quiz')) {
                   // Öffne das Quiz-Erstellungsmodal direkt im Dashboard
                   handleQuizDialogOpen(item.path, item.name);
-                } else if (item.name.startsWith('Cards')) {
+                } else if (item.name.startsWith('K_')) {
                   // Öffne das Karteikarten-Erstellungsmodal
                   handleFlashcardDialogOpen(item.path, item.name);
-                } else if (item.name.startsWith('H__')) {
+                } else if (item.name.startsWith('H_')) {
                   // Öffne Submissions-Grid in neuem Tab - übergebe groupId
                   window.open(`/submissions-grid?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name)}&teacherId=${userId}&groupId=${groupId}`, '_blank');
                 }
@@ -1937,7 +2029,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             )}
 
             {/* Verarbeitungshistorie für Cards-Dateien als grünes Icon rechts neben dem Karteikarten-Icon */}
-            {item.type === 'file' && item.name.startsWith('Cards') && documentHistoryMap[item.path] && documentHistoryMap[item.path].length > 0 && (
+            {item.type === 'file' && item.name.startsWith('K_') && documentHistoryMap[item.path] && documentHistoryMap[item.path].length > 0 && (
               <Typography variant="caption" sx={{ 
                 color: '#4caf50',
                 fontSize: '0.7rem',
@@ -2873,7 +2965,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const allCardsFiles: any[] = [];
         Object.entries(assignedFolderContents).forEach(([key, items]) => {
           const cardsFiles = items.filter((item: any) => 
-            item.type === 'file' && item.name.startsWith('Cards')
+            item.type === 'file' && item.name.startsWith('K_')
           );
           allCardsFiles.push(...cardsFiles);
         });

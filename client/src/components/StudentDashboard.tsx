@@ -157,10 +157,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
   const [assignedFolders, setAssignedFolders] = useState<{[groupId: string]: string[]}>({});
 
-  // Submission States (Abgabesystem für H__ Dateien)
+  // Submission States (Abgabesystem für H_ Dateien)
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [selectedSubmissionFile, setSelectedSubmissionFile] = useState<any>(null);
   const [submissionStatuses, setSubmissionStatuses] = useState<{[filePath: string]: boolean}>({});
+
+  // File Share States (Datei-Freigaben für Lerngruppen)
+  const [sharedFiles, setSharedFiles] = useState<{[groupId: string]: string[]}>({});
 
   // Spielerische Farbpalette
   const colors = {
@@ -306,6 +309,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // Funktion zum Laden der geteilten Dateien für eine Gruppe
+  const fetchSharedFilesForGroup = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/file-shares/group/${groupId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSharedFiles(prev => ({
+          ...prev,
+          [groupId]: data.filePaths || []
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching shared files:', error);
+    }
+  };
+
   // Neue Funktion zum Laden der zugeordneten Ordner (exakt wie im TeacherDashboard)
   const fetchAssignedFolders = async (groupId: string) => {
     try {
@@ -355,6 +374,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           ...prev,
           [`${groupId}:${folderPath}`]: items
         }));
+
+        // Lade die geteilten Dateien für diese Gruppe
+        fetchSharedFilesForGroup(groupId);
       }
     } catch (error) {
       console.error('Fehler beim Laden des Ordnerinhalts:', error);
@@ -390,8 +412,41 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     
+    // Hilfsfunktion: Prüft rekursiv, ob ein Ordner mindestens eine freigegebene Datei enthält
+    const hasSharedFiles = (item: any): boolean => {
+      const groupSharedFiles = sharedFiles[groupId] || [];
+      
+      // Wenn es eine Datei ist, prüfe ob sie freigegeben ist
+      // K_ Dateien sind automatisch freigegeben
+      if (item.type === 'file') {
+        return item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+      }
+      
+      // Wenn es ein Ordner ist, prüfe rekursiv alle Kinder
+      if (item.type === 'directory' && item.children) {
+        return item.children.some((child: any) => hasSharedFiles(child));
+      }
+      
+      return false;
+    };
+
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
+      // Prüfe, ob die Datei für diese Gruppe freigegeben ist
+      const groupSharedFiles = sharedFiles[groupId] || [];
+      // K_ Dateien sind immer automatisch freigegeben
+      const isFileShared = item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+      
+      // Wenn es eine Datei ist und NICHT freigegeben, verberge sie
+      if (item.type === 'file' && !isFileShared) {
+        return null;
+      }
+
+      // Wenn es ein Ordner ist und KEINE freigegebenen Dateien enthält, verberge ihn
+      if (item.type === 'directory' && !hasSharedFiles(item)) {
+        return null;
+      }
+
       // Quiz-Dateien werden für Schüler als "Quiz starten" Button angezeigt
       if (item.type === 'file' && item.name.startsWith('Quiz')) {
         return (
@@ -402,7 +457,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       }
       
       // Cards-Dateien werden weiterhin ausgeblendet
-      if (item.type === 'file' && item.name.startsWith('Cards')) {
+      if (item.type === 'file' && item.name.startsWith('K_')) {
         return null; // Diese Dateien werden für Schüler nicht angezeigt
       }
       
@@ -485,8 +540,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               )
             ) : null} {/* Kein Dreieck für Dateien */}
             {icon} {item.name}
-            {/* Check-Icon für H__ Dateien mit Abgabe */}
-            {item.type === 'file' && item.name.startsWith('H__') && submissionStatuses[item.path] && (
+            {/* Check-Icon für H_ Dateien mit Abgabe */}
+            {item.type === 'file' && item.name.startsWith('H_') && submissionStatuses[item.path] && (
               <span style={{ marginLeft: '8px', color: '#4caf50', fontSize: '1.2em' }}>✓</span>
             )}
           </Typography>
@@ -503,6 +558,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       );
     };
     
+    // Prüfe, ob der Ordner überhaupt freigegebene Dateien enthält
+    const hasSomeSharedFiles = items.some(item => hasSharedFiles(item));
+    
+    // Wenn keine freigegebenen Dateien, zeige den Ordner nicht an
+    if (!isLoading && !hasSomeSharedFiles) {
+      return null;
+    }
+
     return (
       <Box key={folderPath} sx={{ mb: 1.4 }}>
         {/* Hauptordner - Grauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
@@ -542,7 +605,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             </Typography>
           ) : (
             <Box>
-              {items.map((item, index) => renderItemRecursively(item, 0))}
+              {items.map((item, index) => renderItemRecursively(item, 0)).filter(item => item !== null)}
             </Box>
           )}
         </Box>
@@ -1133,7 +1196,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     document.addEventListener('keydown', handleModalKeyDown);
   };
 
-  // Prüfe Submission-Status für H__ Dateien
+  // Prüfe Submission-Status für H_ Dateien
   const checkSubmissionStatus = async (filePath: string) => {
     try {
       const response = await fetch(
@@ -1149,7 +1212,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     return false;
   };
 
-  // Vorschau-Funktion für Dateien (ohne H__ Check) - für Submission Upload Modal
+  // Vorschau-Funktion für Dateien (ohne H_ Check) - für Submission Upload Modal
   const previewFile = async (item: any) => {
     if (item.type !== 'file') return;
     
@@ -1262,8 +1325,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const handleFileClick = async (item: any) => {
     if (item.type !== 'file') return;
     
-    // Prüfe ob es eine H__ Datei (Hausaufgaben-Abgabe) ist
-    if (item.name.startsWith('H__')) {
+    // Prüfe ob es eine H_ Datei (Hausaufgaben-Abgabe) ist
+    if (item.name.startsWith('H_')) {
       // Finde den Lehrer für diese Datei (aus den Lerngruppen)
       let teacherId = null;
       
@@ -1904,18 +1967,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  // Lade Submission-Status für alle H__ Dateien
+  // Lade Submission-Status für alle H_ Dateien
   useEffect(() => {
     const loadSubmissionStatuses = async () => {
       const statuses: {[filePath: string]: boolean} = {};
       
-      // Durchsuche alle geladenen Ordnerinhalte nach H__ Dateien
+      // Durchsuche alle geladenen Ordnerinhalte nach H_ Dateien
       for (const key in assignedFolderContents) {
         const items = assignedFolderContents[key];
         
         const checkFilesRecursively = async (fileItems: any[]) => {
           for (const item of fileItems) {
-            if (item.type === 'file' && item.name.startsWith('H__')) {
+            if (item.type === 'file' && item.name.startsWith('H_')) {
               const hasSubmission = await checkSubmissionStatus(item.path);
               statuses[item.path] = hasSubmission;
             }
