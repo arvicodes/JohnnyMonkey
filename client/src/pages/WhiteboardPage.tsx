@@ -420,7 +420,7 @@ const WhiteboardPage: React.FC = () => {
     } else if (obj.text) {
       // For text objects
       return isPointInText(x, y, obj);
-    } else if (obj.tool === 'image' && obj.image) {
+    } else if (obj.tool === 'image' && obj.imageData) {
       // For images
       return x >= obj.x && x <= obj.x + (obj.width || 0) &&
              y >= obj.y && y <= obj.y + (obj.height || 0);
