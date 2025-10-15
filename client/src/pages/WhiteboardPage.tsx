@@ -54,6 +54,9 @@ interface DrawObject {
   height?: number;
   fontSize?: number;
   imageData?: string;
+  rotation?: number; // Rotation in degrees
+  scaleX?: number;
+  scaleY?: number;
 }
 
 interface DirectoryItem {
@@ -74,6 +77,8 @@ const WhiteboardPage: React.FC = () => {
   const [currentObject, setCurrentObject] = useState<DrawObject | null>(null);
   const [selectedObject, setSelectedObject] = useState<DrawObject | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null); // 'n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw', 'rotate'
+  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number; rotation: number } | null>(null);
   const [textInput, setTextInput] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
@@ -133,15 +138,9 @@ const WhiteboardPage: React.FC = () => {
     objects.forEach(obj => {
       drawObject(ctx, obj);
       
-      // Show selection box
+      // Show selection box and handles
       if (selectedObject && selectedObject.id === obj.id) {
-        ctx.strokeStyle = '#2196f3';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        
-        const bounds = getObjectBounds(obj);
-        ctx.strokeRect(bounds.x - 5, bounds.y - 5, bounds.width + 10, bounds.height + 10);
-        ctx.setLineDash([]);
+        drawSelectionHandles(ctx, obj);
       }
     });
 
@@ -151,7 +150,77 @@ const WhiteboardPage: React.FC = () => {
     }
   };
 
+  const drawSelectionHandles = (ctx: CanvasRenderingContext2D, obj: DrawObject) => {
+    const bounds = getObjectBounds(obj);
+    const rotation = obj.rotation || 0;
+    
+    ctx.save();
+    
+    // Translate to center for rotation
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+    ctx.translate(centerX, centerY);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.translate(-centerX, -centerY);
+    
+    // Selection box
+    ctx.strokeStyle = '#2196f3';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.setLineDash([]);
+    
+    // Resize handles (8 corners and midpoints)
+    const handleSize = 8;
+    const handles = [
+      { x: bounds.x, y: bounds.y, name: 'nw' },
+      { x: bounds.x + bounds.width / 2, y: bounds.y, name: 'n' },
+      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, name: 'e' },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
+      { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, name: 's' },
+      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' },
+      { x: bounds.x, y: bounds.y + bounds.height / 2, name: 'w' }
+    ];
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#2196f3';
+    ctx.lineWidth = 2;
+    
+    handles.forEach(handle => {
+      ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+      ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+    });
+    
+    // Rotation handle
+    const rotateHandleY = bounds.y - 30;
+    ctx.beginPath();
+    ctx.arc(centerX, rotateHandleY, 6, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Line to rotation handle
+    ctx.beginPath();
+    ctx.moveTo(centerX, bounds.y);
+    ctx.lineTo(centerX, rotateHandleY);
+    ctx.stroke();
+    
+    ctx.restore();
+  };
+
   const drawObject = (ctx: CanvasRenderingContext2D, obj: DrawObject) => {
+    ctx.save();
+    
+    // Apply rotation
+    if (obj.rotation) {
+      const bounds = getObjectBounds(obj);
+      const centerX = bounds.x + bounds.width / 2;
+      const centerY = bounds.y + bounds.height / 2;
+      ctx.translate(centerX, centerY);
+      ctx.rotate((obj.rotation * Math.PI) / 180);
+      ctx.translate(-centerX, -centerY);
+    }
+    
     ctx.strokeStyle = obj.color;
     ctx.fillStyle = obj.color;
     ctx.lineWidth = obj.lineWidth;
@@ -228,6 +297,8 @@ const WhiteboardPage: React.FC = () => {
         }
         break;
     }
+    
+    ctx.restore();
   };
 
   const getObjectBounds = (obj: DrawObject) => {
@@ -275,11 +346,60 @@ const WhiteboardPage: React.FC = () => {
     };
   };
 
+  const getHandleAtPoint = (x: number, y: number, obj: DrawObject): string | null => {
+    const bounds = getObjectBounds(obj);
+    const rotation = obj.rotation || 0;
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+    
+    // Rotation handle
+    const rotateHandleY = bounds.y - 30;
+    const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
+    if (distToRotate < 10) return 'rotate';
+    
+    const handleSize = 8;
+    const handles = [
+      { x: bounds.x, y: bounds.y, name: 'nw' },
+      { x: bounds.x + bounds.width / 2, y: bounds.y, name: 'n' },
+      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, name: 'e' },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
+      { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, name: 's' },
+      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' },
+      { x: bounds.x, y: bounds.y + bounds.height / 2, name: 'w' }
+    ];
+    
+    for (const handle of handles) {
+      if (Math.abs(x - handle.x) < handleSize && Math.abs(y - handle.y) < handleSize) {
+        return handle.name;
+      }
+    }
+    
+    return null;
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
 
-    // Select mode: check if clicking on existing object
+    // Select mode: check if clicking on existing object or handles
     if (tool === 'select') {
+      if (selectedObject) {
+        const handle = getHandleAtPoint(x, y, selectedObject);
+        if (handle) {
+          setResizeHandle(handle);
+          const bounds = getObjectBounds(selectedObject);
+          setResizeStart({
+            x,
+            y,
+            width: bounds.width,
+            height: bounds.height,
+            rotation: selectedObject.rotation || 0
+          });
+          setIsDrawing(true);
+          return;
+        }
+      }
+      
       const clickedObject = [...objects].reverse().find(obj => isPointInObject(x, y, obj));
       if (clickedObject) {
         setSelectedObject(clickedObject);
@@ -321,8 +441,64 @@ const WhiteboardPage: React.FC = () => {
 
     const { x, y } = getCanvasCoordinates(e);
 
+    // Handle resize/rotate
+    if (tool === 'select' && selectedObject && resizeHandle && resizeStart) {
+      const bounds = getObjectBounds(selectedObject);
+      const centerX = bounds.x + bounds.width / 2;
+      const centerY = bounds.y + bounds.height / 2;
+      
+      const updatedObject = { ...selectedObject };
+      
+      if (resizeHandle === 'rotate') {
+        // Calculate rotation
+        const angle = Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
+        updatedObject.rotation = angle + 90;
+      } else {
+        // Calculate new dimensions based on handle
+        const dx = x - resizeStart.x;
+        const dy = y - resizeStart.y;
+        
+        let newWidth = resizeStart.width;
+        let newHeight = resizeStart.height;
+        let newX = updatedObject.x;
+        let newY = updatedObject.y;
+        
+        if (resizeHandle.includes('e')) {
+          newWidth = resizeStart.width + dx;
+        }
+        if (resizeHandle.includes('w')) {
+          newWidth = resizeStart.width - dx;
+          newX = updatedObject.x + dx;
+        }
+        if (resizeHandle.includes('s')) {
+          newHeight = resizeStart.height + dy;
+        }
+        if (resizeHandle.includes('n')) {
+          newHeight = resizeStart.height - dy;
+          newY = updatedObject.y + dy;
+        }
+        
+        // Apply new dimensions
+        if (updatedObject.width !== undefined) updatedObject.width = Math.max(10, newWidth);
+        if (updatedObject.height !== undefined) updatedObject.height = Math.max(10, newHeight);
+        updatedObject.x = newX;
+        updatedObject.y = newY;
+        
+        // For text, adjust font size
+        if (updatedObject.tool === 'text' && updatedObject.fontSize) {
+          const scale = Math.max(newWidth / resizeStart.width, newHeight / resizeStart.height);
+          updatedObject.fontSize = Math.max(12, updatedObject.fontSize * scale);
+        }
+      }
+      
+      setObjects(objects.map(obj => obj.id === selectedObject.id ? updatedObject : obj));
+      setSelectedObject(updatedObject);
+      redrawCanvas();
+      return;
+    }
+
     // Drag selected object
-    if (tool === 'select' && selectedObject) {
+    if (tool === 'select' && selectedObject && !resizeHandle) {
       const bounds = getObjectBounds(selectedObject);
       const deltaX = x - dragOffset.x - bounds.x;
       const deltaY = y - dragOffset.y - bounds.y;
@@ -366,6 +542,8 @@ const WhiteboardPage: React.FC = () => {
     if (!isDrawing) return;
 
     setIsDrawing(false);
+    setResizeHandle(null);
+    setResizeStart(null);
     
     if (tool !== 'select' && currentObject) {
       setObjects([...objects, currentObject]);
@@ -554,7 +732,29 @@ const WhiteboardPage: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f5f5f5' }}>
+    <Box sx={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f5f5f5', position: 'relative' }}>
+      {/* Save Button - Top Right */}
+      <Button
+        onClick={handleOpenSaveDialog}
+        variant="contained"
+        color="success"
+        size="small"
+        startIcon={<SaveIcon />}
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: 1000,
+          minWidth: 'auto',
+          px: 1.5,
+          py: 0.5,
+          fontSize: '0.75rem',
+          boxShadow: 2
+        }}
+      >
+        Speichern
+      </Button>
+
       {/* Compact Toolbar */}
       <Paper sx={{ 
         display: 'flex', 
@@ -657,11 +857,7 @@ const WhiteboardPage: React.FC = () => {
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {/* Save */}
-        <IconButton onClick={handleOpenSaveDialog} size="small" color="success" title="Speichern">
-          <SaveIcon />
-        </IconButton>
-        
+        {/* Close */}
         <IconButton onClick={() => window.close()} size="small" title="Schließen">
           <CloseIcon />
         </IconButton>
