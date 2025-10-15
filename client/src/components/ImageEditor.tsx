@@ -55,8 +55,9 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
   useEffect(() => {
     if (image && canvasRef.current) {
       drawImage();
+      drawCropOverlay();
     }
-  }, [image, rotation, brightness, contrast]);
+  }, [image, rotation, brightness, contrast, cropArea, cropMode]);
 
   const drawImage = () => {
     const canvas = canvasRef.current;
@@ -91,12 +92,72 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
     ctx.restore();
   };
 
+  const drawCropOverlay = () => {
+    if (!cropMode || cropArea.width === 0 || cropArea.height === 0) return;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Zeichne Crop-Overlay direkt auf Canvas
+    ctx.save();
+    
+    // Dunkle Überlagerung außerhalb des Crop-Bereichs
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    
+    // Zeichne 4 Rechtecke um den Crop-Bereich herum
+    // Oben
+    ctx.fillRect(0, 0, canvas.width, cropArea.y);
+    // Unten
+    ctx.fillRect(0, cropArea.y + cropArea.height, canvas.width, canvas.height - (cropArea.y + cropArea.height));
+    // Links
+    ctx.fillRect(0, cropArea.y, cropArea.x, cropArea.height);
+    // Rechts
+    ctx.fillRect(cropArea.x + cropArea.width, cropArea.y, canvas.width - (cropArea.x + cropArea.width), cropArea.height);
+    
+    // Zeichne Crop-Rahmen (grün, dick)
+    ctx.strokeStyle = '#4caf50';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+    
+    // Zeichne Hilfslinien (Drittel-Raster für bessere Komposition)
+    ctx.strokeStyle = 'rgba(76, 175, 80, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    
+    ctx.beginPath();
+    // Vertikale Linien
+    ctx.moveTo(cropArea.x + cropArea.width / 3, cropArea.y);
+    ctx.lineTo(cropArea.x + cropArea.width / 3, cropArea.y + cropArea.height);
+    ctx.moveTo(cropArea.x + (2 * cropArea.width) / 3, cropArea.y);
+    ctx.lineTo(cropArea.x + (2 * cropArea.width) / 3, cropArea.y + cropArea.height);
+    
+    // Horizontale Linien
+    ctx.moveTo(cropArea.x, cropArea.y + cropArea.height / 3);
+    ctx.lineTo(cropArea.x + cropArea.width, cropArea.y + cropArea.height / 3);
+    ctx.moveTo(cropArea.x, cropArea.y + (2 * cropArea.height) / 3);
+    ctx.lineTo(cropArea.x + cropArea.width, cropArea.y + (2 * cropArea.height) / 3);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    ctx.restore();
+  };
+
   const handleRotateLeft = () => {
     setRotation((prev) => (prev - 90) % 360);
+    // Reset crop area bei Rotation
+    setCropMode(false);
+    setCropArea({ x: 0, y: 0, width: 0, height: 0 });
   };
 
   const handleRotateRight = () => {
     setRotation((prev) => (prev + 90) % 360);
+    // Reset crop area bei Rotation
+    setCropMode(false);
+    setCropArea({ x: 0, y: 0, width: 0, height: 0 });
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -106,8 +167,12 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Skaliere Koordinaten von Anzeige-Größe zu Canvas-Größe
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     setIsDragging(true);
     setDragStart({ x, y });
@@ -121,8 +186,12 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Skaliere Koordinaten von Anzeige-Größe zu Canvas-Größe
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     setCropArea({
       x: Math.min(dragStart.x, x),
@@ -307,6 +376,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
                   onClick={applyCrop}
                   variant="contained"
                   color="success"
+                  disabled={cropArea.width < 10 || cropArea.height < 10}
                   sx={{ fontSize: '0.75rem' }}
                 >
                   Anwenden
@@ -325,7 +395,12 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
             )}
             {cropMode && (
               <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#1976d2', fontStyle: 'italic' }}>
-                ✨ Ziehe mit der Maus einen Bereich auf
+                ✨ Klicke und ziehe mit der Maus einen Bereich auf dem Foto
+              </Typography>
+            )}
+            {cropMode && cropArea.width > 10 && cropArea.height > 10 && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#4caf50', fontWeight: 600 }}>
+                ✅ Bereich ausgewählt: {Math.round(cropArea.width)} × {Math.round(cropArea.height)} px
               </Typography>
             )}
           </Box>
@@ -354,25 +429,10 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
               maxWidth: '100%',
               maxHeight: '45vh',
               cursor: cropMode ? 'crosshair' : 'default',
-              border: cropMode ? '2px dashed #fff' : 'none'
+              border: cropMode ? '3px solid #4caf50' : '1px solid #555',
+              borderRadius: '4px'
             }}
           />
-          
-          {/* Crop-Overlay */}
-          {cropMode && cropArea.width > 0 && (
-            <Box
-              sx={{
-                position: 'absolute',
-                left: cropArea.x,
-                top: cropArea.y,
-                width: cropArea.width,
-                height: cropArea.height,
-                border: '2px solid #4caf50',
-                bgcolor: 'rgba(76, 175, 80, 0.1)',
-                pointerEvents: 'none'
-              }}
-            />
-          )}
         </Box>
       </DialogContent>
 
