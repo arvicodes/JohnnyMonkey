@@ -197,8 +197,8 @@ const WhiteboardPage: React.FC = () => {
     ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.setLineDash([]);
     
-    // Corner handles
-    const handleSize = 10;
+    // Corner handles - larger and more visible
+    const handleSize = 12;
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -208,22 +208,24 @@ const WhiteboardPage: React.FC = () => {
     
     ctx.fillStyle = '#2196f3';
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     
     cornerHandles.forEach(handle => {
       ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
       ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
     });
     
-    // Rotation handle
+    // Rotation handle - larger and more visible
     const centerX = bounds.x + bounds.width / 2;
     const rotateHandleY = bounds.y - 25;
     ctx.beginPath();
-    ctx.arc(centerX, rotateHandleY, 8, 0, 2 * Math.PI);
+    ctx.arc(centerX, rotateHandleY, 10, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
     
     // Rotation line
+    ctx.strokeStyle = '#2196f3';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(centerX, bounds.y);
     ctx.lineTo(centerX, rotateHandleY);
@@ -411,9 +413,113 @@ const WhiteboardPage: React.FC = () => {
   };
 
   const isPointInObject = (x: number, y: number, obj: DrawObject): boolean => {
-    const bounds = getObjectBounds(obj);
-    return x >= bounds.x && x <= bounds.x + bounds.width &&
-           y >= bounds.y && y <= bounds.y + bounds.height;
+    // Check actual object geometry, not selection bounds
+    if (obj.points && obj.points.length > 0) {
+      // For drawn paths (pen, brush, marker, etc.)
+      return isPointInPath(x, y, obj);
+    } else if (obj.text) {
+      // For text objects
+      return isPointInText(x, y, obj);
+    } else if (obj.tool === 'image' && obj.image) {
+      // For images
+      return x >= obj.x && x <= obj.x + (obj.width || 0) &&
+             y >= obj.y && y <= obj.y + (obj.height || 0);
+    } else {
+      // For shapes (rectangle, circle, etc.)
+      return isPointInShape(x, y, obj);
+    }
+  };
+
+  const isPointInPath = (x: number, y: number, obj: DrawObject): boolean => {
+    if (!obj.points || obj.points.length === 0) return false;
+    
+    // Simple distance-based collision for paths
+    const threshold = (obj.lineWidth || 5) + 10; // Add some padding
+    
+    for (let i = 0; i < obj.points.length; i++) {
+      const point = obj.points[i];
+      const distance = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
+      if (distance <= threshold) return true;
+    }
+    
+    // Check line segments for better collision detection
+    for (let i = 0; i < obj.points.length - 1; i++) {
+      const p1 = obj.points[i];
+      const p2 = obj.points[i + 1];
+      if (isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold)) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  const isPointNearLine = (px: number, py: number, x1: number, y1: number, x2: number, y2: number, threshold: number): boolean => {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    
+    if (lenSq === 0) return Math.sqrt(A * A + B * B) <= threshold;
+    
+    let param = dot / lenSq;
+    param = Math.max(0, Math.min(1, param));
+    
+    const xx = x1 + param * C;
+    const yy = y1 + param * D;
+    
+    const dx = px - xx;
+    const dy = py - yy;
+    
+    return Math.sqrt(dx * dx + dy * dy) <= threshold;
+  };
+
+  const isPointInText = (x: number, y: number, obj: DrawObject): boolean => {
+    if (!obj.text || !obj.fontSize) return false;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    
+    ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${obj.fontSize}px ${obj.fontFamily || 'Arial'}`;
+    const metrics = ctx.measureText(obj.text);
+    
+    return x >= obj.x && x <= obj.x + metrics.width &&
+           y >= obj.y - obj.fontSize && y <= obj.y;
+  };
+
+  const isPointInShape = (x: number, y: number, obj: DrawObject): boolean => {
+    const w = obj.width || 0;
+    const h = obj.height || 0;
+    
+    switch (obj.tool) {
+      case 'rectangle':
+      case 'triangle':
+        return x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h;
+        
+      case 'circle':
+        const centerX = obj.x + w / 2;
+        const centerY = obj.y + h / 2;
+        const radius = Math.min(w, h) / 2;
+        const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+        return distance <= radius;
+        
+      case 'arrow':
+      case 'line':
+        if (!obj.points || obj.points.length < 2) return false;
+        const p1 = obj.points[0];
+        const p2 = obj.points[obj.points.length - 1];
+        const threshold = (obj.lineWidth || 5) + 10;
+        return isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold);
+        
+      default:
+        return x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h;
+    }
   };
 
   const getHandleAtPoint = (x: number, y: number, obj: DrawObject): string | null => {
@@ -421,12 +527,12 @@ const WhiteboardPage: React.FC = () => {
     const centerX = bounds.x + bounds.width / 2;
     const rotateHandleY = bounds.y - 25;
     
-    // Check rotation handle
+    // Check rotation handle first (highest priority)
     const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
-    if (distToRotate < 10) return 'rotate';
+    if (distToRotate < 15) return 'rotate';
     
     // Check corner handles with larger hit area
-    const handleSize = 12;
+    const handleSize = 15;
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -478,7 +584,7 @@ const WhiteboardPage: React.FC = () => {
         return;
       }
       
-      // Start dragging the object
+      // Start dragging the object immediately - no need for hand tool
       setDragStart({ x, y });
       setIsDragging(true);
       setIsDrawing(true);
@@ -489,34 +595,32 @@ const WhiteboardPage: React.FC = () => {
       setShowObjectPanel(false);
     }
 
-    // If no object was clicked and we're not in select mode, proceed with drawing
-    if (tool !== 'select') {
-      if (tool === 'text') {
-        setTextPosition({ x, y });
-        setShowTextInput(true);
-        return;
-      }
-
-      setIsDrawing(true);
-      setSelectedObjects([]);
-      
-      const newObj: DrawObject = {
-        id: Date.now().toString(),
-        tool: tool === 'eraser' ? 'pen' : tool,
-        strokeColor: tool === 'eraser' ? '#ffffff' : strokeColor,
-        fillColor: tool === 'eraser' ? 'transparent' : fillColor,
-        lineWidth: tool === 'eraser' ? lineWidth * 3 : lineWidth,
-        opacity,
-        lineStyle,
-        points: ['brush', 'pen', 'marker', 'eraser', 'arrow', 'line'].includes(tool) ? [{ x, y }] : undefined,
-        x,
-        y,
-        width: 0,
-        height: 0
-      };
-
-      setCurrentObject(newObj);
+    // If no object was clicked, proceed with drawing
+    if (tool === 'text') {
+      setTextPosition({ x, y });
+      setShowTextInput(true);
+      return;
     }
+
+    setIsDrawing(true);
+    setSelectedObjects([]);
+    
+    const newObj: DrawObject = {
+      id: Date.now().toString(),
+      tool: tool === 'eraser' ? 'pen' : tool,
+      strokeColor: tool === 'eraser' ? '#ffffff' : strokeColor,
+      fillColor: tool === 'eraser' ? 'transparent' : fillColor,
+      lineWidth: tool === 'eraser' ? lineWidth * 3 : lineWidth,
+      opacity,
+      lineStyle,
+      points: ['brush', 'pen', 'marker', 'eraser', 'arrow', 'line'].includes(tool) ? [{ x, y }] : undefined,
+      x,
+      y,
+      width: 0,
+      height: 0
+    };
+
+    setCurrentObject(newObj);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -530,7 +634,7 @@ const WhiteboardPage: React.FC = () => {
     
     if (!isDrawing) return;
 
-    if (tool === 'select' && selectedObjects[0] && resizeHandle && resizeStart) {
+    if (selectedObjects[0] && resizeHandle && resizeStart) {
       const selected = selectedObjects[0];
       const bounds = getObjectBounds(selected);
       const centerX = bounds.x + bounds.width / 2;
@@ -571,7 +675,7 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
-    if (tool === 'select' && selectedObjects[0] && isDragging && !resizeHandle) {
+    if (selectedObjects[0] && isDragging && !resizeHandle) {
       const selected = selectedObjects[0];
       const deltaX = x - dragStart.x;
       const deltaY = y - dragStart.y;
