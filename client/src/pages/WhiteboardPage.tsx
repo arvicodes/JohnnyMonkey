@@ -734,26 +734,28 @@ const WhiteboardPage: React.FC = () => {
   return (
     <Box sx={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f5f5f5', position: 'relative' }}>
       {/* Save Button - Top Right */}
-      <Button
+      <IconButton
         onClick={handleOpenSaveDialog}
-        variant="contained"
         color="success"
         size="small"
-        startIcon={<SaveIcon />}
         sx={{
           position: 'absolute',
-          top: 8,
-          right: 8,
+          top: 4,
+          right: 4,
           zIndex: 1000,
-          minWidth: 'auto',
-          px: 1.5,
-          py: 0.5,
-          fontSize: '0.75rem',
-          boxShadow: 2
+          bgcolor: '#4caf50',
+          color: 'white',
+          '&:hover': {
+            bgcolor: '#45a049'
+          },
+          boxShadow: 1,
+          width: 32,
+          height: 32
         }}
+        title="Speichern"
       >
-        Speichern
-      </Button>
+        <SaveIcon fontSize="small" />
+      </IconButton>
 
       {/* Compact Toolbar */}
       <Paper sx={{ 
