@@ -24,7 +24,6 @@ import {
   MenuItem,
   FormControl,
   ToggleButton,
-  ToggleButtonGroup,
   Chip
 } from '@mui/material';
 import {
@@ -41,8 +40,7 @@ import {
   FormatBold as BoldIcon,
   FormatItalic as ItalicIcon,
   FormatUnderlined as UnderlineIcon,
-  GridOn as GridIcon,
-  Photo as PhotoIcon
+  GridOn as GridIcon
 } from '@mui/icons-material';
 
 type Tool = 'brush' | 'pen' | 'marker' | 'text' | 'line' | 'circle' | 'rectangle' | 'triangle' | 'arrow' | 'polygon' | 'eraser' | 'image' | 'select';
@@ -96,7 +94,6 @@ const WhiteboardPage: React.FC = () => {
   const [redoStack, setRedoStack] = useState<DrawObject[]>([]);
   const [currentObject, setCurrentObject] = useState<DrawObject | null>(null);
   const [selectedObjects, setSelectedObjects] = useState<DrawObject[]>([]);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number; rotation: number } | null>(null);
   const [showObjectPanel, setShowObjectPanel] = useState(false);
@@ -112,6 +109,7 @@ const WhiteboardPage: React.FC = () => {
   const [pathHistory, setPathHistory] = useState<string[]>([]);
   const [groupId, setGroupId] = useState<string>('');
   const [showColorPicker, setShowColorPicker] = useState<'stroke' | 'fill' | null>(null);
+  const [hoveredObject, setHoveredObject] = useState<DrawObject | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -196,16 +194,16 @@ const WhiteboardPage: React.FC = () => {
     ctx.strokeStyle = '#2196f3';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
-    ctx.strokeRect(bounds.x - 2, bounds.y - 2, bounds.width + 4, bounds.height + 4);
+    ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.setLineDash([]);
     
     // Corner handles
-    const handleSize = 8;
+    const handleSize = 10;
     const cornerHandles = [
-      { x: bounds.x - 2, y: bounds.y - 2, name: 'nw' },
-      { x: bounds.x + bounds.width + 2, y: bounds.y - 2, name: 'ne' },
-      { x: bounds.x + bounds.width + 2, y: bounds.y + bounds.height + 2, name: 'se' },
-      { x: bounds.x - 2, y: bounds.y + bounds.height + 2, name: 'sw' }
+      { x: bounds.x, y: bounds.y, name: 'nw' },
+      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
+      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' }
     ];
     
     ctx.fillStyle = '#2196f3';
@@ -221,13 +219,13 @@ const WhiteboardPage: React.FC = () => {
     const centerX = bounds.x + bounds.width / 2;
     const rotateHandleY = bounds.y - 25;
     ctx.beginPath();
-    ctx.arc(centerX, rotateHandleY, 6, 0, 2 * Math.PI);
+    ctx.arc(centerX, rotateHandleY, 8, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
     
     // Rotation line
     ctx.beginPath();
-    ctx.moveTo(centerX, bounds.y - 2);
+    ctx.moveTo(centerX, bounds.y);
     ctx.lineTo(centerX, rotateHandleY);
     ctx.stroke();
   };
@@ -379,7 +377,7 @@ const WhiteboardPage: React.FC = () => {
     let maxX = obj.x + (obj.width || 0);
     let maxY = obj.y + (obj.height || 0);
 
-    if (obj.points) {
+    if (obj.points && obj.points.length > 0) {
       obj.points.forEach(p => {
         minX = Math.min(minX, p.x);
         minY = Math.min(minY, p.y);
@@ -402,18 +400,20 @@ const WhiteboardPage: React.FC = () => {
       }
     }
 
+    // Add some padding for better selection
+    const padding = 5;
     return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY
+      x: minX - padding,
+      y: minY - padding,
+      width: maxX - minX + (padding * 2),
+      height: maxY - minY + (padding * 2)
     };
   };
 
   const isPointInObject = (x: number, y: number, obj: DrawObject): boolean => {
     const bounds = getObjectBounds(obj);
-    return x >= bounds.x - 5 && x <= bounds.x + bounds.width + 5 &&
-           y >= bounds.y - 5 && y <= bounds.y + bounds.height + 5;
+    return x >= bounds.x && x <= bounds.x + bounds.width &&
+           y >= bounds.y && y <= bounds.y + bounds.height;
   };
 
   const getHandleAtPoint = (x: number, y: number, obj: DrawObject): string | null => {
@@ -425,13 +425,13 @@ const WhiteboardPage: React.FC = () => {
     const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
     if (distToRotate < 10) return 'rotate';
     
-    // Check corner handles
-    const handleSize = 8;
+    // Check corner handles with larger hit area
+    const handleSize = 12;
     const cornerHandles = [
-      { x: bounds.x - 2, y: bounds.y - 2, name: 'nw' },
-      { x: bounds.x + bounds.width + 2, y: bounds.y - 2, name: 'ne' },
-      { x: bounds.x + bounds.width + 2, y: bounds.y + bounds.height + 2, name: 'se' },
-      { x: bounds.x - 2, y: bounds.y + bounds.height + 2, name: 'sw' }
+      { x: bounds.x, y: bounds.y, name: 'nw' },
+      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
+      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' }
     ];
     
     for (const handle of cornerHandles) {
@@ -456,81 +456,79 @@ const WhiteboardPage: React.FC = () => {
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
 
-    if (tool === 'select') {
-      const selected = selectedObjects[0];
-      if (selected) {
-        const handle = getHandleAtPoint(x, y, selected);
-        if (handle) {
-          setResizeHandle(handle);
-          const bounds = getObjectBounds(selected);
-          setResizeStart({
-            x, y,
-            width: bounds.width,
-            height: bounds.height,
-            rotation: selected.rotation || 0
-          });
-          setIsDrawing(true);
-          return;
-        }
-        
-        // Check if clicking on the object itself for dragging
-        if (isPointInObject(x, y, selected)) {
-          const bounds = getObjectBounds(selected);
-          setDragOffset({ x: x - bounds.x, y: y - bounds.y });
-          setDragStart({ x, y });
-          setIsDragging(true);
-          setIsDrawing(true);
-          return;
-        }
+    // Always check for object selection first (regardless of current tool)
+    const clickedObject = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
+    
+    if (clickedObject) {
+      // If clicking on an object, select it and check for handles
+      setSelectedObjects([clickedObject]);
+      setShowObjectPanel(true);
+      
+      const handle = getHandleAtPoint(x, y, clickedObject);
+      if (handle) {
+        setResizeHandle(handle);
+        const bounds = getObjectBounds(clickedObject);
+        setResizeStart({
+          x, y,
+          width: bounds.width,
+          height: bounds.height,
+          rotation: clickedObject.rotation || 0
+        });
+        setIsDrawing(true);
+        return;
       }
       
-      // Look for any object at this point
-      const clickedObject = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
-      if (clickedObject) {
-        setSelectedObjects([clickedObject]);
-        setShowObjectPanel(true);
-        const bounds = getObjectBounds(clickedObject);
-        setDragOffset({ x: x - bounds.x, y: y - bounds.y });
-        setDragStart({ x, y });
-        setIsDragging(true);
-        setIsDrawing(true);
-      } else {
-        setSelectedObjects([]);
-        setShowObjectPanel(false);
+      // Start dragging the object
+      setDragStart({ x, y });
+      setIsDragging(true);
+      setIsDrawing(true);
+      return;
+    } else {
+      // Clicked on empty space - clear selection
+      setSelectedObjects([]);
+      setShowObjectPanel(false);
+    }
+
+    // If no object was clicked and we're not in select mode, proceed with drawing
+    if (tool !== 'select') {
+      if (tool === 'text') {
+        setTextPosition({ x, y });
+        setShowTextInput(true);
+        return;
       }
-      return;
+
+      setIsDrawing(true);
+      setSelectedObjects([]);
+      
+      const newObj: DrawObject = {
+        id: Date.now().toString(),
+        tool: tool === 'eraser' ? 'pen' : tool,
+        strokeColor: tool === 'eraser' ? '#ffffff' : strokeColor,
+        fillColor: tool === 'eraser' ? 'transparent' : fillColor,
+        lineWidth: tool === 'eraser' ? lineWidth * 3 : lineWidth,
+        opacity,
+        lineStyle,
+        points: ['brush', 'pen', 'marker', 'eraser', 'arrow', 'line'].includes(tool) ? [{ x, y }] : undefined,
+        x,
+        y,
+        width: 0,
+        height: 0
+      };
+
+      setCurrentObject(newObj);
     }
-
-    if (tool === 'text') {
-      setTextPosition({ x, y });
-      setShowTextInput(true);
-      return;
-    }
-
-    setIsDrawing(true);
-    setSelectedObjects([]);
-    
-    const newObj: DrawObject = {
-      id: Date.now().toString(),
-      tool: tool === 'eraser' ? 'pen' : tool,
-      strokeColor: tool === 'eraser' ? '#ffffff' : strokeColor,
-      fillColor: tool === 'eraser' ? 'transparent' : fillColor,
-      lineWidth: tool === 'eraser' ? lineWidth * 3 : lineWidth,
-      opacity,
-      lineStyle,
-      points: ['brush', 'pen', 'marker', 'eraser', 'arrow', 'line'].includes(tool) ? [{ x, y }] : undefined,
-      x,
-      y,
-      width: 0,
-      height: 0
-    };
-
-    setCurrentObject(newObj);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
     const { x, y } = getCanvasCoordinates(e);
+    
+    // Check for hovered objects when not drawing
+    if (!isDrawing) {
+      const hovered = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
+      setHoveredObject(hovered || null);
+    }
+    
+    if (!isDrawing) return;
 
     if (tool === 'select' && selectedObjects[0] && resizeHandle && resizeStart) {
       const selected = selectedObjects[0];
@@ -1161,9 +1159,12 @@ const WhiteboardPage: React.FC = () => {
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           style={{
-            cursor: tool === 'eraser' ? 'crosshair' : 
+            cursor: isDragging ? 'grabbing' :
+                    resizeHandle ? 'nw-resize' :
+                    hoveredObject ? 'grab' :
+                    tool === 'eraser' ? 'crosshair' : 
                     tool === 'text' ? 'text' : 
-                    tool === 'select' ? 'move' : 'crosshair',
+                    'default',
             backgroundColor: '#ffffff'
           }}
         />
