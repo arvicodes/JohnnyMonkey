@@ -95,6 +95,7 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   MoreVert as MoreVertIcon,
+  Brush as BrushIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Close as CloseIcon,
@@ -4179,6 +4180,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             )}
                           </IconButton>
                           <IconButton
+                            aria-label="Whiteboard erstellen"
+                            onClick={e => { e.stopPropagation(); handleOpenWhiteboard(group.id); }}
+                            size="small"
+                            sx={{ width: 24, height: 24, p: 0.25, color: colors.primary }}
+                            title="Whiteboard erstellen"
+                          >
+                            <BrushIcon />
+                          </IconButton>
+                          <IconButton
                             aria-label="Mehr"
                             onClick={e => { e.stopPropagation(); handleMenuOpen(e, group.id); }}
                             size="small"
@@ -5904,9 +5914,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         </MenuItem>
         <MenuItem onClick={() => handleFolderAssignmentOpen(menuGroupId!)}>
           <FolderIcon fontSize="small" sx={{ mr: 1 }} /> Ordner zuordnen
-        </MenuItem>
-        <MenuItem onClick={() => { handleOpenWhiteboard(menuGroupId!); handleMenuClose(); }}>
-          <EditIcon fontSize="small" sx={{ mr: 1 }} /> ✏️ Whiteboard erstellen
         </MenuItem>
         <MenuItem onClick={() => handleEditDialogOpen(menuGroupId!, groups.find(g => g.id === menuGroupId!)?.name || '')}>
           <EditIcon fontSize="small" sx={{ mr: 1 }} /> Bearbeiten
