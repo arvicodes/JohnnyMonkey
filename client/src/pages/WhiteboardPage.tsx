@@ -99,6 +99,9 @@ const WhiteboardPage: React.FC = () => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number; rotation: number } | null>(null);
+  const [showObjectPanel, setShowObjectPanel] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [textInput, setTextInput] = useState('');
   const [showTextInput, setShowTextInput] = useState(false);
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
@@ -188,53 +191,45 @@ const WhiteboardPage: React.FC = () => {
 
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, obj: DrawObject) => {
     const bounds = getObjectBounds(obj);
-    const rotation = obj.rotation || 0;
     
-    ctx.save();
-    const centerX = bounds.x + bounds.width / 2;
-    const centerY = bounds.y + bounds.height / 2;
-    ctx.translate(centerX, centerY);
-    ctx.rotate((rotation * Math.PI) / 180);
-    ctx.translate(-centerX, -centerY);
-    
+    // Selection border
     ctx.strokeStyle = '#2196f3';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
-    ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.strokeRect(bounds.x - 2, bounds.y - 2, bounds.width + 4, bounds.height + 4);
     ctx.setLineDash([]);
     
-    const handleSize = 10;
-    const handles = [
-      { x: bounds.x, y: bounds.y, name: 'nw' },
-      { x: bounds.x + bounds.width / 2, y: bounds.y, name: 'n' },
-      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, name: 'e' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
-      { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, name: 's' },
-      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' },
-      { x: bounds.x, y: bounds.y + bounds.height / 2, name: 'w' }
+    // Corner handles
+    const handleSize = 8;
+    const cornerHandles = [
+      { x: bounds.x - 2, y: bounds.y - 2, name: 'nw' },
+      { x: bounds.x + bounds.width + 2, y: bounds.y - 2, name: 'ne' },
+      { x: bounds.x + bounds.width + 2, y: bounds.y + bounds.height + 2, name: 'se' },
+      { x: bounds.x - 2, y: bounds.y + bounds.height + 2, name: 'sw' }
     ];
     
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#2196f3';
+    ctx.fillStyle = '#2196f3';
+    ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     
-    handles.forEach(handle => {
+    cornerHandles.forEach(handle => {
       ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
       ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
     });
     
-    const rotateHandleY = bounds.y - 35;
+    // Rotation handle
+    const centerX = bounds.x + bounds.width / 2;
+    const rotateHandleY = bounds.y - 25;
     ctx.beginPath();
-    ctx.arc(centerX, rotateHandleY, 8, 0, 2 * Math.PI);
+    ctx.arc(centerX, rotateHandleY, 6, 0, 2 * Math.PI);
     ctx.fill();
     ctx.stroke();
+    
+    // Rotation line
     ctx.beginPath();
-    ctx.moveTo(centerX, bounds.y);
+    ctx.moveTo(centerX, bounds.y - 2);
     ctx.lineTo(centerX, rotateHandleY);
     ctx.stroke();
-    
-    ctx.restore();
   };
 
   const applyLineStyle = (ctx: CanvasRenderingContext2D, style: 'solid' | 'dashed' | 'dotted') => {
@@ -423,25 +418,23 @@ const WhiteboardPage: React.FC = () => {
 
   const getHandleAtPoint = (x: number, y: number, obj: DrawObject): string | null => {
     const bounds = getObjectBounds(obj);
-    const rotateHandleY = bounds.y - 35;
     const centerX = bounds.x + bounds.width / 2;
+    const rotateHandleY = bounds.y - 25;
     
+    // Check rotation handle
     const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
     if (distToRotate < 10) return 'rotate';
     
-    const handleSize = 10;
-    const handles = [
-      { x: bounds.x, y: bounds.y, name: 'nw' },
-      { x: bounds.x + bounds.width / 2, y: bounds.y, name: 'n' },
-      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, name: 'e' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
-      { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, name: 's' },
-      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' },
-      { x: bounds.x, y: bounds.y + bounds.height / 2, name: 'w' }
+    // Check corner handles
+    const handleSize = 8;
+    const cornerHandles = [
+      { x: bounds.x - 2, y: bounds.y - 2, name: 'nw' },
+      { x: bounds.x + bounds.width + 2, y: bounds.y - 2, name: 'ne' },
+      { x: bounds.x + bounds.width + 2, y: bounds.y + bounds.height + 2, name: 'se' },
+      { x: bounds.x - 2, y: bounds.y + bounds.height + 2, name: 'sw' }
     ];
     
-    for (const handle of handles) {
+    for (const handle of cornerHandles) {
       if (Math.abs(x - handle.x) < handleSize && Math.abs(y - handle.y) < handleSize) {
         return handle.name;
       }
@@ -479,16 +472,31 @@ const WhiteboardPage: React.FC = () => {
           setIsDrawing(true);
           return;
         }
+        
+        // Check if clicking on the object itself for dragging
+        if (isPointInObject(x, y, selected)) {
+          const bounds = getObjectBounds(selected);
+          setDragOffset({ x: x - bounds.x, y: y - bounds.y });
+          setDragStart({ x, y });
+          setIsDragging(true);
+          setIsDrawing(true);
+          return;
+        }
       }
       
+      // Look for any object at this point
       const clickedObject = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
       if (clickedObject) {
         setSelectedObjects([clickedObject]);
+        setShowObjectPanel(true);
         const bounds = getObjectBounds(clickedObject);
         setDragOffset({ x: x - bounds.x, y: y - bounds.y });
+        setDragStart({ x, y });
+        setIsDragging(true);
         setIsDrawing(true);
       } else {
         setSelectedObjects([]);
+        setShowObjectPanel(false);
       }
       return;
     }
@@ -565,11 +573,10 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
-    if (tool === 'select' && selectedObjects[0] && !resizeHandle) {
+    if (tool === 'select' && selectedObjects[0] && isDragging && !resizeHandle) {
       const selected = selectedObjects[0];
-      const bounds = getObjectBounds(selected);
-      const deltaX = x - dragOffset.x - bounds.x;
-      const deltaY = y - dragOffset.y - bounds.y;
+      const deltaX = x - dragStart.x;
+      const deltaY = y - dragStart.y;
 
       const updatedObject = { ...selected };
       updatedObject.x += deltaX;
@@ -584,6 +591,7 @@ const WhiteboardPage: React.FC = () => {
 
       setObjects(objects.map(obj => obj.id === selected.id ? updatedObject : obj));
       setSelectedObjects([updatedObject]);
+      setDragStart({ x, y });
       return;
     }
 
@@ -608,6 +616,7 @@ const WhiteboardPage: React.FC = () => {
   const handleMouseUp = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
+    setIsDragging(false);
     setResizeHandle(null);
     setResizeStart(null);
     
@@ -729,6 +738,15 @@ const WhiteboardPage: React.FC = () => {
     const selectedIds = selectedObjects.map(o => o.id);
     setObjects(objects.filter(obj => !selectedIds.includes(obj.id)));
     setSelectedObjects([]);
+    setShowObjectPanel(false);
+  };
+
+  const updateSelectedObject = (updates: Partial<DrawObject>) => {
+    if (selectedObjects.length === 0) return;
+    const selected = selectedObjects[0];
+    const updatedObject = { ...selected, ...updates };
+    setObjects(objects.map(obj => obj.id === selected.id ? updatedObject : obj));
+    setSelectedObjects([updatedObject]);
   };
 
   const loadDirectory = async (path: string) => {
@@ -1198,8 +1216,17 @@ const WhiteboardPage: React.FC = () => {
               <Box
                 key={c}
                 onClick={() => {
-                  if (showColorPicker === 'stroke') setStrokeColor(c);
-                  else setFillColor(c);
+                  if (showColorPicker === 'stroke') {
+                    setStrokeColor(c);
+                    if (selectedObjects[0]) {
+                      updateSelectedObject({ strokeColor: c });
+                    }
+                  } else {
+                    setFillColor(c);
+                    if (selectedObjects[0]) {
+                      updateSelectedObject({ fillColor: c });
+                    }
+                  }
                   setShowColorPicker(null);
                 }}
                 sx={{
@@ -1219,8 +1246,17 @@ const WhiteboardPage: React.FC = () => {
             type="color"
             value={showColorPicker === 'stroke' ? strokeColor : (fillColor === 'transparent' ? '#ffffff' : fillColor)}
             onChange={(e) => {
-              if (showColorPicker === 'stroke') setStrokeColor(e.target.value);
-              else setFillColor(e.target.value);
+              if (showColorPicker === 'stroke') {
+                setStrokeColor(e.target.value);
+                if (selectedObjects[0]) {
+                  updateSelectedObject({ strokeColor: e.target.value });
+                }
+              } else {
+                setFillColor(e.target.value);
+                if (selectedObjects[0]) {
+                  updateSelectedObject({ fillColor: e.target.value });
+                }
+              }
             }}
             size="small"
             fullWidth
@@ -1341,6 +1377,284 @@ const WhiteboardPage: React.FC = () => {
         id="image-upload"
       />
 
+      {/* Object Properties Panel */}
+      {showObjectPanel && selectedObjects[0] && (
+        <Paper
+          sx={{
+            position: 'fixed',
+            top: 120,
+            right: 20,
+            zIndex: 1500,
+            p: 2,
+            minWidth: 280,
+            maxWidth: 320,
+            boxShadow: 5,
+            borderRadius: 2,
+            bgcolor: 'white'
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              Objekt-Eigenschaften
+            </Typography>
+            <IconButton size="small" onClick={() => setShowObjectPanel(false)}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {selectedObjects[0] && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Object Type */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666' }}>
+                  Typ: {selectedObjects[0].tool}
+                </Typography>
+              </Box>
+
+              {/* Colors */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
+                  Farben
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="caption" sx={{ fontSize: '0.6rem' }}>Strich</Typography>
+                    <Box
+                      onClick={() => {
+                        setShowColorPicker('stroke');
+                        setStrokeColor(selectedObjects[0].strokeColor);
+                      }}
+                      sx={{
+                        width: 30,
+                        height: 30,
+                        bgcolor: selectedObjects[0].strokeColor,
+                        border: '2px solid #333',
+                        borderRadius: 1,
+                        cursor: 'pointer',
+                        boxShadow: 1,
+                        '&:hover': { transform: 'scale(1.05)' }
+                      }}
+                    />
+                  </Box>
+                  {['rectangle', 'circle', 'triangle'].includes(selectedObjects[0].tool) && (
+                    <Box>
+                      <Typography variant="caption" sx={{ fontSize: '0.6rem' }}>Füllung</Typography>
+                      <Box
+                        onClick={() => {
+                          setShowColorPicker('fill');
+                          setFillColor(selectedObjects[0].fillColor || 'transparent');
+                        }}
+                        sx={{
+                          width: 30,
+                          height: 30,
+                          bgcolor: selectedObjects[0].fillColor === 'transparent' ? 'white' : selectedObjects[0].fillColor,
+                          border: '2px solid #333',
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          boxShadow: 1,
+                          backgroundImage: selectedObjects[0].fillColor === 'transparent' ? 
+                            'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
+                          backgroundSize: '6px 6px',
+                          backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px',
+                          '&:hover': { transform: 'scale(1.05)' }
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Line Properties */}
+              {['brush', 'pen', 'marker', 'line', 'arrow', 'rectangle', 'circle', 'triangle'].includes(selectedObjects[0].tool) && (
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
+                    Linie
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.6rem', minWidth: 40 }}>
+                      Dicke
+                    </Typography>
+                    <Slider
+                      value={selectedObjects[0].lineWidth}
+                      onChange={(_, v) => updateSelectedObject({ lineWidth: v as number })}
+                      min={1}
+                      max={30}
+                      size="small"
+                      sx={{ flexGrow: 1 }}
+                    />
+                    <Typography variant="caption" sx={{ fontSize: '0.6rem', minWidth: 20 }}>
+                      {selectedObjects[0].lineWidth}
+                    </Typography>
+                  </Box>
+                  
+                  <FormControl size="small" sx={{ mt: 1, minWidth: '100%' }}>
+                    <Select
+                      value={selectedObjects[0].lineStyle}
+                      onChange={(e) => updateSelectedObject({ lineStyle: e.target.value as any })}
+                      sx={{ fontSize: '0.7rem', height: 28 }}
+                    >
+                      <MenuItem value="solid">━━━ Durchgezogen</MenuItem>
+                      <MenuItem value="dashed">- - - Gestrichelt</MenuItem>
+                      <MenuItem value="dotted">· · · Gepunktet</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+              )}
+
+              {/* Opacity */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
+                  Transparenz
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.6rem', minWidth: 40 }}>
+                    {Math.round(selectedObjects[0].opacity * 100)}%
+                  </Typography>
+                  <Slider
+                    value={selectedObjects[0].opacity}
+                    onChange={(_, v) => updateSelectedObject({ opacity: v as number })}
+                    min={0.1}
+                    max={1}
+                    step={0.1}
+                    size="small"
+                    sx={{ flexGrow: 1 }}
+                  />
+                </Box>
+              </Box>
+
+              {/* Text Properties */}
+              {selectedObjects[0].tool === 'text' && (
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
+                    Text
+                  </Typography>
+                  
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    value={selectedObjects[0].text || ''}
+                    onChange={(e) => updateSelectedObject({ text: e.target.value })}
+                    size="small"
+                    sx={{ mb: 1 }}
+                  />
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.6rem', minWidth: 40 }}>
+                      Größe
+                    </Typography>
+                    <Slider
+                      value={selectedObjects[0].fontSize || 24}
+                      onChange={(_, v) => updateSelectedObject({ fontSize: v as number })}
+                      min={12}
+                      max={96}
+                      size="small"
+                      sx={{ flexGrow: 1 }}
+                    />
+                    <Typography variant="caption" sx={{ fontSize: '0.6rem', minWidth: 20 }}>
+                      {selectedObjects[0].fontSize || 24}
+                    </Typography>
+                  </Box>
+
+                  <FormControl size="small" sx={{ mb: 1, minWidth: '100%' }}>
+                    <Select
+                      value={selectedObjects[0].fontFamily || 'Arial'}
+                      onChange={(e) => updateSelectedObject({ fontFamily: e.target.value })}
+                      sx={{ fontSize: '0.7rem', height: 28 }}
+                    >
+                      <MenuItem value="Arial">Arial</MenuItem>
+                      <MenuItem value="Times New Roman">Times</MenuItem>
+                      <MenuItem value="Courier New">Courier</MenuItem>
+                      <MenuItem value="Comic Sans MS">Comic Sans</MenuItem>
+                      <MenuItem value="Georgia">Georgia</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <ToggleButton
+                      value="bold"
+                      selected={selectedObjects[0].fontWeight === 'bold'}
+                      onChange={() => updateSelectedObject({ 
+                        fontWeight: selectedObjects[0].fontWeight === 'bold' ? 'normal' : 'bold' 
+                      })}
+                      size="small"
+                      sx={{ width: 32, height: 28 }}
+                    >
+                      <BoldIcon fontSize="small" />
+                    </ToggleButton>
+                    <ToggleButton
+                      value="italic"
+                      selected={selectedObjects[0].fontStyle === 'italic'}
+                      onChange={() => updateSelectedObject({ 
+                        fontStyle: selectedObjects[0].fontStyle === 'italic' ? 'normal' : 'italic' 
+                      })}
+                      size="small"
+                      sx={{ width: 32, height: 28 }}
+                    >
+                      <ItalicIcon fontSize="small" />
+                    </ToggleButton>
+                    <ToggleButton
+                      value="underline"
+                      selected={selectedObjects[0].textDecoration === 'underline'}
+                      onChange={() => updateSelectedObject({ 
+                        textDecoration: selectedObjects[0].textDecoration === 'underline' ? 'none' : 'underline' 
+                      })}
+                      size="small"
+                      sx={{ width: 32, height: 28 }}
+                    >
+                      <UnderlineIcon fontSize="small" />
+                    </ToggleButton>
+                  </Box>
+                </Box>
+              )}
+
+              {/* Rotation */}
+              {selectedObjects[0].tool !== 'text' && (
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
+                    Rotation
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.6rem', minWidth: 40 }}>
+                      {Math.round(selectedObjects[0].rotation || 0)}°
+                    </Typography>
+                    <Slider
+                      value={selectedObjects[0].rotation || 0}
+                      onChange={(_, v) => updateSelectedObject({ rotation: v as number })}
+                      min={0}
+                      max={360}
+                      size="small"
+                      sx={{ flexGrow: 1 }}
+                    />
+                  </Box>
+                </Box>
+              )}
+
+              {/* Actions */}
+              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleDeleteSelected}
+                  color="error"
+                  sx={{ flexGrow: 1 }}
+                >
+                  Löschen
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleDuplicate}
+                  sx={{ flexGrow: 1 }}
+                >
+                  Kopieren
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Paper>
+      )}
+
       {/* Status Bar */}
       <Box sx={{ 
         display: 'flex', 
@@ -1358,7 +1672,7 @@ const WhiteboardPage: React.FC = () => {
         )}
         <Box sx={{ flexGrow: 1 }} />
         <Typography variant="caption" sx={{ color: '#666' }}>
-          Tipp: Mit ✋ Objekte verschieben, vergrößern und rotieren
+          Tipp: Mit ✋ Objekte auswählen und im Panel rechts bearbeiten
         </Typography>
       </Box>
     </Box>
