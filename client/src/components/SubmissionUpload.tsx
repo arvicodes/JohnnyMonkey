@@ -17,8 +17,10 @@ import {
   CheckCircle,
   Close as CloseIcon,
   Visibility as VisibilityIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  CameraAlt as CameraIcon
 } from '@mui/icons-material';
+import ImageEditor from './ImageEditor';
 
 interface SubmissionUploadProps {
   fileName: string;
@@ -43,6 +45,11 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     loadAssignmentAndSubmission();
@@ -88,8 +95,23 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-      setError(null);
+      const file = e.target.files[0];
+      
+      // Wenn es ein Bild ist, zeige den Editor
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setCapturedImage(event.target.result as string);
+            setShowImageEditor(true);
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // Andere Dateitypen direkt auswählen
+        setSelectedFile(file);
+        setError(null);
+      }
     }
   };
 
@@ -190,6 +212,77 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
       alert('Fehler beim Löschen der Abgabe');
     }
   };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment', // Rückkamera bevorzugen
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        } 
+      });
+      setCameraStream(stream);
+      setShowCamera(true);
+      
+      // Warte kurz und starte dann den Video-Stream
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Fehler beim Zugriff auf Kamera:', err);
+      setError('Kamera-Zugriff verweigert. Bitte erlaube den Kamera-Zugriff in deinen Browser-Einstellungen.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+      ctx.drawImage(video, 0, 0);
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      setCapturedImage(imageDataUrl);
+      setShowImageEditor(true);
+      stopCamera();
+    }
+  };
+
+  const handleSaveEditedImage = (blob: Blob, filename: string) => {
+    const file = new File([blob], filename, { type: 'image/jpeg' });
+    setSelectedFile(file);
+    setShowImageEditor(false);
+    setCapturedImage(null);
+  };
+
+  const handleCancelImageEditor = () => {
+    setShowImageEditor(false);
+    setCapturedImage(null);
+  };
+
+  // Cleanup: Stoppe Kamera beim Schließen
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -414,32 +507,124 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
                   <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5, fontSize: '0.7rem' }}>
                     Word, Excel, PowerPoint, PDF, Bilder (max. 50 MB)
                   </Typography>
-                  <input
-                    type="file"
-                    onChange={handleFileSelect}
-                    accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp"
-                    style={{ display: 'none' }}
-                    id="file-upload-input"
-                    disabled={uploading}
-                  />
-                  <label htmlFor="file-upload-input">
+                  
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mb: 1 }}>
+                    <input
+                      type="file"
+                      onChange={handleFileSelect}
+                      accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf,.jpg,.jpeg,.png,.gif,.webp,.bmp"
+                      style={{ display: 'none' }}
+                      id="file-upload-input"
+                      disabled={uploading}
+                    />
+                    <label htmlFor="file-upload-input">
+                      <Button
+                        variant="contained"
+                        component="span"
+                        startIcon={<FileIcon sx={{ fontSize: 16 }} />}
+                        disabled={uploading}
+                        size="small"
+                        sx={{ fontSize: '0.75rem' }}
+                      >
+                        Datei auswählen
+                      </Button>
+                    </label>
+                    
                     <Button
                       variant="contained"
-                      component="span"
-                      startIcon={<FileIcon sx={{ fontSize: 16 }} />}
+                      color="secondary"
+                      startIcon={<CameraIcon sx={{ fontSize: 16 }} />}
+                      onClick={startCamera}
                       disabled={uploading}
                       size="small"
                       sx={{ fontSize: '0.75rem' }}
                     >
-                      Datei auswählen
+                      📸 Foto aufnehmen
                     </Button>
-                  </label>
+                  </Box>
                 </Box>
               )}
             </Paper>
           </>
         )}
       </DialogContent>
+
+      {/* Kamera-Modal */}
+      {showCamera && (
+        <Dialog
+          open={true}
+          onClose={stopCamera}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: 2 }
+          }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: '#1976d2',
+            color: 'white',
+            py: 1.5,
+            px: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 600 }}>
+              📸 Foto aufnehmen
+            </Typography>
+            <IconButton 
+              onClick={stopCamera} 
+              sx={{ 
+                color: 'white',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+              }}
+              size="small"
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 0, bgcolor: '#000' }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block'
+              }}
+            />
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 2, justifyContent: 'center', bgcolor: '#f5f5f5' }}>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={capturePhoto}
+              size="large"
+              startIcon={<CameraIcon />}
+              sx={{ 
+                fontSize: '1rem',
+                py: 1.5,
+                px: 4,
+                borderRadius: 10
+              }}
+            >
+              📸 Foto aufnehmen
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Bildbearbeitungs-Modal */}
+      {showImageEditor && capturedImage && (
+        <ImageEditor
+          imageData={capturedImage}
+          onSave={handleSaveEditedImage}
+          onCancel={handleCancelImageEditor}
+        />
+      )}
     </Dialog>
   );
 };
