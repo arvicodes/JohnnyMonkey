@@ -281,7 +281,6 @@ import { SubmissionStatistics } from './StudentDashboard';
 import { RichTextEditor } from './ui/rich-text-editor';
 import { FlashcardCreationModal } from './FlashcardCreationModal';
 import SubmissionViewer from './SubmissionViewer';
-import WhiteboardEditor from './WhiteboardEditor';
 
 interface TeacherDashboardProps {
   userId: string;
@@ -583,9 +582,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
 
-  // Whiteboard States
-  const [showWhiteboardEditor, setShowWhiteboardEditor] = useState(false);
-  const [whiteboardGroupId, setWhiteboardGroupId] = useState<string | null>(null);
 
   // Spielerische Farbpalette
   const colors = {
@@ -1790,50 +1786,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Whiteboard Functions
   const handleOpenWhiteboard = (groupId: string) => {
-    setWhiteboardGroupId(groupId);
-    setShowWhiteboardEditor(true);
-  };
-
-  const handleSaveWhiteboard = async (imageBlob: Blob, filename: string, targetPath: string) => {
-    try {
-      // Erstelle FormData mit dem Whiteboard-Bild und Zielverzeichnis
-      const formData = new FormData();
-      formData.append('file', imageBlob, filename);
-      formData.append('targetPath', targetPath);
-      
-      console.log('Saving whiteboard:', { filename, targetPath });
-      
-      // Verwende die File-System API zum Speichern
-      const response = await fetch('/api/file-system-paths/save-file', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        showSnackbar(`Whiteboard als ${filename} gespeichert!`, 'success');
-        setShowWhiteboardEditor(false);
-        setWhiteboardGroupId(null);
-        
-        // Lade Ordnerinhalte neu, falls der Ordner bereits angezeigt wird
-        if (whiteboardGroupId) {
-          const assignedFoldersForGroup = Object.entries(assignedFolderContents)
-            .filter(([key]) => key.startsWith(`${whiteboardGroupId}:`))
-            .map(([key]) => key.split(':')[1]);
-          
-          assignedFoldersForGroup.forEach(folderPath => {
-            if (targetPath.includes(folderPath) || folderPath.includes(targetPath)) {
-              fetchAssignedFolderContent(whiteboardGroupId, folderPath);
-            }
-          });
-        }
-      } else {
-        const error = await response.json();
-        showSnackbar(error.error || 'Fehler beim Speichern', 'error');
-      }
-    } catch (error) {
-      console.error('Error saving whiteboard:', error);
-      showSnackbar('Fehler beim Speichern des Whiteboards', 'error');
-    }
+    // Öffne Whiteboard in neuem Tab
+    window.open(`/whiteboard?groupId=${groupId}`, '_blank');
   };
 
   // File Share Functions
@@ -7243,39 +7197,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         teacherId={userId}
         onSuccess={handleFlashcardSuccess}
       />
-
-      {/* Whiteboard Editor */}
-      {showWhiteboardEditor && whiteboardGroupId && (
-        <WhiteboardEditor
-          onClose={() => {
-            setShowWhiteboardEditor(false);
-            setWhiteboardGroupId(null);
-          }}
-          onSave={handleSaveWhiteboard}
-          availablePaths={(() => {
-            // Erstelle Liste der verfügbaren Pfade für diese Gruppe
-            const group = groups.find(g => g.id === whiteboardGroupId);
-            if (!group) return [];
-            
-            const paths: Array<{ id: string; path: string; name: string }> = [];
-            
-            // Füge zugewiesene Ordner hinzu
-            Object.entries(assignedFolders).forEach(([groupId, folders]) => {
-              if (groupId === whiteboardGroupId) {
-                folders.forEach((folderPath: string) => {
-                  paths.push({
-                    id: folderPath,
-                    path: folderPath,
-                    name: folderPath.split('/').pop() || folderPath
-                  });
-                });
-              }
-            });
-            
-            return paths;
-          })()}
-        />
-      )}
 
     </Box>
   );
