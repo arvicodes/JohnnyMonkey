@@ -2,12 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   IconButton,
-  ButtonGroup,
   Typography,
   TextField,
   Slider,
-  ToggleButton,
-  ToggleButtonGroup,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -24,18 +21,11 @@ import {
 } from '@mui/material';
 import {
   Close as CloseIcon,
-  Brush as BrushIcon,
-  TextFields as TextIcon,
-  Circle as CircleIcon,
-  Rectangle as RectangleIcon,
   Delete as DeleteIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
   Save as SaveIcon,
-  Image as ImageIcon,
-  ArrowForward as ArrowIcon,
   Folder as FolderIcon,
-  InsertDriveFile as FileIcon,
   Home as HomeIcon
 } from '@mui/icons-material';
 
@@ -757,93 +747,173 @@ const WhiteboardPage: React.FC = () => {
         <SaveIcon fontSize="small" />
       </IconButton>
 
-      {/* Compact Toolbar */}
-      <Paper sx={{ 
+      {/* Modern Toolbar */}
+      <Box sx={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: 1, 
-        p: 0.5, 
-        borderRadius: 0,
-        boxShadow: 1,
-        flexWrap: 'wrap'
+        gap: 2,
+        px: 2,
+        py: 1,
+        bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        borderBottom: '1px solid rgba(255,255,255,0.1)'
       }}>
-        {/* Tools */}
-        <ToggleButtonGroup
-          value={tool}
-          exclusive
-          onChange={(_, newTool) => newTool && setTool(newTool)}
-          size="small"
-        >
-          <ToggleButton value="select" title="Auswählen">✋</ToggleButton>
-          <ToggleButton value="brush" title="Stift"><BrushIcon fontSize="small" /></ToggleButton>
-          <ToggleButton value="text" title="Text"><TextIcon fontSize="small" /></ToggleButton>
-          <ToggleButton value="circle" title="Kreis"><CircleIcon fontSize="small" /></ToggleButton>
-          <ToggleButton value="rectangle" title="Rechteck"><RectangleIcon fontSize="small" /></ToggleButton>
-          <ToggleButton value="arrow" title="Pfeil"><ArrowIcon fontSize="small" /></ToggleButton>
-          <ToggleButton value="eraser" title="Radierer">🧹</ToggleButton>
-        </ToggleButtonGroup>
+        {/* Werkzeuge */}
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          {[
+            { value: 'select', icon: '✋', label: 'Auswahl' },
+            { value: 'brush', icon: '✏️', label: 'Zeichnen' },
+            { value: 'text', icon: '📝', label: 'Text' },
+            { value: 'rectangle', icon: '▭', label: 'Rechteck' },
+            { value: 'circle', icon: '⭕', label: 'Kreis' },
+            { value: 'arrow', icon: '➡️', label: 'Pfeil' },
+            { value: 'image', icon: '🖼️', label: 'Bild' },
+            { value: 'eraser', icon: '🧹', label: 'Radieren' }
+          ].map(t => (
+            <Box
+              key={t.value}
+              onClick={() => {
+                if (t.value === 'image') {
+                  document.getElementById('image-upload')?.click();
+                } else {
+                  setTool(t.value as Tool);
+                }
+              }}
+              sx={{
+                px: 1.5,
+                py: 0.8,
+                borderRadius: 1,
+                cursor: 'pointer',
+                bgcolor: tool === t.value ? 'rgba(255,255,255,0.25)' : 'transparent',
+                color: 'white',
+                fontSize: '1.2rem',
+                transition: 'all 0.2s',
+                border: tool === t.value ? '2px solid rgba(255,255,255,0.5)' : '2px solid transparent',
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-2px)'
+                }
+              }}
+              title={t.label}
+            >
+              {t.icon}
+            </Box>
+          ))}
+        </Box>
 
-        {/* Colors */}
-        <Box sx={{ display: 'flex', gap: 0.3 }}>
+        <Box sx={{ width: 1, height: 30, bgcolor: 'rgba(255,255,255,0.2)' }} />
+
+        {/* Farben */}
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
           {colors.map(c => (
             <Box
               key={c}
               onClick={() => setColor(c)}
               sx={{
-                width: 20,
-                height: 20,
+                width: 28,
+                height: 28,
                 bgcolor: c,
-                border: color === c ? '2px solid #1976d2' : '1px solid #999',
+                border: color === c ? '3px solid white' : '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '50%',
                 cursor: 'pointer',
-                '&:hover': { transform: 'scale(1.1)' }
+                transition: 'all 0.2s',
+                '&:hover': {
+                  transform: 'scale(1.15)',
+                  boxShadow: '0 3px 10px rgba(0,0,0,0.3)'
+                }
               }}
             />
           ))}
         </Box>
 
-        {/* Line Width */}
-        <Box sx={{ width: 80, mx: 1 }}>
+        <Box sx={{ width: 1, height: 30, bgcolor: 'rgba(255,255,255,0.2)' }} />
+
+        {/* Stärke */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 140 }}>
+          <Typography sx={{ fontSize: '0.75rem', color: 'white', fontWeight: 600, minWidth: 50 }}>
+            {tool === 'text' ? `Größe: ${fontSize}` : `Dicke: ${lineWidth}`}
+          </Typography>
           <Slider
-            value={lineWidth}
-            onChange={(_, v) => setLineWidth(v as number)}
-            min={1}
-            max={20}
+            value={tool === 'text' ? fontSize : lineWidth}
+            onChange={(_, v) => tool === 'text' ? setFontSize(v as number) : setLineWidth(v as number)}
+            min={tool === 'text' ? 12 : 1}
+            max={tool === 'text' ? 72 : 20}
             size="small"
+            sx={{
+              color: 'white',
+              '& .MuiSlider-thumb': {
+                bgcolor: 'white'
+              },
+              '& .MuiSlider-track': {
+                bgcolor: 'white'
+              },
+              '& .MuiSlider-rail': {
+                bgcolor: 'rgba(255,255,255,0.3)'
+              }
+            }}
           />
         </Box>
 
-        {/* Font Size (for text) */}
-        {tool === 'text' && (
-          <Box sx={{ width: 80, mx: 1 }}>
-            <Slider
-              value={fontSize}
-              onChange={(_, v) => setFontSize(v as number)}
-              min={12}
-              max={72}
-              size="small"
-            />
-          </Box>
-        )}
+        <Box sx={{ flexGrow: 1 }} />
 
-        {/* Actions */}
-        <ButtonGroup size="small">
-          <IconButton onClick={handleUndo} disabled={objects.length === 0} size="small" title="Rückgängig">
+        {/* Aktionen */}
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <IconButton 
+            onClick={handleUndo} 
+            disabled={objects.length === 0}
+            size="small" 
+            sx={{ 
+              color: 'white',
+              '&:disabled': { color: 'rgba(255,255,255,0.3)' },
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }
+            }}
+            title="Rückgängig"
+          >
             <UndoIcon fontSize="small" />
           </IconButton>
-          <IconButton onClick={handleRedo} disabled={redoStack.length === 0} size="small" title="Wiederholen">
+          <IconButton 
+            onClick={handleRedo} 
+            disabled={redoStack.length === 0}
+            size="small" 
+            sx={{ 
+              color: 'white',
+              '&:disabled': { color: 'rgba(255,255,255,0.3)' },
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }
+            }}
+            title="Wiederholen"
+          >
             <RedoIcon fontSize="small" />
           </IconButton>
-          {selectedObject && (
-            <IconButton onClick={handleDeleteSelected} size="small" color="error" title="Löschen">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          )}
-          <IconButton onClick={handleClear} size="small" color="error" title="Alles löschen">
+          <IconButton 
+            onClick={handleClear}
+            size="small" 
+            sx={{ 
+              color: '#ff6b6b',
+              '&:hover': { bgcolor: 'rgba(255,107,107,0.15)' }
+            }}
+            title="Alles löschen"
+          >
             <DeleteIcon fontSize="small" />
           </IconButton>
-        </ButtonGroup>
+        </Box>
 
-        {/* Image Upload */}
+        <Box sx={{ width: 1, height: 30, bgcolor: 'rgba(255,255,255,0.2)' }} />
+
+        {/* Close */}
+        <IconButton 
+          onClick={() => window.close()} 
+          size="small" 
+          sx={{ 
+            color: 'white',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }
+          }}
+          title="Schließen"
+        >
+          <CloseIcon />
+        </IconButton>
+
+        {/* Hidden Image Upload */}
         <input
           type="file"
           accept="image/*"
@@ -851,19 +921,7 @@ const WhiteboardPage: React.FC = () => {
           style={{ display: 'none' }}
           id="image-upload"
         />
-        <label htmlFor="image-upload">
-          <IconButton component="span" size="small" title="Bild">
-            <ImageIcon fontSize="small" />
-          </IconButton>
-        </label>
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* Close */}
-        <IconButton onClick={() => window.close()} size="small" title="Schließen">
-          <CloseIcon />
-        </IconButton>
-      </Paper>
+      </Box>
 
       {/* Canvas */}
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
