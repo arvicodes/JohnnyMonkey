@@ -1,7 +1,16 @@
 import express from 'express';
+import multer from 'multer';
 import { FileSystemPathController } from '../controllers/FileSystemPathController';
 
 const router = express.Router();
+
+// Configure multer for file uploads (memory storage for whiteboards)
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 // Alle Pfade abrufen (für die Ordner-Zuordnung)
 router.get('/', FileSystemPathController.getAllPaths);
@@ -48,5 +57,8 @@ router.get('/download', FileSystemPathController.downloadFile);
 
 // Pfad löschen
 router.delete('/:id', FileSystemPathController.deletePath);
+
+// Datei speichern (z.B. Whiteboard)
+router.post('/save-file', upload.single('file'), FileSystemPathController.saveFile);
 
 export default router;

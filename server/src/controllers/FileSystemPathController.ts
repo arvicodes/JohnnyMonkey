@@ -909,4 +909,64 @@ export class FileSystemPathController {
       res.status(500).json({ error: 'Failed to get J-M-Reihen path' });
     }
   }
+
+  /**
+   * Save a file (e.g., whiteboard) to a specific directory
+   */
+  static async saveFile(req: Request, res: Response) {
+    try {
+      const file = req.file;
+      const targetPath = req.body.targetPath || req.query.targetPath;
+
+      if (!file) {
+        return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+      }
+
+      if (!targetPath) {
+        return res.status(400).json({ error: 'Zielverzeichnis fehlt' });
+      }
+
+      console.log('=== SAVE FILE REQUEST ===');
+      console.log('File:', file.originalname);
+      console.log('Target path:', targetPath);
+
+      // Determine the full path
+      let fullTargetPath: string;
+      
+      if (targetPath.startsWith('git-intern/')) {
+        // Handle git-intern paths
+        const relativePath = targetPath.replace('git-intern/', '');
+        const projectRoot = path.resolve(process.cwd(), '..');
+        fullTargetPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+      } else {
+        // Handle local paths
+        fullTargetPath = path.resolve(targetPath);
+      }
+
+      console.log('Full target path:', fullTargetPath);
+
+      // Ensure directory exists
+      if (!fs.existsSync(fullTargetPath)) {
+        console.log('Creating directory:', fullTargetPath);
+        fs.mkdirSync(fullTargetPath, { recursive: true });
+      }
+
+      // Save file
+      const finalFilePath = path.join(fullTargetPath, file.originalname);
+      console.log('Saving file to:', finalFilePath);
+      
+      fs.writeFileSync(finalFilePath, file.buffer);
+
+      console.log('File saved successfully');
+      res.json({ 
+        success: true, 
+        path: finalFilePath,
+        filename: file.originalname
+      });
+
+    } catch (error) {
+      console.error('Error saving file:', error);
+      res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
+    }
+  }
 }
