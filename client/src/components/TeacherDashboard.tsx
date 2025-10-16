@@ -1791,6 +1791,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     window.open(`/whiteboard?groupId=${groupId}`, '_blank');
   };
 
+  // Tafelbild Functions
+  const handleOpenTafelbild = (groupId: string) => {
+    // Öffne Tafelbild in neuem Tab
+    window.open(`/tafelbild?groupId=${groupId}`, '_blank');
+  };
+
   // File Share Functions
   const fetchFileSharesForGroup = async (groupId: string) => {
     try {
@@ -4183,10 +4189,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             aria-label="Whiteboard erstellen"
                             onClick={e => { e.stopPropagation(); handleOpenWhiteboard(group.id); }}
                             size="small"
-                            sx={{ width: 24, height: 24, p: 0.25, color: colors.primary }}
+                            sx={{ width: 24, height: 24, p: 0.25, mr: 0.5, color: colors.primary }}
                             title="Whiteboard erstellen"
                           >
                             <BrushIcon />
+                          </IconButton>
+                          <IconButton
+                            aria-label="Neues Tafelbild"
+                            onClick={e => { e.stopPropagation(); handleOpenTafelbild(group.id); }}
+                            size="small"
+                            sx={{ width: 24, height: 24, p: 0.25, mr: 0.5, color: colors.primary }}
+                            title="Neues Tafelbild"
+                          >
+                            <SchoolIcon />
                           </IconButton>
                           <IconButton
                             aria-label="Mehr"
