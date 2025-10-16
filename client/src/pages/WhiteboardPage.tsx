@@ -190,15 +190,15 @@ const WhiteboardPage: React.FC = () => {
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, obj: DrawObject) => {
     const bounds = getObjectBounds(obj);
     
-    // Selection border
-    ctx.strokeStyle = '#2196f3';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    // GoodNotes-style: Dashed selection border
+    ctx.strokeStyle = '#007AFF'; // GoodNotes blue
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
     ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.setLineDash([]);
     
-    // Corner handles
-    const handleSize = 10;
+    // GoodNotes-style: Square corner handles
+    const handleSize = 12;
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -206,7 +206,7 @@ const WhiteboardPage: React.FC = () => {
       { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' }
     ];
     
-    ctx.fillStyle = '#2196f3';
+    ctx.fillStyle = '#007AFF'; // GoodNotes blue
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
     
@@ -215,21 +215,31 @@ const WhiteboardPage: React.FC = () => {
       ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
     });
     
-    // Rotation handle
+    // GoodNotes-style: Circular rotation handle
     const centerX = bounds.x + bounds.width / 2;
-    const rotateHandleY = bounds.y - 25;
-    ctx.beginPath();
-    ctx.arc(centerX, rotateHandleY, 8, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.stroke();
+    const rotateHandleY = bounds.y - 30;
     
     // Rotation line
-    ctx.strokeStyle = '#2196f3';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#007AFF';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
     ctx.beginPath();
     ctx.moveTo(centerX, bounds.y);
     ctx.lineTo(centerX, rotateHandleY);
     ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Rotation handle (circle)
+    ctx.beginPath();
+    ctx.arc(centerX, rotateHandleY, 12, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Small dot in center of rotation handle
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(centerX, rotateHandleY, 4, 0, 2 * Math.PI);
+    ctx.fill();
   };
 
   const applyLineStyle = (ctx: CanvasRenderingContext2D, style: 'solid' | 'dashed' | 'dotted') => {
@@ -412,17 +422,65 @@ const WhiteboardPage: React.FC = () => {
 
   const isPointInObject = (x: number, y: number, obj: DrawObject): boolean => {
     const bounds = getObjectBounds(obj);
-    // Simple rectangular collision with padding
-    return x >= bounds.x - 10 && x <= bounds.x + bounds.width + 10 &&
-           y >= bounds.y - 10 && y <= bounds.y + bounds.height + 10;
+    
+    // GoodNotes-style: Only select if clicking on actual object, not empty space
+    if (obj.points && obj.points.length > 0) {
+      // For drawn paths, check if point is near the path
+      const threshold = (obj.lineWidth || 5) + 8;
+      for (let i = 0; i < obj.points.length - 1; i++) {
+        const p1 = obj.points[i];
+        const p2 = obj.points[i + 1];
+        if (isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold)) {
+          return true;
+        }
+      }
+      return false;
+    } else if (obj.text) {
+      // For text, use exact bounds
+      return x >= bounds.x && x <= bounds.x + bounds.width &&
+             y >= bounds.y && y <= bounds.y + bounds.height;
+    } else {
+      // For shapes, use exact bounds
+      return x >= bounds.x && x <= bounds.x + bounds.width &&
+             y >= bounds.y && y <= bounds.y + bounds.height;
+    }
+  };
+
+  const isPointNearLine = (px: number, py: number, x1: number, y1: number, x2: number, y2: number, threshold: number): boolean => {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    
+    if (lenSq === 0) return Math.sqrt(A * A + B * B) <= threshold;
+    
+    let param = dot / lenSq;
+    param = Math.max(0, Math.min(1, param));
+    
+    const xx = x1 + param * C;
+    const yy = y1 + param * D;
+    
+    const dx = px - xx;
+    const dy = py - yy;
+    
+    return Math.sqrt(dx * dx + dy * dy) <= threshold;
   };
 
 
   const getHandleAtPoint = (x: number, y: number, obj: DrawObject): string | null => {
     const bounds = getObjectBounds(obj);
     
-    // Check corner handles first
-    const handleSize = 12;
+    // GoodNotes-style: Check rotation handle first (highest priority)
+    const centerX = bounds.x + bounds.width / 2;
+    const rotateHandleY = bounds.y - 30;
+    const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
+    if (distToRotate < 15) return 'rotate';
+    
+    // GoodNotes-style corner handles (square, not rectangular)
+    const handleSize = 14;
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -435,12 +493,6 @@ const WhiteboardPage: React.FC = () => {
         return handle.name;
       }
     }
-    
-    // Check rotation handle
-    const centerX = bounds.x + bounds.width / 2;
-    const rotateHandleY = bounds.y - 25;
-    const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
-    if (distToRotate < 12) return 'rotate';
     
     return null;
   };
@@ -458,14 +510,15 @@ const WhiteboardPage: React.FC = () => {
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
 
-    // Check for object selection
+    // GoodNotes-style: Check for object selection first
     const clickedObject = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
     
     if (clickedObject) {
+      // GoodNotes-style: Always select the object first
       setSelectedObjects([clickedObject]);
       setShowObjectPanel(true);
       
-      // Check for resize handles
+      // GoodNotes-style: Check for handle interaction
       const handle = getHandleAtPoint(x, y, clickedObject);
       if (handle) {
         setResizeHandle(handle);
@@ -480,18 +533,18 @@ const WhiteboardPage: React.FC = () => {
         return;
       }
       
-      // Start dragging
+      // GoodNotes-style: Start dragging immediately
       setDragStart({ x, y });
       setIsDragging(true);
       setIsDrawing(true);
       return;
     }
     
-    // Clear selection if clicked on empty space
+    // GoodNotes-style: Clear selection when clicking empty space
     setSelectedObjects([]);
     setShowObjectPanel(false);
 
-    // Start drawing new object
+    // GoodNotes-style: Only start drawing if no object was clicked
     if (tool === 'text') {
       setTextPosition({ x, y });
       setShowTextInput(true);
@@ -529,17 +582,19 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
-    // Handle resizing
+    // GoodNotes-style resizing
     if (selectedObjects[0] && resizeHandle && resizeStart) {
       const selected = selectedObjects[0];
       const bounds = getObjectBounds(selected);
       
       if (resizeHandle === 'rotate') {
+        // GoodNotes-style: Smooth rotation
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
         const angle = Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
         updateSelectedObject({ rotation: angle });
       } else {
+        // GoodNotes-style: Proportional resizing
         const dx = x - resizeStart.x;
         const dy = y - resizeStart.y;
         
@@ -548,10 +603,35 @@ const WhiteboardPage: React.FC = () => {
         let newX = selected.x;
         let newY = selected.y;
         
-        if (resizeHandle.includes('e')) newWidth = resizeStart.width + dx;
-        if (resizeHandle.includes('w')) { newWidth = resizeStart.width - dx; newX = selected.x + dx; }
-        if (resizeHandle.includes('s')) newHeight = resizeStart.height + dy;
-        if (resizeHandle.includes('n')) { newHeight = resizeStart.height - dy; newY = selected.y + dy; }
+        // GoodNotes-style: Maintain aspect ratio for shapes
+        const isShape = ['rectangle', 'circle', 'triangle'].includes(selected.tool);
+        
+        if (resizeHandle.includes('e')) newWidth = Math.max(10, resizeStart.width + dx);
+        if (resizeHandle.includes('w')) { 
+          newWidth = Math.max(10, resizeStart.width - dx); 
+          newX = selected.x + (resizeStart.width - newWidth);
+        }
+        if (resizeHandle.includes('s')) newHeight = Math.max(10, resizeStart.height + dy);
+        if (resizeHandle.includes('n')) { 
+          newHeight = Math.max(10, resizeStart.height - dy); 
+          newY = selected.y + (resizeStart.height - newHeight);
+        }
+        
+        // GoodNotes-style: Maintain aspect ratio for shapes
+        if (isShape) {
+          const aspectRatio = resizeStart.width / resizeStart.height;
+          if (resizeHandle.includes('e') || resizeHandle.includes('w')) {
+            newHeight = newWidth / aspectRatio;
+            if (resizeHandle.includes('n')) {
+              newY = selected.y + (resizeStart.height - newHeight);
+            }
+          } else {
+            newWidth = newHeight * aspectRatio;
+            if (resizeHandle.includes('w')) {
+              newX = selected.x + (resizeStart.width - newWidth);
+            }
+          }
+        }
         
         updateSelectedObject({ 
           x: newX, 
@@ -1154,15 +1234,16 @@ const WhiteboardPage: React.FC = () => {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          style={{
-            cursor: isDragging ? 'grabbing' :
-                    resizeHandle ? 'nw-resize' :
-                    hoveredObject ? 'grab' :
-                    tool === 'eraser' ? 'crosshair' : 
-                    tool === 'text' ? 'text' : 
-                    'default',
-            backgroundColor: '#ffffff'
-          }}
+              style={{
+                cursor: isDragging ? 'grabbing' :
+                        resizeHandle ? 'nw-resize' : 
+                        hoveredObject ? 'grab' :
+                        tool === 'eraser' ? 'crosshair' : 
+                        tool === 'text' ? 'text' : 
+                        tool === 'pen' || tool === 'brush' || tool === 'marker' ? 'crosshair' :
+                        'default',
+                backgroundColor: '#ffffff'
+              }}
         />
       </Box>
 
