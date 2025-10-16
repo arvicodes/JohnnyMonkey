@@ -46,7 +46,7 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
   Fullscreen as FullscreenIcon,
-  Highlighter as MarkerIcon
+  Highlight as MarkerIcon
 } from '@mui/icons-material';
 
 // GoodNotes-style color palette
