@@ -1787,8 +1787,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Whiteboard Functions
   const handleOpenWhiteboard = (groupId: string) => {
-    // Öffne GoodNotes Whiteboard in neuem Tab
-    window.open(`/goodnotes-whiteboard?groupId=${groupId}`, '_blank');
+    // Öffne Whiteboard in neuem Tab
+    window.open(`/whiteboard?groupId=${groupId}`, '_blank');
   };
 
   // File Share Functions

@@ -12,7 +12,6 @@ import QuizParticipationPage from './pages/QuizParticipationPage';
 import FlashcardImportExportPage from './pages/FlashcardImportExportPage';
 import SubmissionsGridPage from './pages/SubmissionsGridPage';
 import WhiteboardPage from './pages/WhiteboardPage';
-import GoodNotesWhiteboard from './pages/GoodNotesWhiteboard';
 
 import { Snackbar, Alert } from '@mui/material';
 
@@ -144,7 +143,6 @@ function AppContent() {
         <Route path="/flashcard-import-export" element={<FlashcardImportExportPage />} />
         <Route path="/submissions-grid" element={<SubmissionsGridPage />} />
         <Route path="/whiteboard" element={<WhiteboardPage />} />
-        <Route path="/goodnotes-whiteboard" element={<GoodNotesWhiteboard />} />
 
       </Routes>
       <Snackbar

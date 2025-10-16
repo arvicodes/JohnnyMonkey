@@ -95,7 +95,15 @@ const WhiteboardPage: React.FC = () => {
   const [currentObject, setCurrentObject] = useState<DrawObject | null>(null);
   const [selectedObjects, setSelectedObjects] = useState<DrawObject[]>([]);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; width: number; height: number; rotation: number } | null>(null);
+  const [resizeStart, setResizeStart] = useState<{ 
+    x: number; 
+    y: number; 
+    objX: number; 
+    objY: number; 
+    objWidth: number; 
+    objHeight: number; 
+    rotation: number 
+  } | null>(null);
   const [showObjectPanel, setShowObjectPanel] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -190,15 +198,15 @@ const WhiteboardPage: React.FC = () => {
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, obj: DrawObject) => {
     const bounds = getObjectBounds(obj);
     
-    // GoodNotes-style: Dashed selection border
-    ctx.strokeStyle = '#007AFF'; // GoodNotes blue
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
+    // Selection border
+    ctx.strokeStyle = '#2196f3';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
     ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.setLineDash([]);
     
-    // GoodNotes-style: Square corner handles
-    const handleSize = 12;
+    // Corner handles - larger and more visible
+    const handleSize = 20; // Match hit detection size
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -206,40 +214,44 @@ const WhiteboardPage: React.FC = () => {
       { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' }
     ];
     
-    ctx.fillStyle = '#007AFF'; // GoodNotes blue
+    ctx.fillStyle = '#2196f3';
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     
     cornerHandles.forEach(handle => {
-      ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
-      ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+      // Draw a circle for better visibility
+      ctx.beginPath();
+      ctx.arc(handle.x, handle.y, handleSize / 2, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Draw a cross inside for better visibility
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(handle.x - 4, handle.y);
+      ctx.lineTo(handle.x + 4, handle.y);
+      ctx.moveTo(handle.x, handle.y - 4);
+      ctx.lineTo(handle.x, handle.y + 4);
+      ctx.stroke();
+      ctx.strokeStyle = '#2196f3';
     });
     
-    // GoodNotes-style: Circular rotation handle
+    // Rotation handle - larger and more visible
     const centerX = bounds.x + bounds.width / 2;
-    const rotateHandleY = bounds.y - 30;
+    const rotateHandleY = bounds.y - 25;
+    ctx.beginPath();
+    ctx.arc(centerX, rotateHandleY, 10, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
     
     // Rotation line
-    ctx.strokeStyle = '#007AFF';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 2]);
+    ctx.strokeStyle = '#2196f3';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(centerX, bounds.y);
     ctx.lineTo(centerX, rotateHandleY);
     ctx.stroke();
-    ctx.setLineDash([]);
-    
-    // Rotation handle (circle)
-    ctx.beginPath();
-    ctx.arc(centerX, rotateHandleY, 12, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.stroke();
-    
-    // Small dot in center of rotation handle
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(centerX, rotateHandleY, 4, 0, 2 * Math.PI);
-    ctx.fill();
   };
 
   const applyLineStyle = (ctx: CanvasRenderingContext2D, style: 'solid' | 'dashed' | 'dotted') => {
@@ -298,10 +310,12 @@ const WhiteboardPage: React.FC = () => {
         break;
 
       case 'circle':
-        if (obj.width !== undefined) {
-          const radius = Math.abs(obj.width) / 2;
+        if (obj.width !== undefined && obj.height !== undefined) {
+          const radius = Math.min(Math.abs(obj.width), Math.abs(obj.height)) / 2;
+          const centerX = obj.x + obj.width / 2;
+          const centerY = obj.y + obj.height / 2;
           ctx.beginPath();
-          ctx.arc(obj.x + obj.width / 2, obj.y + obj.width / 2, radius, 0, 2 * Math.PI);
+          ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
           if (obj.fillColor && obj.fillColor !== 'transparent') ctx.fill();
           ctx.stroke();
         }
@@ -389,6 +403,7 @@ const WhiteboardPage: React.FC = () => {
     let maxX = obj.x + (obj.width || 0);
     let maxY = obj.y + (obj.height || 0);
 
+    // For objects with points (lines, arrows, brush strokes, etc.)
     if (obj.points && obj.points.length > 0) {
       obj.points.forEach(p => {
         minX = Math.min(minX, p.x);
@@ -398,6 +413,7 @@ const WhiteboardPage: React.FC = () => {
       });
     }
 
+    // For text objects
     if (obj.text && obj.fontSize) {
       const canvas = canvasRef.current;
       if (canvas) {
@@ -412,38 +428,60 @@ const WhiteboardPage: React.FC = () => {
       }
     }
 
+    // Calculate final dimensions
+    const width = Math.max(20, maxX - minX);
+    const height = Math.max(20, maxY - minY);
+
+    // Add some padding for better selection
+    const padding = 5;
     return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY
+      x: minX - padding,
+      y: minY - padding,
+      width: width + (padding * 2),
+      height: height + (padding * 2)
     };
   };
 
   const isPointInObject = (x: number, y: number, obj: DrawObject): boolean => {
-    const bounds = getObjectBounds(obj);
-    
-    // GoodNotes-style: Only select if clicking on actual object, not empty space
+    // Check actual object geometry, not selection bounds
     if (obj.points && obj.points.length > 0) {
-      // For drawn paths, check if point is near the path
-      const threshold = (obj.lineWidth || 5) + 8;
-      for (let i = 0; i < obj.points.length - 1; i++) {
-        const p1 = obj.points[i];
-        const p2 = obj.points[i + 1];
-        if (isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold)) {
-          return true;
-        }
-      }
-      return false;
+      // For drawn paths (pen, brush, marker, etc.)
+      return isPointInPath(x, y, obj);
     } else if (obj.text) {
-      // For text, use exact bounds
-      return x >= bounds.x && x <= bounds.x + bounds.width &&
-             y >= bounds.y && y <= bounds.y + bounds.height;
+      // For text objects
+      return isPointInText(x, y, obj);
+    } else if (obj.tool === 'image' && obj.imageData) {
+      // For images
+      return x >= obj.x && x <= obj.x + (obj.width || 0) &&
+             y >= obj.y && y <= obj.y + (obj.height || 0);
     } else {
-      // For shapes, use exact bounds
-      return x >= bounds.x && x <= bounds.x + bounds.width &&
-             y >= bounds.y && y <= bounds.y + bounds.height;
+      // For shapes (rectangle, circle, etc.)
+      return isPointInShape(x, y, obj);
     }
+  };
+
+  const isPointInPath = (x: number, y: number, obj: DrawObject): boolean => {
+    if (!obj.points || obj.points.length === 0) return false;
+    
+    // Simple distance-based collision for paths
+    const threshold = (obj.lineWidth || 5) + 10; // Add some padding
+    
+    for (let i = 0; i < obj.points.length; i++) {
+      const point = obj.points[i];
+      const distance = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
+      if (distance <= threshold) return true;
+    }
+    
+    // Check line segments for better collision detection
+    for (let i = 0; i < obj.points.length - 1; i++) {
+      const p1 = obj.points[i];
+      const p2 = obj.points[i + 1];
+      if (isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold)) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   const isPointNearLine = (px: number, py: number, x1: number, y1: number, x2: number, y2: number, threshold: number): boolean => {
@@ -469,18 +507,62 @@ const WhiteboardPage: React.FC = () => {
     return Math.sqrt(dx * dx + dy * dy) <= threshold;
   };
 
+  const isPointInText = (x: number, y: number, obj: DrawObject): boolean => {
+    if (!obj.text || !obj.fontSize) return false;
+    
+    const canvas = canvasRef.current;
+    if (!canvas) return false;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    
+    ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${obj.fontSize}px ${obj.fontFamily || 'Arial'}`;
+    const metrics = ctx.measureText(obj.text);
+    
+    return x >= obj.x && x <= obj.x + metrics.width &&
+           y >= obj.y - obj.fontSize && y <= obj.y;
+  };
+
+  const isPointInShape = (x: number, y: number, obj: DrawObject): boolean => {
+    const w = obj.width || 0;
+    const h = obj.height || 0;
+    
+    switch (obj.tool) {
+      case 'rectangle':
+      case 'triangle':
+        return x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h;
+        
+      case 'circle':
+        const centerX = obj.x + w / 2;
+        const centerY = obj.y + h / 2;
+        const radius = Math.min(w, h) / 2;
+        const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+        return distance <= radius;
+        
+      case 'arrow':
+      case 'line':
+        if (!obj.points || obj.points.length < 2) return false;
+        const p1 = obj.points[0];
+        const p2 = obj.points[obj.points.length - 1];
+        const threshold = (obj.lineWidth || 5) + 10;
+        return isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold);
+        
+      default:
+        return x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h;
+    }
+  };
 
   const getHandleAtPoint = (x: number, y: number, obj: DrawObject): string | null => {
     const bounds = getObjectBounds(obj);
-    
-    // GoodNotes-style: Check rotation handle first (highest priority)
     const centerX = bounds.x + bounds.width / 2;
-    const rotateHandleY = bounds.y - 30;
-    const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
-    if (distToRotate < 15) return 'rotate';
+    const rotateHandleY = bounds.y - 25;
     
-    // GoodNotes-style corner handles (square, not rectangular)
-    const handleSize = 14;
+    // Check rotation handle first (highest priority)
+    const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
+    if (distToRotate < 20) return 'rotate';
+    
+    // Check corner handles with larger hit area
+    const handleSize = 20; // Increased hit area
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -489,7 +571,8 @@ const WhiteboardPage: React.FC = () => {
     ];
     
     for (const handle of cornerHandles) {
-      if (Math.abs(x - handle.x) < handleSize && Math.abs(y - handle.y) < handleSize) {
+      const distance = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
+      if (distance < handleSize) {
         return handle.name;
       }
     }
@@ -510,41 +593,47 @@ const WhiteboardPage: React.FC = () => {
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
 
-    // GoodNotes-style: Check for object selection first
+    // Always check for object selection first (regardless of current tool)
     const clickedObject = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
     
     if (clickedObject) {
-      // GoodNotes-style: Always select the object first
+      // If clicking on an object, select it and check for handles
       setSelectedObjects([clickedObject]);
       setShowObjectPanel(true);
       
-      // GoodNotes-style: Check for handle interaction
       const handle = getHandleAtPoint(x, y, clickedObject);
       if (handle) {
         setResizeHandle(handle);
+        
+        // Calculate object bounds for objects without explicit width/height
         const bounds = getObjectBounds(clickedObject);
+        const objWidth = clickedObject.width !== undefined ? clickedObject.width : bounds.width - 10;
+        const objHeight = clickedObject.height !== undefined ? clickedObject.height : bounds.height - 10;
+        
         setResizeStart({
           x, y,
-          width: bounds.width,
-          height: bounds.height,
+          objX: clickedObject.x,
+          objY: clickedObject.y,
+          objWidth,
+          objHeight,
           rotation: clickedObject.rotation || 0
         });
         setIsDrawing(true);
         return;
       }
       
-      // GoodNotes-style: Start dragging immediately
+      // Start dragging the object immediately - no need for hand tool
       setDragStart({ x, y });
       setIsDragging(true);
       setIsDrawing(true);
       return;
+    } else {
+      // Clicked on empty space - clear selection
+      setSelectedObjects([]);
+      setShowObjectPanel(false);
     }
-    
-    // GoodNotes-style: Clear selection when clicking empty space
-    setSelectedObjects([]);
-    setShowObjectPanel(false);
 
-    // GoodNotes-style: Only start drawing if no object was clicked
+    // If no object was clicked, proceed with drawing
     if (tool === 'text') {
       setTextPosition({ x, y });
       setShowTextInput(true);
@@ -565,8 +654,8 @@ const WhiteboardPage: React.FC = () => {
       points: ['brush', 'pen', 'marker', 'eraser', 'arrow', 'line'].includes(tool) ? [{ x, y }] : undefined,
       x,
       y,
-      width: 0,
-      height: 0
+      width: ['circle', 'rectangle', 'triangle', 'image'].includes(tool) ? 0 : undefined,
+      height: ['circle', 'rectangle', 'triangle', 'image'].includes(tool) ? 0 : undefined
     };
 
     setCurrentObject(newObj);
@@ -579,73 +668,132 @@ const WhiteboardPage: React.FC = () => {
     if (!isDrawing) {
       const hovered = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
       setHoveredObject(hovered || null);
-      return;
+      
+      // Check if hovering over a resize handle
+      if (hovered) {
+        const handle = getHandleAtPoint(x, y, hovered);
+        if (handle) {
+          // Set cursor based on handle type
+          const canvas = canvasRef.current;
+          if (canvas) {
+            if (handle === 'rotate') {
+              canvas.style.cursor = 'grab';
+            } else if (handle === 'nw' || handle === 'se') {
+              canvas.style.cursor = 'nw-resize';
+            } else if (handle === 'ne' || handle === 'sw') {
+              canvas.style.cursor = 'ne-resize';
+            }
+          }
+        } else {
+          const canvas = canvasRef.current;
+          if (canvas) {
+            canvas.style.cursor = 'grab';
+          }
+        }
+      } else {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.style.cursor = 'default';
+        }
+      }
     }
+    
+    if (!isDrawing) return;
 
-    // GoodNotes-style resizing
     if (selectedObjects[0] && resizeHandle && resizeStart) {
       const selected = selectedObjects[0];
-      const bounds = getObjectBounds(selected);
+      const updatedObject = { ...selected };
       
       if (resizeHandle === 'rotate') {
-        // GoodNotes-style: Smooth rotation
+        // Rotation logic
+        const bounds = getObjectBounds(selected);
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
         const angle = Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
-        updateSelectedObject({ rotation: angle });
+        updatedObject.rotation = angle + 90;
       } else {
-        // GoodNotes-style: Proportional resizing
+        // Resize logic - much simpler approach
         const dx = x - resizeStart.x;
         const dy = y - resizeStart.y;
         
-        let newWidth = resizeStart.width;
-        let newHeight = resizeStart.height;
-        let newX = selected.x;
-        let newY = selected.y;
+        let newX = resizeStart.objX;
+        let newY = resizeStart.objY;
+        let newWidth = resizeStart.objWidth;
+        let newHeight = resizeStart.objHeight;
         
-        // GoodNotes-style: Maintain aspect ratio for shapes
-        const isShape = ['rectangle', 'circle', 'triangle'].includes(selected.tool);
-        
-        if (resizeHandle.includes('e')) newWidth = Math.max(10, resizeStart.width + dx);
-        if (resizeHandle.includes('w')) { 
-          newWidth = Math.max(10, resizeStart.width - dx); 
-          newX = selected.x + (resizeStart.width - newWidth);
+        // Apply resize based on which handle is being dragged
+        switch (resizeHandle) {
+          case 'nw': // Top-left
+            newX = resizeStart.objX + dx;
+            newY = resizeStart.objY + dy;
+            newWidth = Math.max(10, resizeStart.objWidth - dx);
+            newHeight = Math.max(10, resizeStart.objHeight - dy);
+            break;
+          case 'ne': // Top-right
+            newY = resizeStart.objY + dy;
+            newWidth = Math.max(10, resizeStart.objWidth + dx);
+            newHeight = Math.max(10, resizeStart.objHeight - dy);
+            break;
+          case 'se': // Bottom-right
+            newWidth = Math.max(10, resizeStart.objWidth + dx);
+            newHeight = Math.max(10, resizeStart.objHeight + dy);
+            break;
+          case 'sw': // Bottom-left
+            newX = resizeStart.objX + dx;
+            newWidth = Math.max(10, resizeStart.objWidth - dx);
+            newHeight = Math.max(10, resizeStart.objHeight + dy);
+            break;
         }
-        if (resizeHandle.includes('s')) newHeight = Math.max(10, resizeStart.height + dy);
-        if (resizeHandle.includes('n')) { 
-          newHeight = Math.max(10, resizeStart.height - dy); 
-          newY = selected.y + (resizeStart.height - newHeight);
+        
+        // Update object properties
+        updatedObject.x = newX;
+        updatedObject.y = newY;
+        
+        // For shapes with width/height
+        if (updatedObject.width !== undefined) {
+          updatedObject.width = newWidth;
+        }
+        if (updatedObject.height !== undefined) {
+          updatedObject.height = newHeight;
         }
         
-        // GoodNotes-style: Maintain aspect ratio for shapes
-        if (isShape) {
-          const aspectRatio = resizeStart.width / resizeStart.height;
-          if (resizeHandle.includes('e') || resizeHandle.includes('w')) {
-            newHeight = newWidth / aspectRatio;
-            if (resizeHandle.includes('n')) {
-              newY = selected.y + (resizeStart.height - newHeight);
-            }
-          } else {
-            newWidth = newHeight * aspectRatio;
-            if (resizeHandle.includes('w')) {
-              newX = selected.x + (resizeStart.width - newWidth);
-            }
+        // Special handling for circles - keep them circular
+        if (updatedObject.tool === 'circle') {
+          const size = Math.min(newWidth, newHeight);
+          updatedObject.width = size;
+          updatedObject.height = size;
+        }
+        
+        // For objects with points (lines, arrows, brush strokes)
+        if (updatedObject.points && updatedObject.points.length > 0) {
+          const scaleX = newWidth / resizeStart.objWidth;
+          const scaleY = newHeight / resizeStart.objHeight;
+          updatedObject.points = updatedObject.points.map(point => ({
+            x: newX + (point.x - resizeStart.objX) * scaleX,
+            y: newY + (point.y - resizeStart.objY) * scaleY
+          }));
+          
+          // For objects without explicit width/height, we need to set them
+          if (updatedObject.width === undefined) {
+            updatedObject.width = newWidth;
+          }
+          if (updatedObject.height === undefined) {
+            updatedObject.height = newHeight;
           }
         }
         
-        updateSelectedObject({ 
-          x: newX, 
-          y: newY, 
-          width: Math.max(10, newWidth), 
-          height: Math.max(10, newHeight) 
-        });
+        // For text objects, scale font size
+        if (updatedObject.tool === 'text' && updatedObject.fontSize) {
+          const scale = Math.min(newWidth / resizeStart.objWidth, newHeight / resizeStart.objHeight);
+          updatedObject.fontSize = Math.max(12, Math.min(96, updatedObject.fontSize * scale));
+        }
       }
       
-      setResizeStart({ ...resizeStart, x, y });
+      setObjects(objects.map(obj => obj.id === selected.id ? updatedObject : obj));
+      setSelectedObjects([updatedObject]);
       return;
     }
 
-    // Handle dragging
     if (selectedObjects[0] && isDragging && !resizeHandle) {
       const selected = selectedObjects[0];
       const deltaX = x - dragStart.x;
@@ -668,7 +816,6 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
-    // Handle drawing new objects
     if (!currentObject) return;
 
     if (['brush', 'pen', 'marker', 'eraser', 'arrow', 'line'].includes(tool)) {
@@ -681,8 +828,10 @@ const WhiteboardPage: React.FC = () => {
       const height = y - currentObject.y;
       setCurrentObject({
         ...currentObject,
-        width,
-        height
+        width: Math.abs(width),
+        height: Math.abs(height),
+        x: width < 0 ? x : currentObject.x,
+        y: height < 0 ? y : currentObject.y
       });
     }
   };
@@ -1234,16 +1383,15 @@ const WhiteboardPage: React.FC = () => {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-              style={{
-                cursor: isDragging ? 'grabbing' :
-                        resizeHandle ? 'nw-resize' : 
-                        hoveredObject ? 'grab' :
-                        tool === 'eraser' ? 'crosshair' : 
-                        tool === 'text' ? 'text' : 
-                        tool === 'pen' || tool === 'brush' || tool === 'marker' ? 'crosshair' :
-                        'default',
-                backgroundColor: '#ffffff'
-              }}
+          style={{
+            cursor: isDragging ? 'grabbing' :
+                    resizeHandle ? 'nw-resize' :
+                    hoveredObject ? 'grab' :
+                    tool === 'eraser' ? 'crosshair' : 
+                    tool === 'text' ? 'text' : 
+                    'default',
+            backgroundColor: '#ffffff'
+          }}
         />
       </Box>
 
