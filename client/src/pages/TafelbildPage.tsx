@@ -414,7 +414,7 @@ const TafelbildPage: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [undoStack, redoStack, currentPage.objects, pages, currentPageIndex, selectedObjects]);
 
-  const redrawCanvas = useCallback(() => {
+  const redrawCanvas = useCallback((overrideSelectedObjects?: NotizObject[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -452,8 +452,9 @@ const TafelbildPage: React.FC = () => {
       drawNotizObject(ctx, currentObject);
     }
 
-    // Draw selection handles
-    selectedObjects.forEach(obj => {
+    // Draw selection handles (use override if provided, otherwise use state)
+    const objectsToHighlight = overrideSelectedObjects || selectedObjects;
+    objectsToHighlight.forEach(obj => {
       drawSelectionHandles(ctx, obj);
     });
 
@@ -1143,7 +1144,7 @@ const TafelbildPage: React.FC = () => {
       
       // Force final redraw after resize is complete
       setTimeout(() => {
-        redrawCanvas();
+        redrawCanvas(selectedObjects);
       }, 0);
       
       return;
@@ -1635,35 +1636,8 @@ const TafelbildPage: React.FC = () => {
       
       // Force immediate redraw to show selection handles
       setTimeout(() => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Apply zoom and pan
-            ctx.save();
-            ctx.scale(zoom, zoom);
-            ctx.translate(pan.x, pan.y);
-
-            // Draw paper background
-            drawPaperBackground(ctx);
-
-            // Draw all objects
-            const currentPage = pages[currentPageIndex];
-            const sortedObjects = [...currentPage.objects].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-            sortedObjects.forEach(obj => {
-              drawNotizObject(ctx, obj);
-            });
-
-            // Draw selection handles for the last image
-            drawSelectionHandles(ctx, lastImage);
-
-            ctx.restore();
-          }
-        }
-      }, 100);
+        redrawCanvas([lastImage]);
+      }, 0);
     }
   };
 
@@ -1744,34 +1718,8 @@ const TafelbildPage: React.FC = () => {
         
         // Force immediate redraw to show selection handles
         setTimeout(() => {
-          const canvas = canvasRef.current;
-          if (canvas) {
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              // Clear canvas
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-              // Apply zoom and pan
-              ctx.save();
-              ctx.scale(zoom, zoom);
-              ctx.translate(pan.x, pan.y);
-
-              // Draw paper background
-              drawPaperBackground(ctx);
-
-              // Draw all objects
-              const sortedObjects = [...updatedObjects].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-              sortedObjects.forEach(obj => {
-                drawNotizObject(ctx, obj);
-              });
-
-              // Draw selection handles for the new image
-              drawSelectionHandles(ctx, imageObject);
-
-              ctx.restore();
-            }
-          }
-        }, 100);
+          redrawCanvas([imageObject]);
+        }, 0);
       };
       img.onerror = () => {
         console.error('Failed to load image in handleImageUpload');
