@@ -703,8 +703,6 @@ const TafelbildPage: React.FC = () => {
     // Only draw handles for images
     if (obj.tool !== 'image') return;
     
-    console.log('Drawing selection handles for image:', obj.id, 'at', obj.x, obj.y, obj.width, obj.height);
-    
     // Use direct object coordinates
     const objX = obj.x;
     const objY = obj.y;
@@ -736,8 +734,6 @@ const TafelbildPage: React.FC = () => {
       ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
       ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
     });
-    
-    console.log('Selection handles drawn at:', handles.map(h => `${h.name}:(${h.x},${h.y})`));
   };
 
   const getObjectBounds = (obj: NotizObject) => {
@@ -1575,8 +1571,9 @@ const TafelbildPage: React.FC = () => {
             displayWidth = displayHeight * aspectRatio;
           }
           
-          const posX = Math.max(0, offsetX);
-          const posY = Math.max(0, offsetY);
+          // Ensure position is within canvas bounds
+          const posX = Math.max(0, Math.min(offsetX, canvas.width - displayWidth));
+          const posY = Math.max(0, Math.min(offsetY, canvas.height - displayHeight));
           
           // Create image object
           const imageObject: NotizObject = {
@@ -1697,8 +1694,16 @@ const TafelbildPage: React.FC = () => {
         }
         
         // Use provided coordinates or center the image
-        const posX = x !== undefined ? x - displayWidth / 2 : Math.max(0, (canvas.width - displayWidth) / 2);
-        const posY = y !== undefined ? y - displayHeight / 2 : Math.max(0, (canvas.height - displayHeight) / 2);
+        let posX, posY;
+        if (x !== undefined && y !== undefined) {
+          // Use provided coordinates, but ensure they're within canvas bounds
+          posX = Math.max(0, Math.min(x - displayWidth / 2, canvas.width - displayWidth));
+          posY = Math.max(0, Math.min(y - displayHeight / 2, canvas.height - displayHeight));
+        } else {
+          // Center the image in the visible canvas area
+          posX = Math.max(0, (canvas.width - displayWidth) / 2);
+          posY = Math.max(0, (canvas.height - displayHeight) / 2);
+        }
         
         // Create image object
         const imageObject: NotizObject = {
@@ -1803,8 +1808,15 @@ const TafelbildPage: React.FC = () => {
       setRedoStack([]);
       
       if (imageFiles.length === 1) {
-        // Place single image at current mouse position
-        handleImageUpload(imageFiles[0], mousePosition.x, mousePosition.y, false); // Don't save to undo again
+        // Place single image at center of canvas (mouse position might be off-screen)
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          handleImageUpload(imageFiles[0], centerX, centerY, false); // Don't save to undo again
+        } else {
+          handleImageUpload(imageFiles[0], undefined, undefined, false); // Center automatically
+        }
       } else {
         // Use batch processing for better performance
         handleMultipleImageUpload(imageFiles as any, false); // Don't save to undo again
