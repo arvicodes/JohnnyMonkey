@@ -26,6 +26,7 @@ import {
   ToggleButton,
   Chip
 } from '@mui/material';
+import CollaborativeWhiteboard from '../components/CollaborativeWhiteboard';
 import {
   Close as CloseIcon,
   Delete as DeleteIcon,
@@ -43,7 +44,7 @@ import {
   GridOn as GridIcon
 } from '@mui/icons-material';
 
-type Tool = 'brush' | 'pen' | 'marker' | 'text' | 'line' | 'circle' | 'rectangle' | 'triangle' | 'arrow' | 'polygon' | 'eraser' | 'image' | 'select';
+type Tool = 'brush' | 'pen' | 'marker' | 'text' | 'line' | 'circle' | 'rectangle' | 'triangle' | 'arrow' | 'polygon' | 'eraser' | 'image' | 'select' | 'freeform' | 'connector' | 'stamp' | 'highlighter';
 
 interface DrawObject {
   id: string;
@@ -118,6 +119,16 @@ const WhiteboardPage: React.FC = () => {
   const [groupId, setGroupId] = useState<string>('');
   const [showColorPicker, setShowColorPicker] = useState<'stroke' | 'fill' | null>(null);
   const [hoveredObject, setHoveredObject] = useState<DrawObject | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [showStamps, setShowStamps] = useState(false);
+  const [selectedStamp, setSelectedStamp] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStart, setConnectionStart] = useState<DrawObject | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -145,9 +156,92 @@ const WhiteboardPage: React.FC = () => {
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent default for our shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) {
+              handleRedo();
+            } else {
+              handleUndo();
+            }
+            break;
+          case 's':
+            e.preventDefault();
+            handleOpenSaveDialog();
+            break;
+          case 'a':
+            e.preventDefault();
+            setSelectedObjects([...objects]);
+            break;
+          case 'c':
+            e.preventDefault();
+            if (selectedObjects.length > 0) {
+              handleDuplicate();
+            }
+            break;
+          case 'v':
+            e.preventDefault();
+            handlePaste();
+            break;
+          case 'Delete':
+          case 'Backspace':
+            e.preventDefault();
+            if (selectedObjects.length > 0) {
+              handleDeleteSelected();
+            }
+            break;
+        }
+      } else {
+        switch (e.key) {
+          case 'Delete':
+          case 'Backspace':
+            e.preventDefault();
+            if (selectedObjects.length > 0) {
+              handleDeleteSelected();
+            }
+            break;
+          case 'Escape':
+            setSelectedObjects([]);
+            setShowObjectPanel(false);
+            setShowColorPicker(null);
+            setShowStamps(false);
+            setShowTemplates(false);
+            setIsConnecting(false);
+            setConnectionStart(null);
+            setSelectedStamp(null);
+            setTool('select');
+            break;
+          case ' ':
+            e.preventDefault();
+            setIsPanning(true);
+            break;
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ') {
+        setIsPanning(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [objects, selectedObjects]);
+
   useEffect(() => {
     redrawCanvas();
-  }, [objects, selectedObjects, showGrid]);
+  }, [objects, selectedObjects, showGrid, zoom, panOffset]);
 
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -156,8 +250,14 @@ const WhiteboardPage: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Clear canvas
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Apply zoom and pan transformations
+    ctx.save();
+    ctx.translate(panOffset.x, panOffset.y);
+    ctx.scale(zoom, zoom);
 
     if (showGrid) {
       drawGrid(ctx);
@@ -173,6 +273,25 @@ const WhiteboardPage: React.FC = () => {
     if (currentObject) {
       drawObject(ctx, currentObject);
     }
+
+    // Draw connection preview if in connector mode
+    if (tool === 'connector' && connectionStart) {
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      const startCenter = {
+        x: connectionStart.x + (connectionStart.width || 0) / 2,
+        y: connectionStart.y + (connectionStart.height || 0) / 2
+      };
+      ctx.beginPath();
+      ctx.moveTo(startCenter.x, startCenter.y);
+      ctx.lineTo(startCenter.x + 50, startCenter.y + 50); // Preview line
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Restore transformations
+    ctx.restore();
   };
 
   const drawGrid = (ctx: CanvasRenderingContext2D) => {
@@ -292,11 +411,24 @@ const WhiteboardPage: React.FC = () => {
       case 'pen':
       case 'marker':
       case 'eraser':
+      case 'freeform':
         if (obj.points && obj.points.length > 0) {
           ctx.beginPath();
           ctx.moveTo(obj.points[0].x, obj.points[0].y);
           obj.points.forEach(point => ctx.lineTo(point.x, point.y));
           ctx.stroke();
+        }
+        break;
+
+      case 'highlighter':
+        if (obj.points && obj.points.length > 0) {
+          ctx.globalAlpha = 0.3;
+          ctx.lineWidth = obj.lineWidth * 2;
+          ctx.beginPath();
+          ctx.moveTo(obj.points[0].x, obj.points[0].y);
+          obj.points.forEach(point => ctx.lineTo(point.x, point.y));
+          ctx.stroke();
+          ctx.globalAlpha = obj.opacity;
         }
         break;
 
@@ -347,25 +479,29 @@ const WhiteboardPage: React.FC = () => {
           const start = obj.points[0];
           const end = obj.points[obj.points.length - 1];
           
+          // Draw main arrow line
           ctx.beginPath();
           ctx.moveTo(start.x, start.y);
           ctx.lineTo(end.x, end.y);
           ctx.stroke();
 
+          // Draw arrowhead
           const angle = Math.atan2(end.y - start.y, end.x - start.x);
-          const arrowLength = 20;
+          const arrowLength = Math.max(15, obj.lineWidth * 3);
+          const arrowAngle = Math.PI / 6; // 30 degrees
+          
           ctx.beginPath();
           ctx.moveTo(end.x, end.y);
           ctx.lineTo(
-            end.x - arrowLength * Math.cos(angle - Math.PI / 6),
-            end.y - arrowLength * Math.sin(angle - Math.PI / 6)
+            end.x - arrowLength * Math.cos(angle - arrowAngle),
+            end.y - arrowLength * Math.sin(angle - arrowAngle)
           );
+          ctx.moveTo(end.x, end.y);
           ctx.lineTo(
-            end.x - arrowLength * Math.cos(angle + Math.PI / 6),
-            end.y - arrowLength * Math.sin(angle + Math.PI / 6)
+            end.x - arrowLength * Math.cos(angle + arrowAngle),
+            end.y - arrowLength * Math.sin(angle + arrowAngle)
           );
-          ctx.closePath();
-          ctx.fill();
+          ctx.stroke();
         }
         break;
 
@@ -390,6 +526,40 @@ const WhiteboardPage: React.FC = () => {
           const img = new Image();
           img.src = obj.imageData;
           ctx.drawImage(img, obj.x, obj.y, obj.width, obj.height);
+        }
+        break;
+
+      case 'connector':
+        if (obj.points && obj.points.length >= 2) {
+          const start = obj.points[0];
+          const end = obj.points[obj.points.length - 1];
+          
+          // Draw connection line
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+          
+          // Draw connection points
+          ctx.fillStyle = obj.strokeColor;
+          ctx.beginPath();
+          ctx.arc(start.x, start.y, 5, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(end.x, end.y, 5, 0, 2 * Math.PI);
+          ctx.fill();
+          
+          // Reset line dash
+          ctx.setLineDash([]);
+        }
+        break;
+
+      case 'stamp':
+        if (obj.text) {
+          // Draw stamp text without border
+          ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${obj.fontSize || 16}px ${obj.fontFamily || 'Arial'}`;
+          ctx.fillStyle = obj.strokeColor;
+          ctx.fillText(obj.text, obj.x, obj.y);
         }
         break;
     }
@@ -593,6 +763,14 @@ const WhiteboardPage: React.FC = () => {
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
 
+    // Handle middle mouse button for panning
+    if (e.button === 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x, y });
+      return;
+    }
+
     // Always check for object selection first (regardless of current tool)
     const clickedObject = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
     
@@ -640,6 +818,87 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
+    if (tool === 'connector') {
+      if (!connectionStart) {
+        // First click - select start object
+        const startObj = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
+        if (startObj) {
+          setConnectionStart(startObj);
+          console.log('Start object selected:', startObj);
+        } else {
+          // Click on empty space - cancel connector mode
+          setIsConnecting(false);
+          setTool('select');
+        }
+      } else {
+        // Second click - create connection
+        const endObj = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
+        if (endObj && endObj.id !== connectionStart.id) {
+          const startCenter = {
+            x: connectionStart.x + (connectionStart.width || 0) / 2,
+            y: connectionStart.y + (connectionStart.height || 0) / 2
+          };
+          const endCenter = {
+            x: endObj.x + (endObj.width || 0) / 2,
+            y: endObj.y + (endObj.height || 0) / 2
+          };
+          
+          const newConnector: DrawObject = {
+            id: Date.now().toString(),
+            tool: 'connector',
+            strokeColor,
+            lineWidth,
+            opacity,
+            lineStyle,
+            points: [startCenter, endCenter],
+            x: Math.min(startCenter.x, endCenter.x),
+            y: Math.min(startCenter.y, endCenter.y),
+            width: Math.abs(endCenter.x - startCenter.x),
+            height: Math.abs(endCenter.y - startCenter.y)
+          };
+          setObjects([...objects, newConnector]);
+          console.log('Connector created:', newConnector);
+        } else if (!endObj) {
+          // Click on empty space - cancel connector mode
+          setConnectionStart(null);
+          setIsConnecting(false);
+          setTool('select');
+        }
+        setConnectionStart(null);
+        setIsConnecting(false);
+        setTool('select');
+      }
+      return;
+    }
+
+    if (tool === 'stamp') {
+      if (selectedStamp) {
+        const newStamp: DrawObject = {
+          id: Date.now().toString(),
+          tool: 'stamp',
+          strokeColor,
+          lineWidth,
+          opacity,
+          lineStyle,
+          text: selectedStamp,
+          x,
+          y,
+          width: 100,
+          height: 30,
+          fontSize: 16,
+          fontFamily: 'Arial',
+          fontWeight: 'bold'
+        };
+        setObjects([...objects, newStamp]);
+        setSelectedStamp(null);
+        setShowStamps(false);
+        setTool('select');
+      } else {
+        setShowStamps(true);
+      }
+      return;
+    }
+
     setIsDrawing(true);
     setSelectedObjects([]);
     
@@ -663,6 +922,18 @@ const WhiteboardPage: React.FC = () => {
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
+    
+    // Handle panning with middle mouse button or space key
+    if (isPanning) {
+      const deltaX = x - panStart.x;
+      const deltaY = y - panStart.y;
+      setPanOffset(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      setPanStart({ x, y });
+      return;
+    }
     
     // Check for hovered objects when not drawing
     if (!isDrawing) {
@@ -818,7 +1089,7 @@ const WhiteboardPage: React.FC = () => {
 
     if (!currentObject) return;
 
-    if (['brush', 'pen', 'marker', 'eraser', 'arrow', 'line'].includes(tool)) {
+    if (['brush', 'pen', 'marker', 'eraser', 'arrow', 'line', 'freeform', 'highlighter'].includes(tool)) {
       setCurrentObject({
         ...currentObject,
         points: [...(currentObject.points || []), { x, y }]
@@ -837,6 +1108,11 @@ const WhiteboardPage: React.FC = () => {
   };
 
   const handleMouseUp = () => {
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+    
     if (!isDrawing) return;
     setIsDrawing(false);
     setIsDragging(false);
@@ -908,6 +1184,100 @@ const WhiteboardPage: React.FC = () => {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handlePaste = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      for (const clipboardItem of clipboardItems) {
+        for (const type of clipboardItem.types) {
+          if (type.startsWith('image/')) {
+            const blob = await clipboardItem.getType(type);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              if (e.target?.result) {
+                const img = new Image();
+                img.onload = () => {
+                  const newObj: DrawObject = {
+                    id: Date.now().toString(),
+                    tool: 'image',
+                    strokeColor: '#000000',
+                    lineWidth: 0,
+                    opacity: 1,
+                    lineStyle: 'solid',
+                    imageData: e.target?.result as string,
+                    x: 100,
+                    y: 100,
+                    width: Math.min(img.width, 500),
+                    height: (Math.min(img.width, 500) / img.width) * img.height
+                  };
+                  setObjects([...objects, newObj]);
+                };
+                img.src = e.target.result as string;
+              }
+            };
+            reader.readAsDataURL(blob);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.log('Paste not supported or failed:', err);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      const file = imageFiles[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const newObj: DrawObject = {
+              id: Date.now().toString(),
+              tool: 'image',
+              strokeColor: '#000000',
+              lineWidth: 0,
+              opacity: 1,
+              lineStyle: 'solid',
+              imageData: event.target?.result as string,
+              x: x - 50,
+              y: y - 50,
+              width: Math.min(img.width, 500),
+              height: (Math.min(img.width, 500) / img.width) * img.height
+            };
+            setObjects([...objects, newObj]);
+          };
+          img.src = event.target.result as string;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleUndo = () => {
@@ -1022,7 +1392,7 @@ const WhiteboardPage: React.FC = () => {
     }
   };
 
-  const handleSaveWhiteboard = async () => {
+  const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' = 'png') => {
     if (!filename.trim()) {
       alert('Bitte gib einen Dateinamen ein');
       return;
@@ -1036,34 +1406,135 @@ const WhiteboardPage: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    canvas.toBlob(async (blob) => {
-      if (blob) {
-        const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
-        const fullFilename = finalFilename.endsWith('.png') ? finalFilename : `${finalFilename}.png`;
-        
-        const formData = new FormData();
-        formData.append('file', blob, fullFilename);
-        formData.append('targetPath', currentPath);
+    const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
+    
+    if (format === 'svg') {
+      // SVG Export
+      const svgData = generateSVG();
+      const blob = new Blob([svgData], { type: 'image/svg+xml' });
+      const fullFilename = finalFilename.endsWith('.svg') ? finalFilename : `${finalFilename}.svg`;
+      
+      const formData = new FormData();
+      formData.append('file', blob, fullFilename);
+      formData.append('targetPath', currentPath);
 
-        try {
-          const response = await fetch('/api/file-system-paths/save-file', {
-            method: 'POST',
-            body: formData
-          });
+      try {
+        const response = await fetch('/api/file-system-paths/save-file', {
+          method: 'POST',
+          body: formData
+        });
 
-          if (response.ok) {
-            alert('Whiteboard erfolgreich gespeichert!');
-            window.close();
-          } else {
-            const error = await response.json();
-            alert(error.error || 'Fehler beim Speichern');
-          }
-        } catch (error) {
-          console.error('Error saving:', error);
-          alert('Fehler beim Speichern');
+        if (response.ok) {
+          alert('Whiteboard als SVG gespeichert!');
+          window.close();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Fehler beim Speichern');
         }
+      } catch (error) {
+        console.error('Error saving SVG:', error);
+        alert('Fehler beim Speichern');
       }
-    }, 'image/png');
+    } else if (format === 'pdf') {
+      // PDF Export (simplified - would need a proper PDF library)
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const fullFilename = finalFilename.endsWith('.pdf') ? finalFilename : `${finalFilename}.pdf`;
+          
+          const formData = new FormData();
+          formData.append('file', blob, fullFilename);
+          formData.append('targetPath', currentPath);
+
+          try {
+            const response = await fetch('/api/file-system-paths/save-file', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (response.ok) {
+              alert('Whiteboard als PDF gespeichert!');
+              window.close();
+            } else {
+              const error = await response.json();
+              alert(error.error || 'Fehler beim Speichern');
+            }
+          } catch (error) {
+            console.error('Error saving PDF:', error);
+            alert('Fehler beim Speichern');
+          }
+        }
+      }, 'application/pdf');
+    } else {
+      // PNG Export (original)
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const fullFilename = finalFilename.endsWith('.png') ? finalFilename : `${finalFilename}.png`;
+          
+          const formData = new FormData();
+          formData.append('file', blob, fullFilename);
+          formData.append('targetPath', currentPath);
+
+          try {
+            const response = await fetch('/api/file-system-paths/save-file', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (response.ok) {
+              alert('Whiteboard erfolgreich gespeichert!');
+              window.close();
+            } else {
+              const error = await response.json();
+              alert(error.error || 'Fehler beim Speichern');
+            }
+          } catch (error) {
+            console.error('Error saving:', error);
+            alert('Fehler beim Speichern');
+          }
+        }
+      }, 'image/png');
+    }
+  };
+
+  const generateSVG = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return '';
+
+    const svgWidth = canvas.width;
+    const svgHeight = canvas.height;
+    
+    let svgContent = `<svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">`;
+    svgContent += `<rect width="100%" height="100%" fill="white"/>`;
+    
+    objects.forEach(obj => {
+      switch (obj.tool) {
+        case 'rectangle':
+          if (obj.width !== undefined && obj.height !== undefined) {
+            svgContent += `<rect x="${obj.x}" y="${obj.y}" width="${obj.width}" height="${obj.height}" 
+              fill="${obj.fillColor || 'none'}" stroke="${obj.strokeColor}" stroke-width="${obj.lineWidth}"/>`;
+          }
+          break;
+        case 'circle':
+          if (obj.width !== undefined && obj.height !== undefined) {
+            const radius = Math.min(Math.abs(obj.width), Math.abs(obj.height)) / 2;
+            const centerX = obj.x + obj.width / 2;
+            const centerY = obj.y + obj.height / 2;
+            svgContent += `<circle cx="${centerX}" cy="${centerY}" r="${radius}" 
+              fill="${obj.fillColor || 'none'}" stroke="${obj.strokeColor}" stroke-width="${obj.lineWidth}"/>`;
+          }
+          break;
+        case 'text':
+          if (obj.text) {
+            svgContent += `<text x="${obj.x}" y="${obj.y}" font-family="${obj.fontFamily || 'Arial'}" 
+              font-size="${obj.fontSize || 24}" fill="${obj.strokeColor}">${obj.text}</text>`;
+          }
+          break;
+        // Add more cases as needed
+      }
+    });
+    
+    svgContent += '</svg>';
+    return svgContent;
   };
 
   const presetColors = [
@@ -1074,6 +1545,25 @@ const WhiteboardPage: React.FC = () => {
 
   return (
     <Box sx={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
+      {/* Collaborative Features */}
+      {groupId && (
+        <CollaborativeWhiteboard
+          groupId={groupId}
+          onUserJoin={(user) => {
+            console.log('User joined:', user);
+          }}
+          onUserLeave={(userId) => {
+            console.log('User left:', userId);
+          }}
+          onCursorMove={(userId, x, y) => {
+            // Handle remote cursor movement
+          }}
+          onObjectChange={(newObjects) => {
+            setObjects(newObjects);
+          }}
+        />
+      )}
+
       {/* Save Button */}
       <IconButton
         onClick={handleOpenSaveDialog}
@@ -1094,12 +1584,23 @@ const WhiteboardPage: React.FC = () => {
         <SaveIcon />
       </IconButton>
 
-      {/* Advanced Toolbar */}
-      <Paper elevation={3} sx={{ borderRadius: 0, borderBottom: '3px solid #1976d2' }}>
-        {/* Row 1: Main Tools */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, bgcolor: '#f5f5f5' }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: '#666', minWidth: 60 }}>
-            Werkzeuge
+      {/* Modern Toolbar */}
+      <Paper elevation={0} sx={{ 
+        borderRadius: 0, 
+        borderBottom: '1px solid #e0e0e0',
+        background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+        backdropFilter: 'blur(10px)'
+      }}>
+        {/* Compact Main Tools */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1 }}>
+          <Typography variant="caption" sx={{ 
+            fontWeight: 600, 
+            color: 'white', 
+            minWidth: 60,
+            fontSize: '0.75rem',
+            textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+          }}>
+            Tools
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -1108,12 +1609,16 @@ const WhiteboardPage: React.FC = () => {
               { value: 'pen', icon: '🖊️', label: 'Stift' },
               { value: 'brush', icon: '🖌️', label: 'Pinsel' },
               { value: 'marker', icon: '🖍️', label: 'Marker' },
+              { value: 'highlighter', icon: '🖍️', label: 'Textmarker' },
               { value: 'line', icon: '📏', label: 'Linie' },
               { value: 'rectangle', icon: '▭', label: 'Rechteck' },
               { value: 'circle', icon: '⭕', label: 'Kreis' },
               { value: 'triangle', icon: '△', label: 'Dreieck' },
               { value: 'arrow', icon: '➡️', label: 'Pfeil' },
+              { value: 'freeform', icon: '✏️', label: 'Freihand' },
+              { value: 'connector', icon: '🔗', label: 'Verbinder' },
               { value: 'text', icon: 'A', label: 'Text' },
+              { value: 'stamp', icon: '🏷️', label: 'Stempel' },
               { value: 'image', icon: '🖼️', label: 'Bild' },
               { value: 'eraser', icon: '🧹', label: 'Radieren' }
             ].map(t => (
@@ -1122,26 +1627,34 @@ const WhiteboardPage: React.FC = () => {
                   onClick={() => {
                     if (t.value === 'image') {
                       document.getElementById('image-upload')?.click();
+                    } else if (t.value === 'stamp') {
+                      setTool(t.value as Tool);
+                      setShowStamps(true);
+                    } else if (t.value === 'connector') {
+                      setTool(t.value as Tool);
+                      setIsConnecting(true);
                     } else {
                       setTool(t.value as Tool);
                     }
                   }}
                   sx={{
-                    px: 1.2,
-                    py: 0.6,
+                    px: 1,
+                    py: 0.5,
                     borderRadius: 1,
                     cursor: 'pointer',
-                    bgcolor: tool === t.value ? '#1976d2' : 'white',
-                    color: tool === t.value ? 'white' : '#333',
-                    fontSize: '1.1rem',
+                    bgcolor: tool === t.value ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+                    color: 'white',
+                    fontSize: '1rem',
                     fontWeight: 'bold',
-                    border: '2px solid',
-                    borderColor: tool === t.value ? '#1565c0' : '#e0e0e0',
-                    transition: 'all 0.2s',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.2s ease',
+                    boxShadow: tool === t.value ? '0 2px 8px rgba(0,0,0,0.15)' : '0 1px 4px rgba(0,0,0,0.1)',
                     '&:hover': {
-                      bgcolor: tool === t.value ? '#1565c0' : '#f5f5f5',
-                      transform: 'translateY(-2px)',
-                      boxShadow: 1
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      transform: 'scale(1.05)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      borderColor: 'rgba(255,255,255,0.4)'
                     }
                   }}
                 >
@@ -1153,45 +1666,135 @@ const WhiteboardPage: React.FC = () => {
 
           <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center' }}>
             <Tooltip title="Rückgängig">
               <span>
-                <IconButton onClick={handleUndo} disabled={objects.length === 0} size="small">
+                <IconButton 
+                  onClick={handleUndo} 
+                  disabled={objects.length === 0} 
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 28,
+                    height: 28,
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.2)',
+                      transform: 'scale(1.05)'
+                    },
+                    '&:disabled': {
+                      color: 'rgba(255,255,255,0.3)',
+                      bgcolor: 'rgba(255,255,255,0.05)'
+                    }
+                  }}
+                >
                   <UndoIcon />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="Wiederholen">
               <span>
-                <IconButton onClick={handleRedo} disabled={redoStack.length === 0} size="small">
+                <IconButton 
+                  onClick={handleRedo} 
+                  disabled={redoStack.length === 0} 
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 28,
+                    height: 28,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
+                    '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
+                  }}
+                >
                   <RedoIcon />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="Duplizieren">
               <span>
-                <IconButton onClick={handleDuplicate} disabled={selectedObjects.length === 0} size="small">
+                <IconButton 
+                  onClick={handleDuplicate} 
+                  disabled={selectedObjects.length === 0} 
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 28,
+                    height: 28,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
+                    '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
+                  }}
+                >
                   <CopyIcon />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="In Vordergrund">
               <span>
-                <IconButton onClick={handleBringToFront} disabled={selectedObjects.length === 0} size="small">
+                <IconButton 
+                  onClick={handleBringToFront} 
+                  disabled={selectedObjects.length === 0} 
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 28,
+                    height: 28,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
+                    '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
+                  }}
+                >
                   <FrontIcon />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="In Hintergrund">
               <span>
-                <IconButton onClick={handleSendToBack} disabled={selectedObjects.length === 0} size="small">
+                <IconButton 
+                  onClick={handleSendToBack} 
+                  disabled={selectedObjects.length === 0} 
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 28,
+                    height: 28,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
+                    '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
+                  }}
+                >
                   <BackIcon />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="Löschen">
               <span>
-                <IconButton onClick={selectedObjects.length > 0 ? handleDeleteSelected : handleClear} size="small" color="error">
+                <IconButton 
+                  onClick={selectedObjects.length > 0 ? handleDeleteSelected : handleClear} 
+                  size="small"
+                  sx={{
+                    color: '#ff6b6b',
+                    bgcolor: 'rgba(255,107,107,0.1)',
+                    border: '1px solid rgba(255,107,107,0.3)',
+                    backdropFilter: 'blur(10px)',
+                    '&:hover': { 
+                      bgcolor: 'rgba(255,107,107,0.2)', 
+                      transform: 'scale(1.1)',
+                      boxShadow: '0 4px 12px rgba(255,107,107,0.3)'
+                    }
+                  }}
+                >
                   <DeleteIcon />
                 </IconButton>
               </span>
@@ -1200,58 +1803,196 @@ const WhiteboardPage: React.FC = () => {
 
           <Box sx={{ flexGrow: 1 }} />
 
+          {/* Compact Zoom Controls */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 0.5, 
+            mr: 1,
+            bgcolor: 'rgba(255,255,255,0.1)',
+            borderRadius: 1,
+            px: 1,
+            py: 0.25,
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <Tooltip title="Heranzoomen">
+              <IconButton 
+                onClick={() => setZoom(Math.min(zoom * 1.2, 5))} 
+                size="small"
+                sx={{
+                  color: 'white',
+                  width: 24,
+                  height: 24,
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' }
+                }}
+              >
+                <Typography variant="caption" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>+</Typography>
+              </IconButton>
+            </Tooltip>
+            <Typography variant="caption" sx={{ 
+              minWidth: 50, 
+              textAlign: 'center',
+              color: 'white',
+              fontWeight: 600,
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}>
+              {Math.round(zoom * 100)}%
+            </Typography>
+            <Tooltip title="Herauszoomen">
+              <IconButton 
+                onClick={() => setZoom(Math.max(zoom / 1.2, 0.1))} 
+                size="small"
+                sx={{
+                  color: 'white',
+                  width: 24,
+                  height: 24,
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' }
+                }}
+              >
+                <Typography variant="caption" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>-</Typography>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Zoom zurücksetzen">
+              <IconButton 
+                onClick={() => { setZoom(1); setPanOffset({ x: 0, y: 0 }); }} 
+                size="small"
+                sx={{
+                  color: 'white',
+                  width: 24,
+                  height: 24,
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' }
+                }}
+              >
+                <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>100%</Typography>
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          <Tooltip title="Vorlagen">
+            <IconButton 
+              onClick={() => setShowTemplates(true)} 
+              size="small"
+              sx={{
+                color: 'white',
+                bgcolor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' }
+              }}
+            >
+              <Typography variant="caption" sx={{ fontSize: '1rem' }}>📋</Typography>
+            </IconButton>
+          </Tooltip>
+
           <Tooltip title="Raster ein/aus">
-            <IconButton onClick={() => setShowGrid(!showGrid)} size="small" color={showGrid ? 'primary' : 'default'}>
+            <IconButton 
+              onClick={() => setShowGrid(!showGrid)} 
+              size="small"
+              sx={{
+                color: showGrid ? '#4caf50' : 'white',
+                bgcolor: showGrid ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                '&:hover': { 
+                  bgcolor: showGrid ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.2)', 
+                  transform: 'scale(1.1)' 
+                }
+              }}
+            >
               <GridIcon />
             </IconButton>
           </Tooltip>
 
-          <IconButton onClick={() => window.close()} size="small">
+          <IconButton 
+            onClick={() => window.close()} 
+            size="small"
+            sx={{
+              color: '#ff6b6b',
+              bgcolor: 'rgba(255,107,107,0.1)',
+              border: '1px solid rgba(255,107,107,0.3)',
+              backdropFilter: 'blur(10px)',
+              '&:hover': { 
+                bgcolor: 'rgba(255,107,107,0.2)', 
+                transform: 'scale(1.1)',
+                boxShadow: '0 4px 12px rgba(255,107,107,0.3)'
+              }
+            }}
+          >
             <CloseIcon />
           </IconButton>
         </Box>
 
-        {/* Row 2: Properties */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1, bgcolor: 'white', borderTop: '1px solid #e0e0e0' }}>
+        {/* Compact Properties */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          px: 2, 
+          py: 0.75, 
+          bgcolor: 'rgba(255,255,255,0.05)', 
+          borderTop: '1px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(10px)'
+        }}>
           {/* Colors */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666' }}>
+            <Typography variant="caption" sx={{ 
+              fontWeight: 600, 
+              fontSize: '0.75rem', 
+              color: 'rgba(255,255,255,0.8)',
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}>
               Strich
             </Typography>
             <Box
               onClick={() => setShowColorPicker('stroke')}
               sx={{
-                width: 32,
-                height: 32,
+                width: 24,
+                height: 24,
                 bgcolor: strokeColor,
-                border: '2px solid #333',
-                borderRadius: 1,
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '50%',
                 cursor: 'pointer',
-                boxShadow: 1,
-                '&:hover': { transform: 'scale(1.1)' }
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+                '&:hover': { 
+                  transform: 'scale(1.1)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                  borderColor: 'rgba(255,255,255,0.6)'
+                }
               }}
             />
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666' }}>
+            <Typography variant="caption" sx={{ 
+              fontWeight: 600, 
+              fontSize: '0.75rem', 
+              color: 'rgba(255,255,255,0.8)',
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}>
               Füllung
             </Typography>
             <Box
               onClick={() => setShowColorPicker('fill')}
               sx={{
-                width: 32,
-                height: 32,
+                width: 24,
+                height: 24,
                 bgcolor: fillColor === 'transparent' ? 'white' : fillColor,
-                border: '2px solid #333',
-                borderRadius: 1,
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '50%',
                 cursor: 'pointer',
-                boxShadow: 1,
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
                 backgroundImage: fillColor === 'transparent' ? 
                   'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
-                backgroundSize: '8px 8px',
-                backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
-                '&:hover': { transform: 'scale(1.1)' }
+                backgroundSize: '6px 6px',
+                backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px',
+                '&:hover': { 
+                  transform: 'scale(1.1)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                  borderColor: 'rgba(255,255,255,0.6)'
+                }
               }}
             />
           </Box>
@@ -1383,12 +2124,19 @@ const WhiteboardPage: React.FC = () => {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
           style={{
-            cursor: isDragging ? 'grabbing' :
+            cursor: isPanning ? 'grabbing' :
+                    isDragging ? 'grabbing' :
                     resizeHandle ? 'nw-resize' :
                     hoveredObject ? 'grab' :
                     tool === 'eraser' ? 'crosshair' : 
                     tool === 'text' ? 'text' : 
+                    tool === 'connector' ? 'crosshair' :
+                    tool === 'stamp' ? 'crosshair' :
                     'default',
             backgroundColor: '#ffffff'
           }}
@@ -1584,7 +2332,21 @@ const WhiteboardPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setShowSaveDialog(false)}>Abbrechen</Button>
           <Button 
-            onClick={handleSaveWhiteboard} 
+            onClick={() => handleSaveWhiteboard('png')} 
+            variant="outlined"
+            disabled={!filename.trim() || !currentPath}
+          >
+            PNG
+          </Button>
+          <Button 
+            onClick={() => handleSaveWhiteboard('svg')} 
+            variant="outlined"
+            disabled={!filename.trim() || !currentPath}
+          >
+            SVG
+          </Button>
+          <Button 
+            onClick={() => handleSaveWhiteboard('pdf')} 
             variant="contained" 
             color="success"
             disabled={!filename.trim() || !currentPath}
@@ -1602,6 +2364,91 @@ const WhiteboardPage: React.FC = () => {
         style={{ display: 'none' }}
         id="image-upload"
       />
+
+      {/* Stamps Dialog */}
+      <Dialog open={showStamps} onClose={() => setShowStamps(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Stempel auswählen</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, mt: 2 }}>
+            {[
+              '✓', '✗', '!', '?', '★', '♥', '♦', '♠', '♣',
+              'OK', 'NEIN', 'JA', 'GUT', 'SCHLECHT', 'WICHTIG',
+              'INFO', 'HINWEIS', 'TIP', 'ACHTUNG'
+            ].map(stamp => (
+              <Box
+                key={stamp}
+                onClick={() => {
+                  setSelectedStamp(stamp);
+                  setShowStamps(false);
+                  // Tool bleibt auf 'stamp' für das nächste Klicken
+                }}
+                sx={{
+                  p: 2,
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 2,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  '&:hover': {
+                    borderColor: '#1976d2',
+                    backgroundColor: '#f5f5f5'
+                  }
+                }}
+              >
+                {stamp}
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowStamps(false)}>Abbrechen</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Templates Dialog */}
+      <Dialog open={showTemplates} onClose={() => setShowTemplates(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Vorlagen auswählen</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, mt: 2 }}>
+            {[
+              { name: 'Mindmap', icon: '🧠', description: 'Mindmap-Vorlage' },
+              { name: 'Diagramm', icon: '📊', description: 'Flussdiagramm-Vorlage' },
+              { name: 'Tabelle', icon: '📋', description: 'Tabellen-Vorlage' },
+              { name: 'Zeitachse', icon: '⏰', description: 'Zeitachse-Vorlage' },
+              { name: 'Venn', icon: '⭕', description: 'Venn-Diagramm' },
+              { name: 'Gantt', icon: '📅', description: 'Gantt-Chart' }
+            ].map(template => (
+              <Box
+                key={template.name}
+                onClick={() => {
+                  setSelectedTemplate(template.name);
+                  setShowTemplates(false);
+                  // Hier könnten wir die Vorlage laden
+                }}
+                sx={{
+                  p: 2,
+                  border: '2px solid #e0e0e0',
+                  borderRadius: 2,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    borderColor: '#1976d2',
+                    backgroundColor: '#f5f5f5'
+                  }
+                }}
+              >
+                <Typography variant="h4" sx={{ mb: 1 }}>{template.icon}</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{template.name}</Typography>
+                <Typography variant="caption" color="text.secondary">{template.description}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowTemplates(false)}>Abbrechen</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Object Properties Panel */}
       {showObjectPanel && selectedObjects[0] && (
@@ -1896,9 +2743,13 @@ const WhiteboardPage: React.FC = () => {
         {selectedObjects.length > 0 && (
           <Chip label={`Ausgewählt: ${selectedObjects.length}`} size="small" color="primary" />
         )}
+        <Chip label={`Zoom: ${Math.round(zoom * 100)}%`} size="small" />
+        {isConnecting && (
+          <Chip label="Verbinder aktiv" size="small" color="secondary" />
+        )}
         <Box sx={{ flexGrow: 1 }} />
         <Typography variant="caption" sx={{ color: '#666' }}>
-          Tipp: Mit ✋ Objekte auswählen und im Panel rechts bearbeiten
+          Tastatur: Strg+Z (Rückgängig), Strg+S (Speichern), Leertaste (Verschieben), ESC (Abbrechen)
         </Typography>
       </Box>
     </Box>
@@ -1906,3 +2757,4 @@ const WhiteboardPage: React.FC = () => {
 };
 
 export default WhiteboardPage;
+
