@@ -29,7 +29,8 @@ import {
   Close as CloseIcon,
   NavigateBefore as NavigateBeforeIcon,
   NavigateNext as NavigateNextIcon,
-  Check as CheckIcon
+  Check as CheckIcon,
+  ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 
 interface Student {
@@ -59,7 +60,7 @@ const SubmissionsGridPage: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [, setAllStudents] = useState<Student[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'date'>('name');
   const [error, setError] = useState<string | null>(null);
   
@@ -76,7 +77,7 @@ const SubmissionsGridPage: React.FC = () => {
     if (filePath && teacherId && groupId) {
       loadSubmissions();
     }
-  }, [filePath, teacherId, groupId]);
+  }, [filePath, teacherId, groupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // PDF als Blob laden für bessere Darstellung
   useEffect(() => {
@@ -127,7 +128,7 @@ const SubmissionsGridPage: React.FC = () => {
         URL.revokeObjectURL(pdfBlobUrl);
       }
     };
-  }, [reviewMode, currentReviewIndex, submissions, sortBy]);
+  }, [reviewMode, currentReviewIndex, submissions, sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tastatursteuerung für Bewertungs-Modal
   useEffect(() => {
@@ -180,7 +181,7 @@ const SubmissionsGridPage: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [reviewMode, currentReviewIndex, currentComment, savingComment, expandedPreview]);
+  }, [reviewMode, currentReviewIndex, currentComment, savingComment, expandedPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadSubmissions = async () => {
     try {
@@ -244,13 +245,6 @@ const SubmissionsGridPage: React.FC = () => {
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  };
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleString('de-DE', {
@@ -321,7 +315,7 @@ const SubmissionsGridPage: React.FC = () => {
 
       if (!response.ok) throw new Error('Fehler beim Speichern');
 
-      const updatedSubmission = await response.json();
+      await response.json();
       
       // Aktualisiere lokale Submissions
       setSubmissions(prev => prev.map(s => 
@@ -387,6 +381,67 @@ const SubmissionsGridPage: React.FC = () => {
       alert('Fehler beim Öffnen der Datei');
     }
   };
+
+  const handleCopyImageToClipboard = async (submission: Submission) => {
+    if (submission.missing || !submission.originalFileName) return;
+    
+    const fileExtension = submission.originalFileName.split('.').pop()?.toLowerCase();
+    if (!['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExtension || '')) {
+      alert('Nur Bilder können kopiert werden');
+      return;
+    }
+
+    try {
+      // Lade das Bild
+      const response = await fetch(`/api/submissions/download/${submission.id}`);
+      if (!response.ok) throw new Error('Fehler beim Laden des Bildes');
+
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      
+      // Erstelle ein Image-Element
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imageUrl;
+      });
+
+      // Erstelle Canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas nicht unterstützt');
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      // Konvertiere zu Blob
+      const canvasBlob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob!);
+        }, 'image/png');
+      });
+
+      // Kopiere in Zwischenablage
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': canvasBlob
+        })
+      ]);
+      
+      // Cleanup
+      URL.revokeObjectURL(imageUrl);
+      
+      // Erfolgreich kopiert - kein Popup
+    } catch (err: any) {
+      console.error('Kopieren fehlgeschlagen:', err);
+      alert('❌ Kopieren fehlgeschlagen. Versuche es nochmal.');
+    }
+  };
+
 
   if (loading) {
     return (
@@ -565,16 +620,41 @@ const SubmissionsGridPage: React.FC = () => {
                         </Typography>
                       </Box>
                     ) : submission.fileType?.includes('image') ? (
-                      <img 
-                        src={`/api/submissions/download/${submission.id}`}
-                        alt={submission.originalFileName}
-                        style={{ 
-                          maxWidth: '100%', 
-                          maxHeight: '100%', 
-                          objectFit: 'contain',
-                          borderRadius: '4px'
-                        }}
-                      />
+                      <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img 
+                          src={`/api/submissions/download/${submission.id}`}
+                          alt={submission.originalFileName}
+                          style={{ 
+                            maxWidth: '100%', 
+                            maxHeight: '100%', 
+                            objectFit: 'contain',
+                            borderRadius: '4px'
+                          }}
+                        />
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyImageToClipboard(submission);
+                          }}
+                          sx={{
+                            position: 'absolute',
+                            top: 2,
+                            right: 2,
+                            bgcolor: 'rgba(0, 0, 0, 0.5)',
+                            width: 20,
+                            height: 20,
+                            p: 0,
+                            opacity: 0.8,
+                            '&:hover': {
+                              bgcolor: 'rgba(0, 0, 0, 0.7)',
+                              opacity: 1,
+                            }
+                          }}
+                          title="Bild kopieren"
+                        >
+                          <ContentCopyIcon sx={{ fontSize: 12, color: 'white' }} />
+                        </IconButton>
+                      </Box>
                     ) : submission.fileType?.includes('pdf') ? (
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography sx={{ fontSize: 48 }}>📄</Typography>
@@ -689,15 +769,40 @@ const SubmissionsGridPage: React.FC = () => {
                   onClick={() => setExpandedPreview(true)}
                 >
                   {submissionsToReview[currentReviewIndex].fileType?.includes('image') ? (
-                    <img 
-                      src={`/api/submissions/download/${submissionsToReview[currentReviewIndex].id}`}
-                      alt={submissionsToReview[currentReviewIndex].originalFileName}
-                      style={{ 
-                        maxWidth: '100%', 
-                        maxHeight: '100%', 
-                        objectFit: 'contain'
-                      }}
-                    />
+                    <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <img 
+                        src={`/api/submissions/download/${submissionsToReview[currentReviewIndex].id}`}
+                        alt={submissionsToReview[currentReviewIndex].originalFileName}
+                        style={{ 
+                          maxWidth: '100%', 
+                          maxHeight: '100%', 
+                          objectFit: 'contain'
+                        }}
+                      />
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyImageToClipboard(submissionsToReview[currentReviewIndex]);
+                        }}
+                        sx={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          bgcolor: 'rgba(0, 0, 0, 0.5)',
+                          width: 24,
+                          height: 24,
+                          p: 0,
+                          opacity: 0.8,
+                          '&:hover': {
+                            bgcolor: 'rgba(0, 0, 0, 0.7)',
+                            opacity: 1,
+                          }
+                        }}
+                        title="Bild kopieren"
+                      >
+                        <ContentCopyIcon sx={{ fontSize: 14, color: 'white' }} />
+                      </IconButton>
+                    </Box>
                   ) : submissionsToReview[currentReviewIndex].fileType?.includes('pdf') ? (
                     pdfBlobUrl ? (
                       <iframe
@@ -831,15 +936,40 @@ const SubmissionsGridPage: React.FC = () => {
           {submissionsToReview[currentReviewIndex] && (
             <>
               {submissionsToReview[currentReviewIndex].fileType?.includes('image') ? (
-                <img 
-                  src={`/api/submissions/download/${submissionsToReview[currentReviewIndex].id}`}
-                  alt={submissionsToReview[currentReviewIndex].originalFileName}
-                  style={{ 
-                    maxWidth: '100%', 
-                    maxHeight: '85vh', 
-                    objectFit: 'contain'
-                  }}
-                />
+                <Box sx={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img 
+                    src={`/api/submissions/download/${submissionsToReview[currentReviewIndex].id}`}
+                    alt={submissionsToReview[currentReviewIndex].originalFileName}
+                    style={{ 
+                      maxWidth: '100%', 
+                      maxHeight: '85vh', 
+                      objectFit: 'contain'
+                    }}
+                  />
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyImageToClipboard(submissionsToReview[currentReviewIndex]);
+                    }}
+                    sx={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      bgcolor: 'rgba(0, 0, 0, 0.5)',
+                      width: 28,
+                      height: 28,
+                      p: 0,
+                      opacity: 0.8,
+                      '&:hover': {
+                        bgcolor: 'rgba(0, 0, 0, 0.7)',
+                        opacity: 1,
+                      }
+                    }}
+                    title="Bild kopieren"
+                  >
+                    <ContentCopyIcon sx={{ fontSize: 16, color: 'white' }} />
+                  </IconButton>
+                </Box>
               ) : submissionsToReview[currentReviewIndex].fileType?.includes('pdf') ? (
                 pdfBlobUrl ? (
                   <iframe
@@ -883,6 +1013,7 @@ const SubmissionsGridPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
     </Box>
   );
 };
