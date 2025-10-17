@@ -86,8 +86,9 @@ import {
   ArrowUpward as ArrowUpwardIcon
 } from '@mui/icons-material';
 
-type NotizTool = 'pen' | 'highlighter' | 'text' | 'eraser' | 'select' | 'pan' | 'rectangle' | 'circle' | 'arrow';
+type NotizTool = 'pen' | 'highlighter' | 'text' | 'eraser' | 'select' | 'pan' | 'rectangle' | 'circle' | 'arrow' | 'image';
 type PaperType = 'blank' | 'lined' | 'grid' | 'dotted';
+type CollageLayout = 'free' | 'grid' | 'mosaic' | 'spiral' | 'random';
 
 interface NotizObject {
   id: string;
@@ -109,6 +110,10 @@ interface NotizObject {
   textDecoration?: string;
   rotation?: number;
   isSelected?: boolean;
+  // Image properties
+  imageData?: string;
+  originalWidth?: number;
+  originalHeight?: number;
   isHighlighted?: boolean;
   isLocked?: boolean;
   zIndex?: number;
@@ -147,15 +152,56 @@ const TafelbildPage: React.FC = () => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [paperType, setPaperType] = useState<PaperType>('blank');
   
+  // Collage settings
+  const [canvasSize, setCanvasSize] = useState({ width: 1920, height: 1080 }); // Large canvas for collages
+  const [collageLayout, setCollageLayout] = useState<CollageLayout>('free');
+  const [autoArrange, setAutoArrange] = useState(false);
+  const [proportionalScaling, setProportionalScaling] = useState(true);
+  
+  
+  // Immediate resize update function (no throttling)
+  const updateResizeImmediate = useCallback((selected: NotizObject, newX: number, newY: number, newWidth: number, newHeight: number) => {
+    // Update pages immediately
+    setPages(prevPages => {
+      const updatedPages = [...prevPages];
+      const updatedObjects = updatedPages[currentPageIndex].objects.map(obj => {
+        if (obj.id === selected.id) {
+          return { ...obj, x: newX, y: newY, width: newWidth, height: newHeight };
+        }
+        return obj;
+      });
+      updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: updatedObjects };
+      return updatedPages;
+    });
+    
+    // Update selectedObjects immediately
+    setSelectedObjects(prevSelected => 
+      prevSelected.map(obj => {
+        if (obj.id === selected.id) {
+          return { ...obj, x: newX, y: newY, width: newWidth, height: newHeight };
+        }
+        return obj;
+      })
+    );
+  }, [currentPageIndex]);
+  
   // Drawing State
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentObject, setCurrentObject] = useState<NotizObject | null>(null);
   const [selectedObjects, setSelectedObjects] = useState<NotizObject[]>([]);
-  const [redoStack, setRedoStack] = useState<NotizObject[]>([]);
+  const [undoStack, setUndoStack] = useState<NotizObject[][]>([]);
+  const [redoStack, setRedoStack] = useState<NotizObject[][]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  
+  // State for image upload
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [imageCache, setImageCache] = useState<Map<string, HTMLImageElement>>(new Map());
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
   
   // UI State
   const [textInput, setTextInput] = useState('');
@@ -205,6 +251,86 @@ const TafelbildPage: React.FC = () => {
   useEffect(() => {
     redrawCanvas();
   }, [currentPage, selectedObjects, zoom, pan, paperType]);
+
+  // Add paste event listener
+  useEffect(() => {
+    const handlePasteEvent = (e: ClipboardEvent) => handlePaste(e);
+    document.addEventListener('paste', handlePasteEvent);
+    return () => document.removeEventListener('paste', handlePasteEvent);
+  }, []);
+
+  // Add keyboard event listeners
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      console.log('Key pressed:', e.key, 'ctrl:', e.ctrlKey, 'cmd:', e.metaKey, 'shift:', e.shiftKey);
+      
+      // Cmd+Z for undo (Mac) / Ctrl+Z for Windows
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        console.log('Undo triggered');
+        if (undoStack.length === 0) return;
+        
+        // Save current state to redo stack
+        setRedoStack(prev => [...prev, currentPage.objects]);
+        
+        // Get last state from undo stack
+        const lastState = undoStack[undoStack.length - 1];
+        setUndoStack(prev => prev.slice(0, -1));
+        
+        // Restore state
+        const updatedPages = [...pages];
+        updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: lastState };
+        setPages(updatedPages);
+        
+        setSelectedObjects([]);
+        setShowPropertiesPanel(false);
+      }
+      // Cmd+Shift+Z for redo (Mac) / Ctrl+Shift+Z for Windows
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        console.log('Redo triggered');
+        if (redoStack.length === 0) return;
+        
+        // Save current state to undo stack
+        setUndoStack(prev => [...prev, currentPage.objects]);
+        
+        // Get last state from redo stack
+        const lastState = redoStack[redoStack.length - 1];
+        setRedoStack(prev => prev.slice(0, -1));
+        
+        // Restore state
+        const updatedPages = [...pages];
+        updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: lastState };
+        setPages(updatedPages);
+        
+        setSelectedObjects([]);
+        setShowPropertiesPanel(false);
+      }
+      // Delete key to delete selected objects
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        console.log('Delete triggered, selected objects:', selectedObjects.length);
+        if (selectedObjects.length === 0) return;
+        
+        // Save to undo stack
+        setUndoStack(prev => [...prev, currentPage.objects]);
+        setRedoStack([]);
+        
+        const selectedIds = selectedObjects.map(o => o.id);
+        const updatedObjects = currentPage.objects.filter(obj => !selectedIds.includes(obj.id));
+        
+        const updatedPages = [...pages];
+        updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: updatedObjects };
+        setPages(updatedPages);
+        
+        setSelectedObjects([]);
+        setShowPropertiesPanel(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [undoStack, redoStack, currentPage.objects, pages, currentPageIndex, selectedObjects]);
 
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -437,6 +563,35 @@ const TafelbildPage: React.FC = () => {
         }
         break;
 
+      case 'image':
+        if (obj.imageData && obj.width && obj.height) {
+          // Check if image is already cached and loaded
+          const cachedImg = imageCache.get(obj.imageData);
+          if (cachedImg && loadedImages.has(obj.imageData)) {
+            ctx.drawImage(cachedImg, obj.x, obj.y, obj.width!, obj.height!);
+          } else if (!loadedImages.has(obj.imageData)) {
+            // Load image and mark as loading
+            setLoadedImages(prev => new Set(prev).add(obj.imageData!));
+            const img = new Image();
+            img.onload = () => {
+              // Cache the image
+              setImageCache(prev => new Map(prev).set(obj.imageData!, img));
+              // Trigger redraw
+              setTimeout(() => redrawCanvas(), 10);
+            };
+            img.onerror = () => {
+              console.error('Failed to load image');
+              setLoadedImages(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(obj.imageData!);
+                return newSet;
+              });
+            };
+            img.src = obj.imageData;
+          }
+        }
+        break;
+
       case 'eraser':
         if (obj.points && obj.points.length > 0) {
           ctx.globalCompositeOperation = 'destination-out';
@@ -454,40 +609,60 @@ const TafelbildPage: React.FC = () => {
   };
 
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, obj: NotizObject) => {
-    const bounds = getObjectBounds(obj);
+    // Only draw handles for images
+    if (obj.tool !== 'image') return;
+    
+    // Use direct object coordinates
+    const objX = obj.x;
+    const objY = obj.y;
+    const objWidth = obj.width || 100;
+    const objHeight = obj.height || 100;
     
     // Selection border
-    ctx.strokeStyle = '#2196f3';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ff0000'; // Red border for debugging
+    ctx.lineWidth = 3;
     ctx.setLineDash([5, 5]);
-    ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    ctx.strokeRect(objX, objY, objWidth, objHeight);
     ctx.setLineDash([]);
     
-    // All handles (corners + sides)
-    const handleSize = 12;
+    // Only corner handles for simple resizing
+    const handleSize = 40; // Even bigger handles
     const handles = [
-      { x: bounds.x, y: bounds.y, name: 'nw' },
-      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
-      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' },
-      // Side handles
-      { x: bounds.x + bounds.width / 2, y: bounds.y, name: 'n' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, name: 'e' },
-      { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, name: 's' },
-      { x: bounds.x, y: bounds.y + bounds.height / 2, name: 'w' }
+      { x: objX, y: objY, name: 'nw' },
+      { x: objX + objWidth, y: objY, name: 'ne' },
+      { x: objX + objWidth, y: objY + objHeight, name: 'se' },
+      { x: objX, y: objY + objHeight, name: 'sw' }
     ];
     
-    ctx.fillStyle = '#2196f3';
+    ctx.fillStyle = '#ff0000'; // Red handles for debugging
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     
-    handles.forEach(handle => {
+    handles.forEach((handle, index) => {
+      // Draw handle as a filled square with white border
       ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
       ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+      
+      // Draw handle number for debugging
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '18px Arial';
+      ctx.fillText(index.toString(), handle.x - 8, handle.y + 8);
+      ctx.fillStyle = '#ff0000';
     });
   };
 
   const getObjectBounds = (obj: NotizObject) => {
+    // For images and shapes, use direct bounds
+    if (obj.tool === 'image' || obj.tool === 'rectangle' || obj.tool === 'circle') {
+      return {
+        x: obj.x,
+        y: obj.y,
+        width: obj.width || 100,
+        height: obj.height || 100
+      };
+    }
+
+    // For other objects, calculate bounds
     let minX = obj.x;
     let minY = obj.y;
     let maxX = obj.x + (obj.width || 0);
@@ -531,33 +706,36 @@ const TafelbildPage: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) / zoom - pan.x,
-      y: (e.clientY - rect.top) / zoom - pan.y
-    };
+    const x = (e.clientX - rect.left) / zoom - pan.x;
+    const y = (e.clientY - rect.top) / zoom - pan.y;
+    return { x, y };
   };
 
   const getHandleAtPoint = (x: number, y: number, obj: NotizObject): string | null => {
-    const bounds = getObjectBounds(obj);
-    const handleSize = 12; // Größere Handles für bessere Bedienbarkeit
+    // Only check handles for images
+    if (obj.tool !== 'image') return null;
     
-    // Corner handles
+    // Use direct object coordinates instead of bounds
+    const objX = obj.x;
+    const objY = obj.y;
+    const objWidth = obj.width || 100;
+    const objHeight = obj.height || 100;
+    const handleSize = 40; // Even bigger handles for easier clicking
+    
+    // Only corner handles for simple resizing
     const handles = [
-      { x: bounds.x, y: bounds.y, name: 'nw' },
-      { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height, name: 'se' },
-      { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' },
-      // Side handles
-      { x: bounds.x + bounds.width / 2, y: bounds.y, name: 'n' },
-      { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, name: 'e' },
-      { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, name: 's' },
-      { x: bounds.x, y: bounds.y + bounds.height / 2, name: 'w' }
+      { x: objX, y: objY, name: 'nw' },
+      { x: objX + objWidth, y: objY, name: 'ne' },
+      { x: objX + objWidth, y: objY + objHeight, name: 'se' },
+      { x: objX, y: objY + objHeight, name: 'sw' }
     ];
     
     for (const handle of handles) {
-      const distance = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
-      if (distance < handleSize) {
-        console.log('Handle detected:', handle.name, 'at', x, y);
+      // Check if point is within handle area (square, not circle)
+      const inHandle = x >= handle.x - handleSize/2 && x <= handle.x + handleSize/2 &&
+                      y >= handle.y - handleSize/2 && y <= handle.y + handleSize/2;
+      
+      if (inHandle) {
         return handle.name;
       }
     }
@@ -567,6 +745,7 @@ const TafelbildPage: React.FC = () => {
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
+    
 
     if (tool === 'text') {
       setTextPosition({ x, y });
@@ -585,7 +764,6 @@ const TafelbildPage: React.FC = () => {
       for (const obj of selectedObjects) {
         const handle = getHandleAtPoint(x, y, obj);
         if (handle) {
-          console.log('Handle clicked:', handle);
           setResizeHandle(handle);
           setIsResizing(true);
           setDragStart({ x, y });
@@ -596,21 +774,25 @@ const TafelbildPage: React.FC = () => {
       // Check if clicking on an object
       const clickedObject = [...currentPage.objects].reverse().find(obj => isPointInObject(x, y, obj));
       if (clickedObject) {
-        console.log('Object clicked:', clickedObject.id);
         // Check if clicking on already selected object
         if (selectedObjects.some(obj => obj.id === clickedObject.id)) {
-          console.log('Starting drag for selected object');
+          // Check if clicking on a handle first
+          const handle = getHandleAtPoint(x, y, clickedObject);
+          if (handle) {
+            setResizeHandle(handle);
+            setIsResizing(true);
+            setDragStart({ x, y });
+            return;
+          }
           // Start dragging
           setIsDragging(true);
           setDragStart({ x, y });
         } else {
-          console.log('Selecting new object');
           setSelectedObjects([clickedObject]);
         }
         setShowPropertiesPanel(true);
         return; // WICHTIG: Return hier hinzufügen!
       } else {
-        console.log('No object clicked, clearing selection');
         setSelectedObjects([]);
         setShowPropertiesPanel(false);
       }
@@ -638,6 +820,10 @@ const TafelbildPage: React.FC = () => {
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Update mouse position for image placement
+    const { x, y } = getCanvasCoordinates(e);
+    setMousePosition({ x, y });
+    
     if (isPanning && tool === 'pan') {
       const deltaX = e.clientX - lastPanPoint.x;
       const deltaY = e.clientY - lastPanPoint.y;
@@ -650,11 +836,10 @@ const TafelbildPage: React.FC = () => {
     }
 
     if (isDragging && selectedObjects.length > 0 && dragStart) {
-      const { x, y } = getCanvasCoordinates(e);
-      const deltaX = x - dragStart.x;
-      const deltaY = y - dragStart.y;
+      const { x: dragX, y: dragY } = getCanvasCoordinates(e);
+      const deltaX = dragX - dragStart.x;
+      const deltaY = dragY - dragStart.y;
       
-      console.log('Dragging:', deltaX, deltaY);
       
       // Update all selected objects
       const updatedObjects = currentPage.objects.map(obj => {
@@ -705,131 +890,89 @@ const TafelbildPage: React.FC = () => {
     }
 
     if (isResizing && selectedObjects.length > 0 && dragStart) {
-      const { x, y } = getCanvasCoordinates(e);
+      const { x: resizeX, y: resizeY } = getCanvasCoordinates(e);
       const selected = selectedObjects[0];
-      const bounds = getObjectBounds(selected);
       
-      console.log('Resizing with handle:', resizeHandle, 'delta:', x - dragStart.x, y - dragStart.y);
+      // Only resize images for now
+      if (selected.tool === 'image') {
+      const deltaX = resizeX - dragStart.x;
+      const deltaY = resizeY - dragStart.y;
       
-      // Calculate new bounds based on handle
-      let newX = bounds.x;
-      let newY = bounds.y;
-      let newWidth = bounds.width;
-      let newHeight = bounds.height;
+        let newX = selected.x;
+        let newY = selected.y;
+        let newWidth = selected.width || 100;
+        let newHeight = selected.height || 100;
       
-      const deltaX = x - dragStart.x;
-      const deltaY = y - dragStart.y;
-      
+        // Simple scaling first - get new dimensions
       switch (resizeHandle) {
         case 'nw': // Top-left
-          newX = bounds.x + deltaX;
-          newY = bounds.y + deltaY;
-          newWidth = Math.max(20, bounds.width - deltaX);
-          newHeight = Math.max(20, bounds.height - deltaY);
+            newX = selected.x + deltaX;
+            newY = selected.y + deltaY;
+            newWidth = Math.max(20, (selected.width || 100) - deltaX);
+            newHeight = Math.max(20, (selected.height || 100) - deltaY);
           break;
         case 'ne': // Top-right
-          newY = bounds.y + deltaY;
-          newWidth = Math.max(20, bounds.width + deltaX);
-          newHeight = Math.max(20, bounds.height - deltaY);
+            newY = selected.y + deltaY;
+            newWidth = Math.max(20, (selected.width || 100) + deltaX);
+            newHeight = Math.max(20, (selected.height || 100) - deltaY);
           break;
         case 'se': // Bottom-right
-          newWidth = Math.max(20, bounds.width + deltaX);
-          newHeight = Math.max(20, bounds.height + deltaY);
+            newWidth = Math.max(20, (selected.width || 100) + deltaX);
+            newHeight = Math.max(20, (selected.height || 100) + deltaY);
           break;
         case 'sw': // Bottom-left
-          newX = bounds.x + deltaX;
-          newWidth = Math.max(20, bounds.width - deltaX);
-          newHeight = Math.max(20, bounds.height + deltaY);
-          break;
-        case 'n': // Top
-          newY = bounds.y + deltaY;
-          newHeight = Math.max(20, bounds.height - deltaY);
-          break;
-        case 'e': // Right
-          newWidth = Math.max(20, bounds.width + deltaX);
-          break;
-        case 's': // Bottom
-          newHeight = Math.max(20, bounds.height + deltaY);
-          break;
-        case 'w': // Left
-          newX = bounds.x + deltaX;
-          newWidth = Math.max(20, bounds.width - deltaX);
+            newX = selected.x + deltaX;
+            newWidth = Math.max(20, (selected.width || 100) - deltaX);
+            newHeight = Math.max(20, (selected.height || 100) + deltaY);
           break;
       }
       
-      // Update the object
-      const updatedObjects = currentPage.objects.map(obj => {
-        if (obj.id === selected.id) {
-          // For pen/highlighter objects, we need to scale the points
-          if (obj.points && obj.points.length > 0) {
-            const scaleX = newWidth / bounds.width;
-            const scaleY = newHeight / bounds.height;
-            const offsetX = newX - bounds.x;
-            const offsetY = newY - bounds.y;
-            
-            const scaledPoints = obj.points.map(point => ({
-              x: (point.x - bounds.x) * scaleX + newX,
-              y: (point.y - bounds.y) * scaleY + newY
-            }));
-            
-            return { ...obj, points: scaledPoints };
-          } else {
-            // For other objects, update position and size
-            return { ...obj, x: newX, y: newY, width: newWidth, height: newHeight };
+        // Apply proportional scaling if enabled
+        if (proportionalScaling) {
+          const aspectRatio = (selected.width || 100) / (selected.height || 100);
+          const newAspectRatio = newWidth / newHeight;
+          
+          if (newAspectRatio > aspectRatio) {
+            // Width is too large, adjust height
+            newHeight = newWidth / aspectRatio;
+            if (resizeHandle === 'nw' || resizeHandle === 'ne') {
+              newY = selected.y + (selected.height || 100) - newHeight;
+                }
+              } else {
+            // Height is too large, adjust width
+            newWidth = newHeight * aspectRatio;
+            if (resizeHandle === 'nw' || resizeHandle === 'sw') {
+              newX = selected.x + (selected.width || 100) - newWidth;
+            }
           }
         }
-        return obj;
-      });
+        
+        // Use immediate update for responsive resizing
+        updateResizeImmediate(selected, newX, newY, newWidth, newHeight);
       
-      const updatedPages = [...pages];
-      updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: updatedObjects };
-      setPages(updatedPages);
-      
-      // Update selected objects
-      const updatedSelected = selectedObjects.map(obj => {
-        if (obj.id === selected.id) {
-          if (obj.points && obj.points.length > 0) {
-            const scaleX = newWidth / bounds.width;
-            const scaleY = newHeight / bounds.height;
-            const offsetX = newX - bounds.x;
-            const offsetY = newY - bounds.y;
-            
-            const scaledPoints = obj.points.map(point => ({
-              x: (point.x - bounds.x) * scaleX + newX,
-              y: (point.y - bounds.y) * scaleY + newY
-            }));
-            
-            return { ...obj, points: scaledPoints };
-          } else {
-            return { ...obj, x: newX, y: newY, width: newWidth, height: newHeight };
-          }
-        }
-        return obj;
-      });
-      
-      setSelectedObjects(updatedSelected);
-      setDragStart({ x, y }); // Update drag start for continuous resizing
+        setDragStart({ x: resizeX, y: resizeY });
+      }
       return;
     }
 
     if (!isDrawing || !currentObject) return;
 
-    const { x, y } = getCanvasCoordinates(e);
+    const { x: drawX, y: drawY } = getCanvasCoordinates(e);
 
     if (['pen', 'highlighter', 'eraser', 'arrow'].includes(tool)) {
       setCurrentObject({
         ...currentObject,
-        points: [...(currentObject.points || []), { x, y }]
+        points: [...(currentObject.points || []), { x: drawX, y: drawY }]
       });
     } else if (['rectangle', 'circle'].includes(tool)) {
-      const width = x - currentObject.x;
-      const height = y - currentObject.y;
+      const width = drawX - currentObject.x;
+      const height = drawY - currentObject.y;
       setCurrentObject({
         ...currentObject,
         width: Math.abs(width),
         height: Math.abs(height),
-        x: width < 0 ? x : currentObject.x,
-        y: height < 0 ? y : currentObject.y
+        x: width < 0 ? drawX : currentObject.x,
+        y: height < 0 ? drawY : currentObject.y
       });
     }
   };
@@ -850,6 +993,7 @@ const TafelbildPage: React.FC = () => {
       setIsResizing(false);
       setResizeHandle(null);
       setDragStart(null);
+      
       return;
     }
 
@@ -857,6 +1001,10 @@ const TafelbildPage: React.FC = () => {
     setIsDrawing(false);
     
     if (currentObject) {
+      // Save to undo stack before adding new object
+      setUndoStack(prev => [...prev, currentPage.objects]);
+      setRedoStack([]);
+      
       const updatedPages = [...pages];
       updatedPages[currentPageIndex] = {
         ...updatedPages[currentPageIndex],
@@ -864,7 +1012,6 @@ const TafelbildPage: React.FC = () => {
       };
       setPages(updatedPages);
       setCurrentObject(null);
-      setRedoStack([]);
     }
   };
 
@@ -958,31 +1105,7 @@ const TafelbildPage: React.FC = () => {
     setRedoStack([]);
   };
 
-  const handleUndo = () => {
-    if (currentPage.objects.length === 0) return;
-    const lastObj = currentPage.objects[currentPage.objects.length - 1];
-    setRedoStack([...redoStack, lastObj]);
-    
-    const updatedPages = [...pages];
-    updatedPages[currentPageIndex] = {
-      ...updatedPages[currentPageIndex],
-      objects: updatedPages[currentPageIndex].objects.slice(0, -1)
-    };
-    setPages(updatedPages);
-  };
 
-  const handleRedo = () => {
-    if (redoStack.length === 0) return;
-    const objToRedo = redoStack[redoStack.length - 1];
-    
-    const updatedPages = [...pages];
-    updatedPages[currentPageIndex] = {
-      ...updatedPages[currentPageIndex],
-      objects: [...updatedPages[currentPageIndex].objects, objToRedo]
-    };
-    setPages(updatedPages);
-    setRedoStack(redoStack.slice(0, -1));
-  };
 
   const handleAddPage = () => {
     const newPage: NotizPage = {
@@ -1030,8 +1153,13 @@ const TafelbildPage: React.FC = () => {
     setSelectedObjects([updatedObject]);
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = useCallback(() => {
     if (selectedObjects.length === 0) return;
+    
+    // Save to undo stack
+    setUndoStack(prev => [...prev, currentPage.objects]);
+    setRedoStack([]);
+    
     const selectedIds = selectedObjects.map(o => o.id);
     const updatedObjects = currentPage.objects.filter(obj => !selectedIds.includes(obj.id));
     
@@ -1041,7 +1169,7 @@ const TafelbildPage: React.FC = () => {
     
     setSelectedObjects([]);
     setShowPropertiesPanel(false);
-  };
+  }, [selectedObjects, currentPage.objects, pages, currentPageIndex]);
 
   const handleMoveLayer = (direction: 'front' | 'back') => {
     if (selectedObjects.length === 0) return;
@@ -1065,6 +1193,431 @@ const TafelbildPage: React.FC = () => {
     updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: currentPageObjects };
     setPages(updatedPages);
     redrawCanvas();
+  };
+
+  // Collage Layout Functions
+  const calculateCollagePosition = (index: number, totalImages: number, layout: CollageLayout) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const margin = 50;
+    const spacing = 20;
+    
+    switch (layout) {
+      case 'grid':
+        const cols = Math.ceil(Math.sqrt(totalImages));
+        const rows = Math.ceil(totalImages / cols);
+        const cellWidth = (canvasWidth - 2 * margin - (cols - 1) * spacing) / cols;
+        const cellHeight = (canvasHeight - 2 * margin - (rows - 1) * spacing) / rows;
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        return {
+          x: margin + col * (cellWidth + spacing),
+          y: margin + row * (cellHeight + spacing)
+        };
+        
+      case 'mosaic':
+        // Random mosaic-like positioning
+        const baseX = margin + (index % 3) * (canvasWidth / 3);
+        const baseY = margin + Math.floor(index / 3) * (canvasHeight / 3);
+        return {
+          x: baseX + Math.random() * 100,
+          y: baseY + Math.random() * 100
+        };
+        
+      case 'spiral':
+        // Spiral arrangement
+        const centerX = canvasWidth / 2;
+        const centerY = canvasHeight / 2;
+        const angle = (index * 2 * Math.PI) / Math.max(totalImages, 1);
+        const radius = Math.min(50 + index * 30, Math.min(canvasWidth, canvasHeight) / 3);
+        return {
+          x: centerX + radius * Math.cos(angle) - 100,
+          y: centerY + radius * Math.sin(angle) - 100
+        };
+        
+      case 'random':
+        return {
+          x: margin + Math.random() * (canvasWidth - 2 * margin - 200),
+          y: margin + Math.random() * (canvasHeight - 2 * margin - 200)
+        };
+        
+      default: // 'free'
+        return {
+          x: margin + (index % 4) * 150,
+          y: margin + Math.floor(index / 4) * 150
+        };
+    }
+  };
+
+  const arrangeImagesInLayout = (images: NotizObject[], layout: CollageLayout) => {
+    return images.map((img, index) => {
+      const position = calculateCollagePosition(index, images.length, layout);
+      return {
+        ...img,
+        x: position.x,
+        y: position.y
+      };
+    });
+  };
+
+  const handleAutoArrange = () => {
+    const imageObjects = currentPage.objects.filter(obj => obj.tool === 'image');
+    if (imageObjects.length === 0) return;
+    
+    // Save to undo stack
+    setUndoStack(prev => [...prev, currentPage.objects]);
+    setRedoStack([]);
+    
+    const arrangedImages = arrangeImagesInLayout(imageObjects, collageLayout);
+    const otherObjects = currentPage.objects.filter(obj => obj.tool !== 'image');
+    
+    const updatedPages = [...pages];
+    updatedPages[currentPageIndex] = {
+      ...updatedPages[currentPageIndex],
+      objects: [...otherObjects, ...arrangedImages]
+    };
+    setPages(updatedPages);
+    redrawCanvas();
+  };
+
+  const optimizeImageSizes = () => {
+    const imageObjects = currentPage.objects.filter(obj => obj.tool === 'image');
+    if (imageObjects.length === 0) return;
+    
+    // Save to undo stack
+    setUndoStack(prev => [...prev, currentPage.objects]);
+    setRedoStack([]);
+    
+    const optimizedImages = imageObjects.map(img => {
+      // Calculate optimal size based on layout
+      let maxSize = 300;
+      if (collageLayout === 'grid') maxSize = 200;
+      else if (collageLayout === 'mosaic') maxSize = 250;
+      else if (collageLayout === 'spiral') maxSize = 180;
+      else if (collageLayout === 'random') maxSize = 220;
+      
+      const aspectRatio = (img.originalWidth || img.width || 1) / (img.originalHeight || img.height || 1);
+      let newWidth, newHeight;
+      
+      if (aspectRatio > 1) {
+        newWidth = Math.min(maxSize, img.width || maxSize);
+        newHeight = newWidth / aspectRatio;
+      } else {
+        newHeight = Math.min(maxSize, img.height || maxSize);
+        newWidth = newHeight * aspectRatio;
+      }
+      
+      return {
+        ...img,
+        width: newWidth,
+        height: newHeight
+      };
+    });
+    
+    const otherObjects = currentPage.objects.filter(obj => obj.tool !== 'image');
+    
+    const updatedPages = [...pages];
+    updatedPages[currentPageIndex] = {
+      ...updatedPages[currentPageIndex],
+      objects: [...otherObjects, ...optimizedImages]
+    };
+    setPages(updatedPages);
+    redrawCanvas();
+  };
+
+  // Image loading and caching
+  const loadImage = (imageData: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      // Check cache first
+      if (imageCache.has(imageData)) {
+        resolve(imageCache.get(imageData)!);
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        // Cache the loaded image
+        setImageCache(prev => new Map(prev).set(imageData, img));
+        resolve(img);
+      };
+      img.onerror = () => {
+        console.error('Failed to load image');
+        reject(new Error('Failed to load image'));
+      };
+      img.src = imageData;
+    });
+  };
+
+  // Batch processing for better performance
+  const processImagesInBatches = async (imageFiles: File[], batchSize: number = 5) => {
+    setIsLoadingImages(true);
+    const allImageObjects: NotizObject[] = [];
+    
+    for (let i = 0; i < imageFiles.length; i += batchSize) {
+      const batch = imageFiles.slice(i, i + batchSize);
+      const batchPromises = batch.map((file, batchIndex) => 
+        processImageFile(file, i + batchIndex, imageFiles.length)
+      );
+      
+      const batchResults = await Promise.all(batchPromises);
+      const validResults = batchResults.filter(obj => obj !== null) as NotizObject[];
+      allImageObjects.push(...validResults);
+      
+      // Update UI after each batch for better responsiveness
+      if (validResults.length > 0) {
+        setPages(prevPages => {
+          const updatedPages = [...prevPages];
+          updatedPages[currentPageIndex] = {
+            ...updatedPages[currentPageIndex],
+            objects: [...updatedPages[currentPageIndex].objects, ...validResults]
+          };
+          return updatedPages;
+        });
+        redrawCanvas();
+      }
+      
+      // Small delay to prevent UI blocking
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    setIsLoadingImages(false);
+    return allImageObjects;
+  };
+
+  const processImageFile = (file: File, index: number, totalFiles: number): Promise<NotizObject | null> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageData = e.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const canvas = canvasRef.current;
+          if (!canvas) {
+            resolve(null);
+            return;
+          }
+          
+          // Calculate position based on collage layout
+          const position = calculateCollagePosition(index, totalFiles, collageLayout);
+          const offsetX = position.x;
+          const offsetY = position.y;
+          
+          // Calculate display size
+          const maxSize = 500;
+          const aspectRatio = img.width / img.height;
+          let displayWidth, displayHeight;
+          
+          if (img.width > img.height) {
+            displayWidth = Math.min(img.width, maxSize);
+            displayHeight = displayWidth / aspectRatio;
+          } else {
+            displayHeight = Math.min(img.height, maxSize);
+            displayWidth = displayHeight * aspectRatio;
+          }
+          
+          const posX = Math.max(0, offsetX);
+          const posY = Math.max(0, offsetY);
+          
+          // Create image object
+          const imageObject: NotizObject = {
+            id: Date.now().toString() + index,
+            tool: 'image',
+            strokeColor: '#000000',
+            lineWidth: 1,
+            opacity: 1,
+            x: posX,
+            y: posY,
+            width: displayWidth,
+            height: displayHeight,
+            imageData: imageData,
+            originalWidth: img.width,
+            originalHeight: img.height
+          };
+          
+          // Cache the image
+          setImageCache(prev => new Map(prev).set(imageData, img));
+          setLoadedImages(prev => new Set(prev).add(imageData));
+          
+          resolve(imageObject);
+        };
+        img.onerror = () => {
+          console.error('Failed to load image in processImageFile');
+          resolve(null);
+        };
+        img.src = imageData;
+      };
+      reader.onerror = () => {
+        console.error('FileReader failed');
+        resolve(null);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Image upload functions
+  const handleMultipleImageUpload = async (files: FileList) => {
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) return;
+    
+    // Save current state to undo stack BEFORE adding any images
+    setUndoStack(prev => [...prev, currentPage.objects]);
+    setRedoStack([]);
+    
+    // Process images in batches for better performance
+    const allImageObjects = await processImagesInBatches(imageFiles);
+    
+    if (allImageObjects.length > 0) {
+      // Select the last image that was added
+      const lastImage = allImageObjects[allImageObjects.length - 1];
+      setSelectedObjects([lastImage]);
+      setShowPropertiesPanel(true);
+    }
+  };
+
+  const handleImageUpload = (file: File, x?: number, y?: number, saveToUndo: boolean = true) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageData = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        // Calculate position (center if not specified, but ensure it's visible)
+        // Maintain aspect ratio while limiting to 300px max dimension
+        // For collages, allow larger images but with reasonable limits
+        const maxSize = 500; // Increased for collage creation
+        const aspectRatio = img.width / img.height;
+        let displayWidth, displayHeight;
+        
+        if (img.width > img.height) {
+          // Landscape: limit width
+          displayWidth = Math.min(img.width, maxSize);
+          displayHeight = displayWidth / aspectRatio;
+        } else {
+          // Portrait: limit height
+          displayHeight = Math.min(img.height, maxSize);
+          displayWidth = displayHeight * aspectRatio;
+        }
+        
+        // Use provided coordinates or center the image
+        const posX = x !== undefined ? x - displayWidth / 2 : Math.max(0, (canvas.width - displayWidth) / 2);
+        const posY = y !== undefined ? y - displayHeight / 2 : Math.max(0, (canvas.height - displayHeight) / 2);
+        
+        // Create image object
+        const imageObject: NotizObject = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // Unique ID
+          tool: 'image',
+          strokeColor: '#000000',
+          lineWidth: 1,
+          opacity: 1,
+          x: posX,
+          y: posY,
+          width: displayWidth,
+          height: displayHeight,
+          imageData: imageData,
+          originalWidth: img.width,
+          originalHeight: img.height
+        };
+        
+        // Cache the image immediately and mark as loaded
+        setImageCache(prev => new Map(prev).set(imageData, img));
+        setLoadedImages(prev => new Set(prev).add(imageData));
+        
+        // Save to undo stack only if requested
+        if (saveToUndo) {
+          setUndoStack(prev => [...prev, currentPage.objects]);
+          setRedoStack([]);
+        }
+        
+        // Add to current page
+        const updatedObjects = [...currentPage.objects, imageObject];
+        const updatedPages = [...pages];
+        updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: updatedObjects };
+        setPages(updatedPages);
+        
+        // Select the new image
+        setSelectedObjects([imageObject]);
+        setShowPropertiesPanel(true);
+        
+        redrawCanvas();
+      };
+      img.onerror = () => {
+        console.error('Failed to load image in handleImageUpload');
+      };
+      img.src = imageData;
+    };
+    reader.onerror = () => {
+      console.error('FileReader failed');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      if (imageFiles.length === 1) {
+        // Place single image at current mouse position
+        handleImageUpload(imageFiles[0], mousePosition.x, mousePosition.y, true);
+      } else {
+        // Use batch processing for better performance
+        handleMultipleImageUpload(imageFiles as any);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length > 0) {
+      if (imageFiles.length === 1) {
+        // Single image: place at drop location
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        handleImageUpload(imageFiles[0], x, y, true);
+      } else {
+        // Use batch processing for better performance
+        handleMultipleImageUpload(imageFiles as any);
+      }
+    }
   };
 
   const presetColors = [
@@ -1091,12 +1644,77 @@ const TafelbildPage: React.FC = () => {
         
         {/* Right side - Actions */}
         <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <IconButton size="small" onClick={handleUndo} disabled={currentPage.objects.length === 0} sx={{ width: 24, height: 24 }}>
-            <UndoIcon sx={{ fontSize: 14, color: currentPage.objects.length === 0 ? '#c7c7cc' : '#007aff' }} />
+          <IconButton 
+            size="small" 
+            onClick={() => {
+              if (undoStack.length === 0) return;
+              
+              // Save current state to redo stack
+              setRedoStack(prev => [...prev, currentPage.objects]);
+              
+              // Get last state from undo stack
+              const lastState = undoStack[undoStack.length - 1];
+              setUndoStack(prev => prev.slice(0, -1));
+              
+              // Restore state
+              const updatedPages = [...pages];
+              updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: lastState };
+              setPages(updatedPages);
+              
+              setSelectedObjects([]);
+              setShowPropertiesPanel(false);
+            }} 
+            disabled={undoStack.length === 0} 
+            sx={{ width: 24, height: 24 }}
+          >
+            <UndoIcon sx={{ fontSize: 14, color: undoStack.length === 0 ? '#c7c7cc' : '#007aff' }} />
           </IconButton>
-          <IconButton size="small" onClick={handleRedo} disabled={redoStack.length === 0} sx={{ width: 24, height: 24 }}>
+          <IconButton 
+            size="small" 
+            onClick={() => {
+              if (redoStack.length === 0) return;
+              
+              // Save current state to undo stack
+              setUndoStack(prev => [...prev, currentPage.objects]);
+              
+              // Get last state from redo stack
+              const lastState = redoStack[redoStack.length - 1];
+              setRedoStack(prev => prev.slice(0, -1));
+              
+              // Restore state
+              const updatedPages = [...pages];
+              updatedPages[currentPageIndex] = { ...updatedPages[currentPageIndex], objects: lastState };
+              setPages(updatedPages);
+              
+              setSelectedObjects([]);
+              setShowPropertiesPanel(false);
+            }} 
+            disabled={redoStack.length === 0} 
+            sx={{ width: 24, height: 24 }}
+          >
             <RedoIcon sx={{ fontSize: 14, color: redoStack.length === 0 ? '#c7c7cc' : '#007aff' }} />
           </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+              const files = (e.target as HTMLInputElement).files;
+              if (files && files.length > 0) {
+                // Use batch processing for better performance
+                handleMultipleImageUpload(files);
+              }
+            };
+            input.click();
+          }}
+          sx={{ width: 24, height: 24 }}
+          title="Mehrere Bilder laden (Collage)"
+        >
+          <Typography sx={{ fontSize: 12, color: '#007aff' }}>📷+</Typography>
+        </IconButton>
           <IconButton size="small" onClick={() => setShowSaveDialog(true)} sx={{ width: 24, height: 24 }}>
             <SaveIcon sx={{ fontSize: 14, color: '#007aff' }} />
           </IconButton>
@@ -1281,6 +1899,88 @@ const TafelbildPage: React.FC = () => {
             ))}
           </Box>
 
+          {/* Collage Layout Settings */}
+          <Box sx={{ 
+            p: 1, 
+            bgcolor: '#ffffff', 
+            borderTop: '0.5px solid #c6c6c8'
+          }}>
+            <Typography variant="caption" sx={{ color: '#000000', fontWeight: 600, fontSize: 10, mb: 0.5 }}>
+              Collage Layout
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 0.25, mb: 1, flexWrap: 'wrap' }}>
+              {[
+                { value: 'free', label: 'Frei' },
+                { value: 'grid', label: 'Grid' },
+                { value: 'mosaic', label: 'Mosaik' },
+                { value: 'spiral', label: 'Spirale' },
+                { value: 'random', label: 'Zufällig' }
+              ].map(layout => (
+                <Button
+                  key={layout.value}
+                  variant={collageLayout === layout.value ? 'contained' : 'outlined'}
+                  onClick={() => setCollageLayout(layout.value as CollageLayout)}
+                  size="small"
+                  sx={{
+                    minWidth: 'auto',
+                    px: 0.5,
+                    py: 0.25,
+                    fontSize: 8,
+                    height: 16,
+                    bgcolor: collageLayout === layout.value ? '#007aff' : 'transparent',
+                    color: collageLayout === layout.value ? '#ffffff' : '#000000',
+                    borderColor: '#c6c6c8',
+                    '&:hover': {
+                      bgcolor: collageLayout === layout.value ? '#0056b3' : '#f2f2f7'
+                    }
+                  }}
+                >
+                  {layout.label}
+                </Button>
+              ))}
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
+              <Button
+                onClick={handleAutoArrange}
+                size="small"
+                variant="outlined"
+                sx={{
+                  flex: 1,
+                  fontSize: 8,
+                  height: 18,
+                  color: '#007aff',
+                  borderColor: '#007aff',
+                  '&:hover': {
+                    bgcolor: '#f0f8ff',
+                    borderColor: '#0056b3'
+                  }
+                }}
+              >
+                Anordnen
+              </Button>
+              <Button
+                onClick={optimizeImageSizes}
+                size="small"
+                variant="outlined"
+                sx={{
+                  flex: 1,
+                  fontSize: 8,
+                  height: 18,
+                  color: '#34c759',
+                  borderColor: '#34c759',
+                  '&:hover': {
+                    bgcolor: '#f0fff4',
+                    borderColor: '#30b04f'
+                  }
+                }}
+              >
+                Größe
+              </Button>
+            </Box>
+          </Box>
+
           {/* Compact Paper Settings */}
           <Box sx={{ 
             p: 1, 
@@ -1339,19 +2039,102 @@ const TafelbildPage: React.FC = () => {
                       'crosshair'
             }}
           >
+            {isDragOver && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                  zIndex: 1000,
+                  pointerEvents: 'none'
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: '#2196f3',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    padding: 2,
+                    borderRadius: 2,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  📷 Bild hier ablegen
+                </Typography>
+              </Box>
+            )}
+            {isLoadingImages && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  zIndex: 1001,
+                  pointerEvents: 'none'
+                }}
+              >
+                <Box
+                  sx={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    padding: 3,
+                    borderRadius: 2,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    textAlign: 'center'
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      color: '#2196f3',
+                      fontWeight: 'bold',
+                      mb: 1
+                    }}
+                  >
+                    Bilder werden geladen...
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#666',
+                      fontSize: 12
+                    }}
+                  >
+                    Bitte warten Sie, während Ihre Collage erstellt wird
+                  </Typography>
+                </Box>
+              </Box>
+            )}
             <canvas
               ref={canvasRef}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: isDragOver ? '#f0f8ff' : '#ffffff',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 borderRadius: '4px',
                 width: '100%',
                 height: '100%',
-                objectFit: 'contain'
+                objectFit: 'contain',
+                border: isDragOver ? '2px dashed #2196f3' : 'none'
               }}
             />
           </Box>
@@ -1494,6 +2277,35 @@ const TafelbildPage: React.FC = () => {
                           sx={{ width: 50, '& .MuiInputBase-input': { fontSize: 10, height: 24 } }}
                         />
                       </Box>
+                    </Box>
+                  )}
+
+                  {/* Proportional Scaling */}
+                  {selectedObjects[0].tool === 'image' && (
+                    <Box>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={proportionalScaling}
+                            onChange={(e) => setProportionalScaling(e.target.checked)}
+                            size="small"
+                            sx={{
+                              '& .MuiSwitch-switchBase.Mui-checked': {
+                                color: '#007aff',
+                              },
+                              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                backgroundColor: '#007aff',
+                              },
+                            }}
+                          />
+                        }
+                        label={
+                          <Typography variant="caption" sx={{ color: '#000000', fontSize: 9 }}>
+                            Proportional skalieren
+                          </Typography>
+                        }
+                        sx={{ m: 0 }}
+                      />
                     </Box>
                   )}
 
