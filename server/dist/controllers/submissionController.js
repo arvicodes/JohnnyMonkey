@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteSubmission = exports.addTeacherComment = exports.checkStudentSubmission = exports.downloadSubmission = exports.getAssignmentSubmissions = exports.getSubmission = exports.submitAssignment = exports.getOrCreateAssignment = exports.upload = void 0;
+exports.getStudentSubmissionStats = exports.deleteSubmission = exports.addTeacherComment = exports.checkStudentSubmission = exports.downloadSubmission = exports.getAssignmentSubmissions = exports.getSubmission = exports.submitAssignment = exports.getOrCreateAssignment = exports.upload = void 0;
 const client_1 = require("@prisma/client");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
@@ -64,7 +64,7 @@ exports.upload = (0, multer_1.default)({
     }
 });
 /**
- * Erstellt oder findet ein Assignment für eine H__ Datei
+ * Erstellt oder findet ein Assignment für eine H_ Datei
  */
 const getOrCreateAssignment = async (req, res) => {
     try {
@@ -72,9 +72,18 @@ const getOrCreateAssignment = async (req, res) => {
         if (!filePath || !fileName || !teacherId) {
             return res.status(400).json({ error: 'filePath, fileName und teacherId sind erforderlich' });
         }
-        // Prüfe ob die Datei mit H__ beginnt
-        if (!fileName.startsWith('H__')) {
-            return res.status(400).json({ error: 'Nur Dateien die mit H__ beginnen sind Abgabedateien' });
+        // Prüfe ob die Datei mit H_ beginnt
+        if (!fileName.startsWith('H_')) {
+            return res.status(400).json({ error: 'Nur Dateien die mit H_ beginnen sind Abgabedateien' });
+        }
+        // Prüfe ob der Teacher existiert
+        const teacher = await prisma.user.findUnique({
+            where: { id: teacherId }
+        });
+        if (!teacher) {
+            return res.status(404).json({
+                error: 'Lehrkraft nicht gefunden. Bitte melden Sie sich ab und wieder an.'
+            });
         }
         // Finde oder erstelle Assignment - verwende findFirst statt findUnique für composite constraint
         let assignment = await prisma.assignment.findFirst({
@@ -97,26 +106,56 @@ const getOrCreateAssignment = async (req, res) => {
             }
         });
         if (!assignment) {
-            assignment = await prisma.assignment.create({
-                data: {
-                    fileName: fileName,
-                    filePath: filePath,
-                    teacherId: teacherId
-                },
-                include: {
-                    submissions: {
-                        include: {
-                            student: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    avatarEmoji: true
+            // Versuche Assignment zu erstellen, oder hole es wenn es bereits existiert
+            try {
+                assignment = await prisma.assignment.create({
+                    data: {
+                        fileName: fileName,
+                        filePath: filePath,
+                        teacherId: teacherId
+                    },
+                    include: {
+                        submissions: {
+                            include: {
+                                student: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        avatarEmoji: true
+                                    }
                                 }
                             }
                         }
                     }
+                });
+            }
+            catch (createError) {
+                // Bei Unique Constraint Error: Assignment existiert bereits, hole es erneut
+                if (createError.code === 'P2002') {
+                    assignment = await prisma.assignment.findFirst({
+                        where: {
+                            filePath: filePath,
+                            teacherId: teacherId
+                        },
+                        include: {
+                            submissions: {
+                                include: {
+                                    student: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            avatarEmoji: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
                 }
-            });
+                else {
+                    throw createError;
+                }
+            }
         }
         res.json(assignment);
     }
@@ -310,6 +349,12 @@ const downloadSubmission = async (req, res) => {
             // Zeige im Browser an
             res.setHeader('Content-Type', submission.fileType);
             res.setHeader('Content-Disposition', `inline; filename="${submission.originalFileName}"`);
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('Cache-Control', 'no-cache');
+            // Für PDFs: Erlaube Einbettung in iframe
+            if (submission.fileType.includes('pdf')) {
+                res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+            }
             const fileBuffer = await promises_1.default.readFile(submission.filePath);
             res.send(fileBuffer);
         }
@@ -447,4 +492,55 @@ const deleteSubmission = async (req, res) => {
     }
 };
 exports.deleteSubmission = deleteSubmission;
+/**
+ * Holt alle Abgaben eines Schülers mit Kommentaren für die Statistik
+ */
+const getStudentSubmissionStats = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({ error: 'studentId ist erforderlich' });
+        }
+        // Hole alle Submissions des Schülers
+        const submissions = await prisma.submission.findMany({
+            where: {
+                studentId: studentId
+            },
+            include: {
+                assignment: {
+                    include: {
+                        teacher: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                submittedAt: 'desc'
+            }
+        });
+        // Formatiere die Daten für die Statistik
+        const stats = submissions.map(submission => ({
+            id: submission.id,
+            fileName: submission.assignment.fileName,
+            filePath: submission.assignment.filePath,
+            originalFileName: submission.originalFileName,
+            fileType: submission.fileType,
+            submittedAt: submission.submittedAt,
+            teacherComment: submission.teacherComment,
+            commentedAt: submission.commentedAt,
+            teacherName: submission.assignment.teacher.name,
+            hasComment: !!submission.teacherComment
+        }));
+        res.json(stats);
+    }
+    catch (error) {
+        console.error('Fehler beim Abrufen der Abgabestatistik:', error);
+        res.status(500).json({ error: 'Interner Serverfehler' });
+    }
+};
+exports.getStudentSubmissionStats = getStudentSubmissionStats;
 //# sourceMappingURL=submissionController.js.map

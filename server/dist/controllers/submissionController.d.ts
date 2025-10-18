@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 export declare const upload: multer.Multer;
 /**
- * Erstellt oder findet ein Assignment für eine H__ Datei
+ * Erstellt oder findet ein Assignment für eine H_ Datei
  */
 export declare const getOrCreateAssignment: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 /**
@@ -33,4 +33,8 @@ export declare const addTeacherComment: (req: Request, res: Response) => Promise
  * Löscht eine Submission (nur für den Schüler selbst)
  */
 export declare const deleteSubmission: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+/**
+ * Holt alle Abgaben eines Schülers mit Kommentaren für die Statistik
+ */
+export declare const getStudentSubmissionStats: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 //# sourceMappingURL=submissionController.d.ts.map

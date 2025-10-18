@@ -28,6 +28,7 @@ const grades_routes_1 = __importDefault(require("./routes/grades.routes"));
 const fileSystemPaths_1 = __importDefault(require("./routes/fileSystemPaths"));
 const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const submissions_1 = __importDefault(require("./routes/submissions"));
+const fileShares_1 = __importDefault(require("./routes/fileShares"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
@@ -65,6 +66,7 @@ app.use('/api/grades', grades_routes_1.default);
 app.use('/api/file-system-paths', fileSystemPaths_1.default);
 app.use('/api/flashcards', flashcards_1.default);
 app.use('/api/submissions', submissions_1.default);
+app.use('/api/file-shares', fileShares_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
 // Enhanced health check endpoint with monitoring

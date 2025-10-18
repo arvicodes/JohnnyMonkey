@@ -1,0 +1,46 @@
+/* Johnny Companion Animations */
+@keyframes gentle-bounce {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg); 
+  }
+  25% { 
+    transform: scale(1.05) rotate(1deg); 
+  }
+  75% { 
+    transform: scale(1.05) rotate(-1deg); 
+  }
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px) scale(0.8); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+.johnny-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.johnny-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.johnny-gentle-bounce {
+  animation: gentle-bounce 3s ease-in-out infinite;
+}

@@ -22,5 +22,7 @@ router.get('/check', submissionController_1.checkStudentSubmission);
 router.post('/submission/:submissionId/comment', submissionController_1.addTeacherComment);
 // Submission löschen
 router.delete('/submission/:submissionId', submissionController_1.deleteSubmission);
+// Abgabestatistik für einen Schüler
+router.get('/student/:studentId/stats', submissionController_1.getStudentSubmissionStats);
 exports.default = router;
 //# sourceMappingURL=submissions.js.map

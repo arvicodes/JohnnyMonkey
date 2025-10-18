@@ -47,5 +47,9 @@ export declare class FileSystemPathController {
      * Get J-M-Reihen path for current environment
      */
     static getJmReihenPath(req: Request, res: Response): Promise<void>;
+    /**
+     * Save a file (e.g., whiteboard) to a specific directory
+     */
+    static saveFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=FileSystemPathController.d.ts.map

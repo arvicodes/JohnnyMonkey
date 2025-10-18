@@ -841,6 +841,56 @@ class FileSystemPathController {
             res.status(500).json({ error: 'Failed to get J-M-Reihen path' });
         }
     }
+    /**
+     * Save a file (e.g., whiteboard) to a specific directory
+     */
+    static async saveFile(req, res) {
+        try {
+            const file = req.file;
+            const targetPath = req.body.targetPath || req.query.targetPath;
+            if (!file) {
+                return res.status(400).json({ error: 'Keine Datei hochgeladen' });
+            }
+            if (!targetPath) {
+                return res.status(400).json({ error: 'Zielverzeichnis fehlt' });
+            }
+            console.log('=== SAVE FILE REQUEST ===');
+            console.log('File:', file.originalname);
+            console.log('Target path:', targetPath);
+            // Determine the full path
+            let fullTargetPath;
+            if (targetPath.startsWith('git-intern/')) {
+                // Handle git-intern paths
+                const relativePath = targetPath.replace('git-intern/', '');
+                const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                fullTargetPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+            }
+            else {
+                // Handle local paths
+                fullTargetPath = path_1.default.resolve(targetPath);
+            }
+            console.log('Full target path:', fullTargetPath);
+            // Ensure directory exists
+            if (!fs_1.default.existsSync(fullTargetPath)) {
+                console.log('Creating directory:', fullTargetPath);
+                fs_1.default.mkdirSync(fullTargetPath, { recursive: true });
+            }
+            // Save file
+            const finalFilePath = path_1.default.join(fullTargetPath, file.originalname);
+            console.log('Saving file to:', finalFilePath);
+            fs_1.default.writeFileSync(finalFilePath, file.buffer);
+            console.log('File saved successfully');
+            res.json({
+                success: true,
+                path: finalFilePath,
+                filename: file.originalname
+            });
+        }
+        catch (error) {
+            console.error('Error saving file:', error);
+            res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
+        }
+    }
 }
 exports.FileSystemPathController = FileSystemPathController;
 //# sourceMappingURL=FileSystemPathController.js.map

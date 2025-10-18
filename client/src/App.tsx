@@ -13,8 +13,12 @@ import FlashcardImportExportPage from './pages/FlashcardImportExportPage';
 import SubmissionsGridPage from './pages/SubmissionsGridPage';
 import WhiteboardPage from './pages/WhiteboardPage';
 import TafelbildPage from './pages/TafelbildPage';
+import JohnnyDemoPage from './pages/JohnnyDemoPage';
+import FlashcardStudyPage from './pages/FlashcardStudyPage';
+import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
 
 import { Snackbar, Alert } from '@mui/material';
+import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 
 interface User {
   id: string;
@@ -145,8 +149,19 @@ function AppContent() {
         <Route path="/submissions-grid" element={<SubmissionsGridPage />} />
         <Route path="/whiteboard" element={<WhiteboardPage />} />
         <Route path="/tafelbild" element={<TafelbildPage />} />
+        <Route path="/johnny-demo" element={<JohnnyDemoPage />} />
+        <Route path="/flashcard-study" element={<FlashcardStudyPage />} />
+        <Route path="/johnny" element={<JohnnyNavigationPage />} />
 
       </Routes>
+      
+      {/* Johnny Companion - Global auf allen Seiten */}
+      <JohnnyCompanionSimple 
+        userId={user?.id || 'guest-user'}
+        userRole={user?.role as 'TEACHER' | 'STUDENT' || 'STUDENT'}
+        currentPage="dashboard"
+      />
+      
       <Snackbar
         open={showSuccessMessage}
         autoHideDuration={3000}
