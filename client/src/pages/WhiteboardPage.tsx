@@ -26,7 +26,6 @@ import {
   ToggleButton,
   Chip
 } from '@mui/material';
-import CollaborativeWhiteboard from '../components/CollaborativeWhiteboard';
 import {
   Close as CloseIcon,
   Delete as DeleteIcon,
@@ -38,6 +37,8 @@ import {
   ContentCopy as CopyIcon,
   FlipToFront as FrontIcon,
   FlipToBack as BackIcon,
+  KeyboardArrowUp as ForwardIcon,
+  KeyboardArrowDown as BackwardIcon,
   FormatBold as BoldIcon,
   FormatItalic as ItalicIcon,
   FormatUnderlined as UnderlineIcon,
@@ -158,9 +159,112 @@ const WhiteboardPage: React.FC = () => {
 
   // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent default for our shortcuts
-      if (e.ctrlKey || e.metaKey) {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    console.log('⌨️ Key pressed:', e.key, 'Meta:', e.metaKey, 'Ctrl:', e.ctrlKey);
+    
+    // Tool shortcuts (work without modifiers)
+    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      switch (e.key.toLowerCase()) {
+        case 't':
+          e.preventDefault();
+          console.log('⌨️ Switching to text tool');
+          setTool('text');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
+        case 's':
+          e.preventDefault();
+          console.log('⌨️ Switching to pen tool');
+          setTool('pen');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
+        case 'p':
+          e.preventDefault();
+          console.log('⌨️ Switching to arrow tool');
+          setTool('arrow');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
+        case 'k':
+          e.preventDefault();
+          console.log('⌨️ Switching to circle tool');
+          setTool('circle');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
+        case 'd':
+          e.preventDefault();
+          console.log('⌨️ Switching to triangle tool');
+          setTool('triangle');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
+        case 'r':
+          e.preventDefault();
+          console.log('⌨️ Switching to rectangle tool');
+          setTool('rectangle');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
+        case 'b':
+          e.preventDefault();
+          console.log('⌨️ Switching to image tool');
+          setTool('image');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          // Trigger file input for image upload
+          setTimeout(() => {
+            const fileInput = document.getElementById('image-upload') as HTMLInputElement;
+            if (fileInput) {
+              fileInput.click();
+            }
+          }, 100);
+          return;
+        case 'v':
+          e.preventDefault();
+          console.log('⌨️ Switching to select tool');
+          setTool('select');
+          // Focus canvas and clear selection
+          if (canvasRef.current) {
+            canvasRef.current.focus();
+          }
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
+      }
+    }
+    
+    // Prevent default for our shortcuts
+    if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
           case 'z':
             e.preventDefault();
@@ -374,6 +478,7 @@ const WhiteboardPage: React.FC = () => {
   };
 
   const applyLineStyle = (ctx: CanvasRenderingContext2D, style: 'solid' | 'dashed' | 'dotted') => {
+    console.log('🎨 Applying line style:', style);
     switch (style) {
       case 'dashed':
         ctx.setLineDash([10, 5]);
@@ -556,8 +661,10 @@ const WhiteboardPage: React.FC = () => {
 
       case 'stamp':
         if (obj.text) {
-          // Draw stamp text without border
-          ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${obj.fontSize || 16}px ${obj.fontFamily || 'Arial'}`;
+          // Draw stamp text without border - use larger default size for stamps
+          const stampSize = obj.fontSize || 120; // Much larger default size for stamps
+          console.log('🏷️ Drawing stamp:', obj.text, 'with size:', stampSize, 'fontSize:', obj.fontSize);
+          ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${stampSize}px ${obj.fontFamily || 'Arial'}`;
           ctx.fillStyle = obj.strokeColor;
           ctx.fillText(obj.text, obj.x, obj.y);
         }
@@ -589,11 +696,13 @@ const WhiteboardPage: React.FC = () => {
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${obj.fontSize}px ${obj.fontFamily || 'Arial'}`;
+          // For stamps, use larger default size for bounds calculation
+          const fontSize = obj.tool === 'stamp' ? (obj.fontSize || 120) : obj.fontSize;
+          ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
           const metrics = ctx.measureText(obj.text);
           maxX = obj.x + metrics.width;
           maxY = obj.y;
-          minY = obj.y - obj.fontSize;
+          minY = obj.y - fontSize;
         }
       }
     }
@@ -699,8 +808,24 @@ const WhiteboardPage: React.FC = () => {
     
     switch (obj.tool) {
       case 'rectangle':
-      case 'triangle':
         return x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h;
+        
+      case 'triangle':
+        // Triangle hit detection - check if point is inside triangle
+        const topY = obj.y;
+        const bottomY = obj.y + h;
+        const leftX = obj.x;
+        const rightX = obj.x + w;
+        
+        // Check if point is inside triangle using barycentric coordinates
+        const denom = (bottomY - topY) * (rightX - leftX);
+        if (denom === 0) return false;
+        
+        const a = ((bottomY - topY) * (x - leftX) + (rightX - leftX) * (y - topY)) / denom;
+        const b = ((topY - bottomY) * (x - leftX) + (leftX - rightX) * (y - bottomY)) / denom;
+        const c = 1 - a - b;
+        
+        return a >= 0 && b >= 0 && c >= 0;
         
       case 'circle':
         const centerX = obj.x + w / 2;
@@ -729,10 +854,10 @@ const WhiteboardPage: React.FC = () => {
     
     // Check rotation handle first (highest priority)
     const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
-    if (distToRotate < 20) return 'rotate';
+    if (distToRotate < 25) return 'rotate';
     
-    // Check corner handles with larger hit area
-    const handleSize = 20; // Increased hit area
+    // Check corner handles with larger hit area and better positioning
+    const handleSize = 25; // Increased hit area for better usability
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -740,11 +865,36 @@ const WhiteboardPage: React.FC = () => {
       { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' }
     ];
     
+    // Check each handle with improved distance calculation
     for (const handle of cornerHandles) {
       const distance = Math.sqrt((x - handle.x) ** 2 + (y - handle.y) ** 2);
       if (distance < handleSize) {
+        console.log(`🎯 Handle ${handle.name} detected at distance ${distance.toFixed(2)}`);
         return handle.name;
       }
+    }
+    
+    // Additional check for edge handles (optional - for more precise control)
+    const edgeThreshold = 15;
+    
+    // Top edge
+    if (Math.abs(y - bounds.y) < edgeThreshold && x >= bounds.x && x <= bounds.x + bounds.width) {
+      return 'nw'; // Default to top-left for top edge
+    }
+    
+    // Bottom edge
+    if (Math.abs(y - (bounds.y + bounds.height)) < edgeThreshold && x >= bounds.x && x <= bounds.x + bounds.width) {
+      return 'sw'; // Default to bottom-left for bottom edge
+    }
+    
+    // Left edge
+    if (Math.abs(x - bounds.x) < edgeThreshold && y >= bounds.y && y <= bounds.y + bounds.height) {
+      return 'nw'; // Default to top-left for left edge
+    }
+    
+    // Right edge
+    if (Math.abs(x - (bounds.x + bounds.width)) < edgeThreshold && y >= bounds.y && y <= bounds.y + bounds.height) {
+      return 'ne'; // Default to top-right for right edge
     }
     
     return null;
@@ -754,9 +904,14 @@ const WhiteboardPage: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
+    
+    // Transform coordinates to account for zoom and pan
+    const rawX = e.clientX - rect.left;
+    const rawY = e.clientY - rect.top;
+    
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x: (rawX - panOffset.x) / zoom,
+      y: (rawY - panOffset.y) / zoom
     };
   };
 
@@ -885,7 +1040,7 @@ const WhiteboardPage: React.FC = () => {
           y,
           width: 100,
           height: 30,
-          fontSize: 16,
+          fontSize: 120, // Much larger default size for stamps
           fontFamily: 'Arial',
           fontWeight: 'bold'
         };
@@ -983,7 +1138,7 @@ const WhiteboardPage: React.FC = () => {
         const angle = Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
         updatedObject.rotation = angle + 90;
       } else {
-        // Resize logic - much simpler approach
+        // Improved resize logic with better image handling
         const dx = x - resizeStart.x;
         const dy = y - resizeStart.y;
         
@@ -1014,6 +1169,44 @@ const WhiteboardPage: React.FC = () => {
             newWidth = Math.max(10, resizeStart.objWidth - dx);
             newHeight = Math.max(10, resizeStart.objHeight + dy);
             break;
+        }
+        
+        // Special handling for images - maintain aspect ratio
+        if (updatedObject.tool === 'image' && updatedObject.imageData) {
+          // Get original image dimensions
+          const img = new Image();
+          img.onload = () => {
+            const originalAspectRatio = img.width / img.height;
+            
+            // Maintain aspect ratio based on the primary resize direction
+            if (resizeHandle === 'nw' || resizeHandle === 'se') {
+              // Use width as primary dimension
+              newHeight = newWidth / originalAspectRatio;
+              if (resizeHandle === 'nw') {
+                newY = resizeStart.objY + resizeStart.objHeight - newHeight;
+              }
+            } else {
+              // Use height as primary dimension
+              newWidth = newHeight * originalAspectRatio;
+              if (resizeHandle === 'ne') {
+                newX = resizeStart.objX + resizeStart.objWidth - newWidth;
+              }
+            }
+            
+            // Update the object with corrected dimensions
+            const correctedObject = {
+              ...updatedObject,
+              x: newX,
+              y: newY,
+              width: newWidth,
+              height: newHeight
+            };
+            
+            setObjects(objects.map(obj => obj.id === selected.id ? correctedObject : obj));
+            setSelectedObjects([correctedObject]);
+          };
+          img.src = updatedObject.imageData;
+          return; // Exit early, the image load handler will update the object
         }
         
         // Update object properties
@@ -1165,6 +1358,28 @@ const WhiteboardPage: React.FC = () => {
       if (event.target?.result) {
         const img = new Image();
         img.onload = () => {
+          // Calculate optimal size while maintaining aspect ratio
+          const maxWidth = 400;
+          const maxHeight = 300;
+          const aspectRatio = img.width / img.height;
+          
+          let width = img.width;
+          let height = img.height;
+          
+          // Scale down if too large
+          if (width > maxWidth) {
+            width = maxWidth;
+            height = width / aspectRatio;
+          }
+          if (height > maxHeight) {
+            height = maxHeight;
+            width = height * aspectRatio;
+          }
+          
+          // Ensure minimum size
+          width = Math.max(width, 50);
+          height = Math.max(height, 50);
+          
           const newObj: DrawObject = {
             id: Date.now().toString(),
             tool: 'image',
@@ -1175,10 +1390,16 @@ const WhiteboardPage: React.FC = () => {
             imageData: event.target?.result as string,
             x: 100,
             y: 100,
-            width: Math.min(img.width, 500),
-            height: (Math.min(img.width, 500) / img.width) * img.height
+            width: Math.round(width),
+            height: Math.round(height)
           };
+          
+          console.log(`📸 Image loaded: ${img.width}x${img.height} -> ${width}x${height}`);
           setObjects([...objects, newObj]);
+        };
+        img.onerror = () => {
+          console.error('Failed to load image');
+          alert('Fehler beim Laden des Bildes');
         };
         img.src = event.target.result as string;
       }
@@ -1188,16 +1409,44 @@ const WhiteboardPage: React.FC = () => {
 
   const handlePaste = async () => {
     try {
+      console.log('📋 Attempting to paste from clipboard...');
       const clipboardItems = await navigator.clipboard.read();
+      console.log('📋 Clipboard items:', clipboardItems);
+      
       for (const clipboardItem of clipboardItems) {
+        console.log('📋 Processing clipboard item:', clipboardItem.types);
+        
         for (const type of clipboardItem.types) {
           if (type.startsWith('image/')) {
+            console.log('📋 Found image in clipboard:', type);
             const blob = await clipboardItem.getType(type);
             const reader = new FileReader();
             reader.onload = (e) => {
               if (e.target?.result) {
                 const img = new Image();
                 img.onload = () => {
+                  // Calculate optimal size while maintaining aspect ratio
+                  const maxWidth = 400;
+                  const maxHeight = 300;
+                  const aspectRatio = img.width / img.height;
+                  
+                  let width = img.width;
+                  let height = img.height;
+                  
+                  // Scale down if too large
+                  if (width > maxWidth) {
+                    width = maxWidth;
+                    height = width / aspectRatio;
+                  }
+                  if (height > maxHeight) {
+                    height = maxHeight;
+                    width = height * aspectRatio;
+                  }
+                  
+                  // Ensure minimum size
+                  width = Math.max(width, 50);
+                  height = Math.max(height, 50);
+                  
                   const newObj: DrawObject = {
                     id: Date.now().toString(),
                     tool: 'image',
@@ -1208,21 +1457,85 @@ const WhiteboardPage: React.FC = () => {
                     imageData: e.target?.result as string,
                     x: 100,
                     y: 100,
-                    width: Math.min(img.width, 500),
-                    height: (Math.min(img.width, 500) / img.width) * img.height
+                    width: Math.round(width),
+                    height: Math.round(height)
                   };
+                  
+                  console.log(`📋 Pasted image: ${img.width}x${img.height} -> ${width}x${height}`);
                   setObjects([...objects, newObj]);
+                };
+                img.onerror = () => {
+                  console.error('Failed to load pasted image');
+                  alert('Fehler beim Laden des eingefügten Bildes');
                 };
                 img.src = e.target.result as string;
               }
             };
             reader.readAsDataURL(blob);
             return;
+          } else if (type === 'text/plain') {
+            console.log('📋 Found text in clipboard');
+            const textBlob = await clipboardItem.getType(type);
+            const text = await textBlob.text();
+            
+            if (text.trim()) {
+              const newObj: DrawObject = {
+                id: Date.now().toString(),
+                tool: 'text',
+                strokeColor: strokeColor,
+                fillColor: 'transparent',
+                lineWidth: 0,
+                opacity: opacity,
+                lineStyle: 'solid',
+                text: text.trim(),
+                x: 100,
+                y: 100,
+                fontSize: fontSize,
+                fontFamily: fontFamily,
+                fontWeight: fontWeight,
+                fontStyle: fontStyle,
+                textDecoration: textDecoration
+              };
+              
+              console.log(`📋 Pasted text: "${text.trim()}"`);
+              setObjects([...objects, newObj]);
+              return;
+            }
           }
         }
       }
+      
+      console.log('📋 No supported content found in clipboard');
     } catch (err) {
-      console.log('Paste not supported or failed:', err);
+      console.log('📋 Paste not supported or failed:', err);
+      // Fallback: Try to read text from clipboard
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text.trim()) {
+          const newObj: DrawObject = {
+            id: Date.now().toString(),
+            tool: 'text',
+            strokeColor: strokeColor,
+            fillColor: 'transparent',
+            lineWidth: 0,
+            opacity: opacity,
+            lineStyle: 'solid',
+            text: text.trim(),
+            x: 100,
+            y: 100,
+            fontSize: fontSize,
+            fontFamily: fontFamily,
+            fontWeight: fontWeight,
+            fontStyle: fontStyle,
+            textDecoration: textDecoration
+          };
+          
+          console.log(`📋 Pasted text (fallback): "${text.trim()}"`);
+          setObjects([...objects, newObj]);
+        }
+      } catch (textErr) {
+        console.log('📋 Text paste also failed:', textErr);
+      }
     }
   };
 
@@ -1254,9 +1567,34 @@ const WhiteboardPage: React.FC = () => {
             const canvas = canvasRef.current;
             if (!canvas) return;
             
+            // Calculate drop position with zoom and pan transformation
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const rawX = e.clientX - rect.left;
+            const rawY = e.clientY - rect.top;
+            const x = (rawX - panOffset.x) / zoom;
+            const y = (rawY - panOffset.y) / zoom;
+            
+            // Calculate optimal size while maintaining aspect ratio
+            const maxWidth = 400;
+            const maxHeight = 300;
+            const aspectRatio = img.width / img.height;
+            
+            let width = img.width;
+            let height = img.height;
+            
+            // Scale down if too large
+            if (width > maxWidth) {
+              width = maxWidth;
+              height = width / aspectRatio;
+            }
+            if (height > maxHeight) {
+              height = maxHeight;
+              width = height * aspectRatio;
+            }
+            
+            // Ensure minimum size
+            width = Math.max(width, 50);
+            height = Math.max(height, 50);
             
             const newObj: DrawObject = {
               id: Date.now().toString(),
@@ -1266,12 +1604,18 @@ const WhiteboardPage: React.FC = () => {
               opacity: 1,
               lineStyle: 'solid',
               imageData: event.target?.result as string,
-              x: x - 50,
-              y: y - 50,
-              width: Math.min(img.width, 500),
-              height: (Math.min(img.width, 500) / img.width) * img.height
+              x: x - width / 2, // Center the image on drop point
+              y: y - height / 2,
+              width: Math.round(width),
+              height: Math.round(height)
             };
+            
+            console.log(`🎯 Dropped image at (${x}, ${y}): ${img.width}x${img.height} -> ${width}x${height}`);
             setObjects([...objects, newObj]);
+          };
+          img.onerror = () => {
+            console.error('Failed to load dropped image');
+            alert('Fehler beim Laden des Bildes');
           };
           img.src = event.target.result as string;
         }
@@ -1324,6 +1668,28 @@ const WhiteboardPage: React.FC = () => {
     if (selectedObjects.length === 0) return;
     const selected = selectedObjects[0];
     setObjects([selected, ...objects.filter(o => o.id !== selected.id)]);
+  };
+
+  const handleBringForward = () => {
+    if (selectedObjects.length === 0) return;
+    const selected = selectedObjects[0];
+    const currentIndex = objects.findIndex(o => o.id === selected.id);
+    if (currentIndex < objects.length - 1) {
+      const newObjects = [...objects];
+      [newObjects[currentIndex], newObjects[currentIndex + 1]] = [newObjects[currentIndex + 1], newObjects[currentIndex]];
+      setObjects(newObjects);
+    }
+  };
+
+  const handleSendBackward = () => {
+    if (selectedObjects.length === 0) return;
+    const selected = selectedObjects[0];
+    const currentIndex = objects.findIndex(o => o.id === selected.id);
+    if (currentIndex > 0) {
+      const newObjects = [...objects];
+      [newObjects[currentIndex], newObjects[currentIndex - 1]] = [newObjects[currentIndex - 1], newObjects[currentIndex]];
+      setObjects(newObjects);
+    }
   };
 
   const handleDeleteSelected = () => {
@@ -1545,44 +1911,7 @@ const WhiteboardPage: React.FC = () => {
 
   return (
     <Box sx={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
-      {/* Collaborative Features */}
-      {groupId && (
-        <CollaborativeWhiteboard
-          groupId={groupId}
-          onUserJoin={(user) => {
-            console.log('User joined:', user);
-          }}
-          onUserLeave={(userId) => {
-            console.log('User left:', userId);
-          }}
-          onCursorMove={(userId, x, y) => {
-            // Handle remote cursor movement
-          }}
-          onObjectChange={(newObjects) => {
-            setObjects(newObjects);
-          }}
-        />
-      )}
 
-      {/* Save Button */}
-      <IconButton
-        onClick={handleOpenSaveDialog}
-        sx={{
-          position: 'fixed',
-          top: 10,
-          right: 10,
-          zIndex: 2000,
-          bgcolor: '#4caf50',
-          color: 'white',
-          width: 40,
-          height: 40,
-          boxShadow: 3,
-          '&:hover': { bgcolor: '#45a049', transform: 'scale(1.05)' }
-        }}
-        title="Speichern"
-      >
-        <SaveIcon />
-      </IconButton>
 
       {/* Modern Toolbar */}
       <Paper elevation={0} sx={{ 
@@ -1593,30 +1922,16 @@ const WhiteboardPage: React.FC = () => {
       }}>
         {/* Compact Main Tools */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1 }}>
-          <Typography variant="caption" sx={{ 
-            fontWeight: 600, 
-            color: 'white', 
-            minWidth: 60,
-            fontSize: '0.75rem',
-            textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-          }}>
-            Tools
-          </Typography>
-          
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             {[
               { value: 'select', icon: '✋', label: 'Auswählen' },
               { value: 'pen', icon: '🖊️', label: 'Stift' },
-              { value: 'brush', icon: '🖌️', label: 'Pinsel' },
-              { value: 'marker', icon: '🖍️', label: 'Marker' },
               { value: 'highlighter', icon: '🖍️', label: 'Textmarker' },
               { value: 'line', icon: '📏', label: 'Linie' },
               { value: 'rectangle', icon: '▭', label: 'Rechteck' },
               { value: 'circle', icon: '⭕', label: 'Kreis' },
               { value: 'triangle', icon: '△', label: 'Dreieck' },
               { value: 'arrow', icon: '➡️', label: 'Pfeil' },
-              { value: 'freeform', icon: '✏️', label: 'Freihand' },
-              { value: 'connector', icon: '🔗', label: 'Verbinder' },
               { value: 'text', icon: 'A', label: 'Text' },
               { value: 'stamp', icon: '🏷️', label: 'Stempel' },
               { value: 'image', icon: '🖼️', label: 'Bild' },
@@ -1630,9 +1945,12 @@ const WhiteboardPage: React.FC = () => {
                     } else if (t.value === 'stamp') {
                       setTool(t.value as Tool);
                       setShowStamps(true);
-                    } else if (t.value === 'connector') {
+                    } else if (t.value === 'highlighter') {
                       setTool(t.value as Tool);
-                      setIsConnecting(true);
+                      setLineWidth(15); // Textmarker ist dicker
+                    } else if (t.value === 'eraser') {
+                      setTool(t.value as Tool);
+                      setLineWidth(20); // Radierer ist größer und schneller
                     } else {
                       setTool(t.value as Tool);
                     }
@@ -1678,8 +1996,15 @@ const WhiteboardPage: React.FC = () => {
                     bgcolor: 'rgba(255,255,255,0.1)',
                     border: '1px solid rgba(255,255,255,0.2)',
                     backdropFilter: 'blur(10px)',
-                    width: 28,
-                    height: 28,
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '& .MuiSvgIcon-root': {
+                      width: '100%',
+                      height: '100%',
+                      fontSize: '0.9rem'
+                    },
                     '&:hover': {
                       bgcolor: 'rgba(255,255,255,0.2)',
                       transform: 'scale(1.05)'
@@ -1705,8 +2030,15 @@ const WhiteboardPage: React.FC = () => {
                     bgcolor: 'rgba(255,255,255,0.1)',
                     border: '1px solid rgba(255,255,255,0.2)',
                     backdropFilter: 'blur(10px)',
-                    width: 28,
-                    height: 28,
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '& .MuiSvgIcon-root': {
+                      width: '100%',
+                      height: '100%',
+                      fontSize: '0.9rem'
+                    },
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
                     '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
                   }}
@@ -1726,55 +2058,20 @@ const WhiteboardPage: React.FC = () => {
                     bgcolor: 'rgba(255,255,255,0.1)',
                     border: '1px solid rgba(255,255,255,0.2)',
                     backdropFilter: 'blur(10px)',
-                    width: 28,
-                    height: 28,
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '& .MuiSvgIcon-root': {
+                      width: '100%',
+                      height: '100%',
+                      fontSize: '0.9rem'
+                    },
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
                     '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
                   }}
                 >
                   <CopyIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="In Vordergrund">
-              <span>
-                <IconButton 
-                  onClick={handleBringToFront} 
-                  disabled={selectedObjects.length === 0} 
-                  size="small"
-                  sx={{
-                    color: 'white',
-                    bgcolor: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    backdropFilter: 'blur(10px)',
-                    width: 28,
-                    height: 28,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
-                    '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
-                  }}
-                >
-                  <FrontIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="In Hintergrund">
-              <span>
-                <IconButton 
-                  onClick={handleSendToBack} 
-                  disabled={selectedObjects.length === 0} 
-                  size="small"
-                  sx={{
-                    color: 'white',
-                    bgcolor: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    backdropFilter: 'blur(10px)',
-                    width: 28,
-                    height: 28,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' },
-                    '&:disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(255,255,255,0.05)' }
-                  }}
-                >
-                  <BackIcon />
                 </IconButton>
               </span>
             </Tooltip>
@@ -1788,6 +2085,15 @@ const WhiteboardPage: React.FC = () => {
                     bgcolor: 'rgba(255,107,107,0.1)',
                     border: '1px solid rgba(255,107,107,0.3)',
                     backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '& .MuiSvgIcon-root': {
+                      width: '100%',
+                      height: '100%',
+                      fontSize: '0.9rem'
+                    },
                     '&:hover': { 
                       bgcolor: 'rgba(255,107,107,0.2)', 
                       transform: 'scale(1.1)',
@@ -1796,6 +2102,36 @@ const WhiteboardPage: React.FC = () => {
                   }}
                 >
                   <DeleteIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Speichern">
+              <span>
+                <IconButton 
+                  onClick={handleOpenSaveDialog} 
+                  size="small"
+                  sx={{
+                    color: '#4caf50',
+                    bgcolor: 'rgba(76,175,80,0.1)',
+                    border: '1px solid rgba(76,175,80,0.3)',
+                    backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '& .MuiSvgIcon-root': {
+                      width: '100%',
+                      height: '100%',
+                      fontSize: '0.9rem'
+                    },
+                    '&:hover': { 
+                      bgcolor: 'rgba(76,175,80,0.2)', 
+                      transform: 'scale(1.05)',
+                      boxShadow: '0 4px 12px rgba(76,175,80,0.3)'
+                    }
+                  }}
+                >
+                  <SaveIcon />
                 </IconButton>
               </span>
             </Tooltip>
@@ -1822,12 +2158,18 @@ const WhiteboardPage: React.FC = () => {
                 size="small"
                 sx={{
                   color: 'white',
-                  width: 24,
-                  height: 24,
+                  width: 20,
+                  height: 20,
+                  minWidth: 20,
+                  minHeight: 20,
+                  '& .MuiTypography-root': {
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold'
+                  },
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' }
                 }}
               >
-                <Typography variant="caption" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>+</Typography>
+                <Typography variant="caption">+</Typography>
               </IconButton>
             </Tooltip>
             <Typography variant="caption" sx={{ 
@@ -1845,12 +2187,18 @@ const WhiteboardPage: React.FC = () => {
                 size="small"
                 sx={{
                   color: 'white',
-                  width: 24,
-                  height: 24,
+                  width: 20,
+                  height: 20,
+                  minWidth: 20,
+                  minHeight: 20,
+                  '& .MuiTypography-root': {
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold'
+                  },
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' }
                 }}
               >
-                <Typography variant="caption" sx={{ fontSize: '1rem', fontWeight: 'bold' }}>-</Typography>
+                <Typography variant="caption">-</Typography>
               </IconButton>
             </Tooltip>
             <Tooltip title="Zoom zurücksetzen">
@@ -1859,12 +2207,18 @@ const WhiteboardPage: React.FC = () => {
                 size="small"
                 sx={{
                   color: 'white',
-                  width: 24,
-                  height: 24,
+                  width: 20,
+                  height: 20,
+                  minWidth: 20,
+                  minHeight: 20,
+                  '& .MuiTypography-root': {
+                    fontSize: '0.6rem',
+                    fontWeight: 'bold'
+                  },
                   '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.05)' }
                 }}
               >
-                <Typography variant="caption" sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>100%</Typography>
+                <Typography variant="caption">100%</Typography>
               </IconButton>
             </Tooltip>
           </Box>
@@ -1878,10 +2232,17 @@ const WhiteboardPage: React.FC = () => {
                 bgcolor: 'rgba(255,255,255,0.1)',
                 border: '1px solid rgba(255,255,255,0.2)',
                 backdropFilter: 'blur(10px)',
+                width: 24,
+                height: 24,
+                minWidth: 24,
+                minHeight: 24,
+                '& .MuiTypography-root': {
+                  fontSize: '0.8rem'
+                },
                 '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' }
               }}
             >
-              <Typography variant="caption" sx={{ fontSize: '1rem' }}>📋</Typography>
+              <Typography variant="caption">📋</Typography>
             </IconButton>
           </Tooltip>
 
@@ -1894,6 +2255,15 @@ const WhiteboardPage: React.FC = () => {
                 bgcolor: showGrid ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.1)',
                 border: '1px solid rgba(255,255,255,0.2)',
                 backdropFilter: 'blur(10px)',
+                width: 24,
+                height: 24,
+                minWidth: 24,
+                minHeight: 24,
+                '& .MuiSvgIcon-root': {
+                  width: '100%',
+                  height: '100%',
+                  fontSize: '0.9rem'
+                },
                 '&:hover': { 
                   bgcolor: showGrid ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.2)', 
                   transform: 'scale(1.1)' 
@@ -1912,6 +2282,15 @@ const WhiteboardPage: React.FC = () => {
               bgcolor: 'rgba(255,107,107,0.1)',
               border: '1px solid rgba(255,107,107,0.3)',
               backdropFilter: 'blur(10px)',
+              width: 24,
+              height: 24,
+              minWidth: 24,
+              minHeight: 24,
+              '& .MuiSvgIcon-root': {
+                width: '100%',
+                height: '100%',
+                fontSize: '1rem'
+              },
               '&:hover': { 
                 bgcolor: 'rgba(255,107,107,0.2)', 
                 transform: 'scale(1.1)',
@@ -1923,203 +2302,13 @@ const WhiteboardPage: React.FC = () => {
           </IconButton>
         </Box>
 
-        {/* Compact Properties */}
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1, 
-          px: 2, 
-          py: 0.75, 
-          bgcolor: 'rgba(255,255,255,0.05)', 
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          backdropFilter: 'blur(10px)'
-        }}>
-          {/* Colors */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" sx={{ 
-              fontWeight: 600, 
-              fontSize: '0.75rem', 
-              color: 'rgba(255,255,255,0.8)',
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-            }}>
-              Strich
-            </Typography>
-            <Box
-              onClick={() => setShowColorPicker('stroke')}
-              sx={{
-                width: 24,
-                height: 24,
-                bgcolor: strokeColor,
-                border: '2px solid rgba(255,255,255,0.3)',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-                '&:hover': { 
-                  transform: 'scale(1.1)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                  borderColor: 'rgba(255,255,255,0.6)'
-                }
-              }}
-            />
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="caption" sx={{ 
-              fontWeight: 600, 
-              fontSize: '0.75rem', 
-              color: 'rgba(255,255,255,0.8)',
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-            }}>
-              Füllung
-            </Typography>
-            <Box
-              onClick={() => setShowColorPicker('fill')}
-              sx={{
-                width: 24,
-                height: 24,
-                bgcolor: fillColor === 'transparent' ? 'white' : fillColor,
-                border: '2px solid rgba(255,255,255,0.3)',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-                backgroundImage: fillColor === 'transparent' ? 
-                  'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
-                backgroundSize: '6px 6px',
-                backgroundPosition: '0 0, 0 3px, 3px -3px, -3px 0px',
-                '&:hover': { 
-                  transform: 'scale(1.1)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                  borderColor: 'rgba(255,255,255,0.6)'
-                }
-              }}
-            />
-          </Box>
-
-          <Divider orientation="vertical" flexItem />
-
-          {/* Line Properties */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666' }}>
-              Dicke
-            </Typography>
-            <Slider
-              value={lineWidth}
-              onChange={(_, v) => setLineWidth(v as number)}
-              min={1}
-              max={30}
-              size="small"
-              sx={{ width: 80 }}
-            />
-            <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#666', minWidth: 20 }}>
-              {lineWidth}
-            </Typography>
-          </Box>
-
-          <FormControl size="small" sx={{ minWidth: 90 }}>
-            <Select
-              value={lineStyle}
-              onChange={(e) => setLineStyle(e.target.value as any)}
-              sx={{ fontSize: '0.75rem', height: 28 }}
-            >
-              <MenuItem value="solid">━━━</MenuItem>
-              <MenuItem value="dashed">- - -</MenuItem>
-              <MenuItem value="dotted">· · ·</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 120 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666' }}>
-              Transparenz
-            </Typography>
-            <Slider
-              value={opacity}
-              onChange={(_, v) => setOpacity(v as number)}
-              min={0.1}
-              max={1}
-              step={0.1}
-              size="small"
-              sx={{ width: 60 }}
-            />
-            <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#666' }}>
-              {Math.round(opacity * 100)}%
-            </Typography>
-          </Box>
-
-          {/* Text Properties */}
-          {tool === 'text' && (
-            <>
-              <Divider orientation="vertical" flexItem />
-              <FormControl size="small" sx={{ minWidth: 100 }}>
-                <Select
-                  value={fontFamily}
-                  onChange={(e) => setFontFamily(e.target.value)}
-                  sx={{ fontSize: '0.75rem', height: 28 }}
-                >
-                  <MenuItem value="Arial">Arial</MenuItem>
-                  <MenuItem value="Times New Roman">Times</MenuItem>
-                  <MenuItem value="Courier New">Courier</MenuItem>
-                  <MenuItem value="Comic Sans MS">Comic Sans</MenuItem>
-                  <MenuItem value="Georgia">Georgia</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <ToggleButton
-                  value="bold"
-                  selected={fontWeight === 'bold'}
-                  onChange={() => setFontWeight(fontWeight === 'bold' ? 'normal' : 'bold')}
-                  size="small"
-                  sx={{ width: 32, height: 28 }}
-                >
-                  <BoldIcon fontSize="small" />
-                </ToggleButton>
-                <ToggleButton
-                  value="italic"
-                  selected={fontStyle === 'italic'}
-                  onChange={() => setFontStyle(fontStyle === 'italic' ? 'normal' : 'italic')}
-                  size="small"
-                  sx={{ width: 32, height: 28 }}
-                >
-                  <ItalicIcon fontSize="small" />
-                </ToggleButton>
-                <ToggleButton
-                  value="underline"
-                  selected={textDecoration === 'underline'}
-                  onChange={() => setTextDecoration(textDecoration === 'underline' ? 'none' : 'underline')}
-                  size="small"
-                  sx={{ width: 32, height: 28 }}
-                >
-                  <UnderlineIcon fontSize="small" />
-                </ToggleButton>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#666' }}>
-                  Größe
-                </Typography>
-                <Slider
-                  value={fontSize}
-                  onChange={(_, v) => setFontSize(v as number)}
-                  min={12}
-                  max={96}
-                  size="small"
-                  sx={{ width: 80 }}
-                />
-                <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#666', minWidth: 20 }}>
-                  {fontSize}
-                </Typography>
-              </Box>
-            </>
-          )}
-        </Box>
       </Paper>
 
       {/* Canvas */}
       <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         <canvas
           ref={canvasRef}
+          tabIndex={0}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -2145,12 +2334,14 @@ const WhiteboardPage: React.FC = () => {
 
       {/* Color Picker Popover */}
       {showColorPicker && (
-        <Paper
+        <>
+          {console.log('🎨 Rendering color picker:', showColorPicker)}
+          <Paper
           sx={{
             position: 'fixed',
-            top: 120,
-            left: showColorPicker === 'stroke' ? 100 : 220,
-            zIndex: 1500,
+            top: 200,
+            right: 20,
+            zIndex: 2000,
             p: 2,
             boxShadow: 5,
             borderRadius: 2
@@ -2160,8 +2351,22 @@ const WhiteboardPage: React.FC = () => {
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               {showColorPicker === 'stroke' ? 'Strichfarbe' : 'Füllfarbe'}
             </Typography>
-            <IconButton size="small" onClick={() => setShowColorPicker(null)}>
-              <CloseIcon fontSize="small" />
+            <IconButton 
+              size="small" 
+              onClick={() => setShowColorPicker(null)}
+              sx={{
+                width: 20,
+                height: 20,
+                minWidth: 20,
+                minHeight: 20,
+                '& .MuiSvgIcon-root': {
+                  width: '100%',
+                  height: '100%',
+                  fontSize: '0.8rem'
+                }
+              }}
+            >
+              <CloseIcon />
             </IconButton>
           </Box>
           
@@ -2237,6 +2442,7 @@ const WhiteboardPage: React.FC = () => {
             label="Eigene Farbe"
           />
         </Paper>
+        </>
       )}
 
       {/* Text Input Dialog */}
@@ -2366,37 +2572,75 @@ const WhiteboardPage: React.FC = () => {
       />
 
       {/* Stamps Dialog */}
-      <Dialog open={showStamps} onClose={() => setShowStamps(false)} maxWidth="sm" fullWidth>
+      <Dialog open={showStamps} onClose={() => setShowStamps(false)} maxWidth="lg" fullWidth>
         <DialogTitle>Stempel auswählen</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, mt: 2 }}>
+          <Box sx={{ mt: 2 }}>
+            {/* Kategorien */}
             {[
-              '✓', '✗', '!', '?', '★', '♥', '♦', '♠', '♣',
-              'OK', 'NEIN', 'JA', 'GUT', 'SCHLECHT', 'WICHTIG',
-              'INFO', 'HINWEIS', 'TIP', 'ACHTUNG'
-            ].map(stamp => (
-              <Box
-                key={stamp}
-                onClick={() => {
-                  setSelectedStamp(stamp);
-                  setShowStamps(false);
-                  // Tool bleibt auf 'stamp' für das nächste Klicken
-                }}
-                sx={{
-                  p: 2,
-                  border: '2px solid #e0e0e0',
-                  borderRadius: 2,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  '&:hover': {
-                    borderColor: '#1976d2',
-                    backgroundColor: '#f5f5f5'
-                  }
-                }}
-              >
-                {stamp}
+              {
+                title: 'Symbole & Häkchen',
+                stamps: ['✓', '✗', '!', '?', '★', '♥', '♦', '♠', '♣', '→', '←', '↑', '↓', '↔', '↕', '↗', '↘', '↙', '↖']
+              },
+              {
+                title: 'Gesichter 😀',
+                stamps: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩']
+              },
+              {
+                title: 'Hände & Gesten 👋',
+                stamps: ['👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👋', '🤚', '🖐️', '✋', '🖖', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💪', '🦾', '🦿', '🦵']
+              },
+              {
+                title: 'Formen & Farben 🔴',
+                stamps: ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫']
+              },
+              {
+                title: 'Zahlen & Buchstaben 🔢',
+                stamps: ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '🔣', '🔤', '🅰️', '🆎', '🅱️', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '🔞', '☢️', '☣️']
+              },
+              {
+                title: 'Objekte & Tools 📱',
+                stamps: ['📱', '📞', '☎️', '📠', '📧', '📨', '📩', '📤', '📥', '📦', '📫', '📪', '📬', '📭', '📮', '🗳️', '✏️', '✒️', '🖋️', '🖊️', '🖌️', '🖍️', '📝', '💼', '📁', '📂', '🗂️', '📅', '📆', '🗒️']
+              },
+              {
+                title: 'Text-Stempel',
+                stamps: ['OK', 'NEIN', 'JA', 'GUT', 'SCHLECHT', 'WICHTIG', 'INFO', 'HINWEIS', 'TIP', 'ACHTUNG', 'FEHLER', 'SUCCESS', 'DONE', 'TODO', 'FIX', 'BUG', 'NEW', 'OLD', 'HOT', 'COLD']
+              }
+            ].map((category, categoryIndex) => (
+              <Box key={categoryIndex} sx={{ mb: 3 }}>
+                <Typography variant="h6" sx={{ mb: 1, fontSize: '1rem', fontWeight: 600, color: '#333' }}>
+                  {category.title}
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 0.5 }}>
+                  {category.stamps.map(stamp => (
+                    <Box
+                      key={stamp}
+                      onClick={() => {
+                        setSelectedStamp(stamp);
+                        setShowStamps(false);
+                      }}
+                      sx={{
+                        p: 0.3,
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 0.3,
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        fontSize: '1.8rem',
+                        minHeight: 28,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        '&:hover': {
+                          borderColor: '#2196f3',
+                          backgroundColor: '#f5f5f5',
+                          transform: 'scale(1.1)'
+                        }
+                      }}
+                    >
+                      {stamp}
+                    </Box>
+                  ))}
+                </Box>
               </Box>
             ))}
           </Box>
@@ -2470,8 +2714,22 @@ const WhiteboardPage: React.FC = () => {
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               Objekt-Eigenschaften
             </Typography>
-            <IconButton size="small" onClick={() => setShowObjectPanel(false)}>
-              <CloseIcon fontSize="small" />
+            <IconButton 
+              size="small" 
+              onClick={() => setShowObjectPanel(false)}
+              sx={{
+                width: 20,
+                height: 20,
+                minWidth: 20,
+                minHeight: 20,
+                '& .MuiSvgIcon-root': {
+                  width: '100%',
+                  height: '100%',
+                  fontSize: '0.8rem'
+                }
+              }}
+            >
+              <CloseIcon />
             </IconButton>
           </Box>
 
@@ -2484,7 +2742,7 @@ const WhiteboardPage: React.FC = () => {
                 </Typography>
               </Box>
 
-              {/* Colors */}
+              {/* General Properties - Colors */}
               <Box>
                 <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
                   Farben
@@ -2494,6 +2752,7 @@ const WhiteboardPage: React.FC = () => {
                     <Typography variant="caption" sx={{ fontSize: '0.6rem' }}>Strich</Typography>
                     <Box
                       onClick={() => {
+                        console.log('🎨 Opening stroke color picker');
                         setShowColorPicker('stroke');
                         setStrokeColor(selectedObjects[0].strokeColor);
                       }}
@@ -2537,8 +2796,10 @@ const WhiteboardPage: React.FC = () => {
                 </Box>
               </Box>
 
-              {/* Line Properties */}
+              {/* General Properties - Line Settings */}
               {['brush', 'pen', 'marker', 'line', 'arrow', 'rectangle', 'circle', 'triangle'].includes(selectedObjects[0].tool) && (
+                <>
+                  {console.log('🔧 Rendering line settings for tool:', selectedObjects[0].tool)}
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
                     Linie
@@ -2560,21 +2821,46 @@ const WhiteboardPage: React.FC = () => {
                     </Typography>
                   </Box>
                   
-                  <FormControl size="small" sx={{ mt: 1, minWidth: '100%' }}>
-                    <Select
-                      value={selectedObjects[0].lineStyle}
-                      onChange={(e) => updateSelectedObject({ lineStyle: e.target.value as any })}
-                      sx={{ fontSize: '0.7rem', height: 28 }}
+                  <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
+                    <Button
+                      variant={selectedObjects[0].lineStyle === 'solid' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => {
+                        console.log('🔧 Line style changed to: solid');
+                        updateSelectedObject({ lineStyle: 'solid' });
+                      }}
+                      sx={{ fontSize: '0.6rem', py: 0.3, px: 1, minHeight: 24 }}
                     >
-                      <MenuItem value="solid">━━━ Durchgezogen</MenuItem>
-                      <MenuItem value="dashed">- - - Gestrichelt</MenuItem>
-                      <MenuItem value="dotted">· · · Gepunktet</MenuItem>
-                    </Select>
-                  </FormControl>
+                      ━━━
+                    </Button>
+                    <Button
+                      variant={selectedObjects[0].lineStyle === 'dashed' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => {
+                        console.log('🔧 Line style changed to: dashed');
+                        updateSelectedObject({ lineStyle: 'dashed' });
+                      }}
+                      sx={{ fontSize: '0.6rem', py: 0.3, px: 1, minHeight: 24 }}
+                    >
+                      - - -
+                    </Button>
+                    <Button
+                      variant={selectedObjects[0].lineStyle === 'dotted' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => {
+                        console.log('🔧 Line style changed to: dotted');
+                        updateSelectedObject({ lineStyle: 'dotted' });
+                      }}
+                      sx={{ fontSize: '0.6rem', py: 0.3, px: 1, minHeight: 24 }}
+                    >
+                      · · ·
+                    </Button>
+                  </Box>
                 </Box>
+                </>
               )}
 
-              {/* Opacity */}
+              {/* General Properties - Opacity */}
               <Box>
                 <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
                   Transparenz
@@ -2703,6 +2989,81 @@ const WhiteboardPage: React.FC = () => {
                 </Box>
               )}
 
+              {/* Layer Controls */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', color: '#666', mb: 1, display: 'block' }}>
+                  Position
+                </Typography>
+                
+                {/* Extreme Layer Controls */}
+                <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleBringToFront}
+                    sx={{ 
+                      flexGrow: 1, 
+                      fontSize: '0.65rem',
+                      py: 0.4,
+                      minHeight: 26
+                    }}
+                    title="Ganz nach vorne bringen"
+                  >
+                    <FrontIcon fontSize="small" sx={{ mr: 0.3 }} />
+                    Ganz vorne
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleSendToBack}
+                    sx={{ 
+                      flexGrow: 1, 
+                      fontSize: '0.65rem',
+                      py: 0.4,
+                      minHeight: 26
+                    }}
+                    title="Ganz nach hinten senden"
+                  >
+                    <BackIcon fontSize="small" sx={{ mr: 0.3 }} />
+                    Ganz hinten
+                  </Button>
+                </Box>
+                
+                {/* Step-by-step Layer Controls */}
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleBringForward}
+                    sx={{ 
+                      flexGrow: 1, 
+                      fontSize: '0.65rem',
+                      py: 0.4,
+                      minHeight: 26
+                    }}
+                    title="Eins nach vorne"
+                  >
+                    <ForwardIcon fontSize="small" sx={{ mr: 0.3 }} />
+                    Nach vorne
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleSendBackward}
+                    sx={{ 
+                      flexGrow: 1, 
+                      fontSize: '0.65rem',
+                      py: 0.4,
+                      minHeight: 26
+                    }}
+                    title="Eins nach hinten"
+                  >
+                    <BackwardIcon fontSize="small" sx={{ mr: 0.3 }} />
+                    Nach hinten
+                  </Button>
+                </Box>
+              </Box>
+
               {/* Actions */}
               <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                 <Button
@@ -2728,30 +3089,6 @@ const WhiteboardPage: React.FC = () => {
         </Paper>
       )}
 
-      {/* Status Bar */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 2, 
-        px: 2, 
-        py: 0.5, 
-        bgcolor: '#f5f5f5', 
-        borderTop: '1px solid #e0e0e0',
-        fontSize: '0.7rem'
-      }}>
-        <Chip label={`Objekte: ${objects.length}`} size="small" />
-        {selectedObjects.length > 0 && (
-          <Chip label={`Ausgewählt: ${selectedObjects.length}`} size="small" color="primary" />
-        )}
-        <Chip label={`Zoom: ${Math.round(zoom * 100)}%`} size="small" />
-        {isConnecting && (
-          <Chip label="Verbinder aktiv" size="small" color="secondary" />
-        )}
-        <Box sx={{ flexGrow: 1 }} />
-        <Typography variant="caption" sx={{ color: '#666' }}>
-          Tastatur: Strg+Z (Rückgängig), Strg+S (Speichern), Leertaste (Verschieben), ESC (Abbrechen)
-        </Typography>
-      </Box>
     </Box>
   );
 };

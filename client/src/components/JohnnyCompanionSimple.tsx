@@ -50,6 +50,8 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
   // Monkey expressions
   const [monkeyExpression, setMonkeyExpression] = useState('🐒');
   const [messageVariations, setMessageVariations] = useState(0);
+  const [showFact, setShowFact] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   
   const messageTimeoutRef = useRef<NodeJS.Timeout>();
   const idleTimeoutRef = useRef<NodeJS.Timeout>();
@@ -195,6 +197,257 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     }
   }, [messageVariations]);
 
+  // Fun Facts and Knowledge Base
+  const funFacts = [
+    "🐙 Oktopusse haben 3 Herzen und blaues Blut!",
+    "🦒 Giraffen schlafen nur 30 Minuten pro Tag!",
+    "🐝 Bienen können bis zu 15 km/h fliegen!",
+    "🐧 Pinguine können bis zu 2 Meter hoch springen!",
+    "🦋 Schmetterlinge schmecken mit ihren Füßen!",
+    "🐨 Koalas schlafen 18-22 Stunden am Tag!",
+    "🦎 Chamäleons können ihre Augen unabhängig bewegen!",
+    "🐬 Delfine haben Namen für sich selbst!",
+    "🦜 Papageien können über 100 Jahre alt werden!",
+    "🐘 Elefanten können nicht springen!",
+    "🦁 Löwen brüllen so laut, dass man es 8 km weit hört!",
+    "🐺 Wölfe heulen im Chor, um ihre Familie zu finden!",
+    "🦊 Füchse benutzen das Magnetfeld der Erde zum Jagen!",
+    "🐻 Bären können bis zu 50 km/h laufen!",
+    "🦌 Hirsche können bis zu 3 Meter hoch springen!",
+    "🐰 Kaninchen können 360° um sich herum sehen!",
+    "🐹 Hamster können bis zu 8 km in einer Nacht laufen!",
+    "🐭 Mäuse können bis zu 1,5 Meter hoch springen!",
+    "🐸 Frösche können durch ihre Haut atmen!",
+    "🐍 Schlangen können bis zu 2 Jahre ohne Essen überleben!",
+    "🦎 Geckos können an Decken laufen!",
+    "🐢 Schildkröten können bis zu 200 Jahre alt werden!",
+    "🐊 Krokodile können bis zu 1 Stunde die Luft anhalten!",
+    "🦈 Haie haben 6 Sinne!",
+    "🐟 Fische können Farben sehen!",
+    "🦑 Tintenfische haben 9 Gehirne!",
+    "🦀 Krabben können rückwärts laufen!",
+    "🦐 Garnelen haben ihr Herz im Kopf!",
+    "🐚 Muscheln können bis zu 500 Jahre alt werden!",
+    "🦋 Schmetterlinge leben nur 2-4 Wochen!",
+    "🐛 Raupen haben 4000 Muskeln!",
+    "🕷️ Spinnen haben 8 Augen!",
+    "🦗 Heuschrecken können 20x ihre Körperlänge springen!",
+    "🐜 Ameisen können das 50-fache ihres Körpergewichts tragen!",
+    "🐝 Bienen tanzen, um anderen den Weg zu zeigen!",
+    "🦟 Mücken können bis zu 2 km weit fliegen!",
+    "🦋 Schmetterlinge schmecken mit ihren Füßen!",
+    "🐛 Würmer haben 5 Herzen!",
+    "🦎 Echsen können ihren Schwanz abwerfen!",
+    "🐸 Frösche können ihre Augen schlucken!",
+    "🐍 Schlangen können riechen mit ihrer Zunge!",
+    "🦎 Geckos können an Glas haften!",
+    "🐢 Schildkröten können bis zu 6 Monate ohne Wasser!",
+    "🐊 Krokodile können bis zu 3 Jahre ohne Essen!",
+    "🦈 Haie können bis zu 1000 Zähne haben!",
+    "🐟 Fische können bis zu 10.000 Eier legen!",
+    "🦑 Tintenfische können ihre Farbe ändern!",
+    "🦀 Krabben können bis zu 20 Jahre alt werden!",
+    "🦐 Garnelen können rückwärts schwimmen!",
+    "🐚 Muscheln können bis zu 1 Meter groß werden!",
+    "🦋 Schmetterlinge können bis zu 3000 km fliegen!",
+    "🐛 Raupen können bis zu 27.000x ihr Gewicht essen!",
+    "🕷️ Spinnen können bis zu 8 Jahre alt werden!",
+    "🦗 Heuschrecken können bis zu 20x ihre Körperlänge springen!",
+    "🐜 Ameisen können bis zu 30 Jahre alt werden!",
+    "🐝 Bienen können bis zu 15 km/h fliegen!",
+    "🦟 Mücken können bis zu 50 Eier auf einmal legen!",
+    "🦋 Schmetterlinge können bis zu 20 km/h fliegen!",
+    "🐛 Würmer können bis zu 1 Meter lang werden!",
+    "🦎 Echsen können bis zu 50 km/h laufen!",
+    "🐸 Frösche können bis zu 2 Meter weit springen!",
+    "🐍 Schlangen können bis zu 10 Meter lang werden!",
+    "🦎 Geckos können bis zu 20 Jahre alt werden!",
+    "🐢 Schildkröten können bis zu 200 Jahre alt werden!",
+    "🐊 Krokodile können bis zu 6 Meter lang werden!",
+    "🦈 Haie können bis zu 100 Jahre alt werden!",
+    "🐟 Fische können bis zu 200 Jahre alt werden!",
+    "🦑 Tintenfische können bis zu 18 Meter lang werden!",
+    "🦀 Krabben können bis zu 1 Meter groß werden!",
+    "🦐 Garnelen können bis zu 30 cm lang werden!",
+    "🐚 Muscheln können bis zu 500 Jahre alt werden!",
+    "🦋 Schmetterlinge können bis zu 3000 km fliegen!",
+    "🐛 Raupen können bis zu 27.000x ihr Gewicht essen!",
+    "🕷️ Spinnen können bis zu 8 Jahre alt werden!",
+    "🦗 Heuschrecken können bis zu 20x ihre Körperlänge springen!",
+    "🐜 Ameisen können bis zu 30 Jahre alt werden!",
+    "🐝 Bienen können bis zu 15 km/h fliegen!",
+    "🦟 Mücken können bis zu 50 Eier auf einmal legen!",
+    "🦋 Schmetterlinge können bis zu 20 km/h fliegen!",
+    "🐛 Würmer können bis zu 1 Meter lang werden!",
+    "🦎 Echsen können bis zu 50 km/h laufen!",
+    "🐸 Frösche können bis zu 2 Meter weit springen!",
+    "🐍 Schlangen können bis zu 10 Meter lang werden!",
+    "🦎 Geckos können bis zu 20 Jahre alt werden!",
+    "🐢 Schildkröten können bis zu 200 Jahre alt werden!",
+    "🐊 Krokodile können bis zu 6 Meter lang werden!",
+    "🦈 Haie können bis zu 100 Jahre alt werden!",
+    "🐟 Fische können bis zu 200 Jahre alt werden!",
+    "🦑 Tintenfische können bis zu 18 Meter lang werden!",
+    "🦀 Krabben können bis zu 1 Meter groß werden!",
+    "🦐 Garnelen können bis zu 30 cm lang werden!",
+    "🐚 Muscheln können bis zu 500 Jahre alt werden!",
+    "🦋 Schmetterlinge können bis zu 3000 km fliegen!",
+    "🐛 Raupen können bis zu 27.000x ihr Gewicht essen!",
+    "🕷️ Spinnen können bis zu 8 Jahre alt werden!",
+    "🦗 Heuschrecken können bis zu 20x ihre Körperlänge springen!",
+    "🐜 Ameisen können bis zu 30 Jahre alt werden!",
+    "🐝 Bienen können bis zu 15 km/h fliegen!",
+    "🦟 Mücken können bis zu 50 Eier auf einmal legen!",
+    "🦋 Schmetterlinge können bis zu 20 km/h fliegen!",
+    "🐛 Würmer können bis zu 1 Meter lang werden!",
+    "🦎 Echsen können bis zu 50 km/h laufen!",
+    "🐸 Frösche können bis zu 2 Meter weit springen!",
+    "🐍 Schlangen können bis zu 10 Meter lang werden!",
+    "🦎 Geckos können bis zu 20 Jahre alt werden!",
+    "🐢 Schildkröten können bis zu 200 Jahre alt werden!",
+    "🐊 Krokodile können bis zu 6 Meter lang werden!",
+    "🦈 Haie können bis zu 100 Jahre alt werden!",
+    "🐟 Fische können bis zu 200 Jahre alt werden!",
+    "🦑 Tintenfische können bis zu 18 Meter lang werden!",
+    "🦀 Krabben können bis zu 1 Meter groß werden!",
+    "🦐 Garnelen können bis zu 30 cm lang werden!",
+    "🐚 Muscheln können bis zu 500 Jahre alt werden!"
+  ];
+
+  const knowledgeFacts = [
+    "🧠 Das menschliche Gehirn hat 86 Milliarden Neuronen!",
+    "💡 Ein Blitz ist 5x heißer als die Sonnenoberfläche!",
+    "🌍 Die Erde dreht sich mit 1670 km/h!",
+    "🚀 Licht braucht 8 Minuten von der Sonne zur Erde!",
+    "🌙 Der Mond entfernt sich 3,8 cm pro Jahr von der Erde!",
+    "⭐ Es gibt mehr Sterne als Sandkörner auf der Erde!",
+    "🌊 Der Pazifik ist größer als alle Kontinente zusammen!",
+    "🏔️ Der Mount Everest wächst 4mm pro Jahr!",
+    "🌋 Vulkane können bis zu 1200°C heiß werden!",
+    "❄️ Schneeflocken sind immer sechseckig!",
+    "🌈 Regenbogen sind immer Kreise, aber wir sehen nur die Hälfte!",
+    "⚡ Donner kann bis zu 32 km weit gehört werden!",
+    "🌪️ Tornados können bis zu 500 km/h schnell werden!",
+    "🌊 Tsunamis können bis zu 30 Meter hoch werden!",
+    "🌍 Die Erde ist 4,5 Milliarden Jahre alt!",
+    "☀️ Die Sonne ist 330.000x schwerer als die Erde!",
+    "🪐 Jupiter ist so groß, dass alle Planeten hineinpassen!",
+    "🪐 Saturn hat 82 Monde!",
+    "🪐 Uranus rotiert auf der Seite!",
+    "🪐 Neptun hat die stärksten Winde im Sonnensystem!",
+    "🪐 Pluto ist kleiner als der Mond!",
+    "🌙 Der Mond ist 400x kleiner als die Sonne!",
+    "⭐ Die Sonne ist ein mittelgroßer Stern!",
+    "🌌 Die Milchstraße hat 100-400 Milliarden Sterne!",
+    "🌌 Das Universum ist 13,8 Milliarden Jahre alt!",
+    "🌌 Es gibt mehr Galaxien als Sterne in der Milchstraße!",
+    "🌌 Schwarze Löcher können Zeit verlangsamen!",
+    "🌌 Neutronensterne sind so dicht wie Atomkerne!",
+    "🌌 Pulsare drehen sich bis zu 1000x pro Sekunde!",
+    "🌌 Quasare sind die hellsten Objekte im Universum!",
+    "🧬 DNA ist in jeder Zelle 2 Meter lang!",
+    "🧬 Menschen teilen 99,9% ihrer DNA!",
+    "🧬 DNA wurde 1953 entdeckt!",
+    "🧬 Das menschliche Genom hat 3 Milliarden Basenpaare!",
+    "🧬 Jede Zelle hat 46 Chromosomen!",
+    "🧬 Mitochondrien haben ihre eigene DNA!",
+    "🧬 RNA ist der Botenstoff der DNA!",
+    "🧬 Proteine sind die Bausteine des Lebens!",
+    "🧬 Enzyme beschleunigen chemische Reaktionen!",
+    "🧬 Zellen teilen sich durch Mitose!",
+    "🧬 Stammzellen können sich zu jedem Zelltyp entwickeln!",
+    "🧬 Krebs entsteht durch DNA-Mutationen!",
+    "🧬 Das Immunsystem erkennt 10^15 verschiedene Antigene!",
+    "🧬 Antikörper sind Y-förmige Proteine!",
+    "🧬 T-Zellen sind die Killerzellen des Immunsystems!",
+    "🧬 B-Zellen produzieren Antikörper!",
+    "🧬 Das Gehirn verbraucht 20% der Körperenergie!",
+    "🧬 Neuronen können bis zu 1 Meter lang werden!",
+    "🧬 Synapsen übertragen Informationen zwischen Neuronen!",
+    "🧬 Neurotransmitter sind chemische Botenstoffe!",
+    "🧬 Dopamin ist der Glücksbotenstoff!",
+    "🧬 Serotonin reguliert die Stimmung!",
+    "🧬 Adrenalin bereitet auf Kampf oder Flucht vor!",
+    "🧬 Endorphine sind natürliche Schmerzmittel!",
+    "🧬 Das Herz schlägt 100.000x pro Tag!",
+    "🧬 Blut fließt 20.000 km durch den Körper!",
+    "🧬 Lungen haben 300 Millionen Alveolen!",
+    "🧬 Die Leber kann sich regenerieren!",
+    "🧬 Nieren filtern 180 Liter Blut pro Tag!",
+    "🧬 Das Skelett hat 206 Knochen!",
+    "🧬 Muskeln machen 40% des Körpergewichts aus!",
+    "🧬 Das Auge kann 10 Millionen Farben unterscheiden!",
+    "🧬 Das Ohr kann 20-20.000 Hz hören!",
+    "🧬 Die Nase kann 1 Billion Gerüche unterscheiden!",
+    "🧬 Die Zunge hat 10.000 Geschmacksknospen!",
+    "🧬 Haut ist das größte Organ des Körpers!",
+    "🧬 Haare wachsen 1 cm pro Monat!",
+    "🧬 Nägel wachsen 3 mm pro Monat!",
+    "🧬 Das Gehirn hat 100 Milliarden Neuronen!",
+    "🧬 Das Herz pumpt 5 Liter Blut pro Minute!",
+    "🧬 Lungen atmen 20.000x pro Tag!",
+    "🧬 Die Leber produziert 1 Liter Galle pro Tag!",
+    "🧬 Nieren produzieren 1,5 Liter Urin pro Tag!",
+    "🧬 Das Skelett erneuert sich alle 10 Jahre!",
+    "🧬 Muskeln bestehen aus 75% Wasser!",
+    "🧬 Das Auge blinzelt 15-20x pro Minute!",
+    "🧬 Das Ohr hat 3 Knöchelchen!",
+    "🧬 Die Nase hat 5 Millionen Riechzellen!",
+    "🧬 Die Zunge hat 4 Geschmacksrichtungen!",
+    "🧬 Haut erneuert sich alle 28 Tage!",
+    "🧬 Haare bestehen aus Keratin!",
+    "🧬 Nägel bestehen aus Keratin!",
+    "🧬 Das Gehirn wiegt 1,5 kg!",
+    "🧬 Das Herz wiegt 300g!",
+    "🧬 Lungen wiegen 1 kg!",
+    "🧬 Die Leber wiegt 1,5 kg!",
+    "🧬 Nieren wiegen 150g!",
+    "🧬 Das Skelett wiegt 15 kg!",
+    "🧬 Muskeln wiegen 30 kg!",
+    "🧬 Das Auge wiegt 7g!",
+    "🧬 Das Ohr wiegt 3g!",
+    "🧬 Die Nase wiegt 2g!",
+    "🧬 Die Zunge wiegt 70g!",
+    "🧬 Haut wiegt 4 kg!",
+    "🧬 Haare wiegen 100g!",
+    "🧬 Nägel wiegen 1g!",
+    "🧬 Das Gehirn verbraucht 20% des Sauerstoffs!",
+    "🧬 Das Herz verbraucht 10% des Sauerstoffs!",
+    "🧬 Lungen verbrauchen 5% des Sauerstoffs!",
+    "🧬 Die Leber verbraucht 25% des Sauerstoffs!",
+    "🧬 Nieren verbrauchen 7% des Sauerstoffs!",
+    "🧬 Das Skelett verbraucht 2% des Sauerstoffs!",
+    "🧬 Muskeln verbrauchen 20% des Sauerstoffs!",
+    "🧬 Das Auge verbraucht 1% des Sauerstoffs!",
+    "🧬 Das Ohr verbraucht 0,5% des Sauerstoffs!",
+    "🧬 Die Nase verbraucht 0,3% des Sauerstoffs!",
+    "🧬 Die Zunge verbraucht 0,2% des Sauerstoffs!",
+    "🧬 Haut verbraucht 3% des Sauerstoffs!",
+    "🧬 Haare verbrauchen 0,1% des Sauerstoffs!",
+    "🧬 Nägel verbrauchen 0,05% des Sauerstoffs!"
+  ];
+
+  // Show random fact
+  const showRandomFact = () => {
+    const allFacts = [...funFacts, ...knowledgeFacts];
+    const randomFact = allFacts[Math.floor(Math.random() * allFacts.length)];
+    
+    showMessage({
+      id: 'random-fact',
+      text: randomFact,
+      type: 'tip',
+      duration: 8000
+    });
+    
+    setShowFact(true);
+    setMonkeyExpression('🧠');
+    
+    setTimeout(() => {
+      setShowFact(false);
+      setMonkeyExpression('🐒');
+    }, 8000);
+  };
+
   // Handle click interaction
   const handleClick = (e: React.MouseEvent) => {
     // Only trigger click if it wasn't a drag
@@ -213,10 +466,17 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     setAnimationState('celebrating');
     setMonkeyExpression('🎉');
     
-    const messages = motivationalMessages[currentPage] || motivationalMessages.dashboard;
-    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-    setMessageVariations(prev => prev + 1);
-    showMessage(randomMessage);
+    // 30% chance to show a fun fact, 70% chance for motivational message
+    const showFact = Math.random() < 0.3;
+    
+    if (showFact) {
+      showRandomFact();
+    } else {
+      const messages = motivationalMessages[currentPage] || motivationalMessages.dashboard;
+      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+      setMessageVariations(prev => prev + 1);
+      showMessage(randomMessage);
+    }
     
     // Resume moving after celebration
     setTimeout(() => {
@@ -226,19 +486,26 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     }, 2000);
   };
 
-  // Toggle progress display
+  // Toggle progress display or show fun fact
   const handleDoubleClick = () => {
-    setShowProgress(!showProgress);
-    setIsMoving(false);
-    setAnimationState('happy');
-    setMonkeyExpression('😊');
+    // 70% chance to show fun fact, 30% chance to toggle progress
+    const showFact = Math.random() < 0.7;
     
-    // Resume moving after showing progress
-    setTimeout(() => {
-      setIsMoving(true);
-      setAnimationState('walking');
-      setMonkeyExpression('🐒');
-    }, 3000);
+    if (showFact) {
+      showRandomFact();
+    } else {
+      setShowProgress(!showProgress);
+      setIsMoving(false);
+      setAnimationState('happy');
+      setMonkeyExpression('😊');
+      
+      // Resume moving after showing progress
+      setTimeout(() => {
+        setIsMoving(true);
+        setAnimationState('walking');
+        setMonkeyExpression('🐒');
+      }, 3000);
+    }
   };
 
   // Right click handler
@@ -248,20 +515,34 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     setAnimationState('celebrating');
     setMonkeyExpression('🤔');
     
-    // Show random thinking message
-    const thinkingMessages = [
-      { id: 'think-1', text: 'Hmm, was denkst du denn? 🤔', type: 'tip' as const },
-      { id: 'think-2', text: 'Interessante Frage! 🤓', type: 'tip' as const },
-      { id: 'think-3', text: 'Lass mich nachdenken... 🧠', type: 'tip' as const },
-      { id: 'think-4', text: 'Das ist eine gute Idee! 💡', type: 'encouragement' as const },
-      { id: 'think-5', text: 'Ich denke mit dir! 🤝', type: 'encouragement' as const },
-      { id: 'think-6', text: 'Gedanken sind mächtig! ⚡', type: 'tip' as const },
-      { id: 'think-7', text: 'Was für ein Rätsel! 🧩', type: 'encouragement' as const },
-      { id: 'think-8', text: 'Gemeinsam sind wir schlauer! 🧠✨', type: 'encouragement' as const }
-    ];
+    // 50% chance to show a knowledge fact, 50% chance for thinking message
+    const showKnowledgeFact = Math.random() < 0.5;
     
-    const randomThinking = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
-    showMessage(randomThinking);
+    if (showKnowledgeFact) {
+      const randomKnowledgeFact = knowledgeFacts[Math.floor(Math.random() * knowledgeFacts.length)];
+      showMessage({
+        id: 'knowledge-fact',
+        text: randomKnowledgeFact,
+        type: 'tip',
+        duration: 8000
+      });
+      setMonkeyExpression('🧠');
+    } else {
+      // Show random thinking message
+      const thinkingMessages = [
+        { id: 'think-1', text: 'Hmm, was denkst du denn? 🤔', type: 'tip' as const },
+        { id: 'think-2', text: 'Interessante Frage! 🤓', type: 'tip' as const },
+        { id: 'think-3', text: 'Lass mich nachdenken... 🧠', type: 'tip' as const },
+        { id: 'think-4', text: 'Das ist eine gute Idee! 💡', type: 'encouragement' as const },
+        { id: 'think-5', text: 'Ich denke mit dir! 🤝', type: 'encouragement' as const },
+        { id: 'think-6', text: 'Gedanken sind mächtig! ⚡', type: 'tip' as const },
+        { id: 'think-7', text: 'Was für ein Rätsel! 🧩', type: 'encouragement' as const },
+        { id: 'think-8', text: 'Gemeinsam sind wir schlauer! 🧠✨', type: 'encouragement' as const }
+      ];
+      
+      const randomThinking = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
+      showMessage(randomThinking);
+    }
     
     // Resume moving after celebration
     setTimeout(() => {
@@ -278,20 +559,34 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     setAnimationState('celebrating');
     setMonkeyExpression('🎯');
     
-    // Show random target message
-    const targetMessages = [
-      { id: 'target-1', text: 'Ziel erreicht! 🎯', type: 'achievement' as const },
-      { id: 'target-2', text: 'Perfekt getroffen! 🎯', type: 'achievement' as const },
-      { id: 'target-3', text: 'Volltreffer! 🎯', type: 'achievement' as const },
-      { id: 'target-4', text: 'Genau richtig! ✅', type: 'celebration' as const },
-      { id: 'target-5', text: 'Mission erfüllt! 🏆', type: 'achievement' as const },
-      { id: 'target-6', text: 'Ziel im Visier! 👁️', type: 'encouragement' as const },
-      { id: 'target-7', text: 'Auf den Punkt! 📍', type: 'celebration' as const },
-      { id: 'target-8', text: 'Bingo! 🎉', type: 'celebration' as const }
-    ];
+    // 40% chance to show a fun fact, 60% chance for target message
+    const showFunFact = Math.random() < 0.4;
     
-    const randomTarget = targetMessages[Math.floor(Math.random() * targetMessages.length)];
-    showMessage(randomTarget);
+    if (showFunFact) {
+      const randomFunFact = funFacts[Math.floor(Math.random() * funFacts.length)];
+      showMessage({
+        id: 'fun-fact',
+        text: randomFunFact,
+        type: 'tip',
+        duration: 8000
+      });
+      setMonkeyExpression('🐾');
+    } else {
+      // Show random target message
+      const targetMessages = [
+        { id: 'target-1', text: 'Ziel erreicht! 🎯', type: 'achievement' as const },
+        { id: 'target-2', text: 'Perfekt getroffen! 🎯', type: 'achievement' as const },
+        { id: 'target-3', text: 'Volltreffer! 🎯', type: 'achievement' as const },
+        { id: 'target-4', text: 'Genau richtig! ✅', type: 'celebration' as const },
+        { id: 'target-5', text: 'Mission erfüllt! 🏆', type: 'achievement' as const },
+        { id: 'target-6', text: 'Ziel im Visier! 👁️', type: 'encouragement' as const },
+        { id: 'target-7', text: 'Auf den Punkt! 📍', type: 'celebration' as const },
+        { id: 'target-8', text: 'Bingo! 🎉', type: 'celebration' as const }
+      ];
+      
+      const randomTarget = targetMessages[Math.floor(Math.random() * targetMessages.length)];
+      showMessage(randomTarget);
+    }
     
     // Resume moving after celebration
     setTimeout(() => {
@@ -309,20 +604,27 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
       setAnimationState('celebrating');
       setMonkeyExpression('⌨️');
       
-      // Show random keyboard message
-      const keyboardMessages = [
-        { id: 'keyboard-1', text: 'Keyboard Power! ⌨️', type: 'celebration' as const },
-        { id: 'keyboard-2', text: 'Tippen wie ein Profi! ⌨️', type: 'celebration' as const },
-        { id: 'keyboard-3', text: 'Enter gedrückt! ⏎', type: 'encouragement' as const },
-        { id: 'keyboard-4', text: 'Space für mehr! 🚀', type: 'encouragement' as const },
-        { id: 'keyboard-5', text: 'Tastatur-Meister! 🎹', type: 'celebration' as const },
-        { id: 'keyboard-6', text: 'Klick, klack, perfekt! ⌨️', type: 'celebration' as const },
-        { id: 'keyboard-7', text: 'Digitale Magie! ✨', type: 'encouragement' as const },
-        { id: 'keyboard-8', text: 'Code-Monkey aktiv! 🐒💻', type: 'celebration' as const }
-      ];
+      // 35% chance to show a random fact, 65% chance for keyboard message
+      const shouldShowRandomFact = Math.random() < 0.35;
       
-      const randomKeyboard = keyboardMessages[Math.floor(Math.random() * keyboardMessages.length)];
-      showMessage(randomKeyboard);
+      if (shouldShowRandomFact) {
+        showRandomFact();
+      } else {
+        // Show random keyboard message
+        const keyboardMessages = [
+          { id: 'keyboard-1', text: 'Keyboard Power! ⌨️', type: 'celebration' as const },
+          { id: 'keyboard-2', text: 'Tippen wie ein Profi! ⌨️', type: 'celebration' as const },
+          { id: 'keyboard-3', text: 'Enter gedrückt! ⏎', type: 'encouragement' as const },
+          { id: 'keyboard-4', text: 'Space für mehr! 🚀', type: 'encouragement' as const },
+          { id: 'keyboard-5', text: 'Tastatur-Meister! 🎹', type: 'celebration' as const },
+          { id: 'keyboard-6', text: 'Klick, klack, perfekt! ⌨️', type: 'celebration' as const },
+          { id: 'keyboard-7', text: 'Digitale Magie! ✨', type: 'encouragement' as const },
+          { id: 'keyboard-8', text: 'Code-Monkey aktiv! 🐒💻', type: 'celebration' as const }
+        ];
+        
+        const randomKeyboard = keyboardMessages[Math.floor(Math.random() * keyboardMessages.length)];
+        showMessage(randomKeyboard);
+      }
       
       // Resume moving after celebration
       setTimeout(() => {
@@ -340,6 +642,39 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     return Math.min((totalActivities / maxActivities) * 100, 100);
   };
 
+  // Long press handler
+  const handleLongPress = () => {
+    setIsMoving(false);
+    setAnimationState('celebrating');
+    setMonkeyExpression('🌟');
+    
+    // Show special long press fact
+    const specialFacts = [
+      "🌟 Wusstest du? Das Universum expandiert schneller als das Licht!",
+      "🌟 Fun Fact: Ein Tag auf der Venus ist länger als ein Jahr!",
+      "🌟 Cool: Es gibt mehr Bäume auf der Erde als Sterne in der Milchstraße!",
+      "🌟 Interessant: Das menschliche Gehirn kann 2,5 Petabyte speichern!",
+      "🌟 Wow: Ein Blitz ist 5x heißer als die Sonnenoberfläche!",
+      "🌟 Amazing: Die Erde dreht sich mit 1670 km/h!",
+      "🌟 Incredible: Licht braucht 8 Minuten von der Sonne zur Erde!",
+      "🌟 Fantastic: Der Mond entfernt sich 3,8 cm pro Jahr von der Erde!"
+    ];
+    
+    const randomSpecialFact = specialFacts[Math.floor(Math.random() * specialFacts.length)];
+    showMessage({
+      id: 'special-fact',
+      text: randomSpecialFact,
+      type: 'tip',
+      duration: 10000
+    });
+    
+    setTimeout(() => {
+      setIsMoving(true);
+      setAnimationState('walking');
+      setMonkeyExpression('🐒');
+    }, 10000);
+  };
+
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -353,6 +688,12 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     });
+    
+    // Start long press timer
+    const timer = setTimeout(() => {
+      handleLongPress();
+    }, 2000); // 2 seconds for long press
+    setLongPressTimer(timer);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -370,6 +711,12 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
 
   const handleMouseUp = () => {
     if (!isDragging) return;
+    
+    // Clear long press timer
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
     
     setIsDragging(false);
     setLastDragTime(Date.now());
@@ -396,6 +743,12 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
       x: touch.clientX - rect.left,
       y: touch.clientY - rect.top
     });
+    
+    // Start long press timer for touch
+    const timer = setTimeout(() => {
+      handleLongPress();
+    }, 2000); // 2 seconds for long press
+    setLongPressTimer(timer);
   };
 
   const handleTouchMove = (e: TouchEvent) => {
@@ -415,6 +768,12 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
 
   const handleTouchEnd = () => {
     if (!isDragging) return;
+    
+    // Clear long press timer
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
     
     setIsDragging(false);
     setLastDragTime(Date.now());
@@ -514,6 +873,24 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
   useEffect(() => {
     console.log('🐒 Johnny Companion loaded:', { userId, userRole, currentPage, isVisible });
   }, [userId, userRole, currentPage, isVisible]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current);
+      }
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+      }
+    };
+  }, [longPressTimer]);
 
   if (!isVisible) return null;
 
