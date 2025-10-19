@@ -24,6 +24,9 @@ router.get('/teacher/:teacherId', FileSystemPathController.getPathsByTeacher);
 // Verzeichnisstruktur eines Pfades lesen
 router.get('/read', FileSystemPathController.readDirectory);
 
+// Ordner in einem Pfad scannen (nur Verzeichnisse)
+router.get('/scan-directory', FileSystemPathController.scanDirectory);
+
 
 // HTML-Datei lesen
 router.get('/read-html', FileSystemPathController.readHtmlFile);
@@ -60,5 +63,8 @@ router.delete('/:id', FileSystemPathController.deletePath);
 
 // Datei speichern (z.B. Whiteboard)
 router.post('/save-file', upload.single('file'), FileSystemPathController.saveFile);
+
+// Whiteboard-Datei laden
+router.get('/load-whiteboard', FileSystemPathController.loadWhiteboardFile);
 
 export default router;

@@ -1751,6 +1751,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         console.error('Fehler beim Laden der GoodNotes-Datei:', error);
         alert('GoodNotes-Vorschau konnte nicht geladen werden.');
       }
+    } else if (fileExtension === 'wb') {
+      // Whiteboard-Dateien im Whiteboard öffnen
+      try {
+        // Navigiere zum Whiteboard mit der Datei als Parameter
+        const fileName = item.name.replace('.wb', '');
+        const whiteboardUrl = `/whiteboard?loadFile=${encodeURIComponent(item.path)}&filename=${encodeURIComponent(fileName)}`;
+        window.open(whiteboardUrl, '_blank');
+      } catch (error) {
+        console.error('Fehler beim Öffnen der Whiteboard-Datei:', error);
+        alert('Whiteboard-Datei konnte nicht geöffnet werden.');
+      }
     } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
       // Text-Vorschau über den bestehenden Endpunkt
       try {

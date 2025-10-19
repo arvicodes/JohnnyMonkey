@@ -42,7 +42,8 @@ import {
   FormatBold as BoldIcon,
   FormatItalic as ItalicIcon,
   FormatUnderlined as UnderlineIcon,
-  GridOn as GridIcon
+  GridOn as GridIcon,
+  Description as DescriptionIcon
 } from '@mui/icons-material';
 
 type Tool = 'brush' | 'pen' | 'marker' | 'text' | 'line' | 'circle' | 'rectangle' | 'triangle' | 'arrow' | 'polygon' | 'eraser' | 'image' | 'select' | 'freeform' | 'connector' | 'highlighter' | 'icon';
@@ -80,6 +81,7 @@ interface DirectoryItem {
   name: string;
   path: string;
   type: 'file' | 'directory';
+  extension?: string;
 }
 
 const WhiteboardPage: React.FC = () => {
@@ -133,6 +135,9 @@ const WhiteboardPage: React.FC = () => {
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState<string>('😀');
   const [iconSize, setIconSize] = useState(32);
+  const [userRole, setUserRole] = useState<'teacher' | 'student'>('teacher'); // TODO: Get from auth context
+  const [saveFormat, setSaveFormat] = useState<'editable' | 'pdf'>('editable');
+  const [showFormatSelector, setShowFormatSelector] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
@@ -152,6 +157,13 @@ const WhiteboardPage: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const gid = params.get('groupId');
     if (gid) setGroupId(gid);
+    
+    // Check for loadFile parameter to load a whiteboard file
+    const loadFile = params.get('loadFile');
+    const filename = params.get('filename');
+    if (loadFile && filename) {
+      loadWhiteboardFile(loadFile, filename);
+    }
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -753,16 +765,16 @@ const WhiteboardPage: React.FC = () => {
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          // For other text objects, use text metrics
-          const fontSize = obj.fontSize;
-          ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
+            // For other text objects, use text metrics
+            const fontSize = obj.fontSize;
+            ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
           const metrics = ctx.measureText(obj.text);
           maxX = obj.x + metrics.width;
           maxY = obj.y;
-          minY = obj.y - fontSize;
+            minY = obj.y - fontSize;
+          }
         }
       }
-    }
 
     // For icon objects
     if (obj.tool === 'icon' && obj.iconSize) {
@@ -2480,7 +2492,6 @@ const WhiteboardPage: React.FC = () => {
         };
         img.onerror = () => {
           console.error('Failed to load image');
-          alert('Fehler beim Laden des Bildes');
         };
         img.src = event.target.result as string;
       }
@@ -2547,7 +2558,6 @@ const WhiteboardPage: React.FC = () => {
                 };
                 img.onerror = () => {
                   console.error('Failed to load pasted image');
-                  alert('Fehler beim Laden des eingefügten Bildes');
                 };
                 img.src = e.target.result as string;
               }
@@ -2696,7 +2706,6 @@ const WhiteboardPage: React.FC = () => {
           };
           img.onerror = () => {
             console.error('Failed to load dropped image');
-            alert('Fehler beim Laden des Bildes');
           };
           img.src = event.target.result as string;
         }
@@ -2789,64 +2798,50 @@ const WhiteboardPage: React.FC = () => {
     setSelectedObjects([updatedObject]);
   };
 
-  const loadDirectory = async (path: string) => {
-    try {
-      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(path)}&recursive=false`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.root && data.root.children) {
-          setDirectoryContents(data.root.children.filter((item: DirectoryItem) => item.type === 'directory'));
-        }
-      }
-    } catch (error) {
-      console.error('Error loading directory:', error);
-    }
-  };
 
   const handleOpenSaveDialog = async () => {
     setShowSaveDialog(true);
+    
+    // Load all available subdirectories for the current learning group
     try {
-      const response = await fetch(`/api/learning-groups/${groupId}/assigned-folders`);
-      if (response.ok) {
-        const folders = await response.json();
-        setDirectoryContents(folders.map((f: string) => ({
-          name: f.split('/').pop() || f,
-          path: f,
-          type: 'directory' as const
-        })));
-        setCurrentPath('');
-        setPathHistory([]);
+      if (groupId) {
+        // For now, use a hardcoded path for testing - this should be replaced with the actual learning group folder
+        const basePath = 'J-M-Reihen/Mathe/Klasse 7';
+        
+        // Load all subdirectories using the scan API
+        const scanResponse = await fetch(`/api/file-system-paths/scan-directory?path=${encodeURIComponent(basePath)}`);
+        if (scanResponse.ok) {
+          const data = await scanResponse.json();
+          if (data.directories && Array.isArray(data.directories)) {
+            setDirectoryContents(data.directories.map((dir: any) => ({
+              name: dir.name,
+              path: dir.path,
+              type: 'directory' as const
+            })));
+            setCurrentPath(basePath);
+            setPathHistory([]);
+            return;
+          }
+        }
       }
-    } catch (error) {
-      console.error('Error loading folders:', error);
-    }
-  };
-
-  const handleFolderClick = (folderPath: string) => {
-    setPathHistory([...pathHistory, currentPath]);
-    setCurrentPath(folderPath);
-    loadDirectory(folderPath);
-  };
-
-  const handleBreadcrumbClick = (index: number) => {
-    if (index === -1) {
+      
+      // Fallback: show empty list
+      setDirectoryContents([]);
       setCurrentPath('');
       setPathHistory([]);
-    } else {
-      const newPath = pathHistory[index];
-      setCurrentPath(newPath);
-      setPathHistory(pathHistory.slice(0, index));
+    } catch (error) {
+      console.error('Error loading folders:', error);
+      setDirectoryContents([]);
+      setCurrentPath('');
+      setPathHistory([]);
     }
   };
 
-  const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' = 'png') => {
-    if (!filename.trim()) {
-      alert('Bitte gib einen Dateinamen ein');
-      return;
-    }
 
-    if (!currentPath) {
-      alert('Bitte wähle einen Speicherort');
+
+  const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' | 'editable' = 'png') => {
+    if (!filename.trim()) {
+      console.log('Filename is required');
       return;
     }
 
@@ -2854,6 +2849,12 @@ const WhiteboardPage: React.FC = () => {
     if (!canvas) return;
 
     const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
+    
+    // Use currentPath if available, otherwise use default path
+    const savePath = currentPath || 'git-intern/Mathe/Klasse 7';
+    
+    console.log('Saving with path:', savePath);
+    console.log('Saving with filename:', finalFilename);
     
     if (format === 'svg') {
       // SVG Export
@@ -2863,7 +2864,7 @@ const WhiteboardPage: React.FC = () => {
       
       const formData = new FormData();
       formData.append('file', blob, fullFilename);
-      formData.append('targetPath', currentPath);
+      formData.append('targetPath', savePath);
 
       try {
         const response = await fetch('/api/file-system-paths/save-file', {
@@ -2872,15 +2873,14 @@ const WhiteboardPage: React.FC = () => {
         });
 
         if (response.ok) {
-          alert('Whiteboard als SVG gespeichert!');
+          console.log('Whiteboard als SVG gespeichert!');
           window.close();
         } else {
           const error = await response.json();
-          alert(error.error || 'Fehler beim Speichern');
+          console.error('Fehler beim Speichern:', error.error);
         }
       } catch (error) {
         console.error('Error saving SVG:', error);
-        alert('Fehler beim Speichern');
       }
     } else if (format === 'pdf') {
       // PDF Export (simplified - would need a proper PDF library)
@@ -2890,7 +2890,7 @@ const WhiteboardPage: React.FC = () => {
           
           const formData = new FormData();
           formData.append('file', blob, fullFilename);
-          formData.append('targetPath', currentPath);
+          formData.append('targetPath', savePath);
 
           try {
             const response = await fetch('/api/file-system-paths/save-file', {
@@ -2899,18 +2899,57 @@ const WhiteboardPage: React.FC = () => {
             });
 
             if (response.ok) {
-              alert('Whiteboard als PDF gespeichert!');
+              console.log('Whiteboard als PDF gespeichert!');
               window.close();
             } else {
               const error = await response.json();
-              alert(error.error || 'Fehler beim Speichern');
+              console.error('Fehler beim Speichern:', error.error);
             }
           } catch (error) {
             console.error('Error saving PDF:', error);
-            alert('Fehler beim Speichern');
           }
         }
       }, 'application/pdf');
+    } else if (format === 'editable') {
+      // Save as editable whiteboard format (JSON)
+      const whiteboardData = {
+        objects: objects,
+        metadata: {
+          created: new Date().toISOString(),
+          version: '1.0',
+          userRole: userRole,
+          canvasSize: {
+            width: canvas.width,
+            height: canvas.height
+          }
+        }
+      };
+      
+      const jsonData = JSON.stringify(whiteboardData, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const fullFilename = finalFilename.endsWith('.wb') ? finalFilename : `${finalFilename}.wb`;
+      
+      const formData = new FormData();
+      formData.append('file', blob, fullFilename);
+      formData.append('targetPath', savePath);
+      formData.append('format', 'editable');
+
+      try {
+        const response = await fetch('/api/file-system-paths/save-file', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          console.log('Whiteboard als bearbeitbare Datei gespeichert!');
+          setShowSaveDialog(false);
+        } else {
+          const error = await response.json();
+          console.error('Fehler beim Speichern:', error.error);
+        }
+      } catch (error) {
+        console.error('Error saving editable whiteboard:', error);
+      }
     } else {
       // PNG Export (original)
       canvas.toBlob(async (blob) => {
@@ -2919,7 +2958,7 @@ const WhiteboardPage: React.FC = () => {
           
           const formData = new FormData();
           formData.append('file', blob, fullFilename);
-          formData.append('targetPath', currentPath);
+          formData.append('targetPath', savePath);
 
           try {
             const response = await fetch('/api/file-system-paths/save-file', {
@@ -2928,18 +2967,102 @@ const WhiteboardPage: React.FC = () => {
             });
 
             if (response.ok) {
-              alert('Whiteboard erfolgreich gespeichert!');
+              console.log('Whiteboard erfolgreich gespeichert!');
               window.close();
             } else {
               const error = await response.json();
-              alert(error.error || 'Fehler beim Speichern');
+              console.error('Fehler beim Speichern:', error.error);
             }
           } catch (error) {
             console.error('Error saving:', error);
-            alert('Fehler beim Speichern');
           }
         }
       }, 'image/png');
+    }
+  };
+
+  const loadWhiteboardFile = async (filePath: string, fileName: string) => {
+    try {
+      // Set the filename for saving
+      setFilename(fileName);
+      
+      // Set the current path for saving (remove the filename from the path)
+      const pathParts = filePath.split('/');
+      pathParts.pop(); // Remove the filename
+      const directoryPath = pathParts.join('/');
+      setCurrentPath(directoryPath);
+      
+      console.log('Loaded file path:', filePath);
+      console.log('Set current path to:', directoryPath);
+      console.log('Set filename to:', fileName);
+      
+      // Load the whiteboard file
+      const response = await fetch(`/api/file-system-paths/load-whiteboard?filePath=${encodeURIComponent(filePath)}`);
+      
+      if (response.ok) {
+        const whiteboardData = await response.json();
+        
+        if (whiteboardData.objects && Array.isArray(whiteboardData.objects)) {
+          setObjects(whiteboardData.objects);
+          
+          // Restore canvas size if available
+          if (whiteboardData.metadata?.canvasSize) {
+            const canvas = canvasRef.current;
+            if (canvas) {
+              canvas.width = whiteboardData.metadata.canvasSize.width;
+              canvas.height = whiteboardData.metadata.canvasSize.height;
+            }
+          }
+          
+          // Clear URL parameters after loading
+          const url = new URL(window.location.href);
+          url.searchParams.delete('loadFile');
+          url.searchParams.delete('filename');
+          window.history.replaceState({}, '', url.toString());
+          
+          console.log('Whiteboard erfolgreich geladen!');
+          redrawCanvas();
+        } else {
+          console.error('Ungültige Whiteboard-Datei');
+        }
+      } else {
+        console.error('Fehler beim Laden der Whiteboard-Datei');
+      }
+    } catch (error) {
+      console.error('Error loading whiteboard:', error);
+    }
+  };
+
+  const handleLoadWhiteboard = async (filePath: string) => {
+    try {
+      const response = await fetch(`/api/file-system-paths/load-file?path=${encodeURIComponent(filePath)}`);
+      
+      if (response.ok) {
+        const whiteboardData = await response.json();
+        
+        if (whiteboardData.objects && Array.isArray(whiteboardData.objects)) {
+          setObjects(whiteboardData.objects);
+          
+          // Restore canvas size if available
+          if (whiteboardData.metadata?.canvasSize) {
+            const canvas = canvasRef.current;
+            if (canvas) {
+              canvas.width = whiteboardData.metadata.canvasSize.width;
+              canvas.height = whiteboardData.metadata.canvasSize.height;
+            }
+          }
+          
+          console.log('Whiteboard erfolgreich geladen!');
+          redrawCanvas();
+        } else {
+          console.error('Ungültiges Whiteboard-Format');
+        }
+      } else {
+        const error = await response.json();
+        console.error('Fehler beim Laden:', error.error);
+      }
+    } catch (error) {
+      console.error('Error loading whiteboard:', error);
     }
   };
 
@@ -3226,6 +3349,38 @@ const WhiteboardPage: React.FC = () => {
                   }}
                 >
                   <SaveIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {/* User Role Switcher (for testing) */}
+            <Tooltip title={`Aktuelle Rolle: ${userRole === 'teacher' ? 'Lehrer' : 'Schüler'} - Klicken zum Wechseln`}>
+              <span>
+                <IconButton 
+                  onClick={() => setUserRole(userRole === 'teacher' ? 'student' : 'teacher')} 
+                  size="small"
+                  sx={{
+                    color: userRole === 'teacher' ? '#ff9800' : '#2196f3',
+                    bgcolor: userRole === 'teacher' ? 'rgba(255,152,0,0.1)' : 'rgba(33,150,243,0.1)',
+                    border: userRole === 'teacher' ? '1px solid rgba(255,152,0,0.3)' : '1px solid rgba(33,150,243,0.3)',
+                    backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '& .MuiSvgIcon-root': {
+                      width: '100%',
+                      height: '100%',
+                      fontSize: '0.9rem'
+                    },
+                    '&:hover': { 
+                      bgcolor: userRole === 'teacher' ? 'rgba(255,152,0,0.2)' : 'rgba(33,150,243,0.2)', 
+                      transform: 'scale(1.05)',
+                      boxShadow: userRole === 'teacher' ? '0 4px 12px rgba(255,152,0,0.3)' : '0 4px 12px rgba(33,150,243,0.3)'
+                    }
+                  }}
+                >
+                  {userRole === 'teacher' ? '👨‍🏫' : '👨‍🎓'}
                 </IconButton>
               </span>
             </Tooltip>
@@ -3721,49 +3876,113 @@ const WhiteboardPage: React.FC = () => {
             helperText="Wird automatisch mit 'W_' beginnen"
           />
 
-          <Breadcrumbs sx={{ mb: 1 }}>
-            <Link
-              component="button"
-              variant="body2"
-              onClick={() => handleBreadcrumbClick(-1)}
-              sx={{ cursor: 'pointer' }}
-            >
-              <HomeIcon sx={{ mr: 0.5, fontSize: 16 }} />
-              Start
-            </Link>
-            {pathHistory.map((path, index) => (
-              <Link
-                key={index}
-                component="button"
-                variant="body2"
-                onClick={() => handleBreadcrumbClick(index)}
-                sx={{ cursor: 'pointer' }}
+          {/* Format Selection */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+              Speicherformat:
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {userRole === 'teacher' && (
+                <Button
+                  variant={saveFormat === 'editable' ? 'contained' : 'outlined'}
+                  onClick={() => setSaveFormat('editable')}
+                  size="small"
+                  sx={{
+                    flex: 1,
+                    minWidth: '120px',
+                    background: saveFormat === 'editable' ? 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)' : undefined
+                  }}
+                >
+                  📝 Bearbeitbar
+                </Button>
+              )}
+              <Button
+                variant={saveFormat === 'pdf' ? 'contained' : 'outlined'}
+                onClick={() => setSaveFormat('pdf')}
+                size="small"
+                sx={{
+                  flex: 1,
+                  minWidth: '120px',
+                  background: saveFormat === 'pdf' ? 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)' : undefined
+                }}
               >
-                {path.split('/').pop()}
-              </Link>
-            ))}
-            {currentPath && (
-              <Typography variant="body2" color="text.primary">
-                {currentPath.split('/').pop()}
+                📄 PDF
+              </Button>
+            </Box>
+            {userRole === 'student' && (
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Als Schüler kannst du nur PDF-Dateien speichern
               </Typography>
             )}
-          </Breadcrumbs>
+            {userRole === 'teacher' && (
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Als Lehrer kannst du bearbeitbare Dateien und PDFs speichern
+              </Typography>
+            )}
+          </Box>
+
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+            Verfügbare Ordner:
+          </Typography>
 
           <Paper variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
             <List dense>
-              {directoryContents.map(item => (
-                <ListItem key={item.path} disablePadding>
-                  <ListItemButton onClick={() => handleFolderClick(item.path)}>
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <FolderIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary={item.name} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
+              {directoryContents.map(item => {
+                // Calculate indentation based on path depth
+                const depth = item.name.split('/').length - 1;
+                const displayName = item.name.split('/').pop() || item.name;
+                const isFile = item.type === 'file';
+                const isDirectory = item.type === 'directory';
+                
+                return (
+                  <ListItem key={item.path} disablePadding>
+                    <ListItemButton 
+                      onClick={() => isDirectory ? setCurrentPath(`git-intern/Mathe/Klasse 7/${item.name}`) : null}
+                      disabled={isFile}
+                      sx={{ 
+                        pl: 2 + (depth * 2), // Indent based on depth
+                        '&:hover': { bgcolor: isFile ? 'transparent' : 'action.hover' },
+                        opacity: isFile ? 0.7 : 1
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        {isDirectory ? (
+                          <FolderIcon fontSize="small" />
+                        ) : (
+                          <DescriptionIcon fontSize="small" />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={displayName}
+                        secondary={depth > 0 ? item.name : undefined}
+                        primaryTypographyProps={{ 
+                          fontSize: '0.9rem',
+                          fontWeight: depth === 0 ? 'bold' : 'normal',
+                          color: isFile ? 'text.secondary' : 'text.primary'
+                        }}
+                        secondaryTypographyProps={{ 
+                          fontSize: '0.75rem',
+                          color: 'text.secondary'
+                        }}
+                      />
+                      {isFile && (
+                        <Chip 
+                          label={item.extension || 'Datei'} 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ ml: 1, fontSize: '0.7rem' }}
+                        />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })}
               {directoryContents.length === 0 && (
                 <ListItem>
-                  <ListItemText primary="Keine Ordner verfügbar" sx={{ textAlign: 'center', color: 'text.secondary' }} />
+                  <ListItemText 
+                    primary="Keine Ordner verfügbar" 
+                    sx={{ textAlign: 'center', color: 'text.secondary' }} 
+                  />
                 </ListItem>
               )}
             </List>
@@ -3771,33 +3990,48 @@ const WhiteboardPage: React.FC = () => {
 
           {currentPath && (
             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              Ausgewählt: {currentPath}
+              Ausgewählt: {currentPath.split('/').pop()}
             </Typography>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowSaveDialog(false)}>Abbrechen</Button>
+          
+          {/* Additional format options for teachers */}
+          {userRole === 'teacher' && (
+            <>
           <Button 
             onClick={() => handleSaveWhiteboard('png')} 
             variant="outlined"
-            disabled={!filename.trim() || !currentPath}
+                size="small"
+                disabled={!filename.trim()}
           >
             PNG
           </Button>
           <Button 
             onClick={() => handleSaveWhiteboard('svg')} 
             variant="outlined"
-            disabled={!filename.trim() || !currentPath}
+                size="small"
+                disabled={!filename.trim()}
           >
             SVG
           </Button>
+            </>
+          )}
+          
+          {/* Main save button based on selected format */}
           <Button 
-            onClick={() => handleSaveWhiteboard('pdf')} 
+            onClick={() => handleSaveWhiteboard(saveFormat === 'editable' ? 'editable' : 'pdf')} 
             variant="contained" 
-            color="success"
-            disabled={!filename.trim() || !currentPath}
+            sx={{
+              background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #34495e 0%, #2c3e50 100%)'
+              }
+            }}
+            disabled={!filename.trim()}
           >
-            Speichern
+            {saveFormat === 'editable' ? '📝 Als bearbeitbar speichern' : '📄 Als PDF speichern'}
           </Button>
         </DialogActions>
       </Dialog>
