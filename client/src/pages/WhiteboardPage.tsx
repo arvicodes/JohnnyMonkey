@@ -45,7 +45,7 @@ import {
   GridOn as GridIcon
 } from '@mui/icons-material';
 
-type Tool = 'brush' | 'pen' | 'marker' | 'text' | 'line' | 'circle' | 'rectangle' | 'triangle' | 'arrow' | 'polygon' | 'eraser' | 'image' | 'select' | 'freeform' | 'connector' | 'stamp' | 'highlighter';
+type Tool = 'brush' | 'pen' | 'marker' | 'text' | 'line' | 'circle' | 'rectangle' | 'triangle' | 'arrow' | 'polygon' | 'eraser' | 'image' | 'select' | 'freeform' | 'connector' | 'highlighter' | 'icon';
 
 interface DrawObject {
   id: string;
@@ -61,6 +61,8 @@ interface DrawObject {
   y: number;
   width?: number;
   height?: number;
+  endX?: number;
+  endY?: number;
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
@@ -69,6 +71,9 @@ interface DrawObject {
   imageData?: string;
   rotation?: number;
   locked?: boolean;
+  groupId?: string;
+  iconType?: string;
+  iconSize?: number;
 }
 
 interface DirectoryItem {
@@ -125,9 +130,21 @@ const WhiteboardPage: React.FC = () => {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  const [selectedIcon, setSelectedIcon] = useState<string>('😀');
+  const [iconSize, setIconSize] = useState(32);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [showStamps, setShowStamps] = useState(false);
-  const [selectedStamp, setSelectedStamp] = useState<string | null>(null);
+  const [isMultiSelect, setIsMultiSelect] = useState(false);
+  const [selectionBox, setSelectionBox] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
+  const [showGroupControls, setShowGroupControls] = useState(false);
+  const [showTableConfig, setShowTableConfig] = useState(false);
+  const [tableConfig, setTableConfig] = useState({ rows: 4, cols: 3 });
+  const [showTimelineConfig, setShowTimelineConfig] = useState(false);
+  const [timelineConfig, setTimelineConfig] = useState({ points: 4, showAxis: true, showLabels: true });
+  const [showVennConfig, setShowVennConfig] = useState(false);
+  const [vennConfig, setVennConfig] = useState({ circles: 2, showLabels: true, showIntersection: true });
+  const [showMindmapConfig, setShowMindmapConfig] = useState(false);
+  const [mindmapConfig, setMindmapConfig] = useState({ branches: 4, showConnections: true, showSubBranches: false });
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStart, setConnectionStart] = useState<DrawObject | null>(null);
 
@@ -159,7 +176,7 @@ const WhiteboardPage: React.FC = () => {
 
   // Keyboard shortcuts
   useEffect(() => {
-  const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
     console.log('⌨️ Key pressed:', e.key, 'Meta:', e.metaKey, 'Ctrl:', e.ctrlKey);
     
     // Tool shortcuts (work without modifiers)
@@ -263,8 +280,8 @@ const WhiteboardPage: React.FC = () => {
       }
     }
     
-    // Prevent default for our shortcuts
-    if (e.ctrlKey || e.metaKey) {
+      // Prevent default for our shortcuts
+      if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
           case 'z':
             e.preventDefault();
@@ -295,8 +312,30 @@ const WhiteboardPage: React.FC = () => {
           case 'Delete':
           case 'Backspace':
             e.preventDefault();
-            if (selectedObjects.length > 0) {
-              handleDeleteSelected();
+            deleteSelectedObjects();
+            break;
+          case 'd':
+            if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              duplicateSelectedObjects();
+            }
+            break;
+          case 'g':
+            if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              groupSelectedObjects();
+            }
+            break;
+          case 'u':
+            if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              ungroupSelectedObjects();
+            }
+            break;
+          case 'o':
+            if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              rotateSelectedObjects(90);
             }
             break;
         }
@@ -305,19 +344,15 @@ const WhiteboardPage: React.FC = () => {
           case 'Delete':
           case 'Backspace':
             e.preventDefault();
-            if (selectedObjects.length > 0) {
-              handleDeleteSelected();
-            }
+            deleteSelectedObjects();
             break;
           case 'Escape':
             setSelectedObjects([]);
             setShowObjectPanel(false);
             setShowColorPicker(null);
-            setShowStamps(false);
             setShowTemplates(false);
             setIsConnecting(false);
             setConnectionStart(null);
-            setSelectedStamp(null);
             setTool('select');
             break;
           case ' ':
@@ -378,6 +413,24 @@ const WhiteboardPage: React.FC = () => {
       drawObject(ctx, currentObject);
     }
 
+    // Draw selection box
+    if (selectionBox) {
+      const { start, end } = selectionBox;
+      const x = Math.min(start.x, end.x);
+      const y = Math.min(start.y, end.y);
+      const width = Math.abs(end.x - start.x);
+      const height = Math.abs(end.y - start.y);
+      
+      ctx.strokeStyle = '#2196f3';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(x, y, width, height);
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = 'rgba(33, 150, 243, 0.1)';
+      ctx.fillRect(x, y, width, height);
+    }
+
     // Draw connection preview if in connector mode
     if (tool === 'connector' && connectionStart) {
       ctx.strokeStyle = '#ff0000';
@@ -421,15 +474,15 @@ const WhiteboardPage: React.FC = () => {
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, obj: DrawObject) => {
     const bounds = getObjectBounds(obj);
     
-    // Selection border
-    ctx.strokeStyle = '#2196f3';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
+    // Selection border - more subtle
+    ctx.strokeStyle = 'rgba(33, 150, 210, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
     ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     ctx.setLineDash([]);
     
-    // Corner handles - larger and more visible
-    const handleSize = 20; // Match hit detection size
+    // Corner handles - much smaller and more subtle
+    const handleSize = 8; // Much smaller
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -437,40 +490,43 @@ const WhiteboardPage: React.FC = () => {
       { x: bounds.x, y: bounds.y + bounds.height, name: 'sw' }
     ];
     
-    ctx.fillStyle = '#2196f3';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
+    ctx.fillStyle = 'rgba(33, 150, 210, 0.8)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 1;
     
     cornerHandles.forEach(handle => {
-      // Draw a circle for better visibility
-      ctx.beginPath();
-      ctx.arc(handle.x, handle.y, handleSize / 2, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.stroke();
-      
-      // Draw a cross inside for better visibility
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(handle.x - 4, handle.y);
-      ctx.lineTo(handle.x + 4, handle.y);
-      ctx.moveTo(handle.x, handle.y - 4);
-      ctx.lineTo(handle.x, handle.y + 4);
-      ctx.stroke();
-      ctx.strokeStyle = '#2196f3';
+      // Draw a small square instead of circle
+      ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+      ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
     });
     
-    // Rotation handle - larger and more visible
+    // Edge handles for resizing - smaller and more subtle
+    const edgeHandles = [
+      { x: bounds.x + bounds.width / 2, y: bounds.y, name: 'n' },
+      { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2, name: 'e' },
+      { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height, name: 's' },
+      { x: bounds.x, y: bounds.y + bounds.height / 2, name: 'w' }
+    ];
+    
+    edgeHandles.forEach(handle => {
+      ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+      ctx.strokeRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+    });
+    
+    // Rotation handle - smaller and more subtle
     const centerX = bounds.x + bounds.width / 2;
-    const rotateHandleY = bounds.y - 25;
+    const rotateHandleY = bounds.y - 15; // Closer to object
+    ctx.fillStyle = 'rgba(33, 150, 210, 0.8)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(centerX, rotateHandleY, 10, 0, 2 * Math.PI);
+    ctx.arc(centerX, rotateHandleY, 6, 0, 2 * Math.PI); // Smaller radius
     ctx.fill();
     ctx.stroke();
     
-    // Rotation line
-    ctx.strokeStyle = '#2196f3';
-    ctx.lineWidth = 2;
+    // Rotation line - more subtle
+    ctx.strokeStyle = 'rgba(33, 150, 210, 0.6)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(centerX, bounds.y);
     ctx.lineTo(centerX, rotateHandleY);
@@ -628,7 +684,7 @@ const WhiteboardPage: React.FC = () => {
 
       case 'image':
         if (obj.imageData && obj.width !== undefined && obj.height !== undefined) {
-          const img = new Image();
+          const img = new window.Image();
           img.src = obj.imageData;
           ctx.drawImage(img, obj.x, obj.y, obj.width, obj.height);
         }
@@ -659,16 +715,17 @@ const WhiteboardPage: React.FC = () => {
         }
         break;
 
-      case 'stamp':
-        if (obj.text) {
-          // Draw stamp text without border - use larger default size for stamps
-          const stampSize = obj.fontSize || 120; // Much larger default size for stamps
-          console.log('🏷️ Drawing stamp:', obj.text, 'with size:', stampSize, 'fontSize:', obj.fontSize);
-          ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${stampSize}px ${obj.fontFamily || 'Arial'}`;
+      case 'icon':
+        if (obj.iconType) {
+          const size = obj.iconSize || 32;
+          ctx.font = `${size}px Arial`;
           ctx.fillStyle = obj.strokeColor;
-          ctx.fillText(obj.text, obj.x, obj.y);
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(obj.iconType, obj.x + size/2, obj.y + size/2);
         }
         break;
+
     }
     
     ctx.restore();
@@ -696,8 +753,8 @@ const WhiteboardPage: React.FC = () => {
       if (canvas) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          // For stamps, use larger default size for bounds calculation
-          const fontSize = obj.tool === 'stamp' ? (obj.fontSize || 120) : obj.fontSize;
+          // For other text objects, use text metrics
+          const fontSize = obj.fontSize;
           ctx.font = `${obj.fontStyle} ${obj.fontWeight} ${fontSize}px ${obj.fontFamily || 'Arial'}`;
           const metrics = ctx.measureText(obj.text);
           maxX = obj.x + metrics.width;
@@ -705,6 +762,15 @@ const WhiteboardPage: React.FC = () => {
           minY = obj.y - fontSize;
         }
       }
+    }
+
+    // For icon objects
+    if (obj.tool === 'icon' && obj.iconSize) {
+      const size = obj.iconSize;
+      maxX = obj.x + size;
+      maxY = obj.y + size;
+      minX = obj.x;
+      minY = obj.y;
     }
 
     // Calculate final dimensions
@@ -789,6 +855,7 @@ const WhiteboardPage: React.FC = () => {
   const isPointInText = (x: number, y: number, obj: DrawObject): boolean => {
     if (!obj.text || !obj.fontSize) return false;
     
+    
     const canvas = canvasRef.current;
     if (!canvas) return false;
     
@@ -842,6 +909,7 @@ const WhiteboardPage: React.FC = () => {
         const threshold = (obj.lineWidth || 5) + 10;
         return isPointNearLine(x, y, p1.x, p1.y, p2.x, p2.y, threshold);
         
+        
       default:
         return x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h;
     }
@@ -850,14 +918,14 @@ const WhiteboardPage: React.FC = () => {
   const getHandleAtPoint = (x: number, y: number, obj: DrawObject): string | null => {
     const bounds = getObjectBounds(obj);
     const centerX = bounds.x + bounds.width / 2;
-    const rotateHandleY = bounds.y - 25;
+    const rotateHandleY = bounds.y - 15; // Match the new position
     
     // Check rotation handle first (highest priority)
     const distToRotate = Math.sqrt((x - centerX) ** 2 + (y - rotateHandleY) ** 2);
-    if (distToRotate < 25) return 'rotate';
+    if (distToRotate < 15) return 'rotate'; // Smaller hit area
     
-    // Check corner handles with larger hit area and better positioning
-    const handleSize = 25; // Increased hit area for better usability
+    // Check corner handles with appropriate hit area for smaller handles
+    const handleSize = 15; // Smaller hit area but still usable
     const cornerHandles = [
       { x: bounds.x, y: bounds.y, name: 'nw' },
       { x: bounds.x + bounds.width, y: bounds.y, name: 'ne' },
@@ -875,7 +943,7 @@ const WhiteboardPage: React.FC = () => {
     }
     
     // Additional check for edge handles (optional - for more precise control)
-    const edgeThreshold = 15;
+    const edgeThreshold = 10; // Smaller threshold for more precise control
     
     // Top edge
     if (Math.abs(y - bounds.y) < edgeThreshold && x >= bounds.x && x <= bounds.x + bounds.width) {
@@ -926,12 +994,36 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
+    // Handle Ctrl/Cmd + Click for multi-select
+    const isMultiSelectClick = e.ctrlKey || e.metaKey;
+
     // Always check for object selection first (regardless of current tool)
     const clickedObject = [...objects].reverse().find(obj => !obj.locked && isPointInObject(x, y, obj));
     
     if (clickedObject) {
-      // If clicking on an object, select it and check for handles
-      setSelectedObjects([clickedObject]);
+      if (isMultiSelectClick) {
+        // Multi-select: add/remove from selection
+        const isAlreadySelected = selectedObjects.some(obj => obj.id === clickedObject.id);
+        if (isAlreadySelected) {
+          // Remove from selection
+          setSelectedObjects(selectedObjects.filter(obj => obj.id !== clickedObject.id));
+        } else {
+          // Add to selection
+          setSelectedObjects([...selectedObjects, clickedObject]);
+        }
+      } else {
+        // Single select: select object and its group
+        const groupId = clickedObject.groupId;
+        let newSelectedObjects = [clickedObject];
+        
+        if (groupId) {
+          // Select all objects in the same group
+          const groupObjects = objects.filter(obj => obj.groupId === groupId && obj.id !== clickedObject.id);
+          newSelectedObjects = [clickedObject, ...groupObjects];
+        }
+        
+        setSelectedObjects(newSelectedObjects);
+      }
       setShowObjectPanel(true);
       
       const handle = getHandleAtPoint(x, y, clickedObject);
@@ -961,15 +1053,41 @@ const WhiteboardPage: React.FC = () => {
       setIsDrawing(true);
       return;
     } else {
-      // Clicked on empty space - clear selection
+      // Clicked on empty space - start selection box or clear selection
+      if (tool === 'select') {
+        // Start selection box
+        setSelectionBox({ start: { x, y }, end: { x, y } });
+        setSelectedObjects([]);
+        setShowObjectPanel(false);
+      } else {
       setSelectedObjects([]);
       setShowObjectPanel(false);
+      }
     }
 
     // If no object was clicked, proceed with drawing
     if (tool === 'text') {
       setTextPosition({ x, y });
       setShowTextInput(true);
+      return;
+    }
+
+    if (tool === 'icon') {
+      const newIcon: DrawObject = {
+        id: Date.now().toString(),
+        tool: 'icon',
+        strokeColor,
+        lineWidth,
+        opacity,
+        lineStyle,
+        x: x - iconSize / 2,
+        y: y - iconSize / 2,
+        width: iconSize,
+        height: iconSize,
+        iconType: selectedIcon,
+        iconSize: iconSize
+      };
+      setObjects([...objects, newIcon]);
       return;
     }
 
@@ -1026,33 +1144,6 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
-    if (tool === 'stamp') {
-      if (selectedStamp) {
-        const newStamp: DrawObject = {
-          id: Date.now().toString(),
-          tool: 'stamp',
-          strokeColor,
-          lineWidth,
-          opacity,
-          lineStyle,
-          text: selectedStamp,
-          x,
-          y,
-          width: 100,
-          height: 30,
-          fontSize: 120, // Much larger default size for stamps
-          fontFamily: 'Arial',
-          fontWeight: 'bold'
-        };
-        setObjects([...objects, newStamp]);
-        setSelectedStamp(null);
-        setShowStamps(false);
-        setTool('select');
-      } else {
-        setShowStamps(true);
-      }
-      return;
-    }
 
     setIsDrawing(true);
     setSelectedObjects([]);
@@ -1087,6 +1178,12 @@ const WhiteboardPage: React.FC = () => {
         y: prev.y + deltaY
       }));
       setPanStart({ x, y });
+      return;
+    }
+    
+    // Handle selection box
+    if (selectionBox && tool === 'select') {
+      setSelectionBox(prev => prev ? { ...prev, end: { x, y } } : null);
       return;
     }
     
@@ -1174,7 +1271,7 @@ const WhiteboardPage: React.FC = () => {
         // Special handling for images - maintain aspect ratio
         if (updatedObject.tool === 'image' && updatedObject.imageData) {
           // Get original image dimensions
-          const img = new Image();
+          const img = new window.Image();
           img.onload = () => {
             const originalAspectRatio = img.width / img.height;
             
@@ -1228,6 +1325,14 @@ const WhiteboardPage: React.FC = () => {
           updatedObject.height = size;
         }
         
+        // Special handling for icons - maintain square aspect ratio and update iconSize
+        if (updatedObject.tool === 'icon') {
+          const size = Math.min(newWidth, newHeight);
+          updatedObject.width = size;
+          updatedObject.height = size;
+          updatedObject.iconSize = size;
+        }
+        
         // For objects with points (lines, arrows, brush strokes)
         if (updatedObject.points && updatedObject.points.length > 0) {
           const scaleX = newWidth / resizeStart.objWidth;
@@ -1263,7 +1368,10 @@ const WhiteboardPage: React.FC = () => {
       const deltaX = x - dragStart.x;
       const deltaY = y - dragStart.y;
 
-      const updatedObject = { ...selected };
+      // Move all selected objects (including grouped objects)
+      setObjects(objects.map(obj => {
+        if (selectedObjects.some(sel => sel.id === obj.id)) {
+          const updatedObject = { ...obj };
       updatedObject.x += deltaX;
       updatedObject.y += deltaY;
 
@@ -1274,8 +1382,36 @@ const WhiteboardPage: React.FC = () => {
         }));
       }
 
-      setObjects(objects.map(obj => obj.id === selected.id ? updatedObject : obj));
-      setSelectedObjects([updatedObject]);
+          // Update endX and endY for lines and arrows
+          if (updatedObject.endX !== undefined) {
+            updatedObject.endX += deltaX;
+          }
+          if (updatedObject.endY !== undefined) {
+            updatedObject.endY += deltaY;
+          }
+
+          return updatedObject;
+        }
+        return obj;
+      }));
+      
+      // Update selected objects with new positions
+      const updatedSelectedObjects = selectedObjects.map(sel => {
+        const updated = { ...sel };
+        updated.x += deltaX;
+        updated.y += deltaY;
+        if (updated.points) {
+          updated.points = updated.points.map(p => ({
+            x: p.x + deltaX,
+            y: p.y + deltaY
+          }));
+        }
+        if (updated.endX !== undefined) updated.endX += deltaX;
+        if (updated.endY !== undefined) updated.endY += deltaY;
+        return updated;
+      });
+      
+      setSelectedObjects(updatedSelectedObjects);
       setDragStart({ x, y });
       return;
     }
@@ -1303,6 +1439,27 @@ const WhiteboardPage: React.FC = () => {
   const handleMouseUp = () => {
     if (isPanning) {
       setIsPanning(false);
+      return;
+    }
+    
+    // Handle selection box completion
+    if (selectionBox && tool === 'select') {
+      const { start, end } = selectionBox;
+      const minX = Math.min(start.x, end.x);
+      const maxX = Math.max(start.x, end.x);
+      const minY = Math.min(start.y, end.y);
+      const maxY = Math.max(start.y, end.y);
+      
+      // Find all objects within the selection box
+      const boxedObjects = objects.filter(obj => {
+        const bounds = getObjectBounds(obj);
+        return bounds.x >= minX && bounds.x + bounds.width <= maxX &&
+               bounds.y >= minY && bounds.y + bounds.height <= maxY;
+      });
+      
+      setSelectedObjects(boxedObjects);
+      setShowObjectPanel(boxedObjects.length > 0);
+      setSelectionBox(null);
       return;
     }
     
@@ -1349,6 +1506,930 @@ const WhiteboardPage: React.FC = () => {
     setRedoStack([]);
   };
 
+  // Helper function to get all objects in a group
+  const getGroupObjects = (groupId: string) => {
+    return objects.filter(obj => obj.groupId === groupId);
+  };
+
+  // Helper function to move all objects in a group
+  const moveGroup = (groupId: string, deltaX: number, deltaY: number) => {
+    setObjects(prevObjects => 
+      prevObjects.map(obj => 
+        obj.groupId === groupId 
+          ? { 
+              ...obj, 
+              x: obj.x + deltaX, 
+              y: obj.y + deltaY,
+              endX: obj.endX ? obj.endX + deltaX : undefined,
+              endY: obj.endY ? obj.endY + deltaY : undefined
+            }
+          : obj
+      )
+    );
+  };
+
+  // Group selected objects
+  const groupSelectedObjects = () => {
+    if (selectedObjects.length < 2) return;
+    
+    const groupId = `group-${Date.now()}`;
+    setObjects(prevObjects => 
+      prevObjects.map(obj => 
+        selectedObjects.some(sel => sel.id === obj.id)
+          ? { ...obj, groupId }
+          : obj
+      )
+    );
+    console.log(`📦 Grouped ${selectedObjects.length} objects with ID: ${groupId}`);
+  };
+
+  // Ungroup selected objects
+  const ungroupSelectedObjects = () => {
+    if (selectedObjects.length === 0) return;
+    
+    setObjects(prevObjects => 
+      prevObjects.map(obj => 
+        selectedObjects.some(sel => sel.id === obj.id)
+          ? { ...obj, groupId: undefined }
+          : obj
+      )
+    );
+    
+    // Update selected objects to remove groupId
+    setSelectedObjects(selectedObjects.map(obj => ({ ...obj, groupId: undefined })));
+    console.log(`📦 Ungrouped ${selectedObjects.length} objects`);
+  };
+
+  // Select all objects in the same group
+  const selectGroup = () => {
+    if (selectedObjects.length === 0) return;
+    
+    const groupId = selectedObjects[0].groupId;
+    if (!groupId) return;
+    
+    const groupObjects = objects.filter(obj => obj.groupId === groupId);
+    setSelectedObjects(groupObjects);
+    setShowObjectPanel(true);
+    console.log(`📦 Selected entire group with ${groupObjects.length} objects`);
+  };
+
+  // Duplicate selected objects
+  const duplicateSelectedObjects = () => {
+    if (selectedObjects.length === 0) return;
+    
+    const duplicatedObjects = selectedObjects.map(obj => ({
+      ...obj,
+      id: `${obj.id}-copy-${Date.now()}`,
+      x: obj.x + 20,
+      y: obj.y + 20,
+      endX: obj.endX ? obj.endX + 20 : undefined,
+      endY: obj.endY ? obj.endY + 20 : undefined,
+      groupId: undefined // Don't copy group membership
+    }));
+    
+    setObjects(prevObjects => [...prevObjects, ...duplicatedObjects]);
+    setSelectedObjects(duplicatedObjects);
+    console.log(`📋 Duplicated ${selectedObjects.length} objects`);
+  };
+
+  // Delete selected objects
+  const deleteSelectedObjects = () => {
+    if (selectedObjects.length === 0) return;
+    
+    setObjects(prevObjects => 
+      prevObjects.filter(obj => !selectedObjects.some(sel => sel.id === obj.id))
+    );
+    setSelectedObjects([]);
+    setShowObjectPanel(false);
+    console.log(`🗑️ Deleted ${selectedObjects.length} objects`);
+  };
+
+  // Rotate selected objects
+  const rotateSelectedObjects = (angle: number) => {
+    if (selectedObjects.length === 0) return;
+    
+    setObjects(prevObjects => 
+      prevObjects.map(obj => 
+        selectedObjects.some(sel => sel.id === obj.id)
+          ? { ...obj, rotation: (obj.rotation || 0) + angle }
+          : obj
+      )
+    );
+    console.log(`🔄 Rotated ${selectedObjects.length} objects by ${angle}°`);
+  };
+
+  // Flip selected objects horizontally
+  const flipSelectedObjectsHorizontal = () => {
+    if (selectedObjects.length === 0) return;
+    
+    // Calculate center point of selection
+    const bounds = selectedObjects.reduce((acc, obj) => {
+      const objBounds = getObjectBounds(obj);
+      return {
+        minX: Math.min(acc.minX, objBounds.x),
+        maxX: Math.max(acc.maxX, objBounds.x + objBounds.width),
+        minY: Math.min(acc.minY, objBounds.y),
+        maxY: Math.max(acc.maxY, objBounds.y + objBounds.height)
+      };
+    }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+    
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    
+    setObjects(prevObjects => 
+      prevObjects.map(obj => 
+        selectedObjects.some(sel => sel.id === obj.id)
+          ? { 
+              ...obj, 
+              x: centerX - (obj.x - centerX) - (obj.width || 0),
+              endX: obj.endX ? centerX - (obj.endX - centerX) : undefined
+            }
+          : obj
+      )
+    );
+    console.log(`🔄 Flipped ${selectedObjects.length} objects horizontally`);
+  };
+
+  // Flip selected objects vertically
+  const flipSelectedObjectsVertical = () => {
+    if (selectedObjects.length === 0) return;
+    
+    // Calculate center point of selection
+    const bounds = selectedObjects.reduce((acc, obj) => {
+      const objBounds = getObjectBounds(obj);
+      return {
+        minX: Math.min(acc.minX, objBounds.x),
+        maxX: Math.max(acc.maxX, objBounds.x + objBounds.width),
+        minY: Math.min(acc.minY, objBounds.y),
+        maxY: Math.max(acc.maxY, objBounds.y + objBounds.height)
+      };
+    }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+    
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    
+    setObjects(prevObjects => 
+      prevObjects.map(obj => 
+        selectedObjects.some(sel => sel.id === obj.id)
+          ? { 
+              ...obj, 
+              y: centerY - (obj.y - centerY) - (obj.height || 0),
+              endY: obj.endY ? centerY - (obj.endY - centerY) : undefined
+            }
+          : obj
+      )
+    );
+    console.log(`🔄 Flipped ${selectedObjects.length} objects vertically`);
+  };
+
+  // Create customizable timeline
+  const createCustomTimeline = (points: number, showAxis: boolean, showLabels: boolean) => {
+    const centerX = canvasRef.current ? canvasRef.current.width / 2 : 400;
+    const centerY = canvasRef.current ? canvasRef.current.height / 2 : 300;
+    const timelineGroupId = 'timeline-group';
+    
+    let timelineObjects: DrawObject[] = [];
+    
+    // Timeline axis (double size)
+    if (showAxis) {
+      timelineObjects.push({
+        id: 'timeline-axis',
+        tool: 'line',
+        strokeColor: '#1976d2',
+        fillColor: 'transparent',
+        lineWidth: 8,
+        opacity: 1,
+        lineStyle: 'solid',
+        x: centerX - 400,
+        y: centerY,
+        endX: centerX + 400,
+        endY: centerY,
+        groupId: timelineGroupId
+      });
+    }
+    
+    // Timeline events (double size)
+    const eventSpacing = 800 / (points - 1);
+    const events = [];
+    
+    for (let i = 0; i < points; i++) {
+      const x = centerX - 400 + (i * eventSpacing);
+      const y = centerY + (i % 2 === 0 ? -160 : 160); // Alternate above/below
+      events.push({
+        x,
+        y,
+        text: `${2020 + i}`,
+        description: `Ereignis ${i + 1}`
+      });
+    }
+    
+    events.forEach((event, index) => {
+      // Event circle (double size)
+      timelineObjects.push({
+        id: `event-${index + 1}`,
+        tool: 'circle',
+        strokeColor: '#4caf50',
+        fillColor: '#e8f5e8',
+        lineWidth: 4,
+        opacity: 1,
+        lineStyle: 'solid',
+        x: event.x - 16,
+        y: event.y - 16,
+        width: 32,
+        height: 32,
+        groupId: timelineGroupId
+      });
+      
+      // Connection line to timeline (double size)
+      timelineObjects.push({
+        id: `event-line-${index + 1}`,
+        tool: 'line',
+        strokeColor: '#666',
+        fillColor: 'transparent',
+        lineWidth: 2,
+        opacity: 1,
+        lineStyle: 'dashed',
+        x: event.x,
+        y: event.y,
+        endX: event.x,
+        endY: centerY,
+        groupId: timelineGroupId
+      });
+      
+      if (showLabels) {
+        // Year text (double size)
+        timelineObjects.push({
+          id: `year-${index + 1}`,
+          tool: 'text',
+          strokeColor: '#1976d2',
+          fillColor: 'transparent',
+          lineWidth: 1,
+          opacity: 1,
+          lineStyle: 'solid',
+          fontSize: 28,
+          fontFamily: 'Arial',
+          fontWeight: 'bold',
+          fontStyle: 'normal',
+          textDecoration: 'none',
+          text: event.text,
+          x: event.x - 30,
+          y: event.y - 40,
+          groupId: timelineGroupId
+        });
+        
+        // Event description (double size)
+        timelineObjects.push({
+          id: `desc-${index + 1}`,
+          tool: 'text',
+          strokeColor: '#666',
+          fillColor: 'transparent',
+          lineWidth: 1,
+          opacity: 1,
+          lineStyle: 'solid',
+          fontSize: 24,
+          fontFamily: 'Arial',
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          textDecoration: 'none',
+          text: event.description,
+          x: event.x - 50,
+          y: event.y + 60,
+          groupId: timelineGroupId
+        });
+      }
+    });
+    
+    setObjects(timelineObjects);
+    console.log(`⏰ Created custom timeline with ${points} points`);
+  };
+
+  // Create customizable venn diagram
+  const createCustomVenn = (circles: number, showLabels: boolean, showIntersection: boolean) => {
+    const centerX = canvasRef.current ? canvasRef.current.width / 2 : 400;
+    const centerY = canvasRef.current ? canvasRef.current.height / 2 : 300;
+    const vennGroupId = 'venn-group';
+    
+    let vennObjects: DrawObject[] = [];
+    
+    const vennRadius = 160; // double size
+    const vennDistance = 120; // double size
+    
+    if (circles === 2) {
+      // Circle 1
+      vennObjects.push({
+        id: 'venn1',
+        tool: 'circle',
+        strokeColor: '#ff5722',
+        fillColor: '#ffebee',
+        lineWidth: 4,
+        opacity: 0.7,
+        lineStyle: 'solid',
+        x: centerX - vennDistance - vennRadius,
+        y: centerY - vennRadius,
+        width: vennRadius * 2,
+        height: vennRadius * 2,
+        groupId: vennGroupId
+      });
+      
+      // Circle 2
+      vennObjects.push({
+        id: 'venn2',
+        tool: 'circle',
+        strokeColor: '#2196f3',
+        fillColor: '#e3f2fd',
+        lineWidth: 4,
+        opacity: 0.7,
+        lineStyle: 'solid',
+        x: centerX + vennDistance - vennRadius,
+        y: centerY - vennRadius,
+        width: vennRadius * 2,
+        height: vennRadius * 2,
+        groupId: vennGroupId
+      });
+      
+      if (showLabels) {
+        // Labels (double size)
+        vennObjects.push({
+          id: 'venn-label1',
+          tool: 'text',
+          strokeColor: '#ff5722',
+          fillColor: 'transparent',
+          lineWidth: 1,
+          opacity: 1,
+          lineStyle: 'solid',
+          fontSize: 32,
+          fontFamily: 'Arial',
+          fontWeight: 'bold',
+          fontStyle: 'normal',
+          textDecoration: 'none',
+          text: 'Set A',
+          x: centerX - vennDistance - 40,
+          y: centerY - vennRadius - 40,
+          groupId: vennGroupId
+        });
+        
+        vennObjects.push({
+          id: 'venn-label2',
+          tool: 'text',
+          strokeColor: '#2196f3',
+          fillColor: 'transparent',
+          lineWidth: 1,
+          opacity: 1,
+          lineStyle: 'solid',
+          fontSize: 32,
+          fontFamily: 'Arial',
+          fontWeight: 'bold',
+          fontStyle: 'normal',
+          textDecoration: 'none',
+          text: 'Set B',
+          x: centerX + vennDistance - 40,
+          y: centerY - vennRadius - 40,
+          groupId: vennGroupId
+        });
+        
+        if (showIntersection) {
+          vennObjects.push({
+            id: 'venn-intersection',
+            tool: 'text',
+            strokeColor: '#666',
+            fillColor: 'transparent',
+            lineWidth: 1,
+            opacity: 1,
+            lineStyle: 'solid',
+            fontSize: 28,
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            text: 'A ∩ B',
+            x: centerX - 30,
+            y: centerY + 10,
+            groupId: vennGroupId
+          });
+        }
+      }
+    } else if (circles === 3) {
+      // Three circles in triangular formation
+      const colors = ['#ff5722', '#2196f3', '#4caf50'];
+      const positions = [
+        { x: centerX, y: centerY - vennRadius },
+        { x: centerX - vennRadius, y: centerY + vennRadius },
+        { x: centerX + vennRadius, y: centerY + vennRadius }
+      ];
+      
+      positions.forEach((pos, index) => {
+        vennObjects.push({
+          id: `venn${index + 1}`,
+          tool: 'circle',
+          strokeColor: colors[index],
+          fillColor: colors[index] + '20',
+          lineWidth: 4,
+          opacity: 0.7,
+          lineStyle: 'solid',
+          x: pos.x - vennRadius,
+          y: pos.y - vennRadius,
+          width: vennRadius * 2,
+          height: vennRadius * 2,
+          groupId: vennGroupId
+        });
+        
+        if (showLabels) {
+          vennObjects.push({
+            id: `venn-label${index + 1}`,
+            tool: 'text',
+            strokeColor: colors[index],
+            fillColor: 'transparent',
+            lineWidth: 1,
+            opacity: 1,
+            lineStyle: 'solid',
+            fontSize: 32,
+            fontFamily: 'Arial',
+            fontWeight: 'bold',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            text: `Set ${String.fromCharCode(65 + index)}`,
+            x: pos.x - 40,
+            y: pos.y - vennRadius - 40,
+            groupId: vennGroupId
+          });
+        }
+      });
+    }
+    
+    setObjects(vennObjects);
+    console.log(`⭕ Created custom venn diagram with ${circles} circles`);
+  };
+
+  // Create customizable mindmap
+  const createCustomMindmap = (branches: number, showConnections: boolean, showSubBranches: boolean) => {
+    const centerX = canvasRef.current ? canvasRef.current.width / 2 : 400;
+    const centerY = canvasRef.current ? canvasRef.current.height / 2 : 300;
+    const mindmapGroupId = 'mindmap-group';
+    
+    let mindmapObjects: DrawObject[] = [];
+    
+    // Central topic (double size)
+    mindmapObjects.push({
+      id: 'central-topic',
+      tool: 'circle',
+      strokeColor: '#1976d2',
+      fillColor: '#e3f2fd',
+      lineWidth: 6,
+      opacity: 1,
+      lineStyle: 'solid',
+      x: centerX - 100,
+      y: centerY - 100,
+      width: 200,
+      height: 200,
+      groupId: mindmapGroupId
+    });
+    
+    // Central text (double size)
+    mindmapObjects.push({
+      id: 'central-text',
+      tool: 'text',
+      strokeColor: '#1976d2',
+      fillColor: 'transparent',
+      lineWidth: 1,
+      opacity: 1,
+      lineStyle: 'solid',
+      fontSize: 32,
+      fontFamily: 'Arial',
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      textDecoration: 'none',
+      text: 'Hauptthema',
+      x: centerX - 60,
+      y: centerY + 10,
+      groupId: mindmapGroupId
+    });
+    
+    // Calculate branch positions
+    const branchDistance = 300;
+    const branches_data = [];
+    
+    for (let i = 0; i < branches; i++) {
+      const angle = (i * 2 * Math.PI) / branches;
+      const x = centerX + Math.cos(angle) * branchDistance;
+      const y = centerY + Math.sin(angle) * branchDistance;
+      branches_data.push({
+        x,
+        y,
+        text: `Zweig ${i + 1}`,
+        angle
+      });
+    }
+    
+    branches_data.forEach((branch, index) => {
+      // Branch circle (double size)
+      mindmapObjects.push({
+        id: `branch-${index + 1}`,
+        tool: 'circle',
+        strokeColor: '#4caf50',
+        fillColor: '#e8f5e8',
+        lineWidth: 4,
+        opacity: 1,
+        lineStyle: 'solid',
+        x: branch.x - 60,
+        y: branch.y - 60,
+        width: 120,
+        height: 120,
+        groupId: mindmapGroupId
+      });
+      
+      // Branch text (double size)
+      mindmapObjects.push({
+        id: `branch-text-${index + 1}`,
+        tool: 'text',
+        strokeColor: '#4caf50',
+        fillColor: 'transparent',
+        lineWidth: 1,
+        opacity: 1,
+        lineStyle: 'solid',
+        fontSize: 28,
+        fontFamily: 'Arial',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textDecoration: 'none',
+        text: branch.text,
+        x: branch.x - 40,
+        y: branch.y + 10,
+        groupId: mindmapGroupId
+      });
+      
+      if (showConnections) {
+        // Connection line
+        mindmapObjects.push({
+          id: `connection-${index + 1}`,
+          tool: 'line',
+          strokeColor: '#666',
+          fillColor: 'transparent',
+          lineWidth: 4,
+          opacity: 1,
+          lineStyle: 'solid',
+          x: centerX,
+          y: centerY,
+          endX: branch.x,
+          endY: branch.y,
+          groupId: mindmapGroupId
+        });
+      }
+      
+      if (showSubBranches) {
+        // Add sub-branches
+        const subBranchDistance = 150;
+        const subBranches = 2;
+        
+        for (let j = 0; j < subBranches; j++) {
+          const subAngle = branch.angle + (j - 0.5) * 0.5;
+          const subX = branch.x + Math.cos(subAngle) * subBranchDistance;
+          const subY = branch.y + Math.sin(subAngle) * subBranchDistance;
+          
+          // Sub-branch circle
+          mindmapObjects.push({
+            id: `sub-branch-${index + 1}-${j + 1}`,
+            tool: 'circle',
+            strokeColor: '#ff9800',
+            fillColor: '#fff3e0',
+            lineWidth: 3,
+            opacity: 1,
+            lineStyle: 'solid',
+            x: subX - 40,
+            y: subY - 40,
+            width: 80,
+            height: 80,
+            groupId: mindmapGroupId
+          });
+          
+          // Sub-branch text
+          mindmapObjects.push({
+            id: `sub-branch-text-${index + 1}-${j + 1}`,
+            tool: 'text',
+            strokeColor: '#ff9800',
+            fillColor: 'transparent',
+            lineWidth: 1,
+            opacity: 1,
+            lineStyle: 'solid',
+            fontSize: 20,
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            text: `Unter-${j + 1}`,
+            x: subX - 25,
+            y: subY + 5,
+            groupId: mindmapGroupId
+          });
+          
+          if (showConnections) {
+            // Sub-connection line
+            mindmapObjects.push({
+              id: `sub-connection-${index + 1}-${j + 1}`,
+              tool: 'line',
+              strokeColor: '#999',
+              fillColor: 'transparent',
+              lineWidth: 2,
+              opacity: 1,
+              lineStyle: 'solid',
+              x: branch.x,
+              y: branch.y,
+              endX: subX,
+              endY: subY,
+              groupId: mindmapGroupId
+            });
+          }
+        }
+      }
+    });
+    
+    setObjects(mindmapObjects);
+    console.log(`🧠 Created custom mindmap with ${branches} branches`);
+  };
+
+  // Create customizable table
+  const createCustomTable = (rows: number, cols: number) => {
+    const centerX = canvasRef.current ? canvasRef.current.width / 2 : 400;
+    const centerY = canvasRef.current ? canvasRef.current.height / 2 : 300;
+    const tableGroupId = 'table-group';
+    
+    const cellWidth = 160; // double size
+    const cellHeight = 60; // double size
+    const startX = centerX - (cols * cellWidth) / 2;
+    const startY = centerY - (rows * cellHeight) / 2;
+    
+    let tableObjects: DrawObject[] = [];
+    
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = startX + col * cellWidth;
+        const y = startY + row * cellHeight;
+        
+        // Cell border
+        tableObjects.push({
+          id: `cell-${row}-${col}`,
+          tool: 'rectangle',
+          strokeColor: '#666',
+          fillColor: row === 0 ? '#f0f0f0' : 'transparent',
+          lineWidth: 2,
+          opacity: 1,
+          lineStyle: 'solid',
+          x: x,
+          y: y,
+          width: cellWidth,
+          height: cellHeight,
+          groupId: tableGroupId
+        });
+        
+        // Cell text
+        tableObjects.push({
+          id: `cell-text-${row}-${col}`,
+          tool: 'text',
+          strokeColor: '#333',
+          fillColor: 'transparent',
+          lineWidth: 1,
+          opacity: 1,
+          lineStyle: 'solid',
+          fontSize: 24,
+          fontFamily: 'Arial',
+          fontWeight: row === 0 ? 'bold' : 'normal',
+          fontStyle: 'normal',
+          textDecoration: 'none',
+          text: row === 0 ? `Spalte ${col + 1}` : `Zelle ${row}-${col + 1}`,
+          x: x + 10,
+          y: y + 40,
+          groupId: tableGroupId
+        });
+      }
+    }
+    
+    setObjects(tableObjects);
+    console.log(`📋 Created custom table with ${rows} rows and ${cols} columns`);
+  };
+
+  const loadTemplate = (templateName: string) => {
+    // Clear current whiteboard
+    setObjects([]);
+    setRedoStack([]);
+    
+    const centerX = canvasRef.current ? canvasRef.current.width / 2 : 400;
+    const centerY = canvasRef.current ? canvasRef.current.height / 2 : 300;
+    
+    let templateObjects: DrawObject[] = [];
+    
+    switch (templateName) {
+      case 'Mindmap':
+        // Open mindmap configuration dialog
+        setShowMindmapConfig(true);
+        return;
+        
+      case 'Diagramm':
+        const diagramGroupId = 'diagram-group';
+        
+        // Flowchart boxes (double size)
+        const boxes = [
+          { x: centerX - 200, y: centerY - 300, text: 'Start', color: '#4caf50' },
+          { x: centerX - 200, y: centerY - 100, text: 'Prozess', color: '#2196f3' },
+          { x: centerX - 200, y: centerY + 100, text: 'Entscheidung', color: '#ff9800' },
+          { x: centerX + 200, y: centerY + 100, text: 'Ja', color: '#4caf50' },
+          { x: centerX - 200, y: centerY + 300, text: 'Nein', color: '#f44336' }
+        ];
+        
+        boxes.forEach((box, index) => {
+          templateObjects.push({
+            id: `box-${index + 1}`,
+            tool: 'rectangle',
+            strokeColor: box.color,
+            fillColor: box.color + '20',
+            lineWidth: 4,
+            opacity: 1,
+            lineStyle: 'solid',
+            x: box.x - 100,
+            y: box.y - 40,
+            width: 200,
+            height: 80,
+            groupId: diagramGroupId
+          });
+          
+          templateObjects.push({
+            id: `box-text-${index + 1}`,
+            tool: 'text',
+            strokeColor: box.color,
+            fillColor: 'transparent',
+            lineWidth: 1,
+            opacity: 1,
+            lineStyle: 'solid',
+            fontSize: 28,
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            text: box.text,
+            x: box.x - 60,
+            y: box.y + 10,
+            groupId: diagramGroupId
+          });
+        });
+        
+        // Arrows (double size)
+        const arrows = [
+          { from: { x: centerX - 200, y: centerY - 220 }, to: { x: centerX - 200, y: centerY - 140 } },
+          { from: { x: centerX - 200, y: centerY - 20 }, to: { x: centerX - 200, y: centerY + 60 } },
+          { from: { x: centerX - 100, y: centerY + 100 }, to: { x: centerX + 100, y: centerY + 100 } },
+          { from: { x: centerX - 200, y: centerY + 140 }, to: { x: centerX - 200, y: centerY + 220 } }
+        ];
+        
+        arrows.forEach((arrow, index) => {
+          templateObjects.push({
+            id: `arrow-${index + 1}`,
+            tool: 'arrow',
+            strokeColor: '#666',
+            fillColor: 'transparent',
+            lineWidth: 4,
+            opacity: 1,
+            lineStyle: 'solid',
+            x: arrow.from.x,
+            y: arrow.from.y,
+            endX: arrow.to.x,
+            endY: arrow.to.y,
+            groupId: diagramGroupId
+          });
+        });
+        break;
+        
+      case 'Tabelle':
+        // Open table configuration dialog
+        setShowTableConfig(true);
+        return;
+        
+      case 'Zeitachse':
+        // Open timeline configuration dialog
+        setShowTimelineConfig(true);
+        return;
+        
+      case 'Venn':
+        // Open venn configuration dialog
+        setShowVennConfig(true);
+        return;
+        
+      case 'Gantt':
+        const ganttGroupId = 'gantt-group';
+        
+        // Gantt chart structure (double size)
+        const ganttStartX = centerX - 400;
+        const ganttStartY = centerY - 200;
+        const taskHeight = 50; // double size
+        const taskSpacing = 60; // double size
+        
+        const tasks = [
+          { name: 'Aufgabe 1', start: 0, duration: 120, color: '#4caf50' },
+          { name: 'Aufgabe 2', start: 40, duration: 80, color: '#2196f3' },
+          { name: 'Aufgabe 3', start: 80, duration: 160, color: '#ff9800' },
+          { name: 'Aufgabe 4', start: 160, duration: 60, color: '#9c27b0' }
+        ];
+        
+        // Timeline (double size)
+        templateObjects.push({
+          id: 'gantt-timeline',
+          tool: 'line',
+          strokeColor: '#666',
+          fillColor: 'transparent',
+          lineWidth: 4,
+          opacity: 1,
+          lineStyle: 'solid',
+          x: ganttStartX,
+          y: ganttStartY - 40,
+          endX: ganttStartX + 400,
+          endY: ganttStartY - 40,
+          groupId: ganttGroupId
+        });
+        
+        // Time markers (double size)
+        for (let i = 0; i <= 10; i++) {
+          const x = ganttStartX + (i * 40);
+          templateObjects.push({
+            id: `time-marker-${i}`,
+            tool: 'line',
+            strokeColor: '#ccc',
+            fillColor: 'transparent',
+            lineWidth: 2,
+            opacity: 1,
+            lineStyle: 'solid',
+            x: x,
+            y: ganttStartY - 50,
+            endX: x,
+            endY: ganttStartY + 200,
+            groupId: ganttGroupId
+          });
+          
+          templateObjects.push({
+            id: `time-label-${i}`,
+            tool: 'text',
+            strokeColor: '#666',
+            fillColor: 'transparent',
+            lineWidth: 1,
+            opacity: 1,
+            lineStyle: 'solid',
+            fontSize: 20,
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            text: `${i * 10}`,
+            x: x - 10,
+            y: ganttStartY - 60,
+            groupId: ganttGroupId
+          });
+        }
+        
+        // Task bars (double size)
+        tasks.forEach((task, index) => {
+          const y = ganttStartY + (index * taskSpacing);
+          
+          // Task bar
+          templateObjects.push({
+            id: `task-${index + 1}`,
+            tool: 'rectangle',
+            strokeColor: task.color,
+            fillColor: task.color,
+            lineWidth: 2,
+            opacity: 0.8,
+            lineStyle: 'solid',
+            x: ganttStartX + task.start,
+            y: y,
+            width: task.duration,
+            height: taskHeight,
+            groupId: ganttGroupId
+          });
+          
+          // Task label (double size)
+          templateObjects.push({
+            id: `task-label-${index + 1}`,
+            tool: 'text',
+            strokeColor: '#333',
+            fillColor: 'transparent',
+            lineWidth: 1,
+            opacity: 1,
+            lineStyle: 'solid',
+            fontSize: 24,
+            fontFamily: 'Arial',
+            fontWeight: 'normal',
+            fontStyle: 'normal',
+            textDecoration: 'none',
+            text: task.name,
+            x: ganttStartX - 160,
+            y: y + 34,
+            groupId: ganttGroupId
+          });
+        });
+        break;
+        
+      default:
+        console.log('Unknown template:', templateName);
+        return;
+    }
+    
+    setObjects(templateObjects);
+    console.log(`📋 Template "${templateName}" loaded with ${templateObjects.length} objects`);
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1356,7 +2437,7 @@ const WhiteboardPage: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
-        const img = new Image();
+                const img = new window.Image();
         img.onload = () => {
           // Calculate optimal size while maintaining aspect ratio
           const maxWidth = 400;
@@ -1423,7 +2504,7 @@ const WhiteboardPage: React.FC = () => {
             const reader = new FileReader();
             reader.onload = (e) => {
               if (e.target?.result) {
-                const img = new Image();
+                const img = new window.Image();
                 img.onload = () => {
                   // Calculate optimal size while maintaining aspect ratio
                   const maxWidth = 400;
@@ -1499,10 +2580,10 @@ const WhiteboardPage: React.FC = () => {
               
               console.log(`📋 Pasted text: "${text.trim()}"`);
               setObjects([...objects, newObj]);
-              return;
-            }
+            return;
           }
         }
+      }
       }
       
       console.log('📋 No supported content found in clipboard');
@@ -1562,7 +2643,7 @@ const WhiteboardPage: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          const img = new Image();
+          const img = new window.Image();
           img.onload = () => {
             const canvas = canvasRef.current;
             if (!canvas) return;
@@ -1895,6 +2976,13 @@ const WhiteboardPage: React.FC = () => {
               font-size="${obj.fontSize || 24}" fill="${obj.strokeColor}">${obj.text}</text>`;
           }
           break;
+        case 'icon':
+          if (obj.iconType) {
+            const size = obj.iconSize || 32;
+            svgContent += `<text x="${obj.x + size/2}" y="${obj.y + size/2}" font-family="Arial" 
+              font-size="${size}" fill="${obj.strokeColor}" text-anchor="middle" dominant-baseline="middle">${obj.iconType}</text>`;
+          }
+          break;
         // Add more cases as needed
       }
     });
@@ -1908,6 +2996,13 @@ const WhiteboardPage: React.FC = () => {
     '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50',
     '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'
   ];
+
+  const iconCategories = {
+    emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'],
+    symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'],
+    shapes: ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '📢', '📣', '📯', '🔔', '🔕', '🎵', '🎶', '💱', '💲', '⚕️', '♻️', '🔱', '📛', '🔰', '⭕', '✅', '☑️', '✔️', '❌', '❎', '➰', '➿', '〰️', '〽️', '✳️', '✴️', '❇️', '©️', '®️', '™️'],
+    arrows: ['⬆️', '↗️', '➡️', '↘️', '⬇️', '↙️', '⬅️', '↖️', '↕️', '↔️', '↩️', '↪️', '⤴️', '⤵️', '🔃', '🔄', '🔙', '🔚', '🔛', '🔜', '🔝', '🔀', '🔁', '🔂', '🔃', '🔄', '🔙', '🔚', '🔛', '🔜', '🔝']
+  };
 
   return (
     <Box sx={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
@@ -1933,7 +3028,7 @@ const WhiteboardPage: React.FC = () => {
               { value: 'triangle', icon: '△', label: 'Dreieck' },
               { value: 'arrow', icon: '➡️', label: 'Pfeil' },
               { value: 'text', icon: 'A', label: 'Text' },
-              { value: 'stamp', icon: '🏷️', label: 'Stempel' },
+              { value: 'icon', icon: '😀', label: 'Icons' },
               { value: 'image', icon: '🖼️', label: 'Bild' },
               { value: 'eraser', icon: '🧹', label: 'Radieren' }
             ].map(t => (
@@ -1942,9 +3037,8 @@ const WhiteboardPage: React.FC = () => {
                   onClick={() => {
                     if (t.value === 'image') {
                       document.getElementById('image-upload')?.click();
-                    } else if (t.value === 'stamp') {
-                      setTool(t.value as Tool);
-                      setShowStamps(true);
+                    } else if (t.value === 'icon') {
+                      setShowIconPicker(true);
                     } else if (t.value === 'highlighter') {
                       setTool(t.value as Tool);
                       setLineWidth(15); // Textmarker ist dicker
@@ -2246,10 +3340,157 @@ const WhiteboardPage: React.FC = () => {
             </IconButton>
           </Tooltip>
 
+          {/* Group Controls */}
+          {selectedObjects.length > 0 && (
+            <>
+              <Tooltip title="Gruppieren">
+            <IconButton 
+                  onClick={groupSelectedObjects}
+                  disabled={selectedObjects.length < 2}
+              size="small"
+              sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' },
+                    '&:disabled': { opacity: 0.5 }
+                  }}
+                >
+                  <Typography variant="caption">📦</Typography>
+            </IconButton>
+          </Tooltip>
+
+              <Tooltip title="Gruppe aufteilen">
+          <IconButton 
+                  onClick={ungroupSelectedObjects}
+            size="small"
+            sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' }
+                  }}
+                >
+                  <Typography variant="caption">📤</Typography>
+          </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Duplizieren">
+                <IconButton 
+                  onClick={duplicateSelectedObjects}
+                  size="small"
+              sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                width: 24,
+                height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' }
+                  }}
+                >
+                  <Typography variant="caption">📋</Typography>
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Löschen">
+                <IconButton 
+                  onClick={deleteSelectedObjects}
+                  size="small"
+              sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                width: 24,
+                height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '&:hover': { bgcolor: 'rgba(255,0,0,0.3)', transform: 'scale(1.1)' }
+                  }}
+                >
+                  <Typography variant="caption">🗑️</Typography>
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="90° drehen">
+                <IconButton 
+                  onClick={() => rotateSelectedObjects(90)}
+              size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' }
+                  }}
+                >
+                  <Typography variant="caption">🔄</Typography>
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Horizontal spiegeln">
+                <IconButton 
+                  onClick={flipSelectedObjectsHorizontal}
+              size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' }
+                  }}
+                >
+                  <Typography variant="caption">↔️</Typography>
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Vertikal spiegeln">
+                <IconButton 
+                  onClick={flipSelectedObjectsVertical}
+                  size="small"
+                  sx={{
+                    color: 'white',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backdropFilter: 'blur(10px)',
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.2)', transform: 'scale(1.1)' }
+                  }}
+                >
+                  <Typography variant="caption">↕️</Typography>
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
+
           <Tooltip title="Raster ein/aus">
             <IconButton 
               onClick={() => setShowGrid(!showGrid)} 
-              size="small"
+                  size="small"
               sx={{
                 color: showGrid ? '#4caf50' : 'white',
                 bgcolor: showGrid ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.1)',
@@ -2276,7 +3517,7 @@ const WhiteboardPage: React.FC = () => {
 
           <IconButton 
             onClick={() => window.close()} 
-            size="small"
+                  size="small"
             sx={{
               color: '#ff6b6b',
               bgcolor: 'rgba(255,107,107,0.1)',
@@ -2300,7 +3541,7 @@ const WhiteboardPage: React.FC = () => {
           >
             <CloseIcon />
           </IconButton>
-        </Box>
+              </Box>
 
       </Paper>
 
@@ -2325,7 +3566,6 @@ const WhiteboardPage: React.FC = () => {
                     tool === 'eraser' ? 'crosshair' : 
                     tool === 'text' ? 'text' : 
                     tool === 'connector' ? 'crosshair' :
-                    tool === 'stamp' ? 'crosshair' :
                     'default',
             backgroundColor: '#ffffff'
           }}
@@ -2336,7 +3576,7 @@ const WhiteboardPage: React.FC = () => {
       {showColorPicker && (
         <>
           {console.log('🎨 Rendering color picker:', showColorPicker)}
-          <Paper
+        <Paper
           sx={{
             position: 'fixed',
             top: 200,
@@ -2571,82 +3811,269 @@ const WhiteboardPage: React.FC = () => {
         id="image-upload"
       />
 
-      {/* Stamps Dialog */}
-      <Dialog open={showStamps} onClose={() => setShowStamps(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>Stempel auswählen</DialogTitle>
+
+      {/* Table Configuration Dialog */}
+      <Dialog open={showTableConfig} onClose={() => setShowTableConfig(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Tabelle konfigurieren</DialogTitle>
         <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            {/* Kategorien */}
-            {[
-              {
-                title: 'Symbole & Häkchen',
-                stamps: ['✓', '✗', '!', '?', '★', '♥', '♦', '♠', '♣', '→', '←', '↑', '↓', '↔', '↕', '↗', '↘', '↙', '↖']
-              },
-              {
-                title: 'Gesichter 😀',
-                stamps: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩']
-              },
-              {
-                title: 'Hände & Gesten 👋',
-                stamps: ['👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👋', '🤚', '🖐️', '✋', '🖖', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💪', '🦾', '🦿', '🦵']
-              },
-              {
-                title: 'Formen & Farben 🔴',
-                stamps: ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫']
-              },
-              {
-                title: 'Zahlen & Buchstaben 🔢',
-                stamps: ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '🔣', '🔤', '🅰️', '🆎', '🅱️', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '🔞', '☢️', '☣️']
-              },
-              {
-                title: 'Objekte & Tools 📱',
-                stamps: ['📱', '📞', '☎️', '📠', '📧', '📨', '📩', '📤', '📥', '📦', '📫', '📪', '📬', '📭', '📮', '🗳️', '✏️', '✒️', '🖋️', '🖊️', '🖌️', '🖍️', '📝', '💼', '📁', '📂', '🗂️', '📅', '📆', '🗒️']
-              },
-              {
-                title: 'Text-Stempel',
-                stamps: ['OK', 'NEIN', 'JA', 'GUT', 'SCHLECHT', 'WICHTIG', 'INFO', 'HINWEIS', 'TIP', 'ACHTUNG', 'FEHLER', 'SUCCESS', 'DONE', 'TODO', 'FIX', 'BUG', 'NEW', 'OLD', 'HOT', 'COLD']
-              }
-            ].map((category, categoryIndex) => (
-              <Box key={categoryIndex} sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 1, fontSize: '1rem', fontWeight: 600, color: '#333' }}>
-                  {category.title}
-                </Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 0.5 }}>
-                  {category.stamps.map(stamp => (
-                    <Box
-                      key={stamp}
-                      onClick={() => {
-                        setSelectedStamp(stamp);
-                        setShowStamps(false);
-                      }}
-                      sx={{
-                        p: 0.3,
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 0.3,
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        fontSize: '1.8rem',
-                        minHeight: 28,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        '&:hover': {
-                          borderColor: '#2196f3',
-                          backgroundColor: '#f5f5f5',
-                          transform: 'scale(1.1)'
-                        }
-                      }}
-                    >
-                      {stamp}
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            ))}
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 80 }}>Zeilen:</Typography>
+              <TextField
+                type="number"
+                value={tableConfig.rows}
+                onChange={(e) => setTableConfig(prev => ({ ...prev, rows: Math.max(1, parseInt(e.target.value) || 1) }))}
+                inputProps={{ min: 1, max: 20 }}
+                size="small"
+                sx={{ width: 100 }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 80 }}>Spalten:</Typography>
+              <TextField
+                type="number"
+                value={tableConfig.cols}
+                onChange={(e) => setTableConfig(prev => ({ ...prev, cols: Math.max(1, parseInt(e.target.value) || 1) }))}
+                inputProps={{ min: 1, max: 20 }}
+                size="small"
+                sx={{ width: 100 }}
+              />
+            </Box>
+            <Box sx={{ 
+              border: '1px solid #e0e0e0', 
+              borderRadius: 1, 
+              p: 2, 
+              backgroundColor: '#f9f9f9',
+              display: 'grid',
+              gridTemplateColumns: `repeat(${tableConfig.cols}, 1fr)`,
+              gap: 1,
+              maxHeight: 200,
+              overflow: 'auto'
+            }}>
+              {Array.from({ length: tableConfig.rows * tableConfig.cols }, (_, i) => {
+                const row = Math.floor(i / tableConfig.cols);
+                const col = i % tableConfig.cols;
+                return (
+                  <Box
+                    key={i}
+                    sx={{
+                      width: 30,
+                      height: 20,
+                      border: '1px solid #ccc',
+                      backgroundColor: row === 0 ? '#e3f2fd' : 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.7rem',
+                      fontWeight: row === 0 ? 'bold' : 'normal'
+                    }}
+                  >
+                    {row === 0 ? `S${col + 1}` : `${row}-${col + 1}`}
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowStamps(false)}>Abbrechen</Button>
+          <Button onClick={() => setShowTableConfig(false)}>Abbrechen</Button>
+          <Button 
+            onClick={() => {
+              createCustomTable(tableConfig.rows, tableConfig.cols);
+              setShowTableConfig(false);
+            }}
+            variant="contained"
+          >
+            Tabelle erstellen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Timeline Configuration Dialog */}
+      <Dialog open={showTimelineConfig} onClose={() => setShowTimelineConfig(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Zeitachse konfigurieren</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Anzahl Punkte:</Typography>
+              <TextField
+                type="number"
+                value={timelineConfig.points}
+                onChange={(e) => setTimelineConfig(prev => ({ ...prev, points: Math.max(2, parseInt(e.target.value) || 2) }))}
+                inputProps={{ min: 2, max: 10 }}
+                size="small"
+                sx={{ width: 100 }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Achse anzeigen:</Typography>
+              <input
+                type="checkbox"
+                checked={timelineConfig.showAxis}
+                onChange={(e) => setTimelineConfig(prev => ({ ...prev, showAxis: e.target.checked }))}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Labels anzeigen:</Typography>
+              <input
+                type="checkbox"
+                checked={timelineConfig.showLabels}
+                onChange={(e) => setTimelineConfig(prev => ({ ...prev, showLabels: e.target.checked }))}
+              />
+            </Box>
+            <Box sx={{ 
+              border: '1px solid #e0e0e0', 
+              borderRadius: 1, 
+              p: 2, 
+              backgroundColor: '#f9f9f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 100
+            }}>
+              <Typography variant="body2" color="text.secondary">
+                Vorschau: {timelineConfig.points} Punkte, {timelineConfig.showAxis ? 'mit' : 'ohne'} Achse, {timelineConfig.showLabels ? 'mit' : 'ohne'} Labels
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowTimelineConfig(false)}>Abbrechen</Button>
+          <Button 
+            onClick={() => {
+              createCustomTimeline(timelineConfig.points, timelineConfig.showAxis, timelineConfig.showLabels);
+              setShowTimelineConfig(false);
+            }}
+            variant="contained"
+          >
+            Zeitachse erstellen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Venn Configuration Dialog */}
+      <Dialog open={showVennConfig} onClose={() => setShowVennConfig(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Venn-Diagramm konfigurieren</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Anzahl Kreise:</Typography>
+              <TextField
+                type="number"
+                value={vennConfig.circles}
+                onChange={(e) => setVennConfig(prev => ({ ...prev, circles: Math.max(2, Math.min(3, parseInt(e.target.value) || 2)) }))}
+                inputProps={{ min: 2, max: 3 }}
+                size="small"
+                sx={{ width: 100 }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Labels anzeigen:</Typography>
+              <input
+                type="checkbox"
+                checked={vennConfig.showLabels}
+                onChange={(e) => setVennConfig(prev => ({ ...prev, showLabels: e.target.checked }))}
+              />
+            </Box>
+            {vennConfig.circles === 2 && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="body1" sx={{ minWidth: 120 }}>Schnittmenge anzeigen:</Typography>
+                <input
+                  type="checkbox"
+                  checked={vennConfig.showIntersection}
+                  onChange={(e) => setVennConfig(prev => ({ ...prev, showIntersection: e.target.checked }))}
+                />
+              </Box>
+            )}
+            <Box sx={{ 
+              border: '1px solid #e0e0e0', 
+              borderRadius: 1, 
+              p: 2, 
+              backgroundColor: '#f9f9f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 100
+            }}>
+              <Typography variant="body2" color="text.secondary">
+                Vorschau: {vennConfig.circles} Kreise, {vennConfig.showLabels ? 'mit' : 'ohne'} Labels{vennConfig.circles === 2 && vennConfig.showIntersection ? ', mit Schnittmenge' : ''}
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowVennConfig(false)}>Abbrechen</Button>
+          <Button 
+            onClick={() => {
+              createCustomVenn(vennConfig.circles, vennConfig.showLabels, vennConfig.showIntersection);
+              setShowVennConfig(false);
+            }}
+            variant="contained"
+          >
+            Venn-Diagramm erstellen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Mindmap Configuration Dialog */}
+      <Dialog open={showMindmapConfig} onClose={() => setShowMindmapConfig(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Mindmap konfigurieren</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Anzahl Zweige:</Typography>
+              <TextField
+                type="number"
+                value={mindmapConfig.branches}
+                onChange={(e) => setMindmapConfig(prev => ({ ...prev, branches: Math.max(2, Math.min(8, parseInt(e.target.value) || 2)) }))}
+                inputProps={{ min: 2, max: 8 }}
+                size="small"
+                sx={{ width: 100 }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Verbindungslinien:</Typography>
+              <input
+                type="checkbox"
+                checked={mindmapConfig.showConnections}
+                onChange={(e) => setMindmapConfig(prev => ({ ...prev, showConnections: e.target.checked }))}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body1" sx={{ minWidth: 120 }}>Unterzweige:</Typography>
+              <input
+                type="checkbox"
+                checked={mindmapConfig.showSubBranches}
+                onChange={(e) => setMindmapConfig(prev => ({ ...prev, showSubBranches: e.target.checked }))}
+              />
+            </Box>
+            <Box sx={{ 
+              border: '1px solid #e0e0e0', 
+              borderRadius: 1, 
+              p: 2, 
+              backgroundColor: '#f9f9f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 100
+            }}>
+              <Typography variant="body2" color="text.secondary">
+                Vorschau: {mindmapConfig.branches} Zweige, {mindmapConfig.showConnections ? 'mit' : 'ohne'} Verbindungen, {mindmapConfig.showSubBranches ? 'mit' : 'ohne'} Unterzweige
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowMindmapConfig(false)}>Abbrechen</Button>
+          <Button 
+            onClick={() => {
+              createCustomMindmap(mindmapConfig.branches, mindmapConfig.showConnections, mindmapConfig.showSubBranches);
+              setShowMindmapConfig(false);
+            }}
+            variant="contained"
+          >
+            Mindmap erstellen
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -2668,7 +4095,7 @@ const WhiteboardPage: React.FC = () => {
                 onClick={() => {
                   setSelectedTemplate(template.name);
                   setShowTemplates(false);
-                  // Hier könnten wir die Vorlage laden
+                  loadTemplate(template.name);
                 }}
                 sx={{
                   p: 2,
@@ -2855,7 +4282,7 @@ const WhiteboardPage: React.FC = () => {
                     >
                       · · ·
                     </Button>
-                  </Box>
+                </Box>
                 </Box>
                 </>
               )}
@@ -3088,6 +4515,130 @@ const WhiteboardPage: React.FC = () => {
           )}
         </Paper>
       )}
+
+      {/* Icon Picker Dialog */}
+      <Dialog 
+        open={showIconPicker} 
+        onClose={() => setShowIconPicker(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1,
+            maxHeight: '70vh',
+            margin: 2
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          py: 1,
+          px: 2,
+          minHeight: 'auto',
+          position: 'relative'
+        }}>
+          <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 500 }}>
+            Icons & Emojis
+          </Typography>
+          <IconButton 
+            onClick={() => setShowIconPicker(false)}
+            sx={{ 
+              color: 'white',
+              p: 0.5,
+              minWidth: 'auto',
+              width: 24,
+              height: 24,
+              position: 'absolute',
+              top: '50%',
+              right: 8,
+              transform: 'translateY(-50%)',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              }
+            }}
+          >
+            <CloseIcon sx={{ fontSize: '1rem' }} />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 1.5 }}>
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.5, fontWeight: 'bold', fontSize: '0.8rem' }}>
+              Größe: {iconSize}px
+            </Typography>
+            <Slider
+              value={iconSize}
+              onChange={(_, value) => setIconSize(value as number)}
+              min={16}
+              max={128}
+              step={8}
+              sx={{ width: '100%' }}
+              size="small"
+            />
+          </Box>
+          
+          {Object.entries(iconCategories).map(([category, icons]) => (
+            <Box key={category} sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ 
+                mb: 0.5, 
+                textTransform: 'capitalize',
+                fontWeight: 'bold',
+                color: '#2c3e50',
+                fontSize: '0.9rem'
+              }}>
+                {category === 'emojis' ? 'Emojis' : 
+                 category === 'symbols' ? 'Symbole' :
+                 category === 'shapes' ? 'Formen' : 'Pfeile'}
+              </Typography>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))',
+                gap: 0.5,
+                maxHeight: '150px',
+                overflowY: 'auto',
+                p: 0.5,
+                border: '1px solid #e0e0e0',
+                borderRadius: 1
+              }}>
+                {icons.map((icon, index) => (
+                  <Box
+                    key={index}
+                    onClick={() => {
+                      setSelectedIcon(icon);
+                      setTool('icon');
+                      setShowIconPicker(false);
+                    }}
+                    sx={{
+                      p: 0.5,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      borderRadius: 0.5,
+                      fontSize: '1.2rem',
+                      minHeight: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: selectedIcon === icon ? 'rgba(33, 150, 210, 0.1)' : 'transparent',
+                      border: selectedIcon === icon ? '1px solid #2196d4' : '1px solid transparent',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        bgcolor: 'rgba(33, 150, 210, 0.1)',
+                        transform: 'scale(1.05)'
+                      }
+                    }}
+                  >
+                    {icon}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          ))}
+        </DialogContent>
+      </Dialog>
 
     </Box>
   );
