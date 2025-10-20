@@ -82,6 +82,8 @@ interface DirectoryItem {
   path: string;
   type: 'file' | 'directory';
   extension?: string;
+  depth?: number;
+  children?: any[];
 }
 
 const WhiteboardPage: React.FC = () => {
@@ -152,6 +154,78 @@ const WhiteboardPage: React.FC = () => {
   const [mindmapConfig, setMindmapConfig] = useState({ branches: 4, showConnections: true, showSubBranches: false });
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStart, setConnectionStart] = useState<DrawObject | null>(null);
+  const [lastMousePosition, setLastMousePosition] = useState({ x: 100, y: 100 });
+
+  // Neue Funktion: Änderungen direkt sichern
+  const handleSaveChanges = async () => {
+    if (!filename.trim()) {
+      console.log('Filename is required');
+      alert('Bitte geben Sie einen Dateinamen ein');
+      return;
+    }
+
+    // Wenn kein currentPath gesetzt ist, verwende einen Standard-Pfad
+    let savePath = currentPath;
+    if (!savePath) {
+      savePath = 'git-intern/Mathe/Klasse 7'; // Standard-Pfad für neue Dateien
+      console.log('No current path set, using default path:', savePath);
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
+    
+    // Ensure the path starts with 'git-intern/' for proper saving
+    if (!savePath.startsWith('git-intern/')) {
+      savePath = `git-intern/${savePath}`;
+    }
+    
+    console.log('Saving changes with path:', savePath);
+    console.log('Saving changes with filename:', finalFilename);
+    
+    // Erstelle Whiteboard-Daten
+    const whiteboardData = {
+      objects: objects,
+      metadata: {
+        created: new Date().toISOString(),
+        version: '1.0',
+        userRole: userRole,
+        canvasSize: {
+          width: canvas.width,
+          height: canvas.height
+        }
+      }
+    };
+    
+    const jsonData = JSON.stringify(whiteboardData, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const fullFilename = finalFilename.endsWith('.wb') ? finalFilename : `${finalFilename}.wb`;
+    
+    const formData = new FormData();
+    formData.append('file', blob, fullFilename);
+    formData.append('targetPath', savePath);
+    formData.append('format', 'editable');
+
+    try {
+      const response = await fetch('/api/file-system-paths/save-file', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        console.log('Änderungen erfolgreich gesichert!');
+        alert('Änderungen erfolgreich gesichert!');
+      } else {
+        const error = await response.json();
+        console.error('Fehler beim Sichern:', error.error);
+        alert(`Fehler beim Sichern: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      alert('Fehler beim Sichern der Änderungen');
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -186,10 +260,58 @@ const WhiteboardPage: React.FC = () => {
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
 
+  // Funktion um zu prüfen, ob ein Modal geöffnet ist
+  const isModalOpen = () => {
+    return showSaveDialog || 
+           showTextInput || 
+           showTableConfig || 
+           showTimelineConfig || 
+           showVennConfig || 
+           showMindmapConfig || 
+           showTemplates || 
+           showIconPicker;
+  };
+
+  const handleTextSubmit = () => {
+    if (!textInput.trim()) {
+      setShowTextInput(false);
+      return;
+    }
+
+    const newObj: DrawObject = {
+      id: Date.now().toString(),
+      tool: 'text',
+      strokeColor,
+      fillColor,
+      lineWidth,
+      opacity,
+      lineStyle,
+      fontSize,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      textDecoration,
+      text: textInput,
+      x: textPosition.x,
+      y: textPosition.y
+    };
+
+    setObjects([...objects, newObj]);
+    setTextInput('');
+    setShowTextInput(false);
+    setRedoStack([]);
+  };
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
     console.log('⌨️ Key pressed:', e.key, 'Meta:', e.metaKey, 'Ctrl:', e.ctrlKey);
+    
+    // Wenn ein Modal geöffnet ist, keine Whiteboard-Shortcuts verarbeiten
+    if (isModalOpen()) {
+      console.log('⌨️ Modal is open, ignoring whiteboard shortcuts');
+      return;
+    }
     
     // Tool shortcuts (work without modifiers)
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -305,7 +427,13 @@ const WhiteboardPage: React.FC = () => {
             break;
           case 's':
             e.preventDefault();
-            handleOpenSaveDialog();
+            if (currentPath) {
+              // Bei bestehenden Dateien: direkt speichern
+              handleSaveChanges();
+            } else {
+              // Bei neuen Dateien: Speicher-Dialog öffnen
+              setShowSaveDialog(true);
+            }
             break;
           case 'a':
             e.preventDefault();
@@ -388,7 +516,7 @@ const WhiteboardPage: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [objects, selectedObjects]);
+  }, [objects, selectedObjects, handleSaveChanges, showSaveDialog, showTextInput, showTableConfig, showTimelineConfig, showVennConfig, showMindmapConfig, showTemplates, showIconPicker]);
 
   useEffect(() => {
     redrawCanvas();
@@ -1181,6 +1309,9 @@ const WhiteboardPage: React.FC = () => {
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoordinates(e);
     
+    // Update last mouse position for paste operations
+    setLastMousePosition({ x, y });
+    
     // Handle panning with middle mouse button or space key
     if (isPanning) {
       const deltaX = x - panStart.x;
@@ -1488,35 +1619,6 @@ const WhiteboardPage: React.FC = () => {
     }
   };
 
-  const handleTextSubmit = () => {
-    if (!textInput.trim()) {
-      setShowTextInput(false);
-      return;
-    }
-
-    const newObj: DrawObject = {
-      id: Date.now().toString(),
-      tool: 'text',
-      strokeColor,
-      fillColor,
-      lineWidth,
-      opacity,
-      lineStyle,
-      fontSize,
-      fontFamily,
-      fontWeight,
-      fontStyle,
-      textDecoration,
-      text: textInput,
-      x: textPosition.x,
-      y: textPosition.y
-    };
-
-    setObjects([...objects, newObj]);
-    setTextInput('');
-    setShowTextInput(false);
-    setRedoStack([]);
-  };
 
   // Helper function to get all objects in a group
   const getGroupObjects = (groupId: string) => {
@@ -2473,6 +2575,10 @@ const WhiteboardPage: React.FC = () => {
           width = Math.max(width, 50);
           height = Math.max(height, 50);
           
+          // Get current mouse position from the last mouse event
+          const mouseX = lastMousePosition.x - (width / 2);
+          const mouseY = lastMousePosition.y - (height / 2);
+          
           const newObj: DrawObject = {
             id: Date.now().toString(),
             tool: 'image',
@@ -2481,8 +2587,8 @@ const WhiteboardPage: React.FC = () => {
             opacity: 1,
             lineStyle: 'solid',
             imageData: event.target?.result as string,
-            x: 100,
-            y: 100,
+            x: mouseX,
+            y: mouseY,
             width: Math.round(width),
             height: Math.round(height)
           };
@@ -2502,8 +2608,20 @@ const WhiteboardPage: React.FC = () => {
   const handlePaste = async () => {
     try {
       console.log('📋 Attempting to paste from clipboard...');
+      
+      // Check if clipboard API is available
+      if (!navigator.clipboard) {
+        console.log('📋 Clipboard API not available');
+        return;
+      }
+      
       const clipboardItems = await navigator.clipboard.read();
       console.log('📋 Clipboard items:', clipboardItems);
+      
+      if (!clipboardItems || clipboardItems.length === 0) {
+        console.log('📋 Clipboard is empty');
+        return;
+      }
       
       for (const clipboardItem of clipboardItems) {
         console.log('📋 Processing clipboard item:', clipboardItem.types);
@@ -2539,6 +2657,10 @@ const WhiteboardPage: React.FC = () => {
                   width = Math.max(width, 50);
                   height = Math.max(height, 50);
                   
+                  // Get current mouse position from the last mouse event
+                  const mouseX = lastMousePosition.x - (width / 2);
+                  const mouseY = lastMousePosition.y - (height / 2);
+                  
                   const newObj: DrawObject = {
                     id: Date.now().toString(),
                     tool: 'image',
@@ -2547,8 +2669,8 @@ const WhiteboardPage: React.FC = () => {
                     opacity: 1,
                     lineStyle: 'solid',
                     imageData: e.target?.result as string,
-                    x: 100,
-                    y: 100,
+                    x: mouseX,
+                    y: mouseY,
                     width: Math.round(width),
                     height: Math.round(height)
                   };
@@ -2563,13 +2685,17 @@ const WhiteboardPage: React.FC = () => {
               }
             };
             reader.readAsDataURL(blob);
-            return;
+            return; // Exit after processing image
           } else if (type === 'text/plain') {
             console.log('📋 Found text in clipboard');
             const textBlob = await clipboardItem.getType(type);
             const text = await textBlob.text();
             
             if (text.trim()) {
+              // Get current mouse position from the last mouse event
+              const mouseX = lastMousePosition.x;
+              const mouseY = lastMousePosition.y;
+              
               const newObj: DrawObject = {
                 id: Date.now().toString(),
                 tool: 'text',
@@ -2579,8 +2705,8 @@ const WhiteboardPage: React.FC = () => {
                 opacity: opacity,
                 lineStyle: 'solid',
                 text: text.trim(),
-                x: 100,
-                y: 100,
+                x: mouseX,
+                y: mouseY,
                 fontSize: fontSize,
                 fontFamily: fontFamily,
                 fontWeight: fontWeight,
@@ -2590,7 +2716,7 @@ const WhiteboardPage: React.FC = () => {
               
               console.log(`📋 Pasted text: "${text.trim()}"`);
               setObjects([...objects, newObj]);
-            return;
+              return; // Exit after processing text
           }
         }
       }
@@ -2599,10 +2725,21 @@ const WhiteboardPage: React.FC = () => {
       console.log('📋 No supported content found in clipboard');
     } catch (err) {
       console.log('📋 Paste not supported or failed:', err);
+      if (err instanceof Error) {
+        console.log('📋 Error details:', {
+          name: err.name,
+          message: err.message,
+          stack: err.stack
+        });
+      }
       // Fallback: Try to read text from clipboard
       try {
         const text = await navigator.clipboard.readText();
         if (text.trim()) {
+          // Get current mouse position from the last mouse event
+          const mouseX = lastMousePosition.x;
+          const mouseY = lastMousePosition.y;
+          
           const newObj: DrawObject = {
             id: Date.now().toString(),
             tool: 'text',
@@ -2612,8 +2749,8 @@ const WhiteboardPage: React.FC = () => {
             opacity: opacity,
             lineStyle: 'solid',
             text: text.trim(),
-            x: 100,
-            y: 100,
+            x: mouseX,
+            y: mouseY,
             fontSize: fontSize,
             fontFamily: fontFamily,
             fontWeight: fontWeight,
@@ -2802,27 +2939,60 @@ const WhiteboardPage: React.FC = () => {
   const handleOpenSaveDialog = async () => {
     setShowSaveDialog(true);
     
-    // Load all available subdirectories for the current learning group
+    // Load all available directories from the J-M-Reihen folder
     try {
-      if (groupId) {
-        // For now, use a hardcoded path for testing - this should be replaced with the actual learning group folder
-        const basePath = 'J-M-Reihen/Mathe/Klasse 7';
+      // Use the correct API endpoint to read the directory structure
+      const basePath = 'git-intern/Mathe/Klasse 7';
+      
+      console.log('Loading directories for save dialog from:', basePath);
+      
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(basePath)}&recursive=true`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Directory data received:', data);
         
-        // Load all subdirectories using the scan API
-        const scanResponse = await fetch(`/api/file-system-paths/scan-directory?path=${encodeURIComponent(basePath)}`);
-        if (scanResponse.ok) {
-          const data = await scanResponse.json();
-          if (data.directories && Array.isArray(data.directories)) {
-            setDirectoryContents(data.directories.map((dir: any) => ({
-              name: dir.name,
-              path: dir.path,
-              type: 'directory' as const
-            })));
-            setCurrentPath(basePath);
-            setPathHistory([]);
-            return;
-          }
+        if (data.root && data.root.children && Array.isArray(data.root.children)) {
+          console.log('Raw API response children:', data.root.children);
+          
+          // Collect directories and files hierarchically, preserving the tree structure
+          const collectDirectoriesHierarchical = (items: any[], depth: number = 0): any[] => {
+            const allItems: any[] = [];
+            
+            for (const item of items) {
+              console.log('Processing item:', item.name, 'type:', item.type, 'depth:', depth);
+              
+              // Add both directories and files
+              allItems.push({
+                name: item.name,
+                path: item.path,
+                type: item.type,
+                depth: depth,
+                children: item.children || [],
+                extension: item.type === 'file' ? item.name.split('.').pop() : undefined
+              });
+              
+              // Recursively collect from children (only for directories)
+              if (item.type === 'directory' && item.children && Array.isArray(item.children)) {
+                allItems.push(...collectDirectoriesHierarchical(item.children, depth + 1));
+              }
+            }
+            
+            return allItems;
+          };
+          
+          const allItems = collectDirectoriesHierarchical(data.root.children);
+          
+          console.log('All items found (directories and files):', allItems);
+          console.log('Setting directoryContents to:', allItems);
+          setDirectoryContents(allItems);
+          setCurrentPath(basePath);
+          setPathHistory([]);
+          return;
+        } else {
+          console.log('No valid data structure found:', data);
         }
+      } else {
+        console.error('Failed to load directories:', response.status, response.statusText);
       }
       
       // Fallback: show empty list
@@ -2839,6 +3009,7 @@ const WhiteboardPage: React.FC = () => {
 
 
 
+
   const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' | 'editable' = 'png') => {
     if (!filename.trim()) {
       console.log('Filename is required');
@@ -2851,7 +3022,12 @@ const WhiteboardPage: React.FC = () => {
     const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
     
     // Use currentPath if available, otherwise use default path
-    const savePath = currentPath || 'git-intern/Mathe/Klasse 7';
+    let savePath = currentPath || 'git-intern/Mathe/Klasse 7';
+    
+    // Ensure the path starts with 'git-intern/' for proper saving
+    if (!savePath.startsWith('git-intern/')) {
+      savePath = `git-intern/${savePath}`;
+    }
     
     console.log('Saving with path:', savePath);
     console.log('Saving with filename:', finalFilename);
@@ -2989,7 +3165,13 @@ const WhiteboardPage: React.FC = () => {
       // Set the current path for saving (remove the filename from the path)
       const pathParts = filePath.split('/');
       pathParts.pop(); // Remove the filename
-      const directoryPath = pathParts.join('/');
+      let directoryPath = pathParts.join('/');
+      
+      // Ensure the path starts with 'git-intern/' for proper saving
+      if (!directoryPath.startsWith('git-intern/')) {
+        directoryPath = `git-intern/${directoryPath}`;
+      }
+      
       setCurrentPath(directoryPath);
       
       console.log('Loaded file path:', filePath);
@@ -3035,6 +3217,18 @@ const WhiteboardPage: React.FC = () => {
 
   const handleLoadWhiteboard = async (filePath: string) => {
     try {
+      // Set the current path for saving (remove the filename from the path)
+      const pathParts = filePath.split('/');
+      pathParts.pop(); // Remove the filename
+      let directoryPath = pathParts.join('/');
+      
+      // Ensure the path starts with 'git-intern/' for proper saving
+      if (!directoryPath.startsWith('git-intern/')) {
+        directoryPath = `git-intern/${directoryPath}`;
+      }
+      
+      setCurrentPath(directoryPath);
+      
       const response = await fetch(`/api/file-system-paths/load-file?path=${encodeURIComponent(filePath)}`);
       
       if (response.ok) {
@@ -3352,38 +3546,40 @@ const WhiteboardPage: React.FC = () => {
                 </IconButton>
               </span>
             </Tooltip>
+            {/* Änderungen sichern Button - nur bei bestehenden Dateien anzeigen */}
+            {currentPath && (
+              <Tooltip title="Änderungen sichern (Strg+S)">
+                <span>
+                  <IconButton 
+                    onClick={handleSaveChanges} 
+                    size="small"
+                    sx={{
+                      color: '#2196f3',
+                      bgcolor: 'rgba(33,150,243,0.1)',
+                      border: '1px solid rgba(33,150,243,0.3)',
+                      backdropFilter: 'blur(10px)',
+                      width: 24,
+                      height: 24,
+                      minWidth: 24,
+                      minHeight: 24,
+                      '& .MuiSvgIcon-root': {
+                        width: '100%',
+                        height: '100%',
+                        fontSize: '0.9rem'
+                      },
+                      '&:hover': { 
+                        bgcolor: 'rgba(33,150,243,0.2)', 
+                        transform: 'scale(1.05)',
+                        boxShadow: '0 4px 12px rgba(33,150,243,0.3)'
+                      }
+                    }}
+                  >
+                    <SaveIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
 
-            {/* User Role Switcher (for testing) */}
-            <Tooltip title={`Aktuelle Rolle: ${userRole === 'teacher' ? 'Lehrer' : 'Schüler'} - Klicken zum Wechseln`}>
-              <span>
-                <IconButton 
-                  onClick={() => setUserRole(userRole === 'teacher' ? 'student' : 'teacher')} 
-                  size="small"
-                  sx={{
-                    color: userRole === 'teacher' ? '#ff9800' : '#2196f3',
-                    bgcolor: userRole === 'teacher' ? 'rgba(255,152,0,0.1)' : 'rgba(33,150,243,0.1)',
-                    border: userRole === 'teacher' ? '1px solid rgba(255,152,0,0.3)' : '1px solid rgba(33,150,243,0.3)',
-                    backdropFilter: 'blur(10px)',
-                    width: 24,
-                    height: 24,
-                    minWidth: 24,
-                    minHeight: 24,
-                    '& .MuiSvgIcon-root': {
-                      width: '100%',
-                      height: '100%',
-                      fontSize: '0.9rem'
-                    },
-                    '&:hover': { 
-                      bgcolor: userRole === 'teacher' ? 'rgba(255,152,0,0.2)' : 'rgba(33,150,243,0.2)', 
-                      transform: 'scale(1.05)',
-                      boxShadow: userRole === 'teacher' ? '0 4px 12px rgba(255,152,0,0.3)' : '0 4px 12px rgba(33,150,243,0.3)'
-                    }
-                  }}
-                >
-                  {userRole === 'teacher' ? '👨‍🏫' : '👨‍🎓'}
-                </IconButton>
-              </span>
-            </Tooltip>
           </Box>
 
           <Box sx={{ flexGrow: 1 }} />
@@ -3842,7 +4038,12 @@ const WhiteboardPage: React.FC = () => {
 
       {/* Text Input Dialog */}
       {showTextInput && (
-        <Dialog open={true} onClose={() => setShowTextInput(false)} maxWidth="sm" fullWidth>
+        <Dialog 
+          open={true} 
+          onClose={() => setShowTextInput(false)} 
+          maxWidth="sm" 
+          fullWidth
+        >
           <DialogTitle>Text eingeben</DialogTitle>
           <DialogContent>
             <TextField
@@ -3854,6 +4055,39 @@ const WhiteboardPage: React.FC = () => {
               autoFocus
               sx={{ mt: 1 }}
               placeholder="Ihren Text hier eingeben..."
+              onKeyDown={(e) => {
+                // Enter zum Einfügen, Escape zum Abbrechen
+                if (e.key === 'Enter' && e.ctrlKey) {
+                  e.preventDefault();
+                  // Direkte Implementierung statt handleTextSubmit()
+                  if (textInput.trim()) {
+                    const newObj: DrawObject = {
+                      id: Date.now().toString(),
+                      tool: 'text',
+                      strokeColor,
+                      fillColor,
+                      lineWidth,
+                      opacity,
+                      lineStyle,
+                      fontSize,
+                      fontFamily,
+                      fontWeight,
+                      fontStyle,
+                      textDecoration,
+                      text: textInput,
+                      x: textPosition.x,
+                      y: textPosition.y
+                    };
+                    setObjects([...objects, newObj]);
+                    setTextInput('');
+                    setShowTextInput(false);
+                    setRedoStack([]);
+                  }
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setShowTextInput(false);
+                }
+              }}
             />
           </DialogContent>
           <DialogActions>
@@ -3864,7 +4098,12 @@ const WhiteboardPage: React.FC = () => {
       )}
 
       {/* Save Dialog */}
-      <Dialog open={showSaveDialog} onClose={() => setShowSaveDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={showSaveDialog} 
+        onClose={() => setShowSaveDialog(false)} 
+        maxWidth="sm" 
+        fullWidth
+      >
         <DialogTitle>Whiteboard speichern</DialogTitle>
         <DialogContent>
           <TextField
@@ -3874,6 +4113,22 @@ const WhiteboardPage: React.FC = () => {
             fullWidth
             sx={{ mb: 2, mt: 1 }}
             helperText="Wird automatisch mit 'W_' beginnen"
+            autoFocus
+            onKeyDown={(e) => {
+              // Enter zum Speichern, Escape zum Abbrechen
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                // Öffne das normale Speicher-Dialog statt direkte Speicherung
+                // Das ist sicherer, da handleSaveWhiteboard sehr komplex ist
+                const saveButton = document.querySelector('button[type="button"]:last-child') as HTMLButtonElement;
+                if (saveButton) {
+                  saveButton.click();
+                }
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setShowSaveDialog(false);
+              }
+            }}
           />
 
           {/* Format Selection */}
@@ -3928,41 +4183,38 @@ const WhiteboardPage: React.FC = () => {
           <Paper variant="outlined" sx={{ maxHeight: 300, overflow: 'auto' }}>
             <List dense>
               {directoryContents.map(item => {
-                // Calculate indentation based on path depth
-                const depth = item.name.split('/').length - 1;
-                const displayName = item.name.split('/').pop() || item.name;
+                const depth = item.depth || 0;
+                const displayName = item.name;
                 const isFile = item.type === 'file';
                 const isDirectory = item.type === 'directory';
                 
                 return (
                   <ListItem key={item.path} disablePadding>
                     <ListItemButton 
-                      onClick={() => isDirectory ? setCurrentPath(`git-intern/Mathe/Klasse 7/${item.name}`) : null}
+                      onClick={() => isDirectory ? setCurrentPath(item.path) : null}
                       disabled={isFile}
                       sx={{ 
-                        pl: 2 + (depth * 2), // Indent based on depth
+                        pl: 1 + (depth * 1), // Very compact indentation
                         '&:hover': { bgcolor: isFile ? 'transparent' : 'action.hover' },
-                        opacity: isFile ? 0.7 : 1
+                        opacity: isFile ? 0.6 : 1,
+                        minHeight: 24, // Very compact height
+                        py: 0.25
                       }}
                     >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
+                      <ListItemIcon sx={{ minWidth: 20, mr: 0.5 }}>
                         {isDirectory ? (
-                          <FolderIcon fontSize="small" />
+                          <FolderIcon sx={{ fontSize: 14, color: '#ff9800' }} />
                         ) : (
-                          <DescriptionIcon fontSize="small" />
+                          <DescriptionIcon sx={{ fontSize: 12, color: '#666' }} />
                         )}
                       </ListItemIcon>
                       <ListItemText 
                         primary={displayName}
-                        secondary={depth > 0 ? item.name : undefined}
                         primaryTypographyProps={{ 
-                          fontSize: '0.9rem',
-                          fontWeight: depth === 0 ? 'bold' : 'normal',
-                          color: isFile ? 'text.secondary' : 'text.primary'
-                        }}
-                        secondaryTypographyProps={{ 
                           fontSize: '0.75rem',
-                          color: 'text.secondary'
+                          fontWeight: isDirectory ? 500 : 400,
+                          color: isFile ? 'text.secondary' : 'text.primary',
+                          lineHeight: 1.2
                         }}
                       />
                       {isFile && (
@@ -3970,7 +4222,7 @@ const WhiteboardPage: React.FC = () => {
                           label={item.extension || 'Datei'} 
                           size="small" 
                           variant="outlined"
-                          sx={{ ml: 1, fontSize: '0.7rem' }}
+                          sx={{ ml: 0.5, fontSize: '0.65rem', height: 16 }}
                         />
                       )}
                     </ListItemButton>

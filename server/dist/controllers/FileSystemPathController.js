@@ -861,8 +861,9 @@ class FileSystemPathController {
             let fullTargetPath;
             if (targetPath.startsWith('git-intern/')) {
                 // Handle git-intern paths
-                const relativePath = targetPath.replace('git-intern/', '');
-                const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                const relativePath = decodeURIComponent(targetPath.replace('git-intern/', ''));
+                // Use absolute path to project root for development
+                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
                 fullTargetPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
             }
             else {
@@ -905,8 +906,9 @@ class FileSystemPathController {
             let fullFilePath;
             if (filePath.startsWith('git-intern/')) {
                 // Handle git-intern paths
-                const relativePath = filePath.replace('git-intern/', '');
-                const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                const relativePath = decodeURIComponent(filePath.replace('git-intern/', ''));
+                // Use absolute path to project root for development
+                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
                 fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
             }
             else {

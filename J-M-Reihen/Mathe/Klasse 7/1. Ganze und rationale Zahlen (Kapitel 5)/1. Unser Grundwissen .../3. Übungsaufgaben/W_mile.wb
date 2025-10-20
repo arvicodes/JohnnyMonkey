@@ -1,0 +1,706 @@
+{
+  "objects": [
+    {
+      "id": "1760936122507",
+      "tool": "icon",
+      "strokeColor": "#000000",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "x": 594.8350694328547,
+      "y": 236.81944274902344,
+      "width": 32,
+      "height": 32,
+      "iconType": "💟",
+      "iconSize": 32
+    },
+    {
+      "id": "1760936126863",
+      "tool": "icon",
+      "strokeColor": "#000000",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "x": 426.83506943285465,
+      "y": 161.81944274902344,
+      "width": 96,
+      "height": 96,
+      "iconType": "💔",
+      "iconSize": 96
+    },
+    {
+      "id": "1760936159683",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 1233.8350694328547,
+          "y": 435.81944274902344
+        }
+      ],
+      "x": 1233.8350694328547,
+      "y": 435.81944274902344
+    },
+    {
+      "id": "1760936160264",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "Bildschirmfoto 2025-10-19 um 09.01.53",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936422718",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 960.1770649733746,
+          "y": 251.81944274902344
+        },
+        {
+          "x": 960.1770649733746,
+          "y": -472367494.8630359
+        },
+        {
+          "x": 960.1774311645476,
+          "y": -3542757848.299147
+        },
+        {
+          "x": 960.1780414831688,
+          "y": -6376964328.394019
+        },
+        {
+          "x": 960.1792010885493,
+          "y": -7557883695.100216
+        },
+        {
+          "x": 960.1799334708949,
+          "y": -7557883695.100216
+        },
+        {
+          "x": 960.1802081142745,
+          "y": -6849332075.076497
+        },
+        {
+          "x": 960.1805437895162,
+          "y": -5196044961.687822
+        },
+        {
+          "x": 960.1811235922064,
+          "y": -2125654608.2517114
+        },
+        {
+          "x": 960.1812761718618,
+          "y": -944735241.5455146
+        },
+        {
+          "x": 960.181337203724,
+          "y": -472367494.8630359
+        }
+      ],
+      "x": 886.8350694328547,
+      "y": 251.81944274902344,
+      "width": 73,
+      "height": 150
+    },
+    {
+      "id": "1760936424075",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 981.8350694328547,
+          "y": 321.81944274902344
+        },
+        {
+          "x": 981.8350694328547,
+          "y": 322.81944274902344
+        },
+        {
+          "x": 975.8350694328547,
+          "y": 326.81944274902344
+        },
+        {
+          "x": 955.8350694328547,
+          "y": 344.81944274902344
+        },
+        {
+          "x": 944.8350694328547,
+          "y": 352.81944274902344
+        },
+        {
+          "x": 917.8350694328547,
+          "y": 373.81944274902344
+        },
+        {
+          "x": 884.8350694328547,
+          "y": 396.81944274902344
+        },
+        {
+          "x": 846.8350694328547,
+          "y": 421.81944274902344
+        },
+        {
+          "x": 810.8350694328547,
+          "y": 436.81944274902344
+        },
+        {
+          "x": 779.8350694328547,
+          "y": 441.81944274902344
+        },
+        {
+          "x": 751.8350694328547,
+          "y": 441.81944274902344
+        },
+        {
+          "x": 707.8350694328547,
+          "y": 407.81944274902344
+        },
+        {
+          "x": 689.8350694328547,
+          "y": 383.81944274902344
+        },
+        {
+          "x": 673.8350694328547,
+          "y": 358.81944274902344
+        },
+        {
+          "x": 659.8350694328547,
+          "y": 329.81944274902344
+        },
+        {
+          "x": 655.8350694328547,
+          "y": 312.81944274902344
+        },
+        {
+          "x": 655.8350694328547,
+          "y": 296.81944274902344
+        },
+        {
+          "x": 655.8350694328547,
+          "y": 282.81944274902344
+        },
+        {
+          "x": 655.8350694328547,
+          "y": 269.81944274902344
+        },
+        {
+          "x": 656.8350694328547,
+          "y": 260.81944274902344
+        }
+      ],
+      "x": 981.8350694328547,
+      "y": 321.81944274902344
+    },
+    {
+      "id": "1760936438583",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "text": "tttawegwgawebmwegawjegwgwge\n2ega\n",
+      "x": 767.8350694328547,
+      "y": 306.81944274902344
+    },
+    {
+      "id": "1760936455060",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 1093.8350694328547,
+          "y": 450.81944274902344
+        },
+        {
+          "x": 1140.8350694328547,
+          "y": 214.81944274902344
+        },
+        {
+          "x": 1129.8350694328547,
+          "y": 207.81944274902344
+        },
+        {
+          "x": 1106.8350694328547,
+          "y": 194.81944274902344
+        },
+        {
+          "x": 914.8350694328547,
+          "y": 160.81944274902344
+        },
+        {
+          "x": 810.8350694328547,
+          "y": 237.81944274902344
+        }
+      ],
+      "x": 1093.8350694328547,
+      "y": 450.81944274902344
+    },
+    {
+      "id": "1760936459040",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "wenn ein modal, z.B. Textfeldeinfabe oder speichern geöffnet ist, dann muss ich dort den Fokus haben und in die Input Felder schreiben können, die belegten tasten im Whiteboard sollen dann also auch funktionieren",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936459486",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 651.8350694328547,
+          "y": 515.8194427490234
+        }
+      ],
+      "x": 651.8350694328547,
+      "y": 515.8194427490234
+    },
+    {
+      "id": "1760936460691",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "wenn ein modal, z.B. Textfeldeinfabe oder speichern geöffnet ist, dann muss ich dort den Fokus haben und in die Input Felder schreiben können, die belegten tasten im Whiteboard sollen dann also auch funktionieren",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936462339",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 735.8350694328547,
+          "y": 398.81944274902344
+        }
+      ],
+      "x": 735.8350694328547,
+      "y": 398.81944274902344
+    },
+    {
+      "id": "1760936489642",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 620.8350694328547,
+          "y": 397.81944274902344
+        }
+      ],
+      "x": 620.8350694328547,
+      "y": 397.81944274902344
+    },
+    {
+      "id": "1760936652498",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 1081.8350694328547,
+          "y": 551.8194427490234
+        }
+      ],
+      "x": 1081.8350694328547,
+      "y": 551.8194427490234
+    },
+    {
+      "id": "1760936652756",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936653318",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936654244",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 955.8350694328547,
+          "y": 502.81944274902344
+        }
+      ],
+      "x": 955.8350694328547,
+      "y": 502.81944274902344
+    },
+    {
+      "id": "1760936654479",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936654818",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936655086",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936655368",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 100,
+      "y": 100,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936655602",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 398,
+      "y": 338,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936657307",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 1016.8350694328547,
+          "y": 464.81944274902344
+        }
+      ],
+      "x": 1016.8350694328547,
+      "y": 464.81944274902344
+    },
+    {
+      "id": "1760936658102",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 141,
+      "y": 172,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936659252",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 114,
+      "y": 226,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936660996",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 182.83506943285465,
+          "y": 211.81944274902344
+        }
+      ],
+      "x": 182.83506943285465,
+      "y": 211.81944274902344
+    },
+    {
+      "id": "1760936665542",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 602.8350694328547,
+          "y": 488.81944274902344
+        }
+      ],
+      "x": 602.8350694328547,
+      "y": 488.81944274902344
+    },
+    {
+      "id": "1760936669824",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 490.83506943285465,
+          "y": 446.81944274902344
+        }
+      ],
+      "x": 490.83506943285465,
+      "y": 446.81944274902344
+    },
+    {
+      "id": "1760936670170",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "- warum klappt strg+v nur einmal?",
+      "x": 218,
+      "y": 307,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760936672292",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 575.8350694328547,
+          "y": 496.81944274902344
+        }
+      ],
+      "x": 575.8350694328547,
+      "y": 496.81944274902344
+    },
+    {
+      "id": "1760937085929",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "button: aktuelle roll lehrer .... löschen, brauche ich nicht. \n\nbei einer neuen datei sollte ich ja nur den speichern, nicht den sichern dialog bekommen, bei einer bestehenden sollte beides gehen, sichtern klappt, speicher aber nicht, da steht keine ordner verfügbar.",
+      "x": 864.8350694328547,
+      "y": 518.8194427490234,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760937087356",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "button: aktuelle roll lehrer .... löschen, brauche ich nicht. \n\nbei einer neuen datei sollte ich ja nur den speichern, nicht den sichern dialog bekommen, bei einer bestehenden sollte beides gehen, sichtern klappt, speicher aber nicht, da steht keine ordner verfügbar.",
+      "x": 401.83506943285465,
+      "y": 478.81944274902344,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    },
+    {
+      "id": "1760937088421",
+      "tool": "text",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 0,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "text": "button: aktuelle roll lehrer .... löschen, brauche ich nicht. \n\nbei einer neuen datei sollte ich ja nur den speichern, nicht den sichern dialog bekommen, bei einer bestehenden sollte beides gehen, sichtern klappt, speicher aber nicht, da steht keine ordner verfügbar.",
+      "x": 249.83506943285465,
+      "y": 316.81944274902344,
+      "fontSize": 24,
+      "fontFamily": "Arial",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none"
+    }
+  ],
+  "metadata": {
+    "created": "2025-10-20T05:11:32.082Z",
+    "version": "1.0",
+    "userRole": "teacher",
+    "canvasSize": {
+      "width": 1443,
+      "height": 706
+    }
+  }
+}

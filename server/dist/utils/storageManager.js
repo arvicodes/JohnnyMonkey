@@ -54,7 +54,7 @@ class StorageManager {
         }
         else {
             // Development: Use absolute path from project root
-            const projectRoot = path_1.default.resolve(process.cwd(), '..');
+            const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
             jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
         }
         console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
@@ -180,14 +180,14 @@ class StorageManager {
                     }
                     else {
                         // Development: Use absolute path from project root
-                        const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
                         jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
                     }
                     fullPath = path_1.default.join(jmReihenPath, relativePath);
                 }
                 else {
                     // Development: Use absolute path from project root
-                    const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
                     fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
                 }
                 if (fs_1.default.existsSync(fullPath)) {
@@ -235,7 +235,7 @@ class StorageManager {
                     }
                     else {
                         // Development: Use absolute path from project root
-                        const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
                         jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
                     }
                     fullPath = path_1.default.join(jmReihenPath, relativePath);

@@ -63,7 +63,7 @@ export class StorageManager {
       }
     } else {
       // Development: Use absolute path from project root
-      const projectRoot = path.resolve(process.cwd(), '..');
+      const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
       jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
     }
     
@@ -208,13 +208,13 @@ export class StorageManager {
             }
           } else {
             // Development: Use absolute path from project root
-            const projectRoot = path.resolve(process.cwd(), '..');
+            const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
             jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
           }
           fullPath = path.join(jmReihenPath, relativePath);
         } else {
           // Development: Use absolute path from project root
-          const projectRoot = path.resolve(process.cwd(), '..');
+          const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
           fullPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
         }
         
@@ -265,7 +265,7 @@ export class StorageManager {
             }
           } else {
             // Development: Use absolute path from project root
-            const projectRoot = path.resolve(process.cwd(), '..');
+            const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
             jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
           }
           fullPath = path.join(jmReihenPath, relativePath);
