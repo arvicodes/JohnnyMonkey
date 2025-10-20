@@ -138,8 +138,7 @@ const WhiteboardPage: React.FC = () => {
   const [selectedIcon, setSelectedIcon] = useState<string>('😀');
   const [iconSize, setIconSize] = useState(32);
   const [userRole, setUserRole] = useState<'teacher' | 'student'>('teacher'); // TODO: Get from auth context
-  const [saveFormat, setSaveFormat] = useState<'editable' | 'pdf'>('editable');
-  const [showFormatSelector, setShowFormatSelector] = useState(false);
+  // Entfernt: saveFormat und showFormatSelector werden nicht mehr benötigt
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
@@ -155,6 +154,7 @@ const WhiteboardPage: React.FC = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStart, setConnectionStart] = useState<DrawObject | null>(null);
   const [lastMousePosition, setLastMousePosition] = useState({ x: 100, y: 100 });
+  const textInputRef = useRef<HTMLInputElement>(null);
 
   // Neue Funktion: Änderungen direkt sichern
   const handleSaveChanges = async () => {
@@ -215,7 +215,6 @@ const WhiteboardPage: React.FC = () => {
 
       if (response.ok) {
         console.log('Änderungen erfolgreich gesichert!');
-        alert('Änderungen erfolgreich gesichert!');
       } else {
         const error = await response.json();
         console.error('Fehler beim Sichern:', error.error);
@@ -318,12 +317,17 @@ const WhiteboardPage: React.FC = () => {
       switch (e.key.toLowerCase()) {
         case 't':
           e.preventDefault();
-          console.log('⌨️ Switching to text tool');
-          setTool('text');
-          // Focus canvas and clear selection
-          if (canvasRef.current) {
-            canvasRef.current.focus();
+          console.log('⌨️ Opening text input dialog');
+          // Setze Position in der Mitte des Canvas
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const rect = canvas.getBoundingClientRect();
+            setTextPosition({ 
+              x: rect.width / 2, 
+              y: rect.height / 2 
+            });
           }
+          setShowTextInput(true);
           setSelectedObjects([]);
           setShowObjectPanel(false);
           return;
@@ -427,13 +431,11 @@ const WhiteboardPage: React.FC = () => {
             break;
           case 's':
             e.preventDefault();
-            if (currentPath) {
-              // Bei bestehenden Dateien: direkt speichern
-              handleSaveChanges();
-            } else {
-              // Bei neuen Dateien: Speicher-Dialog öffnen
-              setShowSaveDialog(true);
+            if (!currentPath) {
+              // Nur bei neuen Dateien: Speicher-Dialog öffnen (genau wie das Speichern-Icon)
+              handleOpenSaveDialog();
             }
+            // Bei bestehenden Dateien: nichts tun (automatisches Speichern läuft bereits)
             break;
           case 'a':
             e.preventDefault();
@@ -521,6 +523,16 @@ const WhiteboardPage: React.FC = () => {
   useEffect(() => {
     redrawCanvas();
   }, [objects, selectedObjects, showGrid, zoom, panOffset]);
+
+  // Fokus auf Text-Input setzen, wenn Dialog geöffnet wird
+  useEffect(() => {
+    if (showTextInput && textInputRef.current) {
+      // Kleine Verzögerung, damit der Dialog vollständig gerendert ist
+      setTimeout(() => {
+        textInputRef.current?.focus();
+      }, 100);
+    }
+  }, [showTextInput]);
 
   // Automatisches Speichern beim Schließen des Tabs
   useEffect(() => {
@@ -3152,10 +3164,32 @@ const WhiteboardPage: React.FC = () => {
     }
   };
 
+  // Neue Funktion: Beide Formate automatisch speichern
+  const handleSaveBothFormats = async () => {
+    if (!filename.trim()) {
+      console.log('Filename is required');
+      alert('Bitte geben Sie einen Dateinamen ein');
+      return;
+    }
 
+    try {
+      // Speichere zuerst als .wb (bearbeitbar) - ohne Dialog zu schließen
+      await handleSaveWhiteboard('editable', false);
+      
+      // Dann als .pdf - ohne Dialog zu schließen
+      await handleSaveWhiteboard('pdf', false);
+      
+      // Dialog schließen
+      setShowSaveDialog(false);
+      
+      console.log('✅ Beide Formate erfolgreich gespeichert!');
+    } catch (error) {
+      console.error('❌ Fehler beim Speichern beider Formate:', error);
+      alert('Fehler beim Speichern. Bitte versuchen Sie es erneut.');
+    }
+  };
 
-
-  const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' | 'editable' = 'png') => {
+  const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' | 'editable' = 'png', closeDialog: boolean = true) => {
     if (!filename.trim()) {
       console.log('Filename is required');
       return;
@@ -3195,7 +3229,8 @@ const WhiteboardPage: React.FC = () => {
 
         if (response.ok) {
           console.log('Whiteboard als SVG gespeichert!');
-          window.close();
+          // Dialog schließen statt window.close()
+          if (closeDialog) setShowSaveDialog(false);
         } else {
           const error = await response.json();
           console.error('Fehler beim Speichern:', error.error);
@@ -3204,13 +3239,16 @@ const WhiteboardPage: React.FC = () => {
         console.error('Error saving SVG:', error);
       }
     } else if (format === 'pdf') {
-      // PDF Export (simplified - would need a proper PDF library)
+      // PDF Export - als PNG speichern, aber mit .pdf Endung
       canvas.toBlob(async (blob) => {
         if (blob) {
           const fullFilename = finalFilename.endsWith('.pdf') ? finalFilename : `${finalFilename}.pdf`;
           
+          // Erstelle einen neuen Blob mit korrektem MIME-Type für PDF
+          const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+          
           const formData = new FormData();
-          formData.append('file', blob, fullFilename);
+          formData.append('file', pdfBlob, fullFilename);
           formData.append('targetPath', savePath);
 
           try {
@@ -3221,7 +3259,8 @@ const WhiteboardPage: React.FC = () => {
 
             if (response.ok) {
               console.log('Whiteboard als PDF gespeichert!');
-              window.close();
+              // Dialog schließen statt window.close()
+              if (closeDialog) setShowSaveDialog(false);
             } else {
               const error = await response.json();
               console.error('Fehler beim Speichern:', error.error);
@@ -3230,7 +3269,7 @@ const WhiteboardPage: React.FC = () => {
             console.error('Error saving PDF:', error);
           }
         }
-      }, 'application/pdf');
+      }, 'image/png'); // Verwende PNG-Format für bessere Kompatibilität
     } else if (format === 'editable') {
       // Save as editable whiteboard format (JSON)
       const whiteboardData = {
@@ -3289,7 +3328,8 @@ const WhiteboardPage: React.FC = () => {
 
             if (response.ok) {
               console.log('Whiteboard erfolgreich gespeichert!');
-              window.close();
+              // Dialog schließen statt window.close()
+              if (closeDialog) setShowSaveDialog(false);
             } else {
               const error = await response.json();
               console.error('Fehler beim Speichern:', error.error);
@@ -4211,6 +4251,7 @@ const WhiteboardPage: React.FC = () => {
           <DialogTitle>Text eingeben</DialogTitle>
           <DialogContent>
             <TextField
+              ref={textInputRef}
               fullWidth
               multiline
               rows={4}
@@ -4221,7 +4262,7 @@ const WhiteboardPage: React.FC = () => {
               placeholder="Ihren Text hier eingeben..."
               onKeyDown={(e) => {
                 // Enter zum Einfügen, Escape zum Abbrechen
-                if (e.key === 'Enter' && e.ctrlKey) {
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   // Direkte Implementierung statt handleTextSubmit()
                   if (textInput.trim()) {
@@ -4295,50 +4336,6 @@ const WhiteboardPage: React.FC = () => {
             }}
           />
 
-          {/* Format Selection */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-              Speicherformat:
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {userRole === 'teacher' && (
-                <Button
-                  variant={saveFormat === 'editable' ? 'contained' : 'outlined'}
-                  onClick={() => setSaveFormat('editable')}
-                  size="small"
-                  sx={{
-                    flex: 1,
-                    minWidth: '120px',
-                    background: saveFormat === 'editable' ? 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)' : undefined
-                  }}
-                >
-                  📝 Bearbeitbar
-                </Button>
-              )}
-              <Button
-                variant={saveFormat === 'pdf' ? 'contained' : 'outlined'}
-                onClick={() => setSaveFormat('pdf')}
-                size="small"
-                sx={{
-                  flex: 1,
-                  minWidth: '120px',
-                  background: saveFormat === 'pdf' ? 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)' : undefined
-                }}
-              >
-                📄 PDF
-              </Button>
-            </Box>
-            {userRole === 'student' && (
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Als Schüler kannst du nur PDF-Dateien speichern
-              </Typography>
-            )}
-            {userRole === 'teacher' && (
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Als Lehrer kannst du bearbeitbare Dateien und PDFs speichern
-              </Typography>
-            )}
-          </Box>
 
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
             Verfügbare Ordner:
@@ -4413,31 +4410,9 @@ const WhiteboardPage: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setShowSaveDialog(false)}>Abbrechen</Button>
           
-          {/* Additional format options for teachers */}
-          {userRole === 'teacher' && (
-            <>
+          {/* Main save button - saves both formats automatically */}
           <Button 
-            onClick={() => handleSaveWhiteboard('png')} 
-            variant="outlined"
-                size="small"
-                disabled={!filename.trim()}
-          >
-            PNG
-          </Button>
-          <Button 
-            onClick={() => handleSaveWhiteboard('svg')} 
-            variant="outlined"
-                size="small"
-                disabled={!filename.trim()}
-          >
-            SVG
-          </Button>
-            </>
-          )}
-          
-          {/* Main save button based on selected format */}
-          <Button 
-            onClick={() => handleSaveWhiteboard(saveFormat === 'editable' ? 'editable' : 'pdf')} 
+            onClick={() => handleSaveBothFormats()} 
             variant="contained" 
             sx={{
               background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
@@ -4447,7 +4422,7 @@ const WhiteboardPage: React.FC = () => {
             }}
             disabled={!filename.trim()}
           >
-            {saveFormat === 'editable' ? '📝 Als bearbeitbar speichern' : '📄 Als PDF speichern'}
+            💾 Speichern (beide Formate)
           </Button>
         </DialogActions>
       </Dialog>

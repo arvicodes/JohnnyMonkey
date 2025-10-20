@@ -51,6 +51,11 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
   
   // Monkey expressions
   const [monkeyExpression, setMonkeyExpression] = useState('🐒');
+  
+  // Debug: Log monkey expression changes
+  useEffect(() => {
+    console.log('🐒 Monkey expression changed to:', monkeyExpression);
+  }, [monkeyExpression]);
   const [messageVariations, setMessageVariations] = useState(0);
   const [showFact, setShowFact] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
@@ -451,9 +456,17 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
 
   // Handle click interaction
   const handleClick = (e: React.MouseEvent) => {
-    // Only trigger click if it wasn't a drag
-    const timeSinceDrag = Date.now() - lastDragTime;
-    if (timeSinceDrag < 200) return; // Ignore clicks within 200ms of drag
+    console.log('🐒 Johnny clicked!', { 
+      timeSinceDrag: Date.now() - lastDragTime,
+      isDragging,
+      lastDragTime 
+    });
+    
+    // Simplified: Only ignore if currently dragging, not based on time
+    if (isDragging) {
+      console.log('🐒 Click ignored - currently dragging');
+      return;
+    }
     
     e.preventDefault();
     e.stopPropagation();
@@ -482,7 +495,18 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     
     // Zufälliges Icon auswählen und setzen
     const randomIcon = clickIcons[Math.floor(Math.random() * clickIcons.length)];
-    setMonkeyExpression(randomIcon);
+    console.log('🐒 Setting random icon:', randomIcon);
+    console.log('🐒 Current monkeyExpression before update:', monkeyExpression);
+    
+    // Test: Setze erstmal ein festes Icon um zu testen
+    setMonkeyExpression('🎉');
+    console.log('🐒 Set fixed test icon: 🎉');
+    
+    // Dann nach kurzer Zeit das zufällige Icon
+    setTimeout(() => {
+      console.log('🐒 Now setting random icon:', randomIcon);
+      setMonkeyExpression(randomIcon);
+    }, 200);
     
     // Nachrichten temporär komplett deaktiviert um das Icon zu testen
     // 30% chance to show a fun fact, 70% chance for motivational message
@@ -499,6 +523,7 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     
     // Resume moving after celebration
     setTimeout(() => {
+      console.log('🐒 Resuming movement and resetting to monkey');
       setIsMoving(true);
       setAnimationState('walking');
       setMonkeyExpression('🐒');
@@ -699,7 +724,7 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     e.preventDefault();
     setIsDragging(true);
     setIsMoving(false);
-    setLastDragTime(Date.now());
+    // Don't set lastDragTime immediately - only if we actually start dragging
     setMonkeyExpression('😮');
     
     const rect = e.currentTarget.getBoundingClientRect();
@@ -717,6 +742,11 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging) return;
+    
+    // Only set lastDragTime when we actually start moving (dragging)
+    if (lastDragTime === 0) {
+      setLastDragTime(Date.now());
+    }
     
     const newX = e.clientX - dragOffset.x;
     const newY = e.clientY - dragOffset.y;

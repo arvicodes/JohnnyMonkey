@@ -1684,6 +1684,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         if (response.ok) {
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
+          // Öffne PDF im neuen Tab (ohne Download)
           window.open(url, '_blank');
           setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
@@ -1847,6 +1848,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     
+    // Filtere PDF-Dateien aus, die zu .wb Dateien gehören
+    const filteredItems = items.filter((item: any) => {
+      if (item.type === 'file' && item.name.endsWith('.pdf')) {
+        // Prüfe ob es eine entsprechende .wb Datei gibt (irgendwo in der Liste)
+        const wbFileName = item.name.replace('.pdf', '.wb');
+        const hasCorrespondingWb = items.some((otherItem: any) => 
+          otherItem.type === 'file' && 
+          otherItem.name === wbFileName
+        );
+        // Verstecke PDF wenn es eine entsprechende .wb Datei gibt
+        return !hasCorrespondingWb;
+      }
+      return true;
+    });
+    
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
       
@@ -1898,7 +1914,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         fontWeight = 400;
 
         
-        // Prüfe ob es sich um Quiz-, Cards- oder H__ Dateien handelt
+        // Prüfe ob es sich um Quiz-, Cards-, H__ oder W_ Dateien handelt
         if (item.name.startsWith('Quiz')) {
           showCreateIcon = true;
           createIcon = '🎯';
@@ -1914,6 +1930,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           createIcon = '📥';
           createTooltip = 'Abgaben ansehen';
 
+        } else if (item.name.startsWith('W_') && item.name.endsWith('.wb')) {
+          // Für .wb Dateien: Zeige PDF-Icon daneben
+          showCreateIcon = true;
+          createIcon = '📄';
+          createTooltip = 'PDF-Version öffnen';
         }
       }
       
@@ -2041,6 +2062,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 } else if (item.name.startsWith('H_')) {
                   // Öffne Submissions-Grid in neuem Tab - übergebe groupId
                   window.open(`/submissions-grid?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name)}&teacherId=${userId}&groupId=${groupId}`, '_blank');
+                } else if (item.name.startsWith('W_') && item.name.endsWith('.wb')) {
+                  // Öffne PDF-Version der Whiteboard-Datei
+                  const pdfPath = item.path.replace('.wb', '.pdf');
+                  handleFileClick({ ...item, path: pdfPath, name: item.name.replace('.wb', '.pdf') });
                 }
               }}
               >
@@ -2187,7 +2212,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Typography>
           ) : (
             <Box>
-              {items.map((item, index) => renderItemRecursively(item, 0))}
+              {filteredItems.map((item, index) => renderItemRecursively(item, 0))}
             </Box>
           )}
         </Box>

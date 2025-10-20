@@ -680,8 +680,11 @@ export class FileSystemPathController {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
       } else {
+        // Für PDF-Dateien: Im Browser öffnen, nicht herunterladen
+        const fileName = path.basename(filePath as string);
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath as string)}"`);
+        res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+        res.setHeader('Cache-Control', 'no-cache');
         res.send(fileContent);
       }
       
