@@ -155,7 +155,7 @@ interface FlutterElfProps {
 
 const FlutterElf: React.FC<FlutterElfProps> = ({ isVisible = true }) => {
   const controls = useAnimation();
-  const [speed] = useState(() => rand(0.5, 2.5)); // Zufällige Geschwindigkeit
+  const [speed] = useState(() => rand(0.1, 0.8)); // Viel langsamere Geschwindigkeit
   const [size] = useState(() => rand(80, 150)); // Zufällige Größe
   const [hue] = useState(() => rand(0, 360)); // Zufällige Farbe
   // keyframes werden jetzt dynamisch in animateWithNewPath generiert
@@ -168,8 +168,8 @@ const FlutterElf: React.FC<FlutterElfProps> = ({ isVisible = true }) => {
 
   const animateWithNewPath = useCallback(() => {
     const newKeyframes = makeKeyframes();
-    const baseDuration = 15 / speed;
-    const duration = baseDuration + rand(-5, 8); // ±5-8 Sekunden Variation
+    const baseDuration = 45 / speed; // 3x länger als vorher
+    const duration = baseDuration + rand(-10, 20); // ±10-20 Sekunden Variation
     
     // Zufällige Easing-Funktionen
     const easingOptions = ["easeInOut", "easeIn", "easeOut", "linear"] as const;
@@ -191,10 +191,10 @@ const FlutterElf: React.FC<FlutterElfProps> = ({ isVisible = true }) => {
   useEffect(() => {
     animateWithNewPath();
     
-    // Generiere alle 20-40 Sekunden einen neuen zufälligen Pfad
+    // Generiere alle 60-120 Sekunden einen neuen zufälligen Pfad (viel seltener)
     const interval = setInterval(() => {
       animateWithNewPath();
-    }, rand(20000, 40000));
+    }, rand(60000, 120000));
     
     return () => clearInterval(interval);
   }, [animateWithNewPath]);
