@@ -145,8 +145,19 @@ const FlutterElf: React.FC = () => {
   const sparkles = useMemo(() => Array.from({ length: 12 }, (_, i) => i), []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none">
-      <motion.div ref={fairyRef} className="absolute z-40" animate={controls} initial={false} style={{ x: 0, y: 0 }}>
+    <div 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        pointerEvents: 'none',
+        zIndex: 1000,
+        overflow: 'hidden'
+      }}
+    >
+      <motion.div ref={fairyRef} animate={controls} initial={false} style={{ x: 0, y: 0 }}>
         <div className="relative" style={{ width: size, height: size }}>
           <div className="absolute inset-0 -z-10" style={{ color: `hsl(${hue} 90% 60%)` }}>
             {sparkles.map(i => (
