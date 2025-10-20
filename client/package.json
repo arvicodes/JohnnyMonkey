@@ -56,6 +56,7 @@
     "docx-parser": "^0.2.1",
     "embla-carousel-react": "^8.6.0",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.24",
     "input-otp": "^1.4.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.525.0",

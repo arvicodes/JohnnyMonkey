@@ -18,6 +18,7 @@ import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
 
 import { Snackbar, Alert } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
+import FlutterElf from './components/FlutterElf';
 
 interface User {
   id: string;
@@ -159,6 +160,9 @@ function AppContent() {
         userRole={user?.role as 'TEACHER' | 'STUDENT' || 'STUDENT'}
         currentPage="dashboard"
       />
+      
+      {/* FlutterElf - Animierte Begleiterfigur auf allen Seiten */}
+      <FlutterElf />
       
       <Snackbar
         open={showSuccessMessage}
