@@ -7,6 +7,7 @@ interface JohnnyCompanionSimpleProps {
   currentPage?: string;
   showMotivation?: boolean;
   onInteraction?: () => void;
+  isVisible?: boolean;
 }
 
 interface MotivationalMessage {
@@ -21,9 +22,10 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
   userRole = 'STUDENT',
   currentPage = 'dashboard',
   showMotivation = false,
-  onInteraction
+  onInteraction,
+  isVisible = true
 }) => {
-  const [isVisible, setIsVisible] = useState(true);
+  // Removed internalVisible state as we now use the isVisible prop
   const [currentMessage, setCurrentMessage] = useState<MotivationalMessage | null>(null);
   const [isIdle, setIsIdle] = useState(true);
   const [animationState, setAnimationState] = useState<'idle' | 'happy' | 'celebrating' | 'walking' | 'jumping'>('walking');

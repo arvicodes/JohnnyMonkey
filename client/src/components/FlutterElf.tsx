@@ -114,7 +114,11 @@ const FairySVG: React.FC<{ size: number; hue: number; beat: number }> = ({ size,
   );
 };
 
-const FlutterElf: React.FC = () => {
+interface FlutterElfProps {
+  isVisible?: boolean;
+}
+
+const FlutterElf: React.FC<FlutterElfProps> = ({ isVisible = true }) => {
   const controls = useAnimation();
   const [speed] = useState(1);
   const [size] = useState(120);
@@ -143,6 +147,8 @@ const FlutterElf: React.FC = () => {
   }, [controls, keyframes, speed]);
 
   const sparkles = useMemo(() => Array.from({ length: 12 }, (_, i) => i), []);
+
+  if (!isVisible) return null;
 
   return (
     <div 

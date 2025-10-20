@@ -31,6 +31,8 @@ function AppContent() {
   const [message, setMessage] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [johnnyVisible, setJohnnyVisible] = useState(true);
+  const [elfVisible, setElfVisible] = useState(true);
   const navigate = useNavigate();
   const loginInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,6 +90,44 @@ function AppContent() {
       e.preventDefault();
     }
   };
+
+  // Global keyboard shortcuts for companions
+  useEffect(() => {
+    let keySequence = '';
+    let sequenceTimeout: NodeJS.Timeout;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts when not typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      keySequence += e.key.toLowerCase();
+      
+      // Clear sequence after 1 second
+      clearTimeout(sequenceTimeout);
+      sequenceTimeout = setTimeout(() => {
+        keySequence = '';
+      }, 1000);
+
+      // Check for shortcuts
+      if (keySequence === 'jj') {
+        setJohnnyVisible(prev => !prev);
+        keySequence = '';
+        e.preventDefault();
+      } else if (keySequence === 'ff') {
+        setElfVisible(prev => !prev);
+        keySequence = '';
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+      clearTimeout(sequenceTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -159,10 +199,11 @@ function AppContent() {
         userId={user?.id || 'guest-user'}
         userRole={user?.role as 'TEACHER' | 'STUDENT' || 'STUDENT'}
         currentPage="dashboard"
+        isVisible={johnnyVisible}
       />
       
       {/* FlutterElf - Animierte Begleiterfigur auf allen Seiten */}
-      <FlutterElf />
+      <FlutterElf isVisible={elfVisible} />
       
       <Snackbar
         open={showSuccessMessage}
