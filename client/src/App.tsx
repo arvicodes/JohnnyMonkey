@@ -12,7 +12,6 @@ import QuizParticipationPage from './pages/QuizParticipationPage';
 import FlashcardImportExportPage from './pages/FlashcardImportExportPage';
 import SubmissionsGridPage from './pages/SubmissionsGridPage';
 import WhiteboardPage from './pages/WhiteboardPage';
-import TafelbildPage from './pages/TafelbildPage';
 import JohnnyDemoPage from './pages/JohnnyDemoPage';
 import FlashcardStudyPage from './pages/FlashcardStudyPage';
 import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
@@ -148,7 +147,6 @@ function AppContent() {
         <Route path="/flashcard-import-export" element={<FlashcardImportExportPage />} />
         <Route path="/submissions-grid" element={<SubmissionsGridPage />} />
         <Route path="/whiteboard" element={<WhiteboardPage />} />
-        <Route path="/tafelbild" element={<TafelbildPage />} />
         <Route path="/johnny-demo" element={<JohnnyDemoPage />} />
         <Route path="/flashcard-study" element={<FlashcardStudyPage />} />
         <Route path="/johnny" element={<JohnnyNavigationPage />} />
