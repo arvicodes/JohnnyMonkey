@@ -1,0 +1,44 @@
+{
+  "objects": [
+    {
+      "id": "1760856109129",
+      "tool": "pen",
+      "strokeColor": "#000000",
+      "fillColor": "transparent",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "points": [
+        {
+          "x": 1011.8350694328547,
+          "y": 207.81944274902344
+        }
+      ],
+      "x": 1011.8350694328547,
+      "y": 207.81944274902344
+    },
+    {
+      "id": "1760856112776",
+      "tool": "icon",
+      "strokeColor": "#000000",
+      "lineWidth": 2,
+      "opacity": 1,
+      "lineStyle": "solid",
+      "x": 920.8350694328547,
+      "y": 212.81944274902344,
+      "width": 32,
+      "height": 32,
+      "iconType": "😆",
+      "iconSize": 32
+    }
+  ],
+  "metadata": {
+    "created": "2025-10-19T06:42:06.679Z",
+    "version": "1.0",
+    "userRole": "teacher",
+    "canvasSize": {
+      "width": 1443,
+      "height": 706
+    }
+  }
+}

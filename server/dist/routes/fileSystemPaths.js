@@ -22,6 +22,8 @@ router.post('/save', FileSystemPathController_1.FileSystemPathController.savePat
 router.get('/teacher/:teacherId', FileSystemPathController_1.FileSystemPathController.getPathsByTeacher);
 // Verzeichnisstruktur eines Pfades lesen
 router.get('/read', FileSystemPathController_1.FileSystemPathController.readDirectory);
+// Ordner in einem Pfad scannen (nur Verzeichnisse)
+router.get('/scan-directory', FileSystemPathController_1.FileSystemPathController.scanDirectory);
 // HTML-Datei lesen
 router.get('/read-html', FileSystemPathController_1.FileSystemPathController.readHtmlFile);
 // J-M-Reihen Pfad für aktuelle Umgebung abrufen
@@ -46,5 +48,7 @@ router.get('/download', FileSystemPathController_1.FileSystemPathController.down
 router.delete('/:id', FileSystemPathController_1.FileSystemPathController.deletePath);
 // Datei speichern (z.B. Whiteboard)
 router.post('/save-file', upload.single('file'), FileSystemPathController_1.FileSystemPathController.saveFile);
+// Whiteboard-Datei laden
+router.get('/load-whiteboard', FileSystemPathController_1.FileSystemPathController.loadWhiteboardFile);
 exports.default = router;
 //# sourceMappingURL=fileSystemPaths.js.map

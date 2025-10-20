@@ -51,5 +51,13 @@ export declare class FileSystemPathController {
      * Save a file (e.g., whiteboard) to a specific directory
      */
     static saveFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Load whiteboard file (.wb) as JSON
+     */
+    static loadWhiteboardFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Scan directory for subdirectories only (recursively)
+     */
+    static scanDirectory(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=FileSystemPathController.d.ts.map

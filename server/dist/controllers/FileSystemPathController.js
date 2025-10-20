@@ -891,6 +891,107 @@ class FileSystemPathController {
             res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
         }
     }
+    /**
+     * Load whiteboard file (.wb) as JSON
+     */
+    static async loadWhiteboardFile(req, res) {
+        try {
+            const { filePath } = req.query;
+            if (!filePath || typeof filePath !== 'string') {
+                return res.status(400).json({ error: 'Dateipfad ist erforderlich' });
+            }
+            console.log('Loading whiteboard file:', filePath);
+            // Determine the full path
+            let fullFilePath;
+            if (filePath.startsWith('git-intern/')) {
+                // Handle git-intern paths
+                const relativePath = filePath.replace('git-intern/', '');
+                const projectRoot = path_1.default.resolve(process.cwd(), '..');
+                fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+            }
+            else {
+                // Handle local paths
+                fullFilePath = path_1.default.resolve(filePath);
+            }
+            console.log('Full file path:', fullFilePath);
+            // Check if file exists
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei existiert nicht' });
+            }
+            // Read and parse the .wb file
+            const fileContent = fs_1.default.readFileSync(fullFilePath, 'utf8');
+            const whiteboardData = JSON.parse(fileContent);
+            console.log('Whiteboard file loaded successfully');
+            res.json(whiteboardData);
+        }
+        catch (error) {
+            console.error('Error loading whiteboard file:', error);
+            res.status(500).json({ error: 'Fehler beim Laden der Whiteboard-Datei' });
+        }
+    }
+    /**
+     * Scan directory for subdirectories only (recursively)
+     */
+    static async scanDirectory(req, res) {
+        try {
+            const { path: targetPath } = req.query;
+            if (!targetPath || typeof targetPath !== 'string') {
+                return res.status(400).json({ error: 'Pfad ist erforderlich' });
+            }
+            const fullPath = path_1.default.resolve(targetPath);
+            console.log('Scanning directory recursively:', fullPath);
+            // Check if path exists and is a directory
+            if (!fs_1.default.existsSync(fullPath)) {
+                return res.status(404).json({ error: 'Pfad existiert nicht' });
+            }
+            if (!fs_1.default.statSync(fullPath).isDirectory()) {
+                return res.status(400).json({ error: 'Pfad ist kein Verzeichnis' });
+            }
+            // Recursively find all directories and files
+            const allItems = [];
+            function scanRecursive(currentPath, relativePath = '') {
+                try {
+                    const items = fs_1.default.readdirSync(currentPath, { withFileTypes: true });
+                    items.forEach(item => {
+                        const itemPath = path_1.default.join(currentPath, item.name);
+                        const itemRelativePath = relativePath ? path_1.default.join(relativePath, item.name) : item.name;
+                        if (item.isDirectory()) {
+                            // Add this directory
+                            allItems.push({
+                                name: itemRelativePath,
+                                path: itemPath,
+                                type: 'directory'
+                            });
+                            // Recursively scan subdirectories
+                            scanRecursive(itemPath, itemRelativePath);
+                        }
+                        else if (item.isFile() && (item.name.endsWith('.wb') || item.name.endsWith('.pdf'))) {
+                            // Add whiteboard files
+                            allItems.push({
+                                name: itemRelativePath,
+                                path: itemPath,
+                                type: 'file',
+                                extension: path_1.default.extname(item.name)
+                            });
+                        }
+                    });
+                }
+                catch (error) {
+                    console.log(`Could not read directory ${currentPath}:`, error);
+                }
+            }
+            scanRecursive(fullPath);
+            console.log(`Found ${allItems.length} items recursively in ${fullPath}`);
+            res.json({
+                path: fullPath,
+                directories: allItems
+            });
+        }
+        catch (error) {
+            console.error('Error scanning directory:', error);
+            res.status(500).json({ error: 'Fehler beim Scannen des Verzeichnisses' });
+        }
+    }
 }
 exports.FileSystemPathController = FileSystemPathController;
 //# sourceMappingURL=FileSystemPathController.js.map
