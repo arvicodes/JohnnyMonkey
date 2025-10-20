@@ -522,6 +522,151 @@ const WhiteboardPage: React.FC = () => {
     redrawCanvas();
   }, [objects, selectedObjects, showGrid, zoom, panOffset]);
 
+  // Automatisches Speichern beim Schließen des Tabs
+  useEffect(() => {
+    let lastSaveTime = 0;
+    const SAVE_COOLDOWN = 5000; // 5 Sekunden Cooldown zwischen Speicherungen
+    let isSaving = false;
+
+    const autoSave = async () => {
+      const now = Date.now();
+      if (now - lastSaveTime < SAVE_COOLDOWN || isSaving) {
+        console.log('⏳ Speichern übersprungen (Cooldown oder bereits am Speichern)');
+        return;
+      }
+
+      if (currentPath && filename && objects.length > 0) {
+        console.log('🔄 Automatisches Speichern...');
+        isSaving = true;
+        lastSaveTime = now;
+        
+        try {
+          await handleSaveChanges();
+          console.log('✅ Automatisches Speichern erfolgreich!');
+        } catch (error) {
+          console.error('❌ Fehler beim automatischen Speichern:', error);
+        } finally {
+          isSaving = false;
+        }
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Warnung anzeigen und synchron speichern
+      if (currentPath && filename && objects.length > 0) {
+        console.log('🔄 Stille automatische Speicherung beim Schließen...');
+        
+        // KEINE Warnung anzeigen - stille Speicherung
+        // e.preventDefault(); // Entfernt - keine Warnung
+        // e.returnValue = ''; // Entfernt - keine Warnung
+        
+        // Synchrones Speichern für beforeunload
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
+        const fullFilename = finalFilename.endsWith('.wb') ? finalFilename : `${finalFilename}.wb`;
+        
+        // Erstelle Whiteboard-Daten mit Metadaten für sendBeacon
+        const whiteboardData = {
+          objects: objects,
+          metadata: {
+            created: new Date().toISOString(),
+            version: '1.0',
+            userRole: userRole,
+            canvasSize: {
+              width: canvas.width,
+              height: canvas.height
+            },
+            // Metadaten für sendBeacon einbetten
+            saveMetadata: {
+              filename: fullFilename,
+              targetPath: currentPath,
+              format: 'editable'
+            }
+          }
+        };
+        
+        const jsonData = JSON.stringify(whiteboardData, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        
+        const formData = new FormData();
+        formData.append('file', blob, fullFilename);
+        formData.append('targetPath', currentPath);
+        formData.append('format', 'editable');
+
+        // Verwende sendBeacon für zuverlässiges Speichern beim Schließen
+        if (navigator.sendBeacon) {
+          // sendBeacon kann nur Blob oder String senden, nicht FormData
+          const success = navigator.sendBeacon('/api/file-system-paths/save-file-beacon', jsonData);
+          if (success) {
+            console.log('✅ Stille automatische Speicherung erfolgreich!');
+          } else {
+            console.error('❌ Stille automatische Speicherung fehlgeschlagen');
+          }
+        } else {
+          // Fallback: Asynchroner fetch
+          fetch('/api/file-system-paths/save-file-beacon', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: jsonData,
+            keepalive: true // Wichtig für das Schließen des Tabs
+          }).then(response => {
+            if (response.ok) {
+              console.log('✅ Stille automatische Speicherung mit fetch erfolgreich!');
+            } else {
+              console.error('❌ Stille automatische Speicherung mit fetch fehlgeschlagen');
+            }
+          }).catch(error => {
+            console.error('❌ Fehler bei der stillen automatischen Speicherung:', error);
+          });
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      // Stille automatische Speicherung wenn Tab versteckt wird (z.B. Tab-Wechsel)
+      if (document.hidden) {
+        autoSave();
+      }
+    };
+
+    const handlePageHide = () => {
+      // Stille automatische Speicherung wenn Seite versteckt wird
+      autoSave();
+    };
+
+    const handleUnload = () => {
+      // Stille automatische Speicherung beim Entladen der Seite
+      autoSave();
+    };
+
+    // Event Listener hinzufügen
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unload', handleUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+
+    // Periodisches automatisches Speichern alle 30 Sekunden
+    const autoSaveInterval = setInterval(() => {
+      if (currentPath && filename && objects.length > 0) {
+        console.log('⏰ Periodisches automatisches Speichern...');
+        autoSave();
+      }
+    }, 30000); // 30 Sekunden
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      clearInterval(autoSaveInterval);
+    };
+  }, [currentPath, filename, objects, userRole, handleSaveChanges]);
+
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -3866,32 +4011,51 @@ const WhiteboardPage: React.FC = () => {
             </IconButton>
           </Tooltip>
 
-          <IconButton 
-            onClick={() => window.close()} 
-                  size="small"
-            sx={{
-              color: '#ff6b6b',
-              bgcolor: 'rgba(255,107,107,0.1)',
-              border: '1px solid rgba(255,107,107,0.3)',
-              backdropFilter: 'blur(10px)',
-              width: 24,
-              height: 24,
-              minWidth: 24,
-              minHeight: 24,
-              '& .MuiSvgIcon-root': {
-                width: '100%',
-                height: '100%',
-                fontSize: '1rem'
-              },
-              '&:hover': { 
-                bgcolor: 'rgba(255,107,107,0.2)', 
-                transform: 'scale(1.1)',
-                boxShadow: '0 4px 12px rgba(255,107,107,0.3)'
+          {/* Aktuelle Datei-Anzeige */}
+          <Tooltip 
+            title={currentPath ? currentPath.replace('git-intern/', '') : 'Neue Datei'}
+            placement="bottom"
+            arrow
+            componentsProps={{
+              tooltip: {
+                sx: {
+                  bgcolor: 'rgba(0,0,0,0.9)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 2,
+                  maxWidth: 300
+                }
               }
             }}
           >
-            <CloseIcon />
-          </IconButton>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              bgcolor: 'rgba(255,255,255,0.1)',
+              borderRadius: 1,
+              px: 1.5,
+              py: 0.5,
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              minWidth: 150,
+              maxWidth: 250,
+              cursor: 'help'
+            }}>
+              <FolderIcon sx={{ fontSize: '0.9rem', color: '#4caf50' }} />
+              <Typography variant="caption" sx={{ 
+                color: '#fff',
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                lineHeight: 1.2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {filename || 'Neue Datei'}
+              </Typography>
+            </Box>
+          </Tooltip>
               </Box>
 
       </Paper>

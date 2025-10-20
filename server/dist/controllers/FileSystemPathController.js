@@ -994,6 +994,74 @@ class FileSystemPathController {
             res.status(500).json({ error: 'Fehler beim Scannen des Verzeichnisses' });
         }
     }
+    /**
+     * Save file using sendBeacon (for automatic saving when closing tab)
+     */
+    static async saveFileBeacon(req, res) {
+        try {
+            console.log('=== SAVE FILE BEACON REQUEST ===');
+            // Get the raw body data
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            req.on('end', () => {
+                var _a;
+                try {
+                    // Parse the JSON data
+                    const whiteboardData = JSON.parse(body);
+                    // Extract metadata from the embedded saveMetadata
+                    const saveMetadata = (_a = whiteboardData.metadata) === null || _a === void 0 ? void 0 : _a.saveMetadata;
+                    if (!saveMetadata) {
+                        console.error('No saveMetadata found in request');
+                        return res.status(400).json({ error: 'Keine Speicher-Metadaten gefunden' });
+                    }
+                    const { filename, targetPath, format } = saveMetadata;
+                    console.log('Beacon save - File:', filename);
+                    console.log('Beacon save - Target path:', targetPath);
+                    console.log('Beacon save - Format:', format);
+                    // Determine the full path
+                    let fullTargetPath;
+                    if (targetPath.startsWith('git-intern/')) {
+                        // Handle git-intern paths
+                        const relativePath = decodeURIComponent(targetPath.replace('git-intern/', ''));
+                        // Use absolute path to project root for development
+                        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                        fullTargetPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                    }
+                    else {
+                        // Handle local paths
+                        fullTargetPath = path_1.default.resolve(targetPath);
+                    }
+                    console.log('Beacon save - Full target path:', fullTargetPath);
+                    // Ensure directory exists
+                    if (!fs_1.default.existsSync(fullTargetPath)) {
+                        console.log('Beacon save - Creating directory:', fullTargetPath);
+                        fs_1.default.mkdirSync(fullTargetPath, { recursive: true });
+                    }
+                    // Save file
+                    const finalFilePath = path_1.default.join(fullTargetPath, filename);
+                    console.log('Beacon save - Saving file to:', finalFilePath);
+                    // Write the JSON data to file
+                    fs_1.default.writeFileSync(finalFilePath, JSON.stringify(whiteboardData, null, 2));
+                    console.log('Beacon save - File saved successfully');
+                    res.json({
+                        success: true,
+                        path: finalFilePath,
+                        filename: filename
+                    });
+                }
+                catch (parseError) {
+                    console.error('Error parsing beacon request body:', parseError);
+                    res.status(400).json({ error: 'Fehler beim Parsen der Anfrage' });
+                }
+            });
+        }
+        catch (error) {
+            console.error('Error in saveFileBeacon:', error);
+            res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
+        }
+    }
 }
 exports.FileSystemPathController = FileSystemPathController;
 //# sourceMappingURL=FileSystemPathController.js.map

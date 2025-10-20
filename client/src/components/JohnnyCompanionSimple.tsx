@@ -137,7 +137,7 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
   // Show motivational message
   const showMessage = (message: MotivationalMessage) => {
     setCurrentMessage(message);
-    setAnimationState('happy');
+    setAnimationState('celebrating'); // Bleibt bei celebrating statt happy
     setIsIdle(false);
     
     if (messageTimeoutRef.current) {
@@ -442,7 +442,6 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     });
     
     setShowFact(true);
-    setMonkeyExpression('🧠');
     
     setTimeout(() => {
       setShowFact(false);
@@ -466,19 +465,37 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     // Stop moving and celebrate
     setIsMoving(false);
     setAnimationState('celebrating');
-    setMonkeyExpression('🎉');
     
+    // Einfache Lösung: Direkt ein zufälliges Icon setzen
+    const clickIcons = [
+      '🎉', '🎊', '✨', '🌟', '💫', '⭐', '🔥', '💥', '🎯', '🎪',
+      '🎨', '🎭', '🎸', '🎺', '🎻', '🥁', '🎤', '🎧', '🎵', '🎶',
+      '🎈', '🎁', '🎀', '🎂', '🍰', '🧁', '🍭', '🍬', '🍫', '🍪',
+      '🌈', '☀️', '🌙', '⚡', '🎮', '🕹️', '🎲', '🃏', '🎰', '🎳',
+      '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🏵️', '🎗️', '🎟️', '🎫',
+      '🎨', '🖼️', '🖌️', '🖍️', '✏️', '✒️', '🖊️', '🖋️', '📝', '📄',
+      '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🔩', '⚙️', '🗜️', '⚖️', '🔗',
+      '🧰', '🧲', '⚗️', '🧪', '🧫', '🧬', '🔬', '🔭', '📡', '💉',
+      '🚗', '🚘', '🚙', '🚚', '🚛', '🚜', '🏎️', '🏍️', '🛵', '🚲',
+      '🚁', '✈️', '🛩️', '🚀', '🛸', '🚉', '🚊', '🚝', '🚞', '🚋'
+    ];
+    
+    // Zufälliges Icon auswählen und setzen
+    const randomIcon = clickIcons[Math.floor(Math.random() * clickIcons.length)];
+    setMonkeyExpression(randomIcon);
+    
+    // Nachrichten temporär komplett deaktiviert um das Icon zu testen
     // 30% chance to show a fun fact, 70% chance for motivational message
-    const showFact = Math.random() < 0.3;
+    // const showFact = Math.random() < 0.3;
     
-    if (showFact) {
-      showRandomFact();
-    } else {
-      const messages = motivationalMessages[currentPage] || motivationalMessages.dashboard;
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-      setMessageVariations(prev => prev + 1);
-      showMessage(randomMessage);
-    }
+    // if (showFact) {
+    //   showRandomFact();
+    // } else {
+    //   const messages = motivationalMessages[currentPage] || motivationalMessages.dashboard;
+    //   const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    //   setMessageVariations(prev => prev + 1);
+    //   showMessage(randomMessage);
+    // }
     
     // Resume moving after celebration
     setTimeout(() => {
@@ -705,8 +722,8 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     const newY = e.clientY - dragOffset.y;
     
     // Keep Johnny within screen bounds
-    const boundedX = Math.max(0, Math.min(window.innerWidth - 80, newX));
-    const boundedY = Math.max(0, Math.min(window.innerHeight - 80, newY));
+    const boundedX = Math.max(0, Math.min(window.innerWidth - 60, newX));
+    const boundedY = Math.max(0, Math.min(window.innerHeight - 60, newY));
     
     setPosition({ x: boundedX, y: boundedY });
   };
@@ -762,8 +779,8 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
     const newY = touch.clientY - dragOffset.y;
     
     // Keep Johnny within screen bounds
-    const boundedX = Math.max(0, Math.min(window.innerWidth - 80, newX));
-    const boundedY = Math.max(0, Math.min(window.innerHeight - 80, newY));
+    const boundedX = Math.max(0, Math.min(window.innerWidth - 60, newX));
+    const boundedY = Math.max(0, Math.min(window.innerHeight - 60, newY));
     
     setPosition({ x: boundedX, y: boundedY });
   };
@@ -817,13 +834,13 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
         let newDirectionY = direction.y;
 
         // Bounce off screen edges
-        if (newX <= 0 || newX >= window.innerWidth - 80) {
+        if (newX <= 0 || newX >= window.innerWidth - 60) {
           newDirectionX = -newDirectionX;
-          newX = Math.max(0, Math.min(window.innerWidth - 80, newX));
+          newX = Math.max(0, Math.min(window.innerWidth - 60, newX));
         }
-        if (newY <= 0 || newY >= window.innerHeight - 80) {
+        if (newY <= 0 || newY >= window.innerHeight - 60) {
           newDirectionY = -newDirectionY;
-          newY = Math.max(0, Math.min(window.innerHeight - 80, newY));
+          newY = Math.max(0, Math.min(window.innerHeight - 60, newY));
         }
 
         setDirection({ x: newDirectionX, y: newDirectionY });
@@ -852,15 +869,15 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
         });
         setSpeed(0.3 + Math.random() * 0.7); // Random speed between 0.3 and 1.0
         
-        // Random monkey expressions while walking
-        if (isMoving && !isDragging && animationState === 'walking') {
+        // Random monkey expressions while walking - NUR wenn Johnny wirklich läuft
+        if (isMoving && !isDragging && animationState === 'walking' && !currentMessage) {
           const expressions = ['🐒', '🙈', '🙉', '🙊', '🐵'];
           const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
           setMonkeyExpression(randomExpression);
           
           // Return to normal monkey after a short time
           setTimeout(() => {
-            if (isMoving && !isDragging && animationState === 'walking') {
+            if (isMoving && !isDragging && animationState === 'walking' && !currentMessage) {
               setMonkeyExpression('🐒');
             }
           }, 1000);
@@ -960,7 +977,7 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
       {showProgress && (
         <div style={{
           position: 'absolute',
-          bottom: '80px',
+          bottom: '60px',
           right: '0',
           marginBottom: '8px',
           width: '192px',
@@ -1002,7 +1019,7 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
       {currentMessage && (
         <div style={{
           position: 'absolute',
-          bottom: '80px',
+          bottom: '60px',
           right: '0',
           marginBottom: '8px',
           minWidth: '200px',
@@ -1048,29 +1065,6 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
         </div>
       )}
 
-      {/* Quick Help */}
-      {!currentMessage && (
-        <div style={{
-          position: 'absolute',
-          bottom: '80px',
-          right: '0',
-          marginBottom: '8px',
-          minWidth: '150px',
-          maxWidth: '250px',
-          backgroundColor: 'rgba(102, 126, 234, 0.1)',
-          borderRadius: '12px',
-          border: '2px solid rgba(102, 126, 234, 0.3)',
-          padding: '8px 12px',
-          fontSize: '12px',
-          color: '#667eea',
-          fontWeight: '500',
-          textAlign: 'center',
-          opacity: 0.7,
-          animation: 'fadeIn 2s ease-out'
-        }}>
-          Linksklick für Nachrichten! 🖱️
-        </div>
-      )}
 
 
       {/* Johnny the Monkey */}
@@ -1088,8 +1082,8 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
         onKeyDown={handleKeyDown}
         tabIndex={0}
         style={{
-          width: '80px',
-          height: '80px',
+          width: '60px',
+          height: '60px',
           background: 'linear-gradient(135deg, #667eea, #764ba2, #f093fb)',
           borderRadius: '50%',
           border: '3px solid #fff',
@@ -1115,7 +1109,7 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
         }}
         onMouseEnter={(e) => {
           if (isDragging) return;
-          e.currentTarget.style.transform = `scale(1.2) ${direction.x < 0 ? 'scaleX(-1)' : 'scaleX(1)'}`;
+          e.currentTarget.style.transform = `scale(1.33) ${direction.x < 0 ? 'scaleX(-1)' : 'scaleX(1)'}`;
           e.currentTarget.style.boxShadow = `
             0 12px 24px rgba(0, 0, 0, 0.3),
             0 0 0 4px rgba(255, 107, 53, 0.5),
@@ -1139,7 +1133,7 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          fontSize: '48px',
+          fontSize: '36px',
           filter: isDragging ? 'brightness(1.2) saturate(1.3) drop-shadow(0 4px 8px rgba(0,0,0,0.3))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
           transition: 'filter 0.3s ease',
           textShadow: '0 2px 4px rgba(0,0,0,0.3)',

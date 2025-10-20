@@ -64,6 +64,9 @@ router.delete('/:id', FileSystemPathController.deletePath);
 // Datei speichern (z.B. Whiteboard)
 router.post('/save-file', upload.single('file'), FileSystemPathController.saveFile);
 
+// Datei speichern mit sendBeacon (für automatisches Speichern beim Schließen)
+router.post('/save-file-beacon', FileSystemPathController.saveFileBeacon);
+
 // Whiteboard-Datei laden
 router.get('/load-whiteboard', FileSystemPathController.loadWhiteboardFile);
 

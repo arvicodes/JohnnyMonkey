@@ -59,5 +59,9 @@ export declare class FileSystemPathController {
      * Scan directory for subdirectories only (recursively)
      */
     static scanDirectory(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Save file using sendBeacon (for automatic saving when closing tab)
+     */
+    static saveFileBeacon(req: Request, res: Response): Promise<void>;
 }
 //# sourceMappingURL=FileSystemPathController.d.ts.map
