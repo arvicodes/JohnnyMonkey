@@ -1,15 +1,50 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 
 function rand(min: number, max: number) {
   return Math.random() * (max - min) + min;
 }
 
-function makeKeyframes(count = 6) {
+function makeKeyframes(count = 8) {
   const w = typeof window !== "undefined" ? window.innerWidth : 1200;
   const h = typeof window !== "undefined" ? window.innerHeight : 800;
-  const points = Array.from({ length: count }, () => ({ x: rand(0, w), y: rand(0, h) }));
-  return [{ x: w * 0.2, y: h * 0.3 }, ...points, { x: w * 0.8, y: h * 0.2 }];
+  
+  // Erstelle mehr zufällige Punkte mit verschiedenen Bereichen
+  const points = Array.from({ length: count }, (_, i) => {
+    // Abwechselnde Bereiche für mehr Variation
+    const area = i % 4;
+    let x, y;
+    
+    switch (area) {
+      case 0: // Oben links
+        x = rand(0, w * 0.4);
+        y = rand(0, h * 0.4);
+        break;
+      case 1: // Oben rechts
+        x = rand(w * 0.6, w);
+        y = rand(0, h * 0.4);
+        break;
+      case 2: // Unten links
+        x = rand(0, w * 0.4);
+        y = rand(h * 0.6, h);
+        break;
+      case 3: // Unten rechts
+        x = rand(w * 0.6, w);
+        y = rand(h * 0.6, h);
+        break;
+      default:
+        x = rand(0, w);
+        y = rand(0, h);
+    }
+    
+    return { x, y };
+  });
+  
+  // Start- und Endpunkt auch zufälliger machen
+  const startPoint = { x: rand(w * 0.1, w * 0.3), y: rand(h * 0.1, h * 0.3) };
+  const endPoint = { x: rand(w * 0.7, w * 0.9), y: rand(h * 0.1, h * 0.3) };
+  
+  return [startPoint, ...points, endPoint];
 }
 
 const Sparkle: React.FC<{ delay: number }> = ({ delay }) => {
@@ -120,10 +155,10 @@ interface FlutterElfProps {
 
 const FlutterElf: React.FC<FlutterElfProps> = ({ isVisible = true }) => {
   const controls = useAnimation();
-  const [speed] = useState(1);
-  const [size] = useState(120);
-  const [hue] = useState(90);
-  const [keyframes] = useState(makeKeyframes());
+  const [speed] = useState(() => rand(0.5, 2.5)); // Zufällige Geschwindigkeit
+  const [size] = useState(() => rand(80, 150)); // Zufällige Größe
+  const [hue] = useState(() => rand(0, 360)); // Zufällige Farbe
+  // keyframes werden jetzt dynamisch in animateWithNewPath generiert
   const fairyRef = useRef<HTMLDivElement>(null);
 
   const beat = useMemo(() => {
@@ -131,20 +166,38 @@ const FlutterElf: React.FC<FlutterElfProps> = ({ isVisible = true }) => {
     return Math.min(1.4, Math.max(0.55, d));
   }, [speed]);
 
-  useEffect(() => {
-    const duration = 18 / speed;
+  const animateWithNewPath = useCallback(() => {
+    const newKeyframes = makeKeyframes();
+    const baseDuration = 15 / speed;
+    const duration = baseDuration + rand(-5, 8); // ±5-8 Sekunden Variation
+    
+    // Zufällige Easing-Funktionen
+    const easingOptions = ["easeInOut", "easeIn", "easeOut", "linear"] as const;
+    const randomEasing = easingOptions[Math.floor(Math.random() * easingOptions.length)];
+    
     controls.start({
-      x: keyframes.map(p => p.x),
-      y: keyframes.map(p => p.y),
+      x: newKeyframes.map(p => p.x),
+      y: newKeyframes.map(p => p.y),
       transition: {
         duration,
-        times: keyframes.map((_, i) => i / (keyframes.length - 1)),
-        ease: "easeInOut",
+        times: newKeyframes.map((_, i) => i / (newKeyframes.length - 1)),
+        ease: randomEasing,
         repeat: Infinity,
         repeatType: "reverse",
       },
     });
-  }, [controls, keyframes, speed]);
+  }, [controls, speed]);
+
+  useEffect(() => {
+    animateWithNewPath();
+    
+    // Generiere alle 20-40 Sekunden einen neuen zufälligen Pfad
+    const interval = setInterval(() => {
+      animateWithNewPath();
+    }, rand(20000, 40000));
+    
+    return () => clearInterval(interval);
+  }, [animateWithNewPath]);
 
   const sparkles = useMemo(() => Array.from({ length: 12 }, (_, i) => i), []);
 
