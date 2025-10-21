@@ -407,10 +407,31 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     });
   };
 
+  // Hilfsfunktion: Filtert .wb Dateien aus, damit Schüler nur PDF-Dateien sehen
+  const filterWbFiles = (items: any[]): any[] => {
+    return items.filter((item) => {
+      if (item.type === 'file' && item.name.endsWith('.wb')) {
+        // Prüfe ob es eine entsprechende .pdf Datei gibt (irgendwo in der Liste)
+        const pdfFileName = item.name.replace('.wb', '.pdf');
+        const hasCorrespondingPdf = items.some((otherItem) => 
+          otherItem.type === 'file' && 
+          otherItem.name === pdfFileName
+        );
+        if (hasCorrespondingPdf) {
+          return false; // .wb-Datei ausblenden
+        }
+      }
+      return true;
+    });
+  };
+
   // Neue Funktion zum Rendern der echten Ordner-Vorschau (exakt wie im Screenshot)
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
+    
+    // Filtere .wb-Dateien aus, damit Schüler nur PDF-Dateien sehen
+    const filteredItems = filterWbFiles(items);
     
     // Hilfsfunktion: Prüft rekursiv, ob ein Ordner mindestens eine freigegebene Datei enthält
     const hasSharedFiles = (item: any): boolean => {
@@ -419,7 +440,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Wenn es eine Datei ist, prüfe ob sie freigegeben ist
       // K_ Dateien sind automatisch freigegeben
       if (item.type === 'file') {
-        return item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+        let isFileShared = item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+        
+        // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
+        // dann ist auch die PDF-Datei freigegeben
+        if (item.name.endsWith('.pdf') && !isFileShared) {
+          const wbFilePath = item.path.replace('.pdf', '.wb');
+          const isWbFileShared = groupSharedFiles.includes(wbFilePath);
+          if (isWbFileShared) {
+            isFileShared = true;
+          }
+        }
+        
+        return isFileShared;
       }
       
       // Wenn es ein Ordner ist, prüfe rekursiv alle Kinder
@@ -435,7 +468,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Prüfe, ob die Datei für diese Gruppe freigegeben ist
       const groupSharedFiles = sharedFiles[groupId] || [];
       // K_ Dateien sind immer automatisch freigegeben
-      const isFileShared = item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+      let isFileShared = item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+      
+      // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
+      // dann ist auch die PDF-Datei freigegeben
+      if (item.type === 'file' && item.name.endsWith('.pdf') && !isFileShared) {
+        const wbFileName = item.name.replace('.pdf', '.wb');
+        const wbFilePath = item.path.replace('.pdf', '.wb');
+        const isWbFileShared = groupSharedFiles.includes(wbFilePath);
+        if (isWbFileShared) {
+          isFileShared = true;
+        }
+      }
       
       // Wenn es eine Datei ist und NICHT freigegeben, verberge sie
       if (item.type === 'file' && !isFileShared) {
@@ -546,14 +590,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             )}
           </Typography>
           
-          {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
-          {item.type === 'directory' && item.children && item.children.length > 0 && (
-            <Box sx={{ ml: 2, mb: 0.7 }}>
-              {item.children.map((child: any, childIndex: number) => 
-                renderItemRecursively(child, level + 1)
-              )}
-            </Box>
+      {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
+      {item.type === 'directory' && item.children && item.children.length > 0 && (
+        <Box sx={{ ml: 2, mb: 0.7 }}>
+          {filterWbFiles(item.children).map((child: any, childIndex: number) => 
+            renderItemRecursively(child, level + 1)
           )}
+        </Box>
+      )}
         </Box>
       );
     };
@@ -605,7 +649,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             </Typography>
           ) : (
             <Box>
-              {items.map((item, index) => renderItemRecursively(item, 0)).filter(item => item !== null)}
+              {filteredItems.map((item, index) => renderItemRecursively(item, 0)).filter(item => item !== null)}
             </Box>
           )}
         </Box>
@@ -1365,18 +1409,25 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         alert('HTML-Datei konnte nicht geöffnet werden.');
       }
     } else if (fileExtension === 'pdf') {
-      // PDF-Dateien im neuen Tab öffnen
+      // PDF-Dateien mit der bestehenden Implementierung öffnen
       try {
-        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}`);
         if (response.ok) {
           const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          // Erstelle Blob mit benutzerdefiniertem Namen
+          const file = new File([blob], item.name || 'document.pdf', { type: 'application/pdf' });
+          const url = URL.createObjectURL(file);
+          const newWindow = window.open(url, '_blank');
+          if (newWindow) {
+            // Cleanup nach 5 Sekunden
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+          }
+        } else {
+          throw new Error('PDF konnte nicht geladen werden');
         }
       } catch (error) {
-        console.error('Fehler beim Laden der PDF-Datei:', error);
-        alert('PDF-Datei konnte nicht geöffnet werden.');
+        console.error('Fehler beim Öffnen der PDF-Datei:', error);
+        alert('Fehler beim Öffnen der PDF-Datei. Bitte versuchen Sie es erneut.');
       }
     } else if (fileExtension === 'docx') {
       // DOCX-Vorschau über den bestehenden Endpunkt

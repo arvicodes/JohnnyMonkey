@@ -682,15 +682,96 @@ export class FileSystemPathController {
       } else {
         // Für PDF-Dateien: Im Browser öffnen, nicht herunterladen
         const fileName = path.basename(filePath as string);
+        
+        // Echte PDF-Dateien
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
         res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Length', fileContent.length.toString());
+        res.setHeader('X-Content-Type-Options', 'nosniff');
         res.send(fileContent);
       }
       
     } catch (error) {
       console.error('Error reading PDF file:', error);
       res.status(500).json({ error: 'Failed to read PDF file' });
+    }
+  }
+
+  // PDF-Datei lesen mit sauberer URL (nur Dateiname)
+  static async readPdfByFilename(req: Request, res: Response) {
+    try {
+      const { filename } = req.params;
+      
+      if (!filename) {
+        return res.status(400).json({ error: 'filename is required' });
+      }
+
+      console.log('Reading PDF file by filename:', filename);
+
+      // Suche die PDF-Datei im J-M-Reihen Verzeichnis
+      const searchPath = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen';
+      const foundPath = await FileSystemPathController.findFileInDirectory(searchPath, filename);
+      
+      if (!foundPath) {
+        return res.status(404).json({ error: 'PDF file not found' });
+      }
+
+      const fileContent = await StorageManager.readFile(foundPath);
+      
+      if (!fileContent) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+      
+      // Für PDF-Dateien: Im Browser öffnen, nicht herunterladen
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Length', fileContent.length.toString());
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.send(fileContent);
+      
+    } catch (error) {
+      console.error('Error reading PDF file by filename:', error);
+      res.status(500).json({ error: 'Failed to read PDF file' });
+    }
+  }
+
+  // Hilfsfunktion zum Suchen einer Datei im Verzeichnis
+  private static async findFileInDirectory(dirPath: string, filename: string): Promise<string | null> {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      if (!fs.existsSync(dirPath)) {
+        return null;
+      }
+
+      const items = fs.readdirSync(dirPath);
+      
+      for (const item of items) {
+        const fullPath = path.join(dirPath, item);
+        const stat = fs.statSync(fullPath);
+        
+        if (stat.isDirectory()) {
+          // Rekursiv in Unterverzeichnissen suchen
+          const found = await this.findFileInDirectory(fullPath, filename);
+          if (found) {
+            return found;
+          }
+        } else if (stat.isFile() && item === filename) {
+          // Datei gefunden - konvertiere zu git-intern Pfad
+          const relativePath = fullPath.replace('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', '');
+          return `git-intern/${relativePath}`;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error searching for file:', error);
+      return null;
     }
   }
 

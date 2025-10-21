@@ -3239,37 +3239,108 @@ const WhiteboardPage: React.FC = () => {
         console.error('Error saving SVG:', error);
       }
     } else if (format === 'pdf') {
-      // PDF Export - als PNG speichern, aber mit .pdf Endung
+      // PDF Export - echte PDF-Datei erstellen
+      console.log('🎨 Starting PDF export...');
+      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+      console.log('Objects count:', objects.length);
+      console.log('Objects:', objects);
+      
+      // Ensure canvas is redrawn before export
+      redrawCanvas();
+      
+      // Debug: Check if canvas has content
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const hasContent = imageData.data.some((value, index) => {
+          // Check if pixel is not white (255, 255, 255, 255)
+          if (index % 4 === 3) { // Alpha channel
+            return value < 255;
+          }
+          return false;
+        });
+        console.log('Canvas has content:', hasContent);
+        if (!hasContent) {
+          console.warn('⚠️ Canvas appears to be empty (all white pixels)');
+        }
+      }
+      
+      // Convert canvas to image and create PDF
       canvas.toBlob(async (blob) => {
         if (blob) {
-          const fullFilename = finalFilename.endsWith('.pdf') ? finalFilename : `${finalFilename}.pdf`;
+          console.log('📄 Canvas blob created, size:', blob.size, 'bytes');
           
-          // Erstelle einen neuen Blob mit korrektem MIME-Type für PDF
-          const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+          // Test: Check if blob is empty
+          if (blob.size === 0) {
+            console.error('❌ Blob is empty! Canvas might be empty or not properly drawn.');
+            alert('Fehler: Canvas ist leer. Bitte zeichnen Sie etwas auf das Whiteboard.');
+            return;
+          }
           
-          const formData = new FormData();
-          formData.append('file', pdfBlob, fullFilename);
-          formData.append('targetPath', savePath);
-
           try {
+            // Import jsPDF dynamically
+            const { default: jsPDF } = await import('jspdf');
+            
+            // Create new PDF document
+            const pdf = new jsPDF({
+              orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+              unit: 'mm',
+              format: 'a4'
+            });
+            
+            // Convert canvas to image data URL
+            const imgData = canvas.toDataURL('image/png');
+            
+            // Calculate dimensions to fit the page
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            
+            // Calculate scaling to fit the page
+            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+            const scaledWidth = imgWidth * ratio;
+            const scaledHeight = imgHeight * ratio;
+            
+            // Center the image on the page
+            const x = (pdfWidth - scaledWidth) / 2;
+            const y = (pdfHeight - scaledHeight) / 2;
+            
+            // Add image to PDF
+            pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+            
+            // Generate PDF blob
+            const pdfBlob = pdf.output('blob');
+            console.log('📄 PDF blob created, size:', pdfBlob.size, 'bytes');
+            
+            const fullFilename = finalFilename.endsWith('.pdf') ? finalFilename : `${finalFilename}.pdf`;
+            
+            // Save PDF file
+            const formData = new FormData();
+            formData.append('file', pdfBlob, fullFilename);
+            formData.append('targetPath', savePath);
+
             const response = await fetch('/api/file-system-paths/save-file', {
               method: 'POST',
               body: formData
             });
 
             if (response.ok) {
-              console.log('Whiteboard als PDF gespeichert!');
+              console.log('✅ Whiteboard als echte PDF gespeichert!');
               // Dialog schließen statt window.close()
               if (closeDialog) setShowSaveDialog(false);
             } else {
               const error = await response.json();
-              console.error('Fehler beim Speichern:', error.error);
+              console.error('❌ Fehler beim Speichern:', error.error);
             }
           } catch (error) {
-            console.error('Error saving PDF:', error);
+            console.error('❌ Error creating PDF:', error);
+            alert('Fehler beim Erstellen der PDF-Datei. Bitte versuchen Sie es erneut.');
           }
+        } else {
+          console.error('❌ Blob creation failed - canvas might be empty');
         }
-      }, 'image/png'); // Verwende PNG-Format für bessere Kompatibilität
+      }, 'image/png');
     } else if (format === 'editable') {
       // Save as editable whiteboard format (JSON)
       const whiteboardData = {

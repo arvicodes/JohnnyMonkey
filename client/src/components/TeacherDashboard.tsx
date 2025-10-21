@@ -1678,19 +1678,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         alert('HTML-Datei konnte nicht geöffnet werden.');
       }
     } else if (fileExtension === 'pdf') {
-      // PDF-Dateien im neuen Tab öffnen
+      // PDF-Dateien mit der bestehenden Implementierung öffnen
       try {
-        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
+        const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}`);
         if (response.ok) {
           const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          // Öffne PDF im neuen Tab (ohne Download)
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          // Erstelle Blob mit benutzerdefiniertem Namen
+          const file = new File([blob], item.name || 'document.pdf', { type: 'application/pdf' });
+          const url = URL.createObjectURL(file);
+          const newWindow = window.open(url, '_blank');
+          if (newWindow) {
+            // Cleanup nach 5 Sekunden
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+          }
+        } else {
+          throw new Error('PDF konnte nicht geladen werden');
         }
       } catch (error) {
-        console.error('Fehler beim Laden der PDF-Datei:', error);
-        alert('PDF-Datei konnte nicht geöffnet werden.');
+        console.error('Fehler beim Öffnen der PDF-Datei:', error);
+        alert('Fehler beim Öffnen der PDF-Datei. Bitte versuchen Sie es erneut.');
       }
     } else if (fileExtension === 'docx') {
       // DOCX-Vorschau über den bestehenden Endpunkt
@@ -1843,25 +1849,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // Hilfsfunktion zum Filtern von PDF-Dateien, die zu .wb Dateien gehören
+  const filterPdfFiles = (items: any[]): any[] => {
+    return items.filter((item) => {
+      if (item.type === 'file' && item.name.endsWith('.pdf')) {
+        // Prüfe ob es eine entsprechende .wb Datei gibt (irgendwo in der Liste)
+        const wbFileName = item.name.replace('.pdf', '.wb');
+        const hasCorrespondingWb = items.some((otherItem) => 
+          otherItem.type === 'file' && 
+          otherItem.name === wbFileName
+        );
+        if (hasCorrespondingWb) {
+          return false; // PDF-Datei ausblenden
+        }
+      }
+      return true;
+    });
+  };
+
   // Neue Funktion zum Rendern der echten Ordner-Vorschau
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     
-    // Filtere PDF-Dateien aus, die zu .wb Dateien gehören
-    const filteredItems = items.filter((item: any) => {
-      if (item.type === 'file' && item.name.endsWith('.pdf')) {
-        // Prüfe ob es eine entsprechende .wb Datei gibt (irgendwo in der Liste)
-        const wbFileName = item.name.replace('.pdf', '.wb');
-        const hasCorrespondingWb = items.some((otherItem: any) => 
-          otherItem.type === 'file' && 
-          otherItem.name === wbFileName
-        );
-        // Verstecke PDF wenn es eine entsprechende .wb Datei gibt
-        return !hasCorrespondingWb;
-      }
-      return true;
-    });
+    // Filtere PDF-Dateien aus, die zu .wb Dateien gehören - NUR für die Anzeige
+    // Die ursprünglichen Daten bleiben unverändert für Schüler
+    const filteredItems = filterPdfFiles(items);
     
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
@@ -2164,7 +2177,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
           {item.type === 'directory' && item.children && item.children.length > 0 && (
             <Box sx={{ ml: 2, mb: 0.7 }}>
-              {item.children.map((child: any, childIndex: number) => 
+              {filterPdfFiles(item.children).map((child: any, childIndex: number) => 
                 renderItemRecursively(child, level + 1)
               )}
             </Box>

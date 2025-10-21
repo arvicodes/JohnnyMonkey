@@ -794,6 +794,24 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     document.body.appendChild(modal);
   };
 
+  // Hilfsfunktion zum Filtern von PDF-Dateien, die zu .wb Dateien gehören
+  const filterPdfFiles = (items: DirectoryItem[]): DirectoryItem[] => {
+    return items.filter((item) => {
+      if (item.type === 'file' && item.name.endsWith('.pdf')) {
+        // Prüfe ob es eine entsprechende .wb Datei gibt (irgendwo in der Liste)
+        const wbFileName = item.name.replace('.pdf', '.wb');
+        const hasCorrespondingWb = items.some((otherItem) => 
+          otherItem.type === 'file' && 
+          otherItem.name === wbFileName
+        );
+        if (hasCorrespondingWb) {
+          return false; // PDF-Datei ausblenden
+        }
+      }
+      return true;
+    });
+  };
+
   // Rekursive Komponente für hierarchische Anzeige
   const renderDirectoryItem = (item: DirectoryItem, level: number = 0) => {
     const isExpanded = expandedItems.has(item.path);
@@ -972,22 +990,27 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
             console.error('Fehler beim Laden der Textdatei:', error);
             alert('Fehler beim Laden der Textdatei. Bitte versuchen Sie es erneut.');
           }
-        } else if (fileExtension === 'pdf') {
-          // PDF-Dateien über den Server laden und als Vorschau anzeigen
-          try {
-            const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}&preview=true`);
-            
-            if (response.ok) {
-              const htmlContent = await response.text();
-              showFilePreviewModal(item.name, htmlContent, item.path, 'pdf');
-            } else {
-              console.error('PDF-Vorschau konnte nicht geladen werden:', response.statusText);
-              alert('PDF-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
-            }
-          } catch (error) {
-            console.error('Fehler beim Laden der PDF-Datei:', error);
-            alert('Fehler beim Laden der PDF-Datei. Bitte versuchen Sie es erneut.');
+    } else if (fileExtension === 'pdf') {
+      // PDF-Dateien mit der bestehenden Implementierung öffnen
+      try {
+        const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          // Erstelle Blob mit benutzerdefiniertem Namen
+          const file = new File([blob], item.name || 'document.pdf', { type: 'application/pdf' });
+          const url = URL.createObjectURL(file);
+          const newWindow = window.open(url, '_blank');
+          if (newWindow) {
+            // Cleanup nach 5 Sekunden
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
           }
+        } else {
+          throw new Error('PDF konnte nicht geladen werden');
+        }
+      } catch (error) {
+        console.error('Fehler beim Öffnen der PDF-Datei:', error);
+        alert('Fehler beim Öffnen der PDF-Datei. Bitte versuchen Sie es erneut.');
+      }
         } else {
           // Andere Dateitypen: Download über den Server
           try {
@@ -1072,7 +1095,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
         {/* Rekursive Anzeige der Kinder */}
         {canExpand && isExpanded && (
           <Box>
-            {item.children.map(child => renderDirectoryItem(child, level + 1))}
+            {filterPdfFiles(item.children).map(child => renderDirectoryItem(child, level + 1))}
           </Box>
         )}
       </Box>

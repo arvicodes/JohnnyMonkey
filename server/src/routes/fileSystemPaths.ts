@@ -55,6 +55,9 @@ router.get('/read-text', FileSystemPathController.readTextFile);
 // PDF-Datei lesen
 router.get('/read-pdf', FileSystemPathController.readPdfFile);
 
+// PDF-Datei lesen mit sauberer URL (nur Dateiname)
+router.get('/pdf/:filename', FileSystemPathController.readPdfByFilename);
+
 // Datei für Download bereitstellen
 router.get('/download', FileSystemPathController.downloadFile);
 
