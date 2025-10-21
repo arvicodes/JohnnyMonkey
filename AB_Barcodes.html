@@ -35,6 +35,34 @@
             overflow-x: auto;
         }
         
+        .barcode-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 auto;
+            table-layout: fixed;
+        }
+        
+        .barcode-row {
+            height: 250px;
+        }
+        
+        .numbers-row {
+            height: 50px;
+        }
+        
+        .barcode-table td {
+            padding: 0;
+            border: 1px solid #ddd;
+            vertical-align: middle;
+            text-align: center;
+            position: relative;
+            font-family: monospace;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
         .barcode {
             display: block;
             margin: 20px 0;
@@ -47,36 +75,36 @@
         .barcode-line {
             display: inline-block;
             height: 200px;
-            margin: 0 2px;
+            margin: 0;
             background-color: #000;
             vertical-align: top;
         }
         
         .barcode-line.thin {
-            width: 6px;
+            width: 14.28%; /* 1/7 der Zellbreite */
         }
         
         .barcode-line.medium {
-            width: 12px;
+            width: 28.57%; /* 2/7 der Zellbreite */
         }
         
         .barcode-line.thick {
-            width: 18px;
+            width: 42.86%; /* 3/7 der Zellbreite */
         }
         
         .barcode-line.start-pattern {
             height: 250px;
-            width: 10px;
+            width: 33.33%; /* 1/3 der Zellbreite für Start-Muster */
         }
         
         .barcode-line.middle-pattern {
             height: 250px;
-            width: 10px;
+            width: 20%; /* 1/5 der Zellbreite für Mitte-Muster */
         }
         
         .barcode-line.end-pattern {
             height: 250px;
-            width: 10px;
+            width: 33.33%; /* 1/3 der Zellbreite für End-Muster */
         }
         
         .barcode-line.white {
@@ -224,12 +252,14 @@
         </div>
         
         <div class="barcode-container">
-            <div class="barcode" id="barcode">
-                <!-- Barcode wird hier generiert -->
-            </div>
-            <div class="barcode-numbers" id="barcodeNumbers">
-                <!-- Zahlen werden hier generiert -->
-            </div>
+            <table class="barcode-table">
+                <tr id="barcodeRow" class="barcode-row">
+                    <!-- Barcode-Segmente werden hier eingefügt -->
+                </tr>
+                <tr id="numbersRow" class="numbers-row">
+                    <!-- Zahlen werden hier eingefügt -->
+                </tr>
+            </table>
         </div>
         
         <div class="controls">
@@ -305,11 +335,33 @@
         }
 
         function generateBarcode(barcode) {
-            const barcodeElement = document.getElementById('barcode');
-            barcodeElement.innerHTML = '';
+            const barcodeRow = document.getElementById('barcodeRow');
+            barcodeRow.innerHTML = '';
             
-            // Start-Muster (längere Streifen) - Segment 0
-            addBarcodeLines(barcodeElement, '101', true, false, false, 0);
+            // Farben für die 13 Segmente (dezenter)
+            const segmentColors = [
+                'rgba(255, 0, 0, 0.1)',      // Rot - Start
+                'rgba(0, 255, 0, 0.1)',      // Grün - Ziffer 2
+                'rgba(0, 0, 255, 0.1)',      // Blau - Ziffer 3
+                'rgba(255, 255, 0, 0.1)',    // Gelb - Ziffer 4
+                'rgba(255, 0, 255, 0.1)',    // Magenta - Ziffer 5
+                'rgba(0, 255, 255, 0.1)',    // Cyan - Ziffer 6
+                'rgba(255, 128, 0, 0.1)',    // Orange - Ziffer 7
+                'rgba(128, 0, 128, 0.1)',    // Lila - Mitte
+                'rgba(128, 128, 0, 0.1)',    // Olive - Ziffer 8
+                'rgba(0, 128, 128, 0.1)',    // Teal - Ziffer 9
+                'rgba(128, 0, 0, 0.1)',      // Maroon - Ziffer 10
+                'rgba(0, 128, 0, 0.1)',      // Dunkelgrün - Ziffer 11
+                'rgba(0, 0, 128, 0.1)',      // Navy - Ziffer 12
+                'rgba(128, 128, 128, 0.1)',  // Grau - Ziffer 13
+                'rgba(255, 192, 203, 0.1)'   // Pink - End
+            ];
+            
+            // Spalte 1: Leer (für Ziffer 1)
+            addEmptyCell(barcodeRow);
+            
+            // Spalte 2: Start-Muster (schwarze Balken)
+            addBarcodeCell(barcodeRow, '101', true, false, false, 0, 'transparent');
             
             // Erste 6 Ziffern (linke Seite) - Segmente 1-6
             const firstDigit = barcode[0];
@@ -319,26 +371,84 @@
                 const digit = barcode[i];
                 const parity = parityPattern[i-1];
                 const pattern = barcodePatterns[digit][parity === 'L' ? 0 : 1];
-                addBarcodeLines(barcodeElement, pattern, false, false, false, i);
+                addBarcodeCell(barcodeRow, pattern, false, false, false, i, segmentColors[i]);
             }
             
             // Mittleres Trennzeichen (längere Streifen) - Segment 7
-            addBarcodeLines(barcodeElement, '01010', false, true, false, 7);
+            addBarcodeCell(barcodeRow, '01010', false, true, false, 7, segmentColors[7]);
             
             // Letzten 6 Ziffern (rechte Seite) - Segmente 8-13
             for (let i = 7; i <= 12; i++) {
                 const digit = barcode[i];
                 const pattern = barcodePatterns[digit + 'R'][0];
-                addBarcodeLines(barcodeElement, pattern, false, false, false, i + 1);
+                addBarcodeCell(barcodeRow, pattern, false, false, false, i + 1, segmentColors[i + 1]);
             }
             
             // End-Muster (längere Streifen) - Segment 14
-            addBarcodeLines(barcodeElement, '101', false, false, true, 14);
+            addBarcodeCell(barcodeRow, '101', false, false, true, 14, segmentColors[14]);
+        }
+
+        function addEmptyCell(container) {
+            const cell = document.createElement('td');
+            cell.style.backgroundColor = 'transparent';
+            container.appendChild(cell);
+        }
+
+        function addBarcodeCell(container, pattern, isStartPattern = false, isMiddlePattern = false, isEndPattern = false, segmentIndex = 0, backgroundColor = 'transparent') {
+            const cell = document.createElement('td');
+            cell.style.backgroundColor = backgroundColor;
+            cell.style.position = 'relative';
             
-            // Hilfslinien hinzufügen wenn aktiviert
-            if (showHelpLines) {
-                addHelpLines(barcodeElement);
+            // Farben für die Balken (dezenter)
+            const segmentColors = [
+                'rgba(255, 0, 0, 0.7)',      // Rot - Start
+                'rgba(0, 255, 0, 0.7)',      // Grün - Ziffer 2
+                'rgba(0, 0, 255, 0.7)',      // Blau - Ziffer 3
+                'rgba(255, 255, 0, 0.7)',    // Gelb - Ziffer 4
+                'rgba(255, 0, 255, 0.7)',    // Magenta - Ziffer 5
+                'rgba(0, 255, 255, 0.7)',    // Cyan - Ziffer 6
+                'rgba(255, 128, 0, 0.7)',    // Orange - Ziffer 7
+                'rgba(128, 0, 128, 0.7)',    // Lila - Mitte
+                'rgba(128, 128, 0, 0.7)',    // Olive - Ziffer 8
+                'rgba(0, 128, 128, 0.7)',    // Teal - Ziffer 9
+                'rgba(128, 0, 0, 0.7)',      // Maroon - Ziffer 10
+                'rgba(0, 128, 0, 0.7)',      // Dunkelgrün - Ziffer 11
+                'rgba(0, 0, 128, 0.7)',      // Navy - Ziffer 12
+                'rgba(128, 128, 128, 0.7)',  // Grau - Ziffer 13
+                'rgba(255, 192, 203, 0.7)'   // Pink - End
+            ];
+            
+            const segmentColor = segmentColors[segmentIndex] || '#000';
+            
+            for (let i = 0; i < pattern.length; i++) {
+                const line = document.createElement('div');
+                line.className = 'barcode-line';
+                
+                if (pattern[i] === '1') {
+                    // Spezielle Behandlung für Start-, Mittel- und End-Muster (schwarz)
+                    if (isStartPattern || isMiddlePattern || isEndPattern) {
+                        line.style.backgroundColor = '#000'; // Schwarz für Start, Mitte, End
+                        if (isStartPattern) line.classList.add('start-pattern');
+                        if (isMiddlePattern) line.classList.add('middle-pattern');
+                        if (isEndPattern) line.classList.add('end-pattern');
+                    } else {
+                        // Normale Ziffern-Segmente (farbig)
+                        line.style.backgroundColor = segmentColor;
+                        if (i % 2 === 0) {
+                            line.classList.add('thin');
+                        } else {
+                            line.classList.add('medium');
+                        }
+                    }
+                } else {
+                    line.classList.add('white');
+                    line.classList.add('thin');
+                }
+                
+                cell.appendChild(line);
             }
+            
+            container.appendChild(cell);
         }
 
         function addBarcodeLines(container, pattern, isStartPattern = false, isMiddlePattern = false, isEndPattern = false, segmentIndex = 0) {
@@ -377,10 +487,10 @@
                     } else {
                         // Normale Ziffern-Segmente (farbig)
                         line.style.backgroundColor = segmentColor;
-                        if (i % 2 === 0) {
-                            line.classList.add('thin');
-                        } else {
-                            line.classList.add('medium');
+                    if (i % 2 === 0) {
+                        line.classList.add('thin');
+                    } else {
+                        line.classList.add('medium');
                         }
                     }
                 } else {
@@ -446,80 +556,67 @@
         }
 
         function generateBarcodeNumbers(barcode) {
-            const numbersElement = document.getElementById('barcodeNumbers');
-            numbersElement.innerHTML = '';
+            const numbersRow = document.getElementById('numbersRow');
+            numbersRow.innerHTML = '';
             
-            // Berechne die exakte Barcode-Breite
-            const barcodeElement = document.getElementById('barcode');
-            const barcodeWidth = barcodeElement.offsetWidth;
+            // Farben für die 13 Segmente (dezenter)
+            const segmentColors = [
+                'rgba(255, 0, 0, 0.7)',      // Rot - Start
+                'rgba(0, 255, 0, 0.7)',      // Grün - Ziffer 2
+                'rgba(0, 0, 255, 0.7)',      // Blau - Ziffer 3
+                'rgba(255, 255, 0, 0.7)',    // Gelb - Ziffer 4
+                'rgba(255, 0, 255, 0.7)',    // Magenta - Ziffer 5
+                'rgba(0, 255, 255, 0.7)',    // Cyan - Ziffer 6
+                'rgba(255, 128, 0, 0.7)',    // Orange - Ziffer 7
+                'rgba(128, 0, 128, 0.7)',    // Lila - Mitte
+                'rgba(128, 128, 0, 0.7)',    // Olive - Ziffer 8
+                'rgba(0, 128, 128, 0.7)',    // Teal - Ziffer 9
+                'rgba(128, 0, 0, 0.7)',      // Maroon - Ziffer 10
+                'rgba(0, 128, 0, 0.7)',      // Dunkelgrün - Ziffer 11
+                'rgba(0, 0, 128, 0.7)',      // Navy - Ziffer 12
+                'rgba(128, 128, 128, 0.7)',  // Grau - Ziffer 13
+                'rgba(255, 192, 203, 0.7)'   // Pink - End
+            ];
             
-            // EAN-13 Struktur: 3 + (6×7) + 5 + (6×7) + 3 = 95 Module
-            const totalModules = 95;
-            const moduleWidth = barcodeWidth / totalModules;
+            // Spalte 1: Ziffer 1 (rot)
+            const digit1Cell = document.createElement('td');
+            digit1Cell.textContent = barcode[0];
+            digit1Cell.onclick = () => changeDigit(0);
+            digit1Cell.style.color = segmentColors[0]; // Rot
+            numbersRow.appendChild(digit1Cell);
             
-            // Warte kurz, damit der Barcode gerendert ist
-            setTimeout(() => {
-                // Debug: Zeige die tatsächliche Barcode-Breite
-                console.log('Barcode-Breite:', barcodeWidth, 'Module-Breite:', moduleWidth);
-                
-                // Zahlen basierend auf der tatsächlichen Barcode-Struktur
-                // EAN-13: Start(3) + 6×7 + Mitte(5) + 6×7 + End(3) = 95
-                const digitPositions = [
-                    1.5,   // Ziffer 1 - links außen vor Start-Muster
-                    6.5,   // Ziffer 2 - Mitte des grünen Segments (3+3.5)
-                    13.5,  // Ziffer 3 - Mitte des blauen Segments (10+3.5)
-                    20.5,  // Ziffer 4 - Mitte des gelben Segments (17+3.5)
-                    27.5,  // Ziffer 5 - Mitte des magenta Segments (24+3.5)
-                    34.5,  // Ziffer 6 - Mitte des cyan Segments (31+3.5)
-                    41.5,  // Ziffer 7 - Mitte des orange Segments (38+3.5)
-                    53.5,  // Ziffer 8 - Mitte des olive Segments (50+3.5)
-                    60.5,  // Ziffer 9 - Mitte des teal Segments (57+3.5)
-                    67.5,  // Ziffer 10 - Mitte des maroon Segments (64+3.5)
-                    74.5,  // Ziffer 11 - Mitte des dunkelgrünen Segments (71+3.5)
-                    81.5,  // Ziffer 12 - Mitte des navy Segments (78+3.5)
-                    88.5   // Ziffer 13 - Mitte des grauen Segments (85+3.5)
-                ];
-                
-                // Farben für die 13 Segmente (gleiche wie bei den Balken)
-                const segmentColors = [
-                    'rgba(255, 0, 0, 1)',      // Rot - Start
-                    'rgba(0, 255, 0, 1)',      // Grün - Ziffer 2
-                    'rgba(0, 0, 255, 1)',      // Blau - Ziffer 3
-                    'rgba(255, 255, 0, 1)',    // Gelb - Ziffer 4
-                    'rgba(255, 0, 255, 1)',    // Magenta - Ziffer 5
-                    'rgba(0, 255, 255, 1)',    // Cyan - Ziffer 6
-                    'rgba(255, 128, 0, 1)',    // Orange - Ziffer 7
-                    'rgba(128, 0, 128, 1)',    // Lila - Mitte
-                    'rgba(128, 128, 0, 1)',    // Olive - Ziffer 8
-                    'rgba(0, 128, 128, 1)',    // Teal - Ziffer 9
-                    'rgba(128, 0, 0, 1)',      // Maroon - Ziffer 10
-                    'rgba(0, 128, 0, 1)',      // Dunkelgrün - Ziffer 11
-                    'rgba(0, 0, 128, 1)',      // Navy - Ziffer 12
-                    'rgba(128, 128, 128, 1)',  // Grau - Ziffer 13
-                    'rgba(255, 192, 203, 1)'   // Pink - End
-                ];
-                
-                for (let i = 0; i < 13; i++) {
-                    const numberElement = document.createElement('div');
-                    numberElement.className = 'barcode-number';
-                    numberElement.textContent = barcode[i];
-                    numberElement.onclick = () => changeDigit(i);
-                    numberElement.style.left = (moduleWidth * digitPositions[i]) + 'px';
-                    
-                    // Farbe basierend auf dem Segment
-                    // Die Zahlen entsprechen den Segmenten: Start(0), Z2(1), Z3(2), Z4(3), Z5(4), Z6(5), Z7(6), Mitte(7), Z8(8), Z9(9), Z10(10), Z11(11), Z12(12), Z13(13), End(14)
-                    if (i === 0) {
-                        numberElement.classList.add('first-digit');
-                        numberElement.style.color = segmentColors[0]; // Start - Rot
-                    } else if (i <= 6) {
-                        numberElement.style.color = segmentColors[i]; // Ziffern 2-7 (Segmente 1-6)
-                    } else {
-                        numberElement.style.color = segmentColors[i + 1]; // Ziffern 8-13 (Segmente 8-13)
-                    }
-                    
-                    numbersElement.appendChild(numberElement);
-                }
-            }, 10);
+            // Spalte 2: Leer (Start-Muster)
+            const startCell = document.createElement('td');
+            startCell.innerHTML = '';
+            numbersRow.appendChild(startCell);
+            
+            // Erste 6 Ziffern (linke Seite)
+            for (let i = 1; i <= 6; i++) {
+                const cell = document.createElement('td');
+                cell.textContent = barcode[i];
+                cell.onclick = () => changeDigit(i);
+                cell.style.color = segmentColors[i];
+                numbersRow.appendChild(cell);
+            }
+            
+            // Mittleres Trennzeichen - keine Zahl
+            const middleCell = document.createElement('td');
+            middleCell.innerHTML = '';
+            numbersRow.appendChild(middleCell);
+            
+            // Letzten 6 Ziffern (rechte Seite)
+            for (let i = 7; i <= 12; i++) {
+                const cell = document.createElement('td');
+                cell.textContent = barcode[i];
+                cell.onclick = () => changeDigit(i);
+                cell.style.color = segmentColors[i + 1];
+                numbersRow.appendChild(cell);
+            }
+            
+            // End-Muster - keine Zahl
+            const endCell = document.createElement('td');
+            endCell.innerHTML = '';
+            numbersRow.appendChild(endCell);
         }
 
         function changeDigit(position) {
@@ -570,8 +667,28 @@
             updateBarcode();
         }
 
+        // Funktion zum Neu-Positionieren bei Fenstergrößenänderung
+        function repositionElements() {
+            const currentBarcode = document.getElementById('barcode').textContent || '1234567890123';
+            generateBarcodeNumbers(currentBarcode);
+            
+            // Hilfslinien neu zeichnen
+            const barcodeElement = document.getElementById('barcode');
+            const existingHelpLines = barcodeElement.querySelector('.help-lines');
+            if (existingHelpLines) {
+                existingHelpLines.remove();
+            }
+            const showHelpLines = document.getElementById('showHelpLines').checked;
+            if (showHelpLines) {
+                addHelpLines(barcodeElement);
+            }
+        }
+
         // Initialisierung
         updateBarcode();
+        
+        // Event Listener für Fenstergrößenänderung
+        window.addEventListener('resize', repositionElements);
     </script>
 </body>
 </html>
