@@ -156,7 +156,7 @@ const WhiteboardPage: React.FC = () => {
   const [lastMousePosition, setLastMousePosition] = useState({ x: 100, y: 100 });
   const textInputRef = useRef<HTMLInputElement>(null);
 
-  // Neue Funktion: Änderungen direkt sichern
+  // Neue Funktion: Änderungen direkt sichern (sowohl .wb als auch .pdf)
   const handleSaveChanges = async () => {
     if (!filename.trim()) {
       console.log('Filename is required');
@@ -164,64 +164,14 @@ const WhiteboardPage: React.FC = () => {
       return;
     }
 
-    // Wenn kein currentPath gesetzt ist, verwende einen Standard-Pfad
-    let savePath = currentPath;
-    if (!savePath) {
-      savePath = 'git-intern/Mathe/Klasse 7'; // Standard-Pfad für neue Dateien
-      console.log('No current path set, using default path:', savePath);
-    }
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
+    console.log('🔄 Speichere Änderungen für existierende Datei...');
     
-    // Ensure the path starts with 'git-intern/' for proper saving
-    if (!savePath.startsWith('git-intern/')) {
-      savePath = `git-intern/${savePath}`;
-    }
-    
-    console.log('Saving changes with path:', savePath);
-    console.log('Saving changes with filename:', finalFilename);
-    
-    // Erstelle Whiteboard-Daten
-    const whiteboardData = {
-      objects: objects,
-      metadata: {
-        created: new Date().toISOString(),
-        version: '1.0',
-        userRole: userRole,
-        canvasSize: {
-          width: canvas.width,
-          height: canvas.height
-        }
-      }
-    };
-    
-    const jsonData = JSON.stringify(whiteboardData, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const fullFilename = finalFilename.endsWith('.wb') ? finalFilename : `${finalFilename}.wb`;
-    
-    const formData = new FormData();
-    formData.append('file', blob, fullFilename);
-    formData.append('targetPath', savePath);
-    formData.append('format', 'editable');
-
     try {
-      const response = await fetch('/api/file-system-paths/save-file', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        console.log('Änderungen erfolgreich gesichert!');
-      } else {
-        const error = await response.json();
-        console.error('Fehler beim Sichern:', error.error);
-        alert(`Fehler beim Sichern: ${error.error}`);
-      }
+      // Verwende handleSaveBothFormats um sowohl .wb als auch .pdf zu speichern
+      await handleSaveBothFormats();
+      console.log('✅ Änderungen erfolgreich gesichert (beide Formate)!');
     } catch (error) {
-      console.error('Error saving changes:', error);
+      console.error('❌ Fehler beim Sichern der Änderungen:', error);
       alert('Fehler beim Sichern der Änderungen');
     }
   };
@@ -386,6 +336,13 @@ const WhiteboardPage: React.FC = () => {
           setSelectedObjects([]);
           setShowObjectPanel(false);
           return;
+        case 'i':
+          e.preventDefault();
+          console.log('⌨️ Opening icon picker');
+          setShowIconPicker(true);
+          setSelectedObjects([]);
+          setShowObjectPanel(false);
+          return;
         case 'b':
           e.preventDefault();
           console.log('⌨️ Switching to image tool');
@@ -434,8 +391,10 @@ const WhiteboardPage: React.FC = () => {
             if (!currentPath) {
               // Nur bei neuen Dateien: Speicher-Dialog öffnen (genau wie das Speichern-Icon)
               handleOpenSaveDialog();
+            } else {
+              // Bei bestehenden Dateien: Beide Formate speichern
+              handleSaveChanges();
             }
-            // Bei bestehenden Dateien: nichts tun (automatisches Speichern läuft bereits)
             break;
           case 'a':
             e.preventDefault();
@@ -566,74 +525,22 @@ const WhiteboardPage: React.FC = () => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Warnung anzeigen und synchron speichern
       if (currentPath && filename && objects.length > 0) {
-        console.log('🔄 Stille automatische Speicherung beim Schließen...');
+        console.log('🔄 Stille automatische Speicherung beim Schließen (beide Formate)...');
         
         // KEINE Warnung anzeigen - stille Speicherung
         // e.preventDefault(); // Entfernt - keine Warnung
         // e.returnValue = ''; // Entfernt - keine Warnung
         
-        // Synchrones Speichern für beforeunload
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
-        const fullFilename = finalFilename.endsWith('.wb') ? finalFilename : `${finalFilename}.wb`;
-        
-        // Erstelle Whiteboard-Daten mit Metadaten für sendBeacon
-        const whiteboardData = {
-          objects: objects,
-          metadata: {
-            created: new Date().toISOString(),
-            version: '1.0',
-            userRole: userRole,
-            canvasSize: {
-              width: canvas.width,
-              height: canvas.height
-            },
-            // Metadaten für sendBeacon einbetten
-            saveMetadata: {
-              filename: fullFilename,
-              targetPath: currentPath,
-              format: 'editable'
-            }
-          }
-        };
-        
-        const jsonData = JSON.stringify(whiteboardData, null, 2);
-        const blob = new Blob([jsonData], { type: 'application/json' });
-        
-        const formData = new FormData();
-        formData.append('file', blob, fullFilename);
-        formData.append('targetPath', currentPath);
-        formData.append('format', 'editable');
-
-        // Verwende sendBeacon für zuverlässiges Speichern beim Schließen
-        if (navigator.sendBeacon) {
-          // sendBeacon kann nur Blob oder String senden, nicht FormData
-          const success = navigator.sendBeacon('/api/file-system-paths/save-file-beacon', jsonData);
-          if (success) {
-            console.log('✅ Stille automatische Speicherung erfolgreich!');
-          } else {
-            console.error('❌ Stille automatische Speicherung fehlgeschlagen');
-          }
-        } else {
-          // Fallback: Asynchroner fetch
-          fetch('/api/file-system-paths/save-file-beacon', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: jsonData,
-            keepalive: true // Wichtig für das Schließen des Tabs
-          }).then(response => {
-            if (response.ok) {
-              console.log('✅ Stille automatische Speicherung mit fetch erfolgreich!');
-            } else {
-              console.error('❌ Stille automatische Speicherung mit fetch fehlgeschlagen');
-            }
-          }).catch(error => {
-            console.error('❌ Fehler bei der stillen automatischen Speicherung:', error);
+        // Verwende handleSaveBothFormats für beide Formate
+        // Aber synchron, da beim Schließen asynchrone Operationen möglicherweise nicht vollständig ausgeführt werden
+        try {
+          // Rufe handleSaveBothFormats auf, aber ohne await (da beforeunload nicht async sein kann)
+          handleSaveBothFormats().catch(error => {
+            console.error('❌ Fehler beim Speichern beider Formate beim Schließen:', error);
           });
+          console.log('✅ Beide Formate werden beim Schließen gespeichert!');
+        } catch (error) {
+          console.error('❌ Fehler beim Aufruf von handleSaveBothFormats:', error);
         }
       }
     };
@@ -743,6 +650,44 @@ const WhiteboardPage: React.FC = () => {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+
+    // Restore transformations
+    ctx.restore();
+  };
+
+  // Separate function for PDF export - without selection handles and UI elements
+  const redrawCanvasForExport = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Apply zoom and pan transformations
+    ctx.save();
+    ctx.translate(panOffset.x, panOffset.y);
+    ctx.scale(zoom, zoom);
+
+    if (showGrid) {
+      drawGrid(ctx);
+    }
+
+    // Draw all objects WITHOUT selection handles
+    objects.forEach(obj => {
+      if (!obj.locked) drawObject(ctx, obj);
+      // NO selection handles for export!
+    });
+
+    if (currentObject) {
+      drawObject(ctx, currentObject);
+    }
+
+    // NO selection box for export
+    // NO connection preview for export
 
     // Restore transformations
     ctx.restore();
@@ -3189,7 +3134,7 @@ const WhiteboardPage: React.FC = () => {
     }
   };
 
-  const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' | 'editable' = 'png', closeDialog: boolean = true) => {
+  const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' | 'editable' = 'pdf', closeDialog: boolean = true) => {
     if (!filename.trim()) {
       console.log('Filename is required');
       return;
@@ -3245,8 +3190,8 @@ const WhiteboardPage: React.FC = () => {
       console.log('Objects count:', objects.length);
       console.log('Objects:', objects);
       
-      // Ensure canvas is redrawn before export
-      redrawCanvas();
+      // Ensure canvas is redrawn before export (without selection handles)
+      redrawCanvasForExport();
       
       // Debug: Check if canvas has content
       const ctx = canvas.getContext('2d');
@@ -3265,82 +3210,93 @@ const WhiteboardPage: React.FC = () => {
         }
       }
       
-      // Convert canvas to image and create PDF
-      canvas.toBlob(async (blob) => {
-        if (blob) {
-          console.log('📄 Canvas blob created, size:', blob.size, 'bytes');
-          
-          // Test: Check if blob is empty
-          if (blob.size === 0) {
-            console.error('❌ Blob is empty! Canvas might be empty or not properly drawn.');
-            alert('Fehler: Canvas ist leer. Bitte zeichnen Sie etwas auf das Whiteboard.');
-            return;
-          }
-          
+      // Convert canvas to image and create PDF - wrapped in Promise
+      await new Promise<void>((resolve, reject) => {
+        canvas.toBlob(async (blob) => {
           try {
-            // Import jsPDF dynamically
-            const { default: jsPDF } = await import('jspdf');
-            
-            // Create new PDF document
-            const pdf = new jsPDF({
-              orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-              unit: 'mm',
-              format: 'a4'
-            });
-            
-            // Convert canvas to image data URL
-            const imgData = canvas.toDataURL('image/png');
-            
-            // Calculate dimensions to fit the page
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-            
-            // Calculate scaling to fit the page
-            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-            const scaledWidth = imgWidth * ratio;
-            const scaledHeight = imgHeight * ratio;
-            
-            // Center the image on the page
-            const x = (pdfWidth - scaledWidth) / 2;
-            const y = (pdfHeight - scaledHeight) / 2;
-            
-            // Add image to PDF
-            pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
-            
-            // Generate PDF blob
-            const pdfBlob = pdf.output('blob');
-            console.log('📄 PDF blob created, size:', pdfBlob.size, 'bytes');
-            
-            const fullFilename = finalFilename.endsWith('.pdf') ? finalFilename : `${finalFilename}.pdf`;
-            
-            // Save PDF file
-            const formData = new FormData();
-            formData.append('file', pdfBlob, fullFilename);
-            formData.append('targetPath', savePath);
+            if (blob) {
+              console.log('📄 Canvas blob created, size:', blob.size, 'bytes');
+              
+              // Test: Check if blob is empty
+              if (blob.size === 0) {
+                console.error('❌ Blob is empty! Canvas might be empty or not properly drawn.');
+                alert('Fehler: Canvas ist leer. Bitte zeichnen Sie etwas auf das Whiteboard.');
+                reject(new Error('Blob is empty'));
+                return;
+              }
+              
+              try {
+                // Import jsPDF dynamically
+                const { default: jsPDF } = await import('jspdf');
+                
+                // Create new PDF document
+                const pdf = new jsPDF({
+                  orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                  unit: 'mm',
+                  format: 'a4'
+                });
+                
+                // Convert canvas to image data URL
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Calculate dimensions to fit the page
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                
+                // Calculate scaling to fit the page
+                const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+                const scaledWidth = imgWidth * ratio;
+                const scaledHeight = imgHeight * ratio;
+                
+                // Center the image on the page
+                const x = (pdfWidth - scaledWidth) / 2;
+                const y = (pdfHeight - scaledHeight) / 2;
+                
+                // Add image to PDF
+                pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+                
+                // Generate PDF blob
+                const pdfBlob = pdf.output('blob');
+                console.log('📄 PDF blob created, size:', pdfBlob.size, 'bytes');
+                
+                const fullFilename = finalFilename.endsWith('.pdf') ? finalFilename : `${finalFilename}.pdf`;
+                
+                // Save PDF file
+                const formData = new FormData();
+                formData.append('file', pdfBlob, fullFilename);
+                formData.append('targetPath', savePath);
 
-            const response = await fetch('/api/file-system-paths/save-file', {
-              method: 'POST',
-              body: formData
-            });
+                const response = await fetch('/api/file-system-paths/save-file', {
+                  method: 'POST',
+                  body: formData
+                });
 
-            if (response.ok) {
-              console.log('✅ Whiteboard als echte PDF gespeichert!');
-              // Dialog schließen statt window.close()
-              if (closeDialog) setShowSaveDialog(false);
+                if (response.ok) {
+                  console.log('✅ Whiteboard als echte PDF gespeichert!');
+                  // Dialog schließen statt window.close()
+                  if (closeDialog) setShowSaveDialog(false);
+                  resolve();
+                } else {
+                  const error = await response.json();
+                  console.error('❌ Fehler beim Speichern:', error.error);
+                  reject(new Error(error.error));
+                }
+              } catch (error) {
+                console.error('❌ Error creating PDF:', error);
+                alert('Fehler beim Erstellen der PDF-Datei. Bitte versuchen Sie es erneut.');
+                reject(error);
+              }
             } else {
-              const error = await response.json();
-              console.error('❌ Fehler beim Speichern:', error.error);
+              console.error('❌ Blob creation failed - canvas might be empty');
+              reject(new Error('Blob creation failed'));
             }
           } catch (error) {
-            console.error('❌ Error creating PDF:', error);
-            alert('Fehler beim Erstellen der PDF-Datei. Bitte versuchen Sie es erneut.');
+            reject(error);
           }
-        } else {
-          console.error('❌ Blob creation failed - canvas might be empty');
-        }
-      }, 'image/png');
+        }, 'image/png');
+      });
     } else if (format === 'editable') {
       // Save as editable whiteboard format (JSON)
       const whiteboardData = {

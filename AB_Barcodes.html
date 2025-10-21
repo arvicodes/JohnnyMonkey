@@ -84,7 +84,7 @@
         }
         
         .barcode-line.black {
-            background-color: #000;
+            background-color: #000 !important;
         }
         
         .barcode-numbers {
@@ -308,10 +308,10 @@
             const barcodeElement = document.getElementById('barcode');
             barcodeElement.innerHTML = '';
             
-            // Start-Muster (längere Streifen)
-            addBarcodeLines(barcodeElement, '101', true, false, false);
+            // Start-Muster (längere Streifen) - Segment 0
+            addBarcodeLines(barcodeElement, '101', true, false, false, 0);
             
-            // Erste 6 Ziffern (linke Seite)
+            // Erste 6 Ziffern (linke Seite) - Segmente 1-6
             const firstDigit = barcode[0];
             const parityPattern = parityPatterns[firstDigit];
             
@@ -319,21 +319,21 @@
                 const digit = barcode[i];
                 const parity = parityPattern[i-1];
                 const pattern = barcodePatterns[digit][parity === 'L' ? 0 : 1];
-                addBarcodeLines(barcodeElement, pattern, false, false, false);
+                addBarcodeLines(barcodeElement, pattern, false, false, false, i);
             }
             
-            // Mittleres Trennzeichen (längere Streifen)
-            addBarcodeLines(barcodeElement, '01010', false, true, false);
+            // Mittleres Trennzeichen (längere Streifen) - Segment 7
+            addBarcodeLines(barcodeElement, '01010', false, true, false, 7);
             
-            // Letzten 6 Ziffern (rechte Seite)
+            // Letzten 6 Ziffern (rechte Seite) - Segmente 8-13
             for (let i = 7; i <= 12; i++) {
                 const digit = barcode[i];
                 const pattern = barcodePatterns[digit + 'R'][0];
-                addBarcodeLines(barcodeElement, pattern, false, false, false);
+                addBarcodeLines(barcodeElement, pattern, false, false, false, i + 1);
             }
             
-            // End-Muster (längere Streifen)
-            addBarcodeLines(barcodeElement, '101', false, false, true);
+            // End-Muster (längere Streifen) - Segment 14
+            addBarcodeLines(barcodeElement, '101', false, false, true, 14);
             
             // Hilfslinien hinzufügen wenn aktiviert
             if (showHelpLines) {
@@ -341,21 +341,42 @@
             }
         }
 
-        function addBarcodeLines(container, pattern, isStartPattern = false, isMiddlePattern = false, isEndPattern = false) {
+        function addBarcodeLines(container, pattern, isStartPattern = false, isMiddlePattern = false, isEndPattern = false, segmentIndex = 0) {
+            // Farben für die 13 Segmente
+            const segmentColors = [
+                'rgba(255, 0, 0, 1)',      // Rot - Start
+                'rgba(0, 255, 0, 1)',      // Grün - Ziffer 2
+                'rgba(0, 0, 255, 1)',      // Blau - Ziffer 3
+                'rgba(255, 255, 0, 1)',    // Gelb - Ziffer 4
+                'rgba(255, 0, 255, 1)',    // Magenta - Ziffer 5
+                'rgba(0, 255, 255, 1)',    // Cyan - Ziffer 6
+                'rgba(255, 128, 0, 1)',    // Orange - Ziffer 7
+                'rgba(128, 0, 128, 1)',    // Lila - Mitte
+                'rgba(128, 128, 0, 1)',    // Olive - Ziffer 8
+                'rgba(0, 128, 128, 1)',    // Teal - Ziffer 9
+                'rgba(128, 0, 0, 1)',      // Maroon - Ziffer 10
+                'rgba(0, 128, 0, 1)',      // Dunkelgrün - Ziffer 11
+                'rgba(0, 0, 128, 1)',      // Navy - Ziffer 12
+                'rgba(128, 128, 128, 1)',  // Grau - Ziffer 13
+                'rgba(255, 192, 203, 1)'   // Pink - End
+            ];
+            
+            const segmentColor = segmentColors[segmentIndex] || '#000';
+            
             for (let i = 0; i < pattern.length; i++) {
                 const line = document.createElement('div');
                 line.className = 'barcode-line';
                 
                 if (pattern[i] === '1') {
-                    line.classList.add('black');
-                    
-                    // Spezielle Behandlung für Start-, Mittel- und End-Muster
+                    // Spezielle Behandlung für Start-, Mittel- und End-Muster (schwarz)
                     if (isStartPattern || isMiddlePattern || isEndPattern) {
+                        line.style.backgroundColor = '#000'; // Schwarz für Start, Mitte, End
                         if (isStartPattern) line.classList.add('start-pattern');
                         if (isMiddlePattern) line.classList.add('middle-pattern');
                         if (isEndPattern) line.classList.add('end-pattern');
                     } else {
-                        // Normale Ziffern-Segmente
+                        // Normale Ziffern-Segmente (farbig)
+                        line.style.backgroundColor = segmentColor;
                         if (i % 2 === 0) {
                             line.classList.add('thin');
                         } else {
@@ -386,45 +407,39 @@
             // Debug: Zeige die Berechnungen
             console.log('Hilfslinien - Barcode-Breite:', barcodeWidth, 'Char-Breite:', charWidth);
             
-            // Hilfslinien basierend auf dem tatsächlichen Barcode-Layout
-            // Linien zwischen den Zahlen (wie im Bild)
-            const linePositions = [
-                0,      // Links von Ziffer 1
-                3,      // Zwischen Ziffer 1 und 2 (erste lange Linie)
-                10,     // Zwischen Ziffer 2 und 3
-                17,     // Zwischen Ziffer 3 und 4
-                24,     // Zwischen Ziffer 4 und 5
-                31,     // Zwischen Ziffer 5 und 6
-                38,     // Zwischen Ziffer 6 und 7
-                45,     // Zwischen Ziffer 7 und 8 (Mittellinie - prominent)
-                50,     // Zwischen Ziffer 8 und 9
-                57,     // Zwischen Ziffer 9 und 10
-                64,     // Zwischen Ziffer 10 und 11
-                71,     // Zwischen Ziffer 11 und 12
-                78,     // Zwischen Ziffer 12 und 13
-                85,     // Rechts von Ziffer 13 (zweite lange Linie)
-                95      // Ende
+            // Die 13 Segmente des EAN-13 Barcodes mit verschiedenen Farben
+            // EAN-13: Start(3) + 6×7 + Mitte(5) + 6×7 + End(3) = 95 Module
+            const segments = [
+                { start: 0, end: 3, name: 'Start', color: 'rgba(255, 0, 0, 0.3)' },      // Rot
+                { start: 3, end: 10, name: 'Ziffer 2', color: 'rgba(0, 255, 0, 0.3)' }, // Grün
+                { start: 10, end: 17, name: 'Ziffer 3', color: 'rgba(0, 0, 255, 0.3)' }, // Blau
+                { start: 17, end: 24, name: 'Ziffer 4', color: 'rgba(255, 255, 0, 0.3)' }, // Gelb
+                { start: 24, end: 31, name: 'Ziffer 5', color: 'rgba(255, 0, 255, 0.3)' }, // Magenta
+                { start: 31, end: 38, name: 'Ziffer 6', color: 'rgba(0, 255, 255, 0.3)' }, // Cyan
+                { start: 38, end: 45, name: 'Ziffer 7', color: 'rgba(255, 128, 0, 0.3)' }, // Orange
+                { start: 45, end: 50, name: 'Mitte', color: 'rgba(128, 0, 128, 0.3)' }, // Lila
+                { start: 50, end: 57, name: 'Ziffer 8', color: 'rgba(128, 128, 0, 0.3)' }, // Olive
+                { start: 57, end: 64, name: 'Ziffer 9', color: 'rgba(0, 128, 128, 0.3)' }, // Teal
+                { start: 64, end: 71, name: 'Ziffer 10', color: 'rgba(128, 0, 0, 0.3)' }, // Maroon
+                { start: 71, end: 78, name: 'Ziffer 11', color: 'rgba(0, 128, 0, 0.3)' }, // Dunkelgrün
+                { start: 78, end: 85, name: 'Ziffer 12', color: 'rgba(0, 0, 128, 0.3)' }, // Navy
+                { start: 85, end: 92, name: 'Ziffer 13', color: 'rgba(128, 128, 128, 0.3)' }, // Grau
+                { start: 92, end: 95, name: 'End', color: 'rgba(255, 192, 203, 0.3)' } // Pink
             ];
             
-            linePositions.forEach((position, index) => {
-                const line = document.createElement('div');
-                line.className = 'help-line';
-                line.style.left = (charWidth * position) + 'px';
+            // Erstelle farbige Hintergründe für jedes Segment
+            segments.forEach((segment, index) => {
+                const segmentDiv = document.createElement('div');
+                segmentDiv.className = 'segment-background';
+                segmentDiv.style.position = 'absolute';
+                segmentDiv.style.left = (charWidth * segment.start) + 'px';
+                segmentDiv.style.width = (charWidth * (segment.end - segment.start)) + 'px';
+                segmentDiv.style.height = '100%';
+                segmentDiv.style.background = segment.color;
+                segmentDiv.style.zIndex = '1';
+                segmentDiv.style.pointerEvents = 'none';
                 
-                // Prominente Linien an speziellen Positionen (wie im Bild)
-                if (position === 3 || position === 45 || position === 85) { 
-                    // Zwischen 1-2, Mitte (zwischen 7-8), hinter letzter Ziffer
-                    line.style.height = '100%';
-                    line.style.background = 'rgba(255, 0, 0, 0.9)';
-                    line.style.width = '3px';
-                } else {
-                    // Normale Linien zwischen den Zahlen
-                    line.style.height = '200px'; // Nur bis zum Barcode
-                    line.style.background = 'rgba(255, 0, 0, 0.6)';
-                    line.style.width = '2px';
-                }
-                
-                helpLines.appendChild(line);
+                helpLines.appendChild(segmentDiv);
             });
             
             container.appendChild(helpLines);
@@ -451,18 +466,37 @@
                 // EAN-13: Start(3) + 6×7 + Mitte(5) + 6×7 + End(3) = 95
                 const digitPositions = [
                     1.5,   // Ziffer 1 - links außen vor Start-Muster
-                    6.5,   // Ziffer 2 - Mitte des 1. 7-Modul-Segments (3+3.5)
-                    13.5,  // Ziffer 3 - Mitte des 2. 7-Modul-Segments (10+3.5)
-                    20.5,  // Ziffer 4 - Mitte des 3. 7-Modul-Segments (17+3.5)
-                    27.5,  // Ziffer 5 - Mitte des 4. 7-Modul-Segments (24+3.5)
-                    34.5,  // Ziffer 6 - Mitte des 5. 7-Modul-Segments (31+3.5)
-                    41.5,  // Ziffer 7 - Mitte des 6. 7-Modul-Segments (38+3.5)
-                    53.5,  // Ziffer 8 - Mitte des 7. 7-Modul-Segments (50+3.5)
-                    60.5,  // Ziffer 9 - Mitte des 8. 7-Modul-Segments (57+3.5)
-                    67.5,  // Ziffer 10 - Mitte des 9. 7-Modul-Segments (64+3.5)
-                    74.5,  // Ziffer 11 - Mitte des 10. 7-Modul-Segments (71+3.5)
-                    81.5,  // Ziffer 12 - Mitte des 11. 7-Modul-Segments (78+3.5)
-                    88.5   // Ziffer 13 - Mitte des 12. 7-Modul-Segments (85+3.5)
+                    6.5,   // Ziffer 2 - Mitte des grünen Segments (3+3.5)
+                    13.5,  // Ziffer 3 - Mitte des blauen Segments (10+3.5)
+                    20.5,  // Ziffer 4 - Mitte des gelben Segments (17+3.5)
+                    27.5,  // Ziffer 5 - Mitte des magenta Segments (24+3.5)
+                    34.5,  // Ziffer 6 - Mitte des cyan Segments (31+3.5)
+                    41.5,  // Ziffer 7 - Mitte des orange Segments (38+3.5)
+                    53.5,  // Ziffer 8 - Mitte des olive Segments (50+3.5)
+                    60.5,  // Ziffer 9 - Mitte des teal Segments (57+3.5)
+                    67.5,  // Ziffer 10 - Mitte des maroon Segments (64+3.5)
+                    74.5,  // Ziffer 11 - Mitte des dunkelgrünen Segments (71+3.5)
+                    81.5,  // Ziffer 12 - Mitte des navy Segments (78+3.5)
+                    88.5   // Ziffer 13 - Mitte des grauen Segments (85+3.5)
+                ];
+                
+                // Farben für die 13 Segmente (gleiche wie bei den Balken)
+                const segmentColors = [
+                    'rgba(255, 0, 0, 1)',      // Rot - Start
+                    'rgba(0, 255, 0, 1)',      // Grün - Ziffer 2
+                    'rgba(0, 0, 255, 1)',      // Blau - Ziffer 3
+                    'rgba(255, 255, 0, 1)',    // Gelb - Ziffer 4
+                    'rgba(255, 0, 255, 1)',    // Magenta - Ziffer 5
+                    'rgba(0, 255, 255, 1)',    // Cyan - Ziffer 6
+                    'rgba(255, 128, 0, 1)',    // Orange - Ziffer 7
+                    'rgba(128, 0, 128, 1)',    // Lila - Mitte
+                    'rgba(128, 128, 0, 1)',    // Olive - Ziffer 8
+                    'rgba(0, 128, 128, 1)',    // Teal - Ziffer 9
+                    'rgba(128, 0, 0, 1)',      // Maroon - Ziffer 10
+                    'rgba(0, 128, 0, 1)',      // Dunkelgrün - Ziffer 11
+                    'rgba(0, 0, 128, 1)',      // Navy - Ziffer 12
+                    'rgba(128, 128, 128, 1)',  // Grau - Ziffer 13
+                    'rgba(255, 192, 203, 1)'   // Pink - End
                 ];
                 
                 for (let i = 0; i < 13; i++) {
@@ -472,8 +506,15 @@
                     numberElement.onclick = () => changeDigit(i);
                     numberElement.style.left = (moduleWidth * digitPositions[i]) + 'px';
                     
+                    // Farbe basierend auf dem Segment
+                    // Die Zahlen entsprechen den Segmenten: Start(0), Z2(1), Z3(2), Z4(3), Z5(4), Z6(5), Z7(6), Mitte(7), Z8(8), Z9(9), Z10(10), Z11(11), Z12(12), Z13(13), End(14)
                     if (i === 0) {
                         numberElement.classList.add('first-digit');
+                        numberElement.style.color = segmentColors[0]; // Start - Rot
+                    } else if (i <= 6) {
+                        numberElement.style.color = segmentColors[i]; // Ziffern 2-7 (Segmente 1-6)
+                    } else {
+                        numberElement.style.color = segmentColors[i + 1]; // Ziffern 8-13 (Segmente 8-13)
                     }
                     
                     numbersElement.appendChild(numberElement);
