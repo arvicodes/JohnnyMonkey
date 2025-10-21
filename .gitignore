@@ -38,6 +38,9 @@ yarn-error.log*
 
 # Prisma
 prisma/*.db
+server/prisma/*.db
+dev.db
+server/dev.db
 
 # Database backups - organized structure
 server/prisma/backups/
