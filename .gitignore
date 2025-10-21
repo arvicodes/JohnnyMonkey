@@ -54,6 +54,7 @@ db-checkpoint-*.db
 # Keep only the most recent backup
 !backup_latest.db
 !db-latest.sqlite3
+!backup_current_state_20251021-085112.db
 
 # Temporary files
 *.tmp
