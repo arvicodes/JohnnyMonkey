@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Test</h1>
+        <div class="card">
+            <p>CSS wird geladen: <span id="css-test">Test</span></p>
+        </div>
+    </div>
+    <script>
+        console.log('CSS geladen:', getComputedStyle(document.documentElement).getPropertyValue('--c-mode'));
+        console.log('Script wird geladen...');
+    </script>
+    <script src="script.js"></script>
+    <script>
+        console.log('Script geladen, COLORS verfügbar:', typeof COLORS !== 'undefined');
+    </script>
+</body>
+</html>

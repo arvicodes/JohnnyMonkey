@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.3; } }
+        .shake { animation: shake 0.5s infinite; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Fake Warning Section -->
+    <div id="fakeWarning" class="bg-red-600 text-white min-h-screen flex flex-col items-center justify-center p-6">
+        <div class="max-w-2xl text-center space-y-6">
+            <div class="text-6xl mb-4">⚠️</div>
+            <h1 class="text-4xl font-bold blink">ACHTUNG! DEIN GERÄT WURDE GEHACKT!</h1>
+            <div class="bg-red-700 p-6 rounded-lg border-2 border-red-400 shake">
+                <h2 class="text-2xl font-bold mb-4">🚨 KRITISCHE SICHERHEITSWARNUNG 🚨</h2>
+                <ul class="text-left space-y-2 text-lg">
+                    <li>❌ Dein Handy ist mit Malware infiziert</li>
+                    <li>❌ Alle Deine Daten können gestohlen werden</li>
+                    <li>❌ Bankdaten sind in Gefahr</li>
+                    <li>❌ Sofortige Maßnahmen erforderlich</li>
+                </ul>
+            </div>
+           <!-- <div class="blink">
+                <button class="bg-yellow-400 text-red-800 px-8 py-4 rounded-lg text-xl font-bold hover:bg-yellow-300 transition-colors">
+                    JETZT REPARIEREN - NUR 99€!
+                </button>
+            </div>-->
+           
+        </div>
+        
+        <!-- Reveal Button -->
+        <button onclick="revealTruth()" class="mt-8 bg-white text-green-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+            Keine Panik das hier ist nicht echt!!! 
+        </button>
+    </div>
+
+    <!-- Educational Section (Hidden initially) -->
+    <div id="educationalContent" class="hidden bg-white min-h-screen">
+        <!-- Header -->
+        <div class="bg-green-600 text-white py-8">
+            <div class="max-w-4xl mx-auto px-6 text-center">
+                <h1 class="text-4xl mb-4">🛡️ 
+                <b>Entwickele </b> Ideen, wie du dich vor solchen Angriffen schützen kannst. </h1>
+            </div>
+        </div>
+        <center><img src="schutz.jpg"></center>
+
+    </div>
+
+    <script>
+        function revealTruth() {
+            document.getElementById('fakeWarning').classList.add('hidden');
+            document.getElementById('educationalContent').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function resetDemo() {
+            document.getElementById('fakeWarning').classList.remove('hidden');
+            document.getElementById('educationalContent').classList.add('hidden');
+            document.getElementById('quiz').querySelector('#result').classList.add('hidden');
+            document.getElementById('quiz').querySelector('#question').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function checkAnswer(isCorrect) {
+            const questionDiv = document.getElementById('question');
+            const resultDiv = document.getElementById('result');
+            
+            questionDiv.classList.add('hidden');
+            resultDiv.classList.remove('hidden');
+            
+            if (isCorrect) {
+                resultDiv.innerHTML = `
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                        <h4 class="font-bold">✅ Richtig!</h4>
+                        <p>Das Pop-up zu schließen und zu ignorieren ist die beste Reaktion. Echte Sicherheitsprobleme werden nicht durch Pop-ups gemeldet.</p>
+                        <button onclick="resetQuiz()" class="mt-3 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors">
+                            Nochmal versuchen
+                        </button>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <h4 class="font-bold">❌ Falsch!</h4>
+                        <p>Das wäre gefährlich! Klicke niemals auf verdächtige Pop-ups oder gib persönliche Daten ein. Schließe das Pop-up einfach.</p>
+                        <button onclick="resetQuiz()" class="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors">
+                            Nochmal versuchen
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function resetQuiz() {
+            document.getElementById('question').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'982c5a1fe62df2c0',t:'MTc1ODQ4Njk1OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
