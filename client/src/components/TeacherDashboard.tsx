@@ -994,7 +994,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Neue Funktion zum Laden der zugeordneten Ordner
   const fetchAssignedFolders = async (groupId: string) => {
     try {
-      const response = await fetch(`/api/learning-groups/${groupId}/folders`);
+      // Cache-Busting Parameter hinzufügen
+      const timestamp = Date.now();
+      const response = await fetch(`/api/learning-groups/${groupId}/folders?t=${timestamp}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       if (response.ok) {
         const folders = await response.json();
         const folderPaths = folders.map((f: any) => f.path);
@@ -1013,6 +1020,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       console.error('Fehler beim Laden der zugeordneten Ordner:', error);
     }
   };
+
 
   // Neue Funktion zum Laden des Inhalts zugeordneter Ordner
   const fetchAssignedFolderContent = async (groupId: string, folderPath: string) => {
