@@ -1,18 +1,334 @@
-// ========================= Farben =========================
-let COLORS = {};
-
-function initColors() {
-  COLORS = {
-    mode: getComputedStyle(document.documentElement).getPropertyValue('--c-mode').trim(),
-    count: getComputedStyle(document.documentElement).getPropertyValue('--c-count').trim(),
-    term: getComputedStyle(document.documentElement).getPropertyValue('--c-term').trim(),
-    data: getComputedStyle(document.documentElement).getPropertyValue('--c-data').trim(),
-    pad: getComputedStyle(document.documentElement).getPropertyValue('--c-pad').trim(),
-    ecc: getComputedStyle(document.documentElement).getPropertyValue('--c-ecc').trim(),
-    mask: getComputedStyle(document.documentElement).getPropertyValue('--c-mask').trim(),
-    format: getComputedStyle(document.documentElement).getPropertyValue('--c-format').trim(),
-  };
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Generator</title>
+<!-- QR Code library -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<!-- Alternative QR Code library als Fallback -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+// Fallback für bessere QR Code Unterstützung
+if (typeof qrcode === 'undefined') {
+  console.warn('qrcode-generator nicht geladen, versuche alternative Library');
+  // Verwende alternative QR Code Library falls verfügbar
+  if (typeof QRCode !== 'undefined') {
+    console.log('Alternative QR Code Library gefunden');
+  }
 }
+</script>
+<style>
+  :root{
+    --c-mode:#2563eb;
+    --c-count:#16a34a;
+    --c-term:#d97706;
+    --c-data:#111827;
+    --c-pad:#9333ea;
+    --c-ecc:#dc2626;
+    --c-mask:#06b6d4;
+    --c-format:#ec4899;
+    --border:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:#f5f6f8;color:#111827}
+  .container{max-width:1400px;margin:0 auto;padding:32px}
+  h1{font-size:22px;margin:0}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+  .seg-toggle{display:inline-flex;border:1px solid #000;border-radius:9999px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .seg-toggle button{padding:6px 12px;font-size:14px;background:#fff;border:0;border-left:1px solid #000;cursor:pointer}
+  .seg-toggle button:first-child{border-left:0}
+  .seg-toggle button[aria-selected="true"]{background:#000;color:#fff}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:20px}
+  @media (min-width:1024px){.grid{grid-template-columns:1.2fr 1.8fr}}
+  @media (min-width:1400px){.grid{grid-template-columns:1.5fr 2fr}}
+
+  .card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:16px}
+  .label{display:block;margin-bottom:6px;font-size:14px}
+  textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:6px;resize:vertical;margin-bottom:10px}
+  select{padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;background:white;cursor:pointer;z-index:10;position:relative}
+  select:focus{outline:2px solid #2563eb;outline-offset:2px}
+  select option{background:white;color:#111827;padding:4px 8px}
+  .small{font-size:12px}
+  .tiny{font-size:11px}
+
+  .binlist{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-bottom:12px}
+  .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px}
+  .chip{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:3px 6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .color-dot{width:12px;height:12px;border-radius:4px;display:inline-block;margin-right:8px}
+  .picker{display:inline-flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden;margin-bottom:10px}
+  .picker button{padding:8px 14px;border:0;border-left:1px solid #d1d5db;background:#fff;cursor:pointer}
+  .picker button:first-child{border-left:0}
+  .picker .active{background:#111827;color:#fff}
+  
+  /* Neue CSS für nebeneinander angeordnete Bereiche */
+  .segments-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+  .segment-item{display:flex;flex-direction:column;gap:8px}
+  .segment-header{display:flex;align-items:center;gap:8px;font-size:14px}
+  .segment-picker{display:flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}
+  .segment-picker button{padding:6px 10px;border:0;border-left:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:12px;flex:1}
+  .segment-picker button:first-child{border-left:0}
+  .segment-picker .active{background:#111827;color:#fff}
+  
+  /* CSS für nebeneinander angeordnete Checkboxen */
+  .checkboxes-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+  .checkbox-item{display:flex;flex-direction:column;gap:8px}
+  .checkbox-header{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:4px}
+  .checkbox-switch{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;transition:all 0.2s}
+  .checkbox-switch:hover{background:#f3f4f6;border-color:#d1d5db}
+  .checkbox-switch input[type="checkbox"]{margin:0;cursor:pointer}
+  .checkbox-switch span{font-size:13px;font-weight:500;cursor:pointer}
+  
+  @media (max-width: 768px) {
+    .segments-grid{grid-template-columns:1fr;gap:12px}
+    .checkboxes-grid{grid-template-columns:1fr;gap:12px}
+  }
+
+  .switch{display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px}
+  .btn{padding:8px 14px;border-radius:8px;border:1px solid #2563eb;background:#2563eb;color:#fff;font-size:14px;cursor:pointer}
+  .btn.secondary{background:#fff;color:#2563eb}
+  .btn.chosen{background:#2563eb;color:#fff;border-color:#1d4ed8}
+  .btn svg{display:block;margin:0 auto}
+  .btn.small{padding:6px 8px;min-width:36px}
+  .btn.small svg{width:20px;height:20px}
+  .mask-btn{padding:8px 10px;min-width:72px;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .mask-btn svg{width:64px;height:64px}
+  .mask-btn .mask-label{font-size:11px;font-weight:500;margin-top:2px}
+  .error{color:#b91c1c;font-size:12px;margin-top:4px}
+
+  .preview-wrap{border:1px solid #e5e7eb;display:inline-block;padding:12px}
+  .title{font-weight:600;margin-bottom:8px}
+
+  .list{font-size:14px;margin:0;padding-left:20px}
+  .swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;margin-bottom:10px}
+  .swatch{padding:8px;border-radius:8px;border:1px solid var(--c-mask)}
+  .swatch.selected{outline:3px solid #22d3ee}
+  .swatch .tiny{text-align:center;margin-top:6px}
+
+  .muted{color:#6b7280}
+  .muted.box{background:#f9fafb;border:1px solid #d1d5db;color:#6b7280;border-radius:8px;padding:10px;margin-bottom:10px}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="toolbar">
+      <h1>QR Generator</h1>
+      <div class="seg-toggle" role="tablist" aria-label="Ansicht">
+        <button id="tab-basic" role="tab" aria-selected="true">Grundversion</button>
+        <button id="tab-rest" role="tab" aria-selected="false">Fortgeschritten</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+          <label class="label" title="Diese Zeichen werden im Byte Modus in UTF 8 codiert. Der Zähler nutzt die Anzahl der Bytes." style="margin-bottom: 0; flex: 1;">Zu codierender Text (Bereich 3)</label>
+          <label class="switch small" style="margin: 0;">
+            <input type="checkbox" id="showColorHighlight">
+            <span style="color: #059669;">Buchstaben hervorheben (kleiner Hinweis)</span>
+          </label>
+        </div>
+        <div contenteditable="true" id="text" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; margin-bottom: 10px; min-height: 80px; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: inherit; line-height: inherit; background: white;" role="textbox" aria-multiline="true"></div>
+
+
+        <div class="binlist small" title="Daten-Darstellung je nach gewähltem Modus">
+          <div class="title" id="data-title">ASCII Darstellung</div>
+          <div id="bin-chips" class="chips"></div>
+        </div>
+
+        <div class="card" id="segpickers" style="margin-top: 20px;">
+          <div class="segments-grid">
+            <!-- Bereich 1: Mode -->
+            <div class="segment-item">
+              <div class="segment-header">
+                <span class="color-dot" style="background:var(--c-mode)"></span>
+                <span>Bereich 1</span>
+              </div>
+              <div class="segment-picker">
+                <button data-seg="mode" data-val="off" class="active">Aus</button>
+                <button data-seg="mode" data-val="sw">An</button>
+                <button data-seg="mode" data-val="color">BUNT</button>
+              </div>
+            </div>
+
+            <!-- Bereich 2: Count -->
+            <div class="segment-item">
+              <div class="segment-header">
+                <span class="color-dot" style="background:var(--c-count)"></span>
+                <span>Bereich 2</span>
+              </div>
+              <div class="segment-picker">
+                <button data-seg="count" data-val="off" class="active">Aus</button>
+                <button data-seg="count" data-val="sw">An</button>
+                <button data-seg="count" data-val="color">BUNT</button>
+              </div>
+            </div>
+
+            <!-- Bereich 4: Terminator -->
+            <div class="segment-item">
+              <div class="segment-header">
+                <span class="color-dot" style="background:var(--c-term)"></span>
+                <span>Bereich 4</span>
+              </div>
+              <div class="segment-picker">
+                <button data-seg="term" data-val="off" class="active">Aus</button>
+                <button data-seg="term" data-val="sw">An</button>
+                <button data-seg="term" data-val="color">BUNT</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px; margin-bottom: 16px;">
+          <div class="small title">Codiermodus wechseln</div>
+          <div class="picker">
+            <button class="active" data-mode="byte" title="Byte-Modus: Alle Zeichen, ASCII-Codierung (Beispiel: Hallo)">Byte (ASCII)</button>
+            <button data-mode="numeric" title="Numeric-Modus: Nur Zahlen (Beispiel: 123)">Numerisch</button>
+            <button data-mode="alphanumeric" title="Alphanumeric-Modus: Buchstaben + Zahlen (Beispiel: Z5)">Alphanumerisch</button>
+          </div>
+        </div>
+
+        <div id="rest-controls" style="display:none; margin-top: 20px;">
+          <div class="card">
+            <div class="small title">Version</div>
+            <div style="position: relative; z-index: 1000;">
+              <select id="version" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; z-index: 1001; position: relative; outline: none;" 
+                      onmousedown="event.stopPropagation();" 
+                      onclick="event.stopPropagation();" 
+                      onchange="event.stopPropagation();"
+                      onfocus="event.stopPropagation();"
+                      onblur="event.stopPropagation();">
+              </select>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="checkboxes-grid">
+              <!-- Padbytes anzeigen -->
+              <div class="checkbox-item">
+                <div class="checkbox-header">
+                  <span class="color-dot" style="background:var(--c-pad)"></span>
+                  <span>Padbytes</span>
+                </div>
+                <label class="checkbox-switch">
+                  <input type="checkbox" id="showPad">
+                  <span>anzeigen</span>
+                </label>
+              </div>
+
+              <!-- Formatinfo Achsenkreuz markieren -->
+              <div class="checkbox-item">
+                <div class="checkbox-header">
+                  <span class="color-dot" style="background:var(--c-format)"></span>
+                  <span>Formatinfo</span>
+                </div>
+                <label class="checkbox-switch">
+                  <input type="checkbox" id="highlightFormat">
+                  <span>Achsenkreuz markieren</span>
+                </label>
+              </div>
+
+              <!-- Fehlerkorrektur anzeigen -->
+              <div class="checkbox-item">
+                <div class="checkbox-header">
+                  <span class="color-dot" style="background:var(--c-ecc)"></span>
+                  <span>Fehlerkorrektur</span>
+                </div>
+                <label class="checkbox-switch">
+                  <input type="checkbox" id="showECC">
+                  <span>anzeigen</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="small title">Fehlerkorrektur</div>
+            <div class="row">
+              <button class="btn secondary small" data-ecc="L" title="ca. 7 Prozent">L</button>
+              <button class="btn secondary small" data-ecc="M" title="ca. 15 Prozent">M</button>
+              <button class="btn secondary small" data-ecc="Q" title="ca. 25 Prozent">Q</button>
+              <button class="btn secondary small" data-ecc="H" title="ca. 30 Prozent">H</button>
+              <button class="btn secondary small chosen" data-ecc="none" title="nur Lehrmodus">none</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="small title">Maske</div>
+            <div class="row">
+              <button class="btn secondary mask-btn chosen" data-mask="none" title="ohne feste Maske">none</button>
+              <button class="btn secondary mask-btn" data-mask="0" title="Maske 0"></button>
+              <button class="btn secondary mask-btn" data-mask="1" title="Maske 1"></button>
+              <button class="btn secondary mask-btn" data-mask="2" title="Maske 2"></button>
+              <button class="btn secondary mask-btn" data-mask="3" title="Maske 3"></button>
+              <button class="btn secondary mask-btn" data-mask="4" title="Maske 4"></button>
+              <button class="btn secondary mask-btn" data-mask="5" title="Maske 5"></button>
+              <button class="btn secondary mask-btn" data-mask="6" title="Maske 6"></button>
+              <button class="btn secondary mask-btn" data-mask="7" title="Maske 7"></button>
+              <button class="btn secondary mask-btn" data-mask="auto" title="automatisch">auto</button>
+            </div>
+            <label class="switch tiny" title="Schaltet das XOR der Maske auf die Datenbits. Aus bedeutet rohe Bits anzeigen.">
+              <input type="checkbox" id="applyMask">
+              <span>Maske anwenden</span>
+            </label>
+          </div>
+
+          <label class="switch small muted box">
+            <input type="checkbox" id="showFinal">
+            <span>Scannbaren QR Code anzeigen</span>
+          </label>
+
+          <div class="row" style="margin-top:8px">
+            <button id="btnSave" class="btn">SVG speichern</button>
+          </div>
+        </div>
+
+        <div id="error" class="error"></div>
+
+        <label id="final-toggle-basic" class="switch small muted box" style="margin-top:20px">
+          <input type="checkbox" id="showFinalBasic">
+          <span>Scannbaren QR Code anzeigen</span>
+        </label>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="title">Vorschau</div>
+          <div class="preview-wrap" title="Finder und Timing in schwarz weiß. Datenbits erscheinen je nach Ansicht und Auswahl.">
+            <div id="svgHost"></div>
+          </div>
+        </div>
+
+        <div class="card" id="finalCard" style="display:none">
+          <div class="title">Scannbarer Code</div>
+          <div class="preview-wrap" title="Dies ist der komplette QR Code, wie ein Scanner ihn liest">
+            <div id="finalHost"></div>
+          </div>
+        </div>
+
+       <div class="card" id="sizesCard" style="display:none">
+          <!--<div class="title">Größen und Kapazitäten</div>
+          <ul class="list" id="sizesList"></ul>-->
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ========================= Farben =========================
+const COLORS = {
+  mode: getComputedStyle(document.documentElement).getPropertyValue('--c-mode').trim(),
+  count: getComputedStyle(document.documentElement).getPropertyValue('--c-count').trim(),
+  term: getComputedStyle(document.documentElement).getPropertyValue('--c-term').trim(),
+  data: getComputedStyle(document.documentElement).getPropertyValue('--c-data').trim(),
+  pad: getComputedStyle(document.documentElement).getPropertyValue('--c-pad').trim(),
+  ecc: getComputedStyle(document.documentElement).getPropertyValue('--c-ecc').trim(),
+  mask: getComputedStyle(document.documentElement).getPropertyValue('--c-mask').trim(),
+  format: getComputedStyle(document.documentElement).getPropertyValue('--c-format').trim(),
+};
 
 // ========================= Hilfen und Tabellen =========================
 function maskPredicate(maskIndex, r, c) {
@@ -254,22 +570,35 @@ tabRest.addEventListener('click', (e)=>{
   }
   vSel.value = "1";
   
-  // Einfacher Event listener für Änderungen
+  // Komplett neuer Event listener OHNE preventDefault() um das native Dropdown-Verhalten zu erlauben
   vSel.addEventListener('change', function(e) {
+    e.stopPropagation(); // Nur stopPropagation, KEIN preventDefault!
     const newVersion = parseInt(e.target.value, 10);
     console.log('Version changed to:', newVersion);
+    
+    // SOFORTIGE Ausführung ohne Verzögerung
     setState({version: newVersion});
   });
   
-  // Dropdown-Status verfolgen
-  vSel.addEventListener('focus', function(e) {
-    isDropdownOpen = true;
-    console.log('Dropdown opened');
+  // NUR stopPropagation, kein preventDefault um das Dropdown nicht zu blockieren
+  vSel.addEventListener('mousedown', function(e) {
+    e.stopPropagation();
   });
   
+  vSel.addEventListener('click', function(e) {
+    e.stopPropagation();
+  });
+  
+  // Zusätzlicher Event listener für focus um das Dropdown zu schützen
+  vSel.addEventListener('focus', function(e) {
+    e.stopPropagation();
+    isDropdownOpen = true;
+  });
+  
+  // Zusätzlicher Event listener für blur um das Dropdown zu schützen
   vSel.addEventListener('blur', function(e) {
+    e.stopPropagation();
     isDropdownOpen = false;
-    console.log('Dropdown closed');
   });
 })();
 
@@ -510,6 +839,7 @@ function setCursorToEnd() {
     selection.removeAllRanges();
     selection.addRange(range);
   } else if (document.selection && document.selection.createRange) {
+    // Fallback für ältere Browser
     const range = document.selection.createRange();
     range.moveToElementText(textEl);
     range.collapse(false); // false = ans Ende
@@ -686,20 +1016,10 @@ function buildDataBits(text, v, eccLevel, mode){
   let capCharsForSizes;  // was in bitInfo.capBytes zurückgegeben wird
 
   if(eccLevel === 'none'){
-    // Für numerische und alphanumerische Modi: Verwende L-Kapazität auch bei 'none'
-    if(mode === 'numeric' || mode === 'alphanumeric') {
-      inputCapChars = (capacityTable['L'] && capacityTable['L'][v]) || 0;
-      capCharsForSizes = inputCapChars;
-      if(mode === 'numeric') {
-        capBits = Math.floor(inputCapChars * 10/3); // 3 Ziffern = 10 Bits im Durchschnitt
-      } else {
-        capBits = Math.floor(inputCapChars * 11/2); // 2 Zeichen = 11 Bits im Durchschnitt
-      }
-    } else {
-      capBits = totalDataModules;
-      inputCapChars = (capacityTable['L'] && capacityTable['L'][v]) || Math.floor(totalDataModules/8);
-      capCharsForSizes = inputCapChars;
-    }
+    capBits = totalDataModules;
+    // Verwende die echten Kapazitätswerte auch bei 'none' ECC
+    inputCapChars = (capacityTable['L'] && capacityTable['L'][v]) || Math.floor(totalDataModules/8);
+    capCharsForSizes = (capacityTable['L'] && capacityTable['L'][v]) || Math.floor(totalDataModules/8);
   }else{
     // Für numerisch und alphanumerisch: Kapazität in Zeichen, nicht Bytes
     if(mode === 'numeric' || mode === 'alphanumeric') {
@@ -942,8 +1262,7 @@ function createQRWithSpecificMode(text, mode, version, eccLevel) {
 // QR instance
 function makeQRCodeInstance(inputText){
   try{
-    // Für numerische und alphanumerische Modi: Verwende immer L statt none
-    const ecLevel = (state.ecc === "none" && (state.encodingMode === 'numeric' || state.encodingMode === 'alphanumeric')) ? "L" : (state.ecc === "none" ? "L" : state.ecc);
+    const ecLevel = state.ecc==="none" ? "L" : state.ecc;
     let textToUse = (inputText && typeof inputText === 'string') ? inputText : " ";
     
     // KORREKTE LÖSUNG: Verwende den gewählten Encoding-Modus
@@ -1830,13 +2149,6 @@ function setState(patch){
     versionSelect.value = String(patch.version);
   }
   
-  // Verhindere setState-Aufrufe während das Dropdown offen ist
-  if(isDropdownOpen && versionSelect && versionSelect === document.activeElement) {
-    console.log('Dropdown ist offen - überspringe setState-Aufruf');
-    return;
-  }
-  
-  
   // Setup Event Listener für fortgeschrittene Checkbox wenn nötig
   if(!basic) {
     setupAdvancedFinalCheckbox();
@@ -2057,8 +2369,6 @@ if(typeof qrcode !== 'undefined') {
   }
 })();
 
-// Initialisiere Farben nach dem DOM-Load
-document.addEventListener('DOMContentLoaded', function() {
-  initColors();
-});
-
+</script>
+</body>
+</html>

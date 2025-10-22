@@ -8,6 +8,7 @@ datasource db {
 }
 
 // Copy all models from main schema
+// Copy all models from main schema
 model User {
   id             String              @id @default(uuid())
   name           String

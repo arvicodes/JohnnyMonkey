@@ -33,34 +33,7 @@
             background: #fafafa;
             border-radius: 8px;
             overflow-x: auto;
-        }
-        
-        .barcode-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 0 auto;
-            table-layout: fixed;
-        }
-        
-        .barcode-row {
-            height: 250px;
-        }
-        
-        .numbers-row {
-            height: 50px;
-        }
-        
-        .barcode-table td {
-            padding: 0;
-            border: 1px solid #ddd;
-            vertical-align: middle;
-            text-align: center;
             position: relative;
-            font-family: monospace;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            white-space: nowrap;
         }
         
         .barcode {
@@ -68,43 +41,39 @@
             margin: 20px 0;
             position: relative;
             white-space: nowrap;
-            overflow-x: auto;
+            overflow: hidden;
             width: 100%;
         }
         
         .barcode-line {
-            display: inline-block;
-            height: 200px;
-            margin: 0;
-            background-color: #000;
-            vertical-align: top;
+            /* Alle Styles werden inline gesetzt für präzise Kontrolle */
         }
         
         .barcode-line.thin {
-            width: 14.28%; /* 1/7 der Zellbreite */
+            /* Breite wird dynamisch berechnet */
         }
         
         .barcode-line.medium {
-            width: 28.57%; /* 2/7 der Zellbreite */
+            /* Breite wird dynamisch berechnet */
         }
         
         .barcode-line.thick {
-            width: 42.86%; /* 3/7 der Zellbreite */
+            /* Breite wird dynamisch berechnet */
         }
         
         .barcode-line.start-pattern {
             height: 250px;
-            width: 33.33%; /* 1/3 der Zellbreite für Start-Muster */
+            /* Breite wird dynamisch berechnet */
         }
         
         .barcode-line.middle-pattern {
             height: 250px;
-            width: 20%; /* 1/5 der Zellbreite für Mitte-Muster */
+            /* Breite wird dynamisch berechnet */
         }
         
         .barcode-line.end-pattern {
             height: 250px;
-            width: 33.33%; /* 1/3 der Zellbreite für End-Muster */
+            /* Breite wird dynamisch berechnet */
         }
         
         .barcode-line.white {
@@ -156,6 +125,13 @@
             margin: 20px 0;
         }
         
+        .controls.vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 200px;
+        }
+        
         .control-button {
             background-color: #007bff;
             color: white;
@@ -191,6 +167,66 @@
             right: 0;
             bottom: 0;
             pointer-events: none;
+            z-index: 1;
+        }
+        
+        .help-page {
+            background: #f9f9f9;
+            border: 2px solid #0066cc;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 3px 0 20px 0;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .help-page h2 {
+            color: #0066cc;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .help-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .help-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 8px;
+        }
+        
+        .help-section p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        
+        .help-section ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .help-section li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .help-section a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .help-section a:hover {
+            text-decoration: underline;
         }
         
         .help-line {
@@ -212,7 +248,7 @@
         
         .structure-table th,
         .structure-table td {
-            border: 1px solid #333;
+            border: 1px solid #0066cc;
             padding: 8px 12px;
             text-align: center;
         }
@@ -243,34 +279,147 @@
 </head>
 <body>
     <div class="container">
-        <h1>Interaktives Barcode-Tool</h1>
+        <h1>Einkaufen leicht gemacht</h1>
         
-        <div class="info">
-            <strong>Anleitung:</strong> Klicke auf die Ziffern unter dem Barcode, um sie zu ändern. 
-            Die erste Ziffer (Prüfziffer) wird automatisch berechnet. 
-            Du kannst Hilfslinien ein- und ausschalten.
+        
+        <div style="display: flex; gap: 30px; align-items: flex-start;">
+            <div class="barcode-container" style="flex: 1;">
+                <div class="barcode" id="barcode">
+                    <!-- Barcode wird hier generiert -->
+                </div>
+                <div class="barcode-numbers" id="barcodeNumbers">
+                    <!-- Zahlen werden hier generiert -->
+                </div>
+            </div>
+            
+            <div class="controls" style="display: flex; flex-direction: column; gap: 10px; min-width: 75px;">
+                <button class="control-button" id="helpLinesBtn" onclick="toggleHelpLines()">
+                    Farben anzeigen
+                </button>
+                <button class="control-button" id="separatorLinesBtn" onclick="toggleSeparatorLines()">
+                    Hilfslinien anzeigen
+                </button>
+                <button class="control-button" onclick="randomizeBarcode()">
+                    Zufälliger Barcode
+                </button>
+                <button class="control-button" onclick="resetBarcode()">
+                    Zurücksetzen
+                </button>
+                <button class="control-button" onclick="toggleHelpPage()">
+                    Informationen anzeigen
+                </button>
+                <div class="info" style="margin-top: 5px; font-size: 14px; text-align: center; background: linear-gradient(135deg, #ff6b6b, #ff5252); color: white; padding: 8px; border-radius: 8px; line-height: 1.3; box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3); display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
+                    <span style="font-size: 18px;">✏️</span>
+                    <span>Klicke auf die Ziffern<br>unter dem Barcode</span>
+                </div>
+            </div>
         </div>
         
-        <div class="barcode-container">
-            <table class="barcode-table">
-                <tr id="barcodeRow" class="barcode-row">
-                    <!-- Barcode-Segmente werden hier eingefügt -->
-                </tr>
-                <tr id="numbersRow" class="numbers-row">
-                    <!-- Zahlen werden hier eingefügt -->
-                </tr>
-            </table>
-        </div>
-        
-        <div class="controls">
-            <button class="control-button" id="helpLinesBtn" onclick="toggleHelpLines()">
-                Hilfslinien einblenden
-            </button>
-            <button class="control-button" onclick="randomizeBarcode()">
-                Zufälliger Barcode
-            </button>
-            <button class="control-button" onclick="resetBarcode()">
-                Zurücksetzen
+        <!-- Hilfeseite -->
+        <div id="helpPage" class="help-page" style="display: none;">
+            
+            <div class="help-section">
+                <h3>Codierung der Ziffern</h3>
+                <p>Die Ziffern im GTIN-Barcode können auf drei unterschiedliche Arten codiert werden:</p>
+                <ul style="line-height: 1.2; margin: 10px 0;">
+                    <li><strong>A-Codierung:</strong> Standard-Codierung für den linken Block</li>
+                    <li><strong>B-Codierung:</strong> Invertierte A-Codierung für den linken Block</li>
+                    <li><strong>C-Codierung:</strong> Immer für den rechten Block verwendet</li>
+                </ul>
+                
+                <h4>Codierungstabellen <button class="control-button" id="highlightBtn" onclick="toggleHighlight()" style="margin-left: 10px; font-size: 14px; padding: 8px 15px;">Zeigen</button></h4>
+                
+                <div style="display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap;">
+                    <!-- Paritätstabelle (jetzt links) -->
+                    <div style="flex: 1; min-width: 300px;">
+                        <table id="parityTable" style="border-collapse: collapse; width: 100%; font-size: 10px;">
+                            <tr style="background: #f0f0f0;">
+                                <th style="border: 1px solid #ccc; padding: 4px;">Erste Ziffer</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">Ziffer 2</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">Ziffer 3</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">Ziffer 4</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">Ziffer 5</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">Ziffer 6</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">Ziffer 7</th>
+                            </tr>
+                            <tr id="parity-row-0"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">0</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td></tr>
+                            <tr id="parity-row-1"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">1</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td></tr>
+                            <tr id="parity-row-2"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">2</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td></tr>
+                            <tr id="parity-row-3"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">3</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td></tr>
+                            <tr id="parity-row-4"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">4</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td></tr>
+                            <tr id="parity-row-5"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">5</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td></tr>
+                            <tr id="parity-row-6"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">6</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td></tr>
+                            <tr id="parity-row-7"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">7</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td></tr>
+                            <tr id="parity-row-8"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">8</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td></tr>
+                            <tr id="parity-row-9"><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">9</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">B</td><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">A</td></tr>
+                        </table>
+                    </div>
+                    
+                    <!-- Codierungstabelle (jetzt rechts) -->
+                    <div style="flex: 1; min-width: 300px;">
+                        <table id="codingTable" style="border-collapse: collapse; width: 100%; font-size: 10px;">
+                            <tr style="background: #f0f0f0;">
+                                <th style="border: 1px solid #ccc; padding: 4px;">Ziffer</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">A-Codierung</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">B-Codierung</th>
+                                <th style="border: 1px solid #ccc; padding: 4px;">C-Codierung</th>
+                            </tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">0</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0001101</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0100111</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1110010</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">1</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0011001</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0110011</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1100110</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">2</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0010011</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0011011</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1101100</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">3</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0111101</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0100001</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1000010</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">4</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0100011</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0011101</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1011100</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">5</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0110001</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0111001</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1001110</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">6</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0101111</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0000101</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1010000</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">7</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0111011</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0010001</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1000100</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">8</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0110111</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0001001</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1001000</td></tr>
+                            <tr><td style="border: 1px solid #ccc; padding: 4px; text-align: center;">9</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0001011</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">0010111</td><td style="border: 1px solid #ccc; padding: 4px; font-family: monospace;">1110100</td></tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <p style="margin-top: 20px; font-style: italic; color: #666;">Die erste Ziffer wird nicht codiert. Stattdessen werden die A/B-Codierungen im linken Block für jede Ziffer anders belegt, damit das Lesegerät die korrekte Leserichtung erkennen kann.</p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Prüfziffer</h3>
+                <p>Die letzte Ziffer des GTIN-Codes ist die Prüfziffer. Sie wird berechnet, indem die ersten 12 Ziffern abwechselnd mit 1 und 3 multipliziert und addiert werden. Die Prüfziffer wird so gewählt, dass das Gesamtergebnis durch 10 teilbar ist.</p>
+                <p><strong>Beispiel:</strong> 4×1 + 0×3 + 0×1 + 0×3 + 0×1 + 0×3 + 0×1 + 0×3 + 0×1 + 0×3 + 0×1 + 0×3 = 4</p>
+                <p>Prüfziffer = 10 - (4 % 10) = 6</p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Ländercode</h3>
+                <p>Die ersten zwei bzw. drei Stellen geben das Land an, das die GTIN vergeben hat:</p>
+                <ul>
+                    <li><strong>40-43, 440:</strong> Deutschland</li>
+                    <li><strong>978:</strong> ISBN (Bücher)</li>
+                    <li><strong>Weitere:</strong> Verschiedene Länder weltweit</li>
+                </ul>
+                <p>Die nachfolgenden Stellen sind der Herstellercode und eine hersteller-interne Nummer.</p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Barcode-Struktur</h3>
+                <p>Ein EAN-13 Barcode besteht aus:</p>
+                <ul>
+                    <li><strong>Start-Muster:</strong> 3 Module (längere Balken)</li>
+                    <li><strong>Linke Seite:</strong> 6 Ziffern à 7 Module</li>
+                    <li><strong>Mittleres Trennzeichen:</strong> 5 Module</li>
+                    <li><strong>Rechte Seite:</strong> 6 Ziffern à 7 Module</li>
+                    <li><strong>End-Muster:</strong> 3 Module</li>
+                </ul>
+                <p><strong>Gesamt:</strong> 3 + (6×7) + 5 + (6×7) + 3 = 95 Module</p>
+            </div>
+            
+            <div class="help-section">
+                <h3>GTIN-Datenbank</h3>
+                <p>In der <a href="https://www.opengtindb.org" target="_blank">GTIN-Datenbank</a> können Sie nach einem bestimmten GTIN-Code bzw. nach einem Produkt suchen.</p>
+                <p><strong>Hinweis:</strong> Dies bedeutet nicht, dass die Ware auch dort hergestellt wurde. Es heißt nur, dass der Hersteller den Code in diesem Land beantragt hat.</p>
+            </div>
+            
+            <button class="control-button" onclick="toggleHelpPage()" style="margin-top: 20px;">
+                Hilfe schließen
             </button>
         </div>
         
@@ -320,6 +469,9 @@
 
         let currentBarcode = '1234567890123';
         let showHelpLines = false;
+        let showSeparatorLines = false;
+        let showCodingVisualization = false;
+        let showHighlight = false;
 
         function calculateCheckDigit(barcode) {
             let sum = 0;
@@ -334,121 +486,64 @@
             return (10 - (sum % 10)) % 10;
         }
 
+        function getLeftParity(digit) {
+            // EAN-13 Paritätstabelle für die erste Ziffer
+            const parityTable = {
+                '0': ['A', 'A', 'A', 'A', 'A', 'A'],
+                '1': ['A', 'A', 'B', 'A', 'B', 'B'],
+                '2': ['A', 'A', 'B', 'B', 'A', 'B'],
+                '3': ['A', 'A', 'B', 'B', 'B', 'A'],
+                '4': ['A', 'B', 'A', 'A', 'B', 'B'],
+                '5': ['A', 'B', 'B', 'A', 'A', 'B'],
+                '6': ['A', 'B', 'B', 'B', 'A', 'A'],
+                '7': ['A', 'B', 'A', 'B', 'A', 'B'],
+                '8': ['A', 'B', 'A', 'B', 'B', 'A'],
+                '9': ['A', 'B', 'B', 'A', 'B', 'A']
+            };
+            
+            const firstDigit = currentBarcode[0];
+            const position = parseInt(digit) - 1; // Position in der linken Seite (0-5)
+            return parityTable[firstDigit][position];
+        }
+
         function generateBarcode(barcode) {
-            const barcodeRow = document.getElementById('barcodeRow');
-            barcodeRow.innerHTML = '';
+            const barcodeElement = document.getElementById('barcode');
+            barcodeElement.innerHTML = '';
             
-            // Farben für die 13 Segmente (dezenter)
-            const segmentColors = [
-                'rgba(255, 0, 0, 0.1)',      // Rot - Start
-                'rgba(0, 255, 0, 0.1)',      // Grün - Ziffer 2
-                'rgba(0, 0, 255, 0.1)',      // Blau - Ziffer 3
-                'rgba(255, 255, 0, 0.1)',    // Gelb - Ziffer 4
-                'rgba(255, 0, 255, 0.1)',    // Magenta - Ziffer 5
-                'rgba(0, 255, 255, 0.1)',    // Cyan - Ziffer 6
-                'rgba(255, 128, 0, 0.1)',    // Orange - Ziffer 7
-                'rgba(128, 0, 128, 0.1)',    // Lila - Mitte
-                'rgba(128, 128, 0, 0.1)',    // Olive - Ziffer 8
-                'rgba(0, 128, 128, 0.1)',    // Teal - Ziffer 9
-                'rgba(128, 0, 0, 0.1)',      // Maroon - Ziffer 10
-                'rgba(0, 128, 0, 0.1)',      // Dunkelgrün - Ziffer 11
-                'rgba(0, 0, 128, 0.1)',      // Navy - Ziffer 12
-                'rgba(128, 128, 128, 0.1)',  // Grau - Ziffer 13
-                'rgba(255, 192, 203, 0.1)'   // Pink - End
-            ];
-            
-            // Spalte 1: Leer (für Ziffer 1)
-            addEmptyCell(barcodeRow);
-            
-            // Spalte 2: Start-Muster (schwarze Balken)
-            addBarcodeCell(barcodeRow, '101', true, false, false, 0, 'transparent');
-            
-            // Erste 6 Ziffern (linke Seite) - Segmente 1-6
-            const firstDigit = barcode[0];
-            const parityPattern = parityPatterns[firstDigit];
-            
-            for (let i = 1; i <= 6; i++) {
-                const digit = barcode[i];
-                const parity = parityPattern[i-1];
-                const pattern = barcodePatterns[digit][parity === 'L' ? 0 : 1];
-                addBarcodeCell(barcodeRow, pattern, false, false, false, i, segmentColors[i]);
-            }
-            
-            // Mittleres Trennzeichen (längere Streifen) - Segment 7
-            addBarcodeCell(barcodeRow, '01010', false, true, false, 7, segmentColors[7]);
-            
-            // Letzten 6 Ziffern (rechte Seite) - Segmente 8-13
-            for (let i = 7; i <= 12; i++) {
-                const digit = barcode[i];
-                const pattern = barcodePatterns[digit + 'R'][0];
-                addBarcodeCell(barcodeRow, pattern, false, false, false, i + 1, segmentColors[i + 1]);
-            }
-            
-            // End-Muster (längere Streifen) - Segment 14
-            addBarcodeCell(barcodeRow, '101', false, false, true, 14, segmentColors[14]);
-        }
-
-        function addEmptyCell(container) {
-            const cell = document.createElement('td');
-            cell.style.backgroundColor = 'transparent';
-            container.appendChild(cell);
-        }
-
-        function addBarcodeCell(container, pattern, isStartPattern = false, isMiddlePattern = false, isEndPattern = false, segmentIndex = 0, backgroundColor = 'transparent') {
-            const cell = document.createElement('td');
-            cell.style.backgroundColor = backgroundColor;
-            cell.style.position = 'relative';
-            
-            // Farben für die Balken (dezenter)
-            const segmentColors = [
-                'rgba(255, 0, 0, 0.7)',      // Rot - Start
-                'rgba(0, 255, 0, 0.7)',      // Grün - Ziffer 2
-                'rgba(0, 0, 255, 0.7)',      // Blau - Ziffer 3
-                'rgba(255, 255, 0, 0.7)',    // Gelb - Ziffer 4
-                'rgba(255, 0, 255, 0.7)',    // Magenta - Ziffer 5
-                'rgba(0, 255, 255, 0.7)',    // Cyan - Ziffer 6
-                'rgba(255, 128, 0, 0.7)',    // Orange - Ziffer 7
-                'rgba(128, 0, 128, 0.7)',    // Lila - Mitte
-                'rgba(128, 128, 0, 0.7)',    // Olive - Ziffer 8
-                'rgba(0, 128, 128, 0.7)',    // Teal - Ziffer 9
-                'rgba(128, 0, 0, 0.7)',      // Maroon - Ziffer 10
-                'rgba(0, 128, 0, 0.7)',      // Dunkelgrün - Ziffer 11
-                'rgba(0, 0, 128, 0.7)',      // Navy - Ziffer 12
-                'rgba(128, 128, 128, 0.7)',  // Grau - Ziffer 13
-                'rgba(255, 192, 203, 0.7)'   // Pink - End
-            ];
-            
-            const segmentColor = segmentColors[segmentIndex] || '#000';
-            
-            for (let i = 0; i < pattern.length; i++) {
-                const line = document.createElement('div');
-                line.className = 'barcode-line';
+            // Warte kurz, damit der Container gerendert ist und die Breite verfügbar ist
+            setTimeout(() => {
+                // Start-Muster (längere Streifen) - Segment 0
+                addBarcodeLines(barcodeElement, '101', true, false, false, 0);
                 
-                if (pattern[i] === '1') {
-                    // Spezielle Behandlung für Start-, Mittel- und End-Muster (schwarz)
-                    if (isStartPattern || isMiddlePattern || isEndPattern) {
-                        line.style.backgroundColor = '#000'; // Schwarz für Start, Mitte, End
-                        if (isStartPattern) line.classList.add('start-pattern');
-                        if (isMiddlePattern) line.classList.add('middle-pattern');
-                        if (isEndPattern) line.classList.add('end-pattern');
-                    } else {
-                        // Normale Ziffern-Segmente (farbig)
-                        line.style.backgroundColor = segmentColor;
-                        if (i % 2 === 0) {
-                            line.classList.add('thin');
-                        } else {
-                            line.classList.add('medium');
-                        }
-                    }
-                } else {
-                    line.classList.add('white');
-                    line.classList.add('thin');
+                // Erste 6 Ziffern (linke Seite) - Segmente 1-6
+                const firstDigit = barcode[0];
+                const parityPattern = parityPatterns[firstDigit];
+                
+                for (let i = 1; i <= 6; i++) {
+                    const digit = barcode[i];
+                    const parity = parityPattern[i-1];
+                    const pattern = barcodePatterns[digit][parity === 'L' ? 0 : 1];
+                    addBarcodeLines(barcodeElement, pattern, false, false, false, i);
                 }
                 
-                cell.appendChild(line);
-            }
-            
-            container.appendChild(cell);
+                // Mittleres Trennzeichen (längere Streifen) - Segment 7
+                addBarcodeLines(barcodeElement, '01010', false, true, false, 7);
+                
+                // Letzten 6 Ziffern (rechte Seite) - Segmente 8-13
+                for (let i = 7; i <= 12; i++) {
+                    const digit = barcode[i];
+                    const pattern = barcodePatterns[digit + 'R'][0];
+                    addBarcodeLines(barcodeElement, pattern, false, false, false, i + 1);
+                }
+                
+                // End-Muster (längere Streifen) - Segment 14
+                addBarcodeLines(barcodeElement, '101', false, false, true, 14);
+                
+                // Hilfslinien hinzufügen wenn aktiviert
+                if (showHelpLines) {
+                    addHelpLines();
+                }
+            }, 10);
         }
 
         function addBarcodeLines(container, pattern, isStartPattern = false, isMiddlePattern = false, isEndPattern = false, segmentIndex = 0) {
@@ -473,78 +568,196 @@
             
             const segmentColor = segmentColors[segmentIndex] || '#000';
             
+            // Berechne die verfügbare Breite für dieses Segment
+            const containerWidth = container.offsetWidth || container.parentElement.offsetWidth || 1200;
+            const totalModules = 95; // EAN-13 hat 95 Module total
+            const moduleWidth = containerWidth / totalModules;
+            
+            // Bestimme die Anzahl der Module für dieses Segment
+            let segmentModules;
+            if (isStartPattern || isEndPattern) {
+                segmentModules = 3; // Start/End haben 3 Module
+            } else if (isMiddlePattern) {
+                segmentModules = 5; // Mitte hat 5 Module
+            } else {
+                segmentModules = 7; // Jede Ziffer hat 7 Module
+            }
+            
+            const segmentWidth = moduleWidth * segmentModules;
+            
+            // Erstelle einen Container für dieses Segment
+            const segmentContainer = document.createElement('div');
+            segmentContainer.style.display = 'inline-block';
+            segmentContainer.style.width = segmentWidth + 'px';
+            segmentContainer.style.height = (isStartPattern || isMiddlePattern || isEndPattern) ? '250px' : '200px';
+            segmentContainer.style.overflow = 'visible';
+            segmentContainer.style.verticalAlign = 'top';
+            segmentContainer.style.position = 'relative';
+            
+            // Berechne die Breite pro Sub-Segment (jedes Pattern-Zeichen)
+            const subSegmentWidth = segmentWidth / pattern.length;
+            
             for (let i = 0; i < pattern.length; i++) {
+                // Erstelle ein Sub-Segment für jeden Balken
+                const subSegment = document.createElement('div');
+                subSegment.style.display = 'inline-block';
+                subSegment.style.width = subSegmentWidth + 'px';
+                subSegment.style.height = (isStartPattern || isMiddlePattern || isEndPattern) ? '250px' : '200px';
+                subSegment.style.position = 'relative';
+                subSegment.style.overflow = 'visible';
+                subSegment.style.backgroundColor = '#ffffff';
+                subSegment.style.verticalAlign = 'top';
+                
+                // Erstelle den eigentlichen Balken
                 const line = document.createElement('div');
                 line.className = 'barcode-line';
-                
+                line.style.display = 'block';
+                line.style.width = '100%';
+                line.style.height = '200px';
+                line.style.margin = '0';
+                // Balkenfarbe an Ziffernfarbe anpassen
                 if (pattern[i] === '1') {
-                    // Spezielle Behandlung für Start-, Mittel- und End-Muster (schwarz)
-                    if (isStartPattern || isMiddlePattern || isEndPattern) {
-                        line.style.backgroundColor = '#000'; // Schwarz für Start, Mitte, End
-                        if (isStartPattern) line.classList.add('start-pattern');
-                        if (isMiddlePattern) line.classList.add('middle-pattern');
-                        if (isEndPattern) line.classList.add('end-pattern');
+                    if (showCodingVisualization) {
+                        // Codierungs-Visualisierung
+                        if (isStartPattern || isEndPattern) {
+                            line.style.backgroundColor = '#ff6b6b'; // Rot für Start/End
+                        } else if (isMiddlePattern) {
+                            line.style.backgroundColor = '#9c88ff'; // Lila für Mitte
+                        } else if (segmentIndex >= 1 && segmentIndex <= 6) {
+                            // Linke Seite: A/B-Codierung
+                            const digit = currentBarcode[segmentIndex];
+                            const parity = getLeftParity(digit);
+                            if (parity === 'A') {
+                                line.style.backgroundColor = '#4ecdc4'; // Türkis für A-Codierung
+                            } else {
+                                line.style.backgroundColor = '#45b7d1'; // Blau für B-Codierung
+                            }
+                        } else if (segmentIndex >= 8 && segmentIndex <= 13) {
+                            // Rechte Seite: C-Codierung
+                            line.style.backgroundColor = '#96ceb4'; // Grün für C-Codierung
+                        }
                     } else {
-                        // Normale Ziffern-Segmente (farbig)
-                        line.style.backgroundColor = segmentColor;
+                        // Normale Segment-Farben
+                        if (isStartPattern || isEndPattern) {
+                            line.style.backgroundColor = segmentColors[0]; // Rot für Start/End
+                        } else if (isMiddlePattern) {
+                            line.style.backgroundColor = segmentColors[7]; // Lila für Mitte
+                        } else {
+                            line.style.backgroundColor = segmentColors[segmentIndex]; // Segment-Farbe
+                        }
+                    }
+                } else {
+                    line.style.backgroundColor = '#fff'; // Weiß für weiße Balken
+                }
+                
+                // Spezielle Behandlung für Start-, Mittel- und End-Muster
+                if (isStartPattern || isMiddlePattern || isEndPattern) {
+                    line.style.height = '250px';
+                    if (isStartPattern) line.classList.add('start-pattern');
+                    if (isMiddlePattern) line.classList.add('middle-pattern');
+                    if (isEndPattern) line.classList.add('end-pattern');
+                } else {
+                    // Normale Ziffern-Segmente
                     if (i % 2 === 0) {
                         line.classList.add('thin');
                     } else {
                         line.classList.add('medium');
-                        }
                     }
-                } else {
-                    line.classList.add('white');
-                    line.classList.add('thin');
                 }
                 
-                container.appendChild(line);
+                if (pattern[i] === '0') {
+                    line.classList.add('white');
+                } else {
+                    line.classList.add('black');
+                }
+                
+                subSegment.appendChild(line);
+                
+                // Füge rote Trennlinie hinzu (außer beim letzten Element) - nur wenn Hilfslinien angezeigt werden
+                if (i < pattern.length - 1 && showSeparatorLines) {
+                    const divider = document.createElement('div');
+                    divider.style.position = 'absolute';
+                    divider.style.right = '0px';
+                    divider.style.top = '0px';
+                    divider.style.width = '1px';
+                    divider.style.height = '100%';
+                    divider.style.backgroundColor = 'red';
+                    divider.style.zIndex = '100';
+                    divider.style.pointerEvents = 'none';
+                    subSegment.appendChild(divider);
+                }
+                
+                segmentContainer.appendChild(subSegment);
             }
+            
+            
+            container.appendChild(segmentContainer);
         }
 
-        function addHelpLines(container) {
+        function addHelpLines() {
+            // Entferne vorhandene Hilfslinien
+            const existingHelpLines = document.querySelector('.help-lines');
+            if (existingHelpLines) {
+                existingHelpLines.remove();
+            }
+            
             const helpLines = document.createElement('div');
             helpLines.className = 'help-lines';
+            helpLines.style.position = 'absolute';
+            helpLines.style.top = '0';
+            helpLines.style.left = '0';
+            helpLines.style.right = '0';
+            helpLines.style.bottom = '0';
+            helpLines.style.pointerEvents = 'none';
+            helpLines.style.zIndex = '10';
             
             // Berechne die exakte Barcode-Breite
             const barcodeElement = document.getElementById('barcode');
             const barcodeWidth = barcodeElement.offsetWidth;
             
-            // EAN-13 Struktur: 3 + (6×7) + 5 + (6×7) + 3 = 95 Zeichen
-            const totalBarcodeChars = 95;
-            const charWidth = barcodeWidth / totalBarcodeChars;
+            // Verwende die gleiche Berechnung wie in addBarcodeLines
+            const totalModules = 95; // EAN-13 hat 95 Module total
+            const moduleWidth = barcodeWidth / totalModules;
             
-            // Debug: Zeige die Berechnungen
-            console.log('Hilfslinien - Barcode-Breite:', barcodeWidth, 'Char-Breite:', charWidth);
+            // Debug: Zeige die tatsächliche Barcode-Breite
+            console.log('Hilfslinien - Barcode-Breite:', barcodeWidth, 'Module-Breite:', moduleWidth);
             
             // Die 13 Segmente des EAN-13 Barcodes mit verschiedenen Farben
             // EAN-13: Start(3) + 6×7 + Mitte(5) + 6×7 + End(3) = 95 Module
             const segments = [
-                { start: 0, end: 3, name: 'Start', color: 'rgba(255, 0, 0, 0.3)' },      // Rot
-                { start: 3, end: 10, name: 'Ziffer 2', color: 'rgba(0, 255, 0, 0.3)' }, // Grün
-                { start: 10, end: 17, name: 'Ziffer 3', color: 'rgba(0, 0, 255, 0.3)' }, // Blau
-                { start: 17, end: 24, name: 'Ziffer 4', color: 'rgba(255, 255, 0, 0.3)' }, // Gelb
-                { start: 24, end: 31, name: 'Ziffer 5', color: 'rgba(255, 0, 255, 0.3)' }, // Magenta
-                { start: 31, end: 38, name: 'Ziffer 6', color: 'rgba(0, 255, 255, 0.3)' }, // Cyan
-                { start: 38, end: 45, name: 'Ziffer 7', color: 'rgba(255, 128, 0, 0.3)' }, // Orange
-                { start: 45, end: 50, name: 'Mitte', color: 'rgba(128, 0, 128, 0.3)' }, // Lila
-                { start: 50, end: 57, name: 'Ziffer 8', color: 'rgba(128, 128, 0, 0.3)' }, // Olive
-                { start: 57, end: 64, name: 'Ziffer 9', color: 'rgba(0, 128, 128, 0.3)' }, // Teal
-                { start: 64, end: 71, name: 'Ziffer 10', color: 'rgba(128, 0, 0, 0.3)' }, // Maroon
-                { start: 71, end: 78, name: 'Ziffer 11', color: 'rgba(0, 128, 0, 0.3)' }, // Dunkelgrün
-                { start: 78, end: 85, name: 'Ziffer 12', color: 'rgba(0, 0, 128, 0.3)' }, // Navy
-                { start: 85, end: 92, name: 'Ziffer 13', color: 'rgba(128, 128, 128, 0.3)' }, // Grau
-                { start: 92, end: 95, name: 'End', color: 'rgba(255, 192, 203, 0.3)' } // Pink
+                { start: 0, end: 3, name: 'Start', color: 'rgba(255, 0, 0, 0.2)' },      // Rot
+                { start: 3, end: 10, name: 'Ziffer 2', color: 'rgba(0, 255, 0, 0.2)' }, // Grün
+                { start: 10, end: 17, name: 'Ziffer 3', color: 'rgba(0, 0, 255, 0.2)' }, // Blau
+                { start: 17, end: 24, name: 'Ziffer 4', color: 'rgba(255, 255, 0, 0.2)' }, // Gelb
+                { start: 24, end: 31, name: 'Ziffer 5', color: 'rgba(255, 0, 255, 0.2)' }, // Magenta
+                { start: 31, end: 38, name: 'Ziffer 6', color: 'rgba(0, 255, 255, 0.2)' }, // Cyan
+                { start: 38, end: 45, name: 'Ziffer 7', color: 'rgba(255, 128, 0, 0.2)' }, // Orange
+                { start: 45, end: 50, name: 'Mitte', color: 'rgba(128, 0, 128, 0.2)' }, // Lila
+                { start: 50, end: 57, name: 'Ziffer 8', color: 'rgba(128, 128, 0, 0.2)' }, // Olive
+                { start: 57, end: 64, name: 'Ziffer 9', color: 'rgba(0, 128, 128, 0.2)' }, // Teal
+                { start: 64, end: 71, name: 'Ziffer 10', color: 'rgba(128, 0, 0, 0.2)' }, // Maroon
+                { start: 71, end: 78, name: 'Ziffer 11', color: 'rgba(0, 128, 0, 0.2)' }, // Dunkelgrün
+                { start: 78, end: 85, name: 'Ziffer 12', color: 'rgba(0, 0, 128, 0.2)' }, // Navy
+                { start: 85, end: 92, name: 'Ziffer 13', color: 'rgba(128, 128, 128, 0.2)' }, // Grau
+                { start: 92, end: 95, name: 'End', color: 'rgba(255, 192, 203, 0.2)' } // Pink
             ];
+            
+            // Berechne die Position des Barcode-Elements relativ zum Container
+            const barcodeContainer = document.querySelector('.barcode-container');
+            const barcodeRect = barcodeElement.getBoundingClientRect();
+            const containerRect = barcodeContainer.getBoundingClientRect();
+            const offsetLeft = barcodeRect.left - containerRect.left;
+            const offsetTop = barcodeRect.top - containerRect.top;
             
             // Erstelle farbige Hintergründe für jedes Segment
             segments.forEach((segment, index) => {
                 const segmentDiv = document.createElement('div');
                 segmentDiv.className = 'segment-background';
                 segmentDiv.style.position = 'absolute';
-                segmentDiv.style.left = (charWidth * segment.start) + 'px';
-                segmentDiv.style.width = (charWidth * (segment.end - segment.start)) + 'px';
-                segmentDiv.style.height = '100%';
+                segmentDiv.style.left = (offsetLeft + moduleWidth * segment.start) + 'px';
+                segmentDiv.style.width = (moduleWidth * (segment.end - segment.start)) + 'px';
+                segmentDiv.style.top = offsetTop + 'px';
+                segmentDiv.style.height = barcodeElement.offsetHeight + 'px';
                 segmentDiv.style.background = segment.color;
                 segmentDiv.style.zIndex = '1';
                 segmentDiv.style.pointerEvents = 'none';
@@ -552,71 +765,83 @@
                 helpLines.appendChild(segmentDiv);
             });
             
-            container.appendChild(helpLines);
+            barcodeContainer.appendChild(helpLines);
         }
 
         function generateBarcodeNumbers(barcode) {
-            const numbersRow = document.getElementById('numbersRow');
-            numbersRow.innerHTML = '';
+            const numbersElement = document.getElementById('barcodeNumbers');
+            numbersElement.innerHTML = '';
             
-            // Farben für die 13 Segmente (dezenter)
-            const segmentColors = [
-                'rgba(255, 0, 0, 0.7)',      // Rot - Start
-                'rgba(0, 255, 0, 0.7)',      // Grün - Ziffer 2
-                'rgba(0, 0, 255, 0.7)',      // Blau - Ziffer 3
-                'rgba(255, 255, 0, 0.7)',    // Gelb - Ziffer 4
-                'rgba(255, 0, 255, 0.7)',    // Magenta - Ziffer 5
-                'rgba(0, 255, 255, 0.7)',    // Cyan - Ziffer 6
-                'rgba(255, 128, 0, 0.7)',    // Orange - Ziffer 7
-                'rgba(128, 0, 128, 0.7)',    // Lila - Mitte
-                'rgba(128, 128, 0, 0.7)',    // Olive - Ziffer 8
-                'rgba(0, 128, 128, 0.7)',    // Teal - Ziffer 9
-                'rgba(128, 0, 0, 0.7)',      // Maroon - Ziffer 10
-                'rgba(0, 128, 0, 0.7)',      // Dunkelgrün - Ziffer 11
-                'rgba(0, 0, 128, 0.7)',      // Navy - Ziffer 12
-                'rgba(128, 128, 128, 0.7)',  // Grau - Ziffer 13
-                'rgba(255, 192, 203, 0.7)'   // Pink - End
-            ];
-            
-            // Spalte 1: Ziffer 1 (rot)
-            const digit1Cell = document.createElement('td');
-            digit1Cell.textContent = barcode[0];
-            digit1Cell.onclick = () => changeDigit(0);
-            digit1Cell.style.color = segmentColors[0]; // Rot
-            numbersRow.appendChild(digit1Cell);
-            
-            // Spalte 2: Leer (Start-Muster)
-            const startCell = document.createElement('td');
-            startCell.innerHTML = '';
-            numbersRow.appendChild(startCell);
-            
-            // Erste 6 Ziffern (linke Seite)
-            for (let i = 1; i <= 6; i++) {
-                const cell = document.createElement('td');
-                cell.textContent = barcode[i];
-                cell.onclick = () => changeDigit(i);
-                cell.style.color = segmentColors[i];
-                numbersRow.appendChild(cell);
-            }
-            
-            // Mittleres Trennzeichen - keine Zahl
-            const middleCell = document.createElement('td');
-            middleCell.innerHTML = '';
-            numbersRow.appendChild(middleCell);
-            
-            // Letzten 6 Ziffern (rechte Seite)
-            for (let i = 7; i <= 12; i++) {
-                const cell = document.createElement('td');
-                cell.textContent = barcode[i];
-                cell.onclick = () => changeDigit(i);
-                cell.style.color = segmentColors[i + 1];
-                numbersRow.appendChild(cell);
-            }
-            
-            // End-Muster - keine Zahl
-            const endCell = document.createElement('td');
-            endCell.innerHTML = '';
-            numbersRow.appendChild(endCell);
+            // Warte kurz, damit der Barcode gerendert ist
+            setTimeout(() => {
+                // Berechne die exakte Barcode-Breite
+                const barcodeElement = document.getElementById('barcode');
+                const barcodeWidth = barcodeElement.offsetWidth || barcodeElement.parentElement.offsetWidth || 1200;
+                
+                // EAN-13 Struktur: 3 + (6×7) + 5 + (6×7) + 3 = 95 Module
+                const totalModules = 95;
+                const moduleWidth = barcodeWidth / totalModules;
+                
+                // Debug: Zeige die tatsächliche Barcode-Breite
+                console.log('Barcode-Breite:', barcodeWidth, 'Module-Breite:', moduleWidth);
+                
+                // Zahlen basierend auf der tatsächlichen Barcode-Struktur
+                // EAN-13: Start(3) + 6×7 + Mitte(5) + 6×7 + End(3) = 95
+                const digitPositions = [
+                    1.5,   // Ziffer 1 - links außen vor Start-Muster
+                    6.5,   // Ziffer 2 - Mitte des 1. 7-Modul-Segments (3+3.5)
+                    13.5,  // Ziffer 3 - Mitte des 2. 7-Modul-Segments (10+3.5)
+                    20.5,  // Ziffer 4 - Mitte des 3. 7-Modul-Segments (17+3.5)
+                    27.5,  // Ziffer 5 - Mitte des 4. 7-Modul-Segments (24+3.5)
+                    34.5,  // Ziffer 6 - Mitte des 5. 7-Modul-Segments (31+3.5)
+                    41.5,  // Ziffer 7 - Mitte des 6. 7-Modul-Segments (38+3.5)
+                    53.5,  // Ziffer 8 - Mitte des 7. 7-Modul-Segments (50+3.5)
+                    60.5,  // Ziffer 9 - Mitte des 8. 7-Modul-Segments (57+3.5)
+                    67.5,  // Ziffer 10 - Mitte des 9. 7-Modul-Segments (64+3.5)
+                    74.5,  // Ziffer 11 - Mitte des 10. 7-Modul-Segments (71+3.5)
+                    81.5,  // Ziffer 12 - Mitte des 11. 7-Modul-Segments (78+3.5)
+                    88.5   // Ziffer 13 - Mitte des 12. 7-Modul-Segments (85+3.5)
+                ];
+                
+                // Farben für die 13 Segmente (gleiche wie bei den Balken)
+                const segmentColors = [
+                    'rgba(255, 0, 0, 1)',      // Rot - Start
+                    'rgba(0, 255, 0, 1)',      // Grün - Ziffer 2
+                    'rgba(0, 0, 255, 1)',      // Blau - Ziffer 3
+                    'rgba(255, 255, 0, 1)',    // Gelb - Ziffer 4
+                    'rgba(255, 0, 255, 1)',    // Magenta - Ziffer 5
+                    'rgba(0, 255, 255, 1)',    // Cyan - Ziffer 6
+                    'rgba(255, 128, 0, 1)',    // Orange - Ziffer 7
+                    'rgba(128, 0, 128, 1)',    // Lila - Mitte
+                    'rgba(128, 128, 0, 1)',    // Olive - Ziffer 8
+                    'rgba(0, 128, 128, 1)',    // Teal - Ziffer 9
+                    'rgba(128, 0, 0, 1)',      // Maroon - Ziffer 10
+                    'rgba(0, 128, 0, 1)',      // Dunkelgrün - Ziffer 11
+                    'rgba(0, 0, 128, 1)',      // Navy - Ziffer 12
+                    'rgba(128, 128, 128, 1)',  // Grau - Ziffer 13
+                    'rgba(255, 192, 203, 1)'   // Pink - End
+                ];
+                
+                for (let i = 0; i < 13; i++) {
+                    const numberElement = document.createElement('div');
+                    numberElement.className = 'barcode-number';
+                    numberElement.textContent = barcode[i];
+                    numberElement.onclick = () => changeDigit(i);
+                    numberElement.style.left = (moduleWidth * digitPositions[i]) + 'px';
+                    
+                    // Farbe basierend auf dem Segment
+                    if (i === 0) {
+                        numberElement.classList.add('first-digit');
+                        numberElement.style.color = segmentColors[0]; // Start - Rot
+                    } else if (i <= 6) {
+                        numberElement.style.color = segmentColors[i]; // Ziffern 2-7
+                    } else {
+                        numberElement.style.color = segmentColors[i + 1]; // Ziffern 8-13
+                    }
+                    
+                    numbersElement.appendChild(numberElement);
+                }
+            }, 10);
         }
 
         function changeDigit(position) {
@@ -642,14 +867,196 @@
         function updateBarcode() {
             generateBarcode(currentBarcode);
             generateBarcodeNumbers(currentBarcode);
+            
+            // Aktualisiere Highlight wenn aktiv - mit Verzögerung
+            if (showHighlight) {
+                setTimeout(() => {
+                    highlightFirstDigit();
+                    highlightUsedDigits();
+                }, 100);
+            }
         }
 
         function toggleHelpLines() {
             showHelpLines = !showHelpLines;
             const btn = document.getElementById('helpLinesBtn');
-            btn.textContent = showHelpLines ? 'Hilfslinien ausblenden' : 'Hilfslinien einblenden';
+            btn.textContent = showHelpLines ? 'Farben ausblenden' : 'Farben anzeigen';
             btn.classList.toggle('active', showHelpLines);
             updateBarcode();
+        }
+
+        function toggleSeparatorLines() {
+            showSeparatorLines = !showSeparatorLines;
+            const btn = document.getElementById('separatorLinesBtn');
+            btn.textContent = showSeparatorLines ? 'Hilfslinien ausblenden' : 'Hilfslinien anzeigen';
+            btn.classList.toggle('active', showSeparatorLines);
+            updateBarcode();
+        }
+
+        function toggleHelpPage() {
+            const helpPage = document.getElementById('helpPage');
+            const btn = document.querySelector('button[onclick="toggleHelpPage()"]');
+            
+            if (helpPage.style.display === 'none') {
+                helpPage.style.display = 'block';
+                btn.textContent = 'Informationen schließen';
+                btn.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                helpPage.style.display = 'none';
+                btn.textContent = 'Informationen anzeigen';
+            }
+        }
+
+        function toggleHighlight() {
+            showHighlight = !showHighlight;
+            const btn = document.getElementById('highlightBtn');
+            btn.textContent = showHighlight ? 'Verstecken' : 'Zeigen';
+            btn.classList.toggle('active', showHighlight);
+            
+            if (showHighlight) {
+                highlightFirstDigit();
+            } else {
+                clearHighlight();
+            }
+        }
+
+        function highlightFirstDigit() {
+            // Entferne alle vorherigen Hervorhebungen
+            clearHighlight();
+            
+            // Warte kurz, damit das DOM aktualisiert ist
+            setTimeout(() => {
+                // Hole die erste Ziffer des aktuellen Barcodes
+                const firstDigit = currentBarcode[0];
+                
+                // Markiere die entsprechende Zeile in der Paritätstabelle (Tabelle 1)
+                const parityRow = document.getElementById(`parity-row-${firstDigit}`);
+                if (parityRow) {
+                    parityRow.style.backgroundColor = '#ffffcc';
+                    parityRow.style.fontWeight = 'bold';
+                }
+                
+                // Markiere auch die erste Ziffer im Barcode oben
+                const barcodeNumbers = document.getElementById('barcodeNumbers');
+                const firstDigitElement = barcodeNumbers.children[0];
+                if (firstDigitElement) {
+                    firstDigitElement.style.backgroundColor = '#ffffcc';
+                    firstDigitElement.style.fontWeight = 'bold';
+                    firstDigitElement.style.border = '2px solid #ff6b6b';
+                }
+                
+                // Markiere die verwendeten Ziffern in der Codierungstabelle mit Farben
+                highlightUsedDigits();
+            }, 50);
+        }
+
+        function highlightUsedDigits() {
+            // Sicherheitscheck: Prüfe ob currentBarcode gültig ist
+            if (!currentBarcode || currentBarcode.length !== 13) {
+                console.log('Invalid barcode for highlighting:', currentBarcode);
+                return;
+            }
+            
+            // Hole die Parität für die erste Ziffer
+            const firstDigit = currentBarcode[0];
+            const parity = getLeftParity(firstDigit);
+            
+            // Segment-Farben (wie im Barcode) - transparenter
+            const segmentColors = [
+                'rgba(255, 0, 0, 0.7)',      // Rot - Start
+                'rgba(0, 255, 0, 0.7)',      // Grün - Ziffer 2
+                'rgba(0, 0, 255, 0.7)',      // Blau - Ziffer 3
+                'rgba(255, 255, 0, 0.7)',    // Gelb - Ziffer 4
+                'rgba(255, 0, 255, 0.7)',     // Magenta - Ziffer 5
+                'rgba(0, 255, 255, 0.7)',    // Cyan - Ziffer 6
+                'rgba(255, 128, 0, 0.7)',    // Orange - Ziffer 7
+                'rgba(128, 0, 128, 0.7)',   // Lila - Mitte
+                'rgba(128, 128, 0, 0.7)',    // Olive - Ziffer 8
+                'rgba(0, 128, 128, 0.7)',    // Teal - Ziffer 9
+                'rgba(128, 0, 0, 0.7)',      // Maroon - Ziffer 10
+                'rgba(0, 128, 0, 0.7)',      // Dunkelgrün - Ziffer 11
+                'rgba(0, 0, 128, 0.7)',      // Navy - Ziffer 12
+                'rgba(128, 128, 128, 0.7)',  // Grau - Ziffer 13
+                'rgba(255, 192, 203, 0.7)'   // Pink - End
+            ];
+            
+            // Markiere die verwendeten Ziffern in der Codierungstabelle
+            for (let i = 1; i <= 6; i++) { // Ziffern 2-7 (linke Seite)
+                const digit = currentBarcode[i];
+                const row = document.querySelector(`#codingTable tr:nth-child(${parseInt(digit) + 2})`); // +2 wegen Header
+                if (row) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 4) {
+                        // Bestimme die Codierung basierend auf der Parität
+                        const parityForPosition = parity[i - 1]; // i-1 weil parity Array 0-basiert ist
+                        let targetCell;
+                        
+                        if (parityForPosition === 'A') {
+                            targetCell = cells[1]; // A-Codierung (2. Spalte)
+                        } else {
+                            targetCell = cells[2]; // B-Codierung (3. Spalte)
+                        }
+                        
+                        if (targetCell) {
+                            // Verwende die entsprechende Segment-Farbe (Ziffern 2-7 = Segmente 1-6)
+                            const colorIndex = i; // i entspricht dem Segment-Index
+                            targetCell.style.backgroundColor = segmentColors[colorIndex];
+                            targetCell.style.color = 'black';
+                            targetCell.style.fontWeight = 'bold';
+                        }
+                    }
+                }
+            }
+            
+            // Markiere die rechte Seite (immer C-Codierung)
+            for (let i = 8; i <= 13; i++) { // Ziffern 8-13 (rechte Seite)
+                const digit = currentBarcode[i - 1]; // -1 weil Barcode 0-basiert ist
+                const row = document.querySelector(`#codingTable tr:nth-child(${parseInt(digit) + 2})`); // +2 wegen Header
+                if (row) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 4) {
+                        const targetCell = cells[3]; // C-Codierung (4. Spalte)
+                        if (targetCell) {
+                            // Verwende die entsprechende Segment-Farbe (Ziffern 8-13 = Segmente 8-13)
+                            const colorIndex = i; // i entspricht dem Segment-Index
+                            targetCell.style.backgroundColor = segmentColors[colorIndex];
+                            targetCell.style.color = 'black';
+                            targetCell.style.fontWeight = 'bold';
+                        }
+                    }
+                }
+            }
+        }
+
+        function clearHighlight() {
+            // Entferne alle Hervorhebungen
+            for (let i = 0; i <= 9; i++) {
+                const parityRow = document.getElementById(`parity-row-${i}`);
+                if (parityRow) {
+                    parityRow.style.backgroundColor = '';
+                    parityRow.style.fontWeight = '';
+                }
+            }
+            
+            // Entferne Hervorhebung der ersten Ziffer im Barcode
+            const barcodeNumbers = document.getElementById('barcodeNumbers');
+            const firstDigitElement = barcodeNumbers.children[0];
+            if (firstDigitElement) {
+                firstDigitElement.style.backgroundColor = '';
+                firstDigitElement.style.fontWeight = '';
+                firstDigitElement.style.border = '';
+            }
+            
+            // Entferne alle Hervorhebungen in der Codierungstabelle
+            const codingTable = document.getElementById('codingTable');
+            if (codingTable) {
+                const cells = codingTable.querySelectorAll('td');
+                cells.forEach(cell => {
+                    cell.style.backgroundColor = '';
+                    cell.style.fontWeight = '';
+                    cell.style.border = '';
+                });
+            }
         }
 
         function randomizeBarcode() {
@@ -660,35 +1067,33 @@
             const checkDigit = calculateCheckDigit(newBarcode);
             currentBarcode = checkDigit + newBarcode;
             updateBarcode();
+            
+            // Zusätzliche Aktualisierung für Highlighting mit längerer Verzögerung
+            if (showHighlight) {
+                setTimeout(() => {
+                    clearHighlight();
+                    highlightFirstDigit();
+                    highlightUsedDigits();
+                }, 200);
+            }
         }
 
         function resetBarcode() {
             currentBarcode = '1234567890123';
             updateBarcode();
-        }
-
-        // Funktion zum Neu-Positionieren bei Fenstergrößenänderung
-        function repositionElements() {
-            const currentBarcode = document.getElementById('barcode').textContent || '1234567890123';
-            generateBarcodeNumbers(currentBarcode);
             
-            // Hilfslinien neu zeichnen
-            const barcodeElement = document.getElementById('barcode');
-            const existingHelpLines = barcodeElement.querySelector('.help-lines');
-            if (existingHelpLines) {
-                existingHelpLines.remove();
-            }
-            const showHelpLines = document.getElementById('showHelpLines').checked;
-            if (showHelpLines) {
-                addHelpLines(barcodeElement);
+            // Zusätzliche Aktualisierung für Highlighting mit längerer Verzögerung
+            if (showHighlight) {
+                setTimeout(() => {
+                    clearHighlight();
+                    highlightFirstDigit();
+                    highlightUsedDigits();
+                }, 200);
             }
         }
 
         // Initialisierung
         updateBarcode();
-        
-        // Event Listener für Fenstergrößenänderung
-        window.addEventListener('resize', repositionElements);
     </script>
 </body>
 </html>

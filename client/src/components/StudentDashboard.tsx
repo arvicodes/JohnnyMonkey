@@ -328,11 +328,36 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Neue Funktion zum Laden der zugeordneten Ordner (exakt wie im TeacherDashboard)
   const fetchAssignedFolders = async (groupId: string) => {
     try {
-      const response = await fetch(`/api/learning-groups/${groupId}/folders`);
+      // Cache-Busting Parameter hinzufügen
+      const timestamp = Date.now();
+      const response = await fetch(`/api/learning-groups/${groupId}/folders?t=${timestamp}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       if (response.ok) {
         const folders = await response.json();
         const folderPaths = folders.map((f: any) => f.path);
         
+        // Lösche alle alten Daten für diese Gruppe
+        setAssignedFolders(prev => {
+          const newState = { ...prev };
+          delete newState[groupId];
+          return newState;
+        });
+        
+        setAssignedFolderContents(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${groupId}:`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        // Setze die neuen Daten
         setAssignedFolders(prev => ({
           ...prev,
           [groupId]: folderPaths
@@ -356,7 +381,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         [`${groupId}:${folderPath}`]: true
       }));
 
-      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true`);
+      // Cache-Busting Parameter hinzufügen
+      const timestamp = Date.now();
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true&t=${timestamp}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       if (response.ok) {
         const content = await response.json();
         console.log('API Response for folder:', folderPath, content); // Debug-Ausgabe
@@ -2712,23 +2744,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                         ))}
                                     </Box>
                                   ))}
-                                {/* Falls keine Inhalte */}
-                                {!(subjects.some(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id)) ||
-                                  blocks.some(block => (blockAssignments[block.id] || []).includes(gruppe.id)) ||
-                                  units.some(unit => (unitAssignments[unit.id] || []).includes(gruppe.id)) ||
-                                  topics.some(topic => (topicAssignments[topic.id] || []).includes(gruppe.id)) ||
-                                  lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(gruppe.id))) && (
-                                  <Box sx={{ 
-                                    textAlign: 'center', 
-                                    py: 2,
-                                    color: colors.textSecondary,
-                                    fontStyle: 'italic'
-                                  }}>
-                                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                      📝 Noch keine Inhalte zugeordnet
-                                    </Typography>
-                                  </Box>
-                                )}
                               </Box>
                             </Box>
                           )}

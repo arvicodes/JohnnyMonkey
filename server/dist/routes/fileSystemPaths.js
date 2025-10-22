@@ -42,6 +42,8 @@ router.get('/read-goodnotes', FileSystemPathController_1.FileSystemPathControlle
 router.get('/read-text', FileSystemPathController_1.FileSystemPathController.readTextFile);
 // PDF-Datei lesen
 router.get('/read-pdf', FileSystemPathController_1.FileSystemPathController.readPdfFile);
+// PDF-Datei lesen mit sauberer URL (nur Dateiname)
+router.get('/pdf/:filename', FileSystemPathController_1.FileSystemPathController.readPdfByFilename);
 // Datei für Download bereitstellen
 router.get('/download', FileSystemPathController_1.FileSystemPathController.downloadFile);
 // Pfad löschen
@@ -52,5 +54,7 @@ router.post('/save-file', upload.single('file'), FileSystemPathController_1.File
 router.post('/save-file-beacon', FileSystemPathController_1.FileSystemPathController.saveFileBeacon);
 // Whiteboard-Datei laden
 router.get('/load-whiteboard', FileSystemPathController_1.FileSystemPathController.loadWhiteboardFile);
+// Statische Dateien aus J-M-Reihen bedienen (CSS, JS, etc.)
+router.get('/static/*', FileSystemPathController_1.FileSystemPathController.serveStaticFile);
 exports.default = router;
 //# sourceMappingURL=fileSystemPaths.js.map

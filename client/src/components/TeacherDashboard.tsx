@@ -1006,6 +1006,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const folders = await response.json();
         const folderPaths = folders.map((f: any) => f.path);
         
+        // Lösche alle alten Daten für diese Gruppe
+        setAssignedFolders(prev => {
+          const newState = { ...prev };
+          delete newState[groupId];
+          return newState;
+        });
+        
+        setAssignedFolderContents(prev => {
+          const newState = { ...prev };
+          Object.keys(newState).forEach(key => {
+            if (key.startsWith(`${groupId}:`)) {
+              delete newState[key];
+            }
+          });
+          return newState;
+        });
+
+        // Setze die neuen Daten
         setAssignedFolders(prev => ({
           ...prev,
           [groupId]: folderPaths
@@ -1030,7 +1048,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         [`${groupId}:${folderPath}`]: true
       }));
 
-      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true`);
+      // Cache-Busting Parameter hinzufügen
+      const timestamp = Date.now();
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true&t=${timestamp}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       if (response.ok) {
         const content = await response.json();
         let items: any[] = [];
@@ -4918,23 +4943,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                       ))}
                                   </Box>
                                 ))}
-                              {/* Falls keine Inhalte */}
-                              {!(subjects.some(subject => (subjectAssignments[subject.id] || []).includes(group.id)) ||
-                                blocks.some(block => (blockAssignments[block.id] || []).includes(group.id)) ||
-                                units.some(unit => (unitAssignments[unit.id] || []).includes(group.id)) ||
-                                topics.some(topic => (topicAssignments[topic.id] || []).includes(group.id)) ||
-                                lessons.some(lesson => (lessonAssignments[lesson.id] || []).includes(group.id))) && (
-                                <Box sx={{ 
-                                  textAlign: 'center', 
-                                  py: 2,
-                                  color: colors.textSecondary,
-                                  fontStyle: 'italic'
-                                }}>
-                                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                    📝 Noch keine Inhalte zugeordnet
-                                  </Typography>
-                                </Box>
-                              )}
                             </Box>
                           </Box>
                           

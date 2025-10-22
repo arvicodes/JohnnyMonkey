@@ -12,8 +12,8 @@ class StorageManager {
      */
     static async readDirectory(dirPath, recursive = false) {
         console.log('StorageManager.readDirectory called with:', dirPath, 'recursive:', recursive);
-        // Check if this is a git-intern path (exact match or contains J-M-Reihen)
-        if (dirPath === 'git-intern' || dirPath.includes('J-M-Reihen') || dirPath.startsWith('git-intern/')) {
+        // Check if this is a git-intern path (exact match or starts with git-intern/)
+        if (dirPath === 'git-intern' || dirPath.startsWith('git-intern/')) {
             console.log('Git-intern path detected, using J-M-Reihen directory...');
             return this.readGitInternDirectory(dirPath, recursive);
         }
@@ -127,29 +127,41 @@ class StorageManager {
         if (!stats.isDirectory()) {
             return { error: 'Path is not a directory' };
         }
-        const items = fs_1.default.readdirSync(normalizedPath);
-        const children = items.map(item => {
-            const itemPath = path_1.default.join(normalizedPath, item);
-            const itemStats = fs_1.default.statSync(itemPath);
-            return {
-                name: item,
-                path: path_1.default.join(dirPath, item),
-                type: itemStats.isDirectory() ? 'directory' : 'file',
-                size: itemStats.size,
-                extension: this.getFileExtension(item)
-            };
-        });
+        // Recursive function to build directory tree
+        const buildDirectoryTree = (currentPath, currentDepth = 0) => {
+            const items = fs_1.default.readdirSync(currentPath);
+            const children = items
+                .filter(item => !item.startsWith('.')) // Filter out hidden files like .DS_Store
+                .map(item => {
+                const itemPath = path_1.default.join(currentPath, item);
+                const itemStats = fs_1.default.statSync(itemPath);
+                const result = {
+                    name: item,
+                    path: itemPath,
+                    type: itemStats.isDirectory() ? 'directory' : 'file',
+                    size: itemStats.size,
+                    extension: this.getFileExtension(item)
+                };
+                // If it's a directory and we want recursive or it's the root level, add children
+                if (itemStats.isDirectory() && (recursive || currentDepth === 0)) {
+                    result.children = buildDirectoryTree(itemPath, currentDepth + 1).children;
+                }
+                return result;
+            });
+            return { children, totalItems: children.length };
+        };
+        const tree = buildDirectoryTree(normalizedPath);
         return {
             path: dirPath,
             root: {
                 name: path_1.default.basename(dirPath) || 'Root',
                 path: dirPath,
                 type: 'directory',
-                children: children,
-                totalItems: children.length
+                children: tree.children,
+                totalItems: tree.totalItems
             },
-            totalItems: children.length,
-            maxDepth: 1
+            totalItems: tree.totalItems,
+            maxDepth: recursive ? 10 : 1 // Allow deeper nesting for recursive calls
         };
     }
     /**
@@ -290,6 +302,6 @@ class StorageManager {
 exports.StorageManager = StorageManager;
 StorageManager.config = {
     type: 'local',
-    basePath: process.env.LOCAL_MATERIALS_PATH || '/Users/verachrist/Documents/Z. UNTERRICHT'
+    basePath: process.env.LOCAL_MATERIALS_PATH || '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey'
 };
 //# sourceMappingURL=storageManager.js.map

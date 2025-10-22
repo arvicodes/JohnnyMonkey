@@ -9,7 +9,7 @@ export interface StorageConfig {
 export class StorageManager {
   private static config: StorageConfig = {
     type: 'local',
-    basePath: process.env.LOCAL_MATERIALS_PATH || '/Users/verachrist/Documents/Z. UNTERRICHT'
+    basePath: process.env.LOCAL_MATERIALS_PATH || '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey'
   };
 
   /**
@@ -18,8 +18,8 @@ export class StorageManager {
   static async readDirectory(dirPath: string, recursive: boolean = false): Promise<any> {
     console.log('StorageManager.readDirectory called with:', dirPath, 'recursive:', recursive);
     
-    // Check if this is a git-intern path (exact match or contains J-M-Reihen)
-    if (dirPath === 'git-intern' || dirPath.includes('J-M-Reihen') || dirPath.startsWith('git-intern/')) {
+    // Check if this is a git-intern path (exact match or starts with git-intern/)
+    if (dirPath === 'git-intern' || dirPath.startsWith('git-intern/')) {
       console.log('Git-intern path detected, using J-M-Reihen directory...');
       return this.readGitInternDirectory(dirPath, recursive);
     }
@@ -153,19 +153,35 @@ export class StorageManager {
       return { error: 'Path is not a directory' };
     }
     
-    const items = fs.readdirSync(normalizedPath);
-    const children = items.map(item => {
-      const itemPath = path.join(normalizedPath, item);
-      const itemStats = fs.statSync(itemPath);
+    // Recursive function to build directory tree
+    const buildDirectoryTree = (currentPath: string, currentDepth: number = 0): any => {
+      const items = fs.readdirSync(currentPath);
+      const children = items
+        .filter(item => !item.startsWith('.')) // Filter out hidden files like .DS_Store
+        .map(item => {
+          const itemPath = path.join(currentPath, item);
+          const itemStats = fs.statSync(itemPath);
+          
+          const result: any = {
+            name: item,
+            path: itemPath,
+            type: itemStats.isDirectory() ? 'directory' : 'file',
+            size: itemStats.size,
+            extension: this.getFileExtension(item)
+          };
+          
+          // If it's a directory and we want recursive or it's the root level, add children
+          if (itemStats.isDirectory() && (recursive || currentDepth === 0)) {
+            result.children = buildDirectoryTree(itemPath, currentDepth + 1).children;
+          }
+          
+          return result;
+        });
       
-      return {
-        name: item,
-        path: path.join(dirPath, item),
-        type: itemStats.isDirectory() ? 'directory' : 'file',
-        size: itemStats.size,
-        extension: this.getFileExtension(item)
-      };
-    });
+      return { children, totalItems: children.length };
+    };
+    
+    const tree = buildDirectoryTree(normalizedPath);
     
     return {
       path: dirPath,
@@ -173,11 +189,11 @@ export class StorageManager {
         name: path.basename(dirPath) || 'Root',
         path: dirPath,
         type: 'directory',
-        children: children,
-        totalItems: children.length
+        children: tree.children,
+        totalItems: tree.totalItems
       },
-      totalItems: children.length,
-      maxDepth: 1
+      totalItems: tree.totalItems,
+      maxDepth: recursive ? 10 : 1 // Allow deeper nesting for recursive calls
     };
   }
 

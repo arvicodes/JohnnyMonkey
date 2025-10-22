@@ -110,11 +110,24 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
 
   const fetchAssignedFolders = async () => {
     try {
-      const response = await fetch(`/api/learning-groups/${groupId}/folders`);
+      // Cache-Busting Parameter hinzufügen
+      const timestamp = Date.now();
+      const response = await fetch(`/api/learning-groups/${groupId}/folders?t=${timestamp}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       
       if (response.ok) {
         const folders = await response.json();
         const folderPaths: string[] = folders.map((f: any) => f.path);
+        
+        // Lösche alle alten Daten
+        setAssignedFolders([]);
+        setAssignedFolderContents({});
+        
+        // Setze die neuen Daten
         setAssignedFolders(folderPaths);
         
         // Lade den Inhalt aller zugeordneten Ordner
@@ -133,7 +146,14 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
   // Neue Funktion zum Laden des Inhalts zugeordneter Ordner
   const fetchAssignedFolderContent = async (folderPath: string) => {
     try {
-      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true`);
+      // Cache-Busting Parameter hinzufügen
+      const timestamp = Date.now();
+      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true&t=${timestamp}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       if (response.ok) {
         const content = await response.json();
         let items: DirectoryItem[] = [];

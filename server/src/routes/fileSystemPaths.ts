@@ -73,4 +73,7 @@ router.post('/save-file-beacon', FileSystemPathController.saveFileBeacon);
 // Whiteboard-Datei laden
 router.get('/load-whiteboard', FileSystemPathController.loadWhiteboardFile);
 
+// Statische Dateien aus J-M-Reihen bedienen (CSS, JS, etc.)
+router.get('/static/*', FileSystemPathController.serveStaticFile);
+
 export default router;

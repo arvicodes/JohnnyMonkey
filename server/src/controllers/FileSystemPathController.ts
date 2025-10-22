@@ -985,7 +985,7 @@ export class FileSystemPathController {
       // Verwende relativen Pfad für Produktion, absoluten für Entwicklung
       const jmReihenPath = process.env.NODE_ENV === 'production' 
         ? 'J-M-Reihen' 
-        : '/Users/verachrist/Documents/Monkey/JohnnyMonkey/J-M-Reihen';
+        : '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen';
       
       res.json({ path: jmReihenPath });
     } catch (error) {
@@ -1021,7 +1021,7 @@ export class FileSystemPathController {
         // Handle git-intern paths
         const relativePath = decodeURIComponent(targetPath.replace('git-intern/', ''));
         // Use absolute path to project root for development
-        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
         fullTargetPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
       } else {
         // Handle local paths
@@ -1075,7 +1075,7 @@ export class FileSystemPathController {
         // Handle git-intern paths
         const relativePath = decodeURIComponent(filePath.replace('git-intern/', ''));
         // Use absolute path to project root for development
-        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
         fullFilePath = path.join(projectRoot, 'J-M-Reihen', relativePath);
       } else {
         // Handle local paths
@@ -1099,6 +1099,78 @@ export class FileSystemPathController {
     } catch (error) {
       console.error('Error loading whiteboard file:', error);
       res.status(500).json({ error: 'Fehler beim Laden der Whiteboard-Datei' });
+    }
+  }
+
+  /**
+   * Serve static files from J-M-Reihen directory
+   */
+  static async serveStaticFile(req: Request, res: Response) {
+    try {
+      const filePath = req.params[0]; // Get the wildcard parameter
+      
+      if (!filePath) {
+        return res.status(400).json({ error: 'File path is required' });
+      }
+
+      console.log('Serving static file:', filePath);
+
+      // Construct the git-intern path
+      const gitInternPath = `git-intern/${filePath}`;
+      const fileContent = await StorageManager.readFile(gitInternPath);
+      
+      if (!fileContent) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      // Determine MIME type based on file extension
+      const ext = path.extname(filePath).toLowerCase();
+      let mimeType = 'text/plain';
+      
+      switch (ext) {
+        case '.css':
+          mimeType = 'text/css';
+          break;
+        case '.js':
+          mimeType = 'application/javascript';
+          break;
+        case '.html':
+          mimeType = 'text/html';
+          break;
+        case '.json':
+          mimeType = 'application/json';
+          break;
+        case '.png':
+          mimeType = 'image/png';
+          break;
+        case '.jpg':
+        case '.jpeg':
+          mimeType = 'image/jpeg';
+          break;
+        case '.gif':
+          mimeType = 'image/gif';
+          break;
+        case '.svg':
+          mimeType = 'image/svg+xml';
+          break;
+        case '.ico':
+          mimeType = 'image/x-icon';
+          break;
+      }
+
+      res.setHeader('Content-Type', mimeType);
+      
+      // For binary files (images), send the buffer directly
+      if (mimeType.startsWith('image/')) {
+        res.send(fileContent);
+      } else {
+        // For text files, convert to string
+        res.send(fileContent.toString('utf-8'));
+      }
+
+    } catch (error) {
+      console.error('Error serving static file:', error);
+      res.status(500).json({ error: 'Failed to serve static file' });
     }
   }
 
@@ -1214,7 +1286,7 @@ export class FileSystemPathController {
             // Handle git-intern paths
             const relativePath = decodeURIComponent(targetPath.replace('git-intern/', ''));
             // Use absolute path to project root for development
-            const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
             fullTargetPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
           } else {
             // Handle local paths

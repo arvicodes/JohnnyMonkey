@@ -39,6 +39,8 @@ export declare class FileSystemPathController {
     static readExcelFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readPowerPointFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readPdfFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static readPdfByFilename(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    private static findFileInDirectory;
     static readGoodNotesFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readImageFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readTextFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
@@ -55,6 +57,10 @@ export declare class FileSystemPathController {
      * Load whiteboard file (.wb) as JSON
      */
     static loadWhiteboardFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Serve static files from J-M-Reihen directory
+     */
+    static serveStaticFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Scan directory for subdirectories only (recursively)
      */
