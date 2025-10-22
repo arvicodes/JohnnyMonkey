@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prozentwert, Prozentsatz, Grundwert - Übungsaufgaben</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .intro {
+            background-color: #e8f4fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .intro h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .formula-box {
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .formula {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .task {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .task h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        
+        .task p {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        .input-group label {
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 80px;
+        }
+        
+        .input-group input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 1em;
+            width: 120px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .result.correct {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .hint {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #856404;
+        }
+        
+        .progress {
+            background-color: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar {
+            background-color: #3498db;
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .applet-container {
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .applet {
+            display: inline-block;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .applet h4 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .applet-input {
+            margin: 10px 0;
+        }
+        
+        .applet-input input {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            text-align: center;
+        }
+        
+        .applet-result {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prozentwert, Prozentsatz, Grundwert</h1>
+        
+        <div class="intro">
+            <h2>Grundlagen der Prozentrechnung</h2>
+            <p>In der Prozentrechnung gibt es drei wichtige Größen:</p>
+            <ul>
+                <li><strong>Grundwert (G):</strong> Der Ausgangswert, von dem ausgegangen wird</li>
+                <li><strong>Prozentsatz (p%):</strong> Der Prozentsatz, der angewendet wird</li>
+                <li><strong>Prozentwert (W):</strong> Das Ergebnis der Berechnung</li>
+            </ul>
+        </div>
+        
+        <div class="formula-box">
+            <div class="formula">W = G × p%</div>
+            <p>Prozentwert = Grundwert × Prozentsatz</p>
+        </div>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-text" id="progressText">0 von 33 Aufgaben gelöst</div>
+        
+        <!-- Aufgabe 1 -->
+        <div class="task" id="task1">
+            <h3>Aufgabe 1</h3>
+            <p>Berechne 15% von 200.</p>
+            <div class="input-group">
+                <label for="answer1">Ergebnis:</label>
+                <input type="number" id="answer1" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(1, 30)">Überprüfen</button>
+            </div>
+            <div id="result1"></div>
+            <div id="hint1" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 200 × 15% = 200 × 0,15 = 30
+            </div>
+        </div>
+        
+        <!-- Aufgabe 2 -->
+        <div class="task" id="task2">
+            <h3>Aufgabe 2</h3>
+            <p>Berechne 8% von 150.</p>
+            <div class="input-group">
+                <label for="answer2">Ergebnis:</label>
+                <input type="number" id="answer2" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(2, 12)">Überprüfen</button>
+            </div>
+            <div id="result2"></div>
+            <div id="hint2" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 150 × 8% = 150 × 0,08 = 12
+            </div>
+        </div>
+        
+        <!-- Aufgabe 3 -->
+        <div class="task" id="task3">
+            <h3>Aufgabe 3</h3>
+            <p>Berechne 25% von 80.</p>
+            <div class="input-group">
+                <label for="answer3">Ergebnis:</label>
+                <input type="number" id="answer3" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(3, 20)">Überprüfen</button>
+            </div>
+            <div id="result3"></div>
+            <div id="hint3" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 80 × 25% = 80 × 0,25 = 20
+            </div>
+        </div>
+        
+        <!-- Aufgabe 4 -->
+        <div class="task" id="task4">
+            <h3>Aufgabe 4</h3>
+            <p>Berechne 12% von 300.</p>
+            <div class="input-group">
+                <label for="answer4">Ergebnis:</label>
+                <input type="number" id="answer4" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(4, 36)">Überprüfen</button>
+            </div>
+            <div id="result4"></div>
+            <div id="hint4" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 300 × 12% = 300 × 0,12 = 36
+            </div>
+        </div>
+        
+        <!-- Aufgabe 5 -->
+        <div class="task" id="task5">
+            <h3>Aufgabe 5</h3>
+            <p>Berechne 6% von 250.</p>
+            <div class="input-group">
+                <label for="answer5">Ergebnis:</label>
+                <input type="number" id="answer5" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(5, 15)">Überprüfen</button>
+            </div>
+            <div id="result5"></div>
+            <div id="hint5" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 250 × 6% = 250 × 0,06 = 15
+            </div>
+        </div>
+        
+        <!-- Aufgabe 6 -->
+        <div class="task" id="task6">
+            <h3>Aufgabe 6</h3>
+            <p>Berechne 20% von 180.</p>
+            <div class="input-group">
+                <label for="answer6">Ergebnis:</label>
+                <input type="number" id="answer6" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(6, 36)">Überprüfen</button>
+            </div>
+            <div id="result6"></div>
+            <div id="hint6" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 180 × 20% = 180 × 0,20 = 36
+            </div>
+        </div>
+        
+        <!-- Aufgabe 7 -->
+        <div class="task" id="task7">
+            <h3>Aufgabe 7</h3>
+            <p>Berechne 9% von 400.</p>
+            <div class="input-group">
+                <label for="answer7">Ergebnis:</label>
+                <input type="number" id="answer7" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(7, 36)">Überprüfen</button>
+            </div>
+            <div id="result7"></div>
+            <div id="hint7" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 400 × 9% = 400 × 0,09 = 36
+            </div>
+        </div>
+        
+        <!-- Aufgabe 8 -->
+        <div class="task" id="task8">
+            <h3>Aufgabe 8</h3>
+            <p>Berechne 18% von 150.</p>
+            <div class="input-group">
+                <label for="answer8">Ergebnis:</label>
+                <input type="number" id="answer8" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(8, 27)">Überprüfen</button>
+            </div>
+            <div id="result8"></div>
+            <div id="hint8" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 150 × 18% = 150 × 0,18 = 27
+            </div>
+        </div>
+        
+        <!-- Aufgabe 9 -->
+        <div class="task" id="task9">
+            <h3>Aufgabe 9</h3>
+            <p>Berechne 7% von 200.</p>
+            <div class="input-group">
+                <label for="answer9">Ergebnis:</label>
+                <input type="number" id="answer9" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(9, 14)">Überprüfen</button>
+            </div>
+            <div id="result9"></div>
+            <div id="hint9" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 200 × 7% = 200 × 0,07 = 14
+            </div>
+        </div>
+        
+        <!-- Aufgabe 10 -->
+        <div class="task" id="task10">
+            <h3>Aufgabe 10</h3>
+            <p>Berechne 14% von 250.</p>
+            <div class="input-group">
+                <label for="answer10">Ergebnis:</label>
+                <input type="number" id="answer10" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(10, 35)">Überprüfen</button>
+            </div>
+            <div id="result10"></div>
+            <div id="hint10" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 250 × 14% = 250 × 0,14 = 35
+            </div>
+        </div>
+        
+        <!-- Aufgabe 11 -->
+        <div class="task" id="task11">
+            <h3>Aufgabe 11</h3>
+            <p>Berechne 11% von 300.</p>
+            <div class="input-group">
+                <label for="answer11">Ergebnis:</label>
+                <input type="number" id="answer11" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(11, 33)">Überprüfen</button>
+            </div>
+            <div id="result11"></div>
+            <div id="hint11" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 300 × 11% = 300 × 0,11 = 33
+            </div>
+        </div>
+        
+        <!-- Aufgabe 12 -->
+        <div class="task" id="task12">
+            <h3>Aufgabe 12</h3>
+            <p>Berechne 16% von 175.</p>
+            <div class="input-group">
+                <label for="answer12">Ergebnis:</label>
+                <input type="number" id="answer12" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(12, 28)">Überprüfen</button>
+            </div>
+            <div id="result12"></div>
+            <div id="hint12" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 175 × 16% = 175 × 0,16 = 28
+            </div>
+        </div>
+        
+        <!-- Aufgabe 13 -->
+        <div class="task" id="task13">
+            <h3>Aufgabe 13</h3>
+            <p>Berechne 13% von 400.</p>
+            <div class="input-group">
+                <label for="answer13">Ergebnis:</label>
+                <input type="number" id="answer13" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(13, 52)">Überprüfen</button>
+            </div>
+            <div id="result13"></div>
+            <div id="hint13" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 400 × 13% = 400 × 0,13 = 52
+            </div>
+        </div>
+        
+        <!-- Aufgabe 14 -->
+        <div class="task" id="task14">
+            <h3>Aufgabe 14</h3>
+            <p>Berechne 22% von 200.</p>
+            <div class="input-group">
+                <label for="answer14">Ergebnis:</label>
+                <input type="number" id="answer14" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(14, 44)">Überprüfen</button>
+            </div>
+            <div id="result14"></div>
+            <div id="hint14" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 200 × 22% = 200 × 0,22 = 44
+            </div>
+        </div>
+        
+        <!-- Aufgabe 15 -->
+        <div class="task" id="task15">
+            <h3>Aufgabe 15</h3>
+            <p>Berechne 17% von 350.</p>
+            <div class="input-group">
+                <label for="answer15">Ergebnis:</label>
+                <input type="number" id="answer15" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(15, 59.5)">Überprüfen</button>
+            </div>
+            <div id="result15"></div>
+            <div id="hint15" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 350 × 17% = 350 × 0,17 = 59,5
+            </div>
+        </div>
+        
+        <!-- Aufgabe 16 -->
+        <div class="task" id="task16">
+            <h3>Aufgabe 16</h3>
+            <p>Berechne 19% von 180.</p>
+            <div class="input-group">
+                <label for="answer16">Ergebnis:</label>
+                <input type="number" id="answer16" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(16, 34.2)">Überprüfen</button>
+            </div>
+            <div id="result16"></div>
+            <div id="hint16" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 180 × 19% = 180 × 0,19 = 34,2
+            </div>
+        </div>
+        
+        <!-- Aufgabe 17 -->
+        <div class="task" id="task17">
+            <h3>Aufgabe 17</h3>
+            <p>Berechne 24% von 125.</p>
+            <div class="input-group">
+                <label for="answer17">Ergebnis:</label>
+                <input type="number" id="answer17" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(17, 30)">Überprüfen</button>
+            </div>
+            <div id="result17"></div>
+            <div id="hint17" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 125 × 24% = 125 × 0,24 = 30
+            </div>
+        </div>
+        
+        <!-- Aufgabe 18 -->
+        <div class="task" id="task18">
+            <h3>Aufgabe 18</h3>
+            <p>Berechne 21% von 300.</p>
+            <div class="input-group">
+                <label for="answer18">Ergebnis:</label>
+                <input type="number" id="answer18" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(18, 63)">Überprüfen</button>
+            </div>
+            <div id="result18"></div>
+            <div id="hint18" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 300 × 21% = 300 × 0,21 = 63
+            </div>
+        </div>
+        
+        <!-- Aufgabe 19 -->
+        <div class="task" id="task19">
+            <h3>Aufgabe 19</h3>
+            <p>Berechne 26% von 150.</p>
+            <div class="input-group">
+                <label for="answer19">Ergebnis:</label>
+                <input type="number" id="answer19" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(19, 39)">Überprüfen</button>
+            </div>
+            <div id="result19"></div>
+            <div id="hint19" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 150 × 26% = 150 × 0,26 = 39
+            </div>
+        </div>
+        
+        <!-- Aufgabe 20 -->
+        <div class="task" id="task20">
+            <h3>Aufgabe 20</h3>
+            <p>Berechne 23% von 250.</p>
+            <div class="input-group">
+                <label for="answer20">Ergebnis:</label>
+                <input type="number" id="answer20" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(20, 57.5)">Überprüfen</button>
+            </div>
+            <div id="result20"></div>
+            <div id="hint20" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 250 × 23% = 250 × 0,23 = 57,5
+            </div>
+        </div>
+        
+        <!-- Aufgabe 21 -->
+        <div class="task" id="task21">
+            <h3>Aufgabe 21</h3>
+            <p>Berechne 28% von 175.</p>
+            <div class="input-group">
+                <label for="answer21">Ergebnis:</label>
+                <input type="number" id="answer21" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(21, 49)">Überprüfen</button>
+            </div>
+            <div id="result21"></div>
+            <div id="hint21" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 175 × 28% = 175 × 0,28 = 49
+            </div>
+        </div>
+        
+        <!-- Aufgabe 22 -->
+        <div class="task" id="task22">
+            <h3>Aufgabe 22</h3>
+            <p>Berechne 31% von 200.</p>
+            <div class="input-group">
+                <label for="answer22">Ergebnis:</label>
+                <input type="number" id="answer22" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(22, 62)">Überprüfen</button>
+            </div>
+            <div id="result22"></div>
+            <div id="hint22" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 200 × 31% = 200 × 0,31 = 62
+            </div>
+        </div>
+        
+        <!-- Aufgabe 23 -->
+        <div class="task" id="task23">
+            <h3>Aufgabe 23</h3>
+            <p>Berechne 35% von 180.</p>
+            <div class="input-group">
+                <label for="answer23">Ergebnis:</label>
+                <input type="number" id="answer23" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(23, 63)">Überprüfen</button>
+            </div>
+            <div id="result23"></div>
+            <div id="hint23" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 180 × 35% = 180 × 0,35 = 63
+            </div>
+        </div>
+        
+        <!-- Aufgabe 24 -->
+        <div class="task" id="task24">
+            <h3>Aufgabe 24</h3>
+            <p>Berechne 42% von 150.</p>
+            <div class="input-group">
+                <label for="answer24">Ergebnis:</label>
+                <input type="number" id="answer24" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(24, 63)">Überprüfen</button>
+            </div>
+            <div id="result24"></div>
+            <div id="hint24" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 150 × 42% = 150 × 0,42 = 63
+            </div>
+        </div>
+        
+        <!-- Aufgabe 25 -->
+        <div class="task" id="task25">
+            <h3>Aufgabe 25</h3>
+            <p>Berechne 38% von 250.</p>
+            <div class="input-group">
+                <label for="answer25">Ergebnis:</label>
+                <input type="number" id="answer25" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(25, 95)">Überprüfen</button>
+            </div>
+            <div id="result25"></div>
+            <div id="hint25" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 250 × 38% = 250 × 0,38 = 95
+            </div>
+        </div>
+        
+        <!-- Aufgabe 26 -->
+        <div class="task" id="task26">
+            <h3>Aufgabe 26</h3>
+            <p>Berechne 45% von 200.</p>
+            <div class="input-group">
+                <label for="answer26">Ergebnis:</label>
+                <input type="number" id="answer26" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(26, 90)">Überprüfen</button>
+            </div>
+            <div id="result26"></div>
+            <div id="hint26" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 200 × 45% = 200 × 0,45 = 90
+            </div>
+        </div>
+        
+        <!-- Aufgabe 27 -->
+        <div class="task" id="task27">
+            <h3>Aufgabe 27</h3>
+            <p>Berechne 52% von 175.</p>
+            <div class="input-group">
+                <label for="answer27">Ergebnis:</label>
+                <input type="number" id="answer27" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(27, 91)">Überprüfen</button>
+            </div>
+            <div id="result27"></div>
+            <div id="hint27" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 175 × 52% = 175 × 0,52 = 91
+            </div>
+        </div>
+        
+        <!-- Aufgabe 28 -->
+        <div class="task" id="task28">
+            <h3>Aufgabe 28</h3>
+            <p>Berechne 58% von 300.</p>
+            <div class="input-group">
+                <label for="answer28">Ergebnis:</label>
+                <input type="number" id="answer28" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(28, 174)">Überprüfen</button>
+            </div>
+            <div id="result28"></div>
+            <div id="hint28" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 300 × 58% = 300 × 0,58 = 174
+            </div>
+        </div>
+        
+        <!-- Aufgabe 29 -->
+        <div class="task" id="task29">
+            <h3>Aufgabe 29</h3>
+            <p>Berechne 64% von 150.</p>
+            <div class="input-group">
+                <label for="answer29">Ergebnis:</label>
+                <input type="number" id="answer29" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(29, 96)">Überprüfen</button>
+            </div>
+            <div id="result29"></div>
+            <div id="hint29" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 150 × 64% = 150 × 0,64 = 96
+            </div>
+        </div>
+        
+        <!-- Aufgabe 30 -->
+        <div class="task" id="task30">
+            <h3>Aufgabe 30</h3>
+            <p>Berechne 72% von 250.</p>
+            <div class="input-group">
+                <label for="answer30">Ergebnis:</label>
+                <input type="number" id="answer30" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(30, 180)">Überprüfen</button>
+            </div>
+            <div id="result30"></div>
+            <div id="hint30" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 250 × 72% = 250 × 0,72 = 180
+            </div>
+        </div>
+        
+        <!-- Aufgabe 31 -->
+        <div class="task" id="task31">
+            <h3>Aufgabe 31</h3>
+            <p>Berechne 78% von 200.</p>
+            <div class="input-group">
+                <label for="answer31">Ergebnis:</label>
+                <input type="number" id="answer31" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(31, 156)">Überprüfen</button>
+            </div>
+            <div id="result31"></div>
+            <div id="hint31" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 200 × 78% = 200 × 0,78 = 156
+            </div>
+        </div>
+        
+        <!-- Aufgabe 32 -->
+        <div class="task" id="task32">
+            <h3>Aufgabe 32</h3>
+            <p>Berechne 85% von 180.</p>
+            <div class="input-group">
+                <label for="answer32">Ergebnis:</label>
+                <input type="number" id="answer32" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(32, 153)">Überprüfen</button>
+            </div>
+            <div id="result32"></div>
+            <div id="hint32" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 180 × 85% = 180 × 0,85 = 153
+            </div>
+        </div>
+        
+        <!-- Aufgabe 33 -->
+        <div class="task" id="task33">
+            <h3>Aufgabe 33</h3>
+            <p>Berechne 92% von 175.</p>
+            <div class="input-group">
+                <label for="answer33">Ergebnis:</label>
+                <input type="number" id="answer33" placeholder="Zahl" step="0.1">
+                <button class="btn" onclick="checkAnswer(33, 161)">Überprüfen</button>
+            </div>
+            <div id="result33"></div>
+            <div id="hint33" class="hint" style="display: none;">
+                <strong>Lösungshinweis:</strong> 175 × 92% = 175 × 0,92 = 161
+            </div>
+        </div>
+        
+        <!-- Interaktive Applets -->
+        <div class="applet-container">
+            <h3>Interaktive Prozentrechner</h3>
+            <p>Verwende diese Applets, um verschiedene Prozentrechnungen zu üben:</p>
+            
+            <div class="applet">
+                <h4>Prozentwert berechnen</h4>
+                <p>Berechne den Prozentwert: W = G × p%</p>
+                <div class="applet-input">
+                    <label>Grundwert (G):</label>
+                    <input type="number" id="appletG" placeholder="G" step="0.1">
+                </div>
+                <div class="applet-input">
+                    <label>Prozentsatz (p%):</label>
+                    <input type="number" id="appletP" placeholder="p%" step="0.1">
+                </div>
+                <button class="btn" onclick="calculatePercentValue()">Berechnen</button>
+                <div class="applet-result" id="appletResult1"></div>
+            </div>
+            
+            <div class="applet">
+                <h4>Prozentsatz berechnen</h4>
+                <p>Berechne den Prozentsatz: p% = (W ÷ G) × 100%</p>
+                <div class="applet-input">
+                    <label>Prozentwert (W):</label>
+                    <input type="number" id="appletW2" placeholder="W" step="0.1">
+                </div>
+                <div class="applet-input">
+                    <label>Grundwert (G):</label>
+                    <input type="number" id="appletG2" placeholder="G" step="0.1">
+                </div>
+                <button class="btn" onclick="calculatePercentage()">Berechnen</button>
+                <div class="applet-result" id="appletResult2"></div>
+            </div>
+            
+            <div class="applet">
+                <h4>Grundwert berechnen</h4>
+                <p>Berechne den Grundwert: G = W ÷ p%</p>
+                <div class="applet-input">
+                    <label>Prozentwert (W):</label>
+                    <input type="number" id="appletW3" placeholder="W" step="0.1">
+                </div>
+                <div class="applet-input">
+                    <label>Prozentsatz (p%):</label>
+                    <input type="number" id="appletP3" placeholder="p%" step="0.1">
+                </div>
+                <button class="btn" onclick="calculateBaseValue()">Berechnen</button>
+                <div class="applet-result" id="appletResult3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let solvedTasks = 0;
+        const totalTasks = 33;
+        
+        function checkAnswer(taskNumber, correctAnswer) {
+            const userAnswer = parseFloat(document.getElementById(`answer${taskNumber}`).value);
+            const resultElement = document.getElementById(`result${taskNumber}`);
+            const hintElement = document.getElementById(`hint${taskNumber}`);
+            
+            if (userAnswer === correctAnswer) {
+                resultElement.innerHTML = '✅ <strong>Richtig!</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                // Mark task as solved if not already
+                if (!document.getElementById(`task${taskNumber}`).classList.contains('solved')) {
+                    document.getElementById(`task${taskNumber}`).classList.add('solved');
+                    solvedTasks++;
+                    updateProgress();
+                }
+            } else {
+                resultElement.innerHTML = '❌ <strong>Falsch!</strong> Versuche es noch einmal.';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function updateProgress() {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const percentage = (solvedTasks / totalTasks) * 100;
+            
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = `${solvedTasks} von ${totalTasks} Aufgaben gelöst`;
+            
+            if (solvedTasks === totalTasks) {
+                progressText.innerHTML = '🎉 <strong>Alle Aufgaben gelöst!</strong> 🎉';
+                progressText.style.color = '#27ae60';
+            }
+        }
+        
+        // Applet functions
+        function calculatePercentValue() {
+            const G = parseFloat(document.getElementById('appletG').value);
+            const P = parseFloat(document.getElementById('appletP').value);
+            
+            if (isNaN(G) || isNaN(P)) {
+                document.getElementById('appletResult1').innerHTML = 'Bitte gib gültige Zahlen ein!';
+                return;
+            }
+            
+            const W = G * (P / 100);
+            document.getElementById('appletResult1').innerHTML = `Prozentwert (W) = ${W}`;
+        }
+        
+        function calculatePercentage() {
+            const W = parseFloat(document.getElementById('appletW2').value);
+            const G = parseFloat(document.getElementById('appletG2').value);
+            
+            if (isNaN(W) || isNaN(G) || G === 0) {
+                document.getElementById('appletResult2').innerHTML = 'Bitte gib gültige Zahlen ein! (Grundwert darf nicht 0 sein)';
+                return;
+            }
+            
+            const P = (W / G) * 100;
+            document.getElementById('appletResult2').innerHTML = `Prozentsatz (p%) = ${P.toFixed(2)}%`;
+        }
+        
+        function calculateBaseValue() {
+            const W = parseFloat(document.getElementById('appletW3').value);
+            const P = parseFloat(document.getElementById('appletP3').value);
+            
+            if (isNaN(W) || isNaN(P) || P === 0) {
+                document.getElementById('appletResult3').innerHTML = 'Bitte gib gültige Zahlen ein! (Prozentsatz darf nicht 0 sein)';
+                return;
+            }
+            
+            const G = W / (P / 100);
+            document.getElementById('appletResult3').innerHTML = `Grundwert (G) = ${G}`;
+        }
+        
+        // Add event listeners for Enter key
+        document.addEventListener('DOMContentLoaded', function() {
+            for (let i = 1; i <= totalTasks; i++) {
+                const input = document.getElementById(`answer${i}`);
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const button = this.nextElementSibling;
+                        button.click();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
