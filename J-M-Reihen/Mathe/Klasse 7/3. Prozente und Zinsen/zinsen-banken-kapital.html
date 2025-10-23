@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zinsen, Banken, Kapital - Mathematik Klasse 7</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h3 {
+            color: #7f8c8d;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        .exercise {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .exercise-number {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        .question {
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        .input-field {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .input-field:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .input-field.small {
+            width: 80px;
+            display: inline-block;
+            margin: 0 5px;
+        }
+        .button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #2980b9;
+        }
+        .button.secondary {
+            background: #95a5a6;
+        }
+        .button.secondary:hover {
+            background: #7f8c8d;
+        }
+        .button.success {
+            background: #27ae60;
+        }
+        .button.success:hover {
+            background: #229954;
+        }
+        .answer-feedback {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .answer-feedback.correct {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .answer-feedback.incorrect {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .explanation {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 0.9em;
+            display: none;
+        }
+        .explanation.show {
+            display: block;
+        }
+        .tip {
+            background: #f0f8ff;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin: 10px 0;
+            display: none;
+        }
+        .tip.show {
+            display: block;
+        }
+        .formula {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .score-display {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .drag-drop-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .draggable-item {
+            background: #e9ecef;
+            border: 2px solid #dee2e6;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: move;
+            user-select: none;
+            min-width: 150px;
+            text-align: center;
+        }
+        .draggable-item:hover {
+            background: #dee2e6;
+        }
+        .drop-zone {
+            background: #f8f9fa;
+            border: 2px dashed #6c757d;
+            padding: 20px;
+            border-radius: 5px;
+            min-height: 60px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .drop-zone.drag-over {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        .calculation-step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .calculation-step input {
+            width: 80px;
+            margin: 0 5px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .correct-input {
+            border-color: #27ae60 !important;
+            background-color: #d4edda !important;
+        }
+        .incorrect-input {
+            border-color: #e74c3c !important;
+            background-color: #f8d7da !important;
+        }
+        .navigation {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .nav-button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 0 10px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .nav-button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Zinsen, Banken, Kapital</h1>
+        <p><strong>Mathematik Klasse 7 - Thema: Zinsrechnung</strong></p>
+        
+        <div class="score-display">
+            <h3>Dein Fortschritt</h3>
+            <p>Richtige Antworten: <span id="correctCount">0</span> von <span id="totalCount">8</span></p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise1">
+            <div class="exercise-number">Einführung: Zinsrechnung</div>
+            <div class="question">
+                <p><strong>Du hast bisher bei der Prozentrechnung mit den Begriffen Prozentsatz, Prozentwert und Grundwert gearbeitet.</strong></p>
+                <p><strong>Bei der Zinsrechnung wird zwar gleich gerechnet, es werden aber andere Begriffe verwendet als beim einfachen Rechnen mit Prozenten.</strong></p>
+                
+                <p><strong>Beispiel:</strong> Leon hat zu Beginn des Jahres ein Sparbuch mit einem Grundwert von 500€ eröffnet. Die Bank gibt ihm auf dieses Geld am Ende des Jahres einen Prozentsatz, zum Beispiel 2%. Also erhält er am Ende des Jahres von der Bank den Prozentwert 10€.</p>
+            </div>
+            <button class="button secondary" onclick="toggleExplanation('explanation1')">Erklärung anzeigen</button>
+            <div class="explanation" id="explanation1">
+                <strong>Zinsrechnung vs. Prozentrechnung:</strong><br>
+                • <strong>Grundwert G</strong> → <strong>Kapital K</strong><br>
+                • <strong>Prozentsatz p%</strong> → <strong>Zinssatz p%</strong><br>
+                • <strong>Prozentwert W</strong> → <strong>Zinsen Z</strong><br>
+                <strong>Formel:</strong> K × p% = Z
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise2">
+            <div class="exercise-number">Aufgabe: Begriffe zuordnen</div>
+            <div class="question">
+                <p><strong>Fülle die Lücken aus:</strong></p>
+                <p>Ein Bankmitarbeiter würde nun sagen, dass Leon ein <input type="text" class="input-field small" id="blank1" placeholder="Kapital"> von 500€ hat, die Bank ihm einen <input type="text" class="input-field small" id="blank2" placeholder="Zinssatz"> von 2% verspricht und er am Ende des Jahres <input type="text" class="input-field small" id="blank3" placeholder="Zinsen"> von 10€ bekommt.</p>
+            </div>
+            <button class="button" onclick="checkBlanks('exercise2')">Antworten prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation2')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip2')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback2"></div>
+            <div class="explanation" id="explanation2">
+                <strong>Lösung:</strong><br>
+                1. Lücke: <strong>Kapital</strong><br>
+                2. Lücke: <strong>Zinssatz</strong><br>
+                3. Lücke: <strong>Zinsen</strong><br>
+                <strong>Formel:</strong> K × p% = Z (Kapital × Zinssatz = Zinsen)
+            </div>
+            <div class="tip" id="tip2">
+                <strong>Tipp:</strong> Denke an die drei Hauptbegriffe der Zinsrechnung: Kapital, Zinssatz und Zinsen.
+            </div>
+        </div>
+
+        <div class="formula">
+            <strong>Allgemeine Formel der Zinsrechnung:</strong><br>
+            K × p% = Z<br>
+            <small>Kapital × Zinssatz = Zinsen</small>
+        </div>
+
+        <div class="exercise" id="exercise3">
+            <div class="exercise-number">Aufgabe: Kredite und Zinsen</div>
+            <div class="question">
+                <p><strong>Wenn man sich Geld von der Bank ausleiht, muss man auf das ausgeliehene Geld auch Zinsen zahlen. Jedes Jahr erhöht sich somit der zurückzuzahlende Betrag. Dies nennt man auch Kredit.</strong></p>
+                <p><strong>Beispiel:</strong> Paul leiht sich von der Bank 100€ zu einem Zinssatz von 5%. Wenn er nichts von den Schulden zurückbezahlt, hat er nach einem Jahr Zinsen von 5€ und somit Schulden von 105€.</p>
+            </div>
+            <button class="button secondary" onclick="toggleExplanation('explanation3')">Erklärung anzeigen</button>
+            <div class="explanation" id="explanation3">
+                <strong>Kredite verstehen:</strong><br>
+                • <strong>Kredit:</strong> Geld, das man von der Bank leiht<br>
+                • <strong>Zinsen:</strong> Kosten für das geliehene Geld<br>
+                • <strong>Schulden:</strong> Ursprünglicher Betrag + Zinsen<br>
+                <strong>Beispiel:</strong> 100€ + 5€ Zinsen = 105€ Schulden
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise4">
+            <div class="exercise-number">Aufgabe: Begriffe zuordnen</div>
+            <div class="question">
+                <p><strong>Ordne die Begriffe den richtigen Symbolen zu:</strong></p>
+                <div class="drag-drop-container">
+                    <div class="draggable-item" draggable="true" data-category="kapital">Kapital K</div>
+                    <div class="draggable-item" draggable="true" data-category="zinssatz">Zinssatz p%</div>
+                    <div class="draggable-item" draggable="true" data-category="zinsen">Zinsen Z</div>
+                    <div class="draggable-item" draggable="true" data-category="prozentsatz">Prozentsatz p%</div>
+                    <div class="draggable-item" draggable="true" data-category="grundwert">Grundwert G</div>
+                    <div class="draggable-item" draggable="true" data-category="prozentwert">Prozentwert W</div>
+                </div>
+                <div class="drop-zone" data-category="zinsrechnung">
+                    <strong>Zinsrechnung:</strong>
+                </div>
+                <div class="drop-zone" data-category="prozentrechnung">
+                    <strong>Prozentrechnung:</strong>
+                </div>
+            </div>
+            <button class="button" onclick="checkDragDrop('exercise4')">Zuordnung prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation4')">Lösung anzeigen</button>
+            <div class="answer-feedback" id="feedback4"></div>
+            <div class="explanation" id="explanation4">
+                <strong>Lösung:</strong><br>
+                <strong>Zinsrechnung:</strong> Kapital K, Zinssatz p%, Zinsen Z<br>
+                <strong>Prozentrechnung:</strong> Grundwert G, Prozentsatz p%, Prozentwert W<br>
+                <strong>Gemeinsamkeit:</strong> Beide verwenden die gleiche Formel: Grundwert × Prozentsatz = Prozentwert
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise5">
+            <div class="exercise-number">Aufgabe: Sätze kategorisieren</div>
+            <div class="question">
+                <p><strong>Ziehe die Sätze in die richtige Kategorie:</strong></p>
+                <div class="drag-drop-container">
+                    <div class="draggable-item" draggable="true" data-category="kapital">Die Bank gibt Lukas jedes Jahr 3% seines gesparten Geldes.</div>
+                    <div class="draggable-item" draggable="true" data-category="kapital">Lisa gibt bei der Bank ihr Geburtstagsgeld von 200€ ab.</div>
+                    <div class="draggable-item" draggable="true" data-category="zinsen">Jan hat dieses Jahr 30€ von der Bank bekommen.</div>
+                </div>
+                <div class="drop-zone" data-category="kapital">
+                    <strong>Kapital K</strong>
+                </div>
+                <div class="drop-zone" data-category="zinssatz">
+                    <strong>Zinssatz p%</strong>
+                </div>
+                <div class="drop-zone" data-category="zinsen">
+                    <strong>Zinsen Z</strong>
+                </div>
+            </div>
+            <button class="button" onclick="checkCategorization('exercise5')">Kategorisierung prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation5')">Lösung anzeigen</button>
+            <div class="answer-feedback" id="feedback5"></div>
+            <div class="explanation" id="explanation5">
+                <strong>Lösung:</strong><br>
+                • <strong>Kapital K:</strong> "Lisa gibt bei der Bank ihr Geburtstagsgeld von 200€ ab."<br>
+                • <strong>Zinssatz p%:</strong> "Die Bank gibt Lukas jedes Jahr 3% seines gesparten Geldes."<br>
+                • <strong>Zinsen Z:</strong> "Jan hat dieses Jahr 30€ von der Bank bekommen."
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise6">
+            <div class="exercise-number">Aufgabe: Zinsen berechnen - Linda</div>
+            <div class="question">
+                <p><strong>Linda hat K = 600€ zu Beginn des Jahres investiert. Die Bank bietet einen Zinssatz von p% = 2%.</strong></p>
+                <p><strong>Frage:</strong> Wie viel Geld bekommt sie am Ende des Jahres von der Bank?</p>
+                <div class="calculation-step">
+                    <strong>Rechnung:</strong><br>
+                    Z = <input type="number" class="input-field small" id="calc1_k" placeholder="600"> € × <input type="number" class="input-field small" id="calc1_p" placeholder="2"> %<br>
+                    = <input type="number" class="input-field small" id="calc1_k2" placeholder="600"> € × <input type="number" class="input-field small" id="calc1_p2" placeholder="0.02"><br>
+                    = <input type="number" class="input-field small" id="calc1_z" placeholder="12"> €
+                </div>
+                <p><strong>Antwort:</strong> Linda bekommt am Ende des Jahres <input type="number" class="input-field small" id="answer1" placeholder="612"> € von der Bank.</p>
+            </div>
+            <button class="button" onclick="checkCalculation('exercise6')">Berechnung prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation6')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip6')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback6"></div>
+            <div class="explanation" id="explanation6">
+                <strong>Lösung:</strong><br>
+                <strong>Schritt 1:</strong> Zinsen berechnen: Z = 600€ × 2% = 600€ × 0,02 = 12€<br>
+                <strong>Schritt 2:</strong> Gesamtbetrag: 600€ + 12€ = 612€<br>
+                <strong>Antwort:</strong> Linda bekommt 612€ (Kapital + Zinsen)
+            </div>
+            <div class="tip" id="tip6">
+                <strong>Tipp:</strong> Erst die Zinsen berechnen, dann zum Kapital addieren!
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise7">
+            <div class="exercise-number">Aufgabe: Zinsen berechnen - Leons Vater</div>
+            <div class="question">
+                <p><strong>Leons Vater hat K = 20.000€ investiert bei einem Zinssatz von p% = 4,5%.</strong></p>
+                <p><strong>Frage:</strong> Wie viel Zinsen bekommt sein Vater jährlich?</p>
+                <div class="calculation-step">
+                    <strong>Rechnung:</strong><br>
+                    Z = <input type="number" class="input-field small" id="calc2_k" placeholder="20000"> € × <input type="number" class="input-field small" id="calc2_p" placeholder="4.5"> %<br>
+                    = <input type="number" class="input-field small" id="calc2_k2" placeholder="20000"> € × <input type="number" class="input-field small" id="calc2_p2" placeholder="0.045"><br>
+                    = <input type="number" class="input-field small" id="calc2_z" placeholder="900"> €
+                </div>
+                <p><strong>Antwort:</strong> Leons Vater bekommt jährlich <input type="number" class="input-field small" id="answer2" placeholder="900"> € von der Bank ausgezahlt.</p>
+            </div>
+            <button class="button" onclick="checkCalculation2('exercise7')">Berechnung prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation7')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip7')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback7"></div>
+            <div class="explanation" id="explanation7">
+                <strong>Lösung:</strong><br>
+                <strong>Rechnung:</strong> Z = 20.000€ × 4,5% = 20.000€ × 0,045 = 900€<br>
+                <strong>Antwort:</strong> Leons Vater bekommt 900€ Zinsen jährlich
+            </div>
+            <div class="tip" id="tip7">
+                <strong>Tipp:</strong> 4,5% = 0,045 (Prozentsatz in Dezimalzahl umwandeln)
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise8">
+            <div class="exercise-number">Aufgabe: Zinsen berechnen - Daniel</div>
+            <div class="question">
+                <p><strong>Daniel hat sich K = 40.000€ für ein Auto geliehen bei einem Zinssatz von p% = 6,25%.</strong></p>
+                <p><strong>Frage:</strong> Wenn er noch nichts abbezahlt hat, erhöhen sich seine Schulden um wie viel Euro?</p>
+                <div class="calculation-step">
+                    <strong>Rechnung:</strong><br>
+                    Z = <input type="number" class="input-field small" id="calc3_k" placeholder="40000"> € × <input type="number" class="input-field small" id="calc3_p" placeholder="6.25"> %<br>
+                    = <input type="number" class="input-field small" id="calc3_k2" placeholder="40000"> € × <input type="number" class="input-field small" id="calc3_p2" placeholder="0.0625"><br>
+                    = <input type="number" class="input-field small" id="calc3_z" placeholder="2500"> €
+                </div>
+                <p><strong>Antwort:</strong> Daniels Schulden erhöhen sich nach einem Jahr um <input type="number" class="input-field small" id="answer3" placeholder="2500"> €.</p>
+            </div>
+            <button class="button" onclick="checkCalculation3('exercise8')">Berechnung prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation8')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip8')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback8"></div>
+            <div class="explanation" id="explanation8">
+                <strong>Lösung:</strong><br>
+                <strong>Rechnung:</strong> Z = 40.000€ × 6,25% = 40.000€ × 0,0625 = 2.500€<br>
+                <strong>Antwort:</strong> Daniels Schulden erhöhen sich um 2.500€
+            </div>
+            <div class="tip" id="tip8">
+                <strong>Tipp:</strong> 6,25% = 0,0625 (Prozentsatz in Dezimalzahl umwandeln)
+            </div>
+        </div>
+
+        <h2>Zusammenfassung</h2>
+        <div class="tip">
+            <strong>Wichtige Begriffe der Zinsrechnung:</strong><br>
+            • <strong>Kapital K:</strong> Das angelegte oder geliehene Geld<br>
+            • <strong>Zinssatz p%:</strong> Der Prozentsatz der Zinsen<br>
+            • <strong>Zinsen Z:</strong> Der Betrag der Zinsen<br>
+            • <strong>Formel:</strong> K × p% = Z<br>
+            • <strong>Gesamtbetrag:</strong> Kapital + Zinsen
+        </div>
+
+        <div class="navigation">
+            <a href="vergleichen-mit-prozenten.html" class="nav-button">← Zurück zu Prozentvergleichen</a>
+            <a href="#" class="nav-button">Weiter zu Zinseszins →</a>
+        </div>
+    </div>
+
+    <script>
+        // Globale Variablen
+        let correctAnswers = 0;
+        const totalExercises = 8;
+        let selectedAnswers = {};
+        
+        // Fortschritt aktualisieren
+        function updateProgress() {
+            const progress = (correctAnswers / totalExercises) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('correctCount').textContent = correctAnswers;
+        }
+        
+        // Tipp anzeigen/verstecken
+        function toggleTip(tipId) {
+            const tip = document.getElementById(tipId);
+            tip.classList.toggle('show');
+        }
+        
+        // Erklärung anzeigen/verstecken
+        function toggleExplanation(explanationId) {
+            const explanation = document.getElementById(explanationId);
+            explanation.classList.toggle('show');
+        }
+        
+        // Lückenfüllung prüfen
+        function checkBlanks(exerciseId) {
+            const blank1 = document.getElementById('blank1');
+            const blank2 = document.getElementById('blank2');
+            const blank3 = document.getElementById('blank3');
+            const feedback = document.getElementById('feedback2');
+            
+            let correctCount = 0;
+            const answers = ['kapital', 'zinssatz', 'zinsen'];
+            const inputs = [blank1, blank2, blank3];
+            
+            inputs.forEach((input, index) => {
+                const userAnswer = input.value.trim().toLowerCase();
+                if (userAnswer === answers[index]) {
+                    input.classList.add('correct-input');
+                    input.classList.remove('incorrect-input');
+                    correctCount++;
+                } else {
+                    input.classList.add('incorrect-input');
+                    input.classList.remove('correct-input');
+                }
+            });
+            
+            if (correctCount === 3) {
+                feedback.innerHTML = '<strong>✅ Alle Lücken richtig ausgefüllt!</strong>';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 3 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Drag & Drop für Begriffe
+        function checkDragDrop(exerciseId) {
+            const feedback = document.getElementById('feedback4');
+            feedback.innerHTML = '<strong>✅ Drag & Drop erfolgreich!</strong> Die Begriffe wurden korrekt zugeordnet.';
+            feedback.className = 'answer-feedback correct';
+            feedback.style.display = 'block';
+            
+            if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                correctAnswers++;
+                document.getElementById(exerciseId).classList.add('completed');
+            }
+            updateProgress();
+        }
+        
+        // Kategorisierung prüfen
+        function checkCategorization(exerciseId) {
+            const feedback = document.getElementById('feedback5');
+            feedback.innerHTML = '<strong>✅ Kategorisierung erfolgreich!</strong> Die Sätze wurden korrekt zugeordnet.';
+            feedback.className = 'answer-feedback correct';
+            feedback.style.display = 'block';
+            
+            if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                correctAnswers++;
+                document.getElementById(exerciseId).classList.add('completed');
+            }
+            updateProgress();
+        }
+        
+        // Berechnung 1 prüfen (Linda)
+        function checkCalculation(exerciseId) {
+            const inputs = ['calc1_k', 'calc1_p', 'calc1_k2', 'calc1_p2', 'calc1_z', 'answer1'];
+            const correctAnswers = [600, 2, 600, 0.02, 12, 612];
+            const feedback = document.getElementById('feedback6');
+            
+            let correctCount = 0;
+            
+            inputs.forEach((inputId, index) => {
+                const input = document.getElementById(inputId);
+                const userAnswer = parseFloat(input.value);
+                
+                if (userAnswer === correctAnswers[index]) {
+                    input.classList.add('correct-input');
+                    input.classList.remove('incorrect-input');
+                    correctCount++;
+                } else {
+                    input.classList.add('incorrect-input');
+                    input.classList.remove('correct-input');
+                }
+            });
+            
+            if (correctCount === 6) {
+                feedback.innerHTML = '<strong>✅ Alle Berechnungen richtig!</strong> Linda bekommt 612€ (600€ + 12€ Zinsen).';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 6 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Berechnung 2 prüfen (Leons Vater)
+        function checkCalculation2(exerciseId) {
+            const inputs = ['calc2_k', 'calc2_p', 'calc2_k2', 'calc2_p2', 'calc2_z', 'answer2'];
+            const correctAnswers = [20000, 4.5, 20000, 0.045, 900, 900];
+            const feedback = document.getElementById('feedback7');
+            
+            let correctCount = 0;
+            
+            inputs.forEach((inputId, index) => {
+                const input = document.getElementById(inputId);
+                const userAnswer = parseFloat(input.value);
+                
+                if (userAnswer === correctAnswers[index]) {
+                    input.classList.add('correct-input');
+                    input.classList.remove('incorrect-input');
+                    correctCount++;
+                } else {
+                    input.classList.add('incorrect-input');
+                    input.classList.remove('correct-input');
+                }
+            });
+            
+            if (correctCount === 6) {
+                feedback.innerHTML = '<strong>✅ Alle Berechnungen richtig!</strong> Leons Vater bekommt 900€ Zinsen.';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 6 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Berechnung 3 prüfen (Daniel)
+        function checkCalculation3(exerciseId) {
+            const inputs = ['calc3_k', 'calc3_p', 'calc3_k2', 'calc3_p2', 'calc3_z', 'answer3'];
+            const correctAnswers = [40000, 6.25, 40000, 0.0625, 2500, 2500];
+            const feedback = document.getElementById('feedback8');
+            
+            let correctCount = 0;
+            
+            inputs.forEach((inputId, index) => {
+                const input = document.getElementById(inputId);
+                const userAnswer = parseFloat(input.value);
+                
+                if (userAnswer === correctAnswers[index]) {
+                    input.classList.add('correct-input');
+                    input.classList.remove('incorrect-input');
+                    correctCount++;
+                } else {
+                    input.classList.add('incorrect-input');
+                    input.classList.remove('correct-input');
+                }
+            });
+            
+            if (correctCount === 6) {
+                feedback.innerHTML = '<strong>✅ Alle Berechnungen richtig!</strong> Daniels Schulden erhöhen sich um 2.500€.';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 6 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Drag & Drop Funktionalität
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProgress();
+            
+            // Drag & Drop Event Listeners
+            const draggableItems = document.querySelectorAll('.draggable-item');
+            const dropZones = document.querySelectorAll('.drop-zone');
+            
+            draggableItems.forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    e.dataTransfer.setData('text/plain', this.textContent);
+                    this.style.opacity = '0.5';
+                });
+                
+                item.addEventListener('dragend', function(e) {
+                    this.style.opacity = '1';
+                });
+            });
+            
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('drag-over');
+                });
+                
+                zone.addEventListener('dragleave', function(e) {
+                    this.classList.remove('drag-over');
+                });
+                
+                zone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    const data = e.dataTransfer.getData('text/plain');
+                    this.innerHTML += `<div class="draggable-item">${data}</div>`;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

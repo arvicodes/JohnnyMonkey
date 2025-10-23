@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2.6.2 Zinsen für mehrere Jahre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .left-column {
+            flex: 1;
+        }
+        
+        .right-column {
+            flex: 1;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .einstieg {
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-left: 4px solid #4a90e2;
+            margin-bottom: 20px;
+        }
+        
+        .einstieg-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .einstieg-text {
+            flex: 1;
+        }
+        
+        .einstieg-characters {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .character {
+            width: 80px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .character-male {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+        }
+        
+        .character-female {
+            background-color: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+        
+        .thought-bubble {
+            position: absolute;
+            background-color: white;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 8px;
+            font-size: 10px;
+            max-width: 120px;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .thought-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #333;
+        }
+        
+        .aufgabe {
+            background-color: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .angebot-box {
+            background-color: #f8f9fa;
+            border: 2px solid #6c757d;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .angebot-header {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        
+        .loesung {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .remember-box {
+            background-color: #e8f5e8;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .calculation-step {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 4px;
+        }
+        
+        .calculation-diagram {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        
+        .capital-box {
+            background-color: white;
+            border: 2px solid #2196f3;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        .arrow {
+            font-size: 18px;
+            color: #1976d2;
+        }
+        
+        .info-section {
+            background-color: #f5f5f5;
+            border: 2px solid #9e9e9e;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .info-subsection {
+            margin: 20px 0;
+        }
+        
+        .info-subsection h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .formula-box {
+            background-color: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .exercise {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 6px;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .exercise-number {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .exercise-part {
+            margin: 10px 0;
+        }
+        
+        .exercise-part-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .chart-container {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+        }
+        
+        .bar-chart {
+            flex: 1;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .bar {
+            background-color: #4caf50;
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .sparbrief-image {
+            flex: 1;
+            background-color: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .sparbrief-document {
+            background-color: white;
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px;
+            font-size: 12px;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>2.6.2 Zinsen für mehrere Jahre</h1>
+    
+    <div class="container">
+        <div class="left-column">
+            <div class="section">
+                <div class="einstieg">
+                    <h3>Einstieg</h3>
+                    <div class="einstieg-content">
+                        <div class="einstieg-text">
+                            <p>Zwei Jugendliche unterhalten sich über Geldanlagen:</p>
+                        </div>
+                        <div class="einstieg-characters">
+                            <div class="character character-male">
+                                👦
+                                <div class="thought-bubble">
+                                    Meine Patentante hat mir von ihrem Lottogewinn 1000 € geschenkt. Die spare ich für meinen Führerschein in fünf Jahren.
+                                </div>
+                            </div>
+                            <div class="character character-female">
+                                👧
+                                <div class="thought-bubble">
+                                    Auf dem Sparbuch erhältst du 2% Zinsen pro Jahr, also hast du in fünf Jahren 10% mehr, das sind 1100 €. Ob das reicht?
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="aufgabe">
+                    <h3>Aufgabe 1</h3>
+                    <p>Lena hat 8 000 € geerbt. Sie will das Geld zu Beginn des Jahres für 5 Jahre bei einer Bank anlegen. Die Bankangestellte macht ihr zwei Angebote. Vergleiche die Angebote.</p>
+                    
+                    <div class="angebot-box">
+                        <div class="angebot-header">Hüper Bank - Angebot 1</div>
+                        <p><strong>Anlage 5 Jahre/Zinssatz 2%</strong></p>
+                        <p>Die Zinsen werden jeweils am Jahresende ausgezahlt.</p>
+                    </div>
+                    
+                    <div class="angebot-box">
+                        <div class="angebot-header">Hüper Bank - Angebot 2</div>
+                        <p><strong>Anlage 5 Jahre/Zinssatz 2%</strong></p>
+                        <p>Die Zinsen werden nicht am Jahresende ausgezahlt, sondern dem Kapital hinzugefügt und im nächsten Jahr mitverzinst.</p>
+                    </div>
+                </div>
+                
+                <div class="loesung">
+                    <h3>Lösung</h3>
+                    
+                    <div class="remember-box">
+                        <strong>Erinnere dich:</strong> Wächst um 2% bedeutet: wächst auf 102%
+                    </div>
+                    
+                    <div class="calculation-step">
+                        <h4>(1) Berechnen der Zinsen bei jährlicher Auszahlung</h4>
+                        <p><strong>Angebot 1:</strong></p>
+                        <p>Z = 8000 € · 0,02 = 160 € (pro Jahr)</p>
+                        <p>Gesamte Zinsen nach 5 Jahren: 5 · 160 € = 800 €</p>
+                    </div>
+                    
+                    <div class="calculation-step">
+                        <h4>(2) Berechnen der Zinsen bei Auszahlung am Ende der Zinszeit</h4>
+                        <p><strong>Angebot 2:</strong></p>
+                        <div class="calculation-diagram">
+                            <div class="capital-box">8000 €</div>
+                            <div class="arrow">→</div>
+                            <div class="capital-box">K₁</div>
+                            <div class="arrow">→</div>
+                            <div class="capital-box">K₂</div>
+                            <div class="arrow">→</div>
+                            <div class="capital-box">K₃</div>
+                            <div class="arrow">→</div>
+                            <div class="capital-box">K₄</div>
+                            <div class="arrow">→</div>
+                            <div class="capital-box">K₅</div>
+                        </div>
+                        <p><strong>Kapital nach dem 1. Jahr:</strong> K₁ = 8000 € · 1,02 = 8160 €</p>
+                        <p><strong>Kapital nach dem 2. Jahr:</strong> K₂ = 8160 € · 1,02 = 8323,20 €</p>
+                        <p><strong>Kapital nach dem 3. Jahr:</strong> K₃ = 8323,20 € · 1,02 = 8489,66 €</p>
+                        <p><strong>Kapital nach dem 4. Jahr:</strong> K₄ = 8489,66 € · 1,02 = 8659,45 €</p>
+                        <p><strong>Kapital nach dem 5. Jahr:</strong> K₅ = 8659,45 € · 1,02 = 8832,65 €</p>
+                        
+                        <div class="formula-box">
+                            <strong>K₅ = 8000 € · 1,02⁵ = 8832,64643 € ≈ 8832,65 €</strong>
+                        </div>
+                        
+                        <p><strong>Gesamte Zinsen:</strong> 8832,65 € - 8000 € = 832,65 €</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="right-column">
+            <div class="section">
+                <div class="info-section">
+                    <h3>Information</h3>
+                    
+                    <div class="info-subsection">
+                        <h4>(1) Zinsfaktor</h4>
+                        <p>Bei 2% Zinsen: 1,02; bei 3% Zinsen: 1,03; bei 4% Zinsen: 1,04; ...</p>
+                        <p>Der Zinsfaktor gibt an, um wie viel das Kapital nach einem Jahr wächst.</p>
+                    </div>
+                    
+                    <div class="info-subsection">
+                        <h4>(2) Zinseszinsen</h4>
+                        <p>Zinseszinsen sind Zinsen, die auf bereits erhaltene Zinsen gezahlt werden, die nicht abgehoben wurden.</p>
+                    </div>
+                    
+                    <div class="info-subsection">
+                        <h4>(3) Zinseszinsformel - Kapitalwachstum nach 1, 2, 3, ... Jahren</h4>
+                        <p>Bei 4% Zinsen: 1,04; 1,04²; 1,04³; ...</p>
+                        <div class="formula-box">
+                            <strong>K · qⁿ</strong><br>
+                            K = Kapital, q = Zinsfaktor, n = Anzahl der Jahre
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Übungsaufgaben</h3>
+                
+                <div class="exercise">
+                    <div class="exercise-number">2.</div>
+                    <p>Sarah legt 600 € zu 1,5% für 4 Jahre an. Die Zinsen werden dem Kapital zugeschlagen.</p>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">a)</span>
+                        Wie viel hat Sarah nach 4 Jahren auf dem Konto?
+                    </div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">b)</span>
+                        Wie viel Zinsen hat sie insgesamt erhalten?
+                    </div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">c)</span>
+                        Wie viel Zinsen hätte sie erhalten, wenn die Zinsen jährlich ausgezahlt worden wären?
+                    </div>
+                </div>
+                
+                <div class="exercise">
+                    <div class="exercise-number">3.</div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">a)</span>
+                        Berechne das Endkapital nach 6, 8, 10, 20, 40 Jahren für verschiedene Anfangskapitalien und Zinssätze.
+                    </div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">b)</span>
+                        Nach wie vielen Jahren hat sich das Kapital verdoppelt? Verwende eine Tabellenkalkulation.
+                    </div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">c)</span>
+                        Berechne für a) 500 € zu 2%, b) 975 € zu 1,5%
+                    </div>
+                </div>
+                
+                <div class="exercise">
+                    <div class="exercise-number">4.</div>
+                    <p>Florian hat 600 € erhalten und überlegt, in welche Anlageform er das Geld investieren soll.</p>
+                    
+                    <div class="chart-container">
+                        <div class="bar-chart">
+                            <h4>Wachstumssparen mit jährlich steigenden Zinssätzen</h4>
+                            <div class="bar" style="height: 30px;">Jahr 1: 1,5%</div>
+                            <div class="bar" style="height: 35px;">Jahr 2: 1,75%</div>
+                            <div class="bar" style="height: 38px;">Jahr 3: 1,9%</div>
+                            <div class="bar" style="height: 42px;">Jahr 4: 2,1%</div>
+                            <div class="bar" style="height: 55px;">Jahr 5: 2,75%</div>
+                        </div>
+                        
+                        <div class="sparbrief-image">
+                            <h4>SPARBRIEF</h4>
+                            <div class="sparbrief-document">
+                                <strong>Laufzeit 5 Jahre</strong><br>
+                                <strong>Zinssatz 1,6%</strong>
+                            </div>
+                            <div class="sparbrief-document">
+                                <strong>Laufzeit 5 Jahre</strong><br>
+                                <strong>Zinssatz 1,6%</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="exercise">
+                    <div class="exercise-number">5.</div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">a)</span>
+                        Bestimme die Zeit, nach der sich das Kapital (200 €, 57000 €) bei 2% Zinsen verdoppelt hat. Notiere deine Beobachtungen.
+                    </div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">b)</span>
+                        Begründe, warum die Verdopplungszeit nur vom Zinssatz abhängt.
+                    </div>
+                    <div class="exercise-part">
+                        <span class="exercise-part-label">c)</span>
+                        Bestimme die Verdopplungszeit für die Zinssätze 3%, 4%, 5%, 6%, 7% und notiere deine Beobachtungen.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

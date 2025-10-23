@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Übungsaufgaben und Zusammenfassung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .page-container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .left-page {
+            flex: 1;
+        }
+        
+        .right-page {
+            flex: 1;
+        }
+        
+        .problem {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .problem-number {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .problem-text {
+            margin-bottom: 10px;
+        }
+        
+        .problem-sub {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .problem-sub-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .pie-chart {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: conic-gradient(
+                #87CEEB 0deg 100.8deg,
+                #FFB6C1 100.8deg 257.4deg,
+                #90EE90 257.4deg 295.2deg,
+                #32CD32 295.2deg 345.6deg,
+                #FFA500 345.6deg 360deg
+            );
+            margin: 15px auto;
+            position: relative;
+        }
+        
+        .pie-chart::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background-color: white;
+            border-radius: 50%;
+        }
+        
+        .chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+            justify-content: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .desk-illustration {
+            width: 80px;
+            height: 60px;
+            background-color: #8B4513;
+            border-radius: 4px;
+            margin: 10px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .desk-illustration::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 10px;
+            right: 10px;
+            height: 3px;
+            background-color: #8B4513;
+        }
+        
+        .desk-illustration::after {
+            content: '5% Rabatt für Selbstabholer!';
+            position: absolute;
+            top: -20px;
+            left: -30px;
+            background-color: white;
+            border: 2px solid red;
+            padding: 2px 4px;
+            font-size: 8px;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        
+        .summary-section {
+            background-color: #f0f8ff;
+            border: 2px solid #4a90e2;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .summary-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .concept-section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 6px;
+        }
+        
+        .concept-title {
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        
+        .formula-box {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .example-box {
+            background-color: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .example-title {
+            font-weight: bold;
+            color: #e65100;
+            margin-bottom: 5px;
+        }
+        
+        .exercise-section {
+            background-color: #e8f5e8;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .exercise-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .character {
+            width: 60px;
+            height: 60px;
+            background-color: #ffeb3b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 10px auto;
+        }
+        
+        .thought-bubble {
+            background-color: white;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 8px;
+            margin: 10px auto;
+            max-width: 200px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .exercise-item {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 6px;
+        }
+        
+        .exercise-label {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 5px;
+        }
+        
+        .calculation {
+            font-family: monospace;
+            background-color: #f5f5f5;
+            padding: 5px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div class="left-page">
+            <h2>Übungsaufgaben</h2>
+            
+            <div class="problem">
+                <div class="problem-number">4.</div>
+                <div class="problem-text">
+                    Eine Tageszeitung hat 12 000 Abonnenten. Das sind 80% aller Käufer. Wie viele Käufer hat die Zeitung insgesamt?
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">5.</div>
+                <div class="problem-text">
+                    Familie Knausrig erstellt einen Haushaltsplan für die jährlichen Ausgaben von 26 235 €. Wie viel steht pro Monat für die einzelnen Posten zur Verfügung?
+                </div>
+                
+                <div class="pie-chart"></div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #87CEEB;"></div>
+                        <span>Miete/Nebenkosten 28%</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #FFB6C1;"></div>
+                        <span>Anschaffungen/Ernährung 47%</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #90EE90;"></div>
+                        <span>Auto 8%</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #32CD32;"></div>
+                        <span>Urlaub 11%</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #FFA500;"></div>
+                        <span>Sonstiges 6%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">6.</div>
+                <div class="problem-text">
+                    An einer Musikschule sind 324 Schülerinnen und Schüler angemeldet. Davon lernen 128 ein Saiteninstrument, 65 ein Blasinstrument, 42 Klavier und 20 Gesang.
+                </div>
+                <div class="problem-sub">
+                    <span class="problem-sub-label">a)</span>
+                    Wie viel Prozent lernen "andere Instrumente"?
+                </div>
+                <div class="problem-sub">
+                    <span class="problem-sub-label">b)</span>
+                    Zeichne ein Säulendiagramm und ein Kreisdiagramm für die Verteilung der Instrumente.
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">7.</div>
+                <div class="problem-text">
+                    Die Wohnfläche eines Einfamilienhauses wurde durch einen Anbau von 148 m² um 28 m² vergrößert. Um wie viel Prozent hat sich die Wohnfläche vergrößert?
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">8.</div>
+                <div class="problem-text">
+                    Ein Möbelhaus gewährt 5% Rabatt für Selbstabholer. Frau Müller kaufte einen Schreibtisch und holte ihn selbst ab. Sie zahlte 169,10 €. Wie viel hat sie gespart?
+                </div>
+                <div class="desk-illustration"></div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">9.</div>
+                <div class="problem-text">
+                    Ein Flachbildfernseher kostet 259 €. Ein Geschäft erhöht den Preis um 20%, aber die Verkäufe gehen zurück. Der Inhaber ordnet daraufhin eine Senkung um 20% vom <em>jetzigen</em> (erhöhten) Preis an. Ein Angestellter freut sich und meint, man könne einfach das alte Preisschild wieder verwenden. Was denkst du darüber? Begründe deine Meinung mit Rechnungen.
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">10.</div>
+                <div class="problem-text">
+                    Frau Köhler hat zu Jahresbeginn 7350 € auf ihrem Sparbuch. Die Bank zahlt 1,5% Zinsen pro Jahr. Sie zahlt nichts weiter ein. Wie hoch ist der Kontostand am Jahresende?
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">11.</div>
+                <div class="problem-text">
+                    Luca hat 500 € gewonnen und legt sie auf ein Sparbuch mit 2% Zinsen an. Wie hoch ist der Kontostand nach 4 Jahren, wenn er nichts abhebt und nichts weiter einzahlt?
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">12.</div>
+                <div class="problem-text">
+                    Frau Michel hat im Lotto gewonnen. Ein Bankangestellter sagt: "Wenn Sie die Gewinnsumme zu 2,75% anlegen, erhalten Sie nach einem Vierteljahr 104,50 € Zinsen." Berechne, wie viel Frau Michel gewonnen hat.
+                </div>
+            </div>
+            
+            <div class="problem">
+                <div class="problem-number">13.</div>
+                <div class="problem-text">
+                    Herr Moser hat einen Kredit von 5600 € zu 7,5% Zinsen aufgenommen. Wie viel muss er nach 7 Monaten zurückzahlen?
+                </div>
+            </div>
+        </div>
+        
+        <div class="right-page">
+            <div class="summary-section">
+                <div class="summary-title">Das Wichtigste auf einen Blick</div>
+                
+                <div class="concept-section">
+                    <div class="concept-title">Prozent</div>
+                    <p>p% = p/100</p>
+                    <div class="formula-box">
+                        Grundwert → (Prozentsatz) → Prozentwert
+                    </div>
+                </div>
+                
+                <div class="concept-section">
+                    <div class="concept-title">Grundaufgaben der Prozentrechnung</div>
+                    <div class="example-box">
+                        <div class="example-title">Berechnung des Prozentwertes:</div>
+                        <p>Multipliziere den Grundwert mit dem Prozentsatz.</p>
+                        <div class="calculation">40% von 300 € sind: 300€ · 0,4 = 120 €</div>
+                    </div>
+                    
+                    <div class="example-box">
+                        <div class="example-title">Berechnung des Prozentsatzes:</div>
+                        <p>Dividiere den Prozentwert durch den Grundwert und gib das Ergebnis in Prozentschreibweise an.</p>
+                        <div class="calculation">150€ von 750€ sind: 150/750 = 0,2 = 20%</div>
+                    </div>
+                    
+                    <div class="example-box">
+                        <div class="example-title">Berechnung des Grundwerts:</div>
+                        <p>Dividiere den Prozentwert durch den Prozentsatz.</p>
+                        <div class="calculation">70% eines Grundwerts sind 980€. Grundwert: 980€ : 0,7 = 1400 €</div>
+                    </div>
+                </div>
+                
+                <div class="concept-section">
+                    <div class="concept-title">Prozentuale Erhöhung</div>
+                    <p>Eine Erhöhung einer Größe um p% bedeutet eine Erhöhung auf (100 + p)%. Der Prozentsatz heißt Erhöhungsfaktor: 1 + p/100</p>
+                    <div class="example-box">
+                        <div class="example-title">Beispiel:</div>
+                        <div class="calculation">Erhöhung um 25%</div>
+                        <div class="calculation">Erhöhung auf 125% = 1,25</div>
+                    </div>
+                </div>
+                
+                <div class="concept-section">
+                    <div class="concept-title">Prozentuale Abnahme</div>
+                    <p>Eine Senkung einer Größe um p% bedeutet eine Senkung auf (100 - p)%. Der Prozentsatz heißt Senkungsfaktor: 1 - p/100</p>
+                    <div class="example-box">
+                        <div class="example-title">Beispiel:</div>
+                        <div class="calculation">Senkung um 25%</div>
+                        <div class="calculation">Senkung auf 75% = 0,75</div>
+                    </div>
+                </div>
+                
+                <div class="concept-section">
+                    <div class="concept-title">Zinsen</div>
+                    <p>Zinsrechnung als besondere Prozentrechnung</p>
+                    <div class="formula-box">
+                        Kapital → (Zinssatz) → Jahreszinsen
+                    </div>
+                    <p>Werden Zinsen aus einem Jahr nicht abgehoben, so werden sie im nächsten Jahr mitverzinst. Die Zinsen von Zinsen heißen Zinseszinsen.</p>
+                    <div class="example-box">
+                        <div class="example-title">Beispiel:</div>
+                        <div class="calculation">Kapital 400 €</div>
+                        <div class="calculation">Zinssatz 1,5%</div>
+                        <div class="calculation">Jahreszinsen 400 € · 1,5% = 400€ · 0,015 = 6€</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="exercise-section">
+                <div class="exercise-title">Bist du fit?</div>
+                
+                <div class="character">🧑</div>
+                <div class="thought-bubble">Sinnvoll runden!</div>
+                
+                <div class="exercise-item">
+                    <div class="exercise-label">1.</div>
+                    <div class="problem-sub">
+                        <span class="problem-sub-label">a)</span>
+                        Gib den Anteil in Prozent an:
+                        <div class="calculation">(1) 200 g von 1500 g</div>
+                        <div class="calculation">(2) 18 kg von 0,24 t</div>
+                    </div>
+                    <div class="problem-sub">
+                        <span class="problem-sub-label">b)</span>
+                        Berechne den Prozentwert:
+                        <div class="calculation">(1) 17% von 258 €</div>
+                        <div class="calculation">(2) 60% von 341,7 ℓ</div>
+                    </div>
+                    <div class="problem-sub">
+                        <span class="problem-sub-label">c)</span>
+                        Berechne den Grundwert:
+                        <div class="calculation">(1) 23% von G sind 125 m</div>
+                        <div class="calculation">(2) 61,7% von G sind 438,07 €</div>
+                    </div>
+                </div>
+                
+                <div class="exercise-item">
+                    <div class="exercise-label">2.</div>
+                    <p>Das Erich-Kästner-Gymnasium hat 950 Schülerinnen und Schüler. 48% davon sind Fahrschüler(innen). Wie viele sind das?</p>
+                </div>
+                
+                <div class="exercise-item">
+                    <div class="exercise-label">3.</div>
+                    <p>132 der 240 Mitglieder der Jugendabteilung haben mindestens das silberne Schwimmabzeichen. Wie viel Prozent sind das?</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vergleichen mit Prozenten - Mathematik Klasse 7</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h3 {
+            color: #7f8c8d;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        .exercise {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .exercise-number {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .question {
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .options {
+            margin: 10px 0;
+        }
+        .option {
+            margin: 5px 0;
+            padding: 5px 10px;
+            background: white;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+        .correct {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .explanation {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 0.9em;
+            display: none;
+        }
+        .explanation.show {
+            display: block;
+        }
+        .tip {
+            background: #f0f8ff;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin: 10px 0;
+            display: none;
+        }
+        .tip.show {
+            display: block;
+        }
+        .input-field {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .input-field:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #2980b9;
+        }
+        .button.secondary {
+            background: #95a5a6;
+        }
+        .button.secondary:hover {
+            background: #7f8c8d;
+        }
+        .button.success {
+            background: #27ae60;
+        }
+        .button.success:hover {
+            background: #229954;
+        }
+        .answer-feedback {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .answer-feedback.correct {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .answer-feedback.incorrect {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .multiple-choice {
+            margin: 10px 0;
+        }
+        .choice {
+            margin: 5px 0;
+            padding: 10px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .choice:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+        .choice.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        .choice.correct {
+            border-color: #27ae60;
+            background: #d4edda;
+        }
+        .choice.incorrect {
+            border-color: #e74c3c;
+            background: #f8d7da;
+        }
+        .score-display {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .diagram-container {
+            position: relative;
+            width: 200px;
+            height: 150px;
+            margin: 20px auto;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .diagram-center {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: #e0e0e0;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 0.9em;
+            text-align: center;
+            line-height: 1.2;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+        .diagram-item {
+            position: absolute;
+            width: 50px;
+            height: 25px;
+            background-color: white;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9em;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 2;
+        }
+        .diagram-item.top-left {
+            top: 10px;
+            left: 10px;
+        }
+        .diagram-item.top-right {
+            top: 10px;
+            right: 10px;
+        }
+        .diagram-item.bottom {
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .formula {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        .tip {
+            background: #f0f8ff;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .navigation {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .nav-button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 0 10px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .nav-button:hover {
+            background: #2980b9;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vergleichen mit Prozenten</h1>
+        <p><strong>Mathematik Klasse 7 - Thema: Prozente und Zinsen</strong></p>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="score-display">
+            <h3>Dein Fortschritt</h3>
+            <p>Richtige Antworten: <span id="correctCount">0</span> von <span id="totalCount">8</span></p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="tip" id="generalTip">
+            <strong>Tipp:</strong> Prozent bedeutet "von Hundert". 1% = 1/100 = 0,01
+        </div>
+        <button class="button" onclick="toggleTip('generalTip')">Tipp anzeigen/verstecken</button>
+
+        <div class="exercise" id="exercise0">
+            <div class="exercise-number">Einführungsaufgabe: Anteile darstellen</div>
+            <div class="question">
+                <p><strong>Fülle die Lücken aus:</strong></p>
+                <p>Um Anteile einer Größe oder Menge zu veranschaulichen und vergleichbar zu machen, kann man sie auf drei Arten schreiben: als Prozentangabe, als <input type="text" class="input-field" id="blank1" placeholder="Dezimalzahl" style="width: 120px; display: inline;"> und als Bruch.</p>
+                <p>Prozent heißt "<strong>Hundertstel</strong>". 1% steht also für 1 von 100 oder auch 1 <input type="text" class="input-field" id="blank2" placeholder="Hundertstel" style="width: 120px; display: inline;">.</p>
+                <p>Die gesamte Größe oder Menge steht für <input type="number" class="input-field" id="blank3" placeholder="100" style="width: 80px; display: inline;"> Prozent.</p>
+            </div>
+            <button class="button" onclick="checkBlanks('exercise0')">Antworten prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation0')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip0')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback0"></div>
+            <div class="explanation" id="explanation0">
+                <strong>Lösung:</strong><br>
+                1. Lücke: <strong>Dezimalzahl</strong><br>
+                2. Lücke: <strong>Hundertstel</strong><br>
+                3. Lücke: <strong>100</strong><br>
+                <strong>Merke:</strong> Prozent bedeutet "von Hundert" - 1% = 1/100 = 0,01
+            </div>
+            <div class="tip" id="tip0">
+                <strong>Tipp:</strong> Denke an die drei Darstellungsformen: Prozent, Dezimalzahl und Bruch. 100% entspricht der ganzen Menge.
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise0b">
+            <div class="exercise-number">Aufgabe: Anteile im Diagramm</div>
+            <div class="question">
+                <p><strong>Betrachte das Diagramm und fülle die Lücken aus:</strong></p>
+                <div class="diagram-container">
+                    <div class="diagram-item top-left">1/5</div>
+                    <div class="diagram-item top-right">0,2</div>
+                    <div class="diagram-center">20/100</div>
+                    <div class="diagram-item bottom">20%</div>
+                </div>
+                <p>Alle vier Darstellungen zeigen den gleichen Anteil:</p>
+                <p>1/5 = <input type="number" class="input-field" id="decimal1" placeholder="0,2" style="width: 80px; display: inline;"> = <input type="number" class="input-field" id="percent1" placeholder="20" style="width: 60px; display: inline;">%</p>
+            </div>
+            <button class="button" onclick="checkDiagram('exercise0b')">Antworten prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation0b')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip0b')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback0b"></div>
+            <div class="explanation" id="explanation0b">
+                <strong>Lösung:</strong><br>
+                1/5 = 0,2 = 20%<br>
+                <strong>Umrechnung:</strong><br>
+                • Bruch zu Dezimal: 1 ÷ 5 = 0,2<br>
+                • Dezimal zu Prozent: 0,2 × 100 = 20%
+            </div>
+            <div class="tip" id="tip0b">
+                <strong>Tipp:</strong> Teile den Zähler durch den Nenner für die Dezimalzahl. Multipliziere die Dezimalzahl mit 100 für den Prozentsatz.
+            </div>
+        </div>
+
+        <h2>Grundlagen: Prozentvergleiche</h2>
+        
+        <div class="exercise" id="exercise1">
+            <div class="exercise-number">Aufgabe 1: Prozentwerte vergleichen</div>
+            <div class="question">Welcher Wert ist größer?</div>
+            <div class="multiple-choice">
+                <div class="choice" data-value="A" onclick="selectChoice(this, 'exercise1')">A) 15% von 200</div>
+                <div class="choice" data-value="B" onclick="selectChoice(this, 'exercise1')">B) 20% von 150</div>
+                <div class="choice" data-value="C" onclick="selectChoice(this, 'exercise1')">C) 25% von 120</div>
+            </div>
+            <button class="button" onclick="checkAnswer('exercise1', 'A')">Antwort prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation1')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip1')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback1"></div>
+            <div class="explanation" id="explanation1">
+                <strong>Lösung:</strong><br>
+                A) 15% von 200 = 0,15 × 200 = 30<br>
+                B) 20% von 150 = 0,20 × 150 = 30<br>
+                C) 25% von 120 = 0,25 × 120 = 30<br>
+                Alle drei Werte sind gleich groß!
+            </div>
+            <div class="tip" id="tip1">
+                <strong>Tipp:</strong> Berechne jeden Prozentwert einzeln: Grundwert × Prozentsatz
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise2">
+            <div class="exercise-number">Aufgabe 2: Prozentsätze vergleichen</div>
+            <div class="question">Ordne die Prozentsätze der Größe nach (von klein nach groß):</div>
+            <div class="multiple-choice">
+                <div class="choice" data-value="A" onclick="selectChoice(this, 'exercise2')">A) 0,3% - 3% - 30% - 300%</div>
+                <div class="choice" data-value="B" onclick="selectChoice(this, 'exercise2')">B) 3% - 0,3% - 30% - 300%</div>
+                <div class="choice" data-value="C" onclick="selectChoice(this, 'exercise2')">C) 300% - 30% - 3% - 0,3%</div>
+            </div>
+            <button class="button" onclick="checkAnswer('exercise2', 'A')">Antwort prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation2')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip2')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback2"></div>
+            <div class="explanation" id="explanation2">
+                <strong>Lösung:</strong> 0,3% < 3% < 30% < 300%<br>
+                <strong>Merke:</strong> Bei der Umwandlung in Dezimalzahlen: 0,3% = 0,003; 3% = 0,03; 30% = 0,3; 300% = 3
+            </div>
+            <div class="tip" id="tip2">
+                <strong>Tipp:</strong> Wandele alle Prozentsätze in Dezimalzahlen um, dann ist der Vergleich einfacher!
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise3">
+            <div class="exercise-number">Aufgabe 3: Bruch-Prozent-Vergleiche</div>
+            <div class="question">Berechne die Prozentsätze für die folgenden Brüche:</div>
+            <div style="margin: 15px 0;">
+                <p>1/4 = <input type="number" class="input-field" id="answer3a" placeholder="Prozentsatz" style="width: 80px; display: inline;">%</p>
+                <p>1/2 = <input type="number" class="input-field" id="answer3b" placeholder="Prozentsatz" style="width: 80px; display: inline;">%</p>
+                <p>3/4 = <input type="number" class="input-field" id="answer3c" placeholder="Prozentsatz" style="width: 80px; display: inline;">%</p>
+                <p>1/5 = <input type="number" class="input-field" id="answer3d" placeholder="Prozentsatz" style="width: 80px; display: inline;">%</p>
+            </div>
+            <button class="button" onclick="checkInputAnswers('exercise3', [25, 50, 75, 20])">Antworten prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation3')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip3')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback3"></div>
+            <div class="explanation" id="explanation3">
+                <strong>Lösung:</strong><br>
+                1/4 = 25% (0,25 × 100)<br>
+                1/2 = 50% (0,5 × 100)<br>
+                3/4 = 75% (0,75 × 100)<br>
+                1/5 = 20% (0,2 × 100)<br>
+                <strong>Umrechnung:</strong> Bruch × 100 = Prozentsatz
+            </div>
+            <div class="tip" id="tip3">
+                <strong>Tipp:</strong> Wandele den Bruch in eine Dezimalzahl um und multipliziere mit 100!
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise9">
+            <div class="exercise-number">Aufgabe: Dezimalzahl zu Prozent</div>
+            <div class="question">
+                <p><strong>Wandle die Dezimalzahlen in Prozente um:</strong></p>
+                <p>0,65 = <input type="number" class="input-field" id="decimal2" placeholder="65" style="width: 80px; display: inline;">%</p>
+                <p>0,2 = <input type="number" class="input-field" id="decimal3" placeholder="20" style="width: 80px; display: inline;">%</p>
+                <p>0,05 = <input type="number" class="input-field" id="decimal4" placeholder="5" style="width: 80px; display: inline;">%</p>
+                <p>1,5 = <input type="number" class="input-field" id="decimal5" placeholder="150" style="width: 80px; display: inline;">%</p>
+            </div>
+            <button class="button" onclick="checkDecimals('exercise9')">Antworten prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation9')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip9')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback9"></div>
+            <div class="explanation" id="explanation9">
+                <strong>Lösung:</strong><br>
+                0,65 = 65% (Komma um 2 Stellen nach rechts verschieben)<br>
+                0,2 = 20%<br>
+                0,05 = 5%<br>
+                1,5 = 150%<br>
+                <strong>Regel:</strong> Dezimalzahl × 100 = Prozentsatz
+            </div>
+            <div class="tip" id="tip9">
+                <strong>Tipp:</strong> Verschiebe das Komma um 2 Stellen nach rechts oder multipliziere mit 100!
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise10">
+            <div class="exercise-number">Aufgabe: Bruch zu Prozent</div>
+            <div class="question">
+                <p><strong>Wandle die Brüche in Prozente um:</strong></p>
+                <p>1/4 = <input type="number" class="input-field" id="fraction1" placeholder="25" style="width: 80px; display: inline;">%</p>
+                <p>3/4 = <input type="number" class="input-field" id="fraction2" placeholder="75" style="width: 80px; display: inline;">%</p>
+                <p>1/20 = <input type="number" class="input-field" id="fraction3" placeholder="5" style="width: 80px; display: inline;">%</p>
+                <p>7/10 = <input type="number" class="input-field" id="fraction4" placeholder="70" style="width: 80px; display: inline;">%</p>
+            </div>
+            <button class="button" onclick="checkFractions('exercise10')">Antworten prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation10')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip10')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback10"></div>
+            <div class="explanation" id="explanation10">
+                <strong>Lösung:</strong><br>
+                1/4 = 25% (1÷4 = 0,25 → 0,25×100 = 25%)<br>
+                3/4 = 75% (3÷4 = 0,75 → 0,75×100 = 75%)<br>
+                1/20 = 5% (1÷20 = 0,05 → 0,05×100 = 5%)<br>
+                7/10 = 70% (7÷10 = 0,7 → 0,7×100 = 70%)<br>
+                <strong>Methode:</strong> Erst Bruch in Dezimalzahl, dann × 100
+            </div>
+            <div class="tip" id="tip10">
+                <strong>Tipp:</strong> Teile zuerst den Zähler durch den Nenner, dann multipliziere mit 100!
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise11">
+            <div class="exercise-number">Aufgabe: Promille</div>
+            <div class="question">
+                <p><strong>Promille bedeutet "von Tausend". 1‰ = 1/1000 = 0,001</strong></p>
+                <p>Wandle um:</p>
+                <p>1/1000 = <input type="number" class="input-field" id="promille1" placeholder="1" style="width: 80px; display: inline;">‰</p>
+                <p>5/1000 = <input type="number" class="input-field" id="promille2" placeholder="5" style="width: 80px; display: inline;">‰</p>
+                <p>0,003 = <input type="number" class="input-field" id="promille3" placeholder="3" style="width: 80px; display: inline;">‰</p>
+                <p>2‰ = <input type="number" class="input-field" id="promille4" placeholder="0.002" style="width: 80px; display: inline;"> (als Dezimalzahl)</p>
+            </div>
+            <button class="button" onclick="checkPromille('exercise11')">Antworten prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation11')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip11')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback11"></div>
+            <div class="explanation" id="explanation11">
+                <strong>Lösung:</strong><br>
+                1/1000 = 1‰<br>
+                5/1000 = 5‰<br>
+                0,003 = 3‰<br>
+                2‰ = 0,002<br>
+                <strong>Merke:</strong> Promille = "von Tausend" (‰), Prozent = "von Hundert" (%)
+            </div>
+            <div class="tip" id="tip11">
+                <strong>Tipp:</strong> Promille funktioniert wie Prozent, aber mit 1000 statt 100!
+            </div>
+        </div>
+
+        <h2>Anwendungsaufgaben</h2>
+
+        <div class="exercise" id="exercise4">
+            <div class="exercise-number">Aufgabe 4: Rabattvergleiche</div>
+            <div class="question">Ein Pullover kostet 80€. Es gibt zwei Angebote:<br>
+            Angebot A: 15% Rabatt<br>
+            Angebot B: 12€ Rabatt<br>
+            Welches Angebot ist günstiger?</div>
+            <div class="multiple-choice">
+                <div class="choice" data-value="A" onclick="selectChoice(this, 'exercise4')">A) Angebot A ist günstiger</div>
+                <div class="choice" data-value="B" onclick="selectChoice(this, 'exercise4')">B) Angebot B ist günstiger</div>
+                <div class="choice" data-value="C" onclick="selectChoice(this, 'exercise4')">C) Beide Angebote sind gleich günstig</div>
+            </div>
+            <button class="button" onclick="checkAnswer('exercise4', 'C')">Antwort prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation4')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip4')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback4"></div>
+            <div class="explanation" id="explanation4">
+                <strong>Lösung:</strong> C) Beide Angebote sind gleich günstig<br>
+                <strong>Rechnung:</strong><br>
+                Angebot A: 15% von 80€ = 0,15 × 80€ = 12€ Rabatt<br>
+                Angebot B: 12€ Rabatt<br>
+                Beide geben 12€ Rabatt, aber bei Angebot B ist der Rabatt garantiert!
+            </div>
+            <div class="tip" id="tip4">
+                <strong>Tipp:</strong> Berechne zuerst den Rabatt von Angebot A: 15% von 80€ = ?
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise5">
+            <div class="exercise-number">Aufgabe 5: Zinsen vergleichen</div>
+            <div class="question">Vergleiche die Zinsen für 1000€ bei verschiedenen Zinssätzen:</div>
+            <div class="multiple-choice">
+                <div class="choice" data-value="A" onclick="selectChoice(this, 'exercise5')">A) 2% für 1 Jahr</div>
+                <div class="choice" data-value="B" onclick="selectChoice(this, 'exercise5')">B) 1% für 2 Jahre</div>
+                <div class="choice" data-value="C" onclick="selectChoice(this, 'exercise5')">C) 0,5% für 4 Jahre</div>
+            </div>
+            <button class="button" onclick="checkAnswer('exercise5', 'A')">Antwort prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation5')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip5')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback5"></div>
+            <div class="explanation" id="explanation5">
+                <strong>Lösung:</strong><br>
+                A) 2% von 1000€ = 20€<br>
+                B) 1% von 1000€ = 10€ (pro Jahr)<br>
+                C) 0,5% von 1000€ = 5€ (pro Jahr)<br>
+                <strong>Antwort:</strong> A) gibt die höchsten Zinsen pro Jahr!
+            </div>
+            <div class="tip" id="tip5">
+                <strong>Tipp:</strong> Berechne die Zinsen pro Jahr für jeden Zinssatz!
+            </div>
+        </div>
+
+        <div class="formula">
+            <strong>Wichtige Formeln:</strong><br>
+            Prozentwert = Grundwert × Prozentsatz<br>
+            Prozentsatz = (Prozentwert ÷ Grundwert) × 100<br>
+            Grundwert = Prozentwert ÷ Prozentsatz
+        </div>
+
+        <h2>Schwierigere Aufgaben</h2>
+
+        <div class="exercise" id="exercise6">
+            <div class="exercise-number">Aufgabe 6: Mehrstufige Prozentrechnung</div>
+            <div class="question">Ein Handy kostet 400€. Es wird zuerst um 20% teurer, dann um 15% billiger.<br>
+            Wie viel kostet es jetzt?</div>
+            <div class="multiple-choice">
+                <div class="choice" data-value="A" onclick="selectChoice(this, 'exercise6')">A) 408€</div>
+                <div class="choice" data-value="B" onclick="selectChoice(this, 'exercise6')">B) 400€</div>
+                <div class="choice" data-value="C" onclick="selectChoice(this, 'exercise6')">C) 392€</div>
+            </div>
+            <button class="button" onclick="checkAnswer('exercise6', 'A')">Antwort prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation6')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip6')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback6"></div>
+            <div class="explanation" id="explanation6">
+                <strong>Lösung:</strong> A) 408€<br>
+                <strong>Rechnung:</strong><br>
+                1. Schritt: 20% teurer → 400€ + 20% von 400€ = 400€ + 80€ = 480€<br>
+                2. Schritt: 15% billiger → 480€ - 15% von 480€ = 480€ - 72€ = 408€
+            </div>
+            <div class="tip" id="tip6">
+                <strong>Tipp:</strong> Berechne Schritt für Schritt: Erst teurer, dann billiger!
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise7">
+            <div class="exercise-number">Aufgabe 7: Prozentuale Veränderungen</div>
+            <div class="question">Ein Aktienkurs steigt von 50€ auf 60€. Um wie viel Prozent ist er gestiegen?</div>
+            <div class="multiple-choice">
+                <div class="choice" data-value="A" onclick="selectChoice(this, 'exercise7')">A) 10%</div>
+                <div class="choice" data-value="B" onclick="selectChoice(this, 'exercise7')">B) 20%</div>
+                <div class="choice" data-value="C" onclick="selectChoice(this, 'exercise7')">C) 25%</div>
+            </div>
+            <button class="button" onclick="checkAnswer('exercise7', 'B')">Antwort prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation7')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip7')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback7"></div>
+            <div class="explanation" id="explanation7">
+                <strong>Lösung:</strong> B) 20%<br>
+                <strong>Rechnung:</strong><br>
+                Erhöhung: 60€ - 50€ = 10€<br>
+                Prozentsatz: (10€ ÷ 50€) × 100 = 20%
+            </div>
+            <div class="tip" id="tip7">
+                <strong>Tipp:</strong> Berechne zuerst die Erhöhung, dann den Prozentsatz!
+            </div>
+        </div>
+
+        <div class="exercise" id="exercise8">
+            <div class="exercise-number">Aufgabe 8: Anteile vergleichen</div>
+            <div class="question">In einer Klasse sind 24 Schüler. 6 Schüler spielen Fußball, 8 Schüler spielen Basketball.<br>
+            Welcher Sport hat den größeren Anteil?</div>
+            <div class="multiple-choice">
+                <div class="choice" data-value="A" onclick="selectChoice(this, 'exercise8')">A) Fußball</div>
+                <div class="choice" data-value="B" onclick="selectChoice(this, 'exercise8')">B) Basketball</div>
+                <div class="choice" data-value="C" onclick="selectChoice(this, 'exercise8')">C) Beide haben den gleichen Anteil</div>
+            </div>
+            <button class="button" onclick="checkAnswer('exercise8', 'B')">Antwort prüfen</button>
+            <button class="button secondary" onclick="toggleExplanation('explanation8')">Lösung anzeigen</button>
+            <button class="button secondary" onclick="toggleTip('tip8')">Tipp anzeigen</button>
+            <div class="answer-feedback" id="feedback8"></div>
+            <div class="explanation" id="explanation8">
+                <strong>Lösung:</strong> B) Basketball<br>
+                <strong>Rechnung:</strong><br>
+                Fußball: (6 ÷ 24) × 100 = 25%<br>
+                Basketball: (8 ÷ 24) × 100 = 33,33%<br>
+                Basketball hat den größeren Anteil!
+            </div>
+            <div class="tip" id="tip8">
+                <strong>Tipp:</strong> Berechne den Prozentsatz für jeden Sport: (Anzahl ÷ Gesamt) × 100
+            </div>
+        </div>
+
+        <h2>Zusammenfassung</h2>
+        <div class="tip">
+            <strong>Wichtige Regeln zum Vergleichen mit Prozenten:</strong><br>
+            • Immer den Grundwert beachten<br>
+            • Bei unterschiedlichen Grundwerten: Prozentwerte berechnen<br>
+            • Bei gleichen Grundwerten: Prozentsätze vergleichen<br>
+            • Bruch-Prozent-Umrechnung: Bruch × 100 = Prozentsatz
+        </div>
+
+        <div class="navigation">
+            <a href="prozentwert-prozentsatz-grundwert.html" class="nav-button">← Zurück zu Grundlagen</a>
+            <a href="#" class="nav-button">Weiter zu Zinsen →</a>
+        </div>
+    </div>
+
+    <script>
+        // Globale Variablen
+        let correctAnswers = 0;
+        const totalExercises = 12;
+        let selectedAnswers = {};
+        
+        // Fortschritt aktualisieren
+        function updateProgress() {
+            const progress = (correctAnswers / totalExercises) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('correctCount').textContent = correctAnswers;
+        }
+        
+        // Tipp anzeigen/verstecken
+        function toggleTip(tipId) {
+            const tip = document.getElementById(tipId);
+            tip.classList.toggle('show');
+        }
+        
+        // Erklärung anzeigen/verstecken
+        function toggleExplanation(explanationId) {
+            const explanation = document.getElementById(explanationId);
+            explanation.classList.toggle('show');
+        }
+        
+        // Auswahl bei Multiple Choice
+        function selectChoice(element, exerciseId) {
+            // Entferne vorherige Auswahl
+            const choices = document.querySelectorAll(`#${exerciseId} .choice`);
+            choices.forEach(choice => choice.classList.remove('selected'));
+            
+            // Markiere neue Auswahl
+            element.classList.add('selected');
+            selectedAnswers[exerciseId] = element.dataset.value;
+        }
+        
+        // Antwort bei Multiple Choice prüfen
+        function checkAnswer(exerciseId, correctAnswer) {
+            const selectedAnswer = selectedAnswers[exerciseId];
+            const feedback = document.getElementById(`feedback${exerciseId.slice(-1)}`);
+            const choices = document.querySelectorAll(`#${exerciseId} .choice`);
+            
+            if (!selectedAnswer) {
+                feedback.innerHTML = '<strong>Bitte wähle eine Antwort aus!</strong>';
+                feedback.className = 'answer-feedback incorrect';
+                feedback.style.display = 'block';
+                return;
+            }
+            
+            // Markiere alle Antworten
+            choices.forEach(choice => {
+                choice.classList.remove('correct', 'incorrect');
+                if (choice.dataset.value === correctAnswer) {
+                    choice.classList.add('correct');
+                } else if (choice.dataset.value === selectedAnswer && selectedAnswer !== correctAnswer) {
+                    choice.classList.add('incorrect');
+                }
+            });
+            
+            // Zeige Feedback
+            if (selectedAnswer === correctAnswer) {
+                feedback.innerHTML = '<strong>✅ Richtig!</strong> Sehr gut gemacht!';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = '<strong>❌ Falsch!</strong> Versuche es noch einmal oder schaue dir die Lösung an.';
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Eingabefelder prüfen (für Aufgabe 3)
+        function checkInputAnswers(exerciseId, correctAnswers) {
+            const inputs = document.querySelectorAll(`#${exerciseId} input[type="number"]`);
+            const feedback = document.getElementById(`feedback${exerciseId.slice(-1)}`);
+            let allCorrect = true;
+            let correctCount = 0;
+            
+            inputs.forEach((input, index) => {
+                const userAnswer = parseFloat(input.value);
+                const correctAnswer = correctAnswers[index];
+                
+                if (userAnswer === correctAnswer) {
+                    input.style.borderColor = '#27ae60';
+                    input.style.backgroundColor = '#d4edda';
+                    correctCount++;
+                } else {
+                    input.style.borderColor = '#e74c3c';
+                    input.style.backgroundColor = '#f8d7da';
+                    allCorrect = false;
+                }
+            });
+            
+            // Zeige Feedback
+            if (allCorrect) {
+                feedback.innerHTML = '<strong>✅ Alle Antworten richtig!</strong> Perfekt!';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von ${inputs.length} richtig!</strong> Versuche die falschen noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Lückenfüllung prüfen
+        function checkBlanks(exerciseId) {
+            const blank1 = document.getElementById('blank1');
+            const blank2 = document.getElementById('blank2');
+            const blank3 = document.getElementById('blank3');
+            const feedback = document.getElementById('feedback0');
+            
+            let correctCount = 0;
+            const answers = ['dezimalzahl', 'hundertstel', '100'];
+            const inputs = [blank1, blank2, blank3];
+            
+            inputs.forEach((input, index) => {
+                const userAnswer = input.value.trim().toLowerCase();
+                if (userAnswer === answers[index]) {
+                    input.style.borderColor = '#27ae60';
+                    input.style.backgroundColor = '#d4edda';
+                    correctCount++;
+                } else {
+                    input.style.borderColor = '#e74c3c';
+                    input.style.backgroundColor = '#f8d7da';
+                }
+            });
+            
+            if (correctCount === 3) {
+                feedback.innerHTML = '<strong>✅ Alle Lücken richtig ausgefüllt!</strong>';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 3 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Diagramm-Aufgabe prüfen
+        function checkDiagram(exerciseId) {
+            const decimal1 = document.getElementById('decimal1');
+            const percent1 = document.getElementById('percent1');
+            const feedback = document.getElementById('feedback0b');
+            
+            const decimalAnswer = parseFloat(decimal1.value);
+            const percentAnswer = parseFloat(percent1.value);
+            
+            let correctCount = 0;
+            
+            if (decimalAnswer === 0.2) {
+                decimal1.style.borderColor = '#27ae60';
+                decimal1.style.backgroundColor = '#d4edda';
+                correctCount++;
+            } else {
+                decimal1.style.borderColor = '#e74c3c';
+                decimal1.style.backgroundColor = '#f8d7da';
+            }
+            
+            if (percentAnswer === 20) {
+                percent1.style.borderColor = '#27ae60';
+                percent1.style.backgroundColor = '#d4edda';
+                correctCount++;
+            } else {
+                percent1.style.borderColor = '#e74c3c';
+                percent1.style.backgroundColor = '#f8d7da';
+            }
+            
+            if (correctCount === 2) {
+                feedback.innerHTML = '<strong>✅ Richtig!</strong> 1/5 = 0,2 = 20%';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 2 richtig!</strong> 1/5 = 0,2 = 20%`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Dezimalzahlen zu Prozent prüfen
+        function checkDecimals(exerciseId) {
+            const inputs = ['decimal2', 'decimal3', 'decimal4', 'decimal5'];
+            const correctAnswers = [65, 20, 5, 150];
+            const feedback = document.getElementById('feedback9');
+            
+            let correctCount = 0;
+            
+            inputs.forEach((inputId, index) => {
+                const input = document.getElementById(inputId);
+                const userAnswer = parseFloat(input.value);
+                
+                if (userAnswer === correctAnswers[index]) {
+                    input.style.borderColor = '#27ae60';
+                    input.style.backgroundColor = '#d4edda';
+                    correctCount++;
+                } else {
+                    input.style.borderColor = '#e74c3c';
+                    input.style.backgroundColor = '#f8d7da';
+                }
+            });
+            
+            if (correctCount === 4) {
+                feedback.innerHTML = '<strong>✅ Alle Dezimalzahlen richtig umgewandelt!</strong>';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 4 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Brüche zu Prozent prüfen
+        function checkFractions(exerciseId) {
+            const inputs = ['fraction1', 'fraction2', 'fraction3', 'fraction4'];
+            const correctAnswers = [25, 75, 5, 70];
+            const feedback = document.getElementById('feedback10');
+            
+            let correctCount = 0;
+            
+            inputs.forEach((inputId, index) => {
+                const input = document.getElementById(inputId);
+                const userAnswer = parseFloat(input.value);
+                
+                if (userAnswer === correctAnswers[index]) {
+                    input.style.borderColor = '#27ae60';
+                    input.style.backgroundColor = '#d4edda';
+                    correctCount++;
+                } else {
+                    input.style.borderColor = '#e74c3c';
+                    input.style.backgroundColor = '#f8d7da';
+                }
+            });
+            
+            if (correctCount === 4) {
+                feedback.innerHTML = '<strong>✅ Alle Brüche richtig umgewandelt!</strong>';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 4 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Promille-Aufgaben prüfen
+        function checkPromille(exerciseId) {
+            const inputs = ['promille1', 'promille2', 'promille3', 'promille4'];
+            const correctAnswers = [1, 5, 3, 0.002];
+            const feedback = document.getElementById('feedback11');
+            
+            let correctCount = 0;
+            
+            inputs.forEach((inputId, index) => {
+                const input = document.getElementById(inputId);
+                const userAnswer = parseFloat(input.value);
+                
+                if (userAnswer === correctAnswers[index]) {
+                    input.style.borderColor = '#27ae60';
+                    input.style.backgroundColor = '#d4edda';
+                    correctCount++;
+                } else {
+                    input.style.borderColor = '#e74c3c';
+                    input.style.backgroundColor = '#f8d7da';
+                }
+            });
+            
+            if (correctCount === 4) {
+                feedback.innerHTML = '<strong>✅ Alle Promille-Aufgaben richtig!</strong>';
+                feedback.className = 'answer-feedback correct';
+                if (!document.getElementById(exerciseId).classList.contains('completed')) {
+                    correctAnswers++;
+                    document.getElementById(exerciseId).classList.add('completed');
+                }
+            } else {
+                feedback.innerHTML = `<strong>📊 ${correctCount} von 4 richtig!</strong> Versuche es noch einmal!`;
+                feedback.className = 'answer-feedback incorrect';
+            }
+            feedback.style.display = 'block';
+            updateProgress();
+        }
+        
+        // Alle Tipps auf einmal anzeigen/verstecken
+        function toggleAllTips() {
+            const tips = document.querySelectorAll('.tip');
+            const allVisible = Array.from(tips).every(tip => tip.classList.contains('show'));
+            
+            tips.forEach(tip => {
+                if (allVisible) {
+                    tip.classList.remove('show');
+                } else {
+                    tip.classList.add('show');
+                }
+            });
+        }
+        
+        // Alle Lösungen auf einmal anzeigen/verstecken
+        function toggleAllExplanations() {
+            const explanations = document.querySelectorAll('.explanation');
+            const allVisible = Array.from(explanations).every(exp => exp.classList.contains('show'));
+            
+            explanations.forEach(exp => {
+                if (allVisible) {
+                    exp.classList.remove('show');
+                } else {
+                    exp.classList.add('show');
+                }
+            });
+        }
+        
+        // Reset alle Übungen
+        function resetAll() {
+            correctAnswers = 0;
+            selectedAnswers = {};
+            
+            // Reset alle Übungen
+            document.querySelectorAll('.exercise').forEach(exercise => {
+                exercise.classList.remove('completed');
+            });
+            
+            // Reset alle Auswahlen
+            document.querySelectorAll('.choice').forEach(choice => {
+                choice.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            // Reset alle Eingabefelder
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                input.value = '';
+                input.style.borderColor = '#ddd';
+                input.style.backgroundColor = 'white';
+            });
+            
+            // Reset alle Feedbacks
+            document.querySelectorAll('.answer-feedback').forEach(feedback => {
+                feedback.style.display = 'none';
+            });
+            
+            // Reset alle Erklärungen und Tipps
+            document.querySelectorAll('.explanation, .tip').forEach(element => {
+                element.classList.remove('show');
+            });
+            
+            updateProgress();
+        }
+        
+        // Initialisiere beim Laden der Seite
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProgress();
+            
+            // Füge Reset-Button hinzu
+            const resetButton = document.createElement('button');
+            resetButton.className = 'button secondary';
+            resetButton.innerHTML = '🔄 Alle Übungen zurücksetzen';
+            resetButton.onclick = resetAll;
+            document.querySelector('.score-display').appendChild(resetButton);
+            
+            // Füge "Alle Tipps" Button hinzu
+            const allTipsButton = document.createElement('button');
+            allTipsButton.className = 'button secondary';
+            allTipsButton.innerHTML = '💡 Alle Tipps anzeigen';
+            allTipsButton.onclick = toggleAllTips;
+            document.querySelector('.score-display').appendChild(allTipsButton);
+            
+            // Füge "Alle Lösungen" Button hinzu
+            const allSolutionsButton = document.createElement('button');
+            allSolutionsButton.className = 'button secondary';
+            allSolutionsButton.innerHTML = '📖 Alle Lösungen anzeigen';
+            allSolutionsButton.onclick = toggleAllExplanations;
+            document.querySelector('.score-display').appendChild(allSolutionsButton);
+        });
+    </script>
+</body>
+</html>

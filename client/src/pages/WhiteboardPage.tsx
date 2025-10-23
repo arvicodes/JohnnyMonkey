@@ -161,6 +161,8 @@ const WhiteboardPage: React.FC = () => {
     if (!filename.trim()) {
       console.log('Filename is required');
       alert('Bitte geben Sie einen Dateinamen ein');
+      // Open save dialog if filename is empty
+      handleOpenSaveDialog();
       return;
     }
 
@@ -170,9 +172,10 @@ const WhiteboardPage: React.FC = () => {
       // Verwende handleSaveBothFormats um sowohl .wb als auch .pdf zu speichern
       await handleSaveBothFormats();
       console.log('✅ Änderungen erfolgreich gesichert (beide Formate)!');
+      alert('Änderungen erfolgreich gesichert!');
     } catch (error) {
       console.error('❌ Fehler beim Sichern der Änderungen:', error);
-      alert('Fehler beim Sichern der Änderungen');
+      alert('Fehler beim Sichern der Änderungen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
     }
   };
 
@@ -3118,10 +3121,14 @@ const WhiteboardPage: React.FC = () => {
     }
 
     try {
+      console.log('🔄 Starte Speicherung beider Formate...');
+      
       // Speichere zuerst als .wb (bearbeitbar) - ohne Dialog zu schließen
+      console.log('📝 Speichere als .wb Format...');
       await handleSaveWhiteboard('editable', false);
       
       // Dann als .pdf - ohne Dialog zu schließen
+      console.log('📄 Speichere als .pdf Format...');
       await handleSaveWhiteboard('pdf', false);
       
       // Dialog schließen
@@ -3130,18 +3137,25 @@ const WhiteboardPage: React.FC = () => {
       console.log('✅ Beide Formate erfolgreich gespeichert!');
     } catch (error) {
       console.error('❌ Fehler beim Speichern beider Formate:', error);
-      alert('Fehler beim Speichern. Bitte versuchen Sie es erneut.');
+      alert('Fehler beim Speichern: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
     }
   };
 
   const handleSaveWhiteboard = async (format: 'png' | 'pdf' | 'svg' | 'editable' = 'pdf', closeDialog: boolean = true) => {
     if (!filename.trim()) {
       console.log('Filename is required');
-      return;
+      throw new Error('Dateiname ist erforderlich');
     }
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      throw new Error('Canvas nicht gefunden');
+    }
+
+    // Check if there are any objects to save
+    if (objects.length === 0) {
+      throw new Error('Keine Inhalte zum Speichern vorhanden. Bitte zeichnen Sie etwas auf das Whiteboard.');
+    }
 
     const finalFilename = filename.startsWith('W_') ? filename : `W_${filename}`;
     
@@ -3220,8 +3234,7 @@ const WhiteboardPage: React.FC = () => {
               // Test: Check if blob is empty
               if (blob.size === 0) {
                 console.error('❌ Blob is empty! Canvas might be empty or not properly drawn.');
-                alert('Fehler: Canvas ist leer. Bitte zeichnen Sie etwas auf das Whiteboard.');
-                reject(new Error('Blob is empty'));
+                reject(new Error('Canvas ist leer. Bitte zeichnen Sie etwas auf das Whiteboard.'));
                 return;
               }
               
@@ -3285,8 +3298,7 @@ const WhiteboardPage: React.FC = () => {
                 }
               } catch (error) {
                 console.error('❌ Error creating PDF:', error);
-                alert('Fehler beim Erstellen der PDF-Datei. Bitte versuchen Sie es erneut.');
-                reject(error);
+                reject(new Error('Fehler beim Erstellen der PDF-Datei: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler')));
               }
             } else {
               console.error('❌ Blob creation failed - canvas might be empty');
@@ -3329,13 +3341,15 @@ const WhiteboardPage: React.FC = () => {
 
         if (response.ok) {
           console.log('Whiteboard als bearbeitbare Datei gespeichert!');
-          setShowSaveDialog(false);
+          if (closeDialog) setShowSaveDialog(false);
         } else {
           const error = await response.json();
           console.error('Fehler beim Speichern:', error.error);
+          throw new Error(error.error || 'Fehler beim Speichern der bearbeitbaren Datei');
         }
       } catch (error) {
         console.error('Error saving editable whiteboard:', error);
+        throw error;
       }
     } else {
       // PNG Export (original)
@@ -3360,9 +3374,11 @@ const WhiteboardPage: React.FC = () => {
             } else {
               const error = await response.json();
               console.error('Fehler beim Speichern:', error.error);
+              throw new Error(error.error || 'Fehler beim Speichern der PNG-Datei');
             }
           } catch (error) {
             console.error('Error saving:', error);
+            throw error;
           }
         }
       }, 'image/png');
