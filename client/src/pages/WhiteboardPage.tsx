@@ -142,7 +142,39 @@ const WhiteboardPage: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null);
+  const [imageCache, setImageCache] = useState<Map<string, HTMLImageElement>>(new Map());
   const [showGroupControls, setShowGroupControls] = useState(false);
+
+  // Funktion zum Vorladen von Bildern
+  const preloadImage = (imageData: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      // Prüfen, ob das Bild bereits im Cache ist
+      if (imageCache.has(imageData)) {
+        resolve(imageCache.get(imageData)!);
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        // Bild im Cache speichern
+        setImageCache(prev => new Map(prev).set(imageData, img));
+        resolve(img);
+      };
+      img.onerror = reject;
+      img.src = imageData;
+    });
+  };
+
+  // Funktion zum Vorladen aller Bilder im Whiteboard
+  const preloadAllImages = async () => {
+    const imageObjects = objects.filter(obj => obj.tool === 'image' && obj.imageData);
+    if (imageObjects.length === 0) return;
+
+    console.log(`🖼️ Preloading ${imageObjects.length} images...`);
+    const promises = imageObjects.map(obj => preloadImage(obj.imageData!));
+    await Promise.all(promises);
+    console.log('🖼️ All images preloaded successfully');
+  };
   const [showTableConfig, setShowTableConfig] = useState(false);
   const [tableConfig, setTableConfig] = useState({ rows: 4, cols: 3 });
   const [showTimelineConfig, setShowTimelineConfig] = useState(false);
@@ -167,12 +199,14 @@ const WhiteboardPage: React.FC = () => {
     }
 
     console.log('🔄 Speichere Änderungen für existierende Datei...');
+    console.log('🔄 Current objects count:', objects.length);
+    console.log('🔄 Current objects:', objects);
     
     try {
       // Verwende handleSaveBothFormats um sowohl .wb als auch .pdf zu speichern
       await handleSaveBothFormats();
       console.log('✅ Änderungen erfolgreich gesichert (beide Formate)!');
-      alert('Änderungen erfolgreich gesichert!');
+      // Removed alert to avoid annoying popup
     } catch (error) {
       console.error('❌ Fehler beim Sichern der Änderungen:', error);
       alert('Fehler beim Sichern der Änderungen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
@@ -283,6 +317,19 @@ const WhiteboardPage: React.FC = () => {
           setShowTextInput(true);
           setSelectedObjects([]);
           setShowObjectPanel(false);
+          
+          // Sofortiger Fokus auf das Textfeld
+          setTimeout(() => {
+            if (textInputRef.current) {
+              const inputElement = textInputRef.current.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement;
+              if (inputElement) {
+                inputElement.focus();
+                inputElement.select();
+              } else {
+                textInputRef.current.focus();
+              }
+            }
+          }, 50);
           return;
         case 's':
           e.preventDefault();
@@ -486,13 +533,31 @@ const WhiteboardPage: React.FC = () => {
     redrawCanvas();
   }, [objects, selectedObjects, showGrid, zoom, panOffset]);
 
+  // Alle Bilder vorladen, wenn sich die Objekte ändern
+  useEffect(() => {
+    preloadAllImages();
+  }, [objects]);
+
   // Fokus auf Text-Input setzen, wenn Dialog geöffnet wird
   useEffect(() => {
-    if (showTextInput && textInputRef.current) {
-      // Kleine Verzögerung, damit der Dialog vollständig gerendert ist
-      setTimeout(() => {
-        textInputRef.current?.focus();
-      }, 100);
+    if (showTextInput) {
+      // Warten bis das Dialog gerendert ist, dann Fokus setzen
+      const timer = setTimeout(() => {
+        if (textInputRef.current) {
+          // Für Material-UI TextField verwenden wir inputElement
+          const inputElement = textInputRef.current.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement;
+          if (inputElement) {
+            inputElement.focus();
+            inputElement.select();
+            console.log('✅ Text input focused and selected via inputElement');
+          } else {
+            textInputRef.current.focus();
+            console.log('✅ Text input focused via ref');
+          }
+        }
+      }, 50);
+      
+      return () => clearTimeout(timer);
     }
   }, [showTextInput]);
 
@@ -511,6 +576,8 @@ const WhiteboardPage: React.FC = () => {
 
       if (currentPath && filename && objects.length > 0) {
         console.log('🔄 Automatisches Speichern...');
+        console.log('🔄 Auto-save objects count:', objects.length);
+        console.log('🔄 Auto-save objects:', objects);
         isSaving = true;
         lastSaveTime = now;
         
@@ -549,20 +616,20 @@ const WhiteboardPage: React.FC = () => {
     };
 
     const handleVisibilityChange = () => {
-      // Stille automatische Speicherung wenn Tab versteckt wird (z.B. Tab-Wechsel)
-      if (document.hidden) {
-        autoSave();
-      }
+      // Stille automatische Speicherung wenn Tab versteckt wird (z.B. Tab-Wechsel) - DEAKTIVIERT
+      // if (document.hidden) {
+      //   autoSave();
+      // }
     };
 
     const handlePageHide = () => {
-      // Stille automatische Speicherung wenn Seite versteckt wird
-      autoSave();
+      // Stille automatische Speicherung wenn Seite versteckt wird - DEAKTIVIERT
+      // autoSave();
     };
 
     const handleUnload = () => {
-      // Stille automatische Speicherung beim Entladen der Seite
-      autoSave();
+      // Stille automatische Speicherung beim Entladen der Seite - DEAKTIVIERT
+      // autoSave();
     };
 
     // Event Listener hinzufügen
@@ -571,13 +638,14 @@ const WhiteboardPage: React.FC = () => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
 
-    // Periodisches automatisches Speichern alle 30 Sekunden
-    const autoSaveInterval = setInterval(() => {
-      if (currentPath && filename && objects.length > 0) {
-        console.log('⏰ Periodisches automatisches Speichern...');
-        autoSave();
-      }
-    }, 30000); // 30 Sekunden
+    // Periodisches automatisches Speichern alle 30 Sekunden - DEAKTIVIERT
+    // Das automatische Speichern kann mit dem manuellen Speichern interferieren
+    // const autoSaveInterval = setInterval(() => {
+    //   if (currentPath && filename && objects.length > 0) {
+    //     console.log('⏰ Periodisches automatisches Speichern...');
+    //     autoSave();
+    //   }
+    // }, 30000); // 30 Sekunden
 
     // Cleanup
     return () => {
@@ -585,7 +653,7 @@ const WhiteboardPage: React.FC = () => {
       window.removeEventListener('unload', handleUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
-      clearInterval(autoSaveInterval);
+      // clearInterval(autoSaveInterval); // Deaktiviert
     };
   }, [currentPath, filename, objects, userRole, handleSaveChanges]);
 
@@ -929,9 +997,36 @@ const WhiteboardPage: React.FC = () => {
 
       case 'image':
         if (obj.imageData && obj.width !== undefined && obj.height !== undefined) {
+          // Check if we have a pre-loaded image from the export process
+          const loadedImg = (obj as any).loadedImage;
+          if (loadedImg && loadedImg.complete && loadedImg.naturalWidth > 0) {
+            ctx.drawImage(loadedImg, obj.x, obj.y, obj.width, obj.height);
+          } else {
+            // Try to get the image from cache first
+            const cachedImg = imageCache.get(obj.imageData);
+            if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+              ctx.drawImage(cachedImg, obj.x, obj.y, obj.width, obj.height);
+            } else {
+              // Try to get the image from cache first
           const img = new window.Image();
           img.src = obj.imageData;
+              
+              // Check if image is already loaded (for cached images)
+              if (img.complete && img.naturalWidth > 0) {
           ctx.drawImage(img, obj.x, obj.y, obj.width, obj.height);
+              } else {
+                // For images that are not yet loaded, draw a placeholder
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+                ctx.strokeStyle = '#ccc';
+                ctx.strokeRect(obj.x, obj.y, obj.width, obj.height);
+                ctx.fillStyle = '#666';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Bild wird geladen...', obj.x + obj.width / 2, obj.y + obj.height / 2);
+              }
+            }
+          }
         }
         break;
 
@@ -1314,6 +1409,19 @@ const WhiteboardPage: React.FC = () => {
     if (tool === 'text') {
       setTextPosition({ x, y });
       setShowTextInput(true);
+      
+      // Sofortiger Fokus auf das Textfeld
+      setTimeout(() => {
+        if (textInputRef.current) {
+          const inputElement = textInputRef.current.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement;
+          if (inputElement) {
+            inputElement.focus();
+            inputElement.select();
+          } else {
+            textInputRef.current.focus();
+          }
+        }
+      }, 50);
       return;
     }
 
@@ -2699,6 +2807,14 @@ const WhiteboardPage: React.FC = () => {
           };
           
           console.log(`📸 Image loaded: ${img.width}x${img.height} -> ${width}x${height}`);
+          
+          // Bild sofort im Cache speichern
+          if (event.target?.result) {
+            preloadImage(event.target.result as string).then(() => {
+              console.log('📸 Image cached for faster rendering');
+            });
+          }
+          
           setObjects([...objects, newObj]);
         };
         img.onerror = () => {
@@ -2781,6 +2897,14 @@ const WhiteboardPage: React.FC = () => {
                   };
                   
                   console.log(`📋 Pasted image: ${img.width}x${img.height} -> ${width}x${height}`);
+                  
+                  // Bild sofort im Cache speichern
+                  if (e.target?.result) {
+                    preloadImage(e.target.result as string).then(() => {
+                      console.log('📋 Pasted image cached for faster rendering');
+                    });
+                  }
+                  
                   setObjects([...objects, newObj]);
                 };
                 img.onerror = () => {
@@ -2944,6 +3068,14 @@ const WhiteboardPage: React.FC = () => {
             };
             
             console.log(`🎯 Dropped image at (${x}, ${y}): ${img.width}x${img.height} -> ${width}x${height}`);
+            
+            // Bild sofort im Cache speichern
+            if (event.target?.result) {
+              preloadImage(event.target.result as string).then(() => {
+                console.log('🎯 Dropped image cached for faster rendering');
+              });
+            }
+            
             setObjects([...objects, newObj]);
           };
           img.onerror = () => {
@@ -3135,6 +3267,7 @@ const WhiteboardPage: React.FC = () => {
       setShowSaveDialog(false);
       
       console.log('✅ Beide Formate erfolgreich gespeichert!');
+      // Removed alert to avoid annoying popup
     } catch (error) {
       console.error('❌ Fehler beim Speichern beider Formate:', error);
       alert('Fehler beim Speichern: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
@@ -3163,8 +3296,13 @@ const WhiteboardPage: React.FC = () => {
     let savePath = currentPath || 'git-intern/Mathe/Klasse 7';
     
     // Ensure the path starts with 'git-intern/' for proper saving
-    if (!savePath.startsWith('git-intern/')) {
+    if (!savePath.startsWith('git-intern/') && !savePath.startsWith('/Users/')) {
       savePath = `git-intern/${savePath}`;
+    }
+    
+    // Fix for double git-intern paths
+    if (savePath.startsWith('git-intern//Users/')) {
+      savePath = savePath.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', 'git-intern/');
     }
     
     console.log('Saving with path:', savePath);
@@ -3206,6 +3344,75 @@ const WhiteboardPage: React.FC = () => {
       
       // Ensure canvas is redrawn before export (without selection handles)
       redrawCanvasForExport();
+      
+      // Wait for all images to load before creating PDF
+      const imageObjects = objects.filter(obj => obj.tool === 'image' && obj.imageData);
+      if (imageObjects.length > 0) {
+        console.log(`🖼️ Waiting for ${imageObjects.length} images to load before PDF export...`);
+        
+        const imagePromises = imageObjects.map(obj => {
+          return new Promise<void>((resolve) => {
+            // Check if image is already cached
+            const cachedImg = imageCache.get(obj.imageData!);
+            if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+              console.log(`✅ Using cached image for PDF: ${obj.id}`);
+              (obj as any).loadedImage = cachedImg;
+              resolve();
+              return;
+            }
+
+            const img = new Image();
+            img.onload = () => {
+              console.log(`✅ Image loaded for PDF: ${obj.id}`);
+              // Store the loaded image in the object for immediate use
+              (obj as any).loadedImage = img;
+              resolve();
+            };
+            img.onerror = () => {
+              console.warn(`❌ Failed to load image for PDF: ${obj.id}`);
+              resolve(); // Continue even if image fails to load
+            };
+            img.src = obj.imageData!;
+          });
+        });
+        
+        await Promise.all(imagePromises);
+        console.log('🖼️ All images loaded, redrawing canvas for PDF export...');
+        
+        // Force a small delay to ensure all images are fully rendered
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        redrawCanvasForExport();
+      }
+      
+      // Optimize canvas size for PDF export to reduce file size
+      const maxWidth = 1920; // Maximum width for PDF export
+      const maxHeight = 1080; // Maximum height for PDF export
+      
+      if (canvas.width > maxWidth || canvas.height > maxHeight) {
+        const scaleX = maxWidth / canvas.width;
+        const scaleY = maxHeight / canvas.height;
+        const scale = Math.min(scaleX, scaleY);
+        
+        console.log(`📐 Scaling canvas from ${canvas.width}x${canvas.height} to ${Math.round(canvas.width * scale)}x${Math.round(canvas.height * scale)}`);
+        
+        // Create a temporary canvas with optimized size
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCanvas.width = Math.round(canvas.width * scale);
+          tempCanvas.height = Math.round(canvas.height * scale);
+          tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // Replace the original canvas temporarily
+          const originalCanvas = canvas;
+          const originalCtx = canvas.getContext('2d');
+          if (originalCtx) {
+            originalCtx.clearRect(0, 0, canvas.width, canvas.height);
+            originalCtx.drawImage(tempCanvas, 0, 0);
+          }
+        }
+      }
       
       // Debug: Check if canvas has content
       const ctx = canvas.getContext('2d');
@@ -3249,8 +3456,8 @@ const WhiteboardPage: React.FC = () => {
                   format: 'a4'
                 });
                 
-                // Convert canvas to image data URL
-                const imgData = canvas.toDataURL('image/png');
+                // Convert canvas to image data URL with reduced quality to save space
+                const imgData = canvas.toDataURL('image/jpeg', 0.8);
                 
                 // Calculate dimensions to fit the page
                 const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -3268,11 +3475,17 @@ const WhiteboardPage: React.FC = () => {
                 const y = (pdfHeight - scaledHeight) / 2;
                 
                 // Add image to PDF
-                pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+                pdf.addImage(imgData, 'JPEG', x, y, scaledWidth, scaledHeight);
                 
                 // Generate PDF blob
                 const pdfBlob = pdf.output('blob');
                 console.log('📄 PDF blob created, size:', pdfBlob.size, 'bytes');
+                
+                // Restore original canvas size after export
+                if (canvas.width > maxWidth || canvas.height > maxHeight) {
+                  console.log('🔄 Restoring original canvas size after PDF export...');
+                  redrawCanvasForExport();
+                }
                 
                 const fullFilename = finalFilename.endsWith('.pdf') ? finalFilename : `${finalFilename}.pdf`;
                 
@@ -3294,7 +3507,7 @@ const WhiteboardPage: React.FC = () => {
                 } else {
                   const error = await response.json();
                   console.error('❌ Fehler beim Speichern:', error.error);
-                  reject(new Error(error.error));
+                  reject(new Error(error.error || 'Fehler beim Speichern der PDF-Datei'));
                 }
               } catch (error) {
                 console.error('❌ Error creating PDF:', error);
@@ -3311,6 +3524,9 @@ const WhiteboardPage: React.FC = () => {
       });
     } else if (format === 'editable') {
       // Save as editable whiteboard format (JSON)
+      console.log('💾 Saving editable whiteboard with', objects.length, 'objects');
+      console.log('💾 Objects:', objects);
+      
       const whiteboardData = {
         objects: objects,
         metadata: {
@@ -3325,6 +3541,7 @@ const WhiteboardPage: React.FC = () => {
       };
       
       const jsonData = JSON.stringify(whiteboardData, null, 2);
+      console.log('💾 JSON data size:', jsonData.length, 'characters');
       const blob = new Blob([jsonData], { type: 'application/json' });
       const fullFilename = finalFilename.endsWith('.wb') ? finalFilename : `${finalFilename}.wb`;
       
@@ -3352,10 +3569,107 @@ const WhiteboardPage: React.FC = () => {
         throw error;
       }
     } else {
-      // PNG Export (original)
+      // JPG Export (optimized for smaller file size)
+      // Wait for all images to load before creating JPG
+      const imageObjects = objects.filter(obj => obj.tool === 'image' && obj.imageData);
+      if (imageObjects.length > 0) {
+        console.log(`🖼️ Waiting for ${imageObjects.length} images to load before JPG export...`);
+        
+        const imagePromises = imageObjects.map(obj => {
+          return new Promise<void>((resolve) => {
+            // Check if image is already cached
+            const cachedImg = imageCache.get(obj.imageData!);
+            if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+              console.log(`✅ Using cached image for JPG: ${obj.id}`);
+              (obj as any).loadedImage = cachedImg;
+              resolve();
+              return;
+            }
+
+            const img = new Image();
+            img.onload = () => {
+              console.log(`✅ Image loaded for JPG: ${obj.id}`);
+              // Store the loaded image in the object for immediate use
+              (obj as any).loadedImage = img;
+              resolve();
+            };
+            img.onerror = () => {
+              console.warn(`❌ Failed to load image for JPG: ${obj.id}`);
+              resolve(); // Continue even if image fails to load
+            };
+            img.src = obj.imageData!;
+          });
+        });
+        
+        await Promise.all(imagePromises);
+        console.log('🖼️ All images loaded, redrawing canvas for JPG export...');
+        
+        // Force a small delay to ensure all images are fully rendered
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        redrawCanvasForExport();
+      }
+      
+      // Optimize canvas size for JPG export to reduce file size
+      const maxWidth = 1920; // Maximum width for JPG export
+      const maxHeight = 1080; // Maximum height for JPG export
+      
+      if (canvas.width > maxWidth || canvas.height > maxHeight) {
+        const scaleX = maxWidth / canvas.width;
+        const scaleY = maxHeight / canvas.height;
+        const scale = Math.min(scaleX, scaleY);
+        
+        console.log(`📐 Scaling canvas for JPG from ${canvas.width}x${canvas.height} to ${Math.round(canvas.width * scale)}x${Math.round(canvas.height * scale)}`);
+        
+        // Create a temporary canvas with optimized size
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCanvas.width = Math.round(canvas.width * scale);
+          tempCanvas.height = Math.round(canvas.height * scale);
+          tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // Use the temporary canvas for export
+          tempCanvas.toBlob(async (blob) => {
+            if (blob) {
+              const fullFilename = finalFilename.endsWith('.jpg') ? finalFilename : `${finalFilename}.jpg`;
+              
+              const formData = new FormData();
+              formData.append('file', blob, fullFilename);
+              formData.append('targetPath', savePath);
+
+              try {
+                const response = await fetch('/api/file-system-paths/save-file', {
+                  method: 'POST',
+                  body: formData
+                });
+
+                if (response.ok) {
+                  console.log('Whiteboard als JPG erfolgreich gespeichert!');
+                  // Dialog schließen statt window.close()
+                  if (closeDialog) setShowSaveDialog(false);
+                  
+                  // Restore original canvas size after export
+                  console.log('🔄 Restoring original canvas size after JPG export...');
+                  redrawCanvasForExport();
+                } else {
+                  const error = await response.json();
+                  console.error('Fehler beim Speichern:', error.error);
+                  throw new Error(error.error || 'Fehler beim Speichern der JPG-Datei');
+                }
+              } catch (error) {
+                console.error('Error saving:', error);
+                throw error;
+              }
+            }
+          }, 'image/jpeg', 0.8);
+          return;
+        }
+      }
+      
       canvas.toBlob(async (blob) => {
         if (blob) {
-          const fullFilename = finalFilename.endsWith('.png') ? finalFilename : `${finalFilename}.png`;
+          const fullFilename = finalFilename.endsWith('.jpg') ? finalFilename : `${finalFilename}.jpg`;
           
           const formData = new FormData();
           formData.append('file', blob, fullFilename);
@@ -3368,20 +3682,24 @@ const WhiteboardPage: React.FC = () => {
             });
 
             if (response.ok) {
-              console.log('Whiteboard erfolgreich gespeichert!');
+              console.log('Whiteboard als JPG erfolgreich gespeichert!');
               // Dialog schließen statt window.close()
               if (closeDialog) setShowSaveDialog(false);
+              
+              // Restore original canvas size after export
+              console.log('🔄 Restoring original canvas size after JPG export...');
+              redrawCanvasForExport();
             } else {
               const error = await response.json();
               console.error('Fehler beim Speichern:', error.error);
-              throw new Error(error.error || 'Fehler beim Speichern der PNG-Datei');
+              throw new Error(error.error || 'Fehler beim Speichern der JPG-Datei');
             }
           } catch (error) {
             console.error('Error saving:', error);
             throw error;
           }
         }
-      }, 'image/png');
+      }, 'image/jpeg', 0.8);
     }
   };
 
@@ -3396,8 +3714,13 @@ const WhiteboardPage: React.FC = () => {
       let directoryPath = pathParts.join('/');
       
       // Ensure the path starts with 'git-intern/' for proper saving
-      if (!directoryPath.startsWith('git-intern/')) {
+      if (!directoryPath.startsWith('git-intern/') && !directoryPath.startsWith('/Users/')) {
         directoryPath = `git-intern/${directoryPath}`;
+      }
+      
+      // Fix for double git-intern paths
+      if (directoryPath.startsWith('git-intern//Users/')) {
+        directoryPath = directoryPath.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', 'git-intern/');
       }
       
       setCurrentPath(directoryPath);
@@ -4300,9 +4623,9 @@ const WhiteboardPage: React.FC = () => {
               rows={4}
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              autoFocus
               sx={{ mt: 1 }}
               placeholder="Ihren Text hier eingeben..."
+              autoFocus
               onKeyDown={(e) => {
                 // Enter zum Einfügen, Escape zum Abbrechen
                 if (e.key === 'Enter' && !e.shiftKey) {

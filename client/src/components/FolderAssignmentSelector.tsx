@@ -310,17 +310,19 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       z-index: 10000;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       font-family: Arial, sans-serif;
     `;
     
     const modalContent = document.createElement('div');
     modalContent.style.cssText = `
       background: white;
-      padding: 30px;
-      border-radius: 12px;
-      max-width: 90%;
+      padding: 15px;
+      border-radius: 8px;
+      width: 94%;
       max-height: 90%;
+      margin: 0;
       overflow: auto;
       position: relative;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -331,15 +333,15 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     closeButton.innerHTML = '&times;';
     closeButton.style.cssText = `
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: 0px;
+      right: 10px;
       background: #f5f5f5;
       border: none;
-      font-size: 28px;
+      font-size: 20px;
       cursor: pointer;
       color: #666;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -361,16 +363,19 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     const title = document.createElement('h2');
     title.textContent = `Vorschau: ${fileName}`;
     title.style.cssText = `
-      margin: 0 0 25px 0;
+      margin: 0;
       color: #1976d2;
-      font-size: 20px;
+      font-size: 12px;
       font-weight: 600;
-      border-bottom: 2px solid #e3f2fd;
-      padding-bottom: 15px;
+      border-bottom: none;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       justify-content: flex-start;
-      gap: 15px;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: center;
     `;
     
     const downloadButton = document.createElement('button');
@@ -390,7 +395,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       overflow: hidden;
       white-space: nowrap;
       width: auto;
-      margin: 0;
+      margin: 0 0 10px 0;
       order: -1;
     `;
     downloadButton.onclick = async () => {
@@ -472,17 +477,19 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       z-index: 10000;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       font-family: Arial, sans-serif;
     `;
     
     const modalContent = document.createElement('div');
     modalContent.style.cssText = `
       background: white;
-      padding: 30px;
-      border-radius: 12px;
-      max-width: 90%;
+      padding: 15px;
+      border-radius: 8px;
+      width: 94%;
       max-height: 90%;
+      margin: 0;
       overflow: auto;
       position: relative;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -493,15 +500,15 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     closeButton.innerHTML = '&times;';
     closeButton.style.cssText = `
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: 0px;
+      right: 10px;
       background: #f5f5f5;
       border: none;
-      font-size: 28px;
+      font-size: 20px;
       cursor: pointer;
       color: #666;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -523,16 +530,19 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     const title = document.createElement('h2');
     title.textContent = `Vorschau: ${fileName}`;
     title.style.cssText = `
-      margin: 0 0 25px 0;
+      margin: 0;
       color: #1976d2;
-      font-size: 20px;
+      font-size: 12px;
       font-weight: 600;
-      border-bottom: 2px solid #e3f2fd;
-      padding-bottom: 15px;
+      border-bottom: none;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       justify-content: flex-start;
-      gap: 15px;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: center;
     `;
     
     const downloadButton = document.createElement('button');
@@ -552,7 +562,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       overflow: hidden;
       white-space: nowrap;
       width: auto;
-      margin: 0;
+      margin: 0 0 10px 0;
       order: -1;
     `;
     downloadButton.onclick = async () => {
@@ -642,17 +652,19 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       z-index: 10000;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       font-family: Arial, sans-serif;
     `;
     
     const modalContent = document.createElement('div');
     modalContent.style.cssText = `
       background: white;
-      padding: 30px;
-      border-radius: 12px;
-      max-width: 90%;
+      padding: 15px;
+      border-radius: 8px;
+      width: 94%;
       max-height: 90%;
+      margin: 0;
       overflow: auto;
       position: relative;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -663,15 +675,15 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     closeButton.innerHTML = '&times;';
     closeButton.style.cssText = `
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: 0px;
+      right: 10px;
       background: #f5f5f5;
       border: none;
-      font-size: 28px;
+      font-size: 20px;
       cursor: pointer;
       color: #666;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -693,16 +705,19 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     const title = document.createElement('h2');
     title.textContent = `Vorschau: ${fileName}`;
     title.style.cssText = `
-      margin: 0 0 25px 0;
+      margin: 0;
       color: #1976d2;
-      font-size: 20px;
+      font-size: 12px;
       font-weight: 600;
-      border-bottom: 2px solid #e3f2fd;
-      padding-bottom: 15px;
+      border-bottom: none;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       justify-content: flex-start;
-      gap: 15px;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: center;
     `;
     
     const downloadButton = document.createElement('button');
@@ -722,7 +737,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
       overflow: hidden;
       white-space: nowrap;
       width: auto;
-      margin: 0;
+      margin: 0 0 10px 0;
       order: -1;
     `;
     downloadButton.onclick = async () => {

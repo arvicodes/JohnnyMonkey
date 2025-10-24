@@ -284,36 +284,38 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       z-index: 10000;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       font-family: Arial, sans-serif;
     `;
     
     const modalContent = document.createElement('div');
     modalContent.style.cssText = `
       background: white;
-      padding: 30px;
-      border-radius: 12px;
-      max-width: 90%;
+      padding: 15px;
+      border-radius: 8px;
+      width: 94%;
       max-height: 90%;
       overflow: auto;
       position: relative;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       border: 1px solid #e0e0e0;
+      margin: 0;
     `;
     
     const closeButton = document.createElement('button');
     closeButton.innerHTML = '&times;';
     closeButton.style.cssText = `
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: 0px;
+      right: 10px;
       background: #f5f5f5;
       border: none;
-      font-size: 28px;
+      font-size: 20px;
       cursor: pointer;
       color: #666;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -335,16 +337,18 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     const title = document.createElement('h2');
     title.textContent = `Vorschau: ${fileName}`;
     title.style.cssText = `
-      margin: 0 0 25px 0;
+      margin: 0;
       color: #1976d2;
-      font-size: 20px;
+      font-size: 12px;
       font-weight: 600;
-      border-bottom: 2px solid #e3f2fd;
-      padding-bottom: 15px;
+      border-bottom: none;
       display: flex;
       align-items: center;
+      padding-top: -5px;
       justify-content: flex-start;
-      gap: 15px;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
     `;
     
     const downloadButton = document.createElement('button');
@@ -364,7 +368,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       overflow: hidden;
       white-space: nowrap;
       width: auto;
-      margin: 0;
+      margin: 0 0 10px 0;
       order: -1;
     `;
     downloadButton.onmouseover = () => {
@@ -439,16 +443,44 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     
     const content = document.createElement('div');
     content.innerHTML = htmlContent;
+    
+    // Stelle sicher, dass alle inneren Elemente die volle Breite nutzen
+    const style = document.createElement('style');
+    style.textContent = `
+      .preview-content * {
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .preview-content img {
+        max-width: 100% !important;
+        height: auto !important;
+      }
+      .preview-content table {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .preview-content div, .preview-content p, .preview-content span {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+    `;
+    document.head.appendChild(style);
+    content.className = 'preview-content';
     content.style.cssText = `
       border: 1px solid #e0e0e0;
-      padding: 20px;
-      border-radius: 8px;
+      padding: 15px;
+      border-radius: 6px;
       background: #fafafa;
-      max-height: 400px;
+      max-height: 600px;
+      width: 100%;
+      box-sizing: border-box;
       overflow: auto;
       font-size: 14px;
       line-height: 1.6;
       color: #333;
+      margin: 0;
+      display: block;
     `;
     
     modalContent.appendChild(closeButton);
@@ -471,7 +503,8 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       z-index: 10000;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       font-family: Arial, sans-serif;
     `;
     
@@ -492,15 +525,15 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     closeButton.innerHTML = '&times;';
     closeButton.style.cssText = `
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: 0px;
+      right: 10px;
       background: #f5f5f5;
       border: none;
-      font-size: 28px;
+      font-size: 20px;
       cursor: pointer;
       color: #666;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -522,16 +555,18 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     const title = document.createElement('h2');
     title.textContent = `Vorschau: ${fileName}`;
     title.style.cssText = `
-      margin: 0 0 25px 0;
+      margin: 0;
       color: #1976d2;
-      font-size: 20px;
+      font-size: 12px;
       font-weight: 600;
-      border-bottom: 2px solid #e3f2fd;
-      padding-bottom: 15px;
+      border-bottom: none;
       display: flex;
       align-items: center;
+      padding-top: -5px;
       justify-content: flex-start;
-      gap: 15px;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
     `;
     
     const downloadButton = document.createElement('button');
@@ -551,7 +586,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       overflow: hidden;
       white-space: nowrap;
       width: auto;
-      margin: 0;
+      margin: 0 0 10px 0;
       order: -1;
     `;
     downloadButton.onclick = async () => {
@@ -642,7 +677,8 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       z-index: 10000;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
+      padding-top: 15px;
       font-family: Arial, sans-serif;
     `;
     
@@ -663,15 +699,15 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     closeButton.innerHTML = '&times;';
     closeButton.style.cssText = `
       position: absolute;
-      top: 15px;
-      right: 20px;
+      top: 0px;
+      right: 10px;
       background: #f5f5f5;
       border: none;
-      font-size: 28px;
+      font-size: 20px;
       cursor: pointer;
       color: #666;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -693,16 +729,18 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     const title = document.createElement('h2');
     title.textContent = `Vorschau: ${fileName}`;
     title.style.cssText = `
-      margin: 0 0 25px 0;
+      margin: 0;
       color: #1976d2;
-      font-size: 20px;
+      font-size: 12px;
       font-weight: 600;
-      border-bottom: 2px solid #e3f2fd;
-      padding-bottom: 15px;
+      border-bottom: none;
       display: flex;
       align-items: center;
+      padding-top: -5px;
       justify-content: flex-start;
-      gap: 15px;
+      gap: 6px;
+      width: 100%;
+      box-sizing: border-box;
     `;
     
     const downloadButton = document.createElement('button');
@@ -722,7 +760,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
       overflow: hidden;
       white-space: nowrap;
       width: auto;
-      margin: 0;
+      margin: 0 0 10px 0;
       order: -1;
     `;
     downloadButton.onclick = async () => {
@@ -775,10 +813,12 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
     content.textContent = textContent;
     content.style.cssText = `
       border: 1px solid #e0e0e0;
-      padding: 20px;
-      border-radius: 8px;
+      padding: 15px;
+      border-radius: 6px;
       background: #fafafa;
-      max-height: 400px;
+      max-height: 600px;
+      width: 100%;
+      box-sizing: border-box;
       overflow: auto;
       font-size: 14px;
       line-height: 1.6;

@@ -236,7 +236,11 @@ export class FileSystemPathController {
           // Convert DOCX to HTML using mammoth
           const result = await mammoth.convertToHtml({ buffer: fileContent });
           const html = result.value;
-          const messages = result.messages;
+          // Filter out Intense Quote warnings
+          const messages = result.messages.filter(msg => 
+            !msg.message.includes('Intense Quote') && 
+            !msg.message.includes('IntenseQuote')
+          );
 
           // Create a styled HTML preview
           const styledHtml = `
@@ -259,24 +263,13 @@ export class FileSystemPathController {
                     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                     overflow: hidden;
                   }
-                  .preview-header { 
-                    background: #1976d2; 
-                    color: white; 
-                    padding: 15px 20px; 
-                    border-bottom: 1px solid #e0e0e0;
-                  }
-                  .preview-header h1 { 
-                    margin: 0; 
-                    font-size: 18px; 
-                    font-weight: 600;
-                  }
                   .preview-content { 
-                    padding: 30px; 
+                    padding: 10px; 
                     min-height: 400px;
                   }
                   .preview-content h1, .preview-content h2, .preview-content h3 { 
                     color: #1976d2; 
-                    margin-top: 25px; 
+                    margin-top: 5px; 
                     margin-bottom: 15px;
                   }
                   .preview-content p { 
@@ -316,13 +309,19 @@ export class FileSystemPathController {
                     color: #856404; 
                     margin-bottom: 5px;
                   }
+                  .intense-quote {
+                    border-left: 4px solid #1976d2;
+                    padding-left: 15px;
+                    margin: 15px 0;
+                    font-style: italic;
+                    background-color: #f5f5f5;
+                    padding: 10px 15px;
+                    border-radius: 4px;
+                  }
                 </style>
               </head>
               <body>
                 <div class="preview-container">
-                  <div class="preview-header">
-                    <h1>📄 ${path.basename(filePath as string)}</h1>
-                  </div>
                   <div class="preview-content">
                     ${html}
                     ${messages.length > 0 ? `
@@ -467,7 +466,7 @@ export class FileSystemPathController {
                     font-weight: 600;
                   }
                   .preview-content { 
-                    padding: 30px; 
+                    padding: 10px; 
                     min-height: 400px;
                   }
                   .sheet-container { 
@@ -1021,7 +1020,15 @@ export class FileSystemPathController {
         // Handle git-intern paths
         const relativePath = decodeURIComponent(targetPath.replace('git-intern/', ''));
         // Use absolute path to project root for development
-                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+        fullTargetPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+      } else if (targetPath.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
+        // Handle already absolute paths
+        fullTargetPath = targetPath;
+      } else if (targetPath.startsWith('git-intern//Users/')) {
+        // Handle double git-intern paths (fix for the bug)
+        const relativePath = decodeURIComponent(targetPath.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', ''));
+        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
         fullTargetPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
       } else {
         // Handle local paths
@@ -1049,9 +1056,19 @@ export class FileSystemPathController {
         filename: file.originalname
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving file:', error);
-      res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
+      
+      // Handle specific Multer errors
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: 'Datei ist zu groß. Maximale Größe: 50MB' });
+      }
+      
+      if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ error: 'Unerwartete Datei' });
+      }
+      
+      res.status(500).json({ error: 'Fehler beim Speichern der Datei: ' + (error.message || 'Unbekannter Fehler') });
     }
   }
 

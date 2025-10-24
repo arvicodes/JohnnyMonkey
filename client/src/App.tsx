@@ -83,7 +83,8 @@ function AppContent() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    // Only handle ESC in login form, not in modals
+    if (e.key === 'Escape' && !user) {
       setLoginCode('');
       setMessage('');
       loginInputRef.current?.focus();
