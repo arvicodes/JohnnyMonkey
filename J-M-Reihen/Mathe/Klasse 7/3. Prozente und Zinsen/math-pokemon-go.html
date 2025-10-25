@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathMon - Deine Mathematik-Welt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow: hidden;
+        }
+
+        .game-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 10px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+        }
+
+        .player-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .player-details h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+
+        .level-info {
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+
+        .xp-bar {
+            width: 150px;
+            height: 18px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f39c12, #e67e22);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .xp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .achievements {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .achievement {
+            background: #f39c12;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        /* Spielwelt-Karte */
+        .world-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 0;
+            margin-bottom: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            min-height: 500px;
+        }
+
+        /* World Container für Kamera */
+        .world-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .world-map {
+            width: 200%;
+            height: 200%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #87CEEB; /* Himmel */
+        }
+
+        /* World Container braucht Overflow */
+        .world-container > .world-map {
+            overflow: visible;
+        }
+
+        /* Weltelemente - Style */
+        .world-element {
+            position: absolute;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .terrain-tile {
+            width: 100px;
+            height: 100px;
+        }
+
+        /* Gras-Terrain - verschiedene Schattierungen */
+        .terrain-tile.grass-light {
+            background: linear-gradient(135deg, #C8E6C9 0%, #A5D6A7 100%);
+        }
+
+        .terrain-tile.grass-medium {
+            background: linear-gradient(45deg, #9CCC65 0%, #8BC34A 100%);
+        }
+
+        .terrain-tile.grass-dark {
+            background: linear-gradient(135deg, #689F38 0%, #558B2F 100%);
+        }
+
+        .terrain-tile.grass-forest {
+            background: linear-gradient(45deg, #33691E 0%, #2E7D32 100%);
+        }
+
+        /* Wasser - Fluss & See */
+        .terrain-tile.water {
+            background: linear-gradient(180deg, #4FC3F7 0%, #29B6F6 50%, #2196F3 100%);
+        }
+
+        .terrain-tile.sand {
+            background: linear-gradient(135deg, #FFF9C4 0%, #FFF59D 100%);
+        }
+
+        /* Felsen */
+        .rock {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #B0BEC5 0%, #90A4AE 100%);
+            border-radius: 50%;
+            opacity: 0.8;
+        }
+
+        /* Kleine Wiesen-Details */
+        .grass-detail {
+            position: absolute;
+            font-size: 8px;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .path {
+            background: #8B7355;
+            width: 60px;
+        }
+
+        .path.horizontal {
+            height: 60px;
+        }
+
+        .path.vertical {
+            width: 60px;
+        }
+
+        .world-emoji {
+            font-size: 30px;
+            opacity: 0.7;
+        }
+
+        /* Kamera-System - Welt-Container scrollt */
+        .world-container-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .world-scroll {
+            position: absolute;
+            transition: transform 0.1s linear;
+        }
+
+        /* Spieler Charakter */
+        .player-character {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            border: 4px solid white;
+            /* Immer in der Mitte des Viewports */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .player-character::after {
+            position: absolute;
+            font-size: 20px;
+        }
+
+        /* Avatar dynamisch setzen */
+        .player-avatar-emoji::after {
+            content: attr(data-emoji);
+        }
+
+        /* MathMon auf der Karte */
+        .mathmon-on-map {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            cursor: pointer;
+            animation: float 2s ease-in-out infinite;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+            transition: transform 0.2s ease;
+        }
+
+        .mathmon-on-map:hover {
+            transform: scale(1.2);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Minimap */
+        .minimap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            z-index: 50;
+        }
+
+        .minimap-content {
+            width: 100%;
+            height: calc(100% - 20px);
+            position: relative;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 50%, #00b894 100%);
+            border-radius: 5px;
+        }
+
+        .minimap-player {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #e74c3c;
+            border-radius: 50%;
+            border: 1px solid white;
+        }
+
+        /* Steuerung */
+        .controls-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            z-index: 50;
+        }
+
+        .controls-key {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin: 2px;
+        }
+
+        /* Fortschritts-Übersicht kompakt */
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+        }
+
+        .progress-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .question-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .question-text {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .success-animation {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            color: #27ae60;
+            margin-bottom: 15px;
+            animation: successPulse 1s ease-in-out;
+        }
+
+        @keyframes successPulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="player-stats">
+                <div class="player-info">
+                    <div class="avatar">🧮</div>
+                    <div class="player-details">
+                        <h2 id="playerName">Mathe-Meister</h2>
+                        <div class="level-info">Level <span id="playerLevel">1</span></div>
+                    </div>
+                </div>
+                <div class="xp-section">
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="xpFill" style="width: 0%"></div>
+                        <div class="xp-text" id="xpText">0 / 100 XP</div>
+                    </div>
+                </div>
+                <div class="achievements" id="achievements">
+                    <div class="achievement">🏆 Erste Schritte</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spielwelt -->
+        <div class="world-container">
+            <div class="world-viewport">
+                <div class="world-map" id="worldMap">
+                    <!-- Welt-Elemente werden hier dynamisch eingefügt -->
+                    <div id="worldElements"></div>
+                    <div id="mathMonContainer"></div>
+                </div>
+                
+                <!-- Spieler ist fixed, immer sichtbar -->
+                <div class="player-character" id="playerCharacter"></div>
+                
+                <!-- Minimap -->
+                <div class="minimap">
+                    <div class="minimap-content" id="minimap">
+                        <div class="minimap-player" id="minimapPlayer"></div>
+                    </div>
+                </div>
+
+                <!-- Steuerung -->
+                <div class="controls-info">
+                    <h4>🎮 Steuerung</h4>
+                    <span class="controls-key">↑</span>
+                    <span class="controls-key">↓</span>
+                    <span class="controls-key">←</span>
+                    <span class="controls-key">→</span>
+                    <br>
+                    <small>Gehe zu den MathMon!</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fortschritts-Übersicht -->
+        <div class="progress-section">
+            <div class="progress-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCaught">0</div>
+                    <div class="stat-label">MathMon gefangen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalXP">0</div>
+                    <div class="stat-label">Gesammelte XP</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="streak">0</div>
+                    <div class="stat-label">Tage in Folge</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="accuracy">0%</div>
+                    <div class="stat-label">Trefferquote</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal für Fragen -->
+    <div id="catchModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">MathMon gefangen!</h2>
+            <div class="question-container">
+                <div class="question-text" id="questionText"></div>
+                <input type="number" class="answer-input" id="answerInput" placeholder="Deine Antwort..." step="0.01">
+            </div>
+            <div style="text-align: center;">
+                <button class="btn btn-primary" onclick="submitAnswer()">Antworten</button>
+                <button class="btn" onclick="closeModal()">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Erfolgs-Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="success-animation">
+                <div class="success-icon">🎉</div>
+                <h2 style="color: #27ae60;">Glückwunsch!</h2>
+                <div id="xpGained" style="background: linear-gradient(45deg, #f39c12, #e67e22); color: white; padding: 10px 20px; border-radius: 20px; font-weight: bold; margin: 10px 0; display: inline-block;">+10 XP erhalten!</div>
+                <button class="btn btn-primary" onclick="closeSuccessModal()">Weiter</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Spieler-Daten
+        let playerData = {
+            name: "Mathe-Meister",
+            avatarEmoji: "🧮",
+            level: 1,
+            xp: 0,
+            xpToNext: 100,
+            totalCaught: 0,
+            totalXP: 0,
+            streak: 0,
+            correctAnswers: 0,
+            totalAnswers: 0,
+            achievements: ["🏆 Erste Schritte"]
+        };
+
+        let playerPosition = { x: 50, y: 50 }; // Prozent
+        let spawnedMathMon = [];
+        let currentMathMon = null;
+        let currentQuestion = null;
+        let worldOffset = { x: 0, y: 0 }; // Welt-Offset für nahtlose Wiederholung
+
+        // MathMon-Datenbank
+        const mathPokemon = [
+            { id: 1, name: "Prozentus", icon: "📊", difficulty: 1, questions: [
+                { question: "Berechne 15% von 200", answer: 30 },
+                { question: "Berechne 8% von 150", answer: 12 }
+            ]},
+            { id: 2, name: "Zinsus", icon: "💰", difficulty: 2, questions: [
+                { question: "Ein Kapital von 1000€ wird zu 3% für 1 Jahr angelegt. Wie viel Zinsen erhältst du?", answer: 30 },
+                { question: "Ein Kapital von 500€ wird zu 4% für 2 Jahre angelegt. Wie viel Zinsen erhältst du?", answer: 40 }
+            ]},
+            { id: 3, name: "Bruchus", icon: "🍰", difficulty: 2, questions: [
+                { question: "Berechne: 1/4 + 1/4", answer: 0.5 },
+                { question: "Berechne: 3/4 - 1/4", answer: 0.5 }
+            ]},
+            { id: 4, name: "Geometrus", icon: "📐", difficulty: 3, questions: [
+                { question: "Berechne den Flächeninhalt eines Rechtecks mit Länge 8cm und Breite 5cm", answer: 40 },
+                { question: "Berechne den Umfang eines Quadrats mit Seitenlänge 6cm", answer: 24 }
+            ]}
+        ];
+
+        // Spiel initialisieren
+        async function initGame() {
+            console.log('Spiel wird initialisiert...');
+            
+            // Avatar und Name vom Server laden
+            await loadPlayerData();
+            
+            console.log('Spielerdaten geladen. Avatar:', playerData.avatarEmoji, 'Name:', playerData.name);
+            
+            // Jetzt Avatar und Stats aktualisieren
+            updatePlayerAvatar();
+            updatePlayerStats();
+            
+            console.log('Spieler Avatar und Stats aktualisiert');
+            
+            // Welt generieren
+            generateWorld();
+            
+            // Initiale Kamera-Position
+            updateCamera();
+            
+            spawnMathMon();
+            
+            // Tastatur-Steuerung
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // MathMon alle 5 Sekunden spawnen
+            setInterval(spawnMathMon, 5000);
+            
+            console.log('Spiel erfolgreich initialisiert');
+        }
+
+        // Schülerdaten - echte Daten aus der Datenbank
+        const studentsData = {
+            'STUD001': { name: 'Jakob Ackermann', avatarEmoji: '👨‍🎤' },
+            'STUD002': { name: 'Josefine Baierl', avatarEmoji: '🧙‍♂️' },
+            'STUD003': { name: 'Friederike Bremser', avatarEmoji: '🐛' },
+            'STUD004': { name: 'Jonathan Dillmann', avatarEmoji: '🐌' },
+            'STUD005': { name: 'Jasmin Farnung', avatarEmoji: '🧞‍♀️' },
+            'STUD006': { name: 'Marlene Geis', avatarEmoji: '🧝‍♂️' },
+            'STUD007': { name: 'Louis Gerharz', avatarEmoji: '🧌' },
+            'STUD008': { name: 'Luise Habach', avatarEmoji: '🧞‍♀️' },
+            'STUD009': { name: 'Hannah Hagedorn', avatarEmoji: '👩‍🌾' },
+            'STUD010': { name: 'Kilian Jahnke', avatarEmoji: '👨‍🚀' },
+            'STUD011': { name: 'Marlene Krall', avatarEmoji: '👩‍🎤' },
+            'STUD012': { name: 'Robin Maas', avatarEmoji: '👿' },
+            'STUD013': { name: 'Jonas Maxeiner', avatarEmoji: '🐟' },
+            'STUD014': { name: 'Samuel May', avatarEmoji: '🦸‍♀️' },
+            'STUD015': { name: 'Dennis Miller', avatarEmoji: null },
+            'STUD016': { name: 'Miró Mohr', avatarEmoji: '🐵' },
+            'STUD017': { name: 'Adela Mureşan', avatarEmoji: '🐧' },
+            'STUD018': { name: 'Paul Pfeifer', avatarEmoji: '👨‍🎨' },
+            'STUD019': { name: 'Louisa Plattes', avatarEmoji: '👩‍✈️' },
+            'STUD020': { name: 'Arthur Potemkin', avatarEmoji: '🐻' }
+        };
+
+        // Spielerdaten laden
+        async function loadPlayerData() {
+            try {
+                // Erst versuchen Server API aufzurufen
+                try {
+                    const loginCode = localStorage.getItem('loginCode');
+                    console.log('Login-Code aus localStorage:', loginCode);
+                    
+                    if (loginCode) {
+                        const response = await fetch('/api/users/me', {
+                            headers: {
+                                'x-login-code': loginCode
+                            }
+                        });
+
+                        if (response.ok) {
+                            const userData = await response.json();
+                            console.log('User Data vom Server:', userData);
+                            
+                            if (userData.name) {
+                                playerData.name = userData.name;
+                            }
+                            if (userData.avatarEmoji) {
+                                playerData.avatarEmoji = userData.avatarEmoji;
+                                console.log('Avatar vom Server gesetzt:', userData.avatarEmoji);
+                                return; // Erfolgreich vom Server geladen
+                            }
+                        }
+                    }
+                } catch (fetchError) {
+                    console.log('Server API nicht verfügbar, verwende lokale Daten');
+                }
+
+                // Fallback: Verwende lokale Schülerdaten
+                const loginCode = localStorage.getItem('loginCode');
+                if (loginCode && studentsData[loginCode]) {
+                    const student = studentsData[loginCode];
+                    playerData.name = student.name;
+                    playerData.avatarEmoji = student.avatarEmoji || '🧮';
+                    console.log('Lokale Daten verwendet:', student.name, student.avatarEmoji);
+                } else {
+                    console.log('Kein Login-Code oder Schüler nicht gefunden, verwende Standard');
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der Spielerdaten:', error);
+                // Verwende Standard-Werte
+            }
+        }
+
+        // Avatar aktualisieren
+        function updatePlayerAvatar() {
+            console.log('updatePlayerAvatar aufgerufen mit:', playerData.avatarEmoji, playerData.name);
+            
+            // Header Avatar
+            const headerAvatar = document.querySelector('.avatar');
+            if (headerAvatar) {
+                headerAvatar.textContent = playerData.avatarEmoji;
+                console.log('Header Avatar aktualisiert:', playerData.avatarEmoji);
+            } else {
+                console.error('Header Avatar Element nicht gefunden!');
+            }
+
+            // Spieler Charakter auf der Karte
+            const playerChar = document.getElementById('playerCharacter');
+            if (playerChar) {
+                playerChar.textContent = playerData.avatarEmoji;
+                console.log('Spieler Charakter auf Karte aktualisiert:', playerData.avatarEmoji);
+            } else {
+                console.error('Spieler Charakter Element nicht gefunden!');
+            }
+
+            // Name aktualisieren
+            const playerNameEl = document.getElementById('playerName');
+            if (playerNameEl) {
+                playerNameEl.textContent = playerData.name;
+                console.log('Name aktualisiert:', playerData.name);
+            } else {
+                console.error('Player Name Element nicht gefunden!');
+            }
+        }
+
+        // Tastatur-Steuerung - unbegrenzte Bewegung
+        function handleKeyPress(e) {
+            const step = 2;
+            switch(e.key) {
+                case 'ArrowUp':
+                    playerPosition.y -= step;
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    playerPosition.y += step;
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                    playerPosition.x -= step;
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    playerPosition.x += step;
+                    e.preventDefault();
+                    break;
+            }
+            updatePlayerPosition();
+            checkNearbyMathMon();
+            updateCamera();
+        }
+
+        // Spieler-Position aktualisieren
+        function updatePlayerPosition() {
+            // Spieler ist fixed, muss nicht bewegt werden
+            // Aber die Welt bewegt sich
+            
+            // Minimap aktualisieren
+            const minimapPlayer = document.getElementById('minimapPlayer');
+            minimapPlayer.style.left = playerPosition.x / 2 + '%';
+            minimapPlayer.style.top = playerPosition.y / 2 + '%';
+        }
+
+        // Kamera folgt dem Spieler - nahtlose Welt
+        function updateCamera() {
+            const worldMap = document.getElementById('worldMap');
+            
+            // Berechne Offset basierend auf Spieler-Position
+            // Modulo 200% für nahtlose Wiederholung
+            worldOffset.x = (-playerPosition.x + 50) % 200;
+            worldOffset.y = (-playerPosition.y + 50) % 200;
+            
+            // Stelle sicher, dass der Offset nicht zu negativ wird
+            if (worldOffset.x < -100) worldOffset.x += 200;
+            if (worldOffset.y < -100) worldOffset.y += 200;
+            
+            worldMap.style.transform = `translate(${worldOffset.x}%, ${worldOffset.y}%)`;
+        }
+
+        // Prozedurale Welt-Generierung - Mit Canvas für echten Hintergrund
+        function generateWorld() {
+            const worldElements = document.getElementById('worldElements');
+            worldElements.innerHTML = ''; // Clear previous
+            
+            // Erstelle Canvas für Hintergrund
+            const canvas = document.createElement('canvas');
+            canvas.width = 2000;
+            canvas.height = 2000;
+            canvas.style.position = 'absolute';
+            canvas.style.left = '0';
+            canvas.style.top = '0';
+            canvas.style.zIndex = '0';
+            canvas.id = 'worldCanvas';
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Generiere Hintergrund mit Noise/Textur
+            for (let x = 0; x < 2000; x += 2) {
+                for (let y = 0; y < 2000; y += 2) {
+                    const seed = Math.sin(x * 0.01) + Math.cos(y * 0.01) + Math.sin((x+y) * 0.005);
+                    const value = (seed + 3) / 6;
+                    
+                    // Bestimme Farbe basierend auf Seed
+                    if (value < 0.6) {
+                        ctx.fillStyle = '#A5D6A7';
+                    } else if (value < 0.75) {
+                        ctx.fillStyle = '#9CCC65';
+                    } else if (value < 0.85) {
+                        ctx.fillStyle = '#689F38';
+                    } else if (value < 0.92) {
+                        ctx.fillStyle = '#558B2F';
+                    } else {
+                        ctx.fillStyle = '#33691E';
+                    }
+                    
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+            
+            // Zeichne gewundenen Fluss
+            ctx.strokeStyle = '#29B6F6';
+            ctx.lineWidth = 120;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            for (let i = 0; i < 2000; i += 5) {
+                const y = 800 + Math.sin(i * 0.003) * 200 + Math.cos(i * 0.005) * 100;
+                if (i === 0) ctx.moveTo(i, y);
+                else ctx.lineTo(i, y);
+            }
+            ctx.stroke();
+            
+            // Sandufer um Fluss
+            ctx.strokeStyle = '#FFF59D';
+            ctx.lineWidth = 20;
+            ctx.stroke();
+            
+            // Teich
+            ctx.fillStyle = '#4FC3F7';
+            ctx.beginPath();
+            ctx.arc(600, 500, 120, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#FFF59D';
+            ctx.beginPath();
+            ctx.arc(600, 500, 140, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(600, 500, 120, 0, Math.PI * 2);
+            ctx.fillStyle = '#A5D6A7';
+            ctx.fill();
+            
+            worldElements.appendChild(canvas);
+            
+            // Generiere Felsen
+            for (let i = 0; i < 30; i++) {
+                const rock = document.createElement('div');
+                rock.className = 'world-element rock';
+                rock.style.left = (Math.sin(i * 0.7) * 900 + 600) + 'px';
+                rock.style.top = (Math.cos(i * 0.5) * 700 + 700) + 'px';
+                rock.style.width = (20 + Math.sin(i) * 15) + 'px';
+                rock.style.height = (20 + Math.cos(i) * 15) + 'px';
+                worldElements.appendChild(rock);
+            }
+            
+            // Generiere Bäume
+            const trees = ['🌳', '🌲', '🌴'];
+            for (let i = 0; i < 80; i++) {
+                const x = (Math.sin(i) * 900);
+                const y = (Math.cos(i * 0.7) * 900);
+                
+                const tree = document.createElement('div');
+                tree.className = 'world-element world-emoji';
+                tree.textContent = trees[i % trees.length];
+                tree.style.left = x + 'px';
+                tree.style.top = y + 'px';
+                tree.style.fontSize = (25 + Math.sin(i) * 12) + 'px';
+                tree.style.zIndex = '1';
+                worldElements.appendChild(tree);
+            }
+        }
+
+        // MathMon spawnen
+        function spawnMathMon() {
+            const worldMap = document.getElementById('worldMap');
+            const randomPokemon = mathPokemon[Math.floor(Math.random() * mathPokemon.length)];
+            
+            const mathmonEl = document.createElement('div');
+            mathmonEl.className = 'mathmon-on-map';
+            mathmonEl.innerHTML = randomPokemon.icon;
+            
+            const x = Math.random() * 380 + 10;
+            const y = Math.random() * 380 + 10;
+            
+            mathmonEl.style.left = x + '%';
+            mathmonEl.style.top = y + '%';
+            
+            mathmonEl.onclick = () => catchPokemon(randomPokemon.id);
+            
+            const mathmonData = {
+                element: mathmonEl,
+                pokemon: randomPokemon,
+                x: x,
+                y: y,
+                id: Date.now()
+            };
+            
+            spawnedMathMon.push(mathmonData);
+            worldMap.appendChild(mathmonEl);
+            
+            // Nach 30 Sekunden entfernen
+            setTimeout(() => {
+                if (mathmonData.element && mathmonData.element.parentNode) {
+                    mathmonData.element.remove();
+                    spawnedMathMon = spawnedMathMon.filter(m => m.id !== mathmonData.id);
+                }
+            }, 30000);
+        }
+
+        // Prüfe ob Spieler nah bei MathMon ist
+        function checkNearbyMathMon() {
+            spawnedMathMon.forEach(mathmon => {
+                const distance = Math.sqrt(
+                    Math.pow(playerPosition.x - mathmon.x, 2) + 
+                    Math.pow(playerPosition.y - mathmon.y, 2)
+                );
+                if (distance < 5) {
+                    catchPokemon(mathmon.pokemon.id);
+                }
+            });
+        }
+
+        // MathMon fangen
+        function catchPokemon(pokemonId) {
+            const pokemon = mathPokemon.find(p => p.id === pokemonId);
+            if (!pokemon) return;
+            
+            currentMathMon = pokemon;
+            currentQuestion = pokemon.questions[Math.floor(Math.random() * pokemon.questions.length)];
+            
+            document.getElementById('modalTitle').textContent = `${pokemon.name} gefangen!`;
+            document.getElementById('questionText').textContent = currentQuestion.question;
+            document.getElementById('answerInput').value = '';
+            
+            document.getElementById('catchModal').style.display = 'block';
+            document.getElementById('answerInput').focus();
+            
+            // MathMon entfernen
+            const mathmonData = spawnedMathMon.find(m => m.pokemon.id === pokemonId);
+            if (mathmonData && mathmonData.element) {
+                mathmonData.element.remove();
+                spawnedMathMon = spawnedMathMon.filter(m => m.id !== mathmonData.id);
+            }
+        }
+
+        // Antwort einreichen
+        function submitAnswer() {
+            const userAnswer = parseFloat(document.getElementById('answerInput').value);
+            const correctAnswer = currentQuestion.answer;
+            
+            playerData.totalAnswers++;
+            
+            if (Math.abs(userAnswer - correctAnswer) < 0.01) {
+                playerData.correctAnswers++;
+                playerData.totalCaught++;
+                playerData.totalXP += 10;
+                playerData.xp += 10;
+                
+                let levelUp = false;
+                if (playerData.xp >= playerData.xpToNext) {
+                    playerData.level++;
+                    playerData.xp -= playerData.xpToNext;
+                    playerData.xpToNext = Math.floor(playerData.xpToNext * 1.2);
+                    levelUp = true;
+                }
+                
+                closeModal();
+                showSuccessModal(levelUp);
+            } else {
+                alert(`Falsch! Die richtige Antwort ist ${correctAnswer}.`);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('catchModal').style.display = 'none';
+        }
+
+        function showSuccessModal(levelUp) {
+            if (levelUp) {
+                document.getElementById('xpGained').textContent = 'Level Up! 🚀';
+            }
+            document.getElementById('successModal').style.display = 'block';
+            updatePlayerStats();
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').style.display = 'none';
+        }
+
+        function updatePlayerStats() {
+            document.getElementById('playerLevel').textContent = playerData.level;
+            document.getElementById('totalCaught').textContent = playerData.totalCaught;
+            document.getElementById('totalXP').textContent = playerData.totalXP;
+            document.getElementById('streak').textContent = playerData.streak;
+            
+            const accuracy = playerData.totalAnswers > 0 ? 
+                Math.round((playerData.correctAnswers / playerData.totalAnswers) * 100) : 0;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            
+            const xpPercentage = (playerData.xp / playerData.xpToNext) * 100;
+            document.getElementById('xpFill').style.width = xpPercentage + '%';
+            document.getElementById('xpText').textContent = `${playerData.xp} / ${playerData.xpToNext} XP`;
+        }
+
+        // Enter-Taste für Antworten
+        document.getElementById('answerInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitAnswer();
+            }
+        });
+
+        // Spiel starten
+        initGame();
+    </script>
+</body>
+</html>
