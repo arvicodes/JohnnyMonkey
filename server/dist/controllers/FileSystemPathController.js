@@ -215,7 +215,9 @@ class FileSystemPathController {
                     // Convert DOCX to HTML using mammoth
                     const result = await mammoth_1.default.convertToHtml({ buffer: fileContent });
                     const html = result.value;
-                    const messages = result.messages;
+                    // Filter out Intense Quote warnings
+                    const messages = result.messages.filter(msg => !msg.message.includes('Intense Quote') &&
+                        !msg.message.includes('IntenseQuote'));
                     // Create a styled HTML preview
                     const styledHtml = `
             <html>
@@ -237,24 +239,13 @@ class FileSystemPathController {
                     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                     overflow: hidden;
                   }
-                  .preview-header { 
-                    background: #1976d2; 
-                    color: white; 
-                    padding: 15px 20px; 
-                    border-bottom: 1px solid #e0e0e0;
-                  }
-                  .preview-header h1 { 
-                    margin: 0; 
-                    font-size: 18px; 
-                    font-weight: 600;
-                  }
                   .preview-content { 
-                    padding: 30px; 
+                    padding: 10px; 
                     min-height: 400px;
                   }
                   .preview-content h1, .preview-content h2, .preview-content h3 { 
                     color: #1976d2; 
-                    margin-top: 25px; 
+                    margin-top: 5px; 
                     margin-bottom: 15px;
                   }
                   .preview-content p { 
@@ -294,13 +285,19 @@ class FileSystemPathController {
                     color: #856404; 
                     margin-bottom: 5px;
                   }
+                  .intense-quote {
+                    border-left: 4px solid #1976d2;
+                    padding-left: 15px;
+                    margin: 15px 0;
+                    font-style: italic;
+                    background-color: #f5f5f5;
+                    padding: 10px 15px;
+                    border-radius: 4px;
+                  }
                 </style>
               </head>
               <body>
                 <div class="preview-container">
-                  <div class="preview-header">
-                    <h1>📄 ${path_1.default.basename(filePath)}</h1>
-                  </div>
                   <div class="preview-content">
                     ${html}
                     ${messages.length > 0 ? `
@@ -436,7 +433,7 @@ class FileSystemPathController {
                     font-weight: 600;
                   }
                   .preview-content { 
-                    padding: 30px; 
+                    padding: 10px; 
                     min-height: 400px;
                   }
                   .sheet-container { 
@@ -568,31 +565,94 @@ class FileSystemPathController {
             if (!fileContent) {
                 return res.status(404).json({ error: 'File not found' });
             }
+            // PowerPoint-Dateien: Wenn preview=true, zeige Download-Seite
+            // Ansonsten: Direkter Download
             if (preview === 'true') {
-                // For preview, return a simple HTML representation
-                const html = `
-          <html>
-            <head>
-              <title>PowerPoint Preview</title>
-              <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .preview { border: 1px solid #ccc; padding: 20px; background: #f9f9f9; }
-              </style>
-            </head>
-            <body>
-              <div class="preview">
-                <h2>PowerPoint File Preview</h2>
-                <p><strong>File:</strong> ${path_1.default.basename(filePath)}</p>
-                <p><strong>Size:</strong> ${fileContent.length} bytes</p>
-                <p><em>Full PowerPoint preview not available. Download the file to view complete content.</em></p>
-                  </div>
-            </body>
-          </html>
-        `;
+                const fileName = path_1.default.basename(filePath);
+                const encodedPath = encodeURIComponent(filePath);
                 res.setHeader('Content-Type', 'text/html; charset=utf-8');
-                res.send(html);
+                res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <title>PowerPoint Viewer</title>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 600px;
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    .filename {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+      word-break: break-all;
+    }
+    .message {
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 30px;
+      font-size: 15px;
+    }
+    .download-btn {
+      display: inline-block;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📊</div>
+    <h1>PowerPoint-Präsentation</h1>
+    <div class="filename">${fileName}</div>
+    <div class="message">
+      PowerPoint-Dateien können nicht direkt im Browser angezeigt werden.<br>
+      Bitte laden Sie die Datei herunter und öffnen Sie sie mit PowerPoint oder einer anderen Office-Anwendung.
+    </div>
+    <a href="/api/file-system-paths/read-powerpoint?filePath=${encodedPath}" class="download-btn">
+      📥 Datei herunterladen
+    </a>
+  </div>
+</body>
+</html>`);
+                return;
             }
             else {
+                // PowerPoint-Dateien werden direkt heruntergeladen
                 res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
                 res.setHeader('Content-Disposition', `attachment; filename="${path_1.default.basename(filePath)}"`);
                 res.send(fileContent);
@@ -937,6 +997,16 @@ class FileSystemPathController {
                 const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
                 fullTargetPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
             }
+            else if (targetPath.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
+                // Handle already absolute paths
+                fullTargetPath = targetPath;
+            }
+            else if (targetPath.startsWith('git-intern//Users/')) {
+                // Handle double git-intern paths (fix for the bug)
+                const relativePath = decodeURIComponent(targetPath.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', ''));
+                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                fullTargetPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+            }
             else {
                 // Handle local paths
                 fullTargetPath = path_1.default.resolve(targetPath);
@@ -960,7 +1030,14 @@ class FileSystemPathController {
         }
         catch (error) {
             console.error('Error saving file:', error);
-            res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
+            // Handle specific Multer errors
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(413).json({ error: 'Datei ist zu groß. Maximale Größe: 50MB' });
+            }
+            if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+                return res.status(400).json({ error: 'Unerwartete Datei' });
+            }
+            res.status(500).json({ error: 'Fehler beim Speichern der Datei: ' + (error.message || 'Unbekannter Fehler') });
         }
     }
     /**

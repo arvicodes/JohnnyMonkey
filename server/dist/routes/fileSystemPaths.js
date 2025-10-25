@@ -11,7 +11,7 @@ const router = express_1.default.Router();
 const upload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
+        fileSize: 50 * 1024 * 1024 // 50MB limit for whiteboard files
     }
 });
 // Alle Pfade abrufen (für die Ordner-Zuordnung)

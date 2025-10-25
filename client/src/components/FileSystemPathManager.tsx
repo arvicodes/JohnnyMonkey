@@ -967,16 +967,23 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
             alert('Fehler beim Laden der Excel-Datei. Bitte versuchen Sie es erneut.');
           }
         } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
-          // PowerPoint-Dateien über den Server laden und als Vorschau anzeigen
+          // PowerPoint-Dateien direkt herunterladen
           try {
-            const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}&preview=true`);
+            const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}`);
             
             if (response.ok) {
-              const htmlContent = await response.text();
-              showFilePreviewModal(item.name, htmlContent, item.path, 'powerpoint');
+              const blob = await response.blob();
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = item.name;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
             } else {
-              console.error('PowerPoint-Vorschau konnte nicht geladen werden:', response.statusText);
-              alert('PowerPoint-Vorschau konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
+              console.error('PowerPoint-Datei konnte nicht heruntergeladen werden:', response.statusText);
+              alert('PowerPoint-Datei konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.');
             }
           } catch (error) {
             console.error('Fehler beim Laden der PowerPoint-Datei:', error);

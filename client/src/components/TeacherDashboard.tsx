@@ -1269,11 +1269,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     
     const content = document.createElement('div');
     
-    // Für PowerPoint-Dateien keinen Inhalt und keinen Rahmen anzeigen
+    // Für PowerPoint-Dateien den Inhalt anzeigen
     if (fileType === 'powerpoint') {
-      content.innerHTML = '';
+      content.innerHTML = htmlContent;
       content.style.cssText = `
-        padding: 0;
+        padding: 8px;
         margin: 0;
         border: none;
         background: transparent;
@@ -1282,6 +1282,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         font-size: 14px;
         line-height: 1.6;
         color: #333;
+        width: 100%;
+        box-sizing: border-box;
       `;
     } else {
       // Für andere Dateitypen den normalen Inhalt und Rahmen anzeigen
@@ -1797,16 +1799,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         alert('Excel-Vorschau konnte nicht geladen werden.');
       }
     } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
-      // PowerPoint-Vorschau über den bestehenden Endpunkt
+      // PowerPoint-Dateien direkt herunterladen
       try {
-        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}&preview=true`);
+        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}`);
         if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'powerpoint');
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = item.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
         }
       } catch (error) {
         console.error('Fehler beim Laden der PowerPoint-Datei:', error);
-        alert('PowerPoint-Vorschau konnte nicht geladen werden.');
+        alert('PowerPoint-Datei konnte nicht heruntergeladen werden.');
       }
     } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
       // Bild-Vorschau über den bestehenden Endpunkt

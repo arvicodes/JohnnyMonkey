@@ -603,30 +603,93 @@ export class FileSystemPathController {
         return res.status(404).json({ error: 'File not found' });
       }
       
+      // PowerPoint-Dateien: Wenn preview=true, zeige Download-Seite
+      // Ansonsten: Direkter Download
       if (preview === 'true') {
-        // For preview, return a simple HTML representation
-        const html = `
-          <html>
-            <head>
-              <title>PowerPoint Preview</title>
-              <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .preview { border: 1px solid #ccc; padding: 20px; background: #f9f9f9; }
-              </style>
-            </head>
-            <body>
-              <div class="preview">
-                <h2>PowerPoint File Preview</h2>
-                <p><strong>File:</strong> ${path.basename(filePath as string)}</p>
-                <p><strong>Size:</strong> ${fileContent.length} bytes</p>
-                <p><em>Full PowerPoint preview not available. Download the file to view complete content.</em></p>
-                  </div>
-            </body>
-          </html>
-        `;
+        const fileName = path.basename(filePath as string);
+        const encodedPath = encodeURIComponent(filePath as string);
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.send(html);
+        res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <title>PowerPoint Viewer</title>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 600px;
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    .filename {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+      word-break: break-all;
+    }
+    .message {
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 30px;
+      font-size: 15px;
+    }
+    .download-btn {
+      display: inline-block;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📊</div>
+    <h1>PowerPoint-Präsentation</h1>
+    <div class="filename">${fileName}</div>
+    <div class="message">
+      PowerPoint-Dateien können nicht direkt im Browser angezeigt werden.<br>
+      Bitte laden Sie die Datei herunter und öffnen Sie sie mit PowerPoint oder einer anderen Office-Anwendung.
+    </div>
+    <a href="/api/file-system-paths/read-powerpoint?filePath=${encodedPath}" class="download-btn">
+      📥 Datei herunterladen
+    </a>
+  </div>
+</body>
+</html>`);
+        return;
       } else {
+        // PowerPoint-Dateien werden direkt heruntergeladen
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
         res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath as string)}"`);
         res.send(fileContent);
