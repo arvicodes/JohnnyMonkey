@@ -15,7 +15,6 @@ import WhiteboardPage from './pages/WhiteboardPage';
 import JohnnyDemoPage from './pages/JohnnyDemoPage';
 import FlashcardStudyPage from './pages/FlashcardStudyPage';
 import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
-import EndlessWorldPage from './pages/EndlessWorldPage';
 
 import { Snackbar, Alert } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -193,7 +192,6 @@ function AppContent() {
         <Route path="/johnny-demo" element={<JohnnyDemoPage />} />
         <Route path="/flashcard-study" element={<FlashcardStudyPage />} />
         <Route path="/johnny" element={<JohnnyNavigationPage />} />
-        <Route path="/endless-world" element={<EndlessWorldPage />} />
 
       </Routes>
       

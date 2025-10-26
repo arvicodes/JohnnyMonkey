@@ -186,6 +186,11 @@ class FileSystemPathController {
                 return res.status(400).json({ error: 'filePath is required' });
             }
             console.log('Reading HTML file:', filePath);
+            // Spezial-Behandlung für endless-world Spiel
+            if (filePath.includes('endless-world/index.html')) {
+                // Redirect zur App-Route statt direkt die Datei zu öffnen
+                return res.redirect(302, '/endless-world');
+            }
             const fileContent = await storageManager_1.StorageManager.readFile(filePath);
             if (!fileContent) {
                 return res.status(404).json({ error: 'File not found' });

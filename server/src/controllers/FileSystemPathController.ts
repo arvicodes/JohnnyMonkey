@@ -199,12 +199,6 @@ export class FileSystemPathController {
 
       console.log('Reading HTML file:', filePath);
 
-      // Spezial-Behandlung für endless-world Spiel
-      if ((filePath as string).includes('endless-world/index.html')) {
-        // Redirect zur App-Route statt direkt die Datei zu öffnen
-        return res.redirect(302, '/endless-world');
-      }
-
       const fileContent = await StorageManager.readFile(filePath as string);
       
       if (!fileContent) {

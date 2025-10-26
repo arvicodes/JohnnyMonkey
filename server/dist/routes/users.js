@@ -27,6 +27,29 @@ const getAllUsers = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
+// Get current user (myself)
+const getCurrentUser = async (req, res) => {
+    try {
+        // req.user is set by authenticateUser middleware
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: {
+                id: true,
+                name: true,
+                role: true,
+                loginCode: true,
+                avatarEmoji: true
+            }
+        });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user);
+    }
+    catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
 // Get a single user by ID
 const getUserById = async (req, res) => {
     try {
@@ -108,6 +131,7 @@ const updateUserAvatarEmoji = async (req, res) => {
     }
 };
 router.get('/', auth_1.authenticateUser, auth_1.requireTeacher, getAllUsers);
+router.get('/me', auth_1.authenticateUser, getCurrentUser);
 router.get('/:id', auth_1.authenticateUser, getUserById);
 router.put('/:id/avatar-emoji', auth_1.authenticateUser, updateUserAvatarEmoji);
 router.get('/teacher/:id/groups', auth_1.authenticateUser, auth_1.requireTeacher, getTeacherGroups);
