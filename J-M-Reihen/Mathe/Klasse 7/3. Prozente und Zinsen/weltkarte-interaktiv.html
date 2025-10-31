@@ -221,6 +221,7 @@
             display: inline-block !important;
             visibility: visible !important;
             opacity: 1 !important;
+            transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
         }
 
         /* Lauf-Animation für die Figur - subtile vertikale Bewegung */
@@ -1059,19 +1060,19 @@
                         emojiElement.style.willChange = 'transform';
                         emojiElement.style.animationPlayState = 'running';
                         
-                        // Wechsle Emojis für Beinbewegung - verschiedene Geh-Varianten
-                        // Diese Emojis zeigen unterschiedliche Beinpositionen
+                        // Wechsle Emojis für Beinbewegung - alle mit ähnlicher blauer Kleidung
+                        // Diese Emojis zeigen unterschiedliche Beinpositionen beim Gehen
                         const walkingFrames = [
-                            '🚶',      // Standard Gehen
-                            '🚶‍♂️',     // Männlich Gehen
+                            '🚶',      // Standard Gehen (neutral)
+                            '🚶‍♂️',     // Männlich Gehen (gleiche Kleidung)
                             '🚶',      // Zurück zu Standard
                             '🚶‍♂️'      // Wieder männlich
                         ];
                         
                         let frameIndex = 0;
                         
-                        // Wechsle Emoji alle 200ms für flüssige Beinbewegung
-                        walkingEmojiInterval = setInterval(() => {
+                        // Morphing-Funktion für flüssigen Übergang
+                        function morphToNextEmoji() {
                             if (!walkMode || !emojiElement || !iconElement.parentElement) {
                                 if (walkingEmojiInterval) {
                                     clearInterval(walkingEmojiInterval);
@@ -1080,9 +1081,25 @@
                                 return;
                             }
                             
-                            frameIndex = (frameIndex + 1) % walkingFrames.length;
-                            emojiElement.textContent = walkingFrames[frameIndex];
-                        }, 200); // 200ms = 5 Frames pro Sekunde für natürliche Beinbewegung
+                            // Fade-out für flüssigen Übergang
+                            emojiElement.style.opacity = '0.3';
+                            emojiElement.style.transform = 'scale(0.95)';
+                            
+                            setTimeout(() => {
+                                if (!walkMode || !emojiElement) return;
+                                
+                                // Wechsle zum nächsten Frame
+                                frameIndex = (frameIndex + 1) % walkingFrames.length;
+                                emojiElement.textContent = walkingFrames[frameIndex];
+                                
+                                // Fade-in für flüssigen Übergang
+                                emojiElement.style.opacity = '1';
+                                emojiElement.style.transform = 'scale(1)';
+                            }, 75); // Hälfte der Transition-Zeit für flüssiges Morphing
+                        }
+                        
+                        // Wechsle Emoji alle 250ms mit Morphing für flüssige Beinbewegung
+                        walkingEmojiInterval = setInterval(morphToNextEmoji, 250);
                     }
                 }
             }, 10);
