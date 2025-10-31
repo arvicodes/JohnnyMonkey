@@ -224,22 +224,23 @@
         }
 
         /* Lauf-Animation für die Figur - nur auf das innere Element */
-        .player-character.walking .walking-emoji {
-            animation: walkAnimation 0.6s ease-in-out infinite;
+        .player-character.walking .walking-emoji,
+        .walking-emoji[style*="animation"] {
+            animation: walkAnimation 0.5s ease-in-out infinite !important;
         }
 
         @keyframes walkAnimation {
             0%, 100% {
-                transform: translateY(0px) rotate(0deg) scale(1);
+                transform: translateY(0px) rotate(0deg);
             }
             25% {
-                transform: translateY(-4px) rotate(-3deg) scale(1.05);
+                transform: translateY(-5px) rotate(-5deg);
             }
             50% {
-                transform: translateY(0px) rotate(0deg) scale(1);
+                transform: translateY(0px) rotate(0deg);
             }
             75% {
-                transform: translateY(-4px) rotate(3deg) scale(1.05);
+                transform: translateY(-5px) rotate(5deg);
             }
         }
 
@@ -1055,6 +1056,20 @@
                 keyboard: false,
                 zIndexOffset: 1000
             }).addTo(map);
+            
+            // Stelle sicher, dass die Animation aktiv ist, wenn Laufmodus aktiv ist
+            if (walkMode) {
+                setTimeout(() => {
+                    const iconElement = playerMarker._icon;
+                    if (iconElement) {
+                        iconElement.classList.add('walking');
+                        const emojiElement = iconElement.querySelector('.walking-emoji');
+                        if (emojiElement) {
+                            emojiElement.style.animation = 'walkAnimation 0.6s ease-in-out infinite';
+                        }
+                    }
+                }, 10);
+            }
         }
 
         function movePlayer(direction) {
@@ -1094,11 +1109,9 @@
                 playerMarker.setLatLng(playerPosition);
             }
             
-            // Sanfte, flüssige Kartenbewegung mit Animation
+            // Flüssige Kartenbewegung ohne Animation für direkte Steuerung
             map.panTo(playerPosition, { 
-                animate: true,
-                duration: 0.3, // Sanfte Animation für flüssige Bewegung
-                easeLinearity: 0.25
+                animate: false
             });
             
             stepCount += 1; // 1 Schritt pro Bewegung
@@ -1150,11 +1163,9 @@
                 playerMarker.setLatLng(playerPosition);
             }
             
-            // Sanfte, flüssige Kartenbewegung mit Animation
+            // Flüssige Kartenbewegung ohne Animation für direkte Steuerung
             map.panTo(playerPosition, { 
-                animate: true,
-                duration: 0.3, // Sanfte Animation für flüssige Bewegung
-                easeLinearity: 0.25
+                animate: false
             });
             
             stepCount += 1; // 1 Schritt pro Bewegung
