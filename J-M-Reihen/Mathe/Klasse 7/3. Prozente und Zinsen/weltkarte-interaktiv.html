@@ -223,7 +223,7 @@
             opacity: 1 !important;
         }
 
-        /* Lauf-Animation für die Figur - sichtbare Gehbewegung */
+        /* Lauf-Animation für die Figur - flüssige Gehbewegung */
         .player-character.walking .walking-emoji,
         .walking-emoji[style*="animation"] {
             animation: walkAnimation 0.6s ease-in-out infinite !important;
@@ -232,17 +232,38 @@
         }
 
         @keyframes walkAnimation {
-            0%, 100% {
-                transform: translateY(0px) translateX(0px);
+            0% {
+                transform: translateY(0px);
             }
-            25% {
-                transform: translateY(-4px) translateX(1px);
+            10% {
+                transform: translateY(-1px);
+            }
+            20% {
+                transform: translateY(-1.5px);
+            }
+            30% {
+                transform: translateY(-1px);
+            }
+            40% {
+                transform: translateY(0px);
             }
             50% {
-                transform: translateY(0px) translateX(0px);
+                transform: translateY(-1px);
             }
-            75% {
-                transform: translateY(-4px) translateX(-1px);
+            60% {
+                transform: translateY(-1.5px);
+            }
+            70% {
+                transform: translateY(-1px);
+            }
+            80% {
+                transform: translateY(0px);
+            }
+            90% {
+                transform: translateY(-0.5px);
+            }
+            100% {
+                transform: translateY(0px);
             }
         }
 
@@ -1047,9 +1068,10 @@
                     iconElement.classList.add('walking');
                     const emojiElement = iconElement.querySelector('.walking-emoji');
                     if (emojiElement) {
-                        // Aktiviere sichtbare Lauf-Animation
+                        // Aktiviere flüssige Lauf-Animation
                         emojiElement.style.animation = 'walkAnimation 0.6s ease-in-out infinite';
                         emojiElement.style.willChange = 'transform';
+                        emojiElement.style.animationPlayState = 'running';
                     }
                 }
             }, 10);
