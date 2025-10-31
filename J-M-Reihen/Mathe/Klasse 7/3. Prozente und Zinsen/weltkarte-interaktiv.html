@@ -216,6 +216,46 @@
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
 
+        /* Lauf-Animation für die Figur */
+        .player-character.walking {
+            animation: walkAnimation 0.6s ease-in-out infinite;
+        }
+
+        @keyframes walkAnimation {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-3px) rotate(-2deg);
+            }
+            50% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            75% {
+                transform: translateY(-3px) rotate(2deg);
+            }
+        }
+
+        /* Zusätzliche Animation für den Emoji-Wechsel beim Laufen */
+        .player-character.walking .walking-emoji {
+            animation: emojiWalk 0.6s ease-in-out infinite;
+        }
+
+        @keyframes emojiWalk {
+            0%, 100% {
+                transform: scale(1) rotate(0deg);
+            }
+            25% {
+                transform: scale(1.1) rotate(-5deg);
+            }
+            50% {
+                transform: scale(1) rotate(0deg);
+            }
+            75% {
+                transform: scale(1.1) rotate(5deg);
+            }
+        }
+
         /* Walk-Controls sind jetzt im Hauptmenü */
         .walk-mode-section {
             display: none;
@@ -404,9 +444,6 @@
             <div style="display: flex; gap: 3px; align-items: center;">
                 <input type="text" id="searchLocation" placeholder="z.B. München, Hamburg" style="flex: 1;">
                 <button onclick="searchLocation()" style="width: auto; padding: 4px 8px; white-space: nowrap;">Suchen</button>
-            </div>
-            <div style="font-size: 10px; color: #666; margin-top: 2px; line-height: 1.2;">
-                💡 Tipp: "Stadt, Land" für bessere Ergebnisse
             </div>
         </div>
 
@@ -1015,10 +1052,13 @@
                 map.removeLayer(playerMarker);
             }
             
+            // Füge "walking" Klasse hinzu, wenn Laufmodus aktiv ist
+            const walkingClass = walkMode ? ' walking' : '';
+            
             playerMarker = L.marker(playerPosition, {
                 icon: L.divIcon({
-                    className: 'player-character',
-                    html: '<div style="font-size: 24px;">🚶</div>',
+                    className: 'player-character' + walkingClass,
+                    html: '<div class="walking-emoji" style="font-size: 24px;">🚶</div>',
                     iconSize: [30, 30],
                     iconAnchor: [15, 15]
                 }),
