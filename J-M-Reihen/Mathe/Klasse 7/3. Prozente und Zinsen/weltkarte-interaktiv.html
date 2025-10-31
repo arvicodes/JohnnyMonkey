@@ -122,14 +122,20 @@
             line-height: 1.5;
         }
 
+        .layers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+        }
+
         .layer-toggle {
             display: flex;
             align-items: center;
-            margin: 1px 0;
-            font-size: 10px;
-            padding: 2px 4px;
-            border-radius: 4px;
+            font-size: 8px;
+            padding: 2px 3px;
+            border-radius: 3px;
             transition: background 0.2s;
+            white-space: nowrap;
         }
 
         .layer-toggle:hover {
@@ -137,15 +143,15 @@
         }
 
         .layer-toggle input[type="checkbox"] {
-            margin-right: 5px;
-            transform: scale(0.9);
+            margin-right: 3px;
+            transform: scale(0.8);
             cursor: pointer;
         }
 
         .layer-toggle label {
             margin: 0;
             font-weight: normal;
-            font-size: 10px;
+            font-size: 8px;
             cursor: pointer;
             user-select: none;
         }
@@ -407,21 +413,23 @@
 
         <div class="control-group">
             <label>Ebenen:</label>
-            <div class="layer-toggle">
-                <input type="checkbox" id="countries" checked>
-                <label for="countries">Länder</label>
-            </div>
-            <div class="layer-toggle">
-                <input type="checkbox" id="cities" checked>
-                <label for="cities">Große Städte</label>
-            </div>
-            <div class="layer-toggle">
-                <input type="checkbox" id="rivers">
-                <label for="rivers">Flüsse</label>
-            </div>
-            <div class="layer-toggle">
-                <input type="checkbox" id="mountains">
-                <label for="mountains">Berge</label>
+            <div class="layers-grid">
+                <div class="layer-toggle">
+                    <input type="checkbox" id="countries" checked>
+                    <label for="countries">Länder</label>
+                </div>
+                <div class="layer-toggle">
+                    <input type="checkbox" id="cities" checked>
+                    <label for="cities">Städte</label>
+                </div>
+                <div class="layer-toggle">
+                    <input type="checkbox" id="rivers">
+                    <label for="rivers">Flüsse</label>
+                </div>
+                <div class="layer-toggle">
+                    <input type="checkbox" id="mountains">
+                    <label for="mountains">Berge</label>
+                </div>
             </div>
         </div>
 
@@ -445,7 +453,7 @@
         <div class="control-group">
             <button onclick="toggleWalkMode()" id="walkModeBtn">🚶 Laufmodus</button>
             <div style="font-size: 8px; color: #666; margin-top: 2px; line-height: 1.2;">
-                💡 Auto: Street-View + Zoom 19
+                💡 Auto: Stadt + Street-View
             </div>
         </div>
 
@@ -923,9 +931,11 @@
                 currentLayers.base.street.addTo(map);
                 document.getElementById('mapStyle').value = 'street';
                 
-                // Automatisch auf optimales Zoom-Level für realistisches Laufen zoomen
-                const currentCenter = map.getCenter();
-                map.setView(currentCenter, 19, {
+                // Wähle eine zufällige Stadt für den Start
+                const randomCity = worldData.cities[Math.floor(Math.random() * worldData.cities.length)];
+                
+                // Fliege zur Stadt und zoome auf Level 19
+                map.setView([randomCity.lat, randomCity.lng], 19, {
                     animate: true,
                     duration: 1.5
                 });
@@ -936,14 +946,14 @@
                     btn.classList.add('walk-mode-active');
                     walkSection.classList.add('active');
                     
-                    playerPosition = [currentCenter.lat, currentCenter.lng];
+                    playerPosition = [randomCity.lat, randomCity.lng];
                     createPlayerMarker();
                     
                     document.addEventListener('keydown', handleKeyDown);
                     document.addEventListener('keyup', handleKeyUp);
                     
-                    // Info über realistischen Laufmodus anzeigen
-                    showWalkModeInfo();
+                    // Info über realistischen Laufmodus anzeigen mit Stadt-Info
+                    showWalkModeInfo(randomCity.name, randomCity.country);
                 }, 1500);
                 
             } else {
@@ -963,14 +973,15 @@
             }
         }
 
-        function showWalkModeInfo() {
+        function showWalkModeInfo(cityName, country) {
             const info = `
                 <div class="custom-popup">
                     <div class="popup-title">🚶 Realistischer Laufmodus aktiviert!</div>
                     <div class="popup-content">
+                        <strong>📍 Standort:</strong> ${cityName}, ${country}<br>
                         <strong>Zoom-Level:</strong> 19 (optimal für Laufen)<br>
                         <strong>Schrittweite:</strong> ~7 Meter pro Pfeiltaste<br>
-                        <strong>Steuerung:</strong> Pfeiltasten oder WASD<br>
+                        <strong>Steuerung:</strong> Pfeiltasten<br>
                         <strong>Realität:</strong> 1 Tastendruck = 10 Schritte<br><br>
                         💡 <em>Sie können jetzt realistisch durch die Straßen laufen!</em>
                     </div>
