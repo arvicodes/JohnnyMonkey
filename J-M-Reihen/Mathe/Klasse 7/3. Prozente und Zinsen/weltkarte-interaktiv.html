@@ -460,6 +460,10 @@
                 Breitengrad: 0°<br>
                 Längengrad: 0°
             </div>
+            <div id="locationInfo" style="font-size: 8px; padding: 3px; margin: 3px 0; background: #f0f4f8; border-radius: 3px; display: none;">
+                <div style="font-weight: bold; color: #667eea; margin-bottom: 2px;" id="locationName">Lade...</div>
+                <div style="font-size: 7px; color: #666; line-height: 1.3;" id="locationFacts"></div>
+            </div>
             <div class="stats" id="stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 3px;">
                 <div class="stat-item" style="background: #f8f9fa; padding: 3px; border-radius: 3px; text-align: center;">
                     <div class="stat-value" id="zoomLevel" style="font-size: 11px; font-weight: bold; color: #667eea;">1</div>
@@ -524,6 +528,7 @@
         let lastStepTime = 0;
         let pressedKeys = {}; // Für kontinuierliches Laufen bei gedrückt gehaltener Taste
         let movementAnimationFrame = null; // Animation Frame für flüssige Bewegung
+        let lastLocationUpdate = 0; // Throttling für Ortsinformationen
 
         // Karte initialisieren
         function initMap() {
@@ -1216,8 +1221,112 @@
             updateInfo();
         }
 
+        // Funktion zur Berechnung der Entfernung zwischen zwei Koordinaten
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Radius der Erde in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // Funktion zum Abrufen von Ortsinformationen
+        async function updateLocationInfo(lat, lng) {
+            const locationInfoDiv = document.getElementById('locationInfo');
+            const locationNameDiv = document.getElementById('locationName');
+            const locationFactsDiv = document.getElementById('locationFacts');
+            
+            // Zuerst prüfen, ob wir nahe einer bekannten Stadt sind
+            let nearestCity = null;
+            let minDistance = Infinity;
+            
+            worldData.cities.forEach(city => {
+                const distance = getDistance(lat, lng, city.lat, city.lng);
+                if (distance < minDistance && distance < 50) { // Innerhalb von 50km
+                    minDistance = distance;
+                    nearestCity = city;
+                }
+            });
+            
+            // Falls keine Stadt gefunden, prüfe Länder
+            let nearestCountry = null;
+            if (!nearestCity) {
+                worldData.countries.forEach(country => {
+                    const distance = getDistance(lat, lng, country.lat, country.lng);
+                    if (distance < minDistance && distance < 500) { // Innerhalb von 500km
+                        minDistance = distance;
+                        nearestCountry = country;
+                    }
+                });
+            }
+            
+            if (nearestCity) {
+                // Zeige Stadt-Informationen
+                locationNameDiv.textContent = `🏙️ ${nearestCity.name}`;
+                locationFactsDiv.innerHTML = `
+                    <strong>Land:</strong> ${nearestCity.country}<br>
+                    <strong>Einwohner:</strong> ${nearestCity.population}<br>
+                    <strong>Entfernung:</strong> ${Math.round(minDistance)} km
+                `;
+                locationInfoDiv.style.display = 'block';
+            } else if (nearestCountry) {
+                // Zeige Länder-Informationen
+                locationNameDiv.textContent = `🏛️ ${nearestCountry.name}`;
+                locationFactsDiv.innerHTML = `
+                    <strong>Hauptstadt:</strong> ${nearestCountry.capital}<br>
+                    <strong>Einwohner:</strong> ${nearestCountry.population}<br>
+                    <strong>Entfernung:</strong> ${Math.round(minDistance)} km
+                `;
+                locationInfoDiv.style.display = 'block';
+            } else {
+                // Verwende Reverse Geocoding API für unbekannte Orte
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`);
+                    const data = await response.json();
+                    
+                    if (data && data.address) {
+                        const address = data.address;
+                        let locationName = '';
+                        let facts = [];
+                        
+                        // Baue Ortsname zusammen
+                        if (address.city) {
+                            locationName = `🏙️ ${address.city}`;
+                            if (address.state) facts.push(`Region: ${address.state}`);
+                            if (address.country) facts.push(`Land: ${address.country}`);
+                        } else if (address.town) {
+                            locationName = `🏘️ ${address.town}`;
+                            if (address.state) facts.push(`Region: ${address.state}`);
+                            if (address.country) facts.push(`Land: ${address.country}`);
+                        } else if (address.village) {
+                            locationName = `🏘️ ${address.village}`;
+                            if (address.state) facts.push(`Region: ${address.state}`);
+                            if (address.country) facts.push(`Land: ${address.country}`);
+                        } else if (address.country) {
+                            locationName = `🌍 ${address.country}`;
+                            if (address.state) facts.push(`Region: ${address.state}`);
+                        } else {
+                            locationName = '🌍 Unbekannter Ort';
+                        }
+                        
+                        locationNameDiv.textContent = locationName;
+                        locationFactsDiv.innerHTML = facts.length > 0 ? facts.join('<br>') : 'Koordinatenbereich';
+                        locationInfoDiv.style.display = 'block';
+                    } else {
+                        locationInfoDiv.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Fehler beim Abrufen der Ortsinformationen:', error);
+                    locationInfoDiv.style.display = 'none';
+                }
+            }
+        }
+
         // Info Panel aktualisieren
-        function updateInfo() {
+        async function updateInfo() {
             const center = map.getCenter();
             const zoom = map.getZoom();
             
@@ -1231,6 +1340,13 @@
             if (lastClickPosition) {
                 const distance = map.distance(lastClickPosition, center);
                 document.getElementById('distance').textContent = `${Math.round(distance / 1000)} km`;
+            }
+            
+            // Ortsinformationen aktualisieren (mit Throttling: max. alle 2 Sekunden)
+            const now = Date.now();
+            if (now - lastLocationUpdate > 2000) {
+                lastLocationUpdate = now;
+                await updateLocationInfo(center.lat, center.lng);
             }
         }
 
