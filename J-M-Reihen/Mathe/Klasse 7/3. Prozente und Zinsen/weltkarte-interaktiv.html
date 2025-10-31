@@ -223,31 +223,26 @@
             opacity: 1 !important;
         }
 
-        /* Lauf-Animation für die Figur - subtile Gehbewegung */
+        /* Lauf-Animation für die Figur - sichtbare Gehbewegung */
         .player-character.walking .walking-emoji,
         .walking-emoji[style*="animation"] {
-            animation: walkAnimation 0.8s ease-in-out infinite !important;
+            animation: walkAnimation 0.6s ease-in-out infinite !important;
             transform-origin: center bottom;
+            will-change: transform;
         }
 
         @keyframes walkAnimation {
-            0% {
+            0%, 100% {
                 transform: translateY(0px) translateX(0px);
             }
-            20% {
-                transform: translateY(-2px) translateX(0.5px);
+            25% {
+                transform: translateY(-4px) translateX(1px);
             }
-            40% {
+            50% {
                 transform: translateY(0px) translateX(0px);
             }
-            60% {
-                transform: translateY(-2px) translateX(-0.5px);
-            }
-            80% {
-                transform: translateY(0px) translateX(0px);
-            }
-            100% {
-                transform: translateY(0px) translateX(0px);
+            75% {
+                transform: translateY(-4px) translateX(-1px);
             }
         }
 
@@ -1042,6 +1037,24 @@
             }, 5000);
         }
 
+        // Helper-Funktion um Animation zu aktivieren
+        function activateWalkingAnimation() {
+            if (!walkMode || !playerMarker) return;
+            
+            setTimeout(() => {
+                const iconElement = playerMarker._icon;
+                if (iconElement) {
+                    iconElement.classList.add('walking');
+                    const emojiElement = iconElement.querySelector('.walking-emoji');
+                    if (emojiElement) {
+                        // Aktiviere sichtbare Lauf-Animation
+                        emojiElement.style.animation = 'walkAnimation 0.6s ease-in-out infinite';
+                        emojiElement.style.willChange = 'transform';
+                    }
+                }
+            }, 10);
+        }
+
         function createPlayerMarker() {
             if (playerMarker) {
                 map.removeLayer(playerMarker);
@@ -1064,20 +1077,8 @@
                 zIndexOffset: 1000
             }).addTo(map);
             
-            // Stelle sicher, dass die Animation aktiv ist, wenn Laufmodus aktiv ist
-            if (walkMode) {
-                setTimeout(() => {
-                    const iconElement = playerMarker._icon;
-                    if (iconElement) {
-                        iconElement.classList.add('walking');
-                        const emojiElement = iconElement.querySelector('.walking-emoji');
-                        if (emojiElement) {
-                            // Aktiviere sanfte Lauf-Animation ohne Emoji-Wechsel
-                            emojiElement.style.animation = 'walkAnimation 0.8s ease-in-out infinite';
-                        }
-                    }
-                }, 10);
-            }
+            // Aktiviere Animation wenn Laufmodus aktiv ist
+            activateWalkingAnimation();
         }
 
         function movePlayer(direction) {
@@ -1115,6 +1116,8 @@
             // Marker-Position aktualisieren
             if (playerMarker) {
                 playerMarker.setLatLng(playerPosition);
+                // Stelle sicher, dass Animation aktiv bleibt
+                activateWalkingAnimation();
             }
             
             // Flüssige Kartenbewegung ohne Animation für direkte Steuerung
@@ -1169,6 +1172,8 @@
             // Marker-Position aktualisieren
             if (playerMarker) {
                 playerMarker.setLatLng(playerPosition);
+                // Stelle sicher, dass Animation aktiv bleibt
+                activateWalkingAnimation();
             }
             
             // Flüssige Kartenbewegung ohne Animation für direkte Steuerung
