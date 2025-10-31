@@ -1062,6 +1062,64 @@
             updateWalkStats();
         }
 
+        // Funktion für kombinierte diagonale Bewegung
+        function movePlayerCombined() {
+            if (!walkMode || !playerPosition) return;
+
+            const now = Date.now();
+            // Langsamere, flüssigere Bewegung
+            if (now - lastStepTime < 100) return; // Maximal 10 Bewegungen pro Sekunde
+            lastStepTime = now;
+
+            // Kleinere, langsamere Schrittweite für flüssigere Bewegung
+            const stepSize = 0.000018; // ~2 Meter pro Schritt
+            
+            let newLat = playerPosition[0];
+            let newLng = playerPosition[1];
+            let moved = false;
+
+            // Kombiniere alle gedrückten Richtungen für diagonale Bewegung
+            if (pressedKeys['up']) {
+                newLat += stepSize;
+                moved = true;
+            }
+            if (pressedKeys['down']) {
+                newLat -= stepSize;
+                moved = true;
+            }
+            if (pressedKeys['left']) {
+                newLng -= stepSize;
+                moved = true;
+            }
+            if (pressedKeys['right']) {
+                newLng += stepSize;
+                moved = true;
+            }
+
+            if (!moved) return;
+
+            playerPosition = [newLat, newLng];
+            
+            // Marker-Position aktualisieren
+            if (playerMarker) {
+                playerMarker.setLatLng(playerPosition);
+            }
+            
+            // Sanfte, flüssige Kartenbewegung mit Animation
+            map.panTo(playerPosition, { 
+                animate: true,
+                duration: 0.3, // Sanfte Animation für flüssige Bewegung
+                easeLinearity: 0.25
+            });
+            
+            stepCount += 1; // 1 Schritt pro Bewegung
+            // Für diagonale Bewegung: Entfernung ist √2 * Schrittweite ≈ 1.41 * 2m ≈ 2.8m
+            const distance = Object.keys(pressedKeys).length > 1 ? 2.8 : 2;
+            totalDistance += distance;
+            
+            updateWalkStats();
+        }
+
         function handleKeyDown(e) {
             if (!walkMode) return;
             
@@ -1084,7 +1142,8 @@
             
             if (direction && !pressedKeys[direction]) {
                 pressedKeys[direction] = true;
-                movePlayer(direction);
+                // Sofortige Bewegung bei erstem Tastendruck
+                movePlayerCombined();
                 startContinuousMovement();
             }
         }
@@ -1123,10 +1182,8 @@
                 const now = Date.now();
                 // Begrenze auf maximal 10 FPS für langsamere Bewegung
                 if (now - lastFrameTime >= 100) {
-                    // Bewegt sich in alle gedrückten Richtungen
-                    Object.keys(pressedKeys).forEach(direction => {
-                        movePlayer(direction);
-                    });
+                    // Verwende kombinierte Bewegung für diagonale Richtungen
+                    movePlayerCombined();
                     lastFrameTime = now;
                 }
                 
