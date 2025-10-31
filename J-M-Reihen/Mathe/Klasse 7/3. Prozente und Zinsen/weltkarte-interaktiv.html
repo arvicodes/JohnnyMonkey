@@ -524,7 +524,6 @@
         let lastStepTime = 0;
         let pressedKeys = {}; // Für kontinuierliches Laufen bei gedrückt gehaltener Taste
         let movementAnimationFrame = null; // Animation Frame für flüssige Bewegung
-        let isPanning = false; // Verhindert überlappende Pan-Animationen
 
         // Karte initialisieren
         function initMap() {
@@ -1014,56 +1013,51 @@
         }
 
         function movePlayer(direction) {
-            if (!walkMode || !playerPosition || isPanning) return;
+            if (!walkMode || !playerPosition) return;
 
             const now = Date.now();
-            // Flüssigere Bewegung mit höherer Frequenz
-            if (now - lastStepTime < 16) return; // ~60 FPS für flüssige Bewegung
+            // Langsamere, flüssigere Bewegung
+            if (now - lastStepTime < 100) return; // Maximal 10 Bewegungen pro Sekunde
             lastStepTime = now;
 
-            // Realistische Schrittweite: 10 Schritte = ~7 Meter
-            // Bei Zoom-Level 19: 1 Grad ≈ 111 km, also 7m ≈ 0.000063 Grad
-            const realisticStepSize = 0.000063; // 7 Meter in Grad
+            // Kleinere, langsamere Schrittweite für flüssigere Bewegung
+            // Bei Zoom-Level 19: 1 Grad ≈ 111 km, also 2m ≈ 0.000018 Grad
+            const stepSize = 0.000018; // ~2 Meter pro Schritt für langsamere Bewegung
             
             let newLat = playerPosition[0];
             let newLng = playerPosition[1];
 
             switch (direction) {
                 case 'up':
-                    newLat += realisticStepSize;
+                    newLat += stepSize;
                     break;
                 case 'down':
-                    newLat -= realisticStepSize;
+                    newLat -= stepSize;
                     break;
                 case 'left':
-                    newLng -= realisticStepSize;
+                    newLng -= stepSize;
                     break;
                 case 'right':
-                    newLng += realisticStepSize;
+                    newLng += stepSize;
                     break;
             }
 
             playerPosition = [newLat, newLng];
             
-            // Sofortige Marker-Position aktualisieren (keine Animation für Marker)
+            // Marker-Position aktualisieren
             if (playerMarker) {
                 playerMarker.setLatLng(playerPosition);
             }
             
-            // Flüssigere Kartenbewegung ohne Animation für direkte Steuerung
-            isPanning = true;
+            // Sanfte, flüssige Kartenbewegung mit Animation
             map.panTo(playerPosition, { 
-                animate: false, // Keine Animation für flüssigere Steuerung
-                duration: 0
+                animate: true,
+                duration: 0.3, // Sanfte Animation für flüssige Bewegung
+                easeLinearity: 0.25
             });
             
-            // Reset Pan-Flag nach kurzer Verzögerung
-            setTimeout(() => {
-                isPanning = false;
-            }, 10);
-            
-            stepCount += 10; // 10 Schritte pro Bewegung
-            totalDistance += 7; // 7 Meter pro Bewegung
+            stepCount += 1; // 1 Schritt pro Bewegung
+            totalDistance += 2; // 2 Meter pro Bewegung
             
             updateWalkStats();
         }
@@ -1118,16 +1112,23 @@
         function startContinuousMovement() {
             if (movementAnimationFrame) return; // Bereits aktiv
             
+            let lastFrameTime = Date.now();
+            
             function animate() {
                 if (!walkMode || Object.keys(pressedKeys).length === 0) {
                     stopContinuousMovement();
                     return;
                 }
                 
-                // Bewegt sich in alle gedrückten Richtungen
-                Object.keys(pressedKeys).forEach(direction => {
-                    movePlayer(direction);
-                });
+                const now = Date.now();
+                // Begrenze auf maximal 10 FPS für langsamere Bewegung
+                if (now - lastFrameTime >= 100) {
+                    // Bewegt sich in alle gedrückten Richtungen
+                    Object.keys(pressedKeys).forEach(direction => {
+                        movePlayer(direction);
+                    });
+                    lastFrameTime = now;
+                }
                 
                 // Nächster Frame für flüssige Animation
                 movementAnimationFrame = requestAnimationFrame(animate);
