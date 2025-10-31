@@ -223,47 +223,20 @@
             opacity: 1 !important;
         }
 
-        /* Lauf-Animation für die Figur - flüssige Gehbewegung */
+        /* Lauf-Animation für die Figur - subtile vertikale Bewegung */
         .player-character.walking .walking-emoji,
         .walking-emoji[style*="animation"] {
-            animation: walkAnimation 0.6s ease-in-out infinite !important;
+            animation: walkBounce 0.5s ease-in-out infinite !important;
             transform-origin: center bottom;
             will-change: transform;
         }
 
-        @keyframes walkAnimation {
-            0% {
-                transform: translateY(0px);
-            }
-            10% {
-                transform: translateY(-1px);
-            }
-            20% {
-                transform: translateY(-1.5px);
-            }
-            30% {
-                transform: translateY(-1px);
-            }
-            40% {
+        @keyframes walkBounce {
+            0%, 100% {
                 transform: translateY(0px);
             }
             50% {
                 transform: translateY(-1px);
-            }
-            60% {
-                transform: translateY(-1.5px);
-            }
-            70% {
-                transform: translateY(-1px);
-            }
-            80% {
-                transform: translateY(0px);
-            }
-            90% {
-                transform: translateY(-0.5px);
-            }
-            100% {
-                transform: translateY(0px);
             }
         }
 
@@ -538,6 +511,7 @@
         let pressedKeys = {}; // Für kontinuierliches Laufen bei gedrückt gehaltener Taste
         let movementAnimationFrame = null; // Animation Frame für flüssige Bewegung
         let lastLocationUpdate = 0; // Throttling für Ortsinformationen
+        let walkingEmojiInterval = null; // Interval für Beinbewegung durch Emoji-Wechsel
 
         // Karte initialisieren
         function initMap() {
@@ -1020,6 +994,12 @@
                 btn.classList.remove('walk-mode-active');
                 walkSection.classList.remove('active');
                 
+                // Stoppe Emoji-Wechsel-Animation
+                if (walkingEmojiInterval) {
+                    clearInterval(walkingEmojiInterval);
+                    walkingEmojiInterval = null;
+                }
+                
                 if (playerMarker) {
                     map.removeLayer(playerMarker);
                     playerMarker = null;
@@ -1062,16 +1042,47 @@
         function activateWalkingAnimation() {
             if (!walkMode || !playerMarker) return;
             
+            // Stoppe vorheriges Interval falls vorhanden
+            if (walkingEmojiInterval) {
+                clearInterval(walkingEmojiInterval);
+                walkingEmojiInterval = null;
+            }
+            
             setTimeout(() => {
                 const iconElement = playerMarker._icon;
                 if (iconElement) {
                     iconElement.classList.add('walking');
                     const emojiElement = iconElement.querySelector('.walking-emoji');
                     if (emojiElement) {
-                        // Aktiviere flüssige Lauf-Animation
-                        emojiElement.style.animation = 'walkAnimation 0.6s ease-in-out infinite';
+                        // Aktiviere subtile vertikale Bewegung
+                        emojiElement.style.animation = 'walkBounce 0.5s ease-in-out infinite';
                         emojiElement.style.willChange = 'transform';
                         emojiElement.style.animationPlayState = 'running';
+                        
+                        // Wechsle Emojis für Beinbewegung - verschiedene Geh-Varianten
+                        // Diese Emojis zeigen unterschiedliche Beinpositionen
+                        const walkingFrames = [
+                            '🚶',      // Standard Gehen
+                            '🚶‍♂️',     // Männlich Gehen
+                            '🚶',      // Zurück zu Standard
+                            '🚶‍♂️'      // Wieder männlich
+                        ];
+                        
+                        let frameIndex = 0;
+                        
+                        // Wechsle Emoji alle 200ms für flüssige Beinbewegung
+                        walkingEmojiInterval = setInterval(() => {
+                            if (!walkMode || !emojiElement || !iconElement.parentElement) {
+                                if (walkingEmojiInterval) {
+                                    clearInterval(walkingEmojiInterval);
+                                    walkingEmojiInterval = null;
+                                }
+                                return;
+                            }
+                            
+                            frameIndex = (frameIndex + 1) % walkingFrames.length;
+                            emojiElement.textContent = walkingFrames[frameIndex];
+                        }, 200); // 200ms = 5 Frames pro Sekunde für natürliche Beinbewegung
                     }
                 }
             }, 10);
