@@ -447,10 +447,6 @@
         </div>
 
         <div class="control-group">
-            <button onclick="showWorldStats()">📊 Weltstatistiken</button>
-        </div>
-
-        <div class="control-group">
             <button onclick="toggleWalkMode()" id="walkModeBtn">🚶 Laufmodus</button>
             <div style="font-size: 8px; color: #666; margin-top: 2px; line-height: 1.2;">
                 💡 Auto: Stadt + Street-View
@@ -527,7 +523,8 @@
         let walkSpeed = 2;
         let lastStepTime = 0;
         let pressedKeys = {}; // Für kontinuierliches Laufen bei gedrückt gehaltener Taste
-        let movementInterval = null; // Intervall für kontinuierliche Bewegung
+        let movementAnimationFrame = null; // Animation Frame für flüssige Bewegung
+        let isPanning = false; // Verhindert überlappende Pan-Animationen
 
         // Karte initialisieren
         function initMap() {
@@ -1017,11 +1014,11 @@
         }
 
         function movePlayer(direction) {
-            if (!walkMode || !playerPosition) return;
+            if (!walkMode || !playerPosition || isPanning) return;
 
             const now = Date.now();
-            // Schnellere Reaktionszeit für flüssigere Bewegung
-            if (now - lastStepTime < 50) return; // Maximal 20 Schritte pro Sekunde
+            // Flüssigere Bewegung mit höherer Frequenz
+            if (now - lastStepTime < 16) return; // ~60 FPS für flüssige Bewegung
             lastStepTime = now;
 
             // Realistische Schrittweite: 10 Schritte = ~7 Meter
@@ -1053,15 +1050,20 @@
                 playerMarker.setLatLng(playerPosition);
             }
             
-            // Flüssigere Kartenbewegung mit kürzerer Dauer
+            // Flüssigere Kartenbewegung ohne Animation für direkte Steuerung
+            isPanning = true;
             map.panTo(playerPosition, { 
-                animate: true, 
-                duration: 0.15, // Schnellere Animation
-                easeLinearity: 0.25 // Flüssigere Kurve
+                animate: false, // Keine Animation für flüssigere Steuerung
+                duration: 0
             });
             
-            stepCount += 10; // 10 Schritte pro Tastendruck
-            totalDistance += 7; // 7 Meter pro Tastendruck
+            // Reset Pan-Flag nach kurzer Verzögerung
+            setTimeout(() => {
+                isPanning = false;
+            }, 10);
+            
+            stepCount += 10; // 10 Schritte pro Bewegung
+            totalDistance += 7; // 7 Meter pro Bewegung
             
             updateWalkStats();
         }
@@ -1114,10 +1116,10 @@
         }
 
         function startContinuousMovement() {
-            if (movementInterval) return; // Bereits aktiv
+            if (movementAnimationFrame) return; // Bereits aktiv
             
-            movementInterval = setInterval(() => {
-                if (!walkMode) {
+            function animate() {
+                if (!walkMode || Object.keys(pressedKeys).length === 0) {
                     stopContinuousMovement();
                     return;
                 }
@@ -1126,13 +1128,18 @@
                 Object.keys(pressedKeys).forEach(direction => {
                     movePlayer(direction);
                 });
-            }, 50); // Alle 50ms bewegen (20x pro Sekunde)
+                
+                // Nächster Frame für flüssige Animation
+                movementAnimationFrame = requestAnimationFrame(animate);
+            }
+            
+            movementAnimationFrame = requestAnimationFrame(animate);
         }
 
         function stopContinuousMovement() {
-            if (movementInterval) {
-                clearInterval(movementInterval);
-                movementInterval = null;
+            if (movementAnimationFrame) {
+                cancelAnimationFrame(movementAnimationFrame);
+                movementAnimationFrame = null;
             }
         }
 
