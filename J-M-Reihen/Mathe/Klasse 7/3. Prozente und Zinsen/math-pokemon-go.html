@@ -395,13 +395,14 @@
             position: absolute;
             top: 10px;
             right: 10px;
-            width: 150px;
-            height: 150px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 10px;
-            border: 2px solid rgba(0, 0, 0, 0.2);
-            padding: 5px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            padding: 4px;
             z-index: 50;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .minimap-content {
@@ -409,16 +410,73 @@
             height: calc(100% - 20px);
             position: relative;
             background: linear-gradient(135deg, #74b9ff 0%, #0984e3 50%, #00b894 100%);
-            border-radius: 5px;
+            border-radius: 4px;
+            overflow: hidden;
         }
+
+        .minimap-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #87CEEB;
+            z-index: 1;
+        }
+
 
         .minimap-player {
             position: absolute;
-            width: 4px;
-            height: 4px;
+            width: 6px;
+            height: 6px;
             background: #e74c3c;
             border-radius: 50%;
-            border: 1px solid white;
+            border: none;
+            z-index: 20;
+            box-shadow: 0 0 8px rgba(231, 76, 60, 0.8);
+        }
+
+        /* Himmelsrichtungen */
+        .compass-directions {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .compass-direction {
+            position: absolute;
+            font-size: 10px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+
+        .compass-north {
+            top: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .compass-south {
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .compass-east {
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .compass-west {
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
         }
 
         /* Steuerung */
@@ -854,6 +912,15 @@
                 <!-- Minimap -->
                 <div class="minimap">
                     <div class="minimap-content" id="minimap">
+                        <!-- Hintergrund-Muster -->
+                        <div class="minimap-background" id="minimapBackground"></div>
+                        <!-- Himmelsrichtungen -->
+                        <div class="compass-directions">
+                            <div class="compass-direction compass-north">N</div>
+                            <div class="compass-direction compass-south">S</div>
+                            <div class="compass-direction compass-east">O</div>
+                            <div class="compass-direction compass-west">W</div>
+                        </div>
                         <div class="minimap-player" id="minimapPlayer"></div>
                     </div>
                 </div>
@@ -875,10 +942,10 @@
         <div class="inventory-section">
             <div class="inventory-header">
                 <div class="inventory-title">🎒 Monster-Sammlung</div>
-            </div>
+                </div>
             <div class="inventory-grid" id="inventoryGrid">
                 <!-- Monster werden hier dynamisch eingefügt -->
-            </div>
+                </div>
             <div id="scrollHint" style="display: none; text-align: center; margin-top: 10px; color: #7f8c8d; font-size: 12px;">
                 💡 Tipp: Scrollen Sie nach unten um alle Monster zu sehen!
             </div>
@@ -1244,20 +1311,56 @@
                     e.preventDefault();
                     break;
             }
-            updatePlayerPosition();
             checkNearbyMathMon();
             updateCamera();
         }
-
-        // Spieler-Position aktualisieren
-        function updatePlayerPosition() {
-            // Spieler ist fixed, muss nicht bewegt werden
-            // Aber die Welt bewegt sich
             
             // Minimap aktualisieren
+        function updateMinimap() {
             const minimapPlayer = document.getElementById('minimapPlayer');
-            minimapPlayer.style.left = playerPosition.x / 2 + '%';
-            minimapPlayer.style.top = playerPosition.y / 2 + '%';
+            const minimapContent = document.getElementById('minimap');
+            const minimapBackground = document.getElementById('minimapBackground');
+            
+            // Hintergrund bleibt einfarbig (Himmelblau)
+            
+            if (minimapPlayer) {
+                // Spieler ist immer in der Mitte der Minimap
+                minimapPlayer.style.left = '50%';
+                minimapPlayer.style.top = '50%';
+            }
+            
+            // Entferne alte Monster-Marker von der Minimap
+            const oldMarkers = minimapContent.querySelectorAll('.minimap-monster');
+            oldMarkers.forEach(marker => marker.remove());
+            
+            // Füge Monster-Marker zur Minimap hinzu (relativ zum Spieler)
+            const minimapSize = 100; // Minimap zeigt 100x100 Einheiten
+            const centerX = minimapSize / 2;
+            const centerY = minimapSize / 2;
+            
+            spawnedMathMon.forEach(mathmon => {
+                // Berechne relative Position zum Spieler
+                const relativeX = mathmon.x - playerPosition.x;
+                const relativeY = mathmon.y - playerPosition.y;
+                
+                // Nur Monster im Minimap-Bereich anzeigen
+                if (Math.abs(relativeX) <= minimapSize/2 && Math.abs(relativeY) <= minimapSize/2) {
+                    const marker = document.createElement('div');
+                    marker.className = 'minimap-monster';
+                    marker.style.position = 'absolute';
+                    marker.style.left = (centerX + relativeX) + '%';
+                    marker.style.top = (centerY + relativeY) + '%';
+                    marker.style.width = '4px';
+                    marker.style.height = '4px';
+                    marker.style.background = mathmon.pokemon.rarity === 'legendary' ? '#ffd700' : 
+                                             mathmon.pokemon.rarity === 'rare' ? '#9b59b6' : '#27ae60';
+                    marker.style.borderRadius = '50%';
+                    marker.style.border = '1px solid white';
+                    marker.style.zIndex = '10';
+                    marker.style.boxShadow = '0 0 4px rgba(0, 0, 0, 0.5)';
+                    minimapContent.appendChild(marker);
+                }
+            });
         }
 
         // Kamera folgt dem Spieler - unendliche Welt mit dynamischen Tiles
@@ -1272,6 +1375,9 @@
             
             // Generiere neue Tiles wenn nötig
             generateTilesAroundPlayer();
+            
+            // Minimap aktualisieren
+            updateMinimap();
         }
 
         // Prozedurale Welt-Generierung - Unendliche Welt mit Canvas-Tiles

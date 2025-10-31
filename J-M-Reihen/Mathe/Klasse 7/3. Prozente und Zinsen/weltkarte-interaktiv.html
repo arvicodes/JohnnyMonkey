@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktive Weltkarte - Google Earth Style</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .controls {
+            position: absolute;
+            top: 50px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            min-width: 170px;
+            max-width: 185px;
+            font-size: 11px;
+        }
+
+        .control-group {
+            margin-bottom: 6px;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 2px;
+            font-weight: bold;
+            color: #333;
+            font-size: 10px;
+        }
+
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 10px;
+            box-sizing: border-box;
+        }
+
+        .control-group button {
+            width: 100%;
+            padding: 5px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .control-group button:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Info-Panel ist jetzt im Menü integriert */
+
+        .coordinates {
+            font-family: monospace;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .custom-popup {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .popup-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .popup-content {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .layer-toggle {
+            display: flex;
+            align-items: center;
+            margin: 1px 0;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .layer-toggle:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .layer-toggle input[type="checkbox"] {
+            margin-right: 5px;
+            transform: scale(0.9);
+            cursor: pointer;
+        }
+
+        .layer-toggle label {
+            margin: 0;
+            font-weight: normal;
+            font-size: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Kompakte Hinweistexte */
+        .control-group > div[style*="font-size: 12px"] {
+            font-size: 10px !important;
+            margin-top: 3px !important;
+            line-height: 1.3;
+        }
+
+        /* Kompaktere Suchbox-Tipps */
+        .control-group > div {
+            font-size: 10px;
+            margin-top: 3px;
+            line-height: 1.3;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Laufmodus Styles */
+        .walk-mode-active {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4) !important;
+            color: white !important;
+        }
+
+        .player-character {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: transparent;
+            border: none;
+            z-index: 1000;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        /* Walk-Controls sind jetzt im Hauptmenü */
+        .walk-mode-section {
+            display: none;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #ddd;
+        }
+
+        .walk-mode-section.active {
+            display: block;
+        }
+
+        /* Kompakte Walk-Controls im Menü */
+        .walk-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 2px;
+            margin: 4px 0;
+        }
+
+        .walk-btn {
+            padding: 3px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+            min-height: 22px;
+        }
+
+        .walk-btn:hover {
+            background: #5a6fd8;
+            transform: scale(1.03);
+        }
+
+        .walk-btn:active {
+            transform: scale(0.97);
+        }
+
+        .walk-btn.up { grid-column: 2; }
+        .walk-btn.left { grid-column: 1; }
+        .walk-btn.right { grid-column: 3; }
+        .walk-btn.down { grid-column: 2; }
+
+        .walk-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px;
+            margin-top: 4px;
+            font-size: 9px;
+            color: #666;
+        }
+
+        .walk-stats > div {
+            background: #f8f9fa;
+            padding: 3px;
+            border-radius: 3px;
+            text-align: center;
+        }
+
+        .walk-speed-control {
+            margin-top: 4px;
+        }
+
+        .walk-speed-control label {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 9px;
+            color: #333;
+        }
+
+        .walk-speed-control input {
+            width: 100%;
+            height: 18px;
+        }
+
+        /* Info-Panel ist jetzt auch im Menü */
+        .info-section {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #ddd;
+        }
+
+        .info-section label {
+            font-size: 9px;
+        }
+
+        /* Loading-Indikator */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            color: #333;
+            text-align: center;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* Leaflet "Map data not yet available" Text verstecken */
+        .leaflet-container .leaflet-control-attribution {
+            font-size: 11px;
+        }
+
+        /* Verstecke Leaflet Loading-Meldung */
+        .leaflet-container .leaflet-top,
+        .leaflet-container .leaflet-bottom {
+            z-index: 1000;
+        }
+
+        /* Überschreibe Leaflet's "Map data not yet available" */
+        .leaflet-container {
+            background: #ddd !important;
+        }
+
+        /* Verstecke Leaflet Fehlermeldung */
+        .leaflet-zoom-box,
+        .leaflet-control-zoom,
+        .leaflet-control-container {
+            pointer-events: auto;
+        }
+
+        /* Verstecke Leaflet Standard-Loading-Text */
+        body:after {
+            content: '';
+        }
+
+        /* Verstecke spezifisch Leaflet "Map data not yet available" Meldungen */
+        .leaflet-container:before,
+        .leaflet-container:after {
+            display: none !important;
+            content: '' !important;
+        }
+
+        /* Verstecke Leaflet Fehler- und Loading-Texte */
+        .leaflet-container .leaflet-tile-container {
+            opacity: 1;
+        }
+
+        /* Verstecke Leaflet Fehlermeldungen vollständig */
+        .leaflet-container .leaflet-error-tile,
+        .leaflet-container .leaflet-error-tile-pane {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌍 Interaktive Weltkarte - Google Earth Style</h1>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="mapStyle">Kartenstil:</label>
+            <select id="mapStyle">
+                <option value="street">Straßenkarte</option>
+                <option value="satellite" selected>Satellitenbild</option>
+                <option value="terrain">Gelände</option>
+                <option value="hybrid">Hybrid</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Ebenen:</label>
+            <div class="layer-toggle">
+                <input type="checkbox" id="countries" checked>
+                <label for="countries">Länder</label>
+            </div>
+            <div class="layer-toggle">
+                <input type="checkbox" id="cities" checked>
+                <label for="cities">Große Städte</label>
+            </div>
+            <div class="layer-toggle">
+                <input type="checkbox" id="rivers">
+                <label for="rivers">Flüsse</label>
+            </div>
+            <div class="layer-toggle">
+                <input type="checkbox" id="mountains">
+                <label for="mountains">Berge</label>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label for="searchLocation">Ort suchen:</label>
+            <input type="text" id="searchLocation" placeholder="z.B. München, Hamburg">
+            <button onclick="searchLocation()">Suchen</button>
+            <div style="font-size: 9px; color: #666; margin-top: 2px; line-height: 1.2;">
+                💡 Tipp: "Stadt, Land" für bessere Ergebnisse
+            </div>
+        </div>
+
+        <div class="control-group">
+            <button onclick="flyToRandomLocation()">🎲 Zufälliger Ort</button>
+        </div>
+
+        <div class="control-group">
+            <button onclick="showWorldStats()">📊 Weltstatistiken</button>
+        </div>
+
+        <div class="control-group">
+            <button onclick="toggleWalkMode()" id="walkModeBtn">🚶 Laufmodus</button>
+            <div style="font-size: 8px; color: #666; margin-top: 2px; line-height: 1.2;">
+                💡 Auto: Street-View + Zoom 19
+            </div>
+        </div>
+
+        <!-- Info-Panel integriert -->
+        <div class="info-section">
+            <label>📍 Position:</label>
+            <div class="coordinates" id="coordinates" style="font-size: 8px; padding: 3px; margin: 2px 0;">
+                Breitengrad: 0°<br>
+                Längengrad: 0°
+            </div>
+            <div class="stats" id="stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 3px;">
+                <div class="stat-item" style="background: #f8f9fa; padding: 3px; border-radius: 3px; text-align: center;">
+                    <div class="stat-value" id="zoomLevel" style="font-size: 11px; font-weight: bold; color: #667eea;">1</div>
+                    <div class="stat-label" style="font-size: 8px; color: #666;">Zoom</div>
+                </div>
+                <div class="stat-item" style="background: #f8f9fa; padding: 3px; border-radius: 3px; text-align: center;">
+                    <div class="stat-value" id="distance" style="font-size: 11px; font-weight: bold; color: #667eea;">0 km</div>
+                    <div class="stat-label" style="font-size: 8px; color: #666;">Entfernung</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Walk-Controls integriert -->
+        <div class="walk-mode-section" id="walkModeSection">
+            <label>🚶 Laufsteuerung:</label>
+            <div class="walk-buttons">
+                <button class="walk-btn up" onclick="movePlayer('up')">↑</button>
+                <button class="walk-btn left" onclick="movePlayer('left')">←</button>
+                <button class="walk-btn right" onclick="movePlayer('right')">→</button>
+                <button class="walk-btn down" onclick="movePlayer('down')">↓</button>
+            </div>
+            <div class="walk-stats">
+                <div>Schritte: <span id="stepCount">0</span></div>
+                <div>Entfernung: <span id="walkDistance">0 m</span></div>
+            </div>
+            <div class="walk-speed-control">
+                <label for="walkSpeed">Geschwindigkeit:</label>
+                <input type="range" id="walkSpeed" min="1" max="5" value="2" onchange="updateWalkSpeed()">
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Loading-Indikator -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">🗺️ Karte wird geladen...</div>
+        <div class="loading-subtext">Bitte warten Sie, während die Kartendaten heruntergeladen werden</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Globale Variablen
+        let map;
+        let currentLayers = {};
+        let lastClickPosition = null;
+        let worldData = {
+            countries: [],
+            cities: [],
+            rivers: [],
+            mountains: []
+        };
+
+        // Laufmodus Variablen
+        let walkMode = false;
+        let playerPosition = null;
+        let playerMarker = null;
+        let stepCount = 0;
+        let totalDistance = 0;
+        let walkSpeed = 2;
+        let lastStepTime = 0;
+        let pressedKeys = {}; // Für kontinuierliches Laufen bei gedrückt gehaltener Taste
+        let movementInterval = null; // Intervall für kontinuierliche Bewegung
+
+        // Karte initialisieren
+        function initMap() {
+            // Loading-Indikator anzeigen
+            showLoadingIndicator();
+
+            // Karte erstellen - OpenStreetMap als zuverlässiger Standard
+            map = L.map('map', {
+                center: [20, 0],
+                zoom: 2,
+                zoomControl: true,
+                attributionControl: true,
+                fadeAnimation: false, // Keine Fade-Animation für schnelleres Laden
+                zoomAnimation: true,
+                markerZoomAnimation: true
+            });
+
+            // Entferne "Map data not yet available" Meldungen kontinuierlich
+            function removeLoadingMessages() {
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    const allDivs = mapContainer.getElementsByTagName('div');
+                    const allSpans = mapContainer.getElementsByTagName('span');
+                    const allTexts = [...allDivs, ...allSpans];
+                    
+                    for (let i = 0; i < allTexts.length; i++) {
+                        const element = allTexts[i];
+                        const text = element.textContent || element.innerText || '';
+                        if (text.includes('Map data not yet available') || 
+                            (text.includes('Loading') && !text.includes('Karte wird geladen'))) {
+                            element.style.display = 'none';
+                            element.style.visibility = 'hidden';
+                            element.style.opacity = '0';
+                            element.remove();
+                        }
+                    }
+                }
+            }
+
+            // Sofort ausführen und dann regelmäßig überprüfen
+            removeLoadingMessages();
+            setTimeout(removeLoadingMessages, 100);
+            setTimeout(removeLoadingMessages, 500);
+            setTimeout(removeLoadingMessages, 1000);
+            setTimeout(removeLoadingMessages, 2000);
+            
+            // Kontinuierliche Überwachung für die ersten 5 Sekunden
+            const messageCleaner = setInterval(() => {
+                removeLoadingMessages();
+            }, 200);
+
+            // Nach 5 Sekunden aufhören
+            setTimeout(() => {
+                clearInterval(messageCleaner);
+            }, 5000);
+
+            // Verschiedene Kartenlayer mit besseren URLs und Konfiguration
+            // OpenStreetMap als Standard - am zuverlässigsten
+            const mapLayers = {
+                street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19,
+                    minZoom: 1,
+                    subdomains: ['a', 'b', 'c'],
+                    tileSize: 256,
+                    zoomOffset: 0,
+                    crossOrigin: true,
+                    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+                }),
+                satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri, Maxar, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+                    maxZoom: 19,
+                    minZoom: 1,
+                    tileSize: 256,
+                    zoomOffset: 0,
+                    crossOrigin: true,
+                    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+                }),
+                terrain: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community',
+                    maxZoom: 19,
+                    minZoom: 1,
+                    tileSize: 256,
+                    zoomOffset: 0,
+                    crossOrigin: true,
+                    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+                }),
+                street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19,
+                    minZoom: 1,
+                    subdomains: ['a', 'b', 'c'],
+                    tileSize: 256,
+                    zoomOffset: 0,
+                    crossOrigin: true,
+                    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+                }),
+                hybrid: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community',
+                    maxZoom: 19,
+                    minZoom: 1,
+                    tileSize: 256,
+                    zoomOffset: 0,
+                    crossOrigin: true,
+                    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+                }),
+                // Fallback-Layer für den Fall, dass alle anderen nicht funktionieren
+                fallback: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 18,
+                    minZoom: 1,
+                    tileSize: 256,
+                    zoomOffset: 0
+                })
+            };
+
+            // Layer-Speicher
+            currentLayers.base = mapLayers;
+
+            // Event Listener für Kartenladung
+            map.on('click', onMapClick);
+            map.on('moveend', updateInfo);
+            map.on('zoomend', updateInfo);
+
+            // Sofort Layer hinzufügen - Satellitenbild als Standard
+            try {
+                mapLayers.satellite.addTo(map);
+                console.log('Satellite Layer hinzugefügt');
+            } catch (error) {
+                console.log('Fallback zu alternativem Layer');
+                if (mapLayers.fallback) {
+                    mapLayers.fallback.addTo(map);
+                } else {
+                    mapLayers.street.addTo(map);
+                }
+            }
+
+            // Karte bereit machen
+            map.whenReady(function() {
+                console.log('Karte ist bereit!');
+                hideLoadingIndicator();
+            });
+
+            // Fallback: Loading-Indikator nach 3 Sekunden ausblenden
+            setTimeout(() => {
+                hideLoadingIndicator();
+                console.log('Loading-Indikator entfernt (Timeout)');
+            }, 3000);
+
+            // Weltdaten laden
+            loadWorldData();
+            
+            // Initiale Info aktualisieren
+            updateInfo();
+        }
+
+        // Loading-Indikator Funktionen
+        function showLoadingIndicator() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoadingIndicator() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+
+        // Weltdaten laden
+        function loadWorldData() {
+            worldData.countries = [
+                { name: 'Deutschland', lat: 51.1657, lng: 10.4515, capital: 'Berlin', population: '83.2M' },
+                { name: 'Frankreich', lat: 46.2276, lng: 2.2137, capital: 'Paris', population: '67.4M' },
+                { name: 'Spanien', lat: 40.4637, lng: -3.7492, capital: 'Madrid', population: '47.3M' },
+                { name: 'Italien', lat: 41.8719, lng: 12.5674, capital: 'Rom', population: '60.4M' },
+                { name: 'Vereinigtes Königreich', lat: 55.3781, lng: -3.4360, capital: 'London', population: '67.9M' },
+                { name: 'USA', lat: 39.8283, lng: -98.5795, capital: 'Washington D.C.', population: '331.9M' },
+                { name: 'China', lat: 35.8617, lng: 104.1954, capital: 'Peking', population: '1.4B' },
+                { name: 'Japan', lat: 36.2048, lng: 138.2529, capital: 'Tokio', population: '125.8M' },
+                { name: 'Brasilien', lat: -14.2350, lng: -51.9253, capital: 'Brasília', population: '212.6M' },
+                { name: 'Australien', lat: -25.2744, lng: 133.7751, capital: 'Canberra', population: '25.7M' }
+            ];
+
+            worldData.cities = [
+                { name: 'New York', lat: 40.7128, lng: -74.0060, country: 'USA', population: '8.3M' },
+                { name: 'London', lat: 51.5074, lng: -0.1278, country: 'UK', population: '9.5M' },
+                { name: 'Tokio', lat: 35.6762, lng: 139.6503, country: 'Japan', population: '14.0M' },
+                { name: 'Paris', lat: 48.8566, lng: 2.3522, country: 'Frankreich', population: '11.0M' },
+                { name: 'Berlin', lat: 52.5200, lng: 13.4050, country: 'Deutschland', population: '3.7M' },
+                { name: 'Rom', lat: 41.9028, lng: 12.4964, country: 'Italien', population: '2.9M' },
+                { name: 'Madrid', lat: 40.4168, lng: -3.7038, country: 'Spanien', population: '6.6M' },
+                { name: 'Moskau', lat: 55.7558, lng: 37.6176, country: 'Russland', population: '12.5M' },
+                { name: 'Peking', lat: 39.9042, lng: 116.4074, country: 'China', population: '21.5M' },
+                { name: 'São Paulo', lat: -23.5505, lng: -46.6333, country: 'Brasilien', population: '12.3M' }
+            ];
+
+            createLayers();
+        }
+
+        // Layer erstellen
+        function createLayers() {
+            // Länder Layer
+            currentLayers.countries = L.layerGroup();
+            worldData.countries.forEach(country => {
+                const marker = L.circleMarker([country.lat, country.lng], {
+                    radius: 8,
+                    fillColor: '#ff6b6b',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                marker.bindPopup(`
+                    <div class="custom-popup">
+                        <div class="popup-title">🏛️ ${country.name}</div>
+                        <div class="popup-content">
+                            <strong>Hauptstadt:</strong> ${country.capital}<br>
+                            <strong>Einwohner:</strong> ${country.population}<br>
+                            <strong>Koordinaten:</strong> ${country.lat.toFixed(4)}°, ${country.lng.toFixed(4)}°
+                        </div>
+                    </div>
+                `);
+                
+                currentLayers.countries.addLayer(marker);
+            });
+
+            // Städte Layer
+            currentLayers.cities = L.layerGroup();
+            worldData.cities.forEach(city => {
+                const marker = L.circleMarker([city.lat, city.lng], {
+                    radius: 6,
+                    fillColor: '#4ecdc4',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+                
+                marker.bindPopup(`
+                    <div class="custom-popup">
+                        <div class="popup-title">🏙️ ${city.name}</div>
+                        <div class="popup-content">
+                            <strong>Land:</strong> ${city.country}<br>
+                            <strong>Einwohner:</strong> ${city.population}<br>
+                            <strong>Koordinaten:</strong> ${city.lat.toFixed(4)}°, ${city.lng.toFixed(4)}°
+                        </div>
+                    </div>
+                `);
+                
+                currentLayers.cities.addLayer(marker);
+            });
+
+            // Standardmäßig Länder und Städte anzeigen
+            map.addLayer(currentLayers.countries);
+            map.addLayer(currentLayers.cities);
+        }
+
+        // Kartenstil ändern
+        function changeMapStyle() {
+            const style = document.getElementById('mapStyle').value;
+            
+            Object.values(currentLayers.base).forEach(layer => {
+                map.removeLayer(layer);
+            });
+            
+            currentLayers.base[style].addTo(map);
+        }
+
+        // Layer ein-/ausblenden
+        function toggleLayer(layerName) {
+            const checkbox = document.getElementById(layerName);
+            const layer = currentLayers[layerName];
+            
+            if (checkbox.checked) {
+                map.addLayer(layer);
+            } else {
+                map.removeLayer(layer);
+            }
+        }
+
+        // Ort suchen
+        async function searchLocation() {
+            const query = document.getElementById('searchLocation').value.trim();
+            if (!query) return;
+
+            const searchButton = document.querySelector('button[onclick="searchLocation()"]');
+            const originalText = searchButton.textContent;
+            searchButton.textContent = 'Suche...';
+            searchButton.disabled = true;
+
+            try {
+                let found = false;
+                
+                const country = worldData.countries.find(c => 
+                    c.name.toLowerCase().includes(query.toLowerCase()) ||
+                    c.capital.toLowerCase().includes(query.toLowerCase())
+                );
+                
+                if (country) {
+                    map.setView([country.lat, country.lng], 6);
+                    found = true;
+                } else {
+                    const city = worldData.cities.find(c => 
+                        c.name.toLowerCase().includes(query.toLowerCase())
+                    );
+                    
+                    if (city) {
+                        map.setView([city.lat, city.lng], 10);
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`);
+                    const data = await response.json();
+                    
+                    if (data && data.length > 0) {
+                        const result = data[0];
+                        const lat = parseFloat(result.lat);
+                        const lng = parseFloat(result.lon);
+                        
+                        let zoom = 10;
+                        if (result.type === 'country') zoom = 5;
+                        else if (result.type === 'state') zoom = 7;
+                        else if (result.type === 'city' || result.type === 'town') zoom = 12;
+                        else if (result.type === 'village') zoom = 14;
+                        
+                        map.setView([lat, lng], zoom);
+                        
+                        const marker = L.marker([lat, lng]).addTo(map);
+                        marker.bindPopup(`
+                            <div class="custom-popup">
+                                <div class="popup-title">📍 ${result.display_name}</div>
+                                <div class="popup-content">
+                                    <strong>Typ:</strong> ${result.type}<br>
+                                    <strong>Koordinaten:</strong> ${lat.toFixed(4)}°, ${lng.toFixed(4)}°<br>
+                                    <strong>Gefunden über:</strong> OpenStreetMap
+                                </div>
+                            </div>
+                        `).openPopup();
+                        
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                    alert('Ort nicht gefunden. Versuchen Sie einen anderen Suchbegriff.');
+                }
+
+            } catch (error) {
+                console.error('Fehler bei der Suche:', error);
+                alert('Fehler bei der Suche. Bitte versuchen Sie es erneut.');
+            } finally {
+                searchButton.textContent = originalText;
+                searchButton.disabled = false;
+            }
+        }
+
+        // Zu zufälligem Ort fliegen
+        function flyToRandomLocation() {
+            const locations = [...worldData.countries, ...worldData.cities];
+            const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+            
+            map.flyTo([randomLocation.lat, randomLocation.lng], 8, {
+                duration: 2
+            });
+        }
+
+        // Weltstatistiken anzeigen
+        function showWorldStats() {
+            const stats = `
+                <div class="custom-popup">
+                    <div class="popup-title">📊 Weltstatistiken</div>
+                    <div class="popup-content">
+                        <strong>Länder:</strong> ${worldData.countries.length}<br>
+                        <strong>Große Städte:</strong> ${worldData.cities.length}<br>
+                        <strong>Gesamtbevölkerung:</strong> ~8.1 Milliarden<br>
+                        <strong>Landfläche:</strong> ~148.9 Mio. km²<br>
+                        <strong>Wasserfläche:</strong> ~361.1 Mio. km²
+                    </div>
+                </div>
+            `;
+            
+            map.openPopup(stats, [20, 0], {
+                maxWidth: 300
+            });
+        }
+
+        // Laufmodus Funktionen
+        function toggleWalkMode() {
+            walkMode = !walkMode;
+            const btn = document.getElementById('walkModeBtn');
+            const walkSection = document.getElementById('walkModeSection');
+
+            if (walkMode) {
+                // Automatisch zu Street-Ansicht wechseln für bessere Navigation
+                Object.values(currentLayers.base).forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                currentLayers.base.street.addTo(map);
+                document.getElementById('mapStyle').value = 'street';
+                
+                // Automatisch auf optimales Zoom-Level für realistisches Laufen zoomen
+                const currentCenter = map.getCenter();
+                map.setView(currentCenter, 19, {
+                    animate: true,
+                    duration: 1.5
+                });
+                
+                // Warten bis Zoom-Animation fertig ist
+                setTimeout(() => {
+                    btn.textContent = '🚶 Laufmodus (Aktiv)';
+                    btn.classList.add('walk-mode-active');
+                    walkSection.classList.add('active');
+                    
+                    playerPosition = [currentCenter.lat, currentCenter.lng];
+                    createPlayerMarker();
+                    
+                    document.addEventListener('keydown', handleKeyDown);
+                    document.addEventListener('keyup', handleKeyUp);
+                    
+                    // Info über realistischen Laufmodus anzeigen
+                    showWalkModeInfo();
+                }, 1500);
+                
+            } else {
+                btn.textContent = '🚶 Laufmodus';
+                btn.classList.remove('walk-mode-active');
+                walkSection.classList.remove('active');
+                
+                if (playerMarker) {
+                    map.removeLayer(playerMarker);
+                    playerMarker = null;
+                }
+                
+                stopContinuousMovement();
+                pressedKeys = {};
+                document.removeEventListener('keydown', handleKeyDown);
+                document.removeEventListener('keyup', handleKeyUp);
+            }
+        }
+
+        function showWalkModeInfo() {
+            const info = `
+                <div class="custom-popup">
+                    <div class="popup-title">🚶 Realistischer Laufmodus aktiviert!</div>
+                    <div class="popup-content">
+                        <strong>Zoom-Level:</strong> 19 (optimal für Laufen)<br>
+                        <strong>Schrittweite:</strong> ~7 Meter pro Pfeiltaste<br>
+                        <strong>Steuerung:</strong> Pfeiltasten oder WASD<br>
+                        <strong>Realität:</strong> 1 Tastendruck = 10 Schritte<br><br>
+                        💡 <em>Sie können jetzt realistisch durch die Straßen laufen!</em>
+                    </div>
+                </div>
+            `;
+            
+            map.openPopup(info, map.getCenter(), {
+                maxWidth: 350,
+                autoClose: false
+            });
+            
+            // Popup nach 5 Sekunden automatisch schließen
+            setTimeout(() => {
+                map.closePopup();
+            }, 5000);
+        }
+
+        function createPlayerMarker() {
+            if (playerMarker) {
+                map.removeLayer(playerMarker);
+            }
+            
+            playerMarker = L.marker(playerPosition, {
+                icon: L.divIcon({
+                    className: 'player-character',
+                    html: '<div style="font-size: 24px;">🚶</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                }),
+                interactive: false,
+                keyboard: false
+            }).addTo(map);
+        }
+
+        function movePlayer(direction) {
+            if (!walkMode || !playerPosition) return;
+
+            const now = Date.now();
+            // Schnellere Reaktionszeit für flüssigere Bewegung
+            if (now - lastStepTime < 50) return; // Maximal 20 Schritte pro Sekunde
+            lastStepTime = now;
+
+            // Realistische Schrittweite: 10 Schritte = ~7 Meter
+            // Bei Zoom-Level 19: 1 Grad ≈ 111 km, also 7m ≈ 0.000063 Grad
+            const realisticStepSize = 0.000063; // 7 Meter in Grad
+            
+            let newLat = playerPosition[0];
+            let newLng = playerPosition[1];
+
+            switch (direction) {
+                case 'up':
+                    newLat += realisticStepSize;
+                    break;
+                case 'down':
+                    newLat -= realisticStepSize;
+                    break;
+                case 'left':
+                    newLng -= realisticStepSize;
+                    break;
+                case 'right':
+                    newLng += realisticStepSize;
+                    break;
+            }
+
+            playerPosition = [newLat, newLng];
+            
+            // Sofortige Marker-Position aktualisieren (keine Animation für Marker)
+            if (playerMarker) {
+                playerMarker.setLatLng(playerPosition);
+            }
+            
+            // Flüssigere Kartenbewegung mit kürzerer Dauer
+            map.panTo(playerPosition, { 
+                animate: true, 
+                duration: 0.15, // Schnellere Animation
+                easeLinearity: 0.25 // Flüssigere Kurve
+            });
+            
+            stepCount += 10; // 10 Schritte pro Tastendruck
+            totalDistance += 7; // 7 Meter pro Tastendruck
+            
+            updateWalkStats();
+        }
+
+        function handleKeyDown(e) {
+            if (!walkMode) return;
+            
+            // Nur Pfeiltasten, keine WASD mehr
+            let direction = null;
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                direction = 'up';
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                direction = 'down';
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                direction = 'left';
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                direction = 'right';
+            }
+            
+            if (direction && !pressedKeys[direction]) {
+                pressedKeys[direction] = true;
+                movePlayer(direction);
+                startContinuousMovement();
+            }
+        }
+
+        function handleKeyUp(e) {
+            if (!walkMode) return;
+            
+            // Nur Pfeiltasten, keine WASD mehr
+            if (e.key === 'ArrowUp') {
+                delete pressedKeys['up'];
+            } else if (e.key === 'ArrowDown') {
+                delete pressedKeys['down'];
+            } else if (e.key === 'ArrowLeft') {
+                delete pressedKeys['left'];
+            } else if (e.key === 'ArrowRight') {
+                delete pressedKeys['right'];
+            }
+            
+            // Wenn keine Taste mehr gedrückt ist, stoppe kontinuierliche Bewegung
+            if (Object.keys(pressedKeys).length === 0) {
+                stopContinuousMovement();
+            }
+        }
+
+        function startContinuousMovement() {
+            if (movementInterval) return; // Bereits aktiv
+            
+            movementInterval = setInterval(() => {
+                if (!walkMode) {
+                    stopContinuousMovement();
+                    return;
+                }
+                
+                // Bewegt sich in alle gedrückten Richtungen
+                Object.keys(pressedKeys).forEach(direction => {
+                    movePlayer(direction);
+                });
+            }, 50); // Alle 50ms bewegen (20x pro Sekunde)
+        }
+
+        function stopContinuousMovement() {
+            if (movementInterval) {
+                clearInterval(movementInterval);
+                movementInterval = null;
+            }
+        }
+
+        function updateWalkStats() {
+            document.getElementById('stepCount').textContent = stepCount;
+            document.getElementById('walkDistance').textContent = Math.round(totalDistance) + ' m';
+        }
+
+        function updateWalkSpeed() {
+            walkSpeed = parseInt(document.getElementById('walkSpeed').value);
+        }
+
+        // Kartenklick Event
+        function onMapClick(e) {
+            lastClickPosition = e.latlng;
+            updateInfo();
+        }
+
+        // Info Panel aktualisieren
+        function updateInfo() {
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            
+            document.getElementById('coordinates').innerHTML = `
+                Breitengrad: ${center.lat.toFixed(4)}°<br>
+                Längengrad: ${center.lng.toFixed(4)}°
+            `;
+            
+            document.getElementById('zoomLevel').textContent = zoom;
+            
+            if (lastClickPosition) {
+                const distance = map.distance(lastClickPosition, center);
+                document.getElementById('distance').textContent = `${Math.round(distance / 1000)} km`;
+            }
+        }
+
+        // Event Listener
+        document.getElementById('countries').addEventListener('change', () => toggleLayer('countries'));
+        document.getElementById('cities').addEventListener('change', () => toggleLayer('cities'));
+        document.getElementById('mapStyle').addEventListener('change', changeMapStyle);
+
+        document.getElementById('searchLocation').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchLocation();
+            }
+        });
+
+        // Zoom-Event für Laufmodus (entfernt - automatisches Zoomen)
+        function setupMapEvents() {
+            // Keine Zoom-Beschränkung mehr nötig, da automatisch gezoomt wird
+        }
+
+        // Karte initialisieren wenn Seite geladen ist
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            setupMapEvents();
+        });
+    </script>
+</body>
+</html>

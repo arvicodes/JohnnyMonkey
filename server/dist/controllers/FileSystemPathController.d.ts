@@ -34,7 +34,7 @@ export declare class FileSystemPathController {
     static readDirectory(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static getPathsByTeacher(req: Request, res: Response): Promise<void>;
     static deletePath(req: Request, res: Response): Promise<void>;
-    static readHtmlFile(req: Request, res: Response): Promise<void | Response<any, Record<string, any>>>;
+    static readHtmlFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readDocxFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readExcelFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readPowerPointFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
