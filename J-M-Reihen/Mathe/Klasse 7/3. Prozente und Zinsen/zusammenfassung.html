@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klassenarbeit 1 - Interaktiv</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.4;
+            margin: 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 15px;
+            margin-top: 5px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+            font-size: 1.6em;
+        }
+        
+        h2 {
+            color: #2c3e50;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 4px;
+            font-size: 1.2em;
+        }
+        
+        h3 {
+            color: #34495e;
+            margin-top: 12px;
+            margin-bottom: 6px;
+            font-size: 1.1em;
+        }
+        
+        .intro {
+            background-color: #e8f4fd;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            font-size: 0.95em;
+        }
+        
+        .task {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .task.solved {
+            border-left: 3px solid #27ae60;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .task-title {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 1.05em;
+        }
+        
+        .points {
+            background-color: #3498db;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+        
+        .example {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 8px 0;
+            border-left: 3px solid #3498db;
+        }
+        
+        .example h4 {
+            margin-top: 0;
+            margin-bottom: 6px;
+            color: #2c3e50;
+            font-size: 0.95em;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 6px 0;
+            flex-wrap: wrap;
+        }
+        
+        .input-group label {
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 50px;
+            font-size: 0.85em;
+        }
+        
+        .input-group input[type="text"],
+        .input-group input[type="number"] {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.85em;
+            min-width: 80px;
+            max-width: 150px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+        
+        .input-group textarea {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.85em;
+            width: 100%;
+            max-width: 600px;
+            min-height: 40px;
+            font-family: inherit;
+        }
+        
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .result.correct {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result.incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .hint {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 6px 10px;
+            margin-top: 6px;
+            color: #856404;
+            display: none;
+            font-size: 0.85em;
+        }
+        
+        .progress {
+            background-color: #e9ecef;
+            border-radius: 8px;
+            height: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .progress-bar {
+            background-color: #3498db;
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 3px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+        
+        .date-info {
+            text-align: center;
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+        }
+        
+        ul, ol {
+            margin: 8px 0;
+            padding-left: 25px;
+        }
+        
+        li {
+            margin: 4px 0;
+            font-size: 0.95em;
+        }
+        
+        .important {
+            background-color: #e8f4fd;
+            border: 1px solid #3498db;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 12px 0;
+            border-left: 3px solid #3498db;
+        }
+        
+        .important h4 {
+            margin-top: 0;
+            margin-bottom: 6px;
+            color: #2c3e50;
+            font-size: 1em;
+        }
+        
+        table {
+            width: auto;
+            max-width: 500px;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 0.85em;
+        }
+        
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 4px 8px;
+            text-align: left;
+        }
+        
+        table th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .radio-group {
+            margin: 6px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 600px;
+        }
+        
+        .radio-group label {
+            display: inline-block;
+            margin: 0;
+            padding: 5px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.85em;
+            width: auto;
+        }
+        
+        .radio-group label:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .radio-group input[type="radio"] {
+            margin-right: 6px;
+        }
+        
+        .task-image {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        
+        .coordinate-grid {
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        #coordinateCanvas {
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            background-color: white;
+            cursor: crosshair;
+            display: block;
+            margin: 6px auto;
+            max-width: 100%;
+        }
+        
+        .task-icon {
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        
+        .canvas-controls {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .point-info {
+            display: inline-block;
+            margin: 3px 6px;
+            padding: 4px 8px;
+            background-color: #e8f4fd;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        
+        .point-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        p {
+            margin: 6px 0;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Erste Klassenarbeit - Interaktiv</h1>
+        
+        <div class="date-info">
+            <strong>Datum:</strong> 09.10.2025 | <strong>Klasse:</strong> 7 | <strong>Fach:</strong> Mathematik | <strong>Punkte:</strong> 30
+        </div>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-text" id="progressText">0 von 14 Aufgaben gelöst</div>
+        
+        <!-- Aufgabe 1 -->
+        <div class="task" id="task1">
+            <div class="task-header">
+                <h3 class="task-title">
+                    <svg class="task-icon" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2">
+                        <line x1="12" y1="2" x2="12" y2="22"></line>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <circle cx="12" cy="12" r="2"></circle>
+                    </svg>
+                    Aufgabe 1
+                </h3>
+                <span class="points">4 Punkte</span>
+            </div>
+            <p style="margin-bottom: 6px;">Trage die Punkte ein: <strong>A</strong> (0,5 | −3), <strong>B</strong> (3 | −2), <strong>C</strong> (−5 | 1), <strong>D</strong> (½ | 3)</p>
+            <div class="coordinate-grid">
+                <p style="margin: 4px 0; font-size: 0.85em; color: #666;">Klicke auf Gitterkreuzungen. Punkte können verschoben werden.</p>
+                <canvas id="coordinateCanvas" width="450" height="450"></canvas>
+                <div class="canvas-controls">
+                    <button class="btn" onclick="clearCanvas()">Koordinatensystem löschen</button>
+                    <button class="btn" onclick="connectPoints()">Punkte verbinden</button>
+                    <button class="btn" onclick="checkTask1()">Überprüfen</button>
+                </div>
+                <div id="pointInfo" style="margin-top: 8px;">
+                    <p id="nextPointInfo" style="color: #e74c3c; font-weight: bold; font-size: 0.85em; margin: 4px 0;"></p>
+                    <p style="margin: 4px 0; font-size: 0.85em;"><strong>Punkte:</strong></p>
+                    <div id="pointList" style="font-size: 0.85em;"></div>
+                </div>
+            </div>
+            <div id="result1"></div>
+            <div id="hint1" class="hint">
+                <strong>Lösungshinweis:</strong> Die korrekten Koordinaten sind: A(0.5, -3), B(3, -2), C(-5, 1), D(0.5, 3)
+            </div>
+        </div>
+        
+        <!-- Aufgabe 2 -->
+        <div class="task" id="task2">
+            <div class="task-header">
+                <h3 class="task-title">
+                    <svg class="task-icon" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                        <line x1="12" y1="12" x2="12" y2="18"></line>
+                    </svg>
+                    Aufgabe 2
+                </h3>
+                <span class="points">12 Punkte</span>
+            </div>
+            <p><strong>Rechne günstig mit Hilfe des Distributivgesetzes:</strong></p>
+            
+            <div class="example">
+                <h4>a) −¼ ∙ (−9 − ½) = ?</h4>
+                <div class="input-group">
+                    <label>Ergebnis:</label>
+                    <input type="number" id="answer2a" placeholder="Zahl" step="0.01">
+                    <button class="btn" onclick="checkAnswer('2a', 2.375)">Überprüfen</button>
+                </div>
+                <div id="result2a"></div>
+                <div id="hint2a" class="hint">
+                    <strong>Lösungshinweis:</strong> −¼ ∙ (−9 − ½) = −¼ ∙ (−9.5) = 9.5/4 = 2.375
+                </div>
+            </div>
+            
+            <div class="example">
+                <h4>b) 1,4 : (−¾) − 2,4 : (−¾) = ?</h4>
+                <div class="input-group">
+                    <label>Ergebnis:</label>
+                    <input type="number" id="answer2b" placeholder="Zahl" step="0.01">
+                    <button class="btn" onclick="checkAnswer('2b', 1.333)">Überprüfen</button>
+                </div>
+                <div id="result2b"></div>
+                <div id="hint2b" class="hint">
+                    <strong>Lösungshinweis:</strong> Ausklammern: (1.4 − 2.4) : (−¾) = (−1) : (−¾) = 1 : (¾) = 4/3 ≈ 1.333
+                </div>
+            </div>
+            
+            <p><strong>Berechne:</strong></p>
+            
+            <div class="example">
+                <h4>c) ¾ : (¼) + ¾ : (¼) = ?</h4>
+                <div class="input-group">
+                    <label>Ergebnis:</label>
+                    <input type="number" id="answer2c" placeholder="Zahl" step="0.01">
+                    <button class="btn" onclick="checkAnswer('2c', 6)">Überprüfen</button>
+                </div>
+                <div id="result2c"></div>
+                <div id="hint2c" class="hint">
+                    <strong>Lösungshinweis:</strong> ¾ : ¼ = 3, also 3 + 3 = 6
+                </div>
+            </div>
+            
+            <div class="example">
+                <h4>d) 8 ∙ (−⅔) − 4 ∙ 1½ = ?</h4>
+                <div class="input-group">
+                    <label>Ergebnis:</label>
+                    <input type="number" id="answer2d" placeholder="Zahl" step="0.01">
+                    <button class="btn" onclick="checkAnswer('2d', -11.333)">Überprüfen</button>
+                </div>
+                <div id="result2d"></div>
+                <div id="hint2d" class="hint">
+                    <strong>Lösungshinweis:</strong> 8 ∙ (−⅔) = −16/3 ≈ −5.333, 4 ∙ 1.5 = 6, also −5.333 − 6 = −11.333
+                </div>
+            </div>
+        </div>
+        
+        <!-- Aufgabe 3 -->
+        <div class="task" id="task3">
+            <div class="task-header">
+                <h3 class="task-title">
+                    <svg class="task-icon" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Aufgabe 3
+                </h3>
+                <span class="points">4 Punkte (2 + 2)</span>
+            </div>
+            <p>Eine der Beschreibungen passt zum Graphen.</p>
+            <p style="color: #666; font-size: 0.85em; margin: 4px 0;"><em>(Zeit: 10 min/Kästchen, Entfernung: km)</em></p>
+            <img src="https://cdn.pixabay.com/photo/2018/05/18/15/30/web-design-3411373_960_720.jpg" alt="Graph Diagramm" class="task-image" onerror="this.style.display='none'">
+            
+            <div class="example">
+                <h4>a) Erläutere welche. Markiere dazu im Graphen die Teile farblich.</h4>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="answer3a" value="mia">
+                        <strong>Mia geht joggen.</strong> Sie läuft schnell zu Hause los, wird dann langsamer und entscheidet sich nach einer kurzen Pause nach Hause zurück zu laufen. Dann bringt sie doch noch schnell einen Brief zum Briefkasten.
+                    </label>
+                    <label>
+                        <input type="radio" name="answer3a" value="hannes">
+                        <strong>Hannes macht eine Fahrradtour.</strong> Er fährt langsam los, wird dann schneller und fährt in gleich bleibendem Tempo wieder nach Hause.
+                    </label>
+                    <label>
+                        <input type="radio" name="answer3a" value="leni">
+                        <strong>Leni geht zur Schule.</strong> Auf dem Weg dorthin fällt ihr ein, dass sie ihre Sportsachen vergessen hat. Sie geht zurück nach Hause und da es schon spät ist, fährt ihr Vater sie zur Schule.
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>Begründung:</label>
+                    <textarea id="answer3a-text" placeholder="Erkläre deine Wahl..."></textarea>
+                </div>
+                <button class="btn" onclick="checkTask3a()">Überprüfen</button>
+                <div id="result3a"></div>
+                <div id="hint3a" class="hint">
+                    <strong>Lösungshinweis:</strong> Die richtige Antwort ist "Leni geht zur Schule" - der Graph zeigt: Weg zur Schule (entfernt sich), Rückweg (nähert sich), dann schnelle Fahrt zur Schule (steiler Anstieg).
+                </div>
+            </div>
+            
+            <div class="example">
+                <h4>b) Wähle eine der übrigen beiden Aussagen. Zeichne den zugehörigen Graphen.</h4>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="answer3b" value="mia">
+                        <strong>Mia geht joggen.</strong>
+                    </label>
+                    <label>
+                        <input type="radio" name="answer3b" value="hannes">
+                        <strong>Hannes macht eine Fahrradtour.</strong>
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>Begründung:</label>
+                    <textarea id="answer3b-text" placeholder="Beschreibe den Verlauf des Graphen..."></textarea>
+                </div>
+                <button class="btn" onclick="checkTask3b()">Überprüfen</button>
+                <div id="result3b"></div>
+            </div>
+        </div>
+        
+        <!-- Aufgabe 4 -->
+        <div class="task" id="task4">
+            <div class="task-header">
+                <h3 class="task-title">
+                    <svg class="task-icon" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    Aufgabe 4
+                </h3>
+                <span class="points">6 Punkte (1,5 + 1,5 + 3)</span>
+            </div>
+            <p>Ein kleiner Teich wird mit Wasser gefüllt. Der Graph zeigt die Zuordnung Wasservolumen → Höhe des Wasserspiegels.</p>
+            <img src="https://cdn.pixabay.com/photo/2016/11/29/09/16/architecture-1868667_960_720.jpg" alt="Teich mit Wasser" class="task-image" onerror="this.style.display='none'">
+            
+            <div class="example">
+                <h4>a) Begründe oder widerlege, dass es sich um eine proportionale Zuordnung handelt.</h4>
+                <div class="input-group">
+                    <label>Antwort:</label>
+                    <textarea id="answer4a" placeholder="Begründe deine Antwort..."></textarea>
+                </div>
+                <button class="btn" onclick="checkTask4a()">Überprüfen</button>
+                <div id="result4a"></div>
+                <div id="hint4a" class="hint">
+                    <strong>Lösungshinweis:</strong> Es handelt sich um eine proportionale Zuordnung, da bei einem zylindrischen Teich das Volumen proportional zur Höhe ist (V = Grundfläche × Höhe).
+                </div>
+            </div>
+            
+            <div class="example">
+                <h4>b) Lies aus dem Graphen ab:</h4>
+                <div class="input-group">
+                    <label>14 ℓ → Höhe:</label>
+                    <input type="number" id="answer4b1" placeholder="cm" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>2 ℓ → Höhe:</label>
+                    <input type="number" id="answer4b2" placeholder="cm" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>9 cm → Liter:</label>
+                    <input type="number" id="answer4b3" placeholder="ℓ" step="0.1">
+                </div>
+                <button class="btn" onclick="checkTask4b()">Überprüfen</button>
+                <div id="result4b"></div>
+                <div id="hint4b" class="hint">
+                    <strong>Lösungshinweis:</strong> Die genauen Werte hängen vom Graphen ab. Beispielwerte könnten sein: 14 ℓ → ~7 cm, 2 ℓ → ~1 cm, 9 cm → ~18 ℓ (abhängig vom tatsächlichen Graphen).
+                </div>
+            </div>
+            
+            <div class="example">
+                <h4>c) Berechne mit Hilfe eines Dreisatzes:</h4>
+                <div class="input-group">
+                    <label>Höhe bei 1 Liter:</label>
+                    <input type="number" id="answer4c1" placeholder="cm" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Höhe bei 50 Litern:</label>
+                    <input type="number" id="answer4c2" placeholder="cm" step="0.01">
+                </div>
+                <button class="btn" onclick="checkTask4c()">Überprüfen</button>
+                <div id="result4c"></div>
+                <div id="hint4c" class="hint">
+                    <strong>Lösungshinweis:</strong> Wenn 14 ℓ = 7 cm, dann 1 ℓ = 7/14 = 0.5 cm und 50 ℓ = 50 × 0.5 = 25 cm (Beispielwerte, anpassen an deinen Graphen).
+                </div>
+            </div>
+        </div>
+        
+        <!-- Aufgabe 5 -->
+        <div class="task" id="task5">
+            <div class="task-header">
+                <h3 class="task-title">
+                    <svg class="task-icon" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                    </svg>
+                    Aufgabe 5
+                </h3>
+                <span class="points">4 Punkte</span>
+            </div>
+            <p>Prüfe, ob es sich bei den folgenden Zuordnungen um proportionale Zuordnungen handelt. Begründe.</p>
+            <p>Falls möglich, berechne den Proportionalitätsfaktor.</p>
+            
+            <div class="example">
+                <h4>a) Raummeter Brennholz → Preis</h4>
+                <img src="https://cdn.pixabay.com/photo/2015/12/23/08/09/firewood-1105648_960_720.jpg" alt="Brennholz Stapel" class="task-image" onerror="this.style.display='none'">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Raummeter Brennholz</th>
+                            <th>Preis (in €)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>75</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>150</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>225</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="answer5a" value="proportional">
+                        Proportionale Zuordnung
+                    </label>
+                    <label>
+                        <input type="radio" name="answer5a" value="nicht-proportional">
+                        Keine proportionale Zuordnung
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>Proportionalitätsfaktor:</label>
+                    <input type="number" id="answer5a-factor" placeholder="Zahl" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Begründung:</label>
+                    <textarea id="answer5a-text" placeholder="Begründe deine Antwort..."></textarea>
+                </div>
+                <button class="btn" onclick="checkTask5a()">Überprüfen</button>
+                <div id="result5a"></div>
+                <div id="hint5a" class="hint">
+                    <strong>Lösungshinweis:</strong> Es ist eine proportionale Zuordnung, da 75/1 = 150/2 = 225/3 = 75. Der Proportionalitätsfaktor ist 75 €/Raummeter.
+                </div>
+            </div>
+            
+            <div class="example">
+                <h4>b) Alter einer Rotbuche → Höhe</h4>
+                <img src="https://cdn.pixabay.com/photo/2016/11/08/05/20/beech-1807448_960_720.jpg" alt="Baum Rotbuche" class="task-image" onerror="this.style.display='none'">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Alter einer Rotbuche (in Jahren)</th>
+                            <th>Höhe (in m)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>10</td>
+                            <td>1 m</td>
+                        </tr>
+                        <tr>
+                            <td>30</td>
+                            <td>6 m</td>
+                        </tr>
+                        <tr>
+                            <td>50</td>
+                            <td>16 m</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="answer5b" value="proportional">
+                        Proportionale Zuordnung
+                    </label>
+                    <label>
+                        <input type="radio" name="answer5b" value="nicht-proportional">
+                        Keine proportionale Zuordnung
+                    </label>
+                </div>
+                <div class="input-group">
+                    <label>Begründung:</label>
+                    <textarea id="answer5b-text" placeholder="Begründe deine Antwort..."></textarea>
+                </div>
+                <button class="btn" onclick="checkTask5b()">Überprüfen</button>
+                <div id="result5b"></div>
+                <div id="hint5b" class="hint">
+                    <strong>Lösungshinweis:</strong> Es ist keine proportionale Zuordnung, da 1/10 = 0.1, 6/30 = 0.2, 16/50 = 0.32. Die Quotienten sind nicht gleich. Bäume wachsen nicht proportional zu ihrem Alter.
+                </div>
+            </div>
+        </div>
+        
+        <div class="important">
+            <h4>Gesamtpunktzahl</h4>
+            <p id="totalPoints"><strong>0 Punkte von 30 Punkten erreicht.</strong></p>
+            <p id="gradeDisplay" style="margin-top: 10px; font-size: 1.2em; text-align: center; display: none;"></p>
+            <div style="margin-top: 12px; text-align: center;">
+                <button class="btn" onclick="gradeAllTasks()" style="font-size: 1em; padding: 10px 20px;">
+                    📝 Klassenarbeit abgeben und benoten
+                </button>
+            </div>
+        </div>
+        
+        <!-- Benotungsdetails -->
+        <div id="gradingDetails" style="display: none; margin-top: 15px;">
+            <div class="task">
+                <h3 style="margin-top: 0;">📊 Benotungsdetails</h3>
+                <div id="gradingTable"></div>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        // Canvas-Koordinatensystem Variablen
+        let canvas, ctx;
+        let canvasWidth = 450;
+        let canvasHeight = 450;
+        let originX, originY;
+        let scale = 30; // Pixel pro Einheit (angepasst für kleineres Canvas)
+        let clickedPoints = [];
+        const expectedPoints = [
+            { label: 'A', x: 0.5, y: -3 },
+            { label: 'B', x: 3, y: -2 },
+            { label: 'C', x: -5, y: 1 },
+            { label: 'D', x: 0.5, y: 3 }
+        ];
+        let currentPointIndex = 0;
+        let linesConnected = false;
+        let isDragging = false;
+        let draggedPointIndex = -1;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        const pointRadius = 15; // Klickbereich um den Punkt
+        const gridStep = 0.5; // Raster-Schrittweite (halbe Einheiten)
+        
+        // Hauptvariablen
+        let solvedTasks = 0;
+        const totalTasks = 14;
+        let earnedPoints = 0;
+        const maxPoints = 30;
+        const taskPoints = {
+            '1': 4,
+            '2a': 3, '2b': 3, '2c': 3, '2d': 3,
+            '3a': 2, '3b': 2,
+            '4a': 1.5, '4b': 1.5, '4c': 3,
+            '5a': 2, '5b': 2
+        };
+        
+        // Canvas-Funktionen
+        function initCanvas() {
+            canvas = document.getElementById('coordinateCanvas');
+            ctx = canvas.getContext('2d');
+            originX = canvasWidth / 2;
+            originY = canvasHeight / 2;
+            
+            drawCoordinateSystem();
+            
+            // Event Listener für Drag & Drop
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp); // Falls Maus das Canvas verlässt
+        }
+        
+        function snapToGrid(coordX, coordY) {
+            // Runde auf die nächste Gitterkreuzung
+            const snappedX = Math.round(coordX / gridStep) * gridStep;
+            const snappedY = Math.round(coordY / gridStep) * gridStep;
+            return { x: snappedX, y: snappedY };
+        }
+        
+        function getPointAtPosition(x, y) {
+            for (let i = clickedPoints.length - 1; i >= 0; i--) {
+                const point = clickedPoints[i];
+                const pointX = originX + point.x * scale;
+                const pointY = originY - point.y * scale;
+                
+                const distance = Math.sqrt(
+                    Math.pow(x - pointX, 2) + Math.pow(y - pointY, 2)
+                );
+                
+                if (distance <= pointRadius) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        function handleMouseDown(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Prüfe, ob auf einen existierenden Punkt geklickt wurde
+            const pointIndex = getPointAtPosition(x, y);
+            
+            if (pointIndex !== -1) {
+                // Punkt wurde angeklickt - starte Drag
+                isDragging = true;
+                draggedPointIndex = pointIndex;
+                const point = clickedPoints[pointIndex];
+                const pointX = originX + point.x * scale;
+                const pointY = originY - point.y * scale;
+                dragOffsetX = x - pointX;
+                dragOffsetY = y - pointY;
+            } else {
+                // Neuer Punkt hinzufügen
+                handleCanvasClick(event);
+            }
+        }
+        
+        function handleMouseMove(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            if (isDragging && draggedPointIndex !== -1) {
+                // Neue Position berechnen
+                const pointX = x - dragOffsetX;
+                const pointY = y - dragOffsetY;
+                
+                // In Koordinaten umrechnen
+                const coordX = (pointX - originX) / scale;
+                const coordY = (originY - pointY) / scale;
+                
+                // Auf Gitterkreuzung runden
+                const snapped = snapToGrid(coordX, coordY);
+                
+                // Punkt aktualisieren
+                clickedPoints[draggedPointIndex].x = snapped.x;
+                clickedPoints[draggedPointIndex].y = snapped.y;
+                
+                // Neu zeichnen
+                drawCoordinateSystem();
+                
+                // Punktliste aktualisieren (live während des Draggings)
+                updatePointList();
+                
+                // Cursor ändern
+                canvas.style.cursor = 'grabbing';
+            } else {
+                // Prüfe, ob Maus über einem Punkt ist
+                const pointIndex = getPointAtPosition(x, y);
+                if (pointIndex !== -1) {
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvas.style.cursor = 'crosshair';
+                }
+            }
+        }
+        
+        function handleMouseUp(event) {
+            if (isDragging) {
+                isDragging = false;
+                draggedPointIndex = -1;
+                canvas.style.cursor = 'crosshair';
+                updatePointList();
+            }
+        }
+        
+        function drawCoordinateSystem() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            // Hintergrund
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            
+            // Feines Raster (halbe Einheiten)
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 0.5;
+            for (let i = -14; i <= 14; i++) {
+                const offset = i * scale * gridStep;
+                // Vertikale Linien
+                const x = originX + offset;
+                if (x >= 0 && x <= canvasWidth) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvasHeight);
+                    ctx.stroke();
+                }
+                
+                // Horizontale Linien
+                const y = originY - offset;
+                if (y >= 0 && y <= canvasHeight) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvasWidth, y);
+                    ctx.stroke();
+                }
+            }
+            
+            // Hauptgitter (ganze Einheiten) - etwas dunkler
+            ctx.strokeStyle = '#d0d0d0';
+            ctx.lineWidth = 1;
+            for (let i = -7; i <= 7; i++) {
+                // Vertikale Linien
+                const x = originX + i * scale;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvasHeight);
+                ctx.stroke();
+                
+                // Horizontale Linien
+                const y = originY - i * scale;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvasWidth, y);
+                ctx.stroke();
+            }
+            
+            // Achsen
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = 2;
+            
+            // X-Achse
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(canvasWidth, originY);
+            ctx.stroke();
+            
+            // Y-Achse
+            ctx.beginPath();
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, canvasHeight);
+            ctx.stroke();
+            
+            // Pfeilspitzen
+            drawArrow(originX, 0, 0, -1); // Y-Achse oben
+            drawArrow(canvasWidth, originY, 1, 0); // X-Achse rechts
+            
+            // Beschriftungen
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            
+            // X-Achse Beschriftungen (ganze Zahlen)
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            for (let i = -6; i <= 6; i++) {
+                if (i !== 0) {
+                    const x = originX + i * scale;
+                    ctx.fillText(i.toString(), x, originY + 5);
+                }
+            }
+            
+            // X-Achse Zwischenskalierungen (halbe Zahlen, kleiner)
+            ctx.fillStyle = '#999';
+            ctx.font = '10px Arial';
+            for (let i = -5.5; i <= 5.5; i += 1) {
+                if (Math.abs(i) > 0.1) { // Nicht bei 0
+                    const x = originX + i * scale;
+                    ctx.fillText(i.toString(), x, originY + 5);
+                }
+            }
+            
+            // Y-Achse Beschriftungen (ganze Zahlen)
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let i = -6; i <= 6; i++) {
+                if (i !== 0) {
+                    const y = originY - i * scale;
+                    ctx.fillText(i.toString(), originX - 5, y);
+                }
+            }
+            
+            // Y-Achse Zwischenskalierungen (halbe Zahlen, kleiner)
+            ctx.fillStyle = '#999';
+            ctx.font = '10px Arial';
+            for (let i = -5.5; i <= 5.5; i += 1) {
+                if (Math.abs(i) > 0.1) { // Nicht bei 0
+                    const y = originY - i * scale;
+                    ctx.fillText(i.toString(), originX - 5, y);
+                }
+            }
+            
+            // Ursprung
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            ctx.fillText('0', originX - 5, originY + 5);
+            
+            // X und Y Labels
+            ctx.fillStyle = '#3498db';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('x', canvasWidth - 15, originY - 20);
+            ctx.textAlign = 'right';
+            ctx.fillText('y', originX - 15, 10);
+            
+            // Gezeichnete Punkte neu zeichnen
+            clickedPoints.forEach((point, index) => {
+                const isHovered = (isDragging && draggedPointIndex === index);
+                drawPoint(point.x, point.y, point.label, point.color, isHovered);
+            });
+            
+            // Verbindungslinien zeichnen
+            if (linesConnected && clickedPoints.length >= 2) {
+                drawConnections();
+            }
+        }
+        
+        function drawArrow(x, y, dx, dy) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(Math.atan2(dy, dx));
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-10, -5);
+            ctx.lineTo(-10, 5);
+            ctx.closePath();
+            ctx.fillStyle = '#2c3e50';
+            ctx.fill();
+            ctx.restore();
+        }
+        
+        function handleCanvasClick(event) {
+            // Nur neuen Punkt hinzufügen, wenn nicht alle Punkte vorhanden sind
+            if (currentPointIndex >= expectedPoints.length) {
+                return;
+            }
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Prüfe, ob auf einen existierenden Punkt geklickt wurde
+            const pointIndex = getPointAtPosition(x, y);
+            if (pointIndex !== -1) {
+                return; // Punkt existiert bereits, wird durch Drag behandelt
+            }
+            
+            // Koordinaten umrechnen
+            const coordX = (x - originX) / scale;
+            const coordY = (originY - y) / scale;
+            
+            // Auf Gitterkreuzung runden
+            const snapped = snapToGrid(coordX, coordY);
+            
+            // Punkt speichern
+            const colors = ['#e74c3c', '#3498db', '#27ae60', '#f39c12'];
+            const labels = ['A', 'B', 'C', 'D'];
+            
+            clickedPoints.push({
+                x: snapped.x,
+                y: snapped.y,
+                label: labels[currentPointIndex],
+                color: colors[currentPointIndex],
+                canvasX: originX + snapped.x * scale,
+                canvasY: originY - snapped.y * scale
+            });
+            
+            drawPoint(snapped.x, snapped.y, labels[currentPointIndex], colors[currentPointIndex]);
+            updatePointList();
+            currentPointIndex++;
+        }
+        
+        function drawPoint(coordX, coordY, label, color, isHovered = false) {
+            const x = originX + coordX * scale;
+            const y = originY - coordY * scale;
+            
+            // Größerer Punkt wenn gedraggt wird
+            const radius = isHovered ? 8 : 6;
+            
+            // Punkt zeichnen
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Rahmen
+            ctx.strokeStyle = '#2c3e50';
+            ctx.lineWidth = isHovered ? 3 : 2;
+            ctx.stroke();
+            
+            // Hover-Effekt (halbdurchsichtiger Kreis)
+            if (isHovered) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                ctx.arc(x, y, pointRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            // Label
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(label, x, y - (radius + 2));
+        }
+        
+        function drawConnections() {
+            if (clickedPoints.length < 2) return;
+            
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            
+            ctx.beginPath();
+            clickedPoints.forEach((point, index) => {
+                const x = originX + point.x * scale;
+                const y = originY - point.y * scale;
+                
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        function connectPoints() {
+            if (clickedPoints.length < 2) {
+                alert('Bitte zeichne zuerst mindestens 2 Punkte ein!');
+                return;
+            }
+            linesConnected = true;
+            drawCoordinateSystem();
+        }
+        
+        function clearCanvas() {
+            clickedPoints = [];
+            currentPointIndex = 0;
+            linesConnected = false;
+            isDragging = false;
+            draggedPointIndex = -1;
+            const nextPointInfo = document.getElementById('nextPointInfo');
+            nextPointInfo.style.color = '#e74c3c';
+            canvas.style.cursor = 'crosshair';
+            updatePointList();
+            drawCoordinateSystem();
+        }
+        
+        function updatePointList() {
+            const pointList = document.getElementById('pointList');
+            const nextPointInfo = document.getElementById('nextPointInfo');
+            
+            if (clickedPoints.length === 0) {
+                pointList.innerHTML = '<p style="color: #666;">Noch keine Punkte eingetragen</p>';
+            } else {
+                let html = '';
+                clickedPoints.forEach(point => {
+                    html += `<div class="point-info">
+                        <span class="point-label">${point.label}:</span> 
+                        (${point.x.toFixed(2)}, ${point.y.toFixed(2)})
+                    </div>`;
+                });
+                pointList.innerHTML = html;
+            }
+            
+            // Anzeige für nächsten Punkt
+            if (currentPointIndex < expectedPoints.length) {
+                const nextPoint = expectedPoints[currentPointIndex];
+                nextPointInfo.innerHTML = `➡️ Zeichne als nächstes: <strong>${nextPoint.label} (${nextPoint.x}, ${nextPoint.y})</strong>`;
+            } else {
+                nextPointInfo.innerHTML = '✅ Alle Punkte eingetragen! Du kannst jetzt "Punkte verbinden" drücken.';
+                nextPointInfo.style.color = '#27ae60';
+            }
+        }
+        
+        function normalizeNumber(num) {
+            if (typeof num === 'string') {
+                num = num.replace(',', '.');
+            }
+            return parseFloat(num);
+        }
+        
+        function checkAnswer(taskId, correctAnswer, tolerance = 0.01) {
+            const input = document.getElementById(`answer${taskId}`);
+            const resultElement = document.getElementById(`result${taskId}`);
+            const hintElement = document.getElementById(`hint${taskId}`);
+            const taskContainer = document.getElementById(`task${taskId.split(/[a-z]/)[0]}`);
+            
+            const userAnswer = normalizeNumber(input.value);
+            
+            if (isNaN(userAnswer)) {
+                resultElement.innerHTML = '⚠️ <strong>Bitte gib eine Zahl ein!</strong>';
+                resultElement.className = 'result incorrect';
+                return;
+            }
+            
+            if (Math.abs(userAnswer - correctAnswer) < tolerance) {
+                resultElement.innerHTML = '✅ <strong>Richtig!</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!input.classList.contains('solved')) {
+                    input.classList.add('solved');
+                    input.disabled = true;
+                    solvedTasks++;
+                    earnedPoints += taskPoints[taskId] || 0;
+                    updateProgress();
+                }
+            } else {
+                resultElement.innerHTML = '❌ <strong>Falsch!</strong> Versuche es noch einmal.';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function checkTask1() {
+            if (clickedPoints.length < expectedPoints.length) {
+                const resultElement = document.getElementById('result1');
+                resultElement.innerHTML = `⚠️ <strong>Bitte zeichne alle ${expectedPoints.length} Punkte ein!</strong>`;
+                resultElement.className = 'result incorrect';
+                return;
+            }
+            
+            const tolerance = 0.5; // Toleranz für Klick-Positionen (erhöht für einfachere Korrektur)
+            let correctCount = 0;
+            let allCorrect = true;
+            
+            // Prüfe jeden Punkt
+            for (let i = 0; i < expectedPoints.length; i++) {
+                const expected = expectedPoints[i];
+                const clicked = clickedPoints[i];
+                
+                if (clicked) {
+                    const xDiff = Math.abs(clicked.x - expected.x);
+                    const yDiff = Math.abs(clicked.y - expected.y);
+                    
+                    if (xDiff < tolerance && yDiff < tolerance) {
+                        correctCount++;
+                    } else {
+                        allCorrect = false;
+                    }
+                } else {
+                    allCorrect = false;
+                }
+            }
+            
+            const resultElement = document.getElementById('result1');
+            const hintElement = document.getElementById('hint1');
+            const taskContainer = document.getElementById('task1');
+            
+            if (allCorrect) {
+                resultElement.innerHTML = `✅ <strong>Richtig! Alle ${correctCount} Punkte korrekt eingezeichnet.</strong>`;
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!taskContainer.classList.contains('solved')) {
+                    taskContainer.classList.add('solved');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['1'];
+                    updateProgress();
+                }
+            } else {
+                resultElement.innerHTML = `⚠️ <strong>${correctCount} von ${expectedPoints.length} Punkten richtig. Versuche es noch einmal!</strong>`;
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function checkTask3a() {
+            const selected = document.querySelector('input[name="answer3a"]:checked');
+            const text = document.getElementById('answer3a-text').value.toLowerCase();
+            const resultElement = document.getElementById('result3a');
+            const hintElement = document.getElementById('hint3a');
+            const taskContainer = document.getElementById('task3');
+            
+            if (!selected) {
+                resultElement.innerHTML = '⚠️ <strong>Bitte wähle eine Antwort aus!</strong>';
+                resultElement.className = 'result incorrect';
+                return;
+            }
+            
+            const isCorrect = selected.value === 'leni';
+            const hasText = text.length > 10;
+            
+            if (isCorrect && hasText) {
+                resultElement.innerHTML = '✅ <strong>Richtig! Gute Begründung.</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!taskContainer.classList.contains('solved-a')) {
+                    taskContainer.classList.add('solved-a');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['3a'];
+                    updateProgress();
+                }
+            } else if (isCorrect && !hasText) {
+                resultElement.innerHTML = '⚠️ <strong>Richtige Wahl, aber bitte begründe deine Antwort ausführlicher!</strong>';
+                resultElement.className = 'result incorrect';
+            } else {
+                resultElement.innerHTML = '❌ <strong>Falsch!</strong> Versuche es noch einmal.';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function checkTask3b() {
+            const selected = document.querySelector('input[name="answer3b"]:checked');
+            const text = document.getElementById('answer3b-text').value.toLowerCase();
+            const resultElement = document.getElementById('result3b');
+            const taskContainer = document.getElementById('task3');
+            
+            if (!selected) {
+                resultElement.innerHTML = '⚠️ <strong>Bitte wähle eine Antwort aus!</strong>';
+                resultElement.className = 'result incorrect';
+                return;
+            }
+            
+            const hasText = text.length > 10;
+            
+            if (hasText) {
+                resultElement.innerHTML = '✅ <strong>Gut! Beschreibe nun den Graphen in deinem Heft.</strong>';
+                resultElement.className = 'result correct';
+                
+                if (!taskContainer.classList.contains('solved-b')) {
+                    taskContainer.classList.add('solved-b');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['3b'];
+                    updateProgress();
+                }
+            } else {
+                resultElement.innerHTML = '⚠️ <strong>Bitte beschreibe den Verlauf des Graphen ausführlicher!</strong>';
+                resultElement.className = 'result incorrect';
+            }
+        }
+        
+        function checkTask4a() {
+            const text = document.getElementById('answer4a').value.toLowerCase();
+            const resultElement = document.getElementById('result4a');
+            const hintElement = document.getElementById('hint4a');
+            const taskContainer = document.getElementById('task4');
+            
+            const keywords = ['proportional', 'proportionale', 'gleichmäßig', 'linear'];
+            const hasKeywords = keywords.some(kw => text.includes(kw));
+            const hasText = text.length > 20;
+            
+            if (hasKeywords && hasText) {
+                resultElement.innerHTML = '✅ <strong>Richtig! Gute Begründung.</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!taskContainer.classList.contains('solved-a')) {
+                    taskContainer.classList.add('solved-a');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['4a'];
+                    updateProgress();
+                }
+            } else if (hasText) {
+                resultElement.innerHTML = '⚠️ <strong>Versuche noch genauer zu begründen, warum es proportional ist oder nicht.</strong>';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            } else {
+                resultElement.innerHTML = '⚠️ <strong>Bitte gib eine ausführlichere Begründung!</strong>';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function checkTask4b() {
+            // Diese Aufgabe hängt vom tatsächlichen Graphen ab - wir prüfen nur, ob Werte eingegeben wurden
+            const a1 = document.getElementById('answer4b1').value;
+            const a2 = document.getElementById('answer4b2').value;
+            const a3 = document.getElementById('answer4b3').value;
+            const resultElement = document.getElementById('result4b');
+            const hintElement = document.getElementById('hint4b');
+            const taskContainer = document.getElementById('task4');
+            
+            if (a1 && a2 && a3) {
+                resultElement.innerHTML = '✅ <strong>Gut! Vergleiche deine Werte mit dem Graphen.</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!taskContainer.classList.contains('solved-b')) {
+                    taskContainer.classList.add('solved-b');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['4b'];
+                    updateProgress();
+                }
+            } else {
+                resultElement.innerHTML = '⚠️ <strong>Bitte fülle alle Felder aus!</strong>';
+                resultElement.className = 'result incorrect';
+            }
+        }
+        
+        function checkTask4c() {
+            const a1 = normalizeNumber(document.getElementById('answer4c1').value);
+            const a2 = normalizeNumber(document.getElementById('answer4c2').value);
+            const resultElement = document.getElementById('result4c');
+            const hintElement = document.getElementById('hint4c');
+            const taskContainer = document.getElementById('task4');
+            
+            if (isNaN(a1) || isNaN(a2)) {
+                resultElement.innerHTML = '⚠️ <strong>Bitte gib Zahlen ein!</strong>';
+                resultElement.className = 'result incorrect';
+                return;
+            }
+            
+            // Prüfe auf Plausibilität: 50 Liter sollte höher sein als 1 Liter
+            if (a2 > a1 && a1 > 0 && a2 > 0) {
+                resultElement.innerHTML = '✅ <strong>Richtig! Die Werte sind plausibel.</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!taskContainer.classList.contains('solved-c')) {
+                    taskContainer.classList.add('solved-c');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['4c'];
+                    updateProgress();
+                }
+            } else {
+                resultElement.innerHTML = '⚠️ <strong>Überprüfe deine Berechnung! 50 Liter sollte eine größere Höhe ergeben als 1 Liter.</strong>';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function checkTask5a() {
+            const selected = document.querySelector('input[name="answer5a"]:checked');
+            const factor = normalizeNumber(document.getElementById('answer5a-factor').value);
+            const text = document.getElementById('answer5a-text').value.toLowerCase();
+            const resultElement = document.getElementById('result5a');
+            const hintElement = document.getElementById('hint5a');
+            const taskContainer = document.getElementById('task5');
+            
+            if (!selected) {
+                resultElement.innerHTML = '⚠️ <strong>Bitte wähle eine Antwort aus!</strong>';
+                resultElement.className = 'result incorrect';
+                return;
+            }
+            
+            const isCorrect = selected.value === 'proportional' && Math.abs(factor - 75) < 1;
+            const hasText = text.length > 10;
+            
+            if (isCorrect && hasText) {
+                resultElement.innerHTML = '✅ <strong>Richtig! Proportionale Zuordnung mit Faktor 75.</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!taskContainer.classList.contains('solved-a')) {
+                    taskContainer.classList.add('solved-a');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['5a'];
+                    updateProgress();
+                }
+            } else if (selected.value === 'proportional' && Math.abs(factor - 75) >= 1) {
+                resultElement.innerHTML = '⚠️ <strong>Richtige Zuordnung, aber der Proportionalitätsfaktor ist nicht korrekt. Berechne: Preis / Menge.</strong>';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            } else {
+                resultElement.innerHTML = '❌ <strong>Falsch!</strong> Prüfe die Quotienten: 75/1 = 150/2 = 225/3?';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function checkTask5b() {
+            const selected = document.querySelector('input[name="answer5b"]:checked');
+            const text = document.getElementById('answer5b-text').value.toLowerCase();
+            const resultElement = document.getElementById('result5b');
+            const hintElement = document.getElementById('hint5b');
+            const taskContainer = document.getElementById('task5');
+            
+            if (!selected) {
+                resultElement.innerHTML = '⚠️ <strong>Bitte wähle eine Antwort aus!</strong>';
+                resultElement.className = 'result incorrect';
+                return;
+            }
+            
+            const isCorrect = selected.value === 'nicht-proportional';
+            const hasText = text.length > 20;
+            
+            if (isCorrect && hasText) {
+                resultElement.innerHTML = '✅ <strong>Richtig! Keine proportionale Zuordnung.</strong>';
+                resultElement.className = 'result correct';
+                hintElement.style.display = 'none';
+                
+                if (!taskContainer.classList.contains('solved-b')) {
+                    taskContainer.classList.add('solved-b');
+                    solvedTasks++;
+                    earnedPoints += taskPoints['5b'];
+                    updateProgress();
+                }
+            } else if (isCorrect && !hasText) {
+                resultElement.innerHTML = '⚠️ <strong>Richtige Antwort, aber bitte begründe ausführlicher!</strong>';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            } else {
+                resultElement.innerHTML = '❌ <strong>Falsch!</strong> Berechne die Quotienten: 1/10, 6/30, 16/50 - sind sie gleich?';
+                resultElement.className = 'result incorrect';
+                hintElement.style.display = 'block';
+            }
+        }
+        
+        function updateProgress() {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const totalPointsElement = document.getElementById('totalPoints');
+            const percentage = (solvedTasks / totalTasks) * 100;
+            
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = `${solvedTasks} von ${totalTasks} Aufgaben gelöst`;
+            totalPointsElement.innerHTML = `<strong>${Math.round(earnedPoints * 10) / 10} Punkte von ${maxPoints} Punkten erreicht.</strong>`;
+            
+            if (solvedTasks === totalTasks) {
+                progressText.innerHTML = '🎉 <strong>Alle Aufgaben gelöst!</strong> 🎉';
+                progressText.style.color = '#27ae60';
+            }
+        }
+        
+        function calculateGrade(percentage) {
+            // Deutsches Notensystem
+            if (percentage >= 92) return { note: 1, text: 'sehr gut' };
+            if (percentage >= 81) return { note: 2, text: 'gut' };
+            if (percentage >= 67) return { note: 3, text: 'befriedigend' };
+            if (percentage >= 50) return { note: 4, text: 'ausreichend' };
+            if (percentage >= 30) return { note: 5, text: 'mangelhaft' };
+            return { note: 6, text: 'ungenügend' };
+        }
+        
+        function gradeAllTasks() {
+            // Berechne alle Punkte neu
+            let totalEarned = 0;
+            const gradingResults = [];
+            
+            // Aufgabe 1 - Koordinatensystem
+            let task1Points = 0;
+            if (clickedPoints.length >= expectedPoints.length) {
+                const tolerance = 0.5;
+                let correctCount = 0;
+                for (let i = 0; i < expectedPoints.length; i++) {
+                    const expected = expectedPoints[i];
+                    const clicked = clickedPoints[i];
+                    if (clicked) {
+                        const xDiff = Math.abs(clicked.x - expected.x);
+                        const yDiff = Math.abs(clicked.y - expected.y);
+                        if (xDiff < tolerance && yDiff < tolerance) {
+                            correctCount++;
+                        }
+                    }
+                }
+                task1Points = (correctCount / expectedPoints.length) * taskPoints['1'];
+            }
+            totalEarned += task1Points;
+            gradingResults.push({ task: 'Aufgabe 1', max: taskPoints['1'], earned: task1Points });
+            
+            // Aufgabe 2a-d
+            const task2Answers = [
+                { id: '2a', correct: 2.375 },
+                { id: '2b', correct: 1.333 },
+                { id: '2c', correct: 6 },
+                { id: '2d', correct: -11.333 }
+            ];
+            
+            task2Answers.forEach(answer => {
+                const input = document.getElementById(`answer${answer.id}`);
+                let points = 0;
+                if (input && input.value) {
+                    const userAnswer = normalizeNumber(input.value);
+                    if (!isNaN(userAnswer) && Math.abs(userAnswer - answer.correct) < 0.1) {
+                        points = taskPoints[answer.id];
+                    }
+                }
+                totalEarned += points;
+                gradingResults.push({ task: `Aufgabe 2${answer.id.slice(-1)}`, max: taskPoints[answer.id], earned: points });
+            });
+            
+            // Aufgabe 3a
+            let task3aPoints = 0;
+            const selected3a = document.querySelector('input[name="answer3a"]:checked');
+            const text3a = document.getElementById('answer3a-text')?.value.toLowerCase() || '';
+            if (selected3a && selected3a.value === 'leni' && text3a.length > 10) {
+                task3aPoints = taskPoints['3a'];
+            } else if (selected3a && selected3a.value === 'leni' && text3a.length <= 10) {
+                task3aPoints = taskPoints['3a'] * 0.5; // Teilpunkte
+            }
+            totalEarned += task3aPoints;
+            gradingResults.push({ task: 'Aufgabe 3a', max: taskPoints['3a'], earned: task3aPoints });
+            
+            // Aufgabe 3b
+            let task3bPoints = 0;
+            const selected3b = document.querySelector('input[name="answer3b"]:checked');
+            const text3b = document.getElementById('answer3b-text')?.value.toLowerCase() || '';
+            if (selected3b && text3b.length > 10) {
+                task3bPoints = taskPoints['3b'];
+            }
+            totalEarned += task3bPoints;
+            gradingResults.push({ task: 'Aufgabe 3b', max: taskPoints['3b'], earned: task3bPoints });
+            
+            // Aufgabe 4a
+            let task4aPoints = 0;
+            const text4a = document.getElementById('answer4a')?.value.toLowerCase() || '';
+            const keywords4a = ['proportional', 'proportionale', 'gleichmäßig', 'linear'];
+            if (text4a.length > 20 && keywords4a.some(kw => text4a.includes(kw))) {
+                task4aPoints = taskPoints['4a'];
+            } else if (text4a.length > 20) {
+                task4aPoints = taskPoints['4a'] * 0.5;
+            }
+            totalEarned += task4aPoints;
+            gradingResults.push({ task: 'Aufgabe 4a', max: taskPoints['4a'], earned: task4aPoints });
+            
+            // Aufgabe 4b
+            let task4bPoints = 0;
+            const a4b1 = document.getElementById('answer4b1')?.value;
+            const a4b2 = document.getElementById('answer4b2')?.value;
+            const a4b3 = document.getElementById('answer4b3')?.value;
+            if (a4b1 && a4b2 && a4b3) {
+                task4bPoints = taskPoints['4b']; // Vollständig ausgefüllt
+            }
+            totalEarned += task4bPoints;
+            gradingResults.push({ task: 'Aufgabe 4b', max: taskPoints['4b'], earned: task4bPoints });
+            
+            // Aufgabe 4c
+            let task4cPoints = 0;
+            const a4c1 = normalizeNumber(document.getElementById('answer4c1')?.value || 0);
+            const a4c2 = normalizeNumber(document.getElementById('answer4c2')?.value || 0);
+            if (!isNaN(a4c1) && !isNaN(a4c2) && a4c2 > a4c1 && a4c1 > 0 && a4c2 > 0) {
+                task4cPoints = taskPoints['4c'];
+            }
+            totalEarned += task4cPoints;
+            gradingResults.push({ task: 'Aufgabe 4c', max: taskPoints['4c'], earned: task4cPoints });
+            
+            // Aufgabe 5a
+            let task5aPoints = 0;
+            const selected5a = document.querySelector('input[name="answer5a"]:checked');
+            const factor5a = normalizeNumber(document.getElementById('answer5a-factor')?.value || 0);
+            const text5a = document.getElementById('answer5a-text')?.value.toLowerCase() || '';
+            if (selected5a && selected5a.value === 'proportional' && Math.abs(factor5a - 75) < 1 && text5a.length > 10) {
+                task5aPoints = taskPoints['5a'];
+            } else if (selected5a && selected5a.value === 'proportional' && Math.abs(factor5a - 75) < 1) {
+                task5aPoints = taskPoints['5a'] * 0.7;
+            } else if (selected5a && selected5a.value === 'proportional') {
+                task5aPoints = taskPoints['5a'] * 0.5;
+            }
+            totalEarned += task5aPoints;
+            gradingResults.push({ task: 'Aufgabe 5a', max: taskPoints['5a'], earned: task5aPoints });
+            
+            // Aufgabe 5b
+            let task5bPoints = 0;
+            const selected5b = document.querySelector('input[name="answer5b"]:checked');
+            const text5b = document.getElementById('answer5b-text')?.value.toLowerCase() || '';
+            if (selected5b && selected5b.value === 'nicht-proportional' && text5b.length > 20) {
+                task5bPoints = taskPoints['5b'];
+            } else if (selected5b && selected5b.value === 'nicht-proportional') {
+                task5bPoints = taskPoints['5b'] * 0.5;
+            }
+            totalEarned += task5bPoints;
+            gradingResults.push({ task: 'Aufgabe 5b', max: taskPoints['5b'], earned: task5bPoints });
+            
+            // Aktualisiere Gesamtpunkte
+            earnedPoints = totalEarned;
+            updateProgress();
+            
+            // Berechne Note
+            const percentage = (totalEarned / maxPoints) * 100;
+            const grade = calculateGrade(percentage);
+            
+            // Zeige Benotung
+            const gradeDisplay = document.getElementById('gradeDisplay');
+            const gradeColor = grade.note <= 2 ? '#27ae60' : grade.note <= 4 ? '#f39c12' : '#e74c3c';
+            gradeDisplay.style.display = 'block';
+            gradeDisplay.innerHTML = `
+                <strong style="font-size: 1.5em; color: ${gradeColor};">
+                    Note: ${grade.note} (${grade.text})
+                </strong><br>
+                <span style="font-size: 1.1em;">${Math.round(percentage * 10) / 10}% erreicht</span>
+            `;
+            
+            // Zeige detaillierte Tabelle
+            const gradingDetails = document.getElementById('gradingDetails');
+            const gradingTable = document.getElementById('gradingTable');
+            
+            let tableHTML = `
+                <table style="width: 100%; margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th>Aufgabe</th>
+                            <th>Erreichte Punkte</th>
+                            <th>Max. Punkte</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            gradingResults.forEach(result => {
+                const percentageTask = (result.earned / result.max) * 100;
+                const statusIcon = percentageTask >= 100 ? '✅' : percentageTask >= 50 ? '⚠️' : '❌';
+                const statusColor = percentageTask >= 100 ? '#27ae60' : percentageTask >= 50 ? '#f39c12' : '#e74c3c';
+                
+                tableHTML += `
+                    <tr>
+                        <td><strong>${result.task}</strong></td>
+                        <td style="color: ${statusColor}; font-weight: bold;">${Math.round(result.earned * 10) / 10}</td>
+                        <td>${result.max}</td>
+                        <td>${statusIcon}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #e8f4fd; font-weight: bold; font-size: 1.1em;">
+                            <td><strong>GESAMT</strong></td>
+                            <td style="color: ${gradeColor}; font-size: 1.2em;">${Math.round(totalEarned * 10) / 10}</td>
+                            <td style="font-size: 1.2em;">${maxPoints}</td>
+                            <td><strong>Note ${grade.note}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+            
+            gradingTable.innerHTML = tableHTML;
+            gradingDetails.style.display = 'block';
+            
+            // Scroll zu Benotung
+            gradingDetails.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Add event listeners for Enter key
+        document.addEventListener('DOMContentLoaded', function() {
+            // Canvas initialisieren
+            initCanvas();
+            
+            // Punkt-Anzeige initialisieren
+            updatePointList();
+            
+            // Enter-Taste für Input-Felder
+            const numberInputs = document.querySelectorAll('input[type="number"]');
+            numberInputs.forEach(input => {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        const taskId = this.id.replace('answer', '');
+                        const btn = this.parentElement.querySelector('.btn');
+                        if (btn) btn.click();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
