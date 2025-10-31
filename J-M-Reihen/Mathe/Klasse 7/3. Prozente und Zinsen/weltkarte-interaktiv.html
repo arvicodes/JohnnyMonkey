@@ -435,15 +435,17 @@
 
         <div class="control-group">
             <label for="searchLocation">Ort suchen:</label>
-            <input type="text" id="searchLocation" placeholder="z.B. München, Hamburg">
-            <button onclick="searchLocation()">Suchen</button>
+            <div style="display: flex; gap: 3px; align-items: center;">
+                <input type="text" id="searchLocation" placeholder="z.B. München, Hamburg" style="flex: 1;">
+                <button onclick="searchLocation()" style="width: auto; padding: 4px 8px; white-space: nowrap;">Suchen</button>
+            </div>
             <div style="font-size: 9px; color: #666; margin-top: 2px; line-height: 1.2;">
                 💡 Tipp: "Stadt, Land" für bessere Ergebnisse
             </div>
         </div>
 
         <div class="control-group">
-            <button onclick="flyToRandomLocation()">🎲 Zufälliger Ort</button>
+            <button onclick="flyToRandomLocation()">🎲 Zufälliger Ort + Laufen</button>
         </div>
 
         <div class="control-group">
@@ -700,29 +702,29 @@
         // Weltdaten laden
         function loadWorldData() {
             worldData.countries = [
-                { name: 'Deutschland', lat: 51.1657, lng: 10.4515, capital: 'Berlin', population: '83.2M' },
-                { name: 'Frankreich', lat: 46.2276, lng: 2.2137, capital: 'Paris', population: '67.4M' },
-                { name: 'Spanien', lat: 40.4637, lng: -3.7492, capital: 'Madrid', population: '47.3M' },
-                { name: 'Italien', lat: 41.8719, lng: 12.5674, capital: 'Rom', population: '60.4M' },
-                { name: 'Vereinigtes Königreich', lat: 55.3781, lng: -3.4360, capital: 'London', population: '67.9M' },
-                { name: 'USA', lat: 39.8283, lng: -98.5795, capital: 'Washington D.C.', population: '331.9M' },
-                { name: 'China', lat: 35.8617, lng: 104.1954, capital: 'Peking', population: '1.4B' },
-                { name: 'Japan', lat: 36.2048, lng: 138.2529, capital: 'Tokio', population: '125.8M' },
-                { name: 'Brasilien', lat: -14.2350, lng: -51.9253, capital: 'Brasília', population: '212.6M' },
-                { name: 'Australien', lat: -25.2744, lng: 133.7751, capital: 'Canberra', population: '25.7M' }
+                { name: 'Deutschland', lat: 51.1657, lng: 10.4515, capital: 'Berlin', population: '83.2M', funfact: 'Deutschland hat mehr als 25.000 Burgen und Schlösser!' },
+                { name: 'Frankreich', lat: 46.2276, lng: 2.2137, capital: 'Paris', population: '67.4M', funfact: 'Frankreich ist das meistbesuchte Land der Welt mit über 80M Touristen/Jahr' },
+                { name: 'Spanien', lat: 40.4637, lng: -3.7492, capital: 'Madrid', population: '47.3M', funfact: 'Spanien hat die zweitmeisten UNESCO-Welterbestätten weltweit' },
+                { name: 'Italien', lat: 41.8719, lng: 12.5674, capital: 'Rom', population: '60.4M', funfact: 'Italien hat die meisten UNESCO-Welterbestätten weltweit (58 Stück)' },
+                { name: 'Vereinigtes Königreich', lat: 55.3781, lng: -3.4360, capital: 'London', population: '67.9M', funfact: 'Das UK hat die drittmeisten Nobelpreisträger nach USA und Deutschland' },
+                { name: 'USA', lat: 39.8283, lng: -98.5795, capital: 'Washington D.C.', population: '331.9M', funfact: 'Die USA hat 50 Bundesstaaten, aber nur 49 davon sind auf dem Festland' },
+                { name: 'China', lat: 35.8617, lng: 104.1954, capital: 'Peking', population: '1.4B', funfact: 'Die Chinesische Mauer ist über 21.000 km lang und sichtbar aus dem Weltall' },
+                { name: 'Japan', lat: 36.2048, lng: 138.2529, capital: 'Tokio', population: '125.8M', funfact: 'Japan hat über 6.800 Inseln, aber nur 430 sind bewohnt' },
+                { name: 'Brasilien', lat: -14.2350, lng: -51.9253, capital: 'Brasília', population: '212.6M', funfact: 'Brasilien ist das fünftgrößte Land der Welt und hat den größten Regenwald' },
+                { name: 'Australien', lat: -25.2744, lng: 133.7751, capital: 'Canberra', population: '25.7M', funfact: 'Australien hat mehr Kamele als Afrika und mehr Kängurus als Menschen' }
             ];
 
             worldData.cities = [
-                { name: 'New York', lat: 40.7128, lng: -74.0060, country: 'USA', population: '8.3M' },
-                { name: 'London', lat: 51.5074, lng: -0.1278, country: 'UK', population: '9.5M' },
-                { name: 'Tokio', lat: 35.6762, lng: 139.6503, country: 'Japan', population: '14.0M' },
-                { name: 'Paris', lat: 48.8566, lng: 2.3522, country: 'Frankreich', population: '11.0M' },
-                { name: 'Berlin', lat: 52.5200, lng: 13.4050, country: 'Deutschland', population: '3.7M' },
-                { name: 'Rom', lat: 41.9028, lng: 12.4964, country: 'Italien', population: '2.9M' },
-                { name: 'Madrid', lat: 40.4168, lng: -3.7038, country: 'Spanien', population: '6.6M' },
-                { name: 'Moskau', lat: 55.7558, lng: 37.6176, country: 'Russland', population: '12.5M' },
-                { name: 'Peking', lat: 39.9042, lng: 116.4074, country: 'China', population: '21.5M' },
-                { name: 'São Paulo', lat: -23.5505, lng: -46.6333, country: 'Brasilien', population: '12.3M' }
+                { name: 'New York', lat: 40.7128, lng: -74.0060, country: 'USA', population: '8.3M', funfact: 'New York wurde ursprünglich "New Amsterdam" genannt' },
+                { name: 'London', lat: 51.5074, lng: -0.1278, country: 'UK', population: '9.5M', funfact: 'London hat 6 unterirdische Flüsse, die durch die Stadt fließen' },
+                { name: 'Tokio', lat: 35.6762, lng: 139.6503, country: 'Japan', population: '14.0M', funfact: 'Tokio ist die größte Metropolregion der Welt mit über 37M Einwohnern' },
+                { name: 'Paris', lat: 48.8566, lng: 2.3522, country: 'Frankreich', population: '11.0M', funfact: 'Paris hat nur einen Stop-Schild in der gesamten Stadt' },
+                { name: 'Berlin', lat: 52.5200, lng: 13.4050, country: 'Deutschland', population: '3.7M', funfact: 'Berlin hat mehr Brücken als Venedig - über 960 Stück!' },
+                { name: 'Rom', lat: 41.9028, lng: 12.4964, country: 'Italien', population: '2.9M', funfact: 'Rom ist die einzige Stadt der Welt mit einem Staat im Inneren (Vatikan)' },
+                { name: 'Madrid', lat: 40.4168, lng: -3.7038, country: 'Spanien', population: '6.6M', funfact: 'Madrid liegt höher als jeder andere Hauptstadt Europas' },
+                { name: 'Moskau', lat: 55.7558, lng: 37.6176, country: 'Russland', population: '12.5M', funfact: 'Moskau hat das größte U-Bahn-System der Welt (über 250 Stationen)' },
+                { name: 'Peking', lat: 39.9042, lng: 116.4074, country: 'China', population: '21.5M', funfact: 'Peking bedeutet wörtlich "Nördliche Hauptstadt" auf Chinesisch' },
+                { name: 'São Paulo', lat: -23.5505, lng: -46.6333, country: 'Brasilien', population: '12.3M', funfact: 'São Paulo ist die größte Stadt der südlichen Hemisphäre' }
             ];
 
             createLayers();
@@ -888,14 +890,63 @@
             }
         }
 
-        // Zu zufälligem Ort fliegen
+        // Zu zufälligem Ort fliegen und Laufmodus aktivieren
         function flyToRandomLocation() {
-            const locations = [...worldData.countries, ...worldData.cities];
-            const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+            // Wähle eine zufällige Stadt (nicht Land, damit Laufmodus sinnvoll ist)
+            const randomCity = worldData.cities[Math.floor(Math.random() * worldData.cities.length)];
             
-            map.flyTo([randomLocation.lat, randomLocation.lng], 8, {
-                duration: 2
-            });
+            // Aktiviere Laufmodus, falls noch nicht aktiv
+            if (!walkMode) {
+                walkMode = true;
+                const btn = document.getElementById('walkModeBtn');
+                const walkSection = document.getElementById('walkModeSection');
+                
+                // Automatisch zu Street-Ansicht wechseln
+                Object.values(currentLayers.base).forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                currentLayers.base.street.addTo(map);
+                document.getElementById('mapStyle').value = 'street';
+                
+                // Fliege zur Stadt und zoome auf Level 19
+                map.flyTo([randomCity.lat, randomCity.lng], 19, {
+                    duration: 2,
+                    animate: true
+                });
+                
+                // Warten bis Animation fertig ist
+                setTimeout(() => {
+                    btn.textContent = '🚶 Laufmodus (Aktiv)';
+                    btn.classList.add('walk-mode-active');
+                    walkSection.classList.add('active');
+                    
+                    playerPosition = [randomCity.lat, randomCity.lng];
+                    createPlayerMarker();
+                    
+                    document.addEventListener('keydown', handleKeyDown);
+                    document.addEventListener('keyup', handleKeyUp);
+                    
+                    // Info mit Stadt-Info anzeigen
+                    showWalkModeInfo(randomCity.name, randomCity.country);
+                    
+                    // Ortsinformationen aktualisieren
+                    updateLocationInfo(randomCity.lat, randomCity.lng);
+                }, 2000);
+            } else {
+                // Falls Laufmodus bereits aktiv, fliege einfach zur Stadt
+                map.flyTo([randomCity.lat, randomCity.lng], 19, {
+                    duration: 2,
+                    animate: true
+                });
+                
+                setTimeout(() => {
+                    playerPosition = [randomCity.lat, randomCity.lng];
+                    if (playerMarker) {
+                        playerMarker.setLatLng(playerPosition);
+                    }
+                    updateLocationInfo(randomCity.lat, randomCity.lng);
+                }, 2000);
+            }
         }
 
         // Weltstatistiken anzeigen
@@ -1266,20 +1317,28 @@
             if (nearestCity) {
                 // Zeige Stadt-Informationen
                 locationNameDiv.textContent = `🏙️ ${nearestCity.name}`;
-                locationFactsDiv.innerHTML = `
+                let factsHtml = `
                     <strong>Land:</strong> ${nearestCity.country}<br>
                     <strong>Einwohner:</strong> ${nearestCity.population}<br>
                     <strong>Entfernung:</strong> ${Math.round(minDistance)} km
                 `;
+                if (nearestCity.funfact) {
+                    factsHtml += `<br><span style="font-style: italic; color: #667eea;">💡 ${nearestCity.funfact}</span>`;
+                }
+                locationFactsDiv.innerHTML = factsHtml;
                 locationInfoDiv.style.display = 'block';
             } else if (nearestCountry) {
                 // Zeige Länder-Informationen
                 locationNameDiv.textContent = `🏛️ ${nearestCountry.name}`;
-                locationFactsDiv.innerHTML = `
+                let factsHtml = `
                     <strong>Hauptstadt:</strong> ${nearestCountry.capital}<br>
                     <strong>Einwohner:</strong> ${nearestCountry.population}<br>
                     <strong>Entfernung:</strong> ${Math.round(minDistance)} km
                 `;
+                if (nearestCountry.funfact) {
+                    factsHtml += `<br><span style="font-style: italic; color: #667eea;">💡 ${nearestCountry.funfact}</span>`;
+                }
+                locationFactsDiv.innerHTML = factsHtml;
                 locationInfoDiv.style.display = 'block';
             } else {
                 // Verwende Reverse Geocoding API für unbekannte Orte
