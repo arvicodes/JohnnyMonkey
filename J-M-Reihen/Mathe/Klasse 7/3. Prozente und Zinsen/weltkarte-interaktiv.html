@@ -443,6 +443,20 @@
         </div>
 
         <div class="control-group">
+            <label for="characterSelect">Charakter:</label>
+            <select id="characterSelect" onchange="changeCharacter()" style="width: 100%; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px;">
+                <option value="🚶">🚶 Standard</option>
+                <option value="🚶‍♂️">🚶‍♂️ Männlich</option>
+                <option value="🚶‍♀️">🚶‍♀️ Weiblich</option>
+                <option value="🏃">🏃 Läufer</option>
+                <option value="🏃‍♂️">🏃‍♂️ Männlich Läufer</option>
+                <option value="🏃‍♀️">🏃‍♀️ Weiblich Läufer</option>
+                <option value="🧑‍🦯">🧑‍🦯 Mit Stock</option>
+                <option value="🚴">🚴 Fahrradfahrer</option>
+            </select>
+        </div>
+
+        <div class="control-group">
             <button onclick="toggleWalkMode()" id="walkModeBtn">🚶 Laufmodus</button>
             <div style="font-size: 9px; color: #666; margin-top: 2px; line-height: 1.2;">
                 💡 Auto: Stadt + Street-View
@@ -518,6 +532,7 @@
         let pressedKeys = {}; // Für kontinuierliches Laufen bei gedrückt gehaltener Taste
         let movementAnimationFrame = null; // Animation Frame für flüssige Bewegung
         let lastLocationUpdate = 0; // Throttling für Ortsinformationen
+        let selectedCharacter = '🚶'; // Ausgewählter Charakter
 
         // Karte initialisieren
         function initMap() {
@@ -1070,7 +1085,7 @@
             playerMarker = L.marker(playerPosition, {
                 icon: L.divIcon({
                     className: 'player-character' + walkingClass,
-                    html: '<div class="walking-emoji" style="font-size: 24px; line-height: 1; display: inline-block;">🚶</div>',
+                    html: `<div class="walking-emoji" style="font-size: 24px; line-height: 1; display: inline-block;">${selectedCharacter}</div>`,
                     iconSize: [30, 30],
                     iconAnchor: [15, 15]
                 }),
@@ -1081,6 +1096,16 @@
             
             // Aktiviere Animation wenn Laufmodus aktiv ist
             activateWalkingAnimation();
+        }
+
+        function changeCharacter() {
+            const select = document.getElementById('characterSelect');
+            selectedCharacter = select.value;
+            
+            // Aktualisiere Marker, falls vorhanden
+            if (playerMarker && playerPosition) {
+                createPlayerMarker();
+            }
         }
 
         function movePlayer(direction) {
@@ -1447,4 +1472,5 @@
         });
     </script>
 </body>
+</html>
 </html>
