@@ -25,7 +25,8 @@ import {
   Grade as GradeIcon,
   Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
+  ExpandLess as ExpandLessIcon,
+  RecordVoiceOver as ParticipationIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
@@ -165,6 +166,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [sharedFiles, setSharedFiles] = useState<{[groupId: string]: string[]}>({});
 
+  // Mitarbeitsbewertung States
+  const [participationData, setParticipationData] = useState<{[groupId: string]: {
+    groupName: string;
+    period1Hours: number | null;
+    period2Hours: number | null;
+    participations: {lessonIndex: number; value: number; comment?: string | null; period?: number}[];
+    average: number;
+    count: number;
+    grade: number | null;
+  }}>({});
+  const [participationLoading, setParticipationLoading] = useState(false);
+  const [participationExpanded, setParticipationExpanded] = useState(false);
+  const [epoGrades, setEpoGrades] = useState<any[]>([]);
+
   // Spielerische Farbpalette
   const colors = {
     primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
@@ -241,6 +256,37 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     } catch (error) {
       console.error('Error fetching student data:', error);
       setStudentName("Schüler"); // Fallback
+    }
+  };
+
+  // Funktion zum Laden der Mitarbeitsbewertungen
+  const fetchParticipationData = async (studentId: string) => {
+    try {
+      setParticipationLoading(true);
+      const response = await fetch(`/api/participation/student/${studentId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setParticipationData(data);
+      } else {
+        console.error('Fehler beim Laden der Mitarbeitsbewertungen');
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Mitarbeitsbewertungen:', error);
+    } finally {
+      setParticipationLoading(false);
+    }
+  };
+  
+  // Funktion zum Laden der EPO-Noten
+  const fetchEpoGrades = async (studentId: string) => {
+    try {
+      const response = await fetch(`/api/participation/student/${studentId}/epo-grades`);
+      if (response.ok) {
+        const data = await response.json();
+        setEpoGrades(data);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der EPO-Noten:', error);
     }
   };
 
@@ -2103,11 +2149,37 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         // Lade zuerst den Student-Namen
         await fetchStudentData(userId);
         
+        console.log('📚 Fetching learning groups for student:', userId);
         const response = await fetch(`/api/learning-groups/student/${userId}`);
+        console.log('📡 Response status:', response.status, response.statusText);
+        console.log('📡 Response headers:', response.headers.get('content-type'));
+        
         if (!response.ok) {
-          throw new Error('Lerngruppen konnten nicht geladen werden');
+          // Check if response is JSON before parsing
+          const contentType = response.headers.get('content-type');
+          let errorData;
+          if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json();
+          } else {
+            const text = await response.text();
+            console.error('❌ Non-JSON error response:', text);
+            throw new Error(`Server-Fehler: ${text.substring(0, 100)}`);
+          }
+          console.error('❌ Error loading groups:', errorData);
+          throw new Error(errorData.error || errorData.message || 'Lerngruppen konnten nicht geladen werden');
         }
-        const data = await response.json();
+        
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        let data;
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          console.error('❌ Non-JSON response:', text);
+          throw new Error(`Server-Fehler: Ungültige Antwort vom Server`);
+        }
+        console.log('✅ Loaded', data.length, 'learning groups');
         setLerngruppen(data);
         
         // Wenn Lerngruppen geladen sind, lade die Zuweisungen und Inhalte
@@ -2131,6 +2203,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             // Lade zugeordnete Ordner für jede Lerngruppe
             await fetchAssignedFolders(group.id);
           }
+          
+          // Lade Mitarbeitsbewertungen
+          await fetchParticipationData(userId);
+          await fetchEpoGrades(userId);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
@@ -2392,6 +2468,80 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Grid>
                 </Grid>
 
+                {/* Adventskalender Icon */}
+                <Box sx={{ mt: 2.1, textAlign: 'center' }}>
+                  <Box
+                    onClick={() => navigate('/advent-calendar')}
+                    sx={{
+                      bgcolor: '#c62828',
+                      borderRadius: 2,
+                      p: 2,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      border: '2px solid #b71c1c',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: '-50%',
+                        left: '-50%',
+                        width: '200%',
+                        height: '200%',
+                        background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
+                        animation: 'shimmer 3s infinite',
+                        '@keyframes shimmer': {
+                          '0%': { transform: 'rotate(0deg)' },
+                          '100%': { transform: 'rotate(360deg)' }
+                        }
+                      },
+                      '&:hover': {
+                        transform: 'translateY(-4px) scale(1.05)',
+                        boxShadow: '0 8px 24px rgba(198, 40, 40, 0.4)',
+                        borderColor: '#ffd700',
+                        '& .calendar-icon': {
+                          transform: 'scale(1.2) rotate(5deg)',
+                          animation: 'bounce 0.6s ease-in-out'
+                        },
+                        '@keyframes bounce': {
+                          '0%, 100%': { transform: 'scale(1.2) rotate(5deg) translateY(0)' },
+                          '50%': { transform: 'scale(1.3) rotate(-5deg) translateY(-8px)' }
+                        }
+                      }
+                    }}
+                  >
+                    <Typography
+                      className="calendar-icon"
+                      variant="h2"
+                      sx={{
+                        fontSize: '3.5rem',
+                        mb: 0.5,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+                        position: 'relative',
+                        zIndex: 1
+                      }}
+                    >
+                      🎄
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: '#fff',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: 1,
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+                        position: 'relative',
+                        zIndex: 1
+                      }}
+                    >
+                      Adventskalender
+                    </Typography>
+                  </Box>
+                </Box>
+
                 {/* Character Skills */}
                 <Box>
                   <Typography variant="body2" sx={{ 
@@ -2544,6 +2694,337 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                 </Box>
                               );
                             })}
+                          </Box>
+                        )}
+                      </>
+                    )}
+                  </Box>
+                )}
+
+                {/* Mitarbeitsbewertungen Anzeige */}
+                {lerngruppen.length > 0 && (
+                  <Box sx={{ mt: 2.1 }}>
+                    <Box 
+                      sx={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        p: 1,
+                        borderRadius: 1,
+                        bgcolor: participationExpanded ? '#fff3e0' : 'transparent',
+                        transition: 'background-color 0.2s',
+                        '&:hover': {
+                          bgcolor: '#fff3e0'
+                        }
+                      }}
+                      onClick={() => setParticipationExpanded(!participationExpanded)}
+                    >
+                      <Typography variant="body2" sx={{ 
+                        color: 'text.secondary',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                      }}>
+                        <ParticipationIcon sx={{ fontSize: 16 }} />
+                        Mitarbeit
+                      </Typography>
+                      {participationExpanded ? (
+                        <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      ) : (
+                        <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                      )}
+                    </Box>
+                    
+                    {participationExpanded && (
+                      <>
+                        {participationLoading ? (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                            <CircularProgress size={20} />
+                          </Box>
+                        ) : (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.4, mt: 1 }}>
+                            {Object.keys(participationData).length === 0 ? (
+                              <Typography variant="caption" sx={{ 
+                                color: colors.textSecondary,
+                                fontSize: '0.65rem',
+                                fontStyle: 'italic',
+                                textAlign: 'center',
+                                py: 1
+                              }}>
+                                Noch keine Mitarbeitsbewertungen vorhanden
+                              </Typography>
+                            ) : (
+                              Object.keys(participationData).map((groupId) => {
+                                const groupData = participationData[groupId];
+                                const group = lerngruppen.find(g => g.id === groupId);
+                                
+                                if (!group) return null;
+                                
+                                const getValueEmoji = (value: number) => {
+                                  if (value === 2) return '😄';
+                                  if (value === 1) return '😊';
+                                  if (value === 0) return '😐';
+                                  if (value === -1) return '🙁';
+                                  if (value === -2) return '😞';
+                                  return '😐';
+                                };
+                                
+                                const getValueColor = (value: number) => {
+                                  if (value === 2) return '#4CAF50'; // Grün = sehr gut
+                                  if (value === 1) return '#2196F3'; // Blau = gut
+                                  if (value === 0) return '#9E9E9E';
+                                  if (value === -1) return '#FFC107';
+                                  if (value === -2) return '#F44336';
+                                  return '#9E9E9E';
+                                };
+                                
+                                const getGradeColor = (grade: number | null) => {
+                                  if (!grade) return '#9E9E9E';
+                                  if (grade <= 1.5) return '#4CAF50';
+                                  if (grade <= 2.5) return '#8BC34A';
+                                  if (grade <= 3.5) return '#FFC107';
+                                  if (grade <= 4.5) return '#FF9800';
+                                  return '#F44336';
+                                };
+                                
+                                return (
+                                  <Box key={groupId} sx={{ 
+                                    p: 1.4,
+                                    bgcolor: '#fff9e6',
+                                    borderRadius: 1.4,
+                                    border: '1px solid #ffcc80'
+                                  }}>
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      justifyContent: 'space-between', 
+                                      alignItems: 'center',
+                                      mb: 1,
+                                      pb: 0.5,
+                                      borderBottom: `2px solid #ffcc8030`
+                                    }}>
+                                      <Typography variant="body2" sx={{ 
+                                        color: '#F57C00',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600
+                                      }}>
+                                        📚 {group.name}
+                                      </Typography>
+                                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                        {(() => {
+                                          const epo1 = epoGrades.find((g: any) => g.groupId === groupId && g.period === 1);
+                                          const epo2 = epoGrades.find((g: any) => g.groupId === groupId && g.period === 2);
+                                          return (
+                                            <>
+                                              {epo1 && (
+                                                <Typography 
+                                                  variant="body2" 
+                                                  sx={{ 
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 600,
+                                                    color: getGradeColor(epo1.grade)
+                                                  }}
+                                                >
+                                                  EPO 1: {epo1.grade.toFixed(1)}
+                                                </Typography>
+                                              )}
+                                              {epo2 && (
+                                                <Typography 
+                                                  variant="body2" 
+                                                  sx={{ 
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 600,
+                                                    color: getGradeColor(epo2.grade)
+                                                  }}
+                                                >
+                                                  EPO 2: {epo2.grade.toFixed(1)}
+                                                </Typography>
+                                              )}
+                                              {groupData.grade !== null && (
+                                                <Typography 
+                                                  variant="body2" 
+                                                  sx={{ 
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 600,
+                                                    color: getGradeColor(groupData.grade)
+                                                  }}
+                                                >
+                                                  Ø: {groupData.grade.toFixed(1)}
+                                                </Typography>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
+                                      </Box>
+                                    </Box>
+                                    
+                                    {/* Grober grafischer Verlauf */}
+                                    {groupData.participations.length > 0 && (
+                                      <Box sx={{ mb: 1.5, mt: 1 }}>
+                                        {/* Zeitraum-Markierungen */}
+                                        {((groupData.period1Hours && groupData.period1Hours > 0) || (groupData.period2Hours && groupData.period2Hours > 0)) && (
+                                          <Box sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center',
+                                            gap: 0.05,
+                                            mb: 0.3,
+                                            px: 0.2,
+                                            fontSize: '0.55rem',
+                                            color: 'text.secondary'
+                                          }}>
+                                            {(() => {
+                                              const sortedParticipations = [...groupData.participations].sort((a, b) => a.lessonIndex - b.lessonIndex);
+                                              const totalLessons = sortedParticipations.length;
+                                              const period1Count = groupData.period1Hours ? Math.min(groupData.period1Hours, totalLessons) : 0;
+                                              const period2Count = groupData.period2Hours ? Math.min(groupData.period2Hours, totalLessons - period1Count) : 0;
+                                              
+                                              return (
+                                                <>
+                                                  {period1Count > 0 && (
+                                                    <Box sx={{ 
+                                                      flex: period1Count,
+                                                      textAlign: 'center',
+                                                      color: '#1976D2',
+                                                      fontWeight: 600,
+                                                      fontSize: '0.6rem',
+                                                      borderTop: '1.5px solid #1976D2',
+                                                      pt: 0.2
+                                                    }}>
+                                                      Zeitraum 1
+                                                    </Box>
+                                                  )}
+                                                  {period2Count > 0 && (
+                                                    <Box sx={{ 
+                                                      flex: period2Count,
+                                                      textAlign: 'center',
+                                                      color: '#F57C00',
+                                                      fontWeight: 600,
+                                                      fontSize: '0.6rem',
+                                                      borderTop: '1.5px solid #F57C00',
+                                                      pt: 0.2
+                                                    }}>
+                                                      Zeitraum 2
+                                                    </Box>
+                                                  )}
+                                                </>
+                                              );
+                                            })()}
+                                          </Box>
+                                        )}
+                                        <Box sx={{ 
+                                          display: 'flex', 
+                                          alignItems: 'flex-end',
+                                          gap: 0,
+                                          height: 32,
+                                          px: 0.1,
+                                          pb: 0.3,
+                                          position: 'relative',
+                                          width: '100%'
+                                        }}>
+                                          {groupData.participations
+                                            .sort((a, b) => a.lessonIndex - b.lessonIndex)
+                                            .map((participation, index) => {
+                                              // Normalisiere Wert zu Höhe (0-32px) - kompakter
+                                              // Grün (2 = sehr gut) soll höchster sein, Blau (1 = gut) zweithöchster
+                                              // -2 -> 6px, -1 -> 10px, 0 -> 14px, 1 (blau/gut) -> 20px, 2 (grün/sehr gut) -> 28px
+                                              const height = participation.value === 2 ? 28 :  // Grün (sehr gut) = höchster
+                                                             participation.value === 1 ? 20 :  // Blau (gut) = zweithöchster
+                                                             participation.value === 0 ? 14 :  // Grau (neutral)
+                                                             participation.value === -1 ? 10 :  // Gelb (schlecht)
+                                                             6; // Rot (sehr schlecht)
+                                              // Balkenbreite: Maximal 2px pro Balken, damit alles passt
+                                              const width = `${Math.max(0.5, 100 / groupData.participations.length)}%`;
+                                              
+                                              const hasComment = participation.comment && participation.comment.trim().length > 0;
+                                              
+                                              // Bestimme Period-Farbe für Rahmen
+                                              const participationPeriod = (participation as any).period || 0;
+                                              const periodBorderColor = participationPeriod === 1 ? '#1976D2' : 
+                                                                        participationPeriod === 2 ? '#F57C00' : 'transparent';
+                                              
+                                              // Prüfe ob dies der Start eines Zeitraums ist
+                                              const prevParticipation = index > 0 ? groupData.participations[index - 1] : null;
+                                              const prevPeriod = prevParticipation ? ((prevParticipation as any).period || 0) : 0;
+                                              const isPeriodStart = participationPeriod > 0 && (index === 0 || prevPeriod !== participationPeriod);
+                                              const isPeriodEnd = participationPeriod > 0 && (index === groupData.participations.length - 1 || 
+                                                (index < groupData.participations.length - 1 && ((groupData.participations[index + 1] as any).period || 0) !== participationPeriod));
+                                              
+                                              const barBox = (
+                                                <Box
+                                                  key={participation.lessonIndex}
+                                                  sx={{
+                                                    flex: `0 0 ${width}`,
+                                                    width: width,
+                                                    minWidth: '1px',
+                                                    height: `${height}px`,
+                                                    bgcolor: getValueColor(participation.value),
+                                                    borderRadius: '1px 1px 0 0',
+                                                    opacity: 0.7,
+                                                    transition: 'all 0.2s',
+                                                    position: 'relative',
+                                                    cursor: hasComment ? 'pointer' : 'default',
+                                                    borderLeft: isPeriodStart ? `1px solid ${periodBorderColor}` : 'none',
+                                                    borderRight: isPeriodEnd ? `1px solid ${periodBorderColor}` : 'none',
+                                                    borderTop: periodBorderColor !== 'transparent' ? `1px solid ${periodBorderColor}` : 'none',
+                                                    '&:hover': {
+                                                      opacity: 1,
+                                                      transform: 'scaleY(1.15)',
+                                                      transformOrigin: 'bottom'
+                                                    }
+                                                  }}
+                                                >
+                                                  {hasComment && (
+                                                    <Box
+                                                      sx={{
+                                                        position: 'absolute',
+                                                        top: 1,
+                                                        right: 1,
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: '50%',
+                                                        bgcolor: '#FF9800',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: '0.5rem',
+                                                        fontWeight: 600,
+                                                        color: 'white',
+                                                        zIndex: 1,
+                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                                      }}
+                                                    >
+                                                      K
+                                                    </Box>
+                                                  )}
+                                                </Box>
+                                              );
+                                              
+                                              // Zeige Tooltip nur wenn Kommentar vorhanden ist
+                                              if (hasComment) {
+                                                return (
+                                                  <Tooltip
+                                                    key={participation.lessonIndex}
+                                                    title={participation.comment || ''}
+                                                    arrow
+                                                    placement="top"
+                                                  >
+                                                    {barBox}
+                                                  </Tooltip>
+                                                );
+                                              }
+                                              
+                                              // Kein Tooltip wenn kein Kommentar vorhanden
+                                              return barBox;
+                                            })}
+                                        </Box>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                );
+                              })
+                            )}
                           </Box>
                         )}
                       </>

@@ -31,6 +31,9 @@ model User {
   documentProcessingHistory DocumentProcessingHistory[]
   teacherAssignments Assignment[]    @relation("TeacherAssignments")
   studentSubmissions Submission[]    @relation("StudentSubmissions")
+  classParticipations Participation[]    @relation("StudentParticipations")
+  epoGrades          ParticipationPeriodGrade[]    @relation("StudentEPOGrades")
+  adventSubmissions  AdventCalendarSubmission[]
 }
 
 model GradingSchema {
@@ -66,10 +69,14 @@ model LearningGroup {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   teacherId      String
+  period1Hours   Int?              // Anzahl Stunden für Zeitraum 1 (EPO 1)
+  period2Hours   Int?              // Anzahl Stunden für Zeitraum 2 (EPO 2)
   gradingSchemas GradingSchema[]
   assignments    GroupAssignment[]
   flashcardAssignments FlashcardAssignment[]
   fileShares     FileShare[]
+  participations Participation[]
+  epoGrades      ParticipationPeriodGrade[]
   teacher        User              @relation("TeacherGroups", fields: [teacherId], references: [id])
   students       User[]            @relation("StudentGroups")
 }
@@ -422,4 +429,75 @@ model Submission {
   @@unique([assignmentId, studentId])
   @@index([studentId])
   @@index([assignmentId])
+}
+
+model Participation {
+  id           String       @id @default(uuid())
+  groupId      String
+  lessonIndex  Int
+  studentId    String
+  value        Int          // -2 (sehr schlecht), -1 (schlecht), 0 (neutral), 1 (gut), 2 (sehr gut)
+  comment      String?      // Optionaler Kommentar des Lehrers
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student      User         @relation("StudentParticipations", fields: [studentId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, lessonIndex, studentId])
+  @@index([groupId])
+  @@index([studentId])
+  @@index([groupId, lessonIndex])
+}
+
+// EPO-Noten (Ergebnisse der Mitarbeitsbewertungen pro Zeitraum)
+model ParticipationPeriodGrade {
+  id           String       @id @default(uuid())
+  groupId      String
+  studentId    String
+  period       Int          // 1 oder 2 (EPO 1 oder EPO 2)
+  grade        Float        // Berechnete Note (1.0-5.0)
+  averageValue Float        // Durchschnittswert der Teilnahmen (-2 bis +2)
+  lessonCount  Int          // Anzahl der bewerteten Stunden in diesem Zeitraum
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student      User         @relation("StudentEPOGrades", fields: [studentId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, studentId, period])
+  @@index([groupId])
+  @@index([studentId])
+  @@index([groupId, period])
+}
+
+// Adventskalender System
+model AdventCalendarDoor {
+  id            String                      @id @default(uuid())
+  day           Int                         // 1-24 (Tag im Dezember)
+  year          Int                         // Jahr (z.B. 2024)
+  funFact       String                      // Fun Fact mit Mathe/Informatik-Bezug
+  question      String                      // Frage zur Aufgabe
+  correctAnswer String                      // Korrekte Antwort
+  explanation   String?                     // Erklärung der Lösung
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+  submissions   AdventCalendarSubmission[]
+  
+  @@unique([day, year])
+  @@index([year, day])
+}
+
+model AdventCalendarSubmission {
+  id          String            @id @default(uuid())
+  doorId      String
+  studentId   String
+  answer      String            // Antwort des Schülers
+  isCorrect   Boolean           @default(false)
+  submittedAt DateTime          @default(now())
+  door        AdventCalendarDoor @relation(fields: [doorId], references: [id], onDelete: Cascade)
+  student     User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  @@unique([doorId, studentId])
+  @@index([doorId])
+  @@index([studentId])
+  @@index([doorId, submittedAt])
 }

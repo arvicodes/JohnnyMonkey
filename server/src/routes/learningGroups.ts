@@ -26,9 +26,11 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// WICHTIG: Spezifische Routen müssen VOR den allgemeinen Routen kommen!
 // Get all learning groups for a teacher
 router.get('/teacher/:id', async (req: Request, res: Response) => {
   try {
+    console.log('📚 Fetching groups for teacher:', req.params.id);
     const groups = await prisma.learningGroup.findMany({
       where: { teacherId: req.params.id },
       include: { 
@@ -43,15 +45,22 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
         }
       }
     });
+    console.log('✅ Found', groups.length, 'groups for teacher');
     res.json(groups);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+  } catch (error: any) {
+    console.error('❌ Error fetching teacher groups:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
+    });
   }
 });
 
 // Get all learning groups for a student
+// WICHTIG: Diese Route muss VOR der /:id Route kommen!
 router.get('/student/:id', async (req: Request, res: Response) => {
   try {
+    console.log('👤 Fetching groups for student:', req.params.id);
     const groups = await prisma.learningGroup.findMany({
       where: {
         students: {
@@ -61,7 +70,12 @@ router.get('/student/:id', async (req: Request, res: Response) => {
         }
       },
       include: {
-        teacher: true,
+        teacher: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         students: {
           orderBy: { loginCode: 'asc' },
           select: {
@@ -73,19 +87,85 @@ router.get('/student/:id', async (req: Request, res: Response) => {
         }
       }
     });
+    console.log('✅ Found', groups.length, 'groups for student');
     res.json(groups);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+  } catch (error: any) {
+    console.error('❌ Error fetching student groups:', error);
+    console.error('Error stack:', error?.stack);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
+    });
   }
 });
 
-// Get a single learning group by ID
+// WICHTIG: Alle spezifischen Routen müssen VOR der allgemeinen /:id Route kommen!
+// Get available students for a group (before /:id)
+router.get('/:groupId/available-students', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const group = await prisma.learningGroup.findUnique({
+      where: { id: groupId },
+      include: { students: { select: { id: true } } }
+    });
+    
+    if (!group) {
+      return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+    }
+    
+    const studentIdsInGroup = new Set(group.students.map(s => s.id));
+    const allStudents = await prisma.user.findMany({
+      where: { role: 'STUDENT' },
+      select: {
+        id: true,
+        name: true,
+        loginCode: true,
+        avatarEmoji: true
+      },
+      orderBy: { loginCode: 'asc' }
+    });
+    
+    const availableStudents = allStudents.filter(s => !studentIdsInGroup.has(s.id));
+    res.json(availableStudents);
+  } catch (error: any) {
+    console.error('Error fetching available students:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
+    });
+  }
+});
+
+// Get assignments for a group (before /:id)
+router.get('/:groupId/assignments', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const assignments = await prisma.groupAssignment.findMany({
+      where: { groupId },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(assignments);
+  } catch (error: any) {
+    console.error('Error fetching assignments:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
+    });
+  }
+});
+
+// Get a single learning group by ID (MUST BE LAST among GET routes with :id)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const group = await prisma.learningGroup.findUnique({
       where: { id: req.params.id },
       include: {
-        teacher: true,
+        teacher: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         students: {
           orderBy: { loginCode: 'asc' },
           select: {
@@ -103,9 +183,12 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     res.json(group);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching learning group:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
+    });
   }
 });
 
@@ -228,56 +311,6 @@ router.delete('/:groupId/students/:studentId', async (req: Request, res: Respons
   }
 });
 
-// Get all available students (not in the specific group)
-router.get('/:groupId/available-students', async (req: Request, res: Response) => {
-  const { groupId } = req.params;
-
-  try {
-    // Get the current group's students
-    const currentGroup = await prisma.learningGroup.findUnique({
-      where: { id: groupId },
-      include: { 
-        students: {
-          orderBy: { loginCode: 'asc' },
-          select: {
-            id: true,
-            name: true,
-            loginCode: true,
-            avatarEmoji: true
-          }
-        }
-      }
-    });
-
-    if (!currentGroup) {
-      return res.status(404).json({ message: 'Lerngruppe nicht gefunden' });
-    }
-
-    // Get all students not in this group
-    const availableStudents = await prisma.user.findMany({
-      where: {
-        role: 'STUDENT',
-        AND: {
-          id: {
-            notIn: currentGroup.students.map(student => student.id)
-          }
-        }
-      },
-      select: {
-        id: true,
-        name: true,
-        loginCode: true,
-        avatarEmoji: true
-      }
-    });
-
-    res.json(availableStudents);
-  } catch (error) {
-    console.error('Error fetching available students:', error);
-    res.status(500).json({ message: 'Server-Fehler beim Laden der verfügbaren Schüler' });
-  }
-});
-
 // Zuordnung von Inhalten zu Lerngruppen
 router.post('/:groupId/assign', async (req: Request, res: Response) => {
   const { type, refId } = req.body;
@@ -290,8 +323,12 @@ router.post('/:groupId/assign', async (req: Request, res: Response) => {
       },
     });
     res.json(assignment);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+  } catch (error: any) {
+    console.error('Error creating assignment:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
+    });
   }
 });
 
@@ -306,19 +343,12 @@ router.delete('/:groupId/assign', async (req: Request, res: Response) => {
       },
     });
     res.json({ deleted: deleted.count });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-router.get('/:groupId/assignments', async (req: Request, res: Response) => {
-  try {
-    const assignments = await prisma.groupAssignment.findMany({
-      where: { groupId: req.params.groupId },
+  } catch (error: any) {
+    console.error('Error deleting assignment:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
     });
-    res.json(assignments);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
   }
 });
 

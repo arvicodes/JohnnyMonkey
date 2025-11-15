@@ -15,6 +15,7 @@ import WhiteboardPage from './pages/WhiteboardPage';
 import JohnnyDemoPage from './pages/JohnnyDemoPage';
 import FlashcardStudyPage from './pages/FlashcardStudyPage';
 import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
+import AdventCalendarPage from './pages/AdventCalendarPage';
 
 import { Snackbar, Alert } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -38,7 +39,9 @@ function AppContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMessage(''); // Clear previous messages
     try {
+      console.log('🔐 Attempting login with code:', loginCode);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -47,10 +50,26 @@ function AppContent() {
         body: JSON.stringify({ loginCode }),
       });
 
-      const data = await response.json();
+      console.log('📡 Response status:', response.status, response.statusText);
+      console.log('📡 Response headers:', response.headers.get('content-type'));
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // If not JSON, read as text
+        const text = await response.text();
+        console.error('❌ Non-JSON response:', text);
+        throw new Error(`Server-Fehler: ${text.substring(0, 100)}`);
+      }
+      
+      console.log('📦 Response data:', data);
       
       if (response.ok) {
-        console.log('Login successful, user data:', data.user);
+        console.log('✅ Login successful, user data:', data.user);
         setUser(data.user);
         
         // Store user ID in localStorage based on role
@@ -64,11 +83,18 @@ function AppContent() {
         setShowSuccessMessage(true);
         setTimeout(() => setShowSuccessMessage(false), 3000); // Hide after 3 seconds
       } else {
-        setMessage(data.message);
+        console.error('❌ Login failed:', data.message || data.error);
+        setMessage(data.message || data.error || 'Login fehlgeschlagen');
         setUser(null);
       }
-    } catch (error) {
-      setMessage('Verbindungsfehler zum Server');
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      const errorMessage = error?.message || 'Unbekannter Fehler';
+      if (errorMessage.includes('Proxy') || errorMessage.includes('Unexpected token')) {
+        setMessage('Server nicht erreichbar. Bitte überprüfen Sie, ob der Server läuft.');
+      } else {
+        setMessage('Verbindungsfehler zum Server: ' + errorMessage);
+      }
       setUser(null);
     }
   };
@@ -192,6 +218,7 @@ function AppContent() {
         <Route path="/johnny-demo" element={<JohnnyDemoPage />} />
         <Route path="/flashcard-study" element={<FlashcardStudyPage />} />
         <Route path="/johnny" element={<JohnnyNavigationPage />} />
+        <Route path="/advent-calendar" element={<AdventCalendarPage />} />
 
       </Routes>
       

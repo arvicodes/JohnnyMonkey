@@ -23,22 +23,43 @@ catch (error) {
 }
 // Login route
 router.post('/login', async (req, res) => {
-    var _a;
+    var _a, _b;
     const { loginCode } = req.body;
-    console.log('Login attempt with code:', loginCode);
+    console.log('🔐 Login attempt with code:', loginCode);
     console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
     console.log('DATABASE_URL length:', ((_a = process.env.DATABASE_URL) === null || _a === void 0 ? void 0 : _a.length) || 0);
     try {
+        if (!loginCode) {
+            console.log('❌ No login code provided');
+            return res.status(400).json({ message: 'Login-Code ist erforderlich' });
+        }
+        console.log('🔍 Searching for user with loginCode:', loginCode);
         const user = await prisma.user.findUnique({
-            where: { loginCode },
+            where: { loginCode: String(loginCode) },
             include: {
-                learningGroups: true,
+                learningGroups: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
             },
         });
         if (!user) {
-            console.log('Invalid login code:', loginCode);
-            res.status(401).json({ message: 'Ungültiger Login-Code' });
-            return;
+            console.log('❌ Invalid login code:', loginCode);
+            return res.status(401).json({ message: 'Ungültiger Login-Code' });
+        }
+        console.log('✅ User found:', user.id, user.name, user.role);
+        console.log('📚 Learning groups:', ((_b = user.learningGroups) === null || _b === void 0 ? void 0 : _b.length) || 0);
+        console.log('📚 Learning groups data:', JSON.stringify(user.learningGroups, null, 2));
+        // Handle both students and teachers - students might not have learningGroups
+        // Also handle case where learningGroups might be undefined or null
+        let groups = [];
+        if (user.learningGroups && Array.isArray(user.learningGroups)) {
+            groups = user.learningGroups.map((group) => ({
+                id: group.id,
+                name: group.name
+            }));
         }
         res.json({
             message: 'Login erfolgreich',
@@ -46,16 +67,19 @@ router.post('/login', async (req, res) => {
                 id: user.id,
                 name: user.name,
                 role: user.role,
-                groups: user.learningGroups.map(group => ({
-                    id: group.id,
-                    name: group.name
-                }))
+                groups: groups
             }
         });
     }
     catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ message: 'Server-Fehler' });
+        console.error('❌ Login error:', error);
+        console.error('Error message:', error === null || error === void 0 ? void 0 : error.message);
+        console.error('Error stack:', error === null || error === void 0 ? void 0 : error.stack);
+        res.status(500).json({
+            message: 'Server-Fehler',
+            error: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler',
+            code: (error === null || error === void 0 ? void 0 : error.code) || 'UNKNOWN'
+        });
     }
 });
 exports.default = router;

@@ -255,6 +255,11 @@ import {
   Book as BookIcon,
   Topic as TopicIcon,
   MenuBook as LessonIcon,
+  PersonAddAlt1 as HandRaiseIcon,
+  EmojiEvents as EmojiEventsIcon,
+  ArrowBack as ArrowBackIcon,
+  ArrowForward as ArrowForwardIcon,
+  BarChart as BarChartIcon,
   Description as MaterialIcon,
   Quiz as QuizIcon,
   Assignment as AssignmentIcon,
@@ -583,6 +588,67 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
 
+  // Mitarbeitsbewertung States
+  const [participationModalOpen, setParticipationModalOpen] = useState(false);
+  const [participationGroupId, setParticipationGroupId] = useState<string | null>(null);
+  const [participationGroupName, setParticipationGroupName] = useState('');
+  const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
+  const [participations, setParticipations] = useState<{[groupId: string]: {[lessonIndex: number]: {[studentId: string]: {value: number; comment?: string | null}}}}>({});
+  const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
+  const [participationStats, setParticipationStats] = useState<any[]>([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [commentStudentId, setCommentStudentId] = useState<string | null>(null);
+  const [commentStudentName, setCommentStudentName] = useState('');
+  const [commentText, setCommentText] = useState('');
+  const [periodConfig, setPeriodConfig] = useState<{period1Hours: number | null; period2Hours: number | null}>({period1Hours: null, period2Hours: null});
+  const [epoGrades, setEpoGrades] = useState<any[]>([]);
+  const [periodConfigModalOpen, setPeriodConfigModalOpen] = useState(false);
+  const [tempPeriod1Hours, setTempPeriod1Hours] = useState<string>('');
+  const [tempPeriod2Hours, setTempPeriod2Hours] = useState<string>('');
+  
+  // Vordefinierte Schlagworte für Kommentare (kategorisiert)
+  const commentShortcuts = {
+    negativ: [
+      'Sehr unaufmerksam',
+      'Unaufmerksam',
+      'Verträumt',
+      'Abgelenkt',
+      'Sehr viele geschwätzt',
+      'Häufig geschwätzt',
+      'Abgelenkt durch Nachbarn',
+      'Nachbarn abgelenkt',
+      'Sehr unruhig',
+      'Dauernd aufgestanden',
+      'Reingerufen',
+      'Häufiges Reingerufen',
+      'Häufig gestört',
+      'Nicht konzentriert gearbeitet',
+      'Früher eingepackt',
+      'Heft nicht ordentlich geführt',
+      'Aufgaben nicht gewissenhaft bearbeitet'
+    ],
+    organisatorisch: [
+      'Fehlende HA',
+      'Fehlendes Material',
+      'HA unvollständig',
+      'HA probiert aber zu wenig'
+    ],
+    positiv: [
+      'Produktive Beiträge',
+      'Gewinnbringende Meldungen',
+      'Kreative Antworten',
+      'Fleißig gearbeitet',
+      'Engagiert mitgedacht',
+      'Toll präsentiert',
+      'Ruhig gearbeitet',
+      'Sorgfältig gearbeitet',
+      'Gute Fragen gestellt',
+      'Sehr konzentriert',
+      'Bis zum Ende fleißig'
+    ]
+  };
+
 
   // Spielerische Farbpalette
   const colors = {
@@ -848,33 +914,30 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     try {
       const response = await fetch(`/api/learning-groups/teacher/${userId}`);
       if (!response.ok) {
-        // Fallback: Mock-Gruppen verwenden wenn Server nicht erreichbar
-        const mockGroups = [
-          {
-            id: '1',
-            name: '7a Mathematik',
-            students: []
-          },
-          {
-            id: '2',
-            name: '7b Deutsch',
-            students: []
-          },
-          {
-            id: '3',
-            name: '8a Informatik',
-            students: []
-          },
-          {
-            id: '4',
-            name: '8b Informatik',
-            students: []
-          }
-        ];
-        setGroups(mockGroups);
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          console.error('❌ Error loading groups:', errorData);
+        } else {
+          const text = await response.text();
+          console.error('❌ Non-JSON error response:', text);
+        }
+        showSnackbar('Fehler beim Laden der Gruppen', 'error');
         return;
       }
-      const groupsData = await response.json();
+      
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      let groupsData;
+      if (contentType && contentType.includes('application/json')) {
+        groupsData = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('❌ Non-JSON response:', text);
+        showSnackbar('Server-Fehler: Ungültige Antwort', 'error');
+        return;
+      }
       setGroups(groupsData);
       
       // Lade zugeordnete Ordner für alle Gruppen
@@ -2483,6 +2546,495 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
     setMenuGroupId(null);
+  };
+  const handleParticipationOpen = async (groupId: string, groupName: string) => {
+    setParticipationGroupId(groupId);
+    setParticipationGroupName(groupName);
+    setCurrentLessonIndex(0);
+    setParticipationModalOpen(true);
+    // Lade bestehende Bewertungen
+    await loadParticipations(groupId);
+    // Initialisiere alle Schüler mit neutral (0) für die aktuelle Stunde, falls noch nicht vorhanden
+    await initializeNeutralParticipations(groupId, 0);
+    // Lade Zeitraum-Konfiguration
+    await loadPeriodConfig(groupId);
+    // Lade EPO-Noten
+    await loadEpoGrades(groupId);
+  };
+  
+  const loadPeriodConfig = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/participation/${groupId}/periods`);
+      if (response.ok) {
+        const data = await response.json();
+        setPeriodConfig(data);
+        setTempPeriod1Hours(data.period1Hours?.toString() || '');
+        setTempPeriod2Hours(data.period2Hours?.toString() || '');
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Zeitraum-Konfiguration:', error);
+    }
+  };
+  
+  const savePeriodConfig = async () => {
+    if (!participationGroupId) return;
+    try {
+      // Validiere Eingaben
+      if (tempPeriod1Hours && (isNaN(parseInt(tempPeriod1Hours)) || parseInt(tempPeriod1Hours) < 1 || parseInt(tempPeriod1Hours) > 1000)) {
+        alert('Zeitraum 1 muss zwischen 1 und 1000 Stunden liegen');
+        return;
+      }
+      if (tempPeriod2Hours && (isNaN(parseInt(tempPeriod2Hours)) || parseInt(tempPeriod2Hours) < 1 || parseInt(tempPeriod2Hours) > 1000)) {
+        alert('Zeitraum 2 muss zwischen 1 und 1000 Stunden liegen');
+        return;
+      }
+      
+      const period1Hours = tempPeriod1Hours && tempPeriod1Hours.trim() !== '' ? parseInt(tempPeriod1Hours) : null;
+      const period2Hours = tempPeriod2Hours && tempPeriod2Hours.trim() !== '' ? parseInt(tempPeriod2Hours) : null;
+      
+      console.log('Saving period config:', { participationGroupId, period1Hours, period2Hours });
+      
+      const response = await fetch(`/api/participation/${participationGroupId}/periods`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period1Hours, period2Hours })
+      });
+      
+      console.log('Response status:', response.status, response.statusText);
+      console.log('Response headers:', response.headers.get('content-type'));
+      
+      if (response.ok) {
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        let data;
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          console.error('❌ Non-JSON response:', text);
+          alert('Server-Fehler: Ungültige Antwort vom Server');
+          return;
+        }
+        setPeriodConfig(data);
+        setPeriodConfigModalOpen(false);
+        showSnackbar('Zeitraum-Konfiguration gespeichert', 'success');
+      } else {
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        let errorData;
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+        } else {
+          const text = await response.text();
+          console.error('❌ Non-JSON error response:', text);
+          errorData = { error: `Server-Fehler: ${text.substring(0, 100)}` };
+        }
+        alert(errorData.error || 'Fehler beim Speichern');
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern der Zeitraum-Konfiguration:', error);
+      alert('Fehler beim Speichern: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
+    }
+  };
+  
+  const calculateEpoGrades = async () => {
+    if (!participationGroupId) return;
+    try {
+      const response = await fetch(`/api/participation/${participationGroupId}/calculate-epo`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        showSnackbar(`EPO-Noten berechnet: ${data.count} Noten erstellt`, 'success');
+        // Lade die berechneten EPO-Noten
+        await loadEpoGrades(participationGroupId);
+        // Integriere EPO-Noten ins Notenschema (mit kurzer Verzögerung, damit State aktualisiert ist)
+        setTimeout(async () => {
+          await integrateEpoGradesToSchema(participationGroupId);
+        }, 500);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Fehler beim Berechnen der EPO-Noten');
+      }
+    } catch (error) {
+      console.error('Fehler beim Berechnen der EPO-Noten:', error);
+      alert('Fehler beim Berechnen');
+    }
+  };
+  
+  const loadEpoGrades = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/participation/${groupId}/epo-grades`);
+      if (response.ok) {
+        const data = await response.json();
+        setEpoGrades(data);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der EPO-Noten:', error);
+    }
+  };
+  
+  const integrateEpoGradesToSchema = async (groupId: string) => {
+    try {
+      // Lade das Notenschema für diese Gruppe
+      const schemaResponse = await fetch(`/api/grading-schemas/${groupId}`);
+      if (!schemaResponse.ok) {
+        console.log('Kein Notenschema gefunden für Gruppe:', groupId);
+        return;
+      }
+      
+      const schemas = await schemaResponse.json();
+      if (schemas.length === 0) {
+        console.log('Kein Notenschema vorhanden für Gruppe:', groupId);
+        return;
+      }
+      
+      const schema = schemas[0]; // Verwende das erste Schema
+      
+      // Lade aktuelle EPO-Noten neu (um sicherzustellen, dass wir die neuesten haben)
+      const epoResponse = await fetch(`/api/participation/${groupId}/epo-grades`);
+      if (!epoResponse.ok) {
+        console.error('Fehler beim Laden der EPO-Noten');
+        return;
+      }
+      const currentEpoGrades = await epoResponse.json();
+      
+      if (currentEpoGrades.length === 0) {
+        console.log('Keine EPO-Noten vorhanden');
+        return;
+      }
+      
+      // Für jeden Schüler: Speichere EPO 1 und EPO 2 als Noten
+      let successCount = 0;
+      for (const epoGrade of currentEpoGrades) {
+        const categoryName = `EPO ${epoGrade.period}`;
+        
+        try {
+          const gradeResponse = await fetch('/api/grades', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: epoGrade.studentId,
+              schemaId: schema.id,
+              categoryName: categoryName,
+              grade: epoGrade.grade,
+              weight: 1.0
+            })
+          });
+          
+          if (gradeResponse.ok) {
+            successCount++;
+          } else {
+            console.error('Fehler beim Speichern der Note für:', epoGrade.studentId, categoryName);
+          }
+        } catch (error) {
+          console.error('Fehler beim Speichern der Note:', error);
+        }
+      }
+      
+      if (successCount > 0) {
+        showSnackbar(`${successCount} EPO-Noten ins Notenschema übernommen`, 'success');
+      }
+    } catch (error) {
+      console.error('Fehler beim Integrieren der EPO-Noten:', error);
+    }
+  };
+  const handleParticipationClose = () => {
+    setParticipationModalOpen(false);
+    setParticipationGroupId(null);
+    setParticipationGroupName('');
+    setCurrentLessonIndex(0);
+  };
+  const loadParticipations = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/participation/${groupId}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Konvertiere die Datenstruktur, falls nötig
+        const convertedData: {[lessonIndex: number]: {[studentId: string]: {value: number; comment?: string | null}}} = {};
+        Object.keys(data).forEach(lessonIndex => {
+          const lessonData = data[lessonIndex];
+          convertedData[parseInt(lessonIndex)] = {};
+          Object.keys(lessonData).forEach(studentId => {
+            const studentData = lessonData[studentId];
+            if (typeof studentData === 'object' && studentData !== null) {
+              convertedData[parseInt(lessonIndex)][studentId] = {
+                value: studentData.value,
+                comment: studentData.comment || undefined
+              };
+            } else {
+              // Fallback für alte Datenstruktur
+              convertedData[parseInt(lessonIndex)][studentId] = {
+                value: studentData
+              };
+            }
+          });
+        });
+        setParticipations(prev => ({
+          ...prev,
+          [groupId]: convertedData
+        }));
+      } else {
+        const errorText = await response.text();
+        console.error('Fehler beim Laden der Mitarbeitsbewertungen:', errorText);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Mitarbeitsbewertungen:', error);
+    }
+  };
+  const handleParticipationClick = (studentId: string, isLeft: boolean, isDoubleClick: boolean = false) => {
+    if (!participationGroupId) return;
+    const groupKey = participationGroupId;
+    const lessonKey = currentLessonIndex;
+    
+    setParticipations(prev => {
+      const groupData = prev[groupKey] || {};
+      const lessonData = groupData[lessonKey] || {};
+      const currentData = lessonData[studentId];
+      const currentValue = typeof currentData === 'object' && currentData !== null 
+        ? currentData.value 
+        : (typeof currentData === 'number' ? currentData : 0);
+      const currentComment = typeof currentData === 'object' && currentData !== null 
+        ? currentData.comment 
+        : undefined;
+      
+      let newValue = 0;
+      
+      // Doppelklick: Immer zurück auf neutral (0)
+      if (isDoubleClick) {
+        newValue = 0;
+      } else if (isLeft) {
+        // Links: 0 -> -1 (schlecht) -> -2 (sehr schlecht) -> 0 (neutral)
+        if (currentValue === 0) newValue = -1;
+        else if (currentValue === -1) newValue = -2;
+        else if (currentValue === -2) newValue = 0; // Zurück zu neutral
+        else newValue = -1; // Von positivem Wert zu -1
+      } else {
+        // Rechts: 0 -> 2 (sehr gut) -> 1 (gut) -> 0 (neutral)
+        if (currentValue === 0) newValue = 2;
+        else if (currentValue === 2) newValue = 1;
+        else if (currentValue === 1) newValue = 0; // Zurück zu neutral
+        else newValue = 2; // Von negativem Wert zu 2
+      }
+      
+      const updatedLessonData = { 
+        ...lessonData, 
+        [studentId]: {
+          value: newValue,
+          comment: currentComment
+        }
+      };
+      const updatedGroupData = { ...groupData, [lessonKey]: updatedLessonData };
+      
+      // Speichere im Backend
+      saveParticipation(groupKey, lessonKey, studentId, newValue);
+      
+      return {
+        ...prev,
+        [groupKey]: updatedGroupData
+      };
+    });
+  };
+  
+  const handleCommentRightClick = (e: React.MouseEvent, studentId: string, studentName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCommentStudentId(studentId);
+    setCommentStudentName(studentName);
+    
+    // Lade aktuellen Kommentar, falls vorhanden
+    if (participationGroupId) {
+      const groupData = participations[participationGroupId] || {};
+      const lessonData = groupData[currentLessonIndex] || {};
+      const studentData = lessonData[studentId];
+      if (studentData && typeof studentData === 'object' && studentData.comment) {
+        setCommentText(studentData.comment);
+      } else {
+        setCommentText('');
+      }
+    }
+    
+    setCommentModalOpen(true);
+  };
+  
+  const handleCommentSave = async () => {
+    if (!participationGroupId || !commentStudentId) return;
+    
+    try {
+      const response = await fetch(
+        `/api/participation/${participationGroupId}/${currentLessonIndex}/${commentStudentId}/comment`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ comment: commentText.trim() || null })
+        }
+      );
+      
+      if (response.ok) {
+        // Aktualisiere lokalen State
+        setParticipations(prev => {
+          const groupData = prev[participationGroupId] || {};
+          const lessonData = groupData[currentLessonIndex] || {};
+          const studentData = lessonData[commentStudentId];
+          const currentValue = typeof studentData === 'object' && studentData !== null 
+            ? studentData.value 
+            : (typeof studentData === 'number' ? studentData : 0);
+          
+          const updatedLessonData = {
+            ...lessonData,
+            [commentStudentId]: {
+              value: currentValue,
+              comment: commentText.trim() || undefined
+            }
+          };
+          const updatedGroupData = {
+            ...groupData,
+            [currentLessonIndex]: updatedLessonData
+          };
+          
+          return {
+            ...prev,
+            [participationGroupId]: updatedGroupData
+          };
+        });
+        
+        setCommentModalOpen(false);
+        setCommentStudentId(null);
+        setCommentStudentName('');
+        setCommentText('');
+      } else {
+        console.error('Fehler beim Speichern des Kommentars');
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern des Kommentars:', error);
+    }
+  };
+  
+  const handleCommentClose = () => {
+    setCommentModalOpen(false);
+    setCommentStudentId(null);
+    setCommentStudentName('');
+    setCommentText('');
+  };
+  const saveParticipation = async (groupId: string, lessonIndex: number, studentId: string, value: number) => {
+    try {
+      const response = await fetch(`/api/participation/${groupId}/${lessonIndex}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, value })
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Fehler beim Speichern der Mitarbeitsbewertung:', errorText);
+      } else {
+        // Nach erfolgreichem Speichern: Lade die Daten neu, um sicherzustellen, dass alles synchron ist
+        await loadParticipations(groupId);
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern:', error);
+    }
+  };
+  const addLesson = async () => {
+    const newIndex = currentLessonIndex + 1;
+    setCurrentLessonIndex(newIndex);
+    // Initialisiere alle Schüler mit neutral (0) für die neue Stunde, falls noch nicht vorhanden
+    if (participationGroupId) {
+      await initializeNeutralParticipations(participationGroupId, newIndex);
+      // Lade die Daten neu, um die neuen Einträge zu sehen
+      await loadParticipations(participationGroupId);
+    }
+  };
+  const initializeNeutralParticipations = async (groupId: string, lessonIndex: number) => {
+    if (!participationGroupId) return;
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    
+    // Prüfe welche Schüler bereits eine Bewertung für diese Stunde haben
+    const groupData = participations[groupId] || {};
+    const lessonData = groupData[lessonIndex] || {};
+    
+    // Initialisiere alle Schüler, die noch keine Bewertung haben, mit 0 (neutral)
+    for (const student of group.students) {
+      if (lessonData[student.id] === undefined) {
+        // Speichere neutrale Bewertung in der Datenbank
+        await saveParticipation(groupId, lessonIndex, student.id, 0);
+      }
+    }
+  };
+  const getParticipationValue = (studentId: string): number => {
+    if (!participationGroupId) return 0;
+    const groupData = participations[participationGroupId] || {};
+    const lessonData = groupData[currentLessonIndex] || {};
+    const studentData = lessonData[studentId];
+    if (typeof studentData === 'object' && studentData !== null) {
+      return studentData.value || 0;
+    }
+    return typeof studentData === 'number' ? studentData : 0;
+  };
+  
+  const getParticipationComment = (studentId: string): string | undefined => {
+    if (!participationGroupId) return undefined;
+    const groupData = participations[participationGroupId] || {};
+    const lessonData = groupData[currentLessonIndex] || {};
+    const studentData = lessonData[studentId];
+    if (typeof studentData === 'object' && studentData !== null) {
+      return studentData.comment || undefined;
+    }
+    return undefined;
+  };
+  const calculateParticipationGrade = (studentId: string): number | null => {
+    if (!participationGroupId) return null;
+    const groupData = participations[participationGroupId] || {};
+    const lessons = Object.keys(groupData).map(Number);
+    if (lessons.length === 0) return null;
+    
+    let total = 0;
+    let count = 0;
+    lessons.forEach(lessonIndex => {
+      const studentData = groupData[lessonIndex][studentId];
+      const value = typeof studentData === 'object' && studentData !== null 
+        ? studentData.value 
+        : (typeof studentData === 'number' ? studentData : undefined);
+      if (value !== undefined) {
+        total += value;
+        count++;
+      }
+    });
+    
+    if (count === 0) return null;
+    const average = total / count;
+    
+    // Konvertiere Durchschnittswert zu Note (2 = sehr gut = 1.0, 1 = gut = 2.0, 0 = neutral = 3.0, -1 = schlecht = 4.0, -2 = sehr schlecht = 5.0)
+    if (average >= 1.5) return 1.0;
+    if (average >= 0.5) return 2.0;
+    if (average >= -0.5) return 3.0;
+    if (average >= -1.5) return 4.0;
+    return 5.0;
+  };
+  const handleStatisticsOpen = async () => {
+    if (!participationGroupId) return;
+    setStatisticsModalOpen(true);
+    setStatsLoading(true);
+    try {
+      const response = await fetch(`/api/participation/${participationGroupId}/stats`);
+      if (response.ok) {
+        const data = await response.json();
+        setParticipationStats(data);
+      } else {
+        console.error('Fehler beim Laden der Statistiken');
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Statistiken:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+  const handleStatisticsClose = () => {
+    setStatisticsModalOpen(false);
+    setParticipationStats([]);
   };
   const handleDeleteDialogOpen = (groupId: string) => {
     setDeleteGroupId(groupId);
@@ -4316,18 +4868,55 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             aria-label="Whiteboard erstellen"
                             onClick={e => { e.stopPropagation(); handleOpenWhiteboard(group.id); }}
                             size="small"
-                            sx={{ width: 24, height: 24, p: 0.25, mr: 0.5, color: colors.primary }}
+                            sx={{ 
+                              width: 24, 
+                              height: 24, 
+                              p: 0, 
+                              mr: 0.5, 
+                              color: colors.primary,
+                              '& svg': {
+                                width: '100%',
+                                height: '100%'
+                              }
+                            }}
                             title="Whiteboard erstellen"
                           >
-                            <BrushIcon />
+                            <BrushIcon sx={{ fontSize: 24 }} />
+                          </IconButton>
+                          <IconButton
+                            aria-label="Mitarbeit eintragen"
+                            onClick={e => { e.stopPropagation(); handleParticipationOpen(group.id, group.name); }}
+                            size="small"
+                            sx={{ 
+                              width: 24, 
+                              height: 24, 
+                              p: 0, 
+                              mr: 0.5, 
+                              color: '#FF6B35',
+                              '& svg': {
+                                width: '100%',
+                                height: '100%'
+                              }
+                            }}
+                            title="Mitarbeit eintragen"
+                          >
+                            <HandRaiseIcon sx={{ fontSize: 24 }} />
                           </IconButton>
                           <IconButton
                             aria-label="Mehr"
                             onClick={e => { e.stopPropagation(); handleMenuOpen(e, group.id); }}
                             size="small"
-                            sx={{ width: 24, height: 24, p: 0.25 }}
+                            sx={{ 
+                              width: 24, 
+                              height: 24, 
+                              p: 0,
+                              '& svg': {
+                                width: '100%',
+                                height: '100%'
+                              }
+                            }}
                           >
-                            <MoreVertIcon />
+                            <MoreVertIcon sx={{ fontSize: 24 }} />
                           </IconButton>
                         </Box>
                       </Box>
@@ -7321,6 +7910,909 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         onSuccess={handleFlashcardSuccess}
       />
 
+      {/* Mitarbeitsbewertungs-Modal */}
+      <Dialog 
+        open={participationModalOpen} 
+        onClose={handleParticipationClose}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ 
+                width: 28, 
+                height: 28, 
+                borderRadius: '50%', 
+                bgcolor: '#FF6B35', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                <HandRaiseIcon sx={{ color: 'white', fontSize: 16 }} />
+    </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
+                  Mitarbeit eintragen
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2 }}>
+                  {participationGroupName}
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton 
+              size="small" 
+              onClick={handleParticipationClose}
+              sx={{ 
+                ml: 1, 
+                p: 0,
+                width: 20,
+                height: 20,
+                '& svg': {
+                  width: '100%',
+                  height: '100%'
+                }
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 1, pt: 1 }}>
+          {/* Unterrichtsstunden-Navigation */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            mb: 1,
+            pb: 0.75,
+            px: 0.5,
+            borderBottom: '1px solid #f0f0f0'
+          }}>
+            <IconButton 
+              size="small" 
+              onClick={async () => {
+                const newIndex = Math.max(0, currentLessonIndex - 1);
+                setCurrentLessonIndex(newIndex);
+                // Initialisiere neutrale Bewertungen für diese Stunde, falls noch nicht vorhanden
+                if (participationGroupId) {
+                  await initializeNeutralParticipations(participationGroupId, newIndex);
+                  await loadParticipations(participationGroupId);
+                }
+              }}
+              disabled={currentLessonIndex === 0}
+              sx={{ 
+                p: 0,
+                width: 20,
+                height: 20,
+                '& svg': {
+                  width: '100%',
+                  height: '100%'
+                }
+              }}
+            >
+              <ArrowBackIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
+              Unterrichtsstunde {currentLessonIndex + 1}
+            </Typography>
+            <IconButton 
+              size="small" 
+              onClick={addLesson}
+              sx={{ 
+                p: 0,
+                width: 20,
+                height: 20,
+                '& svg': {
+                  width: '100%',
+                  height: '100%'
+                }
+              }}
+            >
+              <ArrowForwardIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Box>
+
+          {/* Zeitraum-Übersicht */}
+          {periodConfig.period1Hours || periodConfig.period2Hours ? (
+            <Box sx={{ mb: 1.5, mt: 0.5 }}>
+              {/* Zeitraum-Markierungen */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                gap: 0.3,
+                mb: 0.5,
+                px: 0.5,
+                fontSize: '0.6rem',
+                color: 'text.secondary'
+              }}>
+                {(() => {
+                  // Berechne maximale Stundenzahl basierend auf vorhandenen Bewertungen
+                  const maxLesson = participationGroupId ? 
+                    Math.max(currentLessonIndex + 1, 
+                      Object.keys(participations[participationGroupId] || {}).length > 0 ?
+                        Math.max(...Object.keys(participations[participationGroupId] || {}).map(Number)) + 1 : 
+                        currentLessonIndex + 1
+                    ) : currentLessonIndex + 1;
+                  
+                  const totalLessons = Math.max(maxLesson, periodConfig.period1Hours ? periodConfig.period1Hours : 0, periodConfig.period2Hours ? (periodConfig.period1Hours || 0) + periodConfig.period2Hours : 0);
+                  const period1Count = periodConfig.period1Hours ? Math.min(periodConfig.period1Hours, totalLessons) : 0;
+                  const period2Count = periodConfig.period2Hours ? Math.min(periodConfig.period2Hours, totalLessons - period1Count) : 0;
+                  
+                  return (
+                    <>
+                      {period1Count > 0 && (
+                        <Box sx={{ 
+                          flex: period1Count,
+                          textAlign: 'center',
+                          color: '#1976D2',
+                          fontWeight: 600,
+                          fontSize: '0.65rem',
+                          borderTop: '2px solid #1976D2',
+                          pt: 0.3
+                        }}>
+                          Zeitraum 1
+                        </Box>
+                      )}
+                      {period2Count > 0 && (
+                        <Box sx={{ 
+                          flex: period2Count,
+                          textAlign: 'center',
+                          color: '#F57C00',
+                          fontWeight: 600,
+                          fontSize: '0.65rem',
+                          borderTop: '2px solid #F57C00',
+                          pt: 0.3
+                        }}>
+                          Zeitraum 2
+                        </Box>
+                      )}
+                    </>
+                  );
+                })()}
+              </Box>
+              
+              {/* Stunden-Übersicht */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'flex-end',
+                gap: 0.3,
+                height: 40,
+                px: 0.5,
+                pb: 0.5,
+                position: 'relative'
+              }}>
+                {(() => {
+                  const maxLesson = participationGroupId ? 
+                    Math.max(currentLessonIndex + 1, 
+                      Object.keys(participations[participationGroupId] || {}).length > 0 ?
+                        Math.max(...Object.keys(participations[participationGroupId] || {}).map(Number)) + 1 : 
+                        currentLessonIndex + 1
+                    ) : currentLessonIndex + 1;
+                  
+                  const totalLessons = Math.max(maxLesson, periodConfig.period1Hours ? periodConfig.period1Hours : 0, periodConfig.period2Hours ? (periodConfig.period1Hours || 0) + periodConfig.period2Hours : 0);
+                  
+                  return Array.from({ length: totalLessons }, (_, i) => {
+                    const lessonIndex = i;
+                    const isCurrentLesson = lessonIndex === currentLessonIndex;
+                    
+                    // Bestimme Zeitraum
+                    let period = 0;
+                    if (periodConfig.period1Hours && lessonIndex < periodConfig.period1Hours) {
+                      period = 1;
+                    } else if (periodConfig.period2Hours && periodConfig.period1Hours && lessonIndex < periodConfig.period1Hours + periodConfig.period2Hours) {
+                      period = 2;
+                    } else if (periodConfig.period2Hours && !periodConfig.period1Hours && lessonIndex < periodConfig.period2Hours) {
+                      period = 2;
+                    }
+                    
+                    const periodBorderColor = period === 1 ? '#1976D2' : period === 2 ? '#F57C00' : 'transparent';
+                    const hasData = participationGroupId && participations[participationGroupId] && participations[participationGroupId][lessonIndex];
+                    
+                    // Berechne Durchschnittswert für diese Stunde
+                    let avgValue = 0;
+                    if (hasData && participationGroupId) {
+                      const lessonData = participations[participationGroupId][lessonIndex];
+                      const values = Object.values(lessonData).map((p: any) => p.value);
+                      if (values.length > 0) {
+                        avgValue = values.reduce((sum: number, val: number) => sum + val, 0) / values.length;
+                      }
+                    }
+                    
+                    // Normalisiere Wert zu Höhe
+                    const height = avgValue === 2 ? 32 : 
+                                   avgValue === 1 ? 24 : 
+                                   avgValue === 0 ? 16 : 
+                                   avgValue === -1 ? 12 : 8;
+                    const width = Math.max(8, Math.min(24, 80 / totalLessons));
+                    
+                    const getValueColor = (value: number) => {
+                      if (value === 2) return '#4CAF50'; // Grün = sehr gut
+                      if (value === 1) return '#2196F3'; // Blau = gut
+                      if (value === 0) return '#9E9E9E';
+                      if (value === -1) return '#FFC107';
+                      if (value === -2) return '#F44336';
+                      return '#9E9E9E';
+                    };
+                    
+                    // Prüfe ob dies der Start eines Zeitraums ist
+                    const isPeriodStart = period > 0 && (lessonIndex === 0 || 
+                      (periodConfig.period1Hours && lessonIndex === periodConfig.period1Hours));
+                    const isPeriodEnd = period > 0 && (lessonIndex === totalLessons - 1 || 
+                      (periodConfig.period1Hours && periodConfig.period2Hours && lessonIndex === periodConfig.period1Hours + periodConfig.period2Hours - 1));
+                    
+                    return (
+                      <Box
+                        key={lessonIndex}
+                        onClick={() => {
+                          setCurrentLessonIndex(lessonIndex);
+                          if (participationGroupId) {
+                            initializeNeutralParticipations(participationGroupId, lessonIndex);
+                            loadParticipations(participationGroupId);
+                          }
+                        }}
+                        sx={{
+                          flex: 1,
+                          minWidth: width,
+                          height: `${height}px`,
+                          bgcolor: hasData ? getValueColor(avgValue) : '#E0E0E0',
+                          borderRadius: '2px 2px 0 0',
+                          opacity: isCurrentLesson ? 1 : 0.6,
+                          transition: 'all 0.2s',
+                          position: 'relative',
+                          cursor: 'pointer',
+                          borderLeft: isPeriodStart ? `2px solid ${periodBorderColor}` : 'none',
+                          borderRight: isPeriodEnd ? `2px solid ${periodBorderColor}` : 'none',
+                          borderTop: periodBorderColor !== 'transparent' ? `1px solid ${periodBorderColor}` : 'none',
+                          border: isCurrentLesson ? `2px solid #FF6B35` : 'none',
+                          boxShadow: isCurrentLesson ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+                          '&:hover': {
+                            opacity: 1,
+                            transform: 'scaleY(1.1)',
+                            transformOrigin: 'bottom'
+                          }
+                        }}
+                      >
+                        {isCurrentLesson && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: -18,
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              fontSize: '0.6rem',
+                              fontWeight: 600,
+                              color: '#FF6B35',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            Aktuell
+                          </Box>
+                        )}
+                      </Box>
+                    );
+                  });
+                })()}
+              </Box>
+            </Box>
+          ) : null}
+
+          {/* Schüler-Kacheln */}
+          {participationGroupId && groups.find(g => g.id === participationGroupId)?.students && (
+            <Grid container spacing={0.75}>
+              {groups.find(g => g.id === participationGroupId)!.students.map((student) => {
+                const value = getParticipationValue(student.id);
+                const getColor = () => {
+                  if (value === 2) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😄' }; // sehr gut - grün
+                  if (value === 1) return { bg: '#E3F2FD', border: '#2196F3', emoji: '😊' }; // gut - blau
+                  if (value === 0) return { bg: '#F5F5F5', border: '#9E9E9E', emoji: '😐' }; // neutral - grau
+                  if (value === -1) return { bg: '#FFF9C4', border: '#FFC107', emoji: '🙁' }; // schlecht - gelb
+                  if (value === -2) return { bg: '#FFEBEE', border: '#F44336', emoji: '😞' }; // sehr schlecht - rot
+                  return { bg: '#F5F5F5', border: '#9E9E9E', emoji: '😐' };
+                };
+                const colors = getColor();
+                const grade = calculateParticipationGrade(student.id);
+                
+                return (
+                  <Grid item xs={4} sm={3} md={2} key={student.id}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 0.75,
+                        cursor: 'pointer',
+                        border: `1.5px solid ${colors.border}`,
+                        bgcolor: colors.bg,
+                        borderRadius: 1,
+                        transition: 'all 0.2s',
+                        position: 'relative',
+                        '&:hover': {
+                          transform: 'translateY(-1px)',
+                          boxShadow: 1
+                        }
+                      }}
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left;
+                        const isLeft = clickX < rect.width / 2;
+                        handleParticipationClick(student.id, isLeft, false);
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleParticipationClick(student.id, true, true);
+                      }}
+                      onContextMenu={(e) => handleCommentRightClick(e, student.id, student.name)}
+                    >
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            fontWeight: 500, 
+                            fontSize: '0.65rem',
+                            textAlign: 'center',
+                            wordBreak: 'break-word',
+                            lineHeight: 1.2
+                          }}
+                        >
+                          {student.name}
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            fontSize: '1.3rem',
+                            lineHeight: 1
+                          }}
+                        >
+                          {colors.emoji}
+                        </Typography>
+                      </Box>
+                      {/* Links/Rechts-Trenner */}
+                      <Box 
+                        sx={{ 
+                          position: 'absolute',
+                          left: '50%',
+                          top: 0,
+                          bottom: 0,
+                          width: '1px',
+                          bgcolor: colors.border,
+                          opacity: 0.3
+                        }} 
+                      />
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+
+          {/* Zeitraum-Einstellungen und EPO-Buttons */}
+          <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="small"
+              startIcon={<GradeIcon sx={{ fontSize: 16 }} />}
+              onClick={() => setPeriodConfigModalOpen(true)}
+              sx={{ fontSize: '0.75rem', py: 0.5 }}
+            >
+              Zeiträume einstellen
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              size="small"
+              startIcon={<BarChartIcon sx={{ fontSize: 16 }} />}
+              onClick={calculateEpoGrades}
+              disabled={!periodConfig.period1Hours || !periodConfig.period2Hours}
+              sx={{ fontSize: '0.75rem', py: 0.5 }}
+            >
+              EPO-Noten berechnen
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="small"
+              startIcon={<BarChartIcon sx={{ fontSize: 16 }} />}
+              onClick={handleStatisticsOpen}
+              sx={{ fontSize: '0.75rem', py: 0.5 }}
+            >
+              Statistik anzeigen
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Statistik-Modal */}
+      <Dialog 
+        open={statisticsModalOpen} 
+        onClose={handleStatisticsClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ 
+                width: 28, 
+                height: 28, 
+                borderRadius: '50%', 
+                bgcolor: '#2196F3', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                <BarChartIcon sx={{ color: 'white', fontSize: 16 }} />
+              </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
+                  Mitarbeitsstatistik
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2 }}>
+                  {participationGroupName}
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton 
+              size="small" 
+              onClick={handleStatisticsClose}
+              sx={{ 
+                ml: 1, 
+                p: 0,
+                width: 20,
+                height: 20,
+                '& svg': {
+                  width: '100%',
+                  height: '100%'
+                }
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 1, pt: 1 }}>
+          {statsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : participationStats.length === 0 ? (
+            <Typography variant="body2" sx={{ textAlign: 'center', py: 3, color: 'text.secondary', fontSize: '0.75rem' }}>
+              Noch keine Bewertungen vorhanden
+            </Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Schüler</TableCell>
+                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Anzahl</TableCell>
+                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Ø Wert</TableCell>
+                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Note</TableCell>
+                    {periodConfig.period1Hours && (
+                      <>
+                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
+                          Zeitraum 1<br/>(St. 1-{periodConfig.period1Hours})
+                        </TableCell>
+                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
+                          Zeitraum 1<br/>Note
+                        </TableCell>
+                      </>
+                    )}
+                    {periodConfig.period2Hours && (
+                      <>
+                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
+                          Zeitraum 2<br/>(St. {periodConfig.period1Hours ? periodConfig.period1Hours + 1 : 1}-{periodConfig.period1Hours ? periodConfig.period1Hours + periodConfig.period2Hours : periodConfig.period2Hours})
+                        </TableCell>
+                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
+                          Zeitraum 2<br/>Note
+                        </TableCell>
+                      </>
+                    )}
+                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>EPO 1</TableCell>
+                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>EPO 2</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {participationStats
+                    .sort((a, b) => {
+                      // Sortiere nach Nachname (letztes Wort im Namen)
+                      const getLastName = (name: string) => {
+                        const parts = name.trim().split(/\s+/);
+                        return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                      };
+                      const lastNameA = getLastName(a.student.name).toLowerCase();
+                      const lastNameB = getLastName(b.student.name).toLowerCase();
+                      return lastNameA.localeCompare(lastNameB, 'de');
+                    })
+                    .map((stat: any) => {
+                      const getGradeColor = (grade: number | null) => {
+                        if (!grade) return '#9E9E9E';
+                        if (grade <= 1.5) return '#4CAF50';
+                        if (grade <= 2.5) return '#8BC34A';
+                        if (grade <= 3.5) return '#FFC107';
+                        if (grade <= 4.5) return '#FF9800';
+                        return '#F44336';
+                      };
+                      const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
+                      const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
+                      return (
+                        <TableRow key={stat.student.id}>
+                          <TableCell sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                            {stat.student.name}
+                          </TableCell>
+                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                            {stat.count}
+                          </TableCell>
+                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                            {stat.average.toFixed(2)}
+                          </TableCell>
+                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: getGradeColor(stat.grade)
+                              }}
+                            >
+                              {stat.grade ? stat.grade.toFixed(1) : '-'}
+                            </Typography>
+                          </TableCell>
+                          {periodConfig.period1Hours && (
+                            <>
+                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                                {stat.period1?.count || 0}
+                              </TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    color: getGradeColor(stat.period1?.grade || null)
+                                  }}
+                                >
+                                  {stat.period1?.grade ? stat.period1.grade.toFixed(1) : '-'}
+                                </Typography>
+                              </TableCell>
+                            </>
+                          )}
+                          {periodConfig.period2Hours && (
+                            <>
+                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                                {stat.period2?.count || 0}
+                              </TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    color: getGradeColor(stat.period2?.grade || null)
+                                  }}
+                                >
+                                  {stat.period2?.grade ? stat.period2.grade.toFixed(1) : '-'}
+                                </Typography>
+                              </TableCell>
+                            </>
+                          )}
+                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: getGradeColor(epo1?.grade || null)
+                              }}
+                            >
+                              {epo1 ? epo1.grade.toFixed(1) : '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: getGradeColor(epo2?.grade || null)
+                              }}
+                            >
+                              {epo2 ? epo2.grade.toFixed(1) : '-'}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Kommentar-Modal */}
+      <Dialog 
+        open={commentModalOpen} 
+        onClose={handleCommentClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
+                Kommentar hinzufügen
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2, mt: 0.5 }}>
+                {commentStudentName} - Stunde {currentLessonIndex + 1}
+              </Typography>
+            </Box>
+            <IconButton 
+              size="small" 
+              onClick={handleCommentClose}
+              sx={{ 
+                ml: 1, 
+                p: 0,
+                width: 20,
+                height: 20,
+                '& svg': {
+                  width: '100%',
+                  height: '100%'
+                }
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
+          {/* Schlagwort-Buttons - kategorisiert */}
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="caption" sx={{ 
+              fontSize: '0.7rem', 
+              color: 'text.secondary',
+              mb: 0.75,
+              display: 'block'
+            }}>
+              Schnellauswahl:
+            </Typography>
+            <Box sx={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: 0.5,
+              justifyContent: 'space-between'
+            }}>
+              {/* Links: Negativ/Kritisch */}
+              <Box sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 0.5,
+                flex: 1,
+                minWidth: '30%'
+              }}>
+                {commentShortcuts.negativ.map((shortcut) => (
+                  <Chip
+                    key={shortcut}
+                    label={shortcut}
+                    size="small"
+                    onClick={() => {
+                      if (commentText.trim()) {
+                        setCommentText(prev => prev + ', ' + shortcut);
+                      } else {
+                        setCommentText(shortcut);
+                      }
+                    }}
+                    sx={{
+                      fontSize: '0.7rem',
+                      height: 24,
+                      cursor: 'pointer',
+                      bgcolor: '#ffebee',
+                      color: '#c62828',
+                      '&:hover': {
+                        bgcolor: '#ffcdd2',
+                        color: '#b71c1c'
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+              
+              {/* Mitte: Organisatorisch (HA, Material) */}
+              <Box sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 0.5,
+                flex: 1,
+                minWidth: '30%',
+                justifyContent: 'center'
+              }}>
+                {commentShortcuts.organisatorisch.map((shortcut) => (
+                  <Chip
+                    key={shortcut}
+                    label={shortcut}
+                    size="small"
+                    onClick={() => {
+                      if (commentText.trim()) {
+                        setCommentText(prev => prev + ', ' + shortcut);
+                      } else {
+                        setCommentText(shortcut);
+                      }
+                    }}
+                    sx={{
+                      fontSize: '0.7rem',
+                      height: 24,
+                      cursor: 'pointer',
+                      bgcolor: '#fff3e0',
+                      color: '#e65100',
+                      '&:hover': {
+                        bgcolor: '#ffe0b2',
+                        color: '#d84315'
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+              
+              {/* Rechts: Positiv */}
+              <Box sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: 0.5,
+                flex: 1,
+                minWidth: '30%',
+                justifyContent: 'flex-end'
+              }}>
+                {commentShortcuts.positiv.map((shortcut) => (
+                  <Chip
+                    key={shortcut}
+                    label={shortcut}
+                    size="small"
+                    onClick={() => {
+                      if (commentText.trim()) {
+                        setCommentText(prev => prev + ', ' + shortcut);
+                      } else {
+                        setCommentText(shortcut);
+                      }
+                    }}
+                    sx={{
+                      fontSize: '0.7rem',
+                      height: 24,
+                      cursor: 'pointer',
+                      bgcolor: '#e8f5e9',
+                      color: '#2e7d32',
+                      '&:hover': {
+                        bgcolor: '#c8e6c9',
+                        color: '#1b5e20'
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Box>
+          
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Kommentar eingeben oder Schlagwort auswählen..."
+            variant="outlined"
+            size="small"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                fontSize: '0.85rem'
+              }
+            }}
+          />
+        </DialogContent>
+        
+        <DialogActions sx={{ p: 1, px: 1.5, borderTop: '1px solid #e0e0e0' }}>
+          <Button onClick={handleCommentClose} size="small" sx={{ fontSize: '0.75rem' }}>
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleCommentSave} 
+            variant="contained" 
+            size="small"
+            sx={{ fontSize: '0.75rem' }}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Zeitraum-Konfiguration Modal */}
+      <Dialog 
+        open={periodConfigModalOpen} 
+        onClose={() => setPeriodConfigModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
+              Zeiträume einstellen
+            </Typography>
+            <IconButton 
+              size="small" 
+              onClick={() => setPeriodConfigModalOpen(false)}
+              sx={{ 
+                p: 0,
+                width: 20,
+                height: 20,
+                '& svg': {
+                  width: '100%',
+                  height: '100%'
+                }
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
+          <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 2 }}>
+            Geben Sie an, wie viele Stunden zu jedem Zeitraum gehören. Am Ende werden automatisch EPO 1 und EPO 2 berechnet.
+          </Typography>
+          
+          <TextField
+            fullWidth
+            label="Zeitraum 1 (EPO 1) - Anzahl Stunden"
+            type="number"
+            value={tempPeriod1Hours}
+            onChange={(e) => setTempPeriod1Hours(e.target.value)}
+            sx={{ mb: 2 }}
+            inputProps={{ min: 1, max: 1000 }}
+            helperText="Anzahl der Stunden für den ersten Zeitraum"
+          />
+          
+          <TextField
+            fullWidth
+            label="Zeitraum 2 (EPO 2) - Anzahl Stunden"
+            type="number"
+            value={tempPeriod2Hours}
+            onChange={(e) => setTempPeriod2Hours(e.target.value)}
+            inputProps={{ min: 1, max: 1000 }}
+            helperText="Anzahl der Stunden für den zweiten Zeitraum"
+          />
+        </DialogContent>
+        
+        <DialogActions sx={{ px: 1.5, pb: 1.5, pt: 1 }}>
+          <Button onClick={() => setPeriodConfigModalOpen(false)} size="small" sx={{ fontSize: '0.75rem' }}>
+            Abbrechen
+          </Button>
+          <Button onClick={savePeriodConfig} variant="contained" size="small" sx={{ fontSize: '0.75rem' }}>
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
