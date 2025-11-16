@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -446,7 +446,6 @@ const htmlToPlainText = (html: string): string => {
   // Extrahiere nur den Text-Inhalt
   return temp.textContent || temp.innerText || '';
 };
-
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
   const subjectManagerRef = useRef<any>(null);
@@ -601,53 +600,90 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [commentStudentId, setCommentStudentId] = useState<string | null>(null);
   const [commentStudentName, setCommentStudentName] = useState('');
   const [commentText, setCommentText] = useState('');
+  const commentInputRef = useRef<any>(null);
   const [periodConfig, setPeriodConfig] = useState<{period1Hours: number | null; period2Hours: number | null}>({period1Hours: null, period2Hours: null});
   const [epoGrades, setEpoGrades] = useState<any[]>([]);
   const [periodConfigModalOpen, setPeriodConfigModalOpen] = useState(false);
   const [tempPeriod1Hours, setTempPeriod1Hours] = useState<string>('');
   const [tempPeriod2Hours, setTempPeriod2Hours] = useState<string>('');
-  
-  // Vordefinierte Schlagworte für Kommentare (kategorisiert)
+  const [lessonKeyword, setLessonKeyword] = useState<string>('');
+  const [lessonKeywordsMap, setLessonKeywordsMap] = useState<{[groupId: string]: {[lessonIndex: number]: string}}>({});
+  const lessonKeywordInputRef = useRef<HTMLInputElement | null>(null);
+  const navFocusRef = useRef<HTMLDivElement | null>(null);
+  const [applyingLessonKeyword, setApplyingLessonKeyword] = useState<boolean>(false);
+
+  // Fokussiere den Navigationscontainer beim Öffnen des Mitarbeits-Modals,
+  // damit Tastaturkürzel wie 't' sofort verfügbar sind.
+  useEffect(() => {
+    if (participationModalOpen) {
+      // leichte Verzögerung, bis der Dialog gerendert ist
+      setTimeout(() => {
+        navFocusRef.current?.focus();
+      }, 0);
+    }
+  }, [participationModalOpen]);
+
+  // Anzeige-Thema für aktuelle Stunde: erst Map, sonst aus Kommentaren
+  const displayedLessonKeyword: string = (() => {
+    if (!participationGroupId) return '';
+    const mapped = lessonKeywordsMap[participationGroupId]?.[currentLessonIndex];
+    if (mapped !== undefined) return mapped;
+    const groupData = participations[participationGroupId] || {};
+    const lessonData = groupData[currentLessonIndex] || {};
+    const anyStudentId = Object.keys(lessonData)[0];
+    if (anyStudentId) {
+      const data = lessonData[anyStudentId];
+      const comment = data && typeof data === 'object' ? (data.comment as string | undefined) : undefined;
+      return extractLessonKeywordFromComment(comment);
+    }
+    return '';
+  })();
+
+  // Vordefinierte Schlagworte in fünf Kategorien (rot, gelb, grau, blau, grün)
   const commentShortcuts = {
-    negativ: [
+    rot: [
       'Sehr unaufmerksam',
+      'Sehr unruhig',
+      'Sehr viele geschwätzt',
+      'Dauernd aufgestanden',
+      'Reingerufen',
+      'Häufig Reingerufen',
+      'Häufig gestört',
+      'Nicht konzentriert gearbeitet'
+    ],
+    gelb: [
       'Unaufmerksam',
       'Verträumt',
       'Abgelenkt',
-      'Sehr viele geschwätzt',
       'Häufig geschwätzt',
       'Abgelenkt durch Nachbarn',
       'Nachbarn abgelenkt',
-      'Sehr unruhig',
-      'Dauernd aufgestanden',
-      'Reingerufen',
-      'Häufiges Reingerufen',
-      'Häufig gestört',
-      'Nicht konzentriert gearbeitet',
       'Früher eingepackt',
       'Heft nicht ordentlich geführt',
       'Aufgaben nicht gewissenhaft bearbeitet'
     ],
-    organisatorisch: [
+    grau: [
       'Fehlende HA',
       'Fehlendes Material',
       'HA unvollständig',
       'HA probiert aber zu wenig'
     ],
-    positiv: [
+    blau: [
+      'Ruhig gearbeitet',
+      'Sorgfältig gearbeitet',
+      'Gute Fragen gestellt',
+      'Engagiert mitgedacht'
+    ],
+    gruen: [
       'Produktive Beiträge',
       'Gewinnbringende Meldungen',
       'Kreative Antworten',
       'Fleißig gearbeitet',
-      'Engagiert mitgedacht',
-      'Toll präsentiert',
-      'Ruhig gearbeitet',
-      'Sorgfältig gearbeitet',
-      'Gute Fragen gestellt',
       'Sehr konzentriert',
-      'Bis zum Ende fleißig'
+      'Bis zum Ende fleißig',
+      'Toll präsentiert'
     ]
-  };
+  } as const;
 
 
   // Spielerische Farbpalette
@@ -1053,7 +1089,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }
     }
   };
-
   // Neue Funktion zum Laden der zugeordneten Ordner
   const fetchAssignedFolders = async (groupId: string) => {
     try {
@@ -1168,8 +1203,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       };
     });
   };
+  function extractLessonKeywordFromComment(text: string | undefined | null): string {
+    if (!text) return '';
+    const m = text.match(/\[K:(.*?)\]/);
+    return m ? m[1].trim() : '';
+  }
 
-  // Schöne Vorschau-Modals (aus FileSystemPathManager kopiert)
+  function injectLessonKeywordIntoComment(original: string | undefined | null, keyword: string): string {
+    const base = original || '';
+    const cleaned = base.replace(/\s*\[K:.*?\]\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!keyword.trim()) return cleaned; // entfernen
+    const tag = `[K: ${keyword.trim()}]`;
+    return cleaned ? `${tag} ${cleaned}` : tag;
+  }
   const showFilePreviewModal = (fileName: string, htmlContent: string, filePath: string, fileType: string) => {
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -1607,7 +1653,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     
     document.addEventListener('keydown', handleModalKeyDown);
   };
-
   const showTextPreviewModal = (fileName: string, textContent: string, filePath: string) => {
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -1954,8 +1999,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // Öffne Whiteboard in neuem Tab
     window.open(`/whiteboard?groupId=${groupId}`, '_blank');
   };
-
-
   // File Share Functions
   const fetchFileSharesForGroup = async (groupId: string) => {
     try {
@@ -1972,7 +2015,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       console.error('Error fetching file shares:', error);
     }
   };
-
   const toggleFileShare = async (filePath: string, groupId: string) => {
     try {
       const response = await fetch('/api/file-shares/toggle', {
@@ -2012,7 +2054,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       return true;
     });
   };
-
   // Neue Funktion zum Rendern der echten Ordner-Vorschau
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
@@ -2258,65 +2299,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 ✅
               </Typography>
             )}
-            
-            {/* Quiz starten Icon - wenn bereits ein Quiz existiert */}
-            {item.type === 'file' && item.name.startsWith('Quiz') && quizStatusMap.get(item.path)?.exists && (
-              <Typography variant="caption" sx={{ 
-                fontSize: '0.7rem',
-                userSelect: 'none',
-                cursor: 'pointer',
-                ml: 0.2,
-                border: '1px solid #4caf50',
-                borderRadius: '2px',
-                padding: '1px',
-                '&:hover': {
-                  opacity: 0.8
-                }
-              }}
-              title={`Quiz starten: ${quizStatusMap.get(item.path)?.title || 'Unbekanntes Quiz'}`}
-              onClick={() => {
-                const quizId = quizStatusMap.get(item.path)?.quizId;
-                if (quizId) {
-                  handleStartQuiz(quizId);
-                }
-              }}
-              >
-                ▶️
-              </Typography>
-            )}
-
-            {/* Ergebnisse freigeben Button - wenn Quiz beendet ist aber Ergebnisse noch nicht freigegeben */}
-            {item.type === 'file' && item.name.startsWith('Quiz') &&
-             quizStatusMap.get(item.path)?.exists &&
-             quizStatusMap.get(item.path)?.sessionId && (
-              <Typography variant="caption" sx={{
-                fontSize: '0.7rem',
-                userSelect: 'none',
-                cursor: 'pointer',
-                ml: 0.2,
-                border: quizStatusMap.get(item.path)?.resultsReleased ? '1px solid #4caf50' : '1px solid #f44336',
-                borderRadius: '2px',
-                padding: '1px',
-                '&:hover': {
-                  opacity: 0.8
-                }
-              }}
-              title={quizStatusMap.get(item.path)?.resultsReleased ? 
-                'Ergebnisse zurücknehmen' : 
-                'Ergebnisse jetzt freigeben'
-              }
-              onClick={() => {
-                const sessionId = quizStatusMap.get(item.path)?.sessionId;
-                if (sessionId) {
-                  handleReleaseResults(sessionId, item.path);
-                }
-              }}
-              >
-                {quizStatusMap.get(item.path)?.resultsReleased ? '🔒' : '🔓'}
-              </Typography>
-            )}
-
-            {/* Ergebnisse bereits freigegeben - grüner Haken */}
             
           </Box>
           
@@ -2662,7 +2644,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       alert('Fehler beim Berechnen');
     }
   };
-  
   const loadEpoGrades = async (groupId: string) => {
     try {
       const response = await fetch(`/api/participation/${groupId}/epo-grades`);
@@ -2674,7 +2655,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       console.error('Fehler beim Laden der EPO-Noten:', error);
     }
   };
-  
   const integrateEpoGradesToSchema = async (groupId: string) => {
     try {
       // Lade das Notenschema für diese Gruppe
@@ -2836,7 +2816,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       };
     });
   };
-  
   const handleCommentRightClick = (e: React.MouseEvent, studentId: string, studentName: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -3289,7 +3268,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     if (grade <= 6.0) return '#C2185B';
     return '#9E9E9E';
   };
-
   const ensureMiniGrades = async (groupId: string, studentId: string) => {
     const key = `${groupId}:${studentId}`;
     if (miniGradesMap[key]?.loading || miniGradesMap[key]?.overall !== undefined) return;
@@ -3326,7 +3304,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       setMiniGradesMap(prev => ({ ...prev, [key]: { loading: false, gradingSystem: 'GERMAN', overall: null, nodes: [] } }));
     }
   };
-
   const handleStudentMenuOpen = (e: React.MouseEvent<HTMLElement>, groupId: string, student: Student) => {
     e.stopPropagation();
     setStudentMenuAnchorEl(e.currentTarget);
@@ -3498,7 +3475,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       console.error('Error loading grade schemas:', error);
     }
   };
-
   const handleCreateQuiz = async () => {
     if (!selectedQuizFile) return;
 
@@ -3568,7 +3544,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       alert(`Fehler beim Erstellen des Quiz:\n${error instanceof Error ? error.message : String(error)}`);
     }
   };
-
   // Quiz-Status prüfen
   const checkQuizStatus = async (filePath: string) => {
     try {
@@ -3625,7 +3600,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       console.error('Error checking quiz status:', error);
     }
   };
-
   // Quiz-Status für alle Quiz-Dateien prüfen
   const checkAllQuizStatuses = async () => {
     // Sammle alle Quiz-Dateien aus allen zugewiesenen Ordnern
@@ -3642,7 +3616,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       await checkQuizStatus(file.path);
     }
   };
-
   // Quiz-Status beim Laden der Dateien prüfen
   useEffect(() => {
     if (Object.keys(assignedFolderContents).length > 0) {
@@ -3935,7 +3908,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       return [];
     }
   };
-
   const handleDeleteDeck = (deckId: string) => {
     const deck = flashcardDecks.find(d => d.id === deckId);
     if (deck) {
@@ -3943,7 +3915,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       setDeleteModalOpen(true);
     }
   };
-
   const handleExportDeck = async (deck: FlashcardDeck) => {
     try {
       // Lade die Karten für das Deck, falls noch nicht vorhanden
@@ -3973,7 +3944,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       });
     }
   };
-
   const exportToWord = async (deck: FlashcardDeck, cards: Flashcard[]) => {
     try {
       // Importiere die benötigten docx-Module dynamisch
@@ -4194,7 +4164,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       });
     }
   };
-
   const confirmDeleteDeck = async () => {
     if (!deckToDelete || deleteConfirmWord !== 'LÖSCHEN') {
       setSnackbar({
@@ -4314,7 +4283,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setNewCardFront('');
     setNewCardBack('');
   };
-
   const handleSaveCard = async () => {
     if (!selectedDeck || !newCardFront.trim() || !newCardBack.trim()) {
       setSnackbar({
@@ -4428,7 +4396,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // Falls es nur Text ist, in Paragraph wrappen
     return `<p>${htmlContent}</p>`;
   };
-
   // useEffect um sicherzustellen, dass die RichTextEditor-Werte korrekt gesetzt werden
   useEffect(() => {
     if (editingCard) {
@@ -4583,12 +4550,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', card.id || '');
   };
-
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
-
   const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
     
@@ -4692,13 +4657,62 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       });
     }
   };
-
   return (
     <Box 
       sx={{ width: '100%', bgcolor: colors.background, p: 0 }}
       ref={dashboardRef}
       tabIndex={-1}
-      onKeyDown={handleKeyDown}
+      onKeyDown={async (e) => { 
+        if (e.key === 'Enter' && !e.shiftKey) { 
+          e.preventDefault(); 
+          if (!participationGroupId) return; 
+          const group = groups.find(g => g.id === participationGroupId); 
+          if (!group) return; 
+          setApplyingLessonKeyword(true);
+          try {
+            for (const student of group.students) {
+              const groupData = participations[participationGroupId] || {};
+              const lessonData = groupData[currentLessonIndex] || {};
+              const studentData = lessonData[student.id];
+              const existingComment = studentData && typeof studentData === 'object' ? (studentData.comment as string | undefined) : undefined;
+              const updatedComment = injectLessonKeywordIntoComment(existingComment, lessonKeyword);
+              if ((existingComment || '') !== updatedComment) {
+                await fetch(`/api/participation/${participationGroupId}/${currentLessonIndex}/${student.id}/comment`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ comment: updatedComment })
+                });
+              }
+            }
+            setParticipations(prev => {
+              const copy = { ...prev } as any;
+              const groupData2 = copy[participationGroupId] || {};
+              const lessonData2 = { ...(groupData2[currentLessonIndex] || {}) };
+              for (const student of (groups.find(g => g.id === participationGroupId)?.students || [])) {
+                const sd = lessonData2[student.id] || { value: 0 };
+                lessonData2[student.id] = { value: (sd as any).value ?? 0, comment: injectLessonKeywordIntoComment(sd.comment as (string | undefined), lessonKeyword) };
+              }
+              copy[participationGroupId] = { ...groupData2, [currentLessonIndex]: lessonData2 };
+              return copy;
+            });
+            // persist per-lesson keyword in map
+            setLessonKeywordsMap(prev => ({
+              ...prev,
+              [participationGroupId]: {
+                ...(prev[participationGroupId] || {}),
+                [currentLessonIndex]: lessonKeyword
+              }
+            }));
+            // Eingabefeld räumen und Fokus verlassen
+            setLessonKeyword('');
+            lessonKeywordInputRef.current?.blur();
+          } catch (err) {
+            console.error('Fehler beim Anwenden des Stunden-Schlagworts:', err);
+          } finally {
+            setApplyingLessonKeyword(false);
+          }
+        } 
+      }}
     >
       <Grid container spacing={0}>
         {/* Header Section */}
@@ -6116,7 +6130,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               onOpenSubjectDialog={handleOpenSubjectDialog}
             />
           </TabPanel>
-
           <TabPanel value={mainTabValue} index={5}>
             {/* Karteikarten Section */}
             <Box sx={{ p: 1.4 }}>
@@ -6529,7 +6542,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Add Students Dialog */}
       <Dialog open={openAddStudentsDialog} onClose={() => setOpenAddStudentsDialog(false)}>
         <DialogTitle>Schüler hinzufügen</DialogTitle>
@@ -7140,7 +7152,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Karteikarten-Verwaltungs-Modal */}
       {selectedDeck && (
         <Dialog 
@@ -7254,7 +7265,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               </Box>
             </Box>
           </DialogTitle>
-          
           <DialogContent sx={{ p: 0, overflow: 'auto', height: '100%', '&::-webkit-scrollbar': { width: '8px' }, '&::-webkit-scrollbar-track': { background: colors.border + '20' }, '&::-webkit-scrollbar-thumb': { background: colors.primary + '40', borderRadius: '4px' } }}>
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               
@@ -7939,7 +7949,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     </Box>
               <Box>
                 <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
-                  Mitarbeit eintragen
+                  Mitarbeitsstatistik
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2 }}>
                   {participationGroupName}
@@ -7967,15 +7977,49 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         
         <DialogContent sx={{ p: 1, pt: 1 }}>
           {/* Unterrichtsstunden-Navigation */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            mb: 1,
-            pb: 0.75,
-            px: 0.5,
-            borderBottom: '1px solid #f0f0f0'
-          }}>
+          <Box
+            ref={navFocusRef}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+              const isTyping = tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
+              if (!isTyping && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setCurrentLessonIndex((prev) => {
+                  const next = Math.max(0, prev - 1);
+                  if (participationGroupId) {
+                    initializeNeutralParticipations(participationGroupId, next);
+                    loadParticipations(participationGroupId);
+                  }
+                  return next;
+                });
+                return;
+              }
+              if (!isTyping && e.key === 'ArrowRight') {
+                e.preventDefault();
+                const next = currentLessonIndex + 1;
+                setCurrentLessonIndex(next);
+                if (participationGroupId) {
+                  initializeNeutralParticipations(participationGroupId, next);
+                  loadParticipations(participationGroupId);
+                }
+                return;
+              }
+              if (!isTyping && (e.key === 't' || e.key === 'T')) {
+                e.preventDefault();
+                lessonKeywordInputRef.current?.focus();
+              }
+            }}
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              mb: 1,
+              pb: 0.75,
+              px: 0.5,
+              borderBottom: '1px solid #f0f0f0'
+            }}
+          >
             <IconButton 
               size="small" 
               onClick={async () => {
@@ -8000,9 +8044,146 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             >
               <ArrowBackIcon sx={{ fontSize: 20 }} />
             </IconButton>
-            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
-              Unterrichtsstunde {currentLessonIndex + 1}
-            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
+                Unterrichtsstunde {currentLessonIndex + 1}
+                {displayedLessonKeyword && displayedLessonKeyword.trim() ? (
+                  <span style={{ color: 'rgba(0,0,0,0.6)', fontWeight: 400 }}>
+                    {' '}– Thema: {displayedLessonKeyword.trim()}
+                  </span>
+                ) : null}
+              </Typography>
+              <TextField 
+                placeholder="Stichwort"
+                value={lessonKeyword}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setLessonKeyword(v);
+                  if (participationGroupId) {
+                    setLessonKeywordsMap(prev => ({
+                      ...prev,
+                      [participationGroupId]: {
+                        ...(prev[participationGroupId] || {}),
+                        [currentLessonIndex]: v
+                      }
+                    }));
+                  }
+                }}
+                inputRef={lessonKeywordInputRef}
+                onBlur={async () => { 
+                  if (!participationGroupId) return; 
+                  const group = groups.find(g => g.id === participationGroupId); 
+                  if (!group) return; 
+                  setApplyingLessonKeyword(true);
+                  try {
+                    for (const student of group.students) {
+                      const groupData = participations[participationGroupId] || {};
+                      const lessonData = groupData[currentLessonIndex] || {};
+                      const studentData = lessonData[student.id];
+                      const existingComment = studentData && typeof studentData === 'object' ? (studentData.comment as string | undefined) : undefined;
+                      const updatedComment = injectLessonKeywordIntoComment(existingComment, lessonKeyword);
+                      if ((existingComment || '') !== updatedComment) {
+                        await fetch(`/api/participation/${participationGroupId}/${currentLessonIndex}/${student.id}/comment`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ comment: updatedComment })
+                        });
+                      }
+                    }
+                    setParticipations(prev => {
+                      const copy = { ...prev } as any;
+                      const groupData2 = copy[participationGroupId] || {};
+                      const lessonData2 = { ...(groupData2[currentLessonIndex] || {}) };
+                      for (const student of (groups.find(g => g.id === participationGroupId)?.students || [])) {
+                        const sd = lessonData2[student.id] || { value: 0 };
+                        lessonData2[student.id] = { value: (sd as any).value ?? 0, comment: injectLessonKeywordIntoComment(sd.comment as (string | undefined), lessonKeyword) };
+                      }
+                      copy[participationGroupId] = { ...groupData2, [currentLessonIndex]: lessonData2 };
+                      return copy;
+                    });
+                    // persist per-lesson keyword in map
+                    setLessonKeywordsMap(prev => ({
+                      ...prev,
+                      [participationGroupId]: {
+                        ...(prev[participationGroupId] || {}),
+                        [currentLessonIndex]: lessonKeyword
+                      }
+                    }));
+                  } catch (err) {
+                    console.error('Fehler beim Anwenden des Stunden-Schlagworts:', err);
+                  } finally {
+                    setApplyingLessonKeyword(false);
+                    // Eingabefeld räumen und Fokus verlassen
+                    setLessonKeyword('');
+                    lessonKeywordInputRef.current?.blur();
+                    navFocusRef.current?.focus();
+                  }
+                }}
+                onKeyDown={async (e) => { 
+                  if (e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    if (!participationGroupId) return; 
+                    const group = groups.find(g => g.id === participationGroupId); 
+                    if (!group) return; 
+                    setApplyingLessonKeyword(true);
+                    try {
+                      for (const student of group.students) {
+                        const groupData = participations[participationGroupId] || {};
+                        const lessonData = groupData[currentLessonIndex] || {};
+                        const studentData = lessonData[student.id];
+                        const existingComment = studentData && typeof studentData === 'object' ? (studentData.comment as string | undefined) : undefined;
+                        const updatedComment = injectLessonKeywordIntoComment(existingComment, lessonKeyword);
+                        if ((existingComment || '') !== updatedComment) {
+                          await fetch(`/api/participation/${participationGroupId}/${currentLessonIndex}/${student.id}/comment`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ comment: updatedComment })
+                          });
+                        }
+                      }
+                      setParticipations(prev => {
+                        const copy = { ...prev } as any;
+                        const groupData2 = copy[participationGroupId] || {};
+                        const lessonData2 = { ...(groupData2[currentLessonIndex] || {}) };
+                        for (const student of (groups.find(g => g.id === participationGroupId)?.students || [])) {
+                          const sd = lessonData2[student.id] || { value: 0 };
+                          lessonData2[student.id] = { value: (sd as any).value ?? 0, comment: injectLessonKeywordIntoComment(sd.comment as (string | undefined), lessonKeyword) };
+                        }
+                        copy[participationGroupId] = { ...groupData2, [currentLessonIndex]: lessonData2 };
+                        return copy;
+                      });
+                      // persist per-lesson keyword in map
+                      setLessonKeywordsMap(prev => ({
+                        ...prev,
+                        [participationGroupId]: {
+                          ...(prev[participationGroupId] || {}),
+                          [currentLessonIndex]: lessonKeyword
+                        }
+                      }));
+                    } catch (err) {
+                      console.error('Fehler beim Anwenden des Stunden-Schlagworts:', err);
+                    } finally {
+                      setApplyingLessonKeyword(false);
+                      // Eingabefeld räumen und Fokus verlassen
+                      setLessonKeyword('');
+                      lessonKeywordInputRef.current?.blur();
+                      navFocusRef.current?.focus();
+                    }
+                  } 
+                }}
+                size="small"
+                variant="standard"
+                sx={{ 
+                  width: 140, 
+                  '& .MuiInputBase-root': { 
+                    fontSize: '0.7rem', 
+                    color: 'text.secondary',
+                    py: 0
+                  },
+                  '& .MuiInput-underline:before, & .MuiInput-underline:after': { borderBottom: 'none' },
+                }}
+              />
+            </Box>
             <IconButton 
               size="small" 
               onClick={addLesson}
@@ -8134,8 +8315,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     const width = Math.max(8, Math.min(24, 80 / totalLessons));
                     
                     const getValueColor = (value: number) => {
-                      if (value === 2) return '#4CAF50'; // Grün = sehr gut
-                      if (value === 1) return '#2196F3'; // Blau = gut
+                      if (value === 2) return '#2196F3'; // Blau = sehr gut
+                      if (value === 1) return '#4CAF50'; // Grün = gut
                       if (value === 0) return '#9E9E9E';
                       if (value === -1) return '#FFC107';
                       if (value === -2) return '#F44336';
@@ -8204,14 +8385,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Box>
           ) : null}
 
+          
+           {/* Schüler-Kacheln */}
           {/* Schüler-Kacheln */}
           {participationGroupId && groups.find(g => g.id === participationGroupId)?.students && (
             <Grid container spacing={0.75}>
               {groups.find(g => g.id === participationGroupId)!.students.map((student) => {
                 const value = getParticipationValue(student.id);
                 const getColor = () => {
-                  if (value === 2) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😄' }; // sehr gut - grün
-                  if (value === 1) return { bg: '#E3F2FD', border: '#2196F3', emoji: '😊' }; // gut - blau
+                  if (value === 2) return { bg: '#E3F2FD', border: '#2196F3', emoji: '😄' }; // sehr gut - blau
+                  if (value === 1) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😊' }; // gut - grün
                   if (value === 0) return { bg: '#F5F5F5', border: '#9E9E9E', emoji: '😐' }; // neutral - grau
                   if (value === -1) return { bg: '#FFF9C4', border: '#FFC107', emoji: '🙁' }; // schlecht - gelb
                   if (value === -2) return { bg: '#FFEBEE', border: '#F44336', emoji: '😞' }; // sehr schlecht - rot
@@ -8220,77 +8403,174 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 const colors = getColor();
                 const grade = calculateParticipationGrade(student.id);
                 
+                // Hole vorhandenen Kommentar der aktuellen Stunde
+                const groupData = participations[participationGroupId] || {};
+                const lessonData = groupData[currentLessonIndex] || {};
+                const studentData = lessonData[student.id];
+                const existingComment = (studentData && typeof studentData === 'object' && studentData.comment) ? String(studentData.comment) : '';
+                const hasComment = existingComment.trim().length > 0;
+                
                 return (
                   <Grid item xs={4} sm={3} md={2} key={student.id}>
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        p: 0.75,
-                        cursor: 'pointer',
-                        border: `1.5px solid ${colors.border}`,
-                        bgcolor: colors.bg,
-                        borderRadius: 1,
-                        transition: 'all 0.2s',
-                        position: 'relative',
-                        '&:hover': {
-                          transform: 'translateY(-1px)',
-                          boxShadow: 1
-                        }
-                      }}
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const clickX = e.clientX - rect.left;
-                        const isLeft = clickX < rect.width / 2;
-                        handleParticipationClick(student.id, isLeft, false);
-                      }}
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        handleParticipationClick(student.id, true, true);
-                      }}
-                      onContextMenu={(e) => handleCommentRightClick(e, student.id, student.name)}
-                    >
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontWeight: 500, 
-                            fontSize: '0.65rem',
-                            textAlign: 'center',
-                            wordBreak: 'break-word',
-                            lineHeight: 1.2
+                    {/* Zeige Tooltip nur wenn Kommentar vorhanden ist */}
+                    {hasComment ? (
+                      <Tooltip title={existingComment} arrow>
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 0.75,
+                            cursor: 'pointer',
+                            border: `1.5px solid ${colors.border}`,
+                            bgcolor: colors.bg,
+                            borderRadius: 1,
+                            transition: 'all 0.2s',
+                            position: 'relative',
+                            '&:hover': {
+                              transform: 'translateY(-1px)',
+                              boxShadow: 1
+                            }
                           }}
-                        >
-                          {student.name}
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            fontSize: '1.3rem',
-                            lineHeight: 1
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const clickX = e.clientX - rect.left;
+                            const isLeft = clickX < rect.width / 2;
+                            handleParticipationClick(student.id, isLeft, false);
                           }}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            handleParticipationClick(student.id, true, true);
+                          }}
+                          onContextMenu={(e) => handleCommentRightClick(e, student.id, student.name)}
                         >
-                          {colors.emoji}
-                        </Typography>
-                      </Box>
-                      {/* Links/Rechts-Trenner */}
-                      <Box 
-                        sx={{ 
-                          position: 'absolute',
-                          left: '50%',
-                          top: 0,
-                          bottom: 0,
-                          width: '1px',
-                          bgcolor: colors.border,
-                          opacity: 0.3
-                        }} 
-                      />
-                    </Paper>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                fontWeight: 500, 
+                                fontSize: '0.65rem',
+                                textAlign: 'center',
+                                wordBreak: 'break-word',
+                                lineHeight: 1.2
+                              }}
+                            >
+                              {student.name}
+                            </Typography>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                fontSize: '1.3rem',
+                                lineHeight: 1
+                              }}
+                            >
+                              {colors.emoji}
+                            </Typography>
+                          </Box>
+                          {/* K-Badge wenn Kommentar vorhanden ist */}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              width: 14,
+                              height: 14,
+                              borderRadius: '50%',
+                              bgcolor: '#FF9800',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.6rem',
+                              fontWeight: 600,
+                              color: 'white',
+                              zIndex: 1,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                            }}
+                          >
+                            K
+                          </Box>
+                          {/* Links/Rechts-Trenner */}
+                          <Box 
+                            sx={{ 
+                              position: 'absolute',
+                              left: '50%',
+                              top: 0,
+                              bottom: 0,
+                              width: '1px',
+                              bgcolor: colors.border,
+                              opacity: 0.3
+                            }} 
+                          />
+                        </Paper>
+                      </Tooltip>
+                    ) : (
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 0.75,
+                          cursor: 'pointer',
+                          border: `1.5px solid ${colors.border}`,
+                          bgcolor: colors.bg,
+                          borderRadius: 1,
+                          transition: 'all 0.2s',
+                          position: 'relative',
+                          '&:hover': {
+                            transform: 'translateY(-1px)',
+                            boxShadow: 1
+                          }
+                        }}
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const clickX = e.clientX - rect.left;
+                          const isLeft = clickX < rect.width / 2;
+                          handleParticipationClick(student.id, isLeft, false);
+                        }}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          handleParticipationClick(student.id, true, true);
+                        }}
+                        onContextMenu={(e) => handleCommentRightClick(e, student.id, student.name)}
+                      >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              fontWeight: 500, 
+                              fontSize: '0.65rem',
+                              textAlign: 'center',
+                              wordBreak: 'break-word',
+                              lineHeight: 1.2
+                            }}
+                          >
+                            {student.name}
+                          </Typography>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              fontSize: '1.3rem',
+                              lineHeight: 1
+                            }}
+                          >
+                            {colors.emoji}
+                          </Typography>
+                        </Box>
+                        {/* Links/Rechts-Trenner */}
+                        <Box 
+                          sx={{ 
+                            position: 'absolute',
+                            left: '50%',
+                            top: 0,
+                            bottom: 0,
+                            width: '1px',
+                            bgcolor: colors.border,
+                            opacity: 0.3
+                          }} 
+                        />
+                      </Paper>
+                    )}
                   </Grid>
                 );
               })}
             </Grid>
           )}
-
           {/* Zeitraum-Einstellungen und EPO-Buttons */}
           <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
             <Button
@@ -8541,205 +8821,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </TableContainer>
           )}
         </DialogContent>
-      </Dialog>
-
-      {/* Kommentar-Modal */}
-      <Dialog 
-        open={commentModalOpen} 
-        onClose={handleCommentClose}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 1
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
-                Kommentar hinzufügen
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2, mt: 0.5 }}>
-                {commentStudentName} - Stunde {currentLessonIndex + 1}
-              </Typography>
-            </Box>
-            <IconButton 
-              size="small" 
-              onClick={handleCommentClose}
-              sx={{ 
-                ml: 1, 
-                p: 0,
-                width: 20,
-                height: 20,
-                '& svg': {
-                  width: '100%',
-                  height: '100%'
-                }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        
-        <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
-          {/* Schlagwort-Buttons - kategorisiert */}
-          <Box sx={{ mb: 1.5 }}>
-            <Typography variant="caption" sx={{ 
-              fontSize: '0.7rem', 
-              color: 'text.secondary',
-              mb: 0.75,
-              display: 'block'
-            }}>
-              Schnellauswahl:
-            </Typography>
-            <Box sx={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              gap: 0.5,
-              justifyContent: 'space-between'
-            }}>
-              {/* Links: Negativ/Kritisch */}
-              <Box sx={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: 0.5,
-                flex: 1,
-                minWidth: '30%'
-              }}>
-                {commentShortcuts.negativ.map((shortcut) => (
-                  <Chip
-                    key={shortcut}
-                    label={shortcut}
-                    size="small"
-                    onClick={() => {
-                      if (commentText.trim()) {
-                        setCommentText(prev => prev + ', ' + shortcut);
-                      } else {
-                        setCommentText(shortcut);
-                      }
-                    }}
-                    sx={{
-                      fontSize: '0.7rem',
-                      height: 24,
-                      cursor: 'pointer',
-                      bgcolor: '#ffebee',
-                      color: '#c62828',
-                      '&:hover': {
-                        bgcolor: '#ffcdd2',
-                        color: '#b71c1c'
-                      }
-                    }}
-                  />
-                ))}
-              </Box>
-              
-              {/* Mitte: Organisatorisch (HA, Material) */}
-              <Box sx={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: 0.5,
-                flex: 1,
-                minWidth: '30%',
-                justifyContent: 'center'
-              }}>
-                {commentShortcuts.organisatorisch.map((shortcut) => (
-                  <Chip
-                    key={shortcut}
-                    label={shortcut}
-                    size="small"
-                    onClick={() => {
-                      if (commentText.trim()) {
-                        setCommentText(prev => prev + ', ' + shortcut);
-                      } else {
-                        setCommentText(shortcut);
-                      }
-                    }}
-                    sx={{
-                      fontSize: '0.7rem',
-                      height: 24,
-                      cursor: 'pointer',
-                      bgcolor: '#fff3e0',
-                      color: '#e65100',
-                      '&:hover': {
-                        bgcolor: '#ffe0b2',
-                        color: '#d84315'
-                      }
-                    }}
-                  />
-                ))}
-              </Box>
-              
-              {/* Rechts: Positiv */}
-              <Box sx={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                gap: 0.5,
-                flex: 1,
-                minWidth: '30%',
-                justifyContent: 'flex-end'
-              }}>
-                {commentShortcuts.positiv.map((shortcut) => (
-                  <Chip
-                    key={shortcut}
-                    label={shortcut}
-                    size="small"
-                    onClick={() => {
-                      if (commentText.trim()) {
-                        setCommentText(prev => prev + ', ' + shortcut);
-                      } else {
-                        setCommentText(shortcut);
-                      }
-                    }}
-                    sx={{
-                      fontSize: '0.7rem',
-                      height: 24,
-                      cursor: 'pointer',
-                      bgcolor: '#e8f5e9',
-                      color: '#2e7d32',
-                      '&:hover': {
-                        bgcolor: '#c8e6c9',
-                        color: '#1b5e20'
-                      }
-                    }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          </Box>
-          
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Kommentar eingeben oder Schlagwort auswählen..."
-            variant="outlined"
-            size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                fontSize: '0.85rem'
-              }
-            }}
-          />
-        </DialogContent>
-        
-        <DialogActions sx={{ p: 1, px: 1.5, borderTop: '1px solid #e0e0e0' }}>
-          <Button onClick={handleCommentClose} size="small" sx={{ fontSize: '0.75rem' }}>
-            Abbrechen
-          </Button>
-          <Button 
-            onClick={handleCommentSave} 
-            variant="contained" 
-            size="small"
-            sx={{ fontSize: '0.75rem' }}
-          >
-            Speichern
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* Zeitraum-Konfiguration Modal */}

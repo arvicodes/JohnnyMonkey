@@ -2773,8 +2773,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                 };
                                 
                                 const getValueColor = (value: number) => {
-                                  if (value === 2) return '#4CAF50'; // Grün = sehr gut
-                                  if (value === 1) return '#2196F3'; // Blau = gut
+                                  if (value === 2) return '#2196F3'; // Blau = sehr gut
+                                  if (value === 1) return '#4CAF50'; // Grün = gut
                                   if (value === 0) return '#9E9E9E';
                                   if (value === -1) return '#FFC107';
                                   if (value === -2) return '#F44336';
@@ -2927,10 +2927,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                             .sort((a, b) => a.lessonIndex - b.lessonIndex)
                                             .map((participation, index) => {
                                               // Normalisiere Wert zu Höhe (0-32px) - kompakter
-                                              // Grün (2 = sehr gut) soll höchster sein, Blau (1 = gut) zweithöchster
-                                              // -2 -> 6px, -1 -> 10px, 0 -> 14px, 1 (blau/gut) -> 20px, 2 (grün/sehr gut) -> 28px
-                                              const height = participation.value === 2 ? 28 :  // Grün (sehr gut) = höchster
-                                                             participation.value === 1 ? 20 :  // Blau (gut) = zweithöchster
+                                              // Blau (2 = sehr gut) soll höchster sein, Grün (1 = gut) zweithöchster
+                                              // -2 -> 6px, -1 -> 10px, 0 -> 14px, 1 (grün/gut) -> 20px, 2 (blau/sehr gut) -> 28px
+                                              const height = participation.value === 2 ? 28 :  // Blau (sehr gut) = höchster
+                                                             participation.value === 1 ? 20 :  // Grün (gut) = zweithöchster
                                                              participation.value === 0 ? 14 :  // Grau (neutral)
                                                              participation.value === -1 ? 10 :  // Gelb (schlecht)
                                                              6; // Rot (sehr schlecht)

@@ -6,10 +6,10 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "scripts": {
-    "dev": "./scripts/setup-local.sh && DATABASE_URL=\"file:./dev.db\" nodemon src/index.ts",
+    "dev": "PORT=3003 ./scripts/setup-local.sh && DATABASE_URL=\"file:./dev.db\" nodemon src/index.ts",
     "dev:smart": "./scripts/start-dev.sh",
     "dev:clean": "npm run cleanup && npm run dev",
-    "cleanup": "node -e \"const { exec } = require('child_process'); exec('lsof -ti:3001 | xargs kill -9 2>/dev/null || echo \\\"No process on port 3001\\\"', console.log);\"",
+    "cleanup": "node -e \"const { exec } = require('child_process'); exec('lsof -ti:3003 | xargs kill -9 2>/dev/null || echo \\\"No process on port 3003\\\"', console.log);\"",
     "build": "tsc",
     "postbuild": "prisma generate",
     "start": "prisma generate && node dist/index.js",

@@ -5,6 +5,7 @@ import {
   getDoor,
   submitAnswer,
   getDoorResults,
+  getLeaderboard,
   createDoor,
   createDoorsForYear
 } from '../controllers/AdventCalendarController';
@@ -19,6 +20,7 @@ router.get('/doors', getDoors);
 router.get('/doors/:doorId', getDoor);
 router.post('/doors/:doorId/submit', submitAnswer);
 router.get('/doors/:doorId/results', getDoorResults);
+router.get('/leaderboard', getLeaderboard);
 
 // Admin/Teacher Routen (können später mit requireTeacher Middleware geschützt werden)
 router.post('/doors', createDoor);

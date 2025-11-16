@@ -14,6 +14,7 @@ router.get('/doors', AdventCalendarController_1.getDoors);
 router.get('/doors/:doorId', AdventCalendarController_1.getDoor);
 router.post('/doors/:doorId/submit', AdventCalendarController_1.submitAnswer);
 router.get('/doors/:doorId/results', AdventCalendarController_1.getDoorResults);
+router.get('/leaderboard', AdventCalendarController_1.getLeaderboard);
 // Admin/Teacher Routen (können später mit requireTeacher Middleware geschützt werden)
 router.post('/doors', AdventCalendarController_1.createDoor);
 router.post('/doors/bulk', AdventCalendarController_1.createDoorsForYear);
