@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateUser } from '../middleware/auth';
+import { authenticateUser, requireTeacher } from '../middleware/auth';
 import {
   getDoors,
   getDoor,
@@ -7,7 +7,8 @@ import {
   getDoorResults,
   getLeaderboard,
   createDoor,
-  createDoorsForYear
+  createDoorsForYear,
+  fixThemeYear
 } from '../controllers/AdventCalendarController';
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.get('/leaderboard', getLeaderboard);
 // Admin/Teacher Routen (können später mit requireTeacher Middleware geschützt werden)
 router.post('/doors', createDoor);
 router.post('/doors/bulk', createDoorsForYear);
+router.post('/fix-theme', requireTeacher, fixThemeYear);
 
 export default router;
 

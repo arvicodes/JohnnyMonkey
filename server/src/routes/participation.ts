@@ -136,6 +136,75 @@ async function calculateEpoGradesForGroup(groupId: string): Promise<void> {
   }
 }
 
+// Hilfsfunktion: Übertrage berechnete EPO-Noten ins Notenschema (Grades)
+// - Verwendet das erste verfügbare GradingSchema der Gruppe
+// - Legt/aktualisiert Kategorien "EPO 1" und "EPO 2" je Schüler mit weight 1.0
+async function integrateEpoGradesToSchema(groupId: string): Promise<void> {
+  try {
+    // Finde ein Schema für die Gruppe
+    const schema = await prisma.gradingSchema.findFirst({
+      where: { groupId },
+      select: { id: true }
+    });
+    if (!schema) {
+      // Kein Schema vorhanden → Abbruch ohne Fehler
+      return;
+    }
+    const schemaId = schema.id;
+
+    // Lade aktuelle EPO-Noten der Gruppe
+    const epoGrades = await prisma.participationPeriodGrade.findMany({
+      where: { groupId },
+      select: {
+        studentId: true,
+        period: true,
+        grade: true
+      }
+    });
+    if (epoGrades.length === 0) {
+      return;
+    }
+
+    // Upsert pro Eintrag
+    for (const eg of epoGrades) {
+      // Verwende kleingeschriebene Kategorienamen: "epo 1" / "epo 2"
+      const targetName = `epo ${eg.period}`;
+      // Hole vorhandene Noten des Schülers im Schema und gleiche case-insensitive ab
+      const existingGrades = await prisma.grade.findMany({
+        where: { studentId: eg.studentId, schemaId },
+        select: { id: true, categoryName: true }
+      });
+      const match = existingGrades.find(g => g.categoryName.trim().toLowerCase() === targetName.toLowerCase());
+
+      if (match) {
+        // Update vorhandenen Eintrag (Name wird auf kleingeschriebenen Zielnamen normalisiert)
+        await prisma.grade.update({
+          where: { id: match.id },
+          data: {
+            categoryName: targetName,
+            grade: eg.grade,
+            weight: 1.0
+          }
+        });
+      } else {
+        // Falls keine case-insensitive Übereinstimmung: neu anlegen (mit kleingeschriebenem Namen)
+        await prisma.grade.create({
+          data: {
+            studentId: eg.studentId,
+            schemaId,
+            categoryName: targetName,
+            grade: eg.grade,
+            weight: 1.0
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error integrating EPO grades into grading schema for group:', groupId, error);
+    // Nicht werfen, um Benutzerinteraktionen nicht zu blockieren
+  }
+}
+
 // Get participation data for a specific student in all their groups
 // WICHTIG: Diese Route muss VOR der /:groupId Route kommen!
 router.get('/student/:studentId', async (req: Request, res: Response) => {
@@ -430,6 +499,9 @@ router.post('/:groupId/calculate-epo', async (req: Request, res: Response) => {
     // Verwende die wiederverwendbare Funktion
     await calculateEpoGradesForGroup(groupId);
     
+    // Integriere EPO-Noten ins Notenschema (Server-seitig automatisch)
+    await integrateEpoGradesToSchema(groupId);
+
     // Lade die berechneten EPO-Noten, um die Anzahl zurückzugeben
     const epoGrades = await prisma.participationPeriodGrade.findMany({
       where: { groupId }
@@ -509,9 +581,14 @@ router.post('/:groupId/:lessonIndex', async (req: Request, res: Response) => {
 
     // Berechne EPO-Noten automatisch im Hintergrund (non-blocking)
     // Wird asynchron ausgeführt, damit die Antwort nicht verzögert wird
-    calculateEpoGradesForGroup(groupId).catch(error => {
-      console.error('Background EPO calculation failed:', error);
-    });
+    (async () => {
+      try {
+        await calculateEpoGradesForGroup(groupId);
+        await integrateEpoGradesToSchema(groupId);
+      } catch (error) {
+        console.error('Background EPO calc/integration failed:', error);
+      }
+    })();
 
     res.json(participation);
   } catch (error) {
@@ -692,9 +769,14 @@ router.put('/:groupId/:lessonIndex/:studentId/comment', async (req: Request, res
 
     // Berechne EPO-Noten automatisch im Hintergrund (non-blocking)
     // Kommentare ändern die Noten nicht, aber falls sich gleichzeitig Werte ändern, wird neu berechnet
-    calculateEpoGradesForGroup(groupId).catch(error => {
-      console.error('Background EPO calculation failed after comment update:', error);
-    });
+    (async () => {
+      try {
+        await calculateEpoGradesForGroup(groupId);
+        await integrateEpoGradesToSchema(groupId);
+      } catch (error) {
+        console.error('Background EPO calc/integration failed after comment update:', error);
+      }
+    })();
 
     res.json(participation);
   } catch (error) {

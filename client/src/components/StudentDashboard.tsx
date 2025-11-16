@@ -2843,16 +2843,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                                 </Typography>
                                               )}
                                               {groupData.grade !== null && (
-                                                <Typography 
-                                                  variant="body2" 
-                                                  sx={{ 
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: 600,
-                                                    color: getGradeColor(groupData.grade)
-                                                  }}
-                                                >
-                                                  Ø: {groupData.grade.toFixed(1)}
-                                                </Typography>
+                                                <></>
                                               )}
                                             </>
                                           );
