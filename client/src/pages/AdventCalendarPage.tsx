@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -26,7 +26,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Refresh as RefreshIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  EmojiEvents as EmojiEventsIcon
 } from '@mui/icons-material';
 
 interface AdventCalendarDoor {
@@ -109,6 +110,10 @@ const AdventCalendarPage: React.FC = () => {
   const [refreshingLeaderboard, setRefreshingLeaderboard] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<string>(localStorage.getItem('adventTheme') || '');
   const [showThemePicker, setShowThemePicker] = useState<boolean>(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const answerInputRef = useRef<HTMLInputElement>(null);
+  const [dailyStats, setDailyStats] = useState<{ todayCorrect: number; todayTotal: number } | null>(null);
+  const [showHint, setShowHint] = useState(false);
 
   const loginCode = localStorage.getItem('loginCode');
 
@@ -152,6 +157,65 @@ const AdventCalendarPage: React.FC = () => {
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
+
+  // Fokussiere Input-Feld, wenn Dialog geöffnet wird
+  useEffect(() => {
+    if (selectedDoor && !selectedDoor.hasSubmission && answerInputRef.current) {
+      // Kleine Verzögerung, damit der Dialog vollständig gerendert ist
+      setTimeout(() => {
+        answerInputRef.current?.focus();
+      }, 100);
+    }
+  }, [selectedDoor]);
+
+  // Keyboard-Navigation für Türchen (Pfeiltasten)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Nur wenn kein Dialog offen ist
+      if (selectedDoor !== null) return;
+      
+      const openableDoors = doors
+        .filter(d => d.isOpenable)
+        .sort((a, b) => a.day - b.day);
+      
+      if (openableDoors.length === 0) return;
+      
+      const currentFocused = document.activeElement;
+      const currentDay = currentFocused?.getAttribute('data-door-day');
+      
+      if (!currentDay) {
+        // Wenn nichts fokussiert ist, fokussiere das erste Türchen bei Pfeiltasten
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          const firstDoor = openableDoors[0];
+          const firstElement = document.querySelector(`[data-door-day="${firstDoor.day}"]`) as HTMLElement;
+          firstElement?.focus();
+        }
+        return;
+      }
+      
+      const currentIndex = openableDoors.findIndex(d => d.day.toString() === currentDay);
+      if (currentIndex === -1) return;
+      
+      let nextIndex = currentIndex;
+      
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextIndex = (currentIndex + 1) % openableDoors.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIndex = currentIndex === 0 ? openableDoors.length - 1 : currentIndex - 1;
+      } else {
+        return;
+      }
+      
+      e.preventDefault();
+      const nextDoor = openableDoors[nextIndex];
+      const nextElement = document.querySelector(`[data-door-day="${nextDoor.day}"]`) as HTMLElement;
+      nextElement?.focus();
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [doors, selectedDoor]);
 
   const fetchDoors = async () => {
     try {
@@ -229,6 +293,25 @@ const AdventCalendarPage: React.FC = () => {
     }
   };
 
+  const fetchDailyStats = async (doorId: string) => {
+    try {
+      const response = await fetch(`/api/advent-calendar/doors/${doorId}/results`, {
+        headers: {
+          'x-login-code': loginCode || ''
+        }
+      });
+      if (response.ok) {
+        const results = await response.json();
+        setDailyStats({
+          todayCorrect: results.statistics.correctSubmissions,
+          todayTotal: results.statistics.totalSubmissions
+        });
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der täglichen Statistiken:', error);
+    }
+  };
+
   const handleDoorClick = async (door: AdventCalendarDoor) => {
     if (!door.isOpenable) return;
 
@@ -252,6 +335,8 @@ const AdventCalendarPage: React.FC = () => {
             // Bereits geöffnet: automatisch Ergebnisse anzeigen
             await fetchDoorResults(fullDoor.id);
           }
+          // Lade tägliche Statistiken
+          await fetchDailyStats(door.id);
         }
       } catch (error) {
         console.error('Fehler beim Laden des Türchens:', error);
@@ -277,6 +362,17 @@ const AdventCalendarPage: React.FC = () => {
 
       if (response.ok) {
         const submission = await response.json();
+        
+        // Konfetti-Animation bei korrekter Antwort (nur bei 1. richtiger)
+        if (submission.isCorrect) {
+          const totalCorrect = doors.filter(d => d.hasSubmission && d.mySubmission?.isCorrect).length;
+          if (totalCorrect === 0) {
+            // Nur bei der ersten richtigen Antwort
+            setShowConfetti(true);
+            setTimeout(() => setShowConfetti(false), 3000);
+          }
+        }
+        
         setDoors(prevDoors =>
           prevDoors.map(door =>
             door.id === selectedDoor.id
@@ -305,8 +401,34 @@ const AdventCalendarPage: React.FC = () => {
             submittedAt: submission.submittedAt
           }
         });
-        await fetchDoorResults(selectedDoor.id);
-        await fetchLeaderboard();
+        // Aktualisiere doors und Leaderboard, damit das Live-Update funktioniert
+        // fetchDoors aktualisiert nur im Hintergrund, ohne globales Loading
+        const refreshDoors = async () => {
+          try {
+            const year = new Date().getFullYear();
+            const response = await fetch(`/api/advent-calendar/doors?year=${year}&theme=${encodeURIComponent(selectedTheme)}`, {
+              headers: {
+                'x-login-code': loginCode || '',
+                'x-advent-theme': selectedTheme || ''
+              }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data)) {
+                setDoors(data);
+              }
+            }
+          } catch (error) {
+            console.error('Fehler beim Aktualisieren der Türchen:', error);
+          }
+        };
+        
+        await Promise.all([
+          refreshDoors(),
+          fetchLeaderboard(),
+          fetchDoorResults(selectedDoor.id),
+          fetchDailyStats(selectedDoor.id)
+        ]);
       } else {
         const error = await response.json();
         alert(error.error || 'Fehler beim Einreichen der Antwort');
@@ -348,16 +470,16 @@ const AdventCalendarPage: React.FC = () => {
 
   // Themenauswahl
   const themes = [
-    { key: 'Mathe Basics', emoji: '➗', color: '#e3f2fd' },
-    { key: 'Informatik', emoji: '💻', color: '#fff3e0' },
-    { key: 'Tiere', emoji: '🐾', color: '#e8f5e9' },
-    { key: 'Weltraum', emoji: '🌌', color: '#ede7f6' },
-    { key: 'Natur & Umwelt', emoji: '🌿', color: '#e0f2f1' },
-    { key: 'Weihnachten', emoji: '🎅', color: '#ffebee' },
-    { key: 'Spiele & Rätsel', emoji: '🧩', color: '#f3e5f5' },
-    { key: 'Geografie', emoji: '🌍', color: '#e1f5fe' },
-    { key: 'Musik & Rhythmus', emoji: '🎵', color: '#fce4ec' },
-    { key: 'Essen & Küche', emoji: '🍎', color: '#fff8e1' }
+    { key: 'Mathe Basics', emoji: '➗', color: '#e3f2fd', description: 'Grundrechenarten, Zahlen, Kopfrechnen' },
+    { key: 'Informatik', emoji: '💻', color: '#fff3e0', description: 'Binärsystem, Computer-Grundlagen, Logik' },
+    { key: 'Tiere', emoji: '🐾', color: '#e8f5e9', description: 'Tierwissen, Naturkunde, Tier-Fakten' },
+    { key: 'Weltraum', emoji: '🌌', color: '#ede7f6', description: 'Planeten, Sterne, Weltall-Mysterien' },
+    { key: 'Natur & Umwelt', emoji: '🌿', color: '#e0f2f1', description: 'Umweltschutz, Natur, Nachhaltigkeit' },
+    { key: 'Weihnachten', emoji: '🎅', color: '#ffebee', description: 'Weihnachtsbräuche, Traditionen, Festtagswissen' },
+    { key: 'Spiele & Rätsel', emoji: '🧩', color: '#f3e5f5', description: 'Knobeln, Rätsel, Denkspiele' },
+    { key: 'Geografie', emoji: '🌍', color: '#e1f5fe', description: 'Länder, Städte, Kontinente' },
+    { key: 'Musik & Rhythmus', emoji: '🎵', color: '#fce4ec', description: 'Musiktheorie, Instrumente, Rhythmus' },
+    { key: 'Essen & Küche', emoji: '🍎', color: '#fff8e1', description: 'Kochen, Lebensmittel, Rezepte' }
   ];
 
   const applyTheme = (key: string) => {
@@ -376,6 +498,8 @@ const AdventCalendarPage: React.FC = () => {
     setAnswer('');
     setShowResults(false);
     setOpeningDoor(null);
+    setShowHint(false);
+    setDailyStats(null);
   };
 
   const handleRefreshResults = async () => {
@@ -490,7 +614,78 @@ const AdventCalendarPage: React.FC = () => {
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: 1.5, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 1.5 }}>
         {/* Kalender - Tannenbaum-Form */}
         <Box>
-          {doors.length === 0 ? (
+          {doors.length > 0 && (() => {
+            // Finde das nächste offene Türchen
+            const currentDate = new Date();
+            const currentDay = currentDate.getDate();
+            const isDecember = currentDate.getMonth() === 11;
+            const simulationMode = !isDecember;
+            const maxOpenableDay = simulationMode ? 24 : currentDay;
+            
+            const openableDoors = doors.filter(d => d.isOpenable && !d.hasSubmission);
+            const nextDoor = openableDoors.length > 0 
+              ? openableDoors.sort((a, b) => a.day - b.day)[0]
+              : null;
+            
+            return nextDoor && (
+              <Card sx={{ mb: 1.5, p: 1, bgcolor: '#fff3cd', border: '1px solid #ffc107' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: '1.2rem' }}>📅</Typography>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#856404' }}>
+                      {isDecember 
+                        ? `Heute (${currentDay}. Dez.): Türchen ${nextDoor.day}`
+                        : `Als nächstes: Türchen ${nextDoor.day}`
+                      }
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#856404' }}>
+                      Klicke auf Türchen {nextDoor.day} um es zu öffnen!
+                    </Typography>
+                  </Box>
+                </Box>
+              </Card>
+            );
+          })()}
+          {loading && doors.length === 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              {/* Skeleton Loading */}
+              {[
+                [1],
+                [2, 3],
+                [4, 5, 6],
+                [7, 8, 9, 10],
+                [11, 12, 13, 14, 15],
+                [16, 17, 18, 19, 20, 21],
+                [22, 23, 24]
+              ].map((row, rowIndex) => (
+                <Box 
+                  key={rowIndex}
+                  sx={{ 
+                    display: 'flex', 
+                    gap: 0.5, 
+                    justifyContent: 'center'
+                  }}
+                >
+                  {row.map((dayNum) => (
+                    <Card
+                      key={dayNum}
+                      sx={{
+                        width: { xs: 50, sm: 60 },
+                        height: { xs: 50, sm: 60 },
+                        borderRadius: 1.2,
+                        bgcolor: '#e0e0e0',
+                        animation: 'pulse 1.5s ease-in-out infinite',
+                        '@keyframes pulse': {
+                          '0%, 100%': { opacity: 1 },
+                          '50%': { opacity: 0.5 }
+                        }
+                      }}
+                    />
+                  ))}
+                </Box>
+              ))}
+            </Box>
+          ) : doors.length === 0 ? (
             <Card sx={{ p: 4, textAlign: 'center' }}>
               <Typography sx={{ mb: 1 }}>
                 {selectedTheme ? 'Keine Türchen gefunden.' : 'Bitte zuerst ein Thema wählen.'}
@@ -545,22 +740,43 @@ const AdventCalendarPage: React.FC = () => {
                     return (
                       <Grow in={true} timeout={200 + door.day * 15} key={door.id}>
                         <Box
+                          tabIndex={door.isOpenable ? 0 : -1}
+                          data-door-day={door.day}
+                          role="button"
+                          aria-label={`Türchen ${door.day} ${door.hasSubmission ? '(bereits geöffnet)' : door.isOpenable ? '(öffnen)' : '(noch nicht verfügbar)'}`}
                           sx={{
                             position: 'relative',
                             cursor: door.isOpenable ? 'pointer' : 'not-allowed',
                             transform: isOpening ? 'rotateY(-90deg) scale(0.9)' : 'rotateY(0deg)',
                             transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                            outline: 'none',
+                            '&:focus-visible': {
+                              outline: '2px solid #2e7d32',
+                              outlineOffset: 2,
+                              borderRadius: 1.2
+                            },
                             '&:hover': door.isOpenable && !isOpening ? {
                               transform: 'translateY(-3px) scale(1.08)',
                               '& .door-card': {
                                 boxShadow: '0 6px 12px rgba(0,0,0,0.25)',
                                 borderColor: isToday ? '#ffd700' : '#fff'
                               }
+                            } : {},
+                            '&:active': door.isOpenable && !isOpening ? {
+                              transform: 'translateY(0) scale(1.05)'
                             } : {}
                           }}
                           onClick={() => {
                             if (door.isOpenable && !isOpening) {
                               handleDoorClick(door);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (door.isOpenable && !isOpening) {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleDoorClick(door);
+                              }
                             }
                           }}
                         >
@@ -694,39 +910,88 @@ const AdventCalendarPage: React.FC = () => {
                               {door.day}
                             </Typography>
 
-                            {/* Status Icon */}
-                            {door.hasSubmission && (
-                              <Box 
-                                sx={{ 
-                                  position: 'absolute',
-                                  top: 2,
-                                  right: 2,
-                                  animation: 'fadeIn 0.3s ease-out',
-                                  '@keyframes fadeIn': {
-                                    '0%': { opacity: 0 },
-                                    '100%': { opacity: 1 }
-                                  }
-                                }}
-                              >
-                                {door.mySubmission?.isCorrect ? (
-                                  <CheckCircleIcon 
-                                    sx={{ 
-                                      fontSize: 14, 
-                                      color: '#fff',
-                                      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
-                                    }} 
-                                  />
-                                ) : (
-                                  <CancelIcon 
-                                    sx={{ 
-                                      fontSize: 14, 
-                                      color: '#fff',
-                                      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
-                                    }} 
-                                  />
-                                )}
-                              </Box>
-                            )}
+                            {/* Status Icon & Sterne */}
+                            {(() => {
+                              const totalCorrect = doors.filter(d => d.hasSubmission && d.mySubmission?.isCorrect).length;
+                              const starCount = Math.min(5, Math.floor((totalCorrect / 24) * 5) + (door.mySubmission?.isCorrect ? 1 : 0));
+                              
+                              return (
+                                <>
+                                  {door.hasSubmission && (
+                                    <Box 
+                                      sx={{ 
+                                        position: 'absolute',
+                                        top: 2,
+                                        right: 2,
+                                        animation: 'fadeIn 0.3s ease-out',
+                                        '@keyframes fadeIn': {
+                                          '0%': { opacity: 0 },
+                                          '100%': { opacity: 1 }
+                                        }
+                                      }}
+                                    >
+                                      {door.mySubmission?.isCorrect ? (
+                                        <CheckCircleIcon 
+                                          sx={{ 
+                                            fontSize: 14, 
+                                            color: '#fff',
+                                            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
+                                          }} 
+                                        />
+                                      ) : (
+                                        <CancelIcon 
+                                          sx={{ 
+                                            fontSize: 14, 
+                                            color: '#fff',
+                                            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
+                                          }} 
+                                        />
+                                      )}
+                                    </Box>
+                                  )}
+                                  {/* Farbige Sterne je nach Fortschritt */}
+                                  {door.mySubmission?.isCorrect && (
+                                    <Box
+                                      sx={{
+                                        position: 'absolute',
+                                        bottom: 2,
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        display: 'flex',
+                                        gap: 0.1,
+                                        animation: 'fadeIn 0.5s ease-out',
+                                        '@keyframes fadeIn': {
+                                          '0%': { opacity: 0, transform: 'translateX(-50%) scale(0)' },
+                                          '100%': { opacity: 1, transform: 'translateX(-50%) scale(1)' }
+                                        }
+                                      }}
+                                    >
+                                      {Array.from({ length: Math.min(5, starCount) }).map((_, idx) => {
+                                        const starColors = ['#ffd700', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+                                        return (
+                                          <Typography
+                                            key={idx}
+                                            sx={{
+                                              fontSize: '0.5rem',
+                                              color: starColors[idx] || '#ffd700',
+                                              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+                                              animation: `twinkle ${1 + idx * 0.2}s ease-in-out infinite`,
+                                              animationDelay: `${idx * 0.1}s`,
+                                              '@keyframes twinkle': {
+                                                '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                                                '50%': { opacity: 0.7, transform: 'scale(0.9)' }
+                                              }
+                                            }}
+                                          >
+                                            ⭐
+                                          </Typography>
+                                        );
+                                      })}
+                                    </Box>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </Card>
                         </Box>
                       </Grow>
@@ -777,6 +1042,99 @@ const AdventCalendarPage: React.FC = () => {
               </Typography>
             ) : (
               <>
+                {/* Podium für Top 3 */}
+                {leaderboard.leaderboard.length >= 3 && (
+                  <Box sx={{ mb: 1.5, textAlign: 'center' }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#666', mb: 0.5, display: 'block' }}>
+                      🏆 Siegertreppchen
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 0.5, px: 0.5 }}>
+                      {/* 2. Platz (Silber) */}
+                      {leaderboard.leaderboard[1] && (
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Avatar
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              bgcolor: '#c0c0c0',
+                              fontSize: '1.2rem',
+                              mb: 0.5,
+                              boxShadow: '0 2px 8px rgba(192,192,192,0.4)',
+                              border: '2px solid #9e9e9e'
+                            }}
+                          >
+                            {leaderboard.leaderboard[1].avatarEmoji || '🎓'}
+                          </Avatar>
+                          <Box sx={{ bgcolor: '#e0e0e0', width: '100%', height: 40, borderRadius: '4px 4px 0 0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: '#666' }}>
+                              {leaderboard.leaderboard[1].studentName.split(' ')[0]}
+                            </Typography>
+                            <Box sx={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)' }}>
+                              <Typography sx={{ fontSize: '1.2rem' }}>🥈</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      )}
+                      {/* 1. Platz (Gold) */}
+                      {leaderboard.leaderboard[0] && (
+                        <Box sx={{ flex: 1.1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Avatar
+                            sx={{
+                              width: 42,
+                              height: 42,
+                              bgcolor: '#ffd700',
+                              fontSize: '1.3rem',
+                              mb: 0.5,
+                              boxShadow: '0 4px 12px rgba(255,215,0,0.5)',
+                              border: '2px solid #ffed4e',
+                              animation: 'glow 2s ease-in-out infinite',
+                              '@keyframes glow': {
+                                '0%, 100%': { boxShadow: '0 4px 12px rgba(255,215,0,0.5)' },
+                                '50%': { boxShadow: '0 4px 16px rgba(255,215,0,0.8)' }
+                              }
+                            }}
+                          >
+                            {leaderboard.leaderboard[0].avatarEmoji || '👑'}
+                          </Avatar>
+                          <Box sx={{ bgcolor: '#ffd700', width: '100%', height: 50, borderRadius: '4px 4px 0 0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#8b6914' }}>
+                              {leaderboard.leaderboard[0].studentName.split(' ')[0]}
+                            </Typography>
+                            <Box sx={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)' }}>
+                              <Typography sx={{ fontSize: '1.4rem' }}>🥇</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      )}
+                      {/* 3. Platz (Bronze) */}
+                      {leaderboard.leaderboard[2] && (
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Avatar
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              bgcolor: '#cd7f32',
+                              fontSize: '1.2rem',
+                              mb: 0.5,
+                              boxShadow: '0 2px 8px rgba(205,127,50,0.4)',
+                              border: '2px solid #b87333'
+                            }}
+                          >
+                            {leaderboard.leaderboard[2].avatarEmoji || '🎓'}
+                          </Avatar>
+                          <Box sx={{ bgcolor: '#e8a87c', width: '100%', height: 35, borderRadius: '4px 4px 0 0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: '#7a4f1f' }}>
+                              {leaderboard.leaderboard[2].studentName.split(' ')[0]}
+                            </Typography>
+                            <Box sx={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)' }}>
+                              <Typography sx={{ fontSize: '1.2rem' }}>🥉</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                )}
                 {/* Großes Rennen */}
                 {(() => {
                   const entriesAll = leaderboard.leaderboard;
@@ -861,51 +1219,76 @@ const AdventCalendarPage: React.FC = () => {
                               }
                             }}
                           >
-                            <Avatar
-                              sx={{
-                                width: 30,
-                                height: 30,
-                                bgcolor: isMe ? '#2e7d32' : '#c62828',
-                                fontSize: '1rem',
-                                boxShadow: isMe ? '0 0 0 2px #ffd700' : 'none'
-                              }}
-                            >
-                              {e.avatarEmoji || '🎓'}
-                            </Avatar>
-                            <Box sx={{ position: 'relative' }}>
-                              <Box
-                                sx={{
-                                  display: 'none',
-                                  position: 'absolute',
-                                  left: 12,
-                                  top: -6,
-                                  transform: 'translateY(-100%)',
-                                  background: 'rgba(255,255,255,0.95)',
-                                  border: '1px solid #e0e0e0',
-                                  borderRadius: 0.75,
-                                  px: 0.6,
-                                  py: 0.25,
-                                  whiteSpace: 'nowrap',
-                                  boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-                                  fontSize: '0.8rem',
-                                  fontWeight: isMe ? 700 : 500,
-                                  color: isMe ? '#2e7d32' : '#333'
-                                }}
-                                className="runner-label"
-                              >
-                                {runner} {isMe ? 'Du' : e.studentName.split(' ')[0]} • {e.correctSubmissions}
-                              </Box>
-                            </Box>
                             <Box
                               sx={{
-                                position: 'absolute',
-                                width: 40,
-                                height: 40,
-                                top: -5,
-                                left: -5,
-                                '&:hover ~ .runner-label, &:hover .runner-label': { display: 'block' }
+                                position: 'relative',
+                                '&:hover .runner-tooltip': {
+                                  opacity: 1,
+                                  visibility: 'visible',
+                                  transform: 'translate(-50%, -100%) scale(1)'
+                                }
                               }}
-                            />
+                            >
+                              <Avatar
+                                sx={{
+                                  width: 30,
+                                  height: 30,
+                                  bgcolor: isMe ? '#2e7d32' : '#c62828',
+                                  fontSize: '1rem',
+                                  boxShadow: isMe ? '0 0 0 2px #ffd700' : 'none',
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.2s',
+                                  '&:hover': {
+                                    transform: 'scale(1.15)'
+                                  }
+                                }}
+                              >
+                                {e.avatarEmoji || '🎓'}
+                              </Avatar>
+                              {/* Tooltip */}
+                              <Box
+                                className="runner-tooltip"
+                                sx={{
+                                  position: 'absolute',
+                                  left: '50%',
+                                  top: 0,
+                                  transform: 'translate(-50%, -100%) scale(0.9)',
+                                  transformOrigin: 'bottom center',
+                                  opacity: 0,
+                                  visibility: 'hidden',
+                                  transition: 'all 0.2s ease',
+                                  background: 'rgba(255,255,255,0.98)',
+                                  border: `2px solid ${isMe ? '#2e7d32' : '#c62828'}`,
+                                  borderRadius: 1,
+                                  px: 0.75,
+                                  py: 0.4,
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                  mb: 0.5,
+                                  zIndex: 1000,
+                                  pointerEvents: 'none',
+                                  '&::after': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    bottom: -6,
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    width: 0,
+                                    height: 0,
+                                    borderLeft: '6px solid transparent',
+                                    borderRight: '6px solid transparent',
+                                    borderTop: `6px solid ${isMe ? '#2e7d32' : '#c62828'}`
+                                  }
+                                }}
+                              >
+                                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: isMe ? '#2e7d32' : '#c62828', mb: 0.2 }}>
+                                  {isMe ? '👤 Du' : e.studentName}
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.7rem', color: '#666' }}>
+                                  🏆 {e.correctSubmissions}/24 richtig • Rang {e.rank}
+                                </Typography>
+                              </Box>
+                            </Box>
                           </Box>
                         );
                       })}
@@ -923,8 +1306,96 @@ const AdventCalendarPage: React.FC = () => {
                     const me = leaderboard.leaderboard.find(e => e.isMe);
                     if (!me) return null;
                     const percentOf24 = Math.round((me.correctSubmissions / 24) * 100);
+                    
+                    // Badges/Achievements berechnen
+                    const completedDoors = doors.filter(d => d.hasSubmission && d.mySubmission?.isCorrect);
+                    const correctCount = completedDoors.length;
+                    const earlyDoors = doors.filter(d => d.day <= 3 && d.hasSubmission && d.mySubmission?.isCorrect).length;
+                    
+                    // Streak berechnen: Tage in Folge
+                    const submittedDays = doors
+                      .filter(d => d.hasSubmission)
+                      .map(d => d.day)
+                      .sort((a, b) => a - b);
+                    
+                    let maxStreak = 0;
+                    let currentStreak = 0;
+                    let lastDay = 0;
+                    for (const day of submittedDays) {
+                      if (day === lastDay + 1) {
+                        currentStreak++;
+                      } else {
+                        maxStreak = Math.max(maxStreak, currentStreak);
+                        currentStreak = 1;
+                      }
+                      lastDay = day;
+                    }
+                    maxStreak = Math.max(maxStreak, currentStreak);
+                    
+                    // Vergleich mit anderen berechnen
+                    const betterThan = leaderboard.leaderboard.filter(e => e.correctSubmissions < me.correctSubmissions).length;
+                    const betterThanPercent = leaderboard.totalStudents > 0 
+                      ? Math.round((betterThan / leaderboard.totalStudents) * 100)
+                      : 0;
+                    
+                    const badges = [];
+                    if (correctCount === 24) badges.push({ emoji: '🌟', label: 'Perfekt', color: '#ffd700' });
+                    if (earlyDoors >= 3) badges.push({ emoji: '🚀', label: 'Schnellstarter', color: '#4caf50' });
+                    if (maxStreak >= 7) badges.push({ emoji: '🔥', label: 'Ausdauer', color: '#ff5722' });
+                    
                     return (
                       <Box>
+                        {/* Streak-Counter */}
+                        {maxStreak > 0 && (
+                          <Box sx={{ mb: 0.75, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Chip
+                              icon={<Typography sx={{ fontSize: '0.9rem' }}>🔥</Typography>}
+                              label={`${maxStreak} Tag${maxStreak > 1 ? 'e' : ''} in Folge`}
+                              size="small"
+                              sx={{
+                                fontSize: '0.65rem',
+                                height: 22,
+                                bgcolor: maxStreak >= 7 ? '#ff5722' : '#ff9800',
+                                color: '#fff',
+                                fontWeight: 600,
+                                '& .MuiChip-icon': { color: '#fff' }
+                              }}
+                            />
+                            {betterThanPercent > 0 && (
+                              <Chip
+                                label={`Besser als ${betterThanPercent}%`}
+                                size="small"
+                                sx={{
+                                  fontSize: '0.65rem',
+                                  height: 22,
+                                  bgcolor: '#4caf50',
+                                  color: '#fff',
+                                  fontWeight: 600
+                                }}
+                              />
+                            )}
+                          </Box>
+                        )}
+                        {badges.length > 0 && (
+                          <Box sx={{ display: 'flex', gap: 0.5, mb: 0.75, flexWrap: 'wrap' }}>
+                            {badges.map((badge, idx) => (
+                              <Chip
+                                key={idx}
+                                icon={<Typography sx={{ fontSize: '0.9rem' }}>{badge.emoji}</Typography>}
+                                label={badge.label}
+                                size="small"
+                                sx={{
+                                  fontSize: '0.65rem',
+                                  height: 22,
+                                  bgcolor: badge.color,
+                                  color: '#fff',
+                                  fontWeight: 600,
+                                  '& .MuiChip-icon': { color: '#fff' }
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        )}
                         <LinearProgress
                           variant="determinate"
                           value={percentOf24}
@@ -947,6 +1418,13 @@ const AdventCalendarPage: React.FC = () => {
       <Dialog
         open={selectedDoor !== null}
         onClose={handleCloseDialog}
+        onKeyDown={(e) => {
+          // Enter zum Schließen, wenn bereits eingereicht wurde
+          if (e.key === 'Enter' && selectedDoor?.hasSubmission && !showResults) {
+            e.preventDefault();
+            handleCloseDialog();
+          }
+        }}
         maxWidth="sm"
         fullWidth
         TransitionComponent={Zoom}
@@ -964,28 +1442,129 @@ const AdventCalendarPage: React.FC = () => {
                 <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem' }}>
                   {doorIcons[selectedDoor.day - 1] || '🎁'} Türchen {selectedDoor.day}
                 </Typography>
-                <IconButton 
-                  onClick={handleCloseDialog} 
-                  sx={{ 
-                    color: '#fff',
-                    width: 22,
-                    height: 22,
-                    p: 0,
-                    minWidth: 22,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.2) rotate(90deg)',
-                      bgcolor: 'rgba(255,255,255,0.2)'
-                    }
-                  }}
-                >
-                  <CloseIcon sx={{ fontSize: 14, width: '100%', height: '100%' }} />
-                </IconButton>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      setShowThemePicker(true);
+                      handleCloseDialog();
+                    }}
+                    sx={{
+                      borderColor: 'rgba(255,255,255,0.6)',
+                      color: '#fff',
+                      fontSize: '0.65rem',
+                      py: 0.2,
+                      px: 0.6,
+                      minWidth: 'auto',
+                      '&:hover': {
+                        bgcolor: 'rgba(255,255,255,0.15)',
+                        borderColor: '#fff'
+                      }
+                    }}
+                  >
+                    Thema ändern
+                  </Button>
+                  <IconButton 
+                    onClick={handleCloseDialog} 
+                    sx={{ 
+                      color: '#fff',
+                      width: 22,
+                      height: 22,
+                      p: 0,
+                      minWidth: 22,
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        transform: 'scale(1.2) rotate(90deg)',
+                        bgcolor: 'rgba(255,255,255,0.2)'
+                      }
+                    }}
+                  >
+                    <CloseIcon sx={{ fontSize: 14, width: '100%', height: '100%' }} />
+                  </IconButton>
+                </Box>
               </Box>
             </DialogTitle>
-            <DialogContent sx={{ mt: 1.5, px: 1.5, pb: 1.5 }}>
+            <DialogContent sx={{ mt: 1.5, px: 1.5, pb: 1.5, position: 'relative' }}>
+              {/* Konfetti-Animation */}
+              {showConfetti && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    pointerEvents: 'none',
+                    zIndex: 1000,
+                    overflow: 'hidden'
+                  }}
+                >
+                  {Array.from({ length: 50 }).map((_, idx) => {
+                    const colors = ['#ffd700', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#fab1a0'];
+                    const left = Math.random() * 100;
+                    const delay = Math.random() * 0.5;
+                    const duration = 2 + Math.random() * 1;
+                    const size = 8 + Math.random() * 8;
+                    
+                    return (
+                      <Box
+                        key={idx}
+                        sx={{
+                          position: 'absolute',
+                          left: `${left}%`,
+                          top: '-10px',
+                          width: size,
+                          height: size,
+                          backgroundColor: colors[Math.floor(Math.random() * colors.length)],
+                          borderRadius: '50%',
+                          animation: `confettiFall ${duration}s ease-in ${delay}s forwards`,
+                          '@keyframes confettiFall': {
+                            '0%': {
+                              transform: 'translateY(0) rotate(0deg)',
+                              opacity: 1
+                            },
+                            '100%': {
+                              transform: `translateY(600px) rotate(${360 + Math.random() * 360}deg)`,
+                              opacity: 0
+                            }
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              )}
               {!showResults ? (
                 <>
+                  {/* Tägliche Statistiken */}
+                  {dailyStats && dailyStats.todayTotal > 0 && (
+                    <Box sx={{ mb: 1.5 }}>
+                      <Card sx={{ bgcolor: '#e3f2fd', p: 0.75, borderRadius: 1, border: '1px solid #90caf9' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography sx={{ fontSize: '1.2rem' }}>📊</Typography>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#1565c0' }}>
+                              Heute haben {dailyStats.todayCorrect} von {dailyStats.todayTotal} Schülern richtig geantwortet
+                            </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={(dailyStats.todayCorrect / dailyStats.todayTotal) * 100}
+                              sx={{ 
+                                height: 4, 
+                                borderRadius: 2, 
+                                mt: 0.5,
+                                bgcolor: 'rgba(21, 101, 192, 0.1)',
+                                '& .MuiLinearProgress-bar': {
+                                  bgcolor: '#1565c0'
+                                }
+                              }}
+                            />
+                          </Box>
+                        </Box>
+                      </Card>
+                    </Box>
+                  )}
                   <Fade in={true} timeout={200}>
                     <Box sx={{ mb: 1.5 }}>
                       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: '#2e7d32', fontSize: '0.85rem' }}>
@@ -1007,9 +1586,29 @@ const AdventCalendarPage: React.FC = () => {
 
                   <Fade in={true} timeout={300}>
                     <Box sx={{ mb: 1.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: '#c62828', fontSize: '0.85rem' }}>
-                        ❓ Aufgabe
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#c62828', fontSize: '0.85rem' }}>
+                          ❓ Aufgabe
+                        </Typography>
+                        {!selectedDoor.hasSubmission && (
+                          <Button
+                            size="small"
+                            onClick={() => setShowHint(!showHint)}
+                            sx={{
+                              fontSize: '0.65rem',
+                              py: 0.2,
+                              px: 0.6,
+                              minWidth: 'auto',
+                              color: '#c62828',
+                              '&:hover': {
+                                bgcolor: 'rgba(198, 40, 40, 0.1)'
+                              }
+                            }}
+                          >
+                            {showHint ? '💡 Hinweis ausblenden' : '💡 Hinweis anzeigen'}
+                          </Button>
+                        )}
+                      </Box>
                       <Card 
                         sx={{ 
                           bgcolor: '#ffebee', 
@@ -1021,6 +1620,62 @@ const AdventCalendarPage: React.FC = () => {
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-line', fontWeight: 500, fontSize: '0.85rem', lineHeight: 1.6 }}>
                           {selectedDoor.question}
                         </Typography>
+                        {/* Optionaler Hinweis */}
+                        {showHint && !selectedDoor.hasSubmission && (
+                          <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed rgba(198, 40, 40, 0.3)' }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#c62828', display: 'block', mb: 0.5 }}>
+                              💡 Tipp:
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#b71c1c', fontStyle: 'italic' }}>
+                              {(() => {
+                                const hints: Record<string, string[]> = {
+                                  'Mathe Basics': [
+                                    'Versuche die Aufgabe in kleinere Schritte zu zerlegen.',
+                                    'Überlege, welche Rechenoperation du brauchst: Plus, Minus, Mal oder Geteilt?'
+                                  ],
+                                  'Informatik': [
+                                    'Denke an das Binärsystem: 0 und 1 sind die Grundlage.',
+                                    'Computer arbeiten mit 0 und 1 - das ist das Binärsystem.'
+                                  ],
+                                  'Tiere': [
+                                    'Überlege, welche Tiere du kennst und zähle ihre Beine.',
+                                    'Verschiedene Tiergruppen haben unterschiedlich viele Beine.'
+                                  ],
+                                  'Weltraum': [
+                                    'Die Planeten sind in einer bestimmten Reihenfolge um die Sonne.',
+                                    'Zähle die Planeten von innen nach außen.'
+                                  ],
+                                  'Natur & Umwelt': [
+                                    'Denke an Dinge, die du täglich siehst und die recycelt werden können.',
+                                    'Viele Materialien können wiederverwendet werden.'
+                                  ],
+                                  'Weihnachten': [
+                                    'Überlege, was du über Weihnachten weißt.',
+                                    'Traditionen und Bräuche können dir helfen.'
+                                  ],
+                                  'Spiele & Rätsel': [
+                                    'Manchmal hilft es, rückwärts zu denken.',
+                                    'Zerlege das Problem in kleinere Teile.'
+                                  ],
+                                  'Geografie': [
+                                    'Europa hat viele Hauptstädte - denke an bekannte Länder.',
+                                    'Kontinente sind große Landmassen auf der Erde.'
+                                  ],
+                                  'Musik & Rhythmus': [
+                                    'Takte bestehen aus gleichmäßigen Schlägen.',
+                                    'Überlege, welche Instrumente du kennst.'
+                                  ],
+                                  'Essen & Küche': [
+                                    'Denke an alltägliche Dinge in der Küche.',
+                                    'Viele Rezepte brauchen bestimmte Mengen.'
+                                  ]
+                                };
+                                const themeHints = hints[selectedTheme] || ['Denke genau nach und überlege Schritt für Schritt.'];
+                                return themeHints[(selectedDoor.day - 1) % themeHints.length];
+                              })()}
+                            </Typography>
+                          </Box>
+                        )}
                         {/* Optional: kleine, thematische Zusatzaufgabe */}
                         {selectedTheme && (
                           <Typography variant="body2" sx={{ mt: 0.75, fontSize: '0.8rem', color: '#b71c1c' }}>
@@ -1085,14 +1740,40 @@ const AdventCalendarPage: React.FC = () => {
                         size="small"
                         sx={{ mb: 1, fontSize: '0.7rem', height: 22 }}
                       />
-                      <Card sx={{ bgcolor: '#f5f5f5', p: 1, borderRadius: 1, mb: 1 }}>
-                        <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
-                          <strong>Deine Antwort:</strong> {selectedDoor.mySubmission?.answer}
+                      <Card sx={{ 
+                        bgcolor: selectedDoor.mySubmission?.isCorrect ? '#e8f5e9' : '#ffebee', 
+                        p: 1, 
+                        borderRadius: 1, 
+                        mb: 1,
+                        border: `1px solid ${selectedDoor.mySubmission?.isCorrect ? '#2e7d32' : '#c62828'}`
+                      }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                          <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#666' }}>
+                            📝 Deine Antwort:
+                          </Typography>
+                          {selectedDoor.mySubmission?.submittedAt && (
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999' }}>
+                              {new Date(selectedDoor.mySubmission.submittedAt).toLocaleDateString('de-DE', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 500, mb: 0.5 }}>
+                          {selectedDoor.mySubmission?.answer}
                         </Typography>
                         {selectedDoor.explanation && (
-                          <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5, whiteSpace: 'pre-line', fontSize: '0.75rem' }}>
-                            {selectedDoor.explanation}
-                          </Typography>
+                          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#666', mb: 0.25 }}>
+                              💡 Erklärung:
+                            </Typography>
+                            <Typography variant="body2" color="textSecondary" sx={{ whiteSpace: 'pre-line', fontSize: '0.75rem' }}>
+                              {selectedDoor.explanation}
+                            </Typography>
+                          </Box>
                         )}
                       </Card>
                       <Button
@@ -1120,18 +1801,29 @@ const AdventCalendarPage: React.FC = () => {
                     </Box>
                   ) : (
                     <TextField
+                      inputRef={answerInputRef}
                       fullWidth
                       label="Deine Antwort"
                       value={answer}
                       onChange={(e) => setAnswer(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (answer.trim() && !submitting) {
+                            handleSubmitAnswer();
+                          }
+                        }
+                      }}
                       multiline
                       rows={2}
                       size="small"
+                      autoFocus
                       sx={{
                         '& .MuiInputBase-root': {
                           fontSize: '0.85rem'
                         }
                       }}
+                      helperText="Tipp: Enter zum Einreichen, Shift+Enter für neue Zeile"
                     />
                   )}
                 </>
@@ -1348,8 +2040,8 @@ const AdventCalendarPage: React.FC = () => {
                     p: 1,
                     borderRadius: 2,
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
+                    flexDirection: 'column',
+                    gap: 0.5,
                     transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                     '&:hover': {
                       transform: 'translateY(-2px)',
@@ -1358,8 +2050,13 @@ const AdventCalendarPage: React.FC = () => {
                     border: selectedTheme === t.key ? '2px solid #2e7d32' : '1px solid #e0e0e0'
                   }}
                 >
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(0,0,0,0.05)' }}>{t.emoji}</Avatar>
-                  <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>{t.key}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(0,0,0,0.05)' }}>{t.emoji}</Avatar>
+                    <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>{t.key}</Typography>
+                  </Box>
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: '#666', mt: 0.25, lineHeight: 1.3 }}>
+                    {t.description}
+                  </Typography>
                 </Card>
               </Grid>
             ))}

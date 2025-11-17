@@ -59,13 +59,14 @@ async function calculateEpoGradesForGroup(groupId: string): Promise<void> {
       }
     });
     
-    // Hilfsfunktion zur Berechnung der Note aus dem Durchschnitt
+    // Feingranulare Abbildung des Durchschnitts [-2, 2] auf deutsches Notenschema mit +/-:
+    // 16 Stufen: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0
     const calculateGradeFromAverage = (average: number): number => {
-      if (average >= 1.5) return 1.0;
-      if (average >= 0.5) return 2.0;
-      if (average >= -0.5) return 3.0;
-      if (average >= -1.5) return 4.0;
-      return 5.0;
+      const steps = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0];
+      // Mappe average (best = +2, worst = -2) in 0..15 über 0.25er Intervalle
+      const rawIndex = Math.floor((2 - average) / 0.25);
+      const index = Math.max(0, Math.min(steps.length - 1, rawIndex));
+      return steps[index];
     };
     
     // Berechne Durchschnitte und Noten, speichere in Datenbank
@@ -789,13 +790,11 @@ router.put('/:groupId/:lessonIndex/:studentId/comment', async (req: Request, res
 
 // Helper function: Convert average participation value to German grade
 function calculateGradeFromAverage(average: number): number {
-  // -2 bis +2 -> 1.0 bis 5.0
-  // -2 = 5.0, -1 = 4.0, 0 = 3.0, 1 = 2.0, 2 = 1.0
-  if (average >= 1.5) return 1.0;
-  if (average >= 0.5) return 2.0;
-  if (average >= -0.5) return 3.0;
-  if (average >= -1.5) return 4.0;
-  return 5.0;
+  // Feingranulare Abbildung auf deutsches Notenschema (mit +/-)
+  const steps = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0];
+  const rawIndex = Math.floor((2 - average) / 0.25);
+  const index = Math.max(0, Math.min(steps.length - 1, rawIndex));
+  return steps[index];
 }
 
 // Get EPO grades for a specific student

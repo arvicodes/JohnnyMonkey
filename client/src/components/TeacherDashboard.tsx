@@ -2791,11 +2791,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         else if (currentValue === -2) newValue = 0; // Zurück zu neutral
         else newValue = -1; // Von positivem Wert zu -1
       } else {
-        // Rechts: 0 -> 2 (sehr gut) -> 1 (gut) -> 0 (neutral)
-        if (currentValue === 0) newValue = 2;
-        else if (currentValue === 2) newValue = 1;
-        else if (currentValue === 1) newValue = 0; // Zurück zu neutral
-        else newValue = 2; // Von negativem Wert zu 2
+        // Rechts: 0 -> 1 (gut) -> 2 (sehr gut) -> 0 (neutral)
+        // Doppelklick rechts = sehr gut = Wert 2
+        if (currentValue === 0) newValue = 1;
+        else if (currentValue === 1) newValue = 2;
+        else if (currentValue === 2) newValue = 0; // Zurück zu neutral
+        else newValue = 1; // Von negativem Wert zu 1 (gut)
       }
       
       const updatedLessonData = { 
@@ -8315,8 +8316,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     const width = Math.max(8, Math.min(24, 80 / totalLessons));
                     
                     const getValueColor = (value: number) => {
-                      if (value === 2) return '#2196F3'; // Blau = sehr gut
-                      if (value === 1) return '#4CAF50'; // Grün = gut
+                      if (value === 2) return '#4CAF50'; // Grün = sehr gut
+                      if (value === 1) return '#2196F3'; // Blau = gut
                       if (value === 0) return '#9E9E9E';
                       if (value === -1) return '#FFC107';
                       if (value === -2) return '#F44336';
@@ -8393,8 +8394,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               {groups.find(g => g.id === participationGroupId)!.students.map((student) => {
                 const value = getParticipationValue(student.id);
                 const getColor = () => {
-                  if (value === 2) return { bg: '#E3F2FD', border: '#2196F3', emoji: '😄' }; // sehr gut - blau
-                  if (value === 1) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😊' }; // gut - grün
+                  if (value === 2) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😄' }; // sehr gut - grün
+                  if (value === 1) return { bg: '#E3F2FD', border: '#2196F3', emoji: '😊' }; // gut - blau
                   if (value === 0) return { bg: '#F5F5F5', border: '#9E9E9E', emoji: '😐' }; // neutral - grau
                   if (value === -1) return { bg: '#FFF9C4', border: '#FFC107', emoji: '🙁' }; // schlecht - gelb
                   if (value === -2) return { bg: '#FFEBEE', border: '#F44336', emoji: '😞' }; // sehr schlecht - rot
@@ -8663,7 +8664,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Box>
         </DialogTitle>
         
-        <DialogContent sx={{ p: 1, pt: 1 }}>
+        <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
           {statsLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
               <CircularProgress size={24} />
@@ -8673,152 +8674,167 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               Noch keine Bewertungen vorhanden
             </Typography>
           ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Schüler</TableCell>
-                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Anzahl</TableCell>
-                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Ø Wert</TableCell>
-                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>Note</TableCell>
-                    {periodConfig.period1Hours && (
-                      <>
-                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
-                          Zeitraum 1<br/>(St. 1-{periodConfig.period1Hours})
-                        </TableCell>
-                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
-                          Zeitraum 1<br/>Note
-                        </TableCell>
-                      </>
-                    )}
-                    {periodConfig.period2Hours && (
-                      <>
-                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
-                          Zeitraum 2<br/>(St. {periodConfig.period1Hours ? periodConfig.period1Hours + 1 : 1}-{periodConfig.period1Hours ? periodConfig.period1Hours + periodConfig.period2Hours : periodConfig.period2Hours})
-                        </TableCell>
-                        <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>
-                          Zeitraum 2<br/>Note
-                        </TableCell>
-                      </>
-                    )}
-                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>EPO 1</TableCell>
-                    <TableCell align="center" sx={{ fontSize: '0.7rem', fontWeight: 600, py: 0.5 }}>EPO 2</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {participationStats
-                    .sort((a, b) => {
-                      // Sortiere nach Nachname (letztes Wort im Namen)
-                      const getLastName = (name: string) => {
-                        const parts = name.trim().split(/\s+/);
-                        return parts.length > 1 ? parts[parts.length - 1] : parts[0];
-                      };
-                      const lastNameA = getLastName(a.student.name).toLowerCase();
-                      const lastNameB = getLastName(b.student.name).toLowerCase();
-                      return lastNameA.localeCompare(lastNameB, 'de');
-                    })
-                    .map((stat: any) => {
-                      const getGradeColor = (grade: number | null) => {
-                        if (!grade) return '#9E9E9E';
-                        if (grade <= 1.5) return '#4CAF50';
-                        if (grade <= 2.5) return '#8BC34A';
-                        if (grade <= 3.5) return '#FFC107';
-                        if (grade <= 4.5) return '#FF9800';
-                        return '#F44336';
-                      };
-                      const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
-                      const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
-                      return (
-                        <TableRow key={stat.student.id}>
-                          <TableCell sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                            {stat.student.name}
-                          </TableCell>
-                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                            {stat.count}
-                          </TableCell>
-                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                            {stat.average.toFixed(2)}
-                          </TableCell>
-                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {participationStats
+                .sort((a, b) => {
+                  // Sortiere nach Nachname (letztes Wort im Namen)
+                  const getLastName = (name: string) => {
+                    const parts = name.trim().split(/\s+/);
+                    return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                  };
+                  const lastNameA = getLastName(a.student.name).toLowerCase();
+                  const lastNameB = getLastName(b.student.name).toLowerCase();
+                  return lastNameA.localeCompare(lastNameB, 'de');
+                })
+                .map((stat: any, index: number) => {
+                  const getGradeColor = (grade: number | null) => {
+                    if (!grade) return '#9E9E9E';
+                    if (grade <= 1.5) return '#4CAF50';
+                    if (grade <= 2.5) return '#8BC34A';
+                    if (grade <= 3.5) return '#FFC107';
+                    if (grade <= 4.5) return '#FF9800';
+                    return '#F44336';
+                  };
+                  const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
+                  const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
+                  
+                  return (
+                    <Box
+                      key={stat.student.id}
+                      sx={{
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 0.5,
+                        px: 1,
+                        py: 0.5,
+                        bgcolor: '#fafafa',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mt: index === 0 ? 1 : 0,
+                        '&:hover': {
+                          bgcolor: '#f5f5f5'
+                        }
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, flex: '0 0 auto', minWidth: '120px' }}>
+                        {stat.student.name}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                        <Tooltip title={`${stat.count} Bewertungen, Durchschnitt: ${stat.average.toFixed(2)}`} arrow>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                              {stat.count}×
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                              Ø{stat.average.toFixed(1)}
+                            </Typography>
+                          </Box>
+                        </Tooltip>
+                        
+                        {periodConfig.period1Hours && stat.period1 && (
+                          <Tooltip title={`Zeitraum 1 (St. 1-${periodConfig.period1Hours}): ${stat.period1.count} Bewertungen`} arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
+                              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                                Z1:
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                                {stat.period1.count}×
+                              </Typography>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  fontSize: '0.6rem',
+                                  fontWeight: 600,
+                                  color: getGradeColor(stat.period1.grade || null)
+                                }}
+                              >
+                                {stat.period1.grade ? stat.period1.grade.toFixed(1) : '-'}
+                              </Typography>
+                            </Box>
+                          </Tooltip>
+                        )}
+                        
+                        {periodConfig.period2Hours && stat.period2 && (
+                          <Tooltip title={`Zeitraum 2 (St. ${periodConfig.period1Hours ? periodConfig.period1Hours + 1 : 1}-${periodConfig.period1Hours ? periodConfig.period1Hours + periodConfig.period2Hours : periodConfig.period2Hours}): ${stat.period2.count} Bewertungen`} arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
+                              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                                Z2:
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>
+                                {stat.period2.count}×
+                              </Typography>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  fontSize: '0.6rem',
+                                  fontWeight: 600,
+                                  color: getGradeColor(stat.period2.grade || null)
+                                }}
+                              >
+                                {stat.period2.grade ? stat.period2.grade.toFixed(1) : '-'}
+                              </Typography>
+                            </Box>
+                          </Tooltip>
+                        )}
+                        
+                        <Box sx={{ width: '1px', height: '16px', bgcolor: '#d0d0d0', mx: 0.5 }} />
+                        
+                        <Tooltip title="Gesamtnote (alle Bewertungen)" arrow>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              color: getGradeColor(stat.grade),
+                              minWidth: '32px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {stat.grade ? stat.grade.toFixed(1) : '-'}
+                          </Typography>
+                        </Tooltip>
+                        
+                        <Box sx={{ width: '1px', height: '16px', bgcolor: '#d0d0d0', mx: 0.5 }} />
+                        
+                        {epo1 && (
+                          <Tooltip title="EPO 1 (Zeitraum 1)" arrow>
                             <Typography 
                               variant="body2" 
                               sx={{ 
                                 fontSize: '0.8rem',
-                                fontWeight: 600,
-                                color: getGradeColor(stat.grade)
+                                fontWeight: 700,
+                                color: getGradeColor(epo1.grade),
+                                minWidth: '32px',
+                                textAlign: 'center'
                               }}
                             >
-                              {stat.grade ? stat.grade.toFixed(1) : '-'}
+                              {epo1.grade.toFixed(1)}
                             </Typography>
-                          </TableCell>
-                          {periodConfig.period1Hours && (
-                            <>
-                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                                {stat.period1?.count || 0}
-                              </TableCell>
-                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    color: getGradeColor(stat.period1?.grade || null)
-                                  }}
-                                >
-                                  {stat.period1?.grade ? stat.period1.grade.toFixed(1) : '-'}
-                                </Typography>
-                              </TableCell>
-                            </>
-                          )}
-                          {periodConfig.period2Hours && (
-                            <>
-                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                                {stat.period2?.count || 0}
-                              </TableCell>
-                              <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    color: getGradeColor(stat.period2?.grade || null)
-                                  }}
-                                >
-                                  {stat.period2?.grade ? stat.period2.grade.toFixed(1) : '-'}
-                                </Typography>
-                              </TableCell>
-                            </>
-                          )}
-                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
+                          </Tooltip>
+                        )}
+                        
+                        {epo2 && (
+                          <Tooltip title="EPO 2 (Zeitraum 2)" arrow>
                             <Typography 
                               variant="body2" 
                               sx={{ 
                                 fontSize: '0.8rem',
-                                fontWeight: 600,
-                                color: getGradeColor(epo1?.grade || null)
+                                fontWeight: 700,
+                                color: getGradeColor(epo2.grade),
+                                minWidth: '32px',
+                                textAlign: 'center'
                               }}
                             >
-                              {epo1 ? epo1.grade.toFixed(1) : '-'}
+                              {epo2.grade.toFixed(1)}
                             </Typography>
-                          </TableCell>
-                          <TableCell align="center" sx={{ fontSize: '0.7rem', py: 0.75 }}>
-                            <Typography 
-                              variant="body2" 
-                              sx={{ 
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                color: getGradeColor(epo2?.grade || null)
-                              }}
-                            >
-                              {epo2 ? epo2.grade.toFixed(1) : '-'}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                })}
+            </Box>
           )}
         </DialogContent>
       </Dialog>

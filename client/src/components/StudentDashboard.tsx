@@ -1892,12 +1892,25 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   formatGermanGrade(node.grade)
                 }
               </Box>
-              <Typography variant="caption" sx={{ 
-                color: colors.textSecondary,
-                fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem'
-              }}>
-                ({node.weight}%)
-              </Typography>
+              {(() => {
+                const isEpo = node.name.toLowerCase().includes('epo');
+                return isEpo ? (
+                  <Typography variant="caption" sx={{ 
+                    color: colors.textSecondary,
+                    fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
+                    fontStyle: 'italic'
+                  }}>
+                    siehe Stunden
+                  </Typography>
+                ) : (
+                  <Typography variant="caption" sx={{ 
+                    color: colors.textSecondary,
+                    fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem'
+                  }}>
+                    ({node.weight}%)
+                  </Typography>
+                );
+              })()}
             </Box>
           ) : (node.grade !== undefined || calculatedGrade !== null) ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1925,7 +1938,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
                 fontStyle: 'italic'
               }}>
-                berechnet
+                {node.name.toLowerCase().includes('epo') ? 'siehe Stunden' : 'berechnet'}
               </Typography>
             </Box>
           ) : (
@@ -2277,28 +2290,110 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Typography>
                 </Box>
               </Box>
-              <Button 
-                variant="contained"
-                color="primary"
-                size="small"
-                sx={{
-                  width: '5%',
-                  minWidth: 49,
-                  ml: 'auto',
-                  bgcolor: '#333',
-                  color: 'white',
-                  fontWeight: 500,
-                  boxShadow: 'none',
-                  '&:hover': { bgcolor: '#222' },
-                  borderRadius: 1.4,
-                  fontSize: '0.7rem',
-                  py: 0.35,
-                  px: 0.7
-                }}
-                onClick={onLogout}
-              >
-                Logout
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
+                {/* Adventskalender Button */}
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => navigate('/advent-calendar')}
+                  startIcon={
+                    <Typography
+                      className="calendar-emoji"
+                      component="span"
+                      sx={{
+                        fontSize: '1.3rem',
+                        lineHeight: 1,
+                        transition: 'transform 0.3s',
+                        display: 'inline-block'
+                      }}
+                    >
+                      🎄
+                    </Typography>
+                  }
+                  sx={{
+                    bgcolor: '#c62828',
+                    color: 'white',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)',
+                    border: '2px solid #ffd700',
+                    borderRadius: 1.4,
+                    fontSize: '0.75rem',
+                    py: 0.5,
+                    px: 2.5,
+                    minWidth: 200,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.8,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    animation: 'pulse 2s ease-in-out infinite',
+                    '@keyframes pulse': {
+                      '0%, 100%': { boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)' },
+                      '50%': { boxShadow: '0 4px 20px rgba(198, 40, 40, 0.7)' }
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: '-50%',
+                      left: '-50%',
+                      width: '200%',
+                      height: '200%',
+                      background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
+                      animation: 'shimmer 3s infinite',
+                      '@keyframes shimmer': {
+                        '0%': { transform: 'rotate(0deg)' },
+                        '100%': { transform: 'rotate(360deg)' }
+                      }
+                    },
+                    '&:hover': {
+                      bgcolor: '#b71c1c',
+                      transform: 'translateY(-2px) scale(1.05)',
+                      boxShadow: '0 6px 16px rgba(198, 40, 40, 0.6)',
+                      borderColor: '#ffed4e',
+                      '& .calendar-emoji': {
+                        transform: 'scale(1.2) rotate(10deg)',
+                        animation: 'bounce 0.6s ease-in-out',
+                        '@keyframes bounce': {
+                          '0%, 100%': { transform: 'scale(1.2) rotate(10deg) translateY(0)' },
+                          '50%': { transform: 'scale(1.3) rotate(-10deg) translateY(-4px)' }
+                        }
+                      }
+                    },
+                    '&:active': {
+                      transform: 'translateY(0) scale(1.02)'
+                    },
+                    '& .MuiButton-startIcon': {
+                      marginRight: 0,
+                      marginLeft: 0
+                    }
+                  }}
+                >
+                  <Typography sx={{ position: 'relative', zIndex: 1 }}>
+                    Adventskalender
+                  </Typography>
+                </Button>
+                {/* Logout Button */}
+                <Button 
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  sx={{
+                    minWidth: 70,
+                    bgcolor: '#333',
+                    color: 'white',
+                    fontWeight: 500,
+                    boxShadow: 'none',
+                    '&:hover': { bgcolor: '#222' },
+                    borderRadius: 1.4,
+                    fontSize: '0.7rem',
+                    py: 0.35,
+                    px: 1.2
+                  }}
+                  onClick={onLogout}
+                >
+                  Logout
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Grid>
@@ -2467,80 +2562,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Box>
                   </Grid>
                 </Grid>
-
-                {/* Adventskalender Icon */}
-                <Box sx={{ mt: 2.1, textAlign: 'center' }}>
-                  <Box
-                    onClick={() => navigate('/advent-calendar')}
-                    sx={{
-                      bgcolor: '#c62828',
-                      borderRadius: 2,
-                      p: 2,
-                      cursor: 'pointer',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: '2px solid #b71c1c',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: '-50%',
-                        left: '-50%',
-                        width: '200%',
-                        height: '200%',
-                        background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
-                        animation: 'shimmer 3s infinite',
-                        '@keyframes shimmer': {
-                          '0%': { transform: 'rotate(0deg)' },
-                          '100%': { transform: 'rotate(360deg)' }
-                        }
-                      },
-                      '&:hover': {
-                        transform: 'translateY(-4px) scale(1.05)',
-                        boxShadow: '0 8px 24px rgba(198, 40, 40, 0.4)',
-                        borderColor: '#ffd700',
-                        '& .calendar-icon': {
-                          transform: 'scale(1.2) rotate(5deg)',
-                          animation: 'bounce 0.6s ease-in-out'
-                        },
-                        '@keyframes bounce': {
-                          '0%, 100%': { transform: 'scale(1.2) rotate(5deg) translateY(0)' },
-                          '50%': { transform: 'scale(1.3) rotate(-5deg) translateY(-8px)' }
-                        }
-                      }
-                    }}
-                  >
-                    <Typography
-                      className="calendar-icon"
-                      variant="h2"
-                      sx={{
-                        fontSize: '3.5rem',
-                        mb: 0.5,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
-                        position: 'relative',
-                        zIndex: 1
-                      }}
-                    >
-                      🎄
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: '#fff',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: 1,
-                        textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
-                        position: 'relative',
-                        zIndex: 1
-                      }}
-                    >
-                      Adventskalender
-                    </Typography>
-                  </Box>
-                </Box>
 
                 {/* Character Skills */}
                 <Box>
@@ -2763,6 +2784,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                 
                                 if (!group) return null;
                                 
+                                const extractLessonKeywordFromComment = (text: string | undefined | null): string => {
+                                  if (!text) return '';
+                                  const m = text.match(/\[K:(.*?)\]/);
+                                  return m ? m[1].trim() : '';
+                                };
+                                
                                 const getValueEmoji = (value: number) => {
                                   if (value === 2) return '😄';
                                   if (value === 1) return '😊';
@@ -2773,8 +2800,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                 };
                                 
                                 const getValueColor = (value: number) => {
-                                  if (value === 2) return '#2196F3'; // Blau = sehr gut
-                                  if (value === 1) return '#4CAF50'; // Grün = gut
+                                  if (value === 2) return '#4CAF50'; // Grün = sehr gut
+                                  if (value === 1) return '#2196F3'; // Blau = gut
                                   if (value === 0) return '#9E9E9E';
                                   if (value === -1) return '#FFC107';
                                   if (value === -2) return '#F44336';
@@ -2918,10 +2945,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                             .sort((a, b) => a.lessonIndex - b.lessonIndex)
                                             .map((participation, index) => {
                                               // Normalisiere Wert zu Höhe (0-32px) - kompakter
-                                              // Blau (2 = sehr gut) soll höchster sein, Grün (1 = gut) zweithöchster
-                                              // -2 -> 6px, -1 -> 10px, 0 -> 14px, 1 (grün/gut) -> 20px, 2 (blau/sehr gut) -> 28px
-                                              const height = participation.value === 2 ? 28 :  // Blau (sehr gut) = höchster
-                                                             participation.value === 1 ? 20 :  // Grün (gut) = zweithöchster
+                                              // Grün (2 = sehr gut) höher als Blau (1 = gut)
+                                              // -2 -> 6px, -1 -> 10px, 0 -> 14px, 2 (grün/sehr gut) -> 28px, 1 (blau/gut) -> 20px
+                                              const height = participation.value === 2 ? 28 :  // Grün (sehr gut) = höher
+                                                             participation.value === 1 ? 20 :  // Blau (gut) = niedriger
                                                              participation.value === 0 ? 14 :  // Grau (neutral)
                                                              participation.value === -1 ? 10 :  // Gelb (schlecht)
                                                              6; // Rot (sehr schlecht)
@@ -2929,6 +2956,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                               const width = `${Math.max(0.5, 100 / groupData.participations.length)}%`;
                                               
                                               const hasComment = participation.comment && participation.comment.trim().length > 0;
+                                              
+                                              // Kommentar ohne Thema-Tag für Tooltip
+                                              const tooltipTitle = participation.comment 
+                                                ? participation.comment.replace(/\s*\[K:.*?\]\s*/g, ' ').replace(/\s+/g, ' ').trim()
+                                                : '';
                                               
                                               // Bestimme Period-Farbe für Rahmen
                                               const participationPeriod = (participation as any).period || 0;
@@ -2993,11 +3025,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                               );
                                               
                                               // Zeige Tooltip nur wenn Kommentar vorhanden ist
-                                              if (hasComment) {
+                                              if (tooltipTitle) {
                                                 return (
                                                   <Tooltip
                                                     key={participation.lessonIndex}
-                                                    title={participation.comment || ''}
+                                                    title={tooltipTitle}
                                                     arrow
                                                     placement="top"
                                                   >
@@ -3006,7 +3038,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                                 );
                                               }
                                               
-                                              // Kein Tooltip wenn kein Kommentar vorhanden
                                               return barBox;
                                             })}
                                         </Box>
