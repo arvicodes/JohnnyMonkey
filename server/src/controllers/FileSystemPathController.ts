@@ -892,18 +892,116 @@ export class FileSystemPathController {
   // Image file handler
   static async readImageFile(req: Request, res: Response) {
     try {
-      const { filePath, preview } = req.query;
+      let { filePath, preview } = req.query;
 
       if (!filePath) {
         return res.status(400).json({ error: 'filePath is required' });
       }
 
+      // Dekodiere den Pfad falls er URL-kodiert ist
+      if (typeof filePath === 'string') {
+        filePath = decodeURIComponent(filePath);
+      }
+
       console.log('Reading image file:', filePath);
+      console.log('File exists:', fs.existsSync(filePath as string));
+      
+      // Prüfe direkt mit fs, ob die Datei existiert
+      if (!fs.existsSync(filePath as string)) {
+        console.error('File does not exist at path:', filePath);
+        return res.status(404).json({ error: 'File not found', path: filePath });
+      }
 
       const fileContent = await StorageManager.readFile(filePath as string);
       
       if (!fileContent) {
-        return res.status(404).json({ error: 'File not found' });
+        console.error('StorageManager.readFile returned null for:', filePath);
+        // Versuche direkt mit fs zu lesen als Fallback
+        try {
+          const directContent = fs.readFileSync(filePath as string);
+          console.log('Successfully read file directly with fs');
+          // Verwende den direkten Inhalt weiter unten
+          const fileContentToUse = directContent;
+          
+          if (preview === 'true') {
+            // For preview, return JSON with base64 encoded image
+            const base64Image = fileContentToUse.toString('base64');
+            const fileExtension = path.extname(filePath as string).toLowerCase();
+            let mimeType = 'image/jpeg'; // default
+            
+            // Determine MIME type based on file extension
+            switch (fileExtension) {
+              case '.png':
+                mimeType = 'image/png';
+                break;
+              case '.gif':
+                mimeType = 'image/gif';
+                break;
+              case '.bmp':
+                mimeType = 'image/bmp';
+                break;
+              case '.webp':
+                mimeType = 'image/webp';
+                break;
+              case '.svg':
+                mimeType = 'image/svg+xml';
+                break;
+              case '.jpg':
+              case '.jpeg':
+              default:
+                mimeType = 'image/jpeg';
+                break;
+            }
+
+            const response = {
+              dataUrl: `data:${mimeType};base64,${base64Image}`,
+              url: `data:${mimeType};base64,${base64Image}`,
+              fileName: path.basename(filePath as string),
+              fileSize: fileContentToUse.length,
+              mimeType: mimeType
+            };
+
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            return res.json(response);
+          } else {
+            // For direct download, return the raw image
+            const fileExtension = path.extname(filePath as string).toLowerCase();
+            let mimeType = 'image/jpeg'; // default
+            
+            // Determine MIME type based on file extension
+            switch (fileExtension) {
+              case '.png':
+                mimeType = 'image/png';
+                break;
+              case '.gif':
+                mimeType = 'image/gif';
+                break;
+              case '.bmp':
+                mimeType = 'image/bmp';
+                break;
+              case '.webp':
+                mimeType = 'image/webp';
+                break;
+              case '.svg':
+                mimeType = 'image/svg+xml';
+                break;
+              case '.jpg':
+              case '.jpeg':
+              default:
+                mimeType = 'image/jpeg';
+                break;
+            }
+
+            res.setHeader('Content-Type', mimeType);
+            res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath as string)}"`);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            return res.send(fileContentToUse);
+          }
+        } catch (error) {
+          console.error('Error reading file directly:', error);
+          return res.status(500).json({ error: 'Failed to read image file', details: error });
+        }
       }
 
       if (preview === 'true') {
@@ -944,6 +1042,8 @@ export class FileSystemPathController {
           mimeType: mimeType
         };
 
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         res.json(response);
       } else {
         // For direct download, return the raw image
@@ -976,7 +1076,8 @@ export class FileSystemPathController {
 
         res.setHeader('Content-Type', mimeType);
         res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath as string)}"`);
-      res.send(fileContent);
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.send(fileContent);
       }
                         
                       } catch (error) {

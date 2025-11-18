@@ -2109,9 +2109,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         }
       } else {
         // Dateien
-        icon = '📄'; // Dokument
-        color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
-        fontWeight = 400;
+        if (item.name.startsWith('KA_')) {
+          // Klassenarbeiten bekommen ein spezielles, größeres Icon
+          icon = '📝'; // Klassenarbeit-Icon
+          color = '#ff9800'; // Gelb-orange für Klassenarbeiten
+          fontWeight = 700; // Fett für Klassenarbeiten
+        } else {
+          icon = '📄'; // Dokument
+          color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
+          fontWeight = 400;
+        }
 
         
         // Prüfe ob es sich um Quiz-, Cards-, H__ oder W_ Dateien handelt
@@ -2195,7 +2202,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
             <Typography variant="body2" sx={{ 
               color: color,
-              fontSize: '0.75rem',
+              fontSize: item.name.startsWith('KA_') ? '0.9rem' : '0.75rem',
               fontWeight: fontWeight,
               display: 'flex',
               alignItems: 'flex-start',
@@ -2231,7 +2238,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
               )
             ) : null} {/* Kein Dreieck für Dateien */}
-            {icon} {item.name}
+            <span style={{ fontSize: item.name.startsWith('KA_') ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
+            <span style={{ 
+              fontWeight: item.name.startsWith('KA_') ? 700 : fontWeight,
+              fontSize: item.name.startsWith('KA_') ? '0.9rem' : '0.75rem',
+              color: item.name.startsWith('KA_') ? '#ff9800' : color
+            }}>{item.name}</span>
             
 
             </Typography>

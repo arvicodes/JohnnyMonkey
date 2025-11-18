@@ -618,9 +618,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       } else {
         // Dateien
-        icon = '📄'; // Dokument
-        color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
-        fontWeight = 400;
+        if (item.name.startsWith('KA_')) {
+          // Klassenarbeiten bekommen ein spezielles, größeres Icon
+          icon = '📝'; // Klassenarbeit-Icon
+          color = '#ff9800'; // Gelb-orange für Klassenarbeiten
+          fontWeight = 700; // Fett für Klassenarbeiten
+        } else {
+          icon = '📄'; // Dokument
+          color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
+          fontWeight = 400;
+        }
       }
       
       return (
@@ -661,7 +668,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
               )
             ) : null} {/* Kein Dreieck für Dateien */}
-            {icon} {item.name}
+            <span style={{ fontSize: item.name.startsWith('KA_') ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
+            <span style={{ 
+              fontWeight: item.name.startsWith('KA_') ? 700 : fontWeight,
+              fontSize: item.name.startsWith('KA_') ? '0.9rem' : '0.75rem',
+              color: item.name.startsWith('KA_') ? '#ff9800' : color
+            }}>{item.name}</span>
             {/* Check-Icon für H_ Dateien mit Abgabe */}
             {item.type === 'file' && item.name.startsWith('H_') && submissionStatuses[item.path] && (
               <span style={{ marginLeft: '8px', color: '#4caf50', fontSize: '1.2em' }}>✓</span>
@@ -1341,6 +1353,32 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const fileExtension = item.name.split('.').pop()?.toLowerCase();
     
     if (fileExtension === 'html' || fileExtension === 'htm') {
+      // Prüfe ob es eine KA_ Datei ist und ob sie bereits abgegeben wurde
+      const isKAFile = item.name.startsWith('KA_');
+      if (isKAFile) {
+        // Extrahiere den KA-Key (ohne .html/.htm Endung, aber MIT KA_ Präfix)
+        const kaKey = item.name.replace('.html', '').replace('.htm', '');
+        const studentId = localStorage.getItem('studentId');
+        if (studentId) {
+          // Key muss exakt mit dem in der HTML-Datei übereinstimmen: ka_status_KA_prozent-zinsrechnung_${studentId}
+          const STORAGE_KEY = `ka_status_${kaKey}_${studentId}`;
+          const kaStatus = localStorage.getItem(STORAGE_KEY);
+          
+          console.log('KA File Check:', {
+            fileName: item.name,
+            kaKey: kaKey,
+            studentId: studentId,
+            STORAGE_KEY: STORAGE_KEY,
+            kaStatus: kaStatus
+          });
+          
+          if (kaStatus === 'submitted' || kaStatus === 'expired') {
+            alert('⏳ Diese Klassenarbeit wurde bereits abgegeben oder die Zeit ist abgelaufen.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
+            return;
+          }
+        }
+      }
+      
       try {
         const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
         if (response.ok) {
@@ -1480,6 +1518,32 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const fileExtension = item.name.split('.').pop()?.toLowerCase();
     
     if (fileExtension === 'html' || fileExtension === 'htm') {
+      // Prüfe ob es eine KA_ Datei ist und ob sie bereits abgegeben wurde
+      const isKAFile = item.name.startsWith('KA_');
+      if (isKAFile) {
+        // Extrahiere den KA-Key (ohne .html/.htm Endung, aber MIT KA_ Präfix)
+        const kaKey = item.name.replace('.html', '').replace('.htm', '');
+        const studentId = localStorage.getItem('studentId');
+        if (studentId) {
+          // Key muss exakt mit dem in der HTML-Datei übereinstimmen: ka_status_KA_prozent-zinsrechnung_${studentId}
+          const STORAGE_KEY = `ka_status_${kaKey}_${studentId}`;
+          const kaStatus = localStorage.getItem(STORAGE_KEY);
+          
+          console.log('KA File Check:', {
+            fileName: item.name,
+            kaKey: kaKey,
+            studentId: studentId,
+            STORAGE_KEY: STORAGE_KEY,
+            kaStatus: kaStatus
+          });
+          
+          if (kaStatus === 'submitted' || kaStatus === 'expired') {
+            alert('⏳ Diese Klassenarbeit wurde bereits abgegeben oder die Zeit ist abgelaufen.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
+            return;
+          }
+        }
+      }
+      
       // HTML-Dateien im neuen Tab öffnen
       try {
         const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);

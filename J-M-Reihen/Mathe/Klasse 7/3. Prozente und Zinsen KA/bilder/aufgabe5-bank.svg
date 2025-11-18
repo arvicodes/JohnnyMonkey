@@ -1,0 +1,11 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#e8f5e9"/>
+  <rect x="50" y="80" width="300" height="180" rx="10" fill="#4caf50" stroke="#2e7d32" stroke-width="3"/>
+  <text x="200" y="130" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#fff">BANK</text>
+  <rect x="80" y="150" width="240" height="80" fill="#fff" rx="5"/>
+  <text x="200" y="180" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#424242">Geldanlage</text>
+  <text x="200" y="205" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">Zinssatz: 3%</text>
+  <circle cx="200" cy="50" r="20" fill="#ffd54f"/>
+  <text x="200" y="58" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#f57c00">€</text>
+</svg>
+

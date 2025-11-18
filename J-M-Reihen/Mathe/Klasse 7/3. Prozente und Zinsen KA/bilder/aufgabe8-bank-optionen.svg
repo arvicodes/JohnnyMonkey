@@ -1,0 +1,13 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#e8f5e9"/>
+  <rect x="50" y="50" width="300" height="200" rx="10" fill="#4caf50" stroke="#2e7d32" stroke-width="3"/>
+  <text x="200" y="90" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#fff">BANK</text>
+  <rect x="70" y="110" width="120" height="100" fill="#fff" rx="5"/>
+  <text x="130" y="140" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#2e7d32">Option 1</text>
+  <text x="130" y="165" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#424242">2% Zinssatz</text>
+  <rect x="210" y="110" width="120" height="100" fill="#fff" rx="5"/>
+  <text x="270" y="140" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#2e7d32">Option 2</text>
+  <text x="270" y="165" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#424242">1,5% + Bonus</text>
+  <text x="200" y="280" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#1976d2">5000 € für 6 Monate</text>
+</svg>
+

@@ -1,0 +1,12 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#e3f2fd"/>
+  <text x="200" y="120" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#1976d2">Klasse</text>
+  <text x="200" y="150" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#424242">Schülerinnen und Schüler</text>
+  <circle cx="120" cy="200" r="25" fill="#64b5f6"/>
+  <circle cx="200" cy="200" r="25" fill="#90caf9"/>
+  <circle cx="280" cy="200" r="25" fill="#64b5f6"/>
+  <rect x="95" y="230" width="50" height="40" rx="5" fill="#1976d2"/>
+  <rect x="175" y="230" width="50" height="40" rx="5" fill="#1976d2"/>
+  <rect x="255" y="230" width="50" height="40" rx="5" fill="#1976d2"/>
+</svg>
+

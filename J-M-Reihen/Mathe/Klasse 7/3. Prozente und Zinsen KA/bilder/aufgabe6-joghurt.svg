@@ -1,0 +1,11 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#f3e5f5"/>
+  <rect x="150" y="60" width="100" height="180" rx="10" fill="#fff" stroke="#9c27b0" stroke-width="2"/>
+  <text x="200" y="100" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#7b1fa2">Naturjoghurt</text>
+  <text x="200" y="125" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#424242">250 g</text>
+  <rect x="160" y="140" width="80" height="80" fill="#fff9c4" rx="5"/>
+  <text x="200" y="190" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#666">1,5 g Fett</text>
+  <text x="200" y="210" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#666">pro 100 g</text>
+  <text x="200" y="260" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#9c27b0">Fettgehalt berechnen</text>
+</svg>
+
