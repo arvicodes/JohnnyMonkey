@@ -1356,26 +1356,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Prüfe ob es eine KA_ Datei ist und ob sie bereits abgegeben wurde
       const isKAFile = item.name.startsWith('KA_');
       if (isKAFile) {
-        // Extrahiere den KA-Key (ohne .html/.htm Endung, aber MIT KA_ Präfix)
-        const kaKey = item.name.replace('.html', '').replace('.htm', '');
-        const studentId = localStorage.getItem('studentId');
-        if (studentId) {
-          // Key muss exakt mit dem in der HTML-Datei übereinstimmen: ka_status_KA_prozent-zinsrechnung_${studentId}
-          const STORAGE_KEY = `ka_status_${kaKey}_${studentId}`;
-          const kaStatus = localStorage.getItem(STORAGE_KEY);
+        // Prüfe in der Datenbank, ob bereits abgegeben
+        try {
+          const loginCode = localStorage.getItem('loginCode');
+          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html"
           
-          console.log('KA File Check:', {
-            fileName: item.name,
-            kaKey: kaKey,
-            studentId: studentId,
-            STORAGE_KEY: STORAGE_KEY,
-            kaStatus: kaStatus
-          });
-          
-          if (kaStatus === 'submitted' || kaStatus === 'expired') {
-            alert('⏳ Diese Klassenarbeit wurde bereits abgegeben oder die Zeit ist abgelaufen.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
-            return;
+          if (loginCode) {
+            const response = await fetch(`/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
+              headers: {
+                'Content-Type': 'application/json',
+                'x-login-code': loginCode
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data.exists === true) {
+                alert('⏳ Diese Klassenarbeit wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
+                return;
+              }
+            }
           }
+        } catch (error) {
+          console.error('Fehler beim Prüfen der Abgabe:', error);
+          // Bei Fehler: Datei trotzdem öffnen, die echte Prüfung erfolgt in der HTML-Datei
         }
       }
       
@@ -1521,26 +1525,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       // Prüfe ob es eine KA_ Datei ist und ob sie bereits abgegeben wurde
       const isKAFile = item.name.startsWith('KA_');
       if (isKAFile) {
-        // Extrahiere den KA-Key (ohne .html/.htm Endung, aber MIT KA_ Präfix)
-        const kaKey = item.name.replace('.html', '').replace('.htm', '');
-        const studentId = localStorage.getItem('studentId');
-        if (studentId) {
-          // Key muss exakt mit dem in der HTML-Datei übereinstimmen: ka_status_KA_prozent-zinsrechnung_${studentId}
-          const STORAGE_KEY = `ka_status_${kaKey}_${studentId}`;
-          const kaStatus = localStorage.getItem(STORAGE_KEY);
+        // Prüfe in der Datenbank, ob bereits abgegeben
+        try {
+          const loginCode = localStorage.getItem('loginCode');
+          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html"
           
-          console.log('KA File Check:', {
-            fileName: item.name,
-            kaKey: kaKey,
-            studentId: studentId,
-            STORAGE_KEY: STORAGE_KEY,
-            kaStatus: kaStatus
-          });
-          
-          if (kaStatus === 'submitted' || kaStatus === 'expired') {
-            alert('⏳ Diese Klassenarbeit wurde bereits abgegeben oder die Zeit ist abgelaufen.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
-            return;
+          if (loginCode) {
+            const response = await fetch(`/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
+              headers: {
+                'Content-Type': 'application/json',
+                'x-login-code': loginCode
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data.exists === true) {
+                alert('⏳ Diese Klassenarbeit wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
+                return;
+              }
+            }
           }
+        } catch (error) {
+          console.error('Fehler beim Prüfen der Abgabe:', error);
+          // Bei Fehler: Datei trotzdem öffnen, die echte Prüfung erfolgt in der HTML-Datei
         }
       }
       
