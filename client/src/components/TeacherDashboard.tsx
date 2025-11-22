@@ -9065,6 +9065,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       <TeacherMessageBox
         open={showTeacherMessageBox}
         onClose={() => setShowTeacherMessageBox(false)}
+        userId={userId}
       />
 
       {/* Dialog zum Senden von Nachrichten an Schüler */}
