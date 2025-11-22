@@ -648,6 +648,69 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   }, [showSendMessageDialog]);
 
+  // Funktion zum Senden der Nachricht
+  const handleSendMessage = async () => {
+    if (!selectedStudentForMessage) {
+      console.error('❌ Kein selectedStudentForMessage');
+      alert('Fehler: Schüler-Informationen fehlen');
+      return;
+    }
+    
+    if (!messageSubject || !messageContent) {
+      console.error('❌ Betreff oder Nachricht fehlt');
+      alert('Bitte füllen Sie beide Felder aus');
+      return;
+    }
+    
+    setSendingMessage(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      console.log('🔑 LoginCode:', loginCode);
+      console.log('📤 Sende Nachricht an:', selectedStudentForMessage.id);
+      
+      const response = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        },
+        body: JSON.stringify({
+          studentId: selectedStudentForMessage.id,
+          subject: messageSubject,
+          content: messageContent
+        })
+      });
+
+      console.log('📥 Response Status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Nachricht gesendet:', data);
+        setShowSendMessageDialog(false);
+        setMessageSubject('');
+        setMessageContent('');
+        setSelectedStudentForMessage(null);
+        alert('✅ Nachricht erfolgreich gesendet!');
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Fehler-Response:', errorText);
+        let errorMessage = 'Unbekannter Fehler';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        alert(`❌ Fehler: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error('❌ Fehler beim Senden:', error);
+      alert(`❌ Fehler beim Senden der Nachricht: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   // Anzeige-Thema für aktuelle Stunde: erst Map, sonst aus Kommentaren
   const displayedLessonKeyword: string = (() => {
     if (!participationGroupId) return '';
@@ -3702,15 +3765,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         '/Users/verachrist/Documents/Z. UNTERRICHT/J-M-Reihen/Mathe/Klasse 7/1. Ganze und rationale Zahlen (Kapitel 5)/1. Unser Grundwissen .../1. Ganz verschiedene Arten von Zahlen/Cards Didaktik_Bruchrechnung_Didaktikfokus.docx'
       ];
       
-              for (const filePath of knownCardsFiles) {
-          const history = await fetchDocumentProcessingHistory(filePath);
-          if (history.length > 0) {
-            setDocumentHistoryMap(prev => ({
-              ...prev,
-              [filePath]: history
-            }));
-          }
+      for (const filePath of knownCardsFiles) {
+        const history = await fetchDocumentProcessingHistory(filePath);
+        if (history.length > 0) {
+          setDocumentHistoryMap(prev => ({
+            ...prev,
+            [filePath]: history
+          }));
         }
+      }
     };
     
     loadKnownCardsHistory();
@@ -9032,13 +9095,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             value={messageSubject}
             onChange={(e) => setMessageSubject(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && messageSubject && messageContent) {
+              if (e.key === 'Enter' && !e.shiftKey && messageSubject && messageContent && !sendingMessage) {
                 e.preventDefault();
-                // Trigger send action
-                const sendButton = document.querySelector('[data-send-message-button]') as HTMLButtonElement;
-                if (sendButton && !sendButton.disabled) {
-                  sendButton.click();
-                }
+                handleSendMessage();
               }
             }}
             margin="normal"
@@ -9052,14 +9111,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             value={messageContent}
             onChange={(e) => setMessageContent(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey && messageSubject && messageContent) {
+              // Enter sendet die Nachricht (wenn beide Felder ausgefüllt sind)
+              if (e.key === 'Enter' && !e.shiftKey && messageSubject && messageContent && !sendingMessage) {
                 e.preventDefault();
-                // Trigger send action
-                const sendButton = document.querySelector('[data-send-message-button]') as HTMLButtonElement;
-                if (sendButton && !sendButton.disabled) {
-                  sendButton.click();
-                }
+                handleSendMessage();
               }
+              // Shift+Enter erzeugt eine neue Zeile (Standard-Verhalten)
             }}
             margin="normal"
             required
@@ -9070,74 +9127,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             Abbrechen
           </Button>
           <Button
-            onClick={async (e) => {
+            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              
-              console.log('📧 Senden-Button geklickt');
-              console.log('selectedStudentForMessage:', selectedStudentForMessage);
-              console.log('messageSubject:', messageSubject);
-              console.log('messageContent:', messageContent);
-              
-              if (!selectedStudentForMessage) {
-                console.error('❌ Kein selectedStudentForMessage');
-                alert('Fehler: Schüler-Informationen fehlen');
-                return;
-              }
-              
-              if (!messageSubject || !messageContent) {
-                console.error('❌ Betreff oder Nachricht fehlt');
-                alert('Bitte füllen Sie beide Felder aus');
-                return;
-              }
-              
-              setSendingMessage(true);
-              try {
-                const loginCode = localStorage.getItem('loginCode') || '';
-                console.log('🔑 LoginCode:', loginCode);
-                console.log('📤 Sende Nachricht an:', selectedStudentForMessage.id);
-                
-                const response = await fetch('/api/messages/send', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'x-login-code': loginCode
-                  },
-                  body: JSON.stringify({
-                    studentId: selectedStudentForMessage.id,
-                    subject: messageSubject,
-                    content: messageContent
-                  })
-                });
-
-                console.log('📥 Response Status:', response.status);
-                
-                if (response.ok) {
-                  const data = await response.json();
-                  console.log('✅ Nachricht gesendet:', data);
-                  setShowSendMessageDialog(false);
-                  setMessageSubject('');
-                  setMessageContent('');
-                  setSelectedStudentForMessage(null);
-                  alert('✅ Nachricht erfolgreich gesendet!');
-                } else {
-                  const errorText = await response.text();
-                  console.error('❌ Fehler-Response:', errorText);
-                  let errorMessage = 'Unbekannter Fehler';
-                  try {
-                    const error = JSON.parse(errorText);
-                    errorMessage = error.error || errorMessage;
-                  } catch {
-                    errorMessage = errorText || errorMessage;
-                  }
-                  alert(`❌ Fehler: ${errorMessage}`);
-                }
-              } catch (error) {
-                console.error('❌ Fehler beim Senden:', error);
-                alert(`❌ Fehler beim Senden der Nachricht: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
-              } finally {
-                setSendingMessage(false);
-              }
+              handleSendMessage();
             }}
             variant="contained"
             disabled={!messageSubject || !messageContent || sendingMessage}
