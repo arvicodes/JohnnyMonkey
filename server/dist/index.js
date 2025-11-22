@@ -26,6 +26,8 @@ const quizSessions_1 = __importDefault(require("./routes/quizSessions"));
 const quizParticipations_1 = __importDefault(require("./routes/quizParticipations"));
 const grades_routes_1 = __importDefault(require("./routes/grades.routes"));
 const fileSystemPaths_1 = __importDefault(require("./routes/fileSystemPaths"));
+const kaCorrections_1 = __importDefault(require("./routes/kaCorrections"));
+const messages_1 = __importDefault(require("./routes/messages"));
 const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const submissions_1 = __importDefault(require("./routes/submissions"));
 const fileShares_1 = __importDefault(require("./routes/fileShares"));
@@ -71,6 +73,8 @@ app.use('/api/submissions', submissions_1.default);
 app.use('/api/file-shares', fileShares_1.default);
 app.use('/api/participation', participation_1.default);
 app.use('/api/advent-calendar', adventCalendar_1.default);
+app.use('/api/ka-corrections', kaCorrections_1.default);
+app.use('/api/messages', messages_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
 // Enhanced health check endpoint with monitoring

@@ -21,6 +21,8 @@ import quizSessionRoutes from './routes/quizSessions';
 import quizParticipationRoutes from './routes/quizParticipations';
 import gradesRoutes from './routes/grades.routes';
 import fileSystemPathsRoutes from './routes/fileSystemPaths';
+import kaCorrectionsRoutes from './routes/kaCorrections';
+import messageRoutes from './routes/messages';
 import flashcardRoutes from './routes/flashcards';
 import submissionRoutes from './routes/submissions';
 import fileShareRoutes from './routes/fileShares';
@@ -71,6 +73,8 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/file-shares', fileShareRoutes);
 app.use('/api/participation', participationRoutes);
 app.use('/api/advent-calendar', adventCalendarRoutes);
+app.use('/api/ka-corrections', kaCorrectionsRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));

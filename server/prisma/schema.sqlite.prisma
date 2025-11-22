@@ -10,30 +10,34 @@ datasource db {
 // Copy all models from main schema
 // Copy all models from main schema
 model User {
-  id             String              @id @default(uuid())
-  name           String
-  loginCode      String              @unique
-  role           String              @default("STUDENT")
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  avatarEmoji    String?
-  teacherGroups  LearningGroup[]     @relation("TeacherGroups")
-  notes          Note[]
-  quizzes        Quiz[]
-  participations QuizParticipation[]
-  subjects       Subject[]
-  learningGroups LearningGroup[]     @relation("StudentGroups")
-  grades         Grade[]
-  fileSystemPaths FileSystemPath[]
-  flashcardDecks FlashcardDeck[]
-  flashcardProgress FlashcardProgress[]
-  learningSessions FlashcardLearningSession[]
+  id                        String                      @id @default(uuid())
+  name                      String
+  loginCode                 String                      @unique
+  role                      String                      @default("STUDENT")
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  avatarEmoji               String?
+  teacherGroups             LearningGroup[]             @relation("TeacherGroups")
+  notes                     Note[]
+  quizzes                   Quiz[]
+  participations            QuizParticipation[]
+  subjects                  Subject[]
+  learningGroups            LearningGroup[]             @relation("StudentGroups")
+  grades                    Grade[]
+  fileSystemPaths           FileSystemPath[]
+  flashcardDecks            FlashcardDeck[]
+  flashcardProgress         FlashcardProgress[]
+  learningSessions          FlashcardLearningSession[]
   documentProcessingHistory DocumentProcessingHistory[]
-  teacherAssignments Assignment[]    @relation("TeacherAssignments")
-  studentSubmissions Submission[]    @relation("StudentSubmissions")
-  classParticipations Participation[]    @relation("StudentParticipations")
-  epoGrades          ParticipationPeriodGrade[]    @relation("StudentEPOGrades")
-  adventSubmissions  AdventCalendarSubmission[]
+  teacherAssignments        Assignment[]                @relation("TeacherAssignments")
+  studentSubmissions        Submission[]                @relation("StudentSubmissions")
+  classParticipations       Participation[]             @relation("StudentParticipations")
+  epoGrades                 ParticipationPeriodGrade[]  @relation("StudentEPOGrades")
+  adventSubmissions         AdventCalendarSubmission[]
+  kaSubmissions             KASubmission[]              @relation("StudentKASubmissions")
+  kaCorrections             KACorrection[]              @relation("TeacherKACorrections")
+  sentMessages              Message[]                   @relation("TeacherMessages")
+  receivedMessages          Message[]                   @relation("StudentMessages")
 }
 
 model GradingSchema {
@@ -64,33 +68,33 @@ model Grade {
 }
 
 model LearningGroup {
-  id             String            @id @default(uuid())
-  name           String
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  teacherId      String
-  period1Hours   Int?              // Anzahl Stunden für Zeitraum 1 (EPO 1)
-  period2Hours   Int?              // Anzahl Stunden für Zeitraum 2 (EPO 2)
-  gradingSchemas GradingSchema[]
-  assignments    GroupAssignment[]
+  id                   String                     @id @default(uuid())
+  name                 String
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  teacherId            String
+  period1Hours         Int? // Anzahl Stunden für Zeitraum 1 (EPO 1)
+  period2Hours         Int? // Anzahl Stunden für Zeitraum 2 (EPO 2)
+  gradingSchemas       GradingSchema[]
+  assignments          GroupAssignment[]
   flashcardAssignments FlashcardAssignment[]
-  fileShares     FileShare[]
-  participations Participation[]
-  epoGrades      ParticipationPeriodGrade[]
-  teacher        User              @relation("TeacherGroups", fields: [teacherId], references: [id])
-  students       User[]            @relation("StudentGroups")
+  fileShares           FileShare[]
+  participations       Participation[]
+  epoGrades            ParticipationPeriodGrade[]
+  teacher              User                       @relation("TeacherGroups", fields: [teacherId], references: [id])
+  students             User[]                     @relation("StudentGroups")
 }
 
 model Subject {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  order       Int      @default(0)
-  teacherId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  blocks      Block[]
-  teacher     User     @relation(fields: [teacherId], references: [id])
+  id             String          @id @default(uuid())
+  name           String
+  description    String?
+  order          Int             @default(0)
+  teacherId      String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  blocks         Block[]
+  teacher        User            @relation(fields: [teacherId], references: [id])
   flashcardDecks FlashcardDeck[]
 }
 
@@ -193,7 +197,7 @@ model Quiz {
   shuffleAnswers   Boolean        @default(true)
   timeLimit        Int            @default(30)
   teacherId        String
-  gradeCategory    String?        // New field for grade category
+  gradeCategory    String? // New field for grade category
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   lessonQuizzes    LessonQuiz[]
@@ -229,16 +233,16 @@ model LessonQuiz {
 }
 
 model QuizSession {
-  id             String              @id @default(uuid())
-  quizId         String
-  isActive       Boolean             @default(false)
-  startedAt      DateTime?
-  endedAt        DateTime?
+  id              String              @id @default(uuid())
+  quizId          String
+  isActive        Boolean             @default(false)
+  startedAt       DateTime?
+  endedAt         DateTime?
   resultsReleased Boolean             @default(false)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @default(now())
-  participations QuizParticipation[]
-  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now())
+  participations  QuizParticipation[]
+  quiz            Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
 }
 
 model QuizParticipation {
@@ -273,24 +277,24 @@ model QuizAnswer {
 }
 
 model FileSystemPath {
-  id          String   @id @default(uuid())
-  path        String   @unique
-  name        String
-  teacherId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  teacher     User     @relation(fields: [teacherId], references: [id])
+  id        String   @id @default(uuid())
+  path      String   @unique
+  name      String
+  teacherId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  teacher   User     @relation(fields: [teacherId], references: [id])
 }
 
 // File sharing for learning groups
 model FileShare {
   id        String        @id @default(uuid())
-  filePath  String        // Full path to the file
-  groupId   String        // Learning group ID
+  filePath  String // Full path to the file
+  groupId   String // Learning group ID
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   group     LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  
+
   @@unique([filePath, groupId])
   @@index([groupId])
   @@index([filePath])
@@ -298,151 +302,151 @@ model FileShare {
 
 // Flashcard System Models
 model FlashcardDeck {
-  id          String       @id @default(uuid())
+  id          String   @id @default(uuid())
   title       String
   description String?
   subjectId   String?
   teacherId   String
-  isPublic    Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
-  subject     Subject?     @relation(fields: [subjectId], references: [id])
-  teacher     User         @relation(fields: [teacherId], references: [id])
-  cards       Flashcard[]
-  assignments FlashcardAssignment[]
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject          Subject?                   @relation(fields: [subjectId], references: [id])
+  teacher          User                       @relation(fields: [teacherId], references: [id])
+  cards            Flashcard[]
+  assignments      FlashcardAssignment[]
   learningSessions FlashcardLearningSession[]
 }
 
 model Flashcard {
-  id          String       @id @default(uuid())
-  deckId      String
-  front       String       // Vorderseite (Frage/Begriff)
-  back        String       // Rückseite (Antwort/Definition)
-  hint        String?      // Optionaler Tipp
-  difficulty  Int          @default(1) // 1-5
-  order       Int          @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
-  deck        FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  progress    FlashcardProgress[]
+  id         String   @id @default(uuid())
+  deckId     String
+  front      String // Vorderseite (Frage/Begriff)
+  back       String // Rückseite (Antwort/Definition)
+  hint       String? // Optionaler Tipp
+  difficulty Int      @default(1) // 1-5
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  deck     FlashcardDeck       @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  progress FlashcardProgress[]
 }
 
 model FlashcardAssignment {
-  id          String       @id @default(uuid())
-  deckId      String
-  groupId     String
-  dueDate     DateTime?
-  createdAt   DateTime     @default(now())
-  
-  deck        FlashcardDeck    @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  group       LearningGroup    @relation(fields: [groupId], references: [id])
+  id        String    @id @default(uuid())
+  deckId    String
+  groupId   String
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+
+  deck  FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  group LearningGroup @relation(fields: [groupId], references: [id])
 }
 
 model FlashcardProgress {
-  id          String   @id @default(uuid())
-  cardId      String
-  studentId   String
-  level       Int      @default(0) // Spaced Repetition Level (0-5)
-  nextReview  DateTime @default(now())
+  id           String    @id @default(uuid())
+  cardId       String
+  studentId    String
+  level        Int       @default(0) // Spaced Repetition Level (0-5)
+  nextReview   DateTime  @default(now())
   lastReviewed DateTime?
-  reviewCount Int      @default(0)
-  easeFactor  Float    @default(2.5) // Ease Factor für SM-2 Algorithmus
-  interval    Int      @default(1) // Tage bis zur nächsten Wiederholung
-  quality     Int?     // Letzte Bewertung der Karte (1=Sehr schlecht, 2=Schlecht, 3=Mittelmäßig, 4=Gut, 5=Sehr gut)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  card        Flashcard @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
+  reviewCount  Int       @default(0)
+  easeFactor   Float     @default(2.5) // Ease Factor für SM-2 Algorithmus
+  interval     Int       @default(1) // Tage bis zur nächsten Wiederholung
+  quality      Int? // Letzte Bewertung der Karte (1=Sehr schlecht, 2=Schlecht, 3=Mittelmäßig, 4=Gut, 5=Sehr gut)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  card    Flashcard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  student User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   @@unique([cardId, studentId])
 }
 
 // Tracking für verarbeitete Word-Dokumente
 model DocumentProcessingHistory {
-  id          String       @id @default(uuid())
-  sourceFile  String       // Vollständiger Dateipfad
-  fileName    String       // Dateiname
+  id          String   @id @default(uuid())
+  sourceFile  String // Vollständiger Dateipfad
+  fileName    String // Dateiname
   teacherId   String
-  action      String       // "created_deck" oder "added_to_deck"
-  deckId      String       // ID des betroffenen Decks
-  deckTitle   String       // Titel des Decks
-  cardsCount  Int          // Anzahl der hinzugefügten Karten
-  processedAt DateTime     @default(now())
-  
-  teacher     User         @relation(fields: [teacherId], references: [id])
-  
+  action      String // "created_deck" oder "added_to_deck"
+  deckId      String // ID des betroffenen Decks
+  deckTitle   String // Titel des Decks
+  cardsCount  Int // Anzahl der hinzugefügten Karten
+  processedAt DateTime @default(now())
+
+  teacher User @relation(fields: [teacherId], references: [id])
+
   @@unique([sourceFile, teacherId, action, deckId])
 }
 
 // Lern-Sessions für Tracking und Statistiken
 model FlashcardLearningSession {
-  id          String       @id @default(uuid())
-  studentId   String
-  deckId      String
-  startTime   DateTime     @default(now())
-  endTime     DateTime?
-  cardsReviewed Int        @default(0)
-  correctAnswers Int       @default(0)
-  incorrectAnswers Int     @default(0)
-  sessionDuration Int?     // Dauer in Sekunden
-  createdAt   DateTime     @default(now())
-  
-  student     User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  deck        FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  id               String    @id @default(uuid())
+  studentId        String
+  deckId           String
+  startTime        DateTime  @default(now())
+  endTime          DateTime?
+  cardsReviewed    Int       @default(0)
+  correctAnswers   Int       @default(0)
+  incorrectAnswers Int       @default(0)
+  sessionDuration  Int? // Dauer in Sekunden
+  createdAt        DateTime  @default(now())
+
+  student User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  deck    FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
 }
 
 // Abgabesystem für Hausaufgaben (H__ Dateien)
 model Assignment {
-  id              String       @id @default(uuid())
-  fileName        String       // Name der H__ Datei
-  filePath        String       // Pfad zur Original-H__ Datei
-  teacherId       String       
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  
-  teacher         User         @relation("TeacherAssignments", fields: [teacherId], references: [id])
-  submissions     Submission[]
-  
+  id        String   @id @default(uuid())
+  fileName  String // Name der H__ Datei
+  filePath  String // Pfad zur Original-H__ Datei
+  teacherId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher     User         @relation("TeacherAssignments", fields: [teacherId], references: [id])
+  submissions Submission[]
+
   @@unique([filePath, teacherId])
 }
 
 model Submission {
-  id              String       @id @default(uuid())
-  assignmentId    String
-  studentId       String
-  originalFileName String      // Original-Dateiname der hochgeladenen Datei
-  storedFileName  String       // Gespeicherter Dateiname (UUID basiert)
-  filePath        String       // Pfad zur gespeicherten Datei
-  fileType        String       // MIME type
-  fileSize        Int          // Größe in Bytes
-  submittedAt     DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  teacherComment  String?      // Kommentar der Lehrkraft
-  commentedAt     DateTime?    // Wann wurde kommentiert
-  
-  assignment      Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  student         User         @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
-  
+  id               String    @id @default(uuid())
+  assignmentId     String
+  studentId        String
+  originalFileName String // Original-Dateiname der hochgeladenen Datei
+  storedFileName   String // Gespeicherter Dateiname (UUID basiert)
+  filePath         String // Pfad zur gespeicherten Datei
+  fileType         String // MIME type
+  fileSize         Int // Größe in Bytes
+  submittedAt      DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  teacherComment   String? // Kommentar der Lehrkraft
+  commentedAt      DateTime? // Wann wurde kommentiert
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
+
   @@unique([assignmentId, studentId])
   @@index([studentId])
   @@index([assignmentId])
 }
 
 model Participation {
-  id           String       @id @default(uuid())
-  groupId      String
-  lessonIndex  Int
-  studentId    String
-  value        Int          // -2 (sehr schlecht), -1 (schlecht), 0 (neutral), 1 (gut), 2 (sehr gut)
-  comment      String?      // Optionaler Kommentar des Lehrers
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  student      User         @relation("StudentParticipations", fields: [studentId], references: [id], onDelete: Cascade)
-  
+  id          String        @id @default(uuid())
+  groupId     String
+  lessonIndex Int
+  studentId   String
+  value       Int // -2 (sehr schlecht), -1 (schlecht), 0 (neutral), 1 (gut), 2 (sehr gut)
+  comment     String? // Optionaler Kommentar des Lehrers
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  group       LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student     User          @relation("StudentParticipations", fields: [studentId], references: [id], onDelete: Cascade)
+
   @@unique([groupId, lessonIndex, studentId])
   @@index([groupId])
   @@index([studentId])
@@ -451,18 +455,18 @@ model Participation {
 
 // EPO-Noten (Ergebnisse der Mitarbeitsbewertungen pro Zeitraum)
 model ParticipationPeriodGrade {
-  id           String       @id @default(uuid())
+  id           String        @id @default(uuid())
   groupId      String
   studentId    String
-  period       Int          // 1 oder 2 (EPO 1 oder EPO 2)
-  grade        Float        // Berechnete Note (1.0-5.0)
-  averageValue Float        // Durchschnittswert der Teilnahmen (-2 bis +2)
-  lessonCount  Int          // Anzahl der bewerteten Stunden in diesem Zeitraum
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  period       Int // 1 oder 2 (EPO 1 oder EPO 2)
+  grade        Float // Berechnete Note (1.0-5.0)
+  averageValue Float // Durchschnittswert der Teilnahmen (-2 bis +2)
+  lessonCount  Int // Anzahl der bewerteten Stunden in diesem Zeitraum
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  student      User         @relation("StudentEPOGrades", fields: [studentId], references: [id], onDelete: Cascade)
-  
+  student      User          @relation("StudentEPOGrades", fields: [studentId], references: [id], onDelete: Cascade)
+
   @@unique([groupId, studentId, period])
   @@index([groupId])
   @@index([studentId])
@@ -471,33 +475,92 @@ model ParticipationPeriodGrade {
 
 // Adventskalender System
 model AdventCalendarDoor {
-  id            String                      @id @default(uuid())
-  day           Int                         // 1-24 (Tag im Dezember)
-  year          Int                         // Jahr (z.B. 2024)
-  funFact       String                      // Fun Fact mit Mathe/Informatik-Bezug
-  question      String                      // Frage zur Aufgabe
-  correctAnswer String                      // Korrekte Antwort
-  explanation   String?                     // Erklärung der Lösung
-  createdAt     DateTime                    @default(now())
-  updatedAt     DateTime                    @updatedAt
+  id            String                     @id @default(uuid())
+  day           Int // 1-24 (Tag im Dezember)
+  year          Int // Jahr (z.B. 2024)
+  funFact       String // Fun Fact mit Mathe/Informatik-Bezug
+  question      String // Frage zur Aufgabe
+  correctAnswer String // Korrekte Antwort
+  explanation   String? // Erklärung der Lösung
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
   submissions   AdventCalendarSubmission[]
-  
+
   @@unique([day, year])
   @@index([year, day])
 }
 
 model AdventCalendarSubmission {
-  id          String            @id @default(uuid())
+  id          String             @id @default(uuid())
   doorId      String
   studentId   String
-  answer      String            // Antwort des Schülers
-  isCorrect   Boolean           @default(false)
-  submittedAt DateTime          @default(now())
+  answer      String // Antwort des Schülers
+  isCorrect   Boolean            @default(false)
+  submittedAt DateTime           @default(now())
   door        AdventCalendarDoor @relation(fields: [doorId], references: [id], onDelete: Cascade)
-  student     User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
+  student     User               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
   @@unique([doorId, studentId])
   @@index([doorId])
   @@index([studentId])
   @@index([doorId, submittedAt])
+}
+
+// Klassenarbeits-System
+model KASubmission {
+  id          String         @id @default(uuid())
+  kaFilePath  String // Pfad zur KA-Datei (z.B. "KA_prozent-zinsrechnung.html")
+  studentId   String
+  submittedAt DateTime       @default(now())
+  expiredAt   DateTime? // Zeitpunkt wenn Zeit abgelaufen ist
+  status      String         @default("submitted") // submitted, expired, corrected
+  answers     String // JSON mit allen Antworten des Schülers
+  autoPoints  Float          @default(0) // Automatisch berechnete Punkte
+  totalPoints Float          @default(0) // Gesamtpunkte nach Korrektur
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  student     User           @relation("StudentKASubmissions", fields: [studentId], references: [id], onDelete: Cascade)
+  corrections KACorrection[]
+
+  @@unique([kaFilePath, studentId])
+  @@index([kaFilePath])
+  @@index([studentId])
+  @@index([status])
+}
+
+model KACorrection {
+  id           String       @id @default(uuid())
+  submissionId String
+  teacherId    String
+  taskNumber   String // z.B. "1", "2a", "3b"
+  manualPoints Float? // Manuell vergebene Punkte (für Rechenweg, etc.)
+  comment      String? // Kommentar des Lehrers
+  correctedAt  DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  submission   KASubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  teacher      User         @relation("TeacherKACorrections", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, taskNumber])
+  @@index([submissionId])
+  @@index([teacherId])
+}
+
+// Nachrichten-System (Inbox)
+model Message {
+  id          String   @id @default(uuid())
+  teacherId   String
+  studentId   String
+  subject     String
+  content     String
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  teacher     User     @relation("TeacherMessages", fields: [teacherId], references: [id], onDelete: Cascade)
+  student     User     @relation("StudentMessages", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([isRead])
+  @@index([createdAt])
 }

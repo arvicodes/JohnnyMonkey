@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import KACorrectionMode from './KACorrectionMode';
+import TeacherMessageBox from './TeacherMessageBox';
 import {
   Box,
   Typography,
@@ -163,6 +165,7 @@ import {
   Notifications as NotificationsIcon,
   NotificationsOff as NotificationsOffIcon,
   Email as EmailIcon,
+  Mail,
   Phone as PhoneIcon,
   LocationOn as LocationIcon,
   Schedule as ScheduleIcon,
@@ -583,6 +586,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [showSubmissionViewer, setShowSubmissionViewer] = useState(false);
   const [selectedSubmissionFile, setSelectedSubmissionFile] = useState<any>(null);
   const [submissionCounts, setSubmissionCounts] = useState<{[filePath: string]: number}>({});
+  
+  // KA Korrekturmodus States
+  const [showKACorrectionMode, setShowKACorrectionMode] = useState(false);
+  const [selectedKAFilePath, setSelectedKAFilePath] = useState<string>('');
+  const [showTeacherMessageBox, setShowTeacherMessageBox] = useState(false);
+  
+  // Nachricht an Schüler senden
+  const [showSendMessageDialog, setShowSendMessageDialog] = useState(false);
+  const [messageSubject, setMessageSubject] = useState('');
+  const [messageContent, setMessageContent] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<Student | null>(null);
+  const messageSubjectInputRef = useRef<HTMLInputElement>(null);
 
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
@@ -622,6 +638,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }, 0);
     }
   }, [participationModalOpen]);
+
+  // Fokussiere das Betreff-Feld beim Öffnen des Nachrichten-Dialogs
+  useEffect(() => {
+    if (showSendMessageDialog && messageSubjectInputRef.current) {
+      setTimeout(() => {
+        messageSubjectInputRef.current?.focus();
+      }, 100);
+    }
+  }, [showSendMessageDialog]);
 
   // Anzeige-Thema für aktuelle Stunde: erst Map, sonst aus Kommentaren
   const displayedLessonKeyword: string = (() => {
@@ -1845,6 +1870,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     if (item.type !== 'file') return;
     
     const fileExtension = item.name.split('.').pop()?.toLowerCase();
+    
+    // KA-Dateien: Korrekturmodus öffnen
+    if (item.name.startsWith('KA_') && (fileExtension === 'html' || fileExtension === 'htm')) {
+      setSelectedKAFilePath(item.path); // Verwende den vollständigen Pfad, nicht nur den Dateinamen
+      setShowKACorrectionMode(true);
+      return;
+    }
     
     if (fileExtension === 'html' || fileExtension === 'htm') {
       // HTML-Dateien im neuen Tab öffnen
@@ -4758,28 +4790,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   </Typography>
                 </Box>
               </Box>
-              <Button 
-                variant="contained"
-                color="primary"
-                size="small"
-                sx={{
-                  width: '5%',
-                  minWidth: 49,
-                  ml: 'auto',
-                  bgcolor: '#333',
-                  color: 'white',
-                  fontWeight: 500,
-                  boxShadow: 'none',
-                  '&:hover': { bgcolor: '#222' },
-                  borderRadius: 1.4,
-                  fontSize: '0.7rem',
-                  py: 0.35,
-                  px: 0.7
-                }}
-                onClick={onLogout}
-              >
-                Logout
-              </Button>
+              <Box display="flex" gap={0.5} alignItems="center">
+                <IconButton
+                  onClick={() => setShowTeacherMessageBox(true)}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    color: '#1976d2',
+                    '&:hover': { bgcolor: '#e3f2fd' }
+                  }}
+                  title="Nachrichten"
+                >
+                  <Mail sx={{ fontSize: 18 }} />
+                </IconButton>
+                <Button 
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  sx={{
+                    width: '5%',
+                    minWidth: 49,
+                    bgcolor: '#333',
+                    color: 'white',
+                    fontWeight: 500,
+                    boxShadow: 'none',
+                    '&:hover': { bgcolor: '#222' },
+                    borderRadius: 1.4,
+                    fontSize: '0.7rem',
+                    py: 0.35,
+                    px: 0.7
+                  }}
+                  onClick={onLogout}
+                >
+                  Logout
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Grid>
@@ -6765,6 +6812,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           handleStudentMenuClose(); 
         }}>
           <AssignmentIcon fontSize="small" style={{ marginRight: 8 }} /> Abgabestatistik
+        </MenuItem>
+        <MenuItem onClick={() => { 
+          if (studentMenuCtx) {
+            setSelectedStudentForMessage(studentMenuCtx.student);
+            setMessageSubject('');
+            setMessageContent('');
+            setShowSendMessageDialog(true);
+          }
+          handleStudentMenuClose(); 
+        }}>
+          <EmailIcon fontSize="small" style={{ marginRight: 8 }} /> Nachricht senden
         </MenuItem>
         <MenuItem onClick={() => { if (studentMenuCtx) handleRemoveStudentDialogOpen(studentMenuCtx.groupId, studentMenuCtx.student); handleStudentMenuClose(); }}>
           <DeleteIcon fontSize="small" style={{ marginRight: 8 }} /> Entfernen
@@ -8919,6 +8977,152 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
           <Button onClick={savePeriodConfig} variant="contained" size="small" sx={{ fontSize: '0.75rem' }}>
             Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* KA Korrekturmodus Dialog */}
+      {showKACorrectionMode && (
+        <Dialog
+          open={showKACorrectionMode}
+          onClose={() => setShowKACorrectionMode(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogContent sx={{ p: 0 }}>
+            <KACorrectionMode
+              kaFilePath={selectedKAFilePath}
+              onClose={() => setShowKACorrectionMode(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Lehrer Nachrichten-Box */}
+      <TeacherMessageBox
+        open={showTeacherMessageBox}
+        onClose={() => setShowTeacherMessageBox(false)}
+      />
+
+      {/* Dialog zum Senden von Nachrichten an Schüler */}
+      <Dialog 
+        open={showSendMessageDialog} 
+        onClose={() => {
+          setShowSendMessageDialog(false);
+          setMessageSubject('');
+          setMessageContent('');
+          setSelectedStudentForMessage(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Nachricht senden
+          {selectedStudentForMessage && (
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
+              An: {selectedStudentForMessage.name}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Betreff"
+            fullWidth
+            value={messageSubject}
+            onChange={(e) => setMessageSubject(e.target.value)}
+            margin="normal"
+            required
+          />
+          <TextField
+            label="Nachricht"
+            fullWidth
+            multiline
+            rows={6}
+            value={messageContent}
+            onChange={(e) => setMessageContent(e.target.value)}
+            margin="normal"
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSendMessageDialog(false)}>
+            Abbrechen
+          </Button>
+          <Button
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              console.log('📧 Senden-Button geklickt');
+              console.log('selectedStudentForMessage:', selectedStudentForMessage);
+              console.log('messageSubject:', messageSubject);
+              console.log('messageContent:', messageContent);
+              
+              if (!selectedStudentForMessage) {
+                console.error('❌ Kein selectedStudentForMessage');
+                alert('Fehler: Schüler-Informationen fehlen');
+                return;
+              }
+              
+              if (!messageSubject || !messageContent) {
+                console.error('❌ Betreff oder Nachricht fehlt');
+                alert('Bitte füllen Sie beide Felder aus');
+                return;
+              }
+              
+              setSendingMessage(true);
+              try {
+                const loginCode = localStorage.getItem('loginCode') || '';
+                console.log('🔑 LoginCode:', loginCode);
+                console.log('📤 Sende Nachricht an:', selectedStudentForMessage.id);
+                
+                const response = await fetch('/api/messages/send', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-login-code': loginCode
+                  },
+                  body: JSON.stringify({
+                    studentId: selectedStudentForMessage.id,
+                    subject: messageSubject,
+                    content: messageContent
+                  })
+                });
+
+                console.log('📥 Response Status:', response.status);
+                
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log('✅ Nachricht gesendet:', data);
+                  setShowSendMessageDialog(false);
+                  setMessageSubject('');
+                  setMessageContent('');
+                  setSelectedStudentForMessage(null);
+                  alert('✅ Nachricht erfolgreich gesendet!');
+                } else {
+                  const errorText = await response.text();
+                  console.error('❌ Fehler-Response:', errorText);
+                  let errorMessage = 'Unbekannter Fehler';
+                  try {
+                    const error = JSON.parse(errorText);
+                    errorMessage = error.error || errorMessage;
+                  } catch {
+                    errorMessage = errorText || errorMessage;
+                  }
+                  alert(`❌ Fehler: ${errorMessage}`);
+                }
+              } catch (error) {
+                console.error('❌ Fehler beim Senden:', error);
+                alert(`❌ Fehler beim Senden der Nachricht: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+              } finally {
+                setSendingMessage(false);
+              }
+            }}
+            variant="contained"
+            disabled={!messageSubject || !messageContent || sendingMessage}
+            type="button"
+          >
+            {sendingMessage ? 'Wird gesendet...' : 'Senden'}
           </Button>
         </DialogActions>
       </Dialog>

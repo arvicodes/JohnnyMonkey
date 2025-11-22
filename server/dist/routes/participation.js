@@ -51,17 +51,14 @@ async function calculateEpoGradesForGroup(groupId) {
                 studentData[p.studentId].period2.count += 1;
             }
         });
-        // Hilfsfunktion zur Berechnung der Note aus dem Durchschnitt
+        // Feingranulare Abbildung des Durchschnitts [-2, 2] auf deutsches Notenschema mit +/-:
+        // 16 Stufen: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0
         const calculateGradeFromAverage = (average) => {
-            if (average >= 1.5)
-                return 1.0;
-            if (average >= 0.5)
-                return 2.0;
-            if (average >= -0.5)
-                return 3.0;
-            if (average >= -1.5)
-                return 4.0;
-            return 5.0;
+            const steps = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0];
+            // Mappe average (best = +2, worst = -2) in 0..15 über 0.25er Intervalle
+            const rawIndex = Math.floor((2 - average) / 0.25);
+            const index = Math.max(0, Math.min(steps.length - 1, rawIndex));
+            return steps[index];
         };
         // Berechne Durchschnitte und Noten, speichere in Datenbank
         for (const [studentId, data] of Object.entries(studentData)) {
@@ -126,6 +123,73 @@ async function calculateEpoGradesForGroup(groupId) {
     catch (error) {
         console.error('Error calculating EPO grades for group:', groupId, error);
         // Fehler wird nur geloggt, damit das Speichern der Teilnahme nicht blockiert wird
+    }
+}
+// Hilfsfunktion: Übertrage berechnete EPO-Noten ins Notenschema (Grades)
+// - Verwendet das erste verfügbare GradingSchema der Gruppe
+// - Legt/aktualisiert Kategorien "EPO 1" und "EPO 2" je Schüler mit weight 1.0
+async function integrateEpoGradesToSchema(groupId) {
+    try {
+        // Finde ein Schema für die Gruppe
+        const schema = await prisma.gradingSchema.findFirst({
+            where: { groupId },
+            select: { id: true }
+        });
+        if (!schema) {
+            // Kein Schema vorhanden → Abbruch ohne Fehler
+            return;
+        }
+        const schemaId = schema.id;
+        // Lade aktuelle EPO-Noten der Gruppe
+        const epoGrades = await prisma.participationPeriodGrade.findMany({
+            where: { groupId },
+            select: {
+                studentId: true,
+                period: true,
+                grade: true
+            }
+        });
+        if (epoGrades.length === 0) {
+            return;
+        }
+        // Upsert pro Eintrag
+        for (const eg of epoGrades) {
+            // Verwende kleingeschriebene Kategorienamen: "epo 1" / "epo 2"
+            const targetName = `epo ${eg.period}`;
+            // Hole vorhandene Noten des Schülers im Schema und gleiche case-insensitive ab
+            const existingGrades = await prisma.grade.findMany({
+                where: { studentId: eg.studentId, schemaId },
+                select: { id: true, categoryName: true }
+            });
+            const match = existingGrades.find(g => g.categoryName.trim().toLowerCase() === targetName.toLowerCase());
+            if (match) {
+                // Update vorhandenen Eintrag (Name wird auf kleingeschriebenen Zielnamen normalisiert)
+                await prisma.grade.update({
+                    where: { id: match.id },
+                    data: {
+                        categoryName: targetName,
+                        grade: eg.grade,
+                        weight: 1.0
+                    }
+                });
+            }
+            else {
+                // Falls keine case-insensitive Übereinstimmung: neu anlegen (mit kleingeschriebenem Namen)
+                await prisma.grade.create({
+                    data: {
+                        studentId: eg.studentId,
+                        schemaId,
+                        categoryName: targetName,
+                        grade: eg.grade,
+                        weight: 1.0
+                    }
+                });
+            }
+        }
+    }
+    catch (error) {
+        console.error('Error integrating EPO grades into grading schema for group:', groupId, error);
+        // Nicht werfen, um Benutzerinteraktionen nicht zu blockieren
     }
 }
 // Get participation data for a specific student in all their groups
@@ -388,6 +452,8 @@ router.post('/:groupId/calculate-epo', async (req, res) => {
         }
         // Verwende die wiederverwendbare Funktion
         await calculateEpoGradesForGroup(groupId);
+        // Integriere EPO-Noten ins Notenschema (Server-seitig automatisch)
+        await integrateEpoGradesToSchema(groupId);
         // Lade die berechneten EPO-Noten, um die Anzahl zurückzugeben
         const epoGrades = await prisma.participationPeriodGrade.findMany({
             where: { groupId }
@@ -458,9 +524,15 @@ router.post('/:groupId/:lessonIndex', async (req, res) => {
         });
         // Berechne EPO-Noten automatisch im Hintergrund (non-blocking)
         // Wird asynchron ausgeführt, damit die Antwort nicht verzögert wird
-        calculateEpoGradesForGroup(groupId).catch(error => {
-            console.error('Background EPO calculation failed:', error);
-        });
+        (async () => {
+            try {
+                await calculateEpoGradesForGroup(groupId);
+                await integrateEpoGradesToSchema(groupId);
+            }
+            catch (error) {
+                console.error('Background EPO calc/integration failed:', error);
+            }
+        })();
         res.json(participation);
     }
     catch (error) {
@@ -627,9 +699,15 @@ router.put('/:groupId/:lessonIndex/:studentId/comment', async (req, res) => {
         });
         // Berechne EPO-Noten automatisch im Hintergrund (non-blocking)
         // Kommentare ändern die Noten nicht, aber falls sich gleichzeitig Werte ändern, wird neu berechnet
-        calculateEpoGradesForGroup(groupId).catch(error => {
-            console.error('Background EPO calculation failed after comment update:', error);
-        });
+        (async () => {
+            try {
+                await calculateEpoGradesForGroup(groupId);
+                await integrateEpoGradesToSchema(groupId);
+            }
+            catch (error) {
+                console.error('Background EPO calc/integration failed after comment update:', error);
+            }
+        })();
         res.json(participation);
     }
     catch (error) {
@@ -639,17 +717,11 @@ router.put('/:groupId/:lessonIndex/:studentId/comment', async (req, res) => {
 });
 // Helper function: Convert average participation value to German grade
 function calculateGradeFromAverage(average) {
-    // -2 bis +2 -> 1.0 bis 5.0
-    // -2 = 5.0, -1 = 4.0, 0 = 3.0, 1 = 2.0, 2 = 1.0
-    if (average >= 1.5)
-        return 1.0;
-    if (average >= 0.5)
-        return 2.0;
-    if (average >= -0.5)
-        return 3.0;
-    if (average >= -1.5)
-        return 4.0;
-    return 5.0;
+    // Feingranulare Abbildung auf deutsches Notenschema (mit +/-)
+    const steps = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0];
+    const rawIndex = Math.floor((2 - average) / 0.25);
+    const index = Math.max(0, Math.min(steps.length - 1, rawIndex));
+    return steps[index];
 }
 // Get EPO grades for a specific student
 // WICHTIG: Diese Route muss VOR der /:groupId/epo-grades Route kommen!

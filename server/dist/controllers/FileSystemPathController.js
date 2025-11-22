@@ -831,14 +831,106 @@ class FileSystemPathController {
     // Image file handler
     static async readImageFile(req, res) {
         try {
-            const { filePath, preview } = req.query;
+            let { filePath, preview } = req.query;
             if (!filePath) {
                 return res.status(400).json({ error: 'filePath is required' });
             }
+            // Dekodiere den Pfad falls er URL-kodiert ist
+            if (typeof filePath === 'string') {
+                filePath = decodeURIComponent(filePath);
+            }
             console.log('Reading image file:', filePath);
+            console.log('File exists:', fs_1.default.existsSync(filePath));
+            // Prüfe direkt mit fs, ob die Datei existiert
+            if (!fs_1.default.existsSync(filePath)) {
+                console.error('File does not exist at path:', filePath);
+                return res.status(404).json({ error: 'File not found', path: filePath });
+            }
             const fileContent = await storageManager_1.StorageManager.readFile(filePath);
             if (!fileContent) {
-                return res.status(404).json({ error: 'File not found' });
+                console.error('StorageManager.readFile returned null for:', filePath);
+                // Versuche direkt mit fs zu lesen als Fallback
+                try {
+                    const directContent = fs_1.default.readFileSync(filePath);
+                    console.log('Successfully read file directly with fs');
+                    // Verwende den direkten Inhalt weiter unten
+                    const fileContentToUse = directContent;
+                    if (preview === 'true') {
+                        // For preview, return JSON with base64 encoded image
+                        const base64Image = fileContentToUse.toString('base64');
+                        const fileExtension = path_1.default.extname(filePath).toLowerCase();
+                        let mimeType = 'image/jpeg'; // default
+                        // Determine MIME type based on file extension
+                        switch (fileExtension) {
+                            case '.png':
+                                mimeType = 'image/png';
+                                break;
+                            case '.gif':
+                                mimeType = 'image/gif';
+                                break;
+                            case '.bmp':
+                                mimeType = 'image/bmp';
+                                break;
+                            case '.webp':
+                                mimeType = 'image/webp';
+                                break;
+                            case '.svg':
+                                mimeType = 'image/svg+xml';
+                                break;
+                            case '.jpg':
+                            case '.jpeg':
+                            default:
+                                mimeType = 'image/jpeg';
+                                break;
+                        }
+                        const response = {
+                            dataUrl: `data:${mimeType};base64,${base64Image}`,
+                            url: `data:${mimeType};base64,${base64Image}`,
+                            fileName: path_1.default.basename(filePath),
+                            fileSize: fileContentToUse.length,
+                            mimeType: mimeType
+                        };
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Cache-Control', 'public, max-age=3600');
+                        return res.json(response);
+                    }
+                    else {
+                        // For direct download, return the raw image
+                        const fileExtension = path_1.default.extname(filePath).toLowerCase();
+                        let mimeType = 'image/jpeg'; // default
+                        // Determine MIME type based on file extension
+                        switch (fileExtension) {
+                            case '.png':
+                                mimeType = 'image/png';
+                                break;
+                            case '.gif':
+                                mimeType = 'image/gif';
+                                break;
+                            case '.bmp':
+                                mimeType = 'image/bmp';
+                                break;
+                            case '.webp':
+                                mimeType = 'image/webp';
+                                break;
+                            case '.svg':
+                                mimeType = 'image/svg+xml';
+                                break;
+                            case '.jpg':
+                            case '.jpeg':
+                            default:
+                                mimeType = 'image/jpeg';
+                                break;
+                        }
+                        res.setHeader('Content-Type', mimeType);
+                        res.setHeader('Content-Disposition', `inline; filename="${path_1.default.basename(filePath)}"`);
+                        res.setHeader('Cache-Control', 'public, max-age=3600');
+                        return res.send(fileContentToUse);
+                    }
+                }
+                catch (error) {
+                    console.error('Error reading file directly:', error);
+                    return res.status(500).json({ error: 'Failed to read image file', details: error });
+                }
             }
             if (preview === 'true') {
                 // For preview, return JSON with base64 encoded image
@@ -875,6 +967,8 @@ class FileSystemPathController {
                     fileSize: fileContent.length,
                     mimeType: mimeType
                 };
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Cache-Control', 'public, max-age=3600');
                 res.json(response);
             }
             else {
@@ -906,6 +1000,7 @@ class FileSystemPathController {
                 }
                 res.setHeader('Content-Type', mimeType);
                 res.setHeader('Content-Disposition', `inline; filename="${path_1.default.basename(filePath)}"`);
+                res.setHeader('Cache-Control', 'public, max-age=3600');
                 res.send(fileContent);
             }
         }

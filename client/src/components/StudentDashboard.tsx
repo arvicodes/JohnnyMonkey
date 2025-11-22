@@ -30,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
+import InboxModal from './InboxModal';
 import QuizStartButton from './QuizStartButton';
 import SubmissionUpload from './SubmissionUpload';
 
@@ -151,6 +152,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Abgabestatistik States
   const [showSubmissionStats, setShowSubmissionStats] = useState(false);
   const [submissionStats, setSubmissionStats] = useState<any[]>([]);
+  
+  // Inbox States
+  const [showInbox, setShowInbox] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // Neue States für echte Ordner-Vorschau (exakt wie im TeacherDashboard)
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
@@ -2228,6 +2233,33 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   }, [assignedFolderContents, userId]);
 
+  // Lade ungelesene Nachrichten regelmäßig
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      try {
+        const loginCode = localStorage.getItem('loginCode') || '';
+        const response = await fetch('/api/messages/unread-count', {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadMessageCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der ungelesenen Nachrichten:', error);
+      }
+    };
+
+    loadUnreadCount();
+    // Lade alle 30 Sekunden neu
+    const interval = setInterval(loadUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
   useEffect(() => {
     const fetchLerngruppen = async () => {
       try {
@@ -2610,26 +2642,57 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Grid>
                   <Grid item xs={4}>
                     <Box sx={{ 
-                      bgcolor: '#f5f5f5',
+                      bgcolor: '#e3f2fd',
                       borderRadius: 1.4,
                       p: 1.4,
-                      textAlign: 'center'
-                    }}>
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      position: 'relative',
+                      border: '2px solid #1976d2',
+                      '&:hover': {
+                        bgcolor: '#bbdefb',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 2px 8px rgba(25, 118, 210, 0.2)'
+                      }
+                    }}
+                    onClick={() => setShowInbox(true)}
+                    >
+                      {unreadMessageCount > 0 && (
+                        <Box sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          bgcolor: '#f44336',
+                          color: '#fff',
+                          borderRadius: '50%',
+                          width: 20,
+                          height: 20,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          zIndex: 1
+                        }}>
+                          {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                        </Box>
+                      )}
                       <Typography variant="h4" sx={{ 
                         color: '#1976d2',
                         fontWeight: 'bold',
-                        fontSize: '1.5rem',
+                        fontSize: '1.8rem',
                         mb: 0.35
                       }}>
-                        {lessons.length}
+                        📬
                       </Typography>
                       <Typography variant="caption" sx={{ 
-                        color: '#333',
+                        color: '#1976d2',
                         fontSize: '0.65rem',
                         fontWeight: 600,
                         textTransform: 'uppercase'
                       }}>
-                        Lektionen
+                        Posteingang
                       </Typography>
                     </Box>
                   </Grid>
@@ -3410,6 +3473,33 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       />
 
       {/* Flashcard Learning Modal */}
+      {/* Inbox Modal */}
+      <InboxModal
+        open={showInbox}
+        onClose={() => {
+          setShowInbox(false);
+          // Lade unreadCount neu wenn Modal geschlossen wird
+          const loadUnreadCount = async () => {
+            try {
+              const loginCode = localStorage.getItem('loginCode') || '';
+              const response = await fetch('/api/messages/unread-count', {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-login-code': loginCode
+                }
+              });
+              if (response.ok) {
+                const data = await response.json();
+                setUnreadMessageCount(data.unreadCount || 0);
+              }
+            } catch (error) {
+              console.error('Fehler:', error);
+            }
+          };
+          loadUnreadCount();
+        }}
+      />
+
       <FlashcardLearningModal
         open={flashcardLearningOpen}
         onClose={() => setFlashcardLearningOpen(false)}

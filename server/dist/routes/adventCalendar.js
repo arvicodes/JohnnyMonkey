@@ -18,5 +18,6 @@ router.get('/leaderboard', AdventCalendarController_1.getLeaderboard);
 // Admin/Teacher Routen (können später mit requireTeacher Middleware geschützt werden)
 router.post('/doors', AdventCalendarController_1.createDoor);
 router.post('/doors/bulk', AdventCalendarController_1.createDoorsForYear);
+router.post('/fix-theme', auth_1.requireTeacher, AdventCalendarController_1.fixThemeYear);
 exports.default = router;
 //# sourceMappingURL=adventCalendar.js.map

@@ -37,8 +37,10 @@ import {
   Grade,
   Edit,
   Save,
-  Close
+  Close,
+  BarChart
 } from '@mui/icons-material';
+import DreierprobeModal from './DreierprobeModal';
 
 interface KASubmission {
   id: string;
@@ -80,6 +82,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [corrections, setCorrections] = useState<Record<string, { points?: number; comment?: string }>>({});
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [showDreierprobe, setShowDreierprobe] = useState(false);
 
   useEffect(() => {
     loadSubmissions();
@@ -88,12 +91,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const loadSubmissions = async () => {
     try {
       setLoading(true);
+      setError(null);
       const loginCode = localStorage.getItem('loginCode') || '';
       
-      // Debug: Log den kaFilePath
-      console.log('🔍 Lade Abgaben für:', kaFilePath);
+      // Extrahiere nur den Dateinamen aus dem Pfad (für die Datenbank)
+      const fileName = kaFilePath.split('/').pop() || kaFilePath;
       
-      const response = await fetch(`/api/ka-corrections/submissions?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
+      // Debug: Log den kaFilePath
+      console.log('🔍 Lade Abgaben für:', kaFilePath, '(Dateiname:', fileName, ')');
+      
+      const response = await fetch(`/api/ka-corrections/submissions?kaFilePath=${encodeURIComponent(fileName)}`, {
         headers: {
           'Content-Type': 'application/json',
           'x-login-code': loginCode
@@ -103,7 +110,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Fehler beim Laden:', response.status, errorText);
-        throw new Error(`Fehler beim Laden der Abgaben: ${response.status}`);
+        // Kein Fehler werfen, sondern einfach leere Liste setzen
+        setSubmissions([]);
+        return;
       }
 
       const data = await response.json();
@@ -116,7 +125,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         loadCorrections(data.submissions[0].id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+      console.error('Fehler beim Laden der Abgaben:', err);
+      // Kein Fehler setzen, sondern einfach leere Liste
+      setSubmissions([]);
     } finally {
       setLoading(false);
     }
@@ -345,195 +356,264 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     );
   }
 
-  if (submissions.length === 0) {
-    return (
-      <Box p={3}>
-        <Typography variant="h6" gutterBottom>
-          Keine Abgaben gefunden
-        </Typography>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Es wurden noch keine Abgaben für diese Klassenarbeit eingereicht.
-        </Typography>
-        <Button onClick={onClose} sx={{ mt: 2 }}>Zurück</Button>
-      </Box>
-    );
-  }
+  // Keine Blockade mehr - Modal wird immer angezeigt
+
+  const handleOpenKA = async () => {
+    try {
+      // kaFilePath sollte jetzt der vollständige Pfad sein
+      const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`);
+      if (response.ok) {
+        const htmlContent = await response.text();
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else {
+        const errorText = await response.text().catch(() => 'Unbekannter Fehler');
+        console.error('Fehler beim Öffnen:', response.status, errorText);
+        alert(`Klassenarbeit konnte nicht geöffnet werden. (Status: ${response.status})`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Öffnen der Klassenarbeit:', error);
+      alert(`Fehler beim Öffnen der Klassenarbeit: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    }
+  };
 
   return (
-    <Box sx={{ p: 2, bgcolor: '#f5f7fa', minHeight: '100vh' }}>
+    <Box sx={{ p: 1, bgcolor: '#f5f7fa', minHeight: '100vh' }}>
       {/* Header */}
-      <Card sx={{ mb: 2, bgcolor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+      <Card sx={{ mb: 1.5, bgcolor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h5" sx={{ fontWeight: 600, color: '#1976d2' }}>
-              📝 Korrekturmodus
-            </Typography>
-            <Box display="flex" gap={1}>
-              {submissions.length > 0 && (
-                <Button 
-                  onClick={handleResetAllSubmissions}
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  disabled={resetting}
-                  sx={{ 
-                    borderColor: '#d32f2f',
-                    color: '#d32f2f',
-                    '&:hover': {
-                      borderColor: '#c62828',
-                      bgcolor: '#ffebee'
-                    }
-                  }}
-                >
-                  {resetting ? 'Zurücksetzen...' : '🗑️ Alle zurücksetzen'}
-                </Button>
-              )}
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', mb: 0.25 }}>
+                📝 Korrekturmodus
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                {kaFilePath.split('/').pop() || kaFilePath} {submissions.length > 0 && `• ${submissions.length} Abgabe${submissions.length > 1 ? 'n' : ''}`}
+              </Typography>
+            </Box>
+            <Box display="flex" gap={1} alignItems="center">
               <Button 
-                onClick={onClose} 
-                variant="outlined" 
+                onClick={handleOpenKA}
+                variant="outlined"
                 size="small"
-                startIcon={<Close />}
+                sx={{ fontSize: '0.8rem' }}
               >
-                Schließen
+                📄 KA öffnen
               </Button>
+              {submissions.length > 0 && (
+                <>
+                  <Button 
+                    onClick={() => setShowDreierprobe(true)}
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    startIcon={<BarChart />}
+                    sx={{ fontSize: '0.8rem' }}
+                  >
+                    Dreierprobe
+                  </Button>
+                  <Button 
+                    onClick={handleResetAllSubmissions}
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    disabled={resetting}
+                    sx={{ fontSize: '0.8rem' }}
+                  >
+                    {resetting ? 'Zurücksetzen...' : '🗑️ Zurücksetzen'}
+                  </Button>
+                </>
+              )}
+              <IconButton
+                onClick={onClose}
+                sx={{ 
+                  p: 0,
+                  minWidth: 32,
+                  width: 32,
+                  height: 32,
+                  '& .MuiSvgIcon-root': {
+                    fontSize: 20
+                  }
+                }}
+              >
+                <Close sx={{ width: '100%', height: '100%' }} />
+              </IconButton>
             </Box>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {kaFilePath} {submissions.length > 0 && `(${submissions.length} Abgabe${submissions.length > 1 ? 'n' : ''})`}
-          </Typography>
         </CardContent>
       </Card>
 
       {/* Tabs */}
-      <Tabs 
-        value={mode} 
-        onChange={(_, v) => setMode(v)} 
-        sx={{ 
-          mb: 2,
-          '& .MuiTab-root': {
-            minHeight: 48,
-            fontWeight: 600,
-            textTransform: 'none',
-            fontSize: '0.95rem'
-          },
-          '& .Mui-selected': {
-            color: '#1976d2'
-          }
-        }}
-        indicatorColor="primary"
-      >
-        <Tab label="👤 Schülerweise" value="by-student" />
-        <Tab label="📋 Aufgabenweise" value="by-task" />
-      </Tabs>
+      {submissions.length > 0 && (
+        <Tabs 
+          value={mode} 
+          onChange={(_, v) => setMode(v)} 
+          sx={{ 
+            mb: 1,
+            minHeight: 36,
+            '& .MuiTab-root': {
+              minHeight: 36,
+              fontWeight: 600,
+              textTransform: 'none',
+              fontSize: '0.8rem',
+              py: 0.5,
+              px: 1
+            },
+            '& .Mui-selected': {
+              color: '#1976d2'
+            }
+          }}
+          indicatorColor="primary"
+        >
+          <Tab label="👤 Schülerweise" value="by-student" />
+          <Tab label="📋 Aufgabenweise" value="by-task" />
+        </Tabs>
+      )}
+
+      {submissions.length === 0 && !loading && (
+        <Box sx={{ p: 2, textAlign: 'center', bgcolor: '#fff', borderRadius: 1, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', mb: 1 }}>
+          <Typography variant="body1" sx={{ mb: 1, color: '#666' }}>
+            📭 Noch keine Abgaben
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+            Es wurden noch keine Abgaben für diese Klassenarbeit eingereicht.
+          </Typography>
+        </Box>
+      )}
 
       {mode === 'by-student' && selectedSubmission && (
         <Box>
-          {/* Student Header Card */}
-          <Card sx={{ mb: 2, bgcolor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                <Box>
-                  <Box display="flex" alignItems="center" gap={1} mb={1}>
-                    <Person sx={{ color: '#1976d2' }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
-                      {selectedSubmission.student.name}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" gap={1} flexWrap="wrap" mb={1}>
-                    <Chip
-                      icon={<Grade />}
-                      label={`Auto: ${selectedSubmission.autoPoints.toFixed(1)} Pkt.`}
-                      size="small"
-                      sx={{ bgcolor: '#e3f2fd', color: '#1976d2', fontWeight: 600 }}
-                    />
-                    <Chip
-                      icon={<Grade />}
-                      label={`Gesamt: ${selectedSubmission.totalPoints.toFixed(1)} / 38 Pkt.`}
-                      size="small"
-                      sx={{ bgcolor: '#c8e6c9', color: '#2e7d32', fontWeight: 600 }}
-                    />
-                    <Chip
-                      label={selectedSubmission.status === 'submitted' ? '✅ Abgegeben' : '⏰ Abgelaufen'}
-                      size="small"
-                      sx={{ 
-                        bgcolor: selectedSubmission.status === 'submitted' ? '#e8f5e9' : '#fff3e0',
-                        color: selectedSubmission.status === 'submitted' ? '#2e7d32' : '#f57c00',
-                        fontWeight: 600
-                      }}
-                    />
-                    <Chip
-                      icon={<Grade />}
-                      label={`Note: ${calculateGrade(selectedSubmission.totalPoints, 38)}`}
-                      size="small"
-                      sx={{ 
-                        bgcolor: '#1976d2', 
-                        color: '#fff', 
-                        fontWeight: 700,
-                        fontSize: '0.95rem'
-                      }}
-                    />
-                  </Box>
-                  <Box display="flex" alignItems="center" gap={0.5}>
-                    <AccessTime sx={{ fontSize: 14, color: '#666' }} />
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(selectedSubmission.submittedAt).toLocaleString('de-DE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Typography>
-                  </Box>
-                </Box>
-                
-                {/* Navigation */}
-                <Box display="flex" alignItems="center" gap={1}>
+          {/* Student Header Card - Kompakt */}
+          <Card sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+            <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+              {/* Header Row: Navigation + Student Name */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.75} flexWrap="wrap" gap={0.5}>
+                {/* Navigation Links */}
+                <Box display="flex" alignItems="center" gap={0.5}>
                   <IconButton
                     onClick={handlePreviousStudent}
                     disabled={currentStudentIndex === 0}
                     size="small"
                     sx={{ 
-                      bgcolor: currentStudentIndex === 0 ? '#f5f5f5' : '#e3f2fd',
-                      '&:hover': { bgcolor: currentStudentIndex === 0 ? '#f5f5f5' : '#bbdefb' }
+                      p: 0.5,
+                      width: 28,
+                      height: 28
                     }}
                   >
-                    <ArrowBack fontSize="small" />
+                    <ArrowBack sx={{ fontSize: 16 }} />
                   </IconButton>
-                  <Typography variant="body2" sx={{ 
-                    px: 1.5, 
-                    py: 0.5,
+                  
+                  <Box sx={{ 
+                    px: 1, 
+                    py: 0.25,
                     bgcolor: '#f5f5f5',
                     borderRadius: 1,
-                    fontWeight: 600,
-                    minWidth: 60,
+                    border: '1px solid #e0e0e0',
+                    minWidth: 50,
                     textAlign: 'center'
                   }}>
-                    {currentStudentIndex + 1} / {submissions.length}
-                  </Typography>
+                    <Typography variant="caption" sx={{ 
+                      fontWeight: 700,
+                      color: '#1976d2',
+                      fontSize: '0.75rem'
+                    }}>
+                      {currentStudentIndex + 1}/{submissions.length}
+                    </Typography>
+                  </Box>
+                  
                   <IconButton
                     onClick={handleNextStudent}
                     disabled={currentStudentIndex === submissions.length - 1}
                     size="small"
                     sx={{ 
-                      bgcolor: currentStudentIndex === submissions.length - 1 ? '#f5f5f5' : '#e3f2fd',
-                      '&:hover': { bgcolor: currentStudentIndex === submissions.length - 1 ? '#f5f5f5' : '#bbdefb' }
+                      p: 0.5,
+                      width: 28,
+                      height: 28
                     }}
                   >
-                    <ArrowForward fontSize="small" />
+                    <ArrowForward sx={{ fontSize: 16 }} />
                   </IconButton>
                 </Box>
+                
+                {/* Student Name */}
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <Person sx={{ color: '#1976d2', fontSize: 18 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.85rem' }}>
+                    {selectedSubmission.student.name}
+                  </Typography>
+                </Box>
+              </Box>
+              
+              {/* Info Row: Chips und Zeit */}
+              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={0.5}>
+                <Box display="flex" gap={0.5} flexWrap="wrap">
+                  <Chip
+                    label={`Auto: ${selectedSubmission.autoPoints.toFixed(1)}`}
+                    size="small"
+                    sx={{ 
+                      bgcolor: '#e3f2fd', 
+                      color: '#1976d2', 
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      height: 24
+                    }}
+                  />
+                  <Chip
+                    label={`Gesamt: ${selectedSubmission.totalPoints.toFixed(1)}/38`}
+                    size="small"
+                    sx={{ 
+                      bgcolor: '#c8e6c9', 
+                      color: '#2e7d32', 
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      height: 24
+                    }}
+                  />
+                  <Chip
+                    label={selectedSubmission.status === 'submitted' ? '✅' : '⏰'}
+                    size="small"
+                    sx={{ 
+                      bgcolor: selectedSubmission.status === 'submitted' ? '#e8f5e9' : '#fff3e0',
+                      color: selectedSubmission.status === 'submitted' ? '#2e7d32' : '#f57c00',
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      height: 24
+                    }}
+                  />
+                  <Chip
+                    label={`Note: ${calculateGrade(selectedSubmission.totalPoints, 38)}`}
+                    size="small"
+                    sx={{ 
+                      bgcolor: '#1976d2', 
+                      color: '#fff', 
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      height: 24
+                    }}
+                  />
+                </Box>
+                
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                  {new Date(selectedSubmission.submittedAt).toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Typography>
               </Box>
             </CardContent>
           </Card>
 
           {/* Answers Section */}
           <Box>
-            <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#1a1a1a' }}>
-              📝 Antworten und Korrekturen
+            <Typography variant="caption" sx={{ mb: 0.75, fontWeight: 600, color: '#1a1a1a', fontSize: '0.8rem', display: 'block' }}>
+              📝 Antworten
             </Typography>
             
-            <Grid container spacing={1.5}>
+            <Grid container spacing={0.75}>
               {Object.entries(parseAnswers(selectedSubmission.answers)).map(([taskId, answer]) => {
                 const taskNumMatch = taskId.match(/a(\d+)/);
                 const taskNum = taskNumMatch ? taskNumMatch[1] : '';
@@ -544,24 +624,25 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   <Grid item xs={12} key={taskId}>
                     <Card sx={{ 
                       bgcolor: '#fff', 
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                      border: needsManualCorrection ? '2px solid #ff9800' : '1px solid #e0e0e0',
-                      '&:hover': { boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                      border: needsManualCorrection ? '1px solid #ff9800' : '1px solid #e0e0e0',
+                      '&:hover': { boxShadow: '0 1px 6px rgba(0,0,0,0.1)' }
                     }}>
-                      <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1976d2' }}>
-                            Aufgabe {taskId.toUpperCase()}
+                      <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.75rem' }}>
+                            {taskId.toUpperCase()}
                           </Typography>
                           {needsManualCorrection && (
                             <Chip
-                              label="✏️ Rechenweg"
+                              label="✏️"
                               size="small"
                               sx={{ 
                                 bgcolor: '#fff3e0', 
                                 color: '#f57c00',
                                 fontWeight: 600,
-                                fontSize: '0.75rem'
+                                fontSize: '0.65rem',
+                                height: 20
                               }}
                             />
                           )}
@@ -569,29 +650,27 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         
                         <Box sx={{ 
                           bgcolor: answer ? '#f5f5f5' : '#ffebee',
-                          p: 1,
-                          borderRadius: 1,
-                          mb: needsManualCorrection ? 1.5 : 0,
+                          p: 0.5,
+                          borderRadius: 0.5,
+                          mb: needsManualCorrection ? 0.75 : 0,
                           border: '1px solid #e0e0e0'
                         }}>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                            Antwort:
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
+                          <Typography variant="caption" sx={{ 
                             fontFamily: 'monospace',
                             fontWeight: answer ? 500 : 400,
-                            color: answer ? '#1a1a1a' : '#d32f2f'
+                            color: answer ? '#1a1a1a' : '#d32f2f',
+                            fontSize: '0.75rem'
                           }}>
-                            {String(answer) || '(keine Antwort)'}
+                            {String(answer) || '(leer)'}
                           </Typography>
                         </Box>
 
                         {needsManualCorrection && (
-                          <Box sx={{ mt: 1.5 }}>
-                            <Grid container spacing={1.5}>
+                          <Box sx={{ mt: 0.75 }}>
+                            <Grid container spacing={0.5}>
                               <Grid item xs={12} sm={3}>
                                 <TextField
-                                  label="Punkte"
+                                  label="Pkt."
                                   type="number"
                                   value={correction.points ?? ''}
                                   onChange={(e) => {
@@ -607,17 +686,20 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   fullWidth
                                   sx={{ 
                                     '& .MuiOutlinedInput-root': {
-                                      bgcolor: '#fff'
+                                      bgcolor: '#fff',
+                                      fontSize: '0.75rem'
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                      fontSize: '0.7rem'
                                     }
                                   }}
-                                  helperText="Max. 2 Pkt."
                                 />
                               </Grid>
                               <Grid item xs={12} sm={9}>
                                 <TextField
-                                  label="Kommentar (optional)"
+                                  label="Kommentar"
                                   multiline
-                                  rows={2}
+                                  rows={1}
                                   value={correction.comment ?? ''}
                                   onChange={(e) => {
                                     setCorrections(prev => ({
@@ -628,10 +710,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   onBlur={() => saveCorrection(taskNum, correction.points, correction.comment)}
                                   fullWidth
                                   size="small"
-                                  placeholder="Feedback zum Rechenweg..."
+                                  placeholder="Feedback..."
                                   sx={{ 
                                     '& .MuiOutlinedInput-root': {
-                                      bgcolor: '#fff'
+                                      bgcolor: '#fff',
+                                      fontSize: '0.75rem'
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                      fontSize: '0.7rem'
                                     }
                                   }}
                                 />
@@ -647,32 +733,33 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             </Grid>
             
             {/* Summary Card */}
-            <Card sx={{ mt: 2, bgcolor: '#e3f2fd', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 700, color: '#1976d2' }}>
-                  📊 Gesamtübersicht
-                </Typography>
-                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+            <Card sx={{ mt: 1, bgcolor: '#e3f2fd', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+              <CardContent sx={{ p: 0.75, '&:last-child': { pb: 0.75 } }}>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                   <Chip
-                    label={`Auto: ${selectedSubmission.autoPoints.toFixed(1)} Pkt.`}
-                    sx={{ bgcolor: '#fff', color: '#1976d2', fontWeight: 600 }}
+                    label={`Auto: ${selectedSubmission.autoPoints.toFixed(1)}`}
+                    size="small"
+                    sx={{ bgcolor: '#fff', color: '#1976d2', fontWeight: 600, fontSize: '0.7rem', height: 22 }}
                   />
                   <Chip
-                    label={`Manuell: ${(selectedSubmission.totalPoints - selectedSubmission.autoPoints).toFixed(1)} Pkt.`}
-                    sx={{ bgcolor: '#fff', color: '#7b1fa2', fontWeight: 600 }}
+                    label={`Manuell: ${(selectedSubmission.totalPoints - selectedSubmission.autoPoints).toFixed(1)}`}
+                    size="small"
+                    sx={{ bgcolor: '#fff', color: '#7b1fa2', fontWeight: 600, fontSize: '0.7rem', height: 22 }}
                   />
                   <Chip
-                    label={`Gesamt: ${selectedSubmission.totalPoints.toFixed(1)} / 38 Pkt.`}
-                    sx={{ bgcolor: '#c8e6c9', color: '#2e7d32', fontWeight: 700 }}
+                    label={`Gesamt: ${selectedSubmission.totalPoints.toFixed(1)}/38`}
+                    size="small"
+                    sx={{ bgcolor: '#c8e6c9', color: '#2e7d32', fontWeight: 700, fontSize: '0.7rem', height: 22 }}
                   />
                   <Chip
-                    icon={<Grade />}
                     label={`Note: ${calculateGrade(selectedSubmission.totalPoints, 38)}`}
+                    size="small"
                     sx={{ 
                       bgcolor: '#1976d2', 
                       color: '#fff', 
                       fontWeight: 700,
-                      fontSize: '1rem'
+                      fontSize: '0.75rem',
+                      height: 22
                     }}
                   />
                 </Stack>
@@ -684,11 +771,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
       {mode === 'by-task' && (
         <Box>
-          <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 600, color: '#1a1a1a' }}>
+          <Typography variant="caption" sx={{ mb: 0.75, fontWeight: 600, color: '#1a1a1a', fontSize: '0.8rem', display: 'block' }}>
             📋 Aufgabenweise Korrektur
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Alle Schülerantworten zu Aufgaben mit Rechenweg:
           </Typography>
           
           {tasksWithRechenweg.map(taskNum => {
@@ -710,31 +794,33 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             if (taskSubmissions.length === 0) return null;
 
             return (
-              <Card key={taskNum} sx={{ mb: 2, bgcolor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                  <Box display="flex" alignItems="center" gap={1} mb={2}>
-                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#1976d2' }}>
+              <Card key={taskNum} sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+                <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                  <Box display="flex" alignItems="center" gap={0.5} mb={0.75}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.8rem' }}>
                       Aufgabe {taskNum}
                     </Typography>
                     <Chip
-                      label="✏️ Rechenweg erforderlich"
+                      label="✏️"
                       size="small"
                       sx={{ 
                         bgcolor: '#fff3e0', 
                         color: '#f57c00',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        fontSize: '0.65rem',
+                        height: 20
                       }}
                     />
                   </Box>
                   
                   <TableContainer>
-                    <Table size="small" sx={{ '& .MuiTableCell-root': { py: 1 } }}>
+                    <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 0.75, fontSize: '0.75rem' } }}>
                       <TableHead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                          <TableCell sx={{ fontWeight: 700, width: '20%' }}>Schüler</TableCell>
-                          <TableCell sx={{ fontWeight: 700, width: '30%' }}>Antworten</TableCell>
-                          <TableCell sx={{ fontWeight: 700, width: '15%' }}>Punkte</TableCell>
-                          <TableCell sx={{ fontWeight: 700, width: '35%' }}>Kommentar</TableCell>
+                          <TableCell sx={{ fontWeight: 700, width: '20%', fontSize: '0.7rem' }}>Schüler</TableCell>
+                          <TableCell sx={{ fontWeight: 700, width: '30%', fontSize: '0.7rem' }}>Antwort</TableCell>
+                          <TableCell sx={{ fontWeight: 700, width: '15%', fontSize: '0.7rem' }}>Pkt.</TableCell>
+                          <TableCell sx={{ fontWeight: 700, width: '35%', fontSize: '0.7rem' }}>Kommentar</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -755,31 +841,25 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                               }}
                             >
                               <TableCell>
-                                <Box display="flex" alignItems="center" gap={0.5}>
-                                  <Person sx={{ fontSize: 16, color: '#666' }} />
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                    {submission.student.name}
-                                  </Typography>
-                                </Box>
+                                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                                  {submission.student.name}
+                                </Typography>
                               </TableCell>
                               <TableCell>
                                 {answers.map(({ taskId, answer }) => (
-                                  <Box key={taskId} sx={{ mb: 0.5 }}>
-                                    <Typography variant="caption" sx={{ color: '#666', mr: 0.5 }}>
-                                      {taskId.toUpperCase()}:
-                                    </Typography>
-                                    <Typography 
-                                      variant="body2" 
-                                      sx={{ 
-                                        fontFamily: 'monospace',
-                                        fontWeight: answer ? 500 : 400,
-                                        color: answer ? '#1a1a1a' : '#d32f2f',
-                                        display: 'inline'
-                                      }}
-                                    >
-                                      {String(answer) || '(leer)'}
-                                    </Typography>
-                                  </Box>
+                                  <Typography 
+                                    key={taskId}
+                                    variant="caption" 
+                                    sx={{ 
+                                      fontFamily: 'monospace',
+                                      fontWeight: answer ? 500 : 400,
+                                      color: answer ? '#1a1a1a' : '#d32f2f',
+                                      fontSize: '0.7rem',
+                                      display: 'block'
+                                    }}
+                                  >
+                                    {String(answer) || '(leer)'}
+                                  </Typography>
                                 ))}
                               </TableCell>
                               <TableCell>
@@ -796,13 +876,18 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   onBlur={() => saveCorrection(taskNum, correctionState.points, correctionState.comment, submission.id)}
                                   inputProps={{ min: 0, max: 10, step: 0.5 }}
                                   size="small"
-                                  sx={{ width: '90px' }}
+                                  sx={{ 
+                                    width: '70px',
+                                    '& .MuiOutlinedInput-root': {
+                                      fontSize: '0.7rem'
+                                    }
+                                  }}
                                 />
                               </TableCell>
                               <TableCell>
                                 <TextField
                                   multiline
-                                  rows={2}
+                                  rows={1}
                                   value={correctionState.comment ?? ''}
                                   onChange={(e) => {
                                     setCorrections(prev => ({
@@ -813,10 +898,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   onBlur={() => saveCorrection(taskNum, correctionState.points, correctionState.comment, submission.id)}
                                   size="small"
                                   fullWidth
-                                  placeholder="Kommentar..."
+                                  placeholder="..."
                                   sx={{ 
                                     '& .MuiOutlinedInput-root': {
-                                      bgcolor: '#fff'
+                                      bgcolor: '#fff',
+                                      fontSize: '0.7rem'
                                     }
                                   }}
                                 />
@@ -833,6 +919,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           })}
         </Box>
       )}
+
+      {/* Dreierprobe Modal */}
+      <DreierprobeModal
+        open={showDreierprobe}
+        onClose={() => setShowDreierprobe(false)}
+        kaFilePath={kaFilePath}
+        submissions={submissions}
+      />
     </Box>
   );
 };

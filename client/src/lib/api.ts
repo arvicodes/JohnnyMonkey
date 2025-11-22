@@ -3,7 +3,7 @@
 // API Base URL - Development vs Production
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://johnnymonkey.onrender.com' 
-  : 'http://localhost:3001';
+  : ''; // Leer lassen für relative URLs (Proxy funktioniert dann)
 
 export const apiCall = async (url: string, options: RequestInit = {}) => {
   const loginCode = localStorage.getItem('loginCode');
