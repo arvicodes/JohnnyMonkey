@@ -9026,10 +9026,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         </DialogTitle>
         <DialogContent>
           <TextField
+            inputRef={messageSubjectInputRef}
             label="Betreff"
             fullWidth
             value={messageSubject}
             onChange={(e) => setMessageSubject(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && messageSubject && messageContent) {
+                e.preventDefault();
+                // Trigger send action
+                const sendButton = document.querySelector('[data-send-message-button]') as HTMLButtonElement;
+                if (sendButton && !sendButton.disabled) {
+                  sendButton.click();
+                }
+              }
+            }}
             margin="normal"
             required
           />
@@ -9040,6 +9051,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             rows={6}
             value={messageContent}
             onChange={(e) => setMessageContent(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.ctrlKey && messageSubject && messageContent) {
+                e.preventDefault();
+                // Trigger send action
+                const sendButton = document.querySelector('[data-send-message-button]') as HTMLButtonElement;
+                if (sendButton && !sendButton.disabled) {
+                  sendButton.click();
+                }
+              }
+            }}
             margin="normal"
             required
           />
@@ -9121,6 +9142,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             variant="contained"
             disabled={!messageSubject || !messageContent || sendingMessage}
             type="button"
+            data-send-message-button
           >
             {sendingMessage ? 'Wird gesendet...' : 'Senden'}
           </Button>
