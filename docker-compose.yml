@@ -2,16 +2,22 @@ version: '3.8'
 
 services:
   johnnymonkey:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: johnnymonkey-app
     ports:
-      - "3001:3001"  # Server API
-      - "3003:3003"  # Client Frontend
+      - "3001:3001"  # Server API (serves both API and frontend)
     environment:
       - NODE_ENV=production
       - PORT=3001
     volumes:
-      - ./server/prisma:/app/server/prisma
-      - ./material:/app/material
+      # Persistente Datenbank
+      - johnnymonkey_db:/app/server/prisma
+      # Material-Dateien
+      - ./material:/app/material:ro
+      # Optional: Logs für einfacheren Zugriff
+      - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
@@ -19,6 +25,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      # Portainer Labels für bessere Organisation
+      - "com.portainer.io.name=JohnnyMonkey"
+      - "com.portainer.io.description=Educational Learning Platform"
+      - "com.portainer.io.category=Application"
+      - "com.portainer.io.managed=true"
+    networks:
+      - johnnymonkey-network
 
   # Optional: Separate database service (for PostgreSQL)
   # postgres:
@@ -33,5 +47,39 @@ services:
   #     - "5432:5432"
   #   restart: unless-stopped
 
+  # Portainer - Docker Management UI
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    ports:
+      - "9000:9000"
+    command: -H unix:///var/run/docker.sock
+    labels:
+      - "com.portainer.io.name=Portainer"
+      - "com.portainer.io.description=Docker Management UI"
+      - "com.portainer.io.category=Management"
+    networks:
+      - johnnymonkey-network
+
+networks:
+  johnnymonkey-network:
+    driver: bridge
+    name: johnnymonkey-network
+
 volumes:
   postgres_data:
+    name: johnnymonkey_postgres_data
+  portainer_data:
+    name: johnnymonkey_portainer_data
+  johnnymonkey_db:
+    name: johnnymonkey_database
+    driver: local
+  johnnymonkey_logs:
+    name: johnnymonkey_logs
+    driver: local

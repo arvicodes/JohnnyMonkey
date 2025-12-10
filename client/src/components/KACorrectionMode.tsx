@@ -38,8 +38,12 @@ import {
   Edit,
   Save,
   Close,
-  BarChart
+  BarChart,
+  Description,
+  FileDownload
 } from '@mui/icons-material';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 import DreierprobeModal from './DreierprobeModal';
 
 interface KASubmission {
@@ -83,6 +87,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [showDreierprobe, setShowDreierprobe] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadSubmissions();
@@ -379,6 +384,157 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     }
   };
 
+  const exportToWord = async (includeSolutions: boolean) => {
+    try {
+      setExporting(true);
+      const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`);
+      
+      if (!response.ok) {
+        throw new Error(`Fehler beim Laden: ${response.status}`);
+      }
+
+      const htmlContent = await response.text();
+      
+      // Erstelle ein temporäres DOM-Element zum Parsen
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlContent, 'text/html');
+      
+      // Entferne Lösungsteile, wenn ohne Musterlösung
+      if (!includeSolutions) {
+        const solutions = doc.querySelectorAll('.solution');
+        solutions.forEach(sol => sol.remove());
+      }
+
+      // Extrahiere den Titel
+      const title = doc.querySelector('title')?.textContent || 'Klassenarbeit';
+      const fileName = kaFilePath.split('/').pop()?.replace('.html', '') || 'klassenarbeit';
+      
+      // Erstelle Word-Dokument
+      const paragraphs: Paragraph[] = [];
+      
+      // Titel
+      paragraphs.push(
+        new Paragraph({
+          text: title,
+          heading: HeadingLevel.HEADING_1,
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 }
+        })
+      );
+
+      // Extrahiere alle Aufgaben
+      const tasks = doc.querySelectorAll('.task');
+      tasks.forEach((task, taskIndex) => {
+        const taskNumber = task.querySelector('.task-number')?.textContent || `Aufgabe ${taskIndex + 1}`;
+        const taskContent = task.querySelector('.task-content');
+        
+        if (taskContent) {
+          // Aufgabenüberschrift
+          paragraphs.push(
+            new Paragraph({
+              text: taskNumber,
+              heading: HeadingLevel.HEADING_2,
+              spacing: { before: 400, after: 200 }
+            })
+          );
+
+          // Szenario/Text
+          const scenario = taskContent.querySelector('.task-scenario');
+          if (scenario) {
+            const scenarioText = scenario.textContent?.trim() || '';
+            if (scenarioText) {
+              paragraphs.push(
+                new Paragraph({
+                  text: scenarioText,
+                  spacing: { after: 200 }
+                })
+              );
+            }
+          }
+
+          // Input-Gruppen (Fragen)
+          const inputGroups = taskContent.querySelectorAll('.input-group');
+          inputGroups.forEach((group) => {
+            const label = group.querySelector('label')?.textContent?.trim() || '';
+            if (label) {
+              paragraphs.push(
+                new Paragraph({
+                  text: label,
+                  spacing: { after: 100 }
+                })
+              );
+            }
+          });
+
+          // Rechenweg-Hinweis
+          const rechenweg = taskContent.querySelector('.rechenweg-required');
+          if (rechenweg) {
+            paragraphs.push(
+              new Paragraph({
+                text: rechenweg.textContent?.trim() || '',
+                spacing: { after: 200 }
+              })
+            );
+          }
+
+          // Lösung (nur wenn includeSolutions)
+          if (includeSolutions) {
+            const solution = taskContent.querySelector('.solution');
+            if (solution) {
+              paragraphs.push(
+                new Paragraph({
+                  text: 'Musterlösung:',
+                  heading: HeadingLevel.HEADING_3,
+                  spacing: { before: 200, after: 100 }
+                })
+              );
+              
+              const solutionParagraphs = solution.querySelectorAll('p');
+              solutionParagraphs.forEach((p) => {
+                const text = p.textContent?.trim() || '';
+                if (text) {
+                  paragraphs.push(
+                    new Paragraph({
+                      text: text,
+                      spacing: { after: 100 }
+                    })
+                  );
+                }
+              });
+            }
+          }
+
+          paragraphs.push(
+            new Paragraph({
+              text: '',
+              spacing: { after: 300 }
+            })
+          );
+        }
+      });
+
+      // Erstelle das Word-Dokument
+      const wordDoc = new Document({
+        sections: [{
+          properties: {},
+          children: paragraphs
+        }]
+      });
+
+      // Generiere und speichere
+      const blob = await Packer.toBlob(wordDoc);
+      const exportFileName = `${fileName}${includeSolutions ? '_mit_Musterloesung' : ''}.docx`;
+      saveAs(blob, exportFileName);
+      
+      alert(`Klassenarbeit erfolgreich als Word-Datei exportiert!`);
+    } catch (error) {
+      console.error('Fehler beim Exportieren:', error);
+      alert(`Fehler beim Exportieren: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 1, bgcolor: '#f5f7fa', minHeight: '100vh' }}>
       {/* Header */}
@@ -387,20 +543,41 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', mb: 0.25 }}>
-                📝 Korrekturmodus
-              </Typography>
+              📝 Korrekturmodus
+            </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
                 {kaFilePath.split('/').pop() || kaFilePath} {submissions.length > 0 && `• ${submissions.length} Abgabe${submissions.length > 1 ? 'n' : ''}`}
               </Typography>
             </Box>
-            <Box display="flex" gap={1} alignItems="center">
+            <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
               <Button 
                 onClick={handleOpenKA}
                 variant="outlined"
                 size="small"
+                startIcon={<Description />}
                 sx={{ fontSize: '0.8rem' }}
               >
-                📄 KA öffnen
+                KA öffnen
+              </Button>
+              <Button 
+                onClick={() => exportToWord(false)}
+                variant="outlined"
+                size="small"
+                startIcon={<FileDownload />}
+                disabled={exporting}
+                sx={{ fontSize: '0.8rem' }}
+              >
+                {exporting ? 'Exportiert...' : 'Als Word (ohne Lösung)'}
+              </Button>
+              <Button 
+                onClick={() => exportToWord(true)}
+                variant="outlined"
+                size="small"
+                startIcon={<FileDownload />}
+                disabled={exporting}
+                sx={{ fontSize: '0.8rem' }}
+              >
+                {exporting ? 'Exportiert...' : 'Als Word (mit Lösung)'}
               </Button>
               {submissions.length > 0 && (
                 <>
@@ -414,20 +591,20 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   >
                     Dreierprobe
                   </Button>
-                  <Button 
-                    onClick={handleResetAllSubmissions}
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                    disabled={resetting}
+                <Button 
+                  onClick={handleResetAllSubmissions}
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  disabled={resetting}
                     sx={{ fontSize: '0.8rem' }}
                   >
                     {resetting ? 'Zurücksetzen...' : '🗑️ Zurücksetzen'}
-                  </Button>
+                </Button>
                 </>
               )}
               <IconButton
-                onClick={onClose}
+                onClick={onClose} 
                 sx={{ 
                   p: 0,
                   minWidth: 32,
@@ -447,29 +624,29 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
       {/* Tabs */}
       {submissions.length > 0 && (
-        <Tabs 
-          value={mode} 
-          onChange={(_, v) => setMode(v)} 
-          sx={{ 
+      <Tabs 
+        value={mode} 
+        onChange={(_, v) => setMode(v)} 
+        sx={{ 
             mb: 1,
             minHeight: 36,
-            '& .MuiTab-root': {
+          '& .MuiTab-root': {
               minHeight: 36,
-              fontWeight: 600,
-              textTransform: 'none',
+            fontWeight: 600,
+            textTransform: 'none',
               fontSize: '0.8rem',
               py: 0.5,
               px: 1
-            },
-            '& .Mui-selected': {
-              color: '#1976d2'
-            }
-          }}
-          indicatorColor="primary"
-        >
-          <Tab label="👤 Schülerweise" value="by-student" />
-          <Tab label="📋 Aufgabenweise" value="by-task" />
-        </Tabs>
+          },
+          '& .Mui-selected': {
+            color: '#1976d2'
+          }
+        }}
+        indicatorColor="primary"
+      >
+        <Tab label="👤 Schülerweise" value="by-student" />
+        <Tab label="📋 Aufgabenweise" value="by-task" />
+      </Tabs>
       )}
 
       {submissions.length === 0 && !loading && (
@@ -541,17 +718,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 <Box display="flex" alignItems="center" gap={0.5}>
                   <Person sx={{ color: '#1976d2', fontSize: 18 }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.85rem' }}>
-                    {selectedSubmission.student.name}
-                  </Typography>
-                </Box>
+                      {selectedSubmission.student.name}
+                    </Typography>
+                  </Box>
               </Box>
               
               {/* Info Row: Chips und Zeit */}
               <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={0.5}>
                 <Box display="flex" gap={0.5} flexWrap="wrap">
-                  <Chip
+                    <Chip
                     label={`Auto: ${selectedSubmission.autoPoints.toFixed(1)}`}
-                    size="small"
+                      size="small"
                     sx={{ 
                       bgcolor: '#e3f2fd', 
                       color: '#1976d2', 
@@ -559,10 +736,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       fontSize: '0.7rem',
                       height: 24
                     }}
-                  />
-                  <Chip
+                    />
+                    <Chip
                     label={`Gesamt: ${selectedSubmission.totalPoints.toFixed(1)}/38`}
-                    size="small"
+                      size="small"
                     sx={{ 
                       bgcolor: '#c8e6c9', 
                       color: '#2e7d32', 
@@ -570,39 +747,39 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       fontSize: '0.7rem',
                       height: 24
                     }}
-                  />
-                  <Chip
+                    />
+                    <Chip
                     label={selectedSubmission.status === 'submitted' ? '✅' : '⏰'}
-                    size="small"
-                    sx={{ 
-                      bgcolor: selectedSubmission.status === 'submitted' ? '#e8f5e9' : '#fff3e0',
-                      color: selectedSubmission.status === 'submitted' ? '#2e7d32' : '#f57c00',
+                      size="small"
+                      sx={{ 
+                        bgcolor: selectedSubmission.status === 'submitted' ? '#e8f5e9' : '#fff3e0',
+                        color: selectedSubmission.status === 'submitted' ? '#2e7d32' : '#f57c00',
                       fontWeight: 600,
                       fontSize: '0.7rem',
                       height: 24
-                    }}
-                  />
-                  <Chip
-                    label={`Note: ${calculateGrade(selectedSubmission.totalPoints, 38)}`}
-                    size="small"
-                    sx={{ 
-                      bgcolor: '#1976d2', 
-                      color: '#fff', 
-                      fontWeight: 700,
+                      }}
+                    />
+                    <Chip
+                      label={`Note: ${calculateGrade(selectedSubmission.totalPoints, 38)}`}
+                      size="small"
+                      sx={{ 
+                        bgcolor: '#1976d2', 
+                        color: '#fff', 
+                        fontWeight: 700,
                       fontSize: '0.75rem',
                       height: 24
-                    }}
-                  />
-                </Box>
+                      }}
+                    />
+                  </Box>
                 
                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                  {new Date(selectedSubmission.submittedAt).toLocaleString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </Typography>
+                      {new Date(selectedSubmission.submittedAt).toLocaleString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Typography>
               </Box>
             </CardContent>
           </Card>
@@ -842,24 +1019,24 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             >
                               <TableCell>
                                 <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
-                                  {submission.student.name}
-                                </Typography>
+                                    {submission.student.name}
+                                  </Typography>
                               </TableCell>
                               <TableCell>
                                 {answers.map(({ taskId, answer }) => (
-                                  <Typography 
+                                    <Typography 
                                     key={taskId}
                                     variant="caption" 
-                                    sx={{ 
-                                      fontFamily: 'monospace',
-                                      fontWeight: answer ? 500 : 400,
-                                      color: answer ? '#1a1a1a' : '#d32f2f',
+                                      sx={{ 
+                                        fontFamily: 'monospace',
+                                        fontWeight: answer ? 500 : 400,
+                                        color: answer ? '#1a1a1a' : '#d32f2f',
                                       fontSize: '0.7rem',
                                       display: 'block'
-                                    }}
-                                  >
-                                    {String(answer) || '(leer)'}
-                                  </Typography>
+                                      }}
+                                    >
+                                      {String(answer) || '(leer)'}
+                                    </Typography>
                                 ))}
                               </TableCell>
                               <TableCell>

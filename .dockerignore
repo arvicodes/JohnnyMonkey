@@ -1,0 +1,73 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node modules (werden im Container installiert)
+node_modules
+**/node_modules
+
+# Build outputs (werden im Container gebaut)
+client/build
+server/dist
+server/client-build
+
+# Logs
+*.log
+logs
+*.pid
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+!README.md
+
+# Backups
+backups/
+*.db
+*.sqlite3
+backup_*.db
+
+# Development scripts (nicht für Production)
+start-all.sh
+start-app.sh
+stop-app.sh
+restart-app.sh
+scripts/
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+test/
+tests/
+
+# Coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+

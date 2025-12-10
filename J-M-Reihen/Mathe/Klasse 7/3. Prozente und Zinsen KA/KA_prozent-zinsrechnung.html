@@ -542,16 +542,26 @@
             align-items: center;
         }
 
+        .submit-section > div:first-child {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
         .print-button {
             background: #1976d2;
             color: white;
             border: none;
-            padding: 12px 30px;
-            font-size: 16px;
+            padding: 8px 16px;
+            font-size: 13px;
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.2s;
             font-weight: bold;
+            white-space: nowrap;
         }
 
         .print-button:hover {
@@ -566,18 +576,42 @@
             display: inline-block;
         }
 
+        .export-button {
+            background: #7b1fa2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .export-button:hover {
+            background: #6a1b9a;
+        }
+
+        .export-button.teacher-only {
+            display: none;
+        }
+
+        .teacher-mode .export-button.teacher-only {
+            display: inline-block;
+        }
+
         .submit-button {
             background: #2e7d32;
             color: white;
             border: none;
-            padding: 20px 60px;
-            font-size: 24px;
-            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 4px;
             cursor: pointer;
             transition: background 0.2s;
             font-weight: bold;
-            width: 100%;
-            max-width: 500px;
+            white-space: nowrap;
         }
 
         .submit-button:hover {
@@ -1214,8 +1248,12 @@
     </div>
 
     <div class="submit-section">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
         <button class="submit-button" id="submitBtn">Abgeben</button>
         <button class="print-button teacher-only" id="printBtn">Druckversion</button>
+            <button class="export-button teacher-only" id="exportWordBtn">Word (ohne Lösung)</button>
+            <button class="export-button teacher-only" id="exportWordWithSolutionBtn">Word (mit Lösung)</button>
+        </div>
         <div class="submitted" id="submittedMsg">
             ✓ Klassenarbeit wurde abgegeben. Vielen Dank!
         </div>
@@ -2355,6 +2393,291 @@
         // Druckversion-Button
         const printBtn = document.getElementById('printBtn');
         printBtn.addEventListener('click', generatePrintVersion);
+
+        // Word-Export-Funktionen
+        async function exportToWord(includeSolution = false) {
+            try {
+                // Lade docx-Bibliothek dynamisch
+                if (typeof Document === 'undefined') {
+                    await loadDocxLibrary();
+                }
+
+                const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = window.docx;
+
+                // Sammle alle Aufgaben
+                const tasks = [];
+                const taskElements = document.querySelectorAll('.task');
+                
+                taskElements.forEach((taskEl, index) => {
+                    const taskNumberEl = taskEl.querySelector('.task-number');
+                    const taskNumber = taskNumberEl?.textContent?.trim() || `Aufgabe ${index + 1}`;
+                    const taskContent = taskEl.querySelector('.task-content');
+                    // Lösung kann sowohl in taskContent als auch direkt in taskEl sein
+                    const solution = taskEl.querySelector('.solution') || taskContent?.querySelector('.solution');
+                    
+                    if (!taskContent) return;
+                    
+                    // Extrahiere Text-Inhalte
+                    const scenarioEl = taskContent.querySelector('.task-scenario');
+                    const scenario = scenarioEl?.textContent?.trim() || '';
+                    
+                    // Extrahiere alle Inhalte (Text, Bilder, etc.)
+                    const inputGroups = Array.from(taskContent.querySelectorAll('.input-group'));
+                    const questions = inputGroups.map(ig => {
+                        const label = ig.querySelector('label');
+                        if (!label) return null;
+                        // Entferne <strong> Tags für sauberen Text
+                        const labelClone = label.cloneNode(true);
+                        const strongTags = labelClone.querySelectorAll('strong');
+                        strongTags.forEach(s => {
+                            const parent = s.parentNode;
+                            while (s.firstChild) {
+                                parent.insertBefore(s.firstChild, s);
+                            }
+                            parent.removeChild(s);
+                        });
+                        return labelClone.textContent?.trim() || '';
+                    }).filter(q => q);
+                    
+                    // Extrahiere Lösung (wenn vorhanden)
+                    let solutionHTML = null;
+                    if (solution) {
+                        solutionHTML = solution.innerHTML;
+                        console.log(`Aufgabe ${index + 1}: Lösung gefunden, Länge: ${solutionHTML.length}`);
+                    } else {
+                        console.log(`Aufgabe ${index + 1}: Keine Lösung gefunden`);
+                    }
+                    
+                    tasks.push({
+                        number: taskNumber,
+                        scenario: scenario,
+                        questions: questions,
+                        solution: solutionHTML
+                    });
+                });
+
+                // Erstelle Word-Dokument
+                const doc = new Document({
+                    sections: [{
+                        properties: {
+                            page: {
+                                margin: {
+                                    top: 1440,    // 2.54 cm (1 inch)
+                                    right: 1440,
+                                    bottom: 1440,
+                                    left: 1440
+                                }
+                            }
+                        },
+                        children: [
+                            // Header: Vor- und Nachname, Note (wie im PDF-Beispiel)
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: 'Vor- und Nachname: ' }),
+                                    new TextRun({ text: '        ' }),
+                                    new TextRun({ text: 'Note: ' })
+                                ],
+                                spacing: { after: 400 }
+                            }),
+                            
+                            // Titel (zentriert, wie im PDF)
+                            new Paragraph({
+                                text: 'Klassenarbeit: Prozent- und Zinsrechnung',
+                                heading: HeadingLevel.HEADING_1,
+                                alignment: AlignmentType.CENTER,
+                                spacing: { after: 600 }
+                            }),
+
+                            // Aufgaben
+                            ...tasks.flatMap((task, idx) => {
+                                const children = [
+                                    // Aufgaben-Nummer und Punkte (wie im PDF: "# Aufgabe X: (Y Punkte)")
+                                    new Paragraph({
+                                        text: task.number,
+                                        heading: HeadingLevel.HEADING_2,
+                                        spacing: { before: 400, after: 200 }
+                                    })
+                                ];
+
+                                // Szenario/Text
+                                if (task.scenario) {
+                                    children.push(
+                                        new Paragraph({
+                                            text: task.scenario,
+                                            spacing: { after: 300 }
+                                        })
+                                    );
+                                }
+
+                                // Fragen (mit a), b), c) etc.)
+                                task.questions.forEach((question, qIdx) => {
+                                    children.push(
+                                        new Paragraph({
+                                            text: question,
+                                            spacing: { after: 300 }
+                                        })
+                                    );
+                                });
+
+                                // Musterlösung (wenn gewünscht)
+                                if (includeSolution && task.solution) {
+                                    console.log(`Füge Musterlösung für Aufgabe ${idx + 1} hinzu`);
+                                    const solutionDiv = document.createElement('div');
+                                    solutionDiv.innerHTML = task.solution;
+                                    
+                                    // Extrahiere Überschrift
+                                    const heading = solutionDiv.querySelector('h4');
+                                    if (heading) {
+                                        children.push(
+                                            new Paragraph({
+                                                text: heading.textContent?.trim() || 'Musterlösung:',
+                                                heading: HeadingLevel.HEADING_3,
+                                                spacing: { before: 600, after: 300 }
+                                            })
+                                        );
+                                    } else {
+                                        // Füge Überschrift hinzu, auch wenn keine vorhanden
+                                        children.push(
+                                            new Paragraph({
+                                                text: 'Musterlösung:',
+                                                heading: HeadingLevel.HEADING_3,
+                                                spacing: { before: 600, after: 300 }
+                                            })
+                                        );
+                                    }
+                                    
+                                    // Extrahiere Lösungstexte
+                                    const solutionParagraphs = solutionDiv.querySelectorAll('p');
+                                    if (solutionParagraphs.length > 0) {
+                                        solutionParagraphs.forEach(p => {
+                                            const text = p.textContent?.trim() || '';
+                                            if (text) {
+                                                // Prüfe auf fettgedruckte Teile
+                                                const boldParts = p.querySelectorAll('strong');
+                                                if (boldParts.length > 0) {
+                                                    const paraChildren = [];
+                                                    let lastIndex = 0;
+                                                    const fullText = p.textContent || '';
+                                                    boldParts.forEach(strong => {
+                                                        const strongText = strong.textContent || '';
+                                                        const strongIndex = fullText.indexOf(strongText, lastIndex);
+                                                        if (strongIndex >= 0) {
+                                                            const beforeText = fullText.substring(lastIndex, strongIndex);
+                                                            if (beforeText) {
+                                                                paraChildren.push(new TextRun({ text: beforeText }));
+                                                            }
+                                                            paraChildren.push(new TextRun({ text: strongText, bold: true }));
+                                                            lastIndex = strongIndex + strongText.length;
+                                                        }
+                                                    });
+                                                    const afterText = fullText.substring(lastIndex);
+                                                    if (afterText) {
+                                                        paraChildren.push(new TextRun({ text: afterText }));
+                                                    }
+                                                    children.push(
+                                                        new Paragraph({
+                                                            children: paraChildren,
+                                                            spacing: { after: 200 }
+                                                        })
+                                                    );
+                                                } else {
+                                                    children.push(
+                                                        new Paragraph({
+                                                            text: text,
+                                                            spacing: { after: 200 }
+                                                        })
+                                                    );
+                                                }
+                                            }
+                                        });
+                                    } else {
+                                        // Fallback: Text direkt extrahieren
+                                        const solutionText = solutionDiv.textContent || solutionDiv.innerText || '';
+                                        if (solutionText.trim()) {
+                                            solutionText.split('\n').forEach(line => {
+                                                if (line.trim()) {
+                                                    children.push(
+                                                        new Paragraph({
+                                                            text: line.trim(),
+                                                            spacing: { after: 200 }
+                                                        })
+                                                    );
+                                                }
+                                            });
+                                        }
+                                    }
+                                } else if (includeSolution) {
+                                    console.log(`Keine Lösung für Aufgabe ${idx + 1} gefunden`);
+                                }
+
+                                // Trennlinie nach jeder Aufgabe (außer der letzten)
+                                if (idx < tasks.length - 1) {
+                                    children.push(
+                                        new Paragraph({
+                                            text: '---',
+                                            alignment: AlignmentType.CENTER,
+                                            spacing: { before: 300, after: 300 }
+                                        })
+                                    );
+                                }
+
+                                return children;
+                            })
+                        ]
+                    }]
+                });
+
+                // Generiere und speichere Dokument
+                const blob = await Packer.toBlob(doc);
+                const fileName = `Klassenarbeit_Prozent_Zinsrechnung${includeSolution ? '_mit_Loesung' : ''}.docx`;
+                
+                // Speichere Datei
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                alert(`✅ Klassenarbeit erfolgreich als Word-Dokument exportiert!`);
+            } catch (error) {
+                console.error('Fehler beim Word-Export:', error);
+                alert('❌ Fehler beim Exportieren. Bitte versuchen Sie es erneut.');
+            }
+        }
+
+        // Lade docx-Bibliothek dynamisch
+        async function loadDocxLibrary() {
+            if (window.docx) return;
+            
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
+                script.onload = () => {
+                    // docx wird als UMD-Modul geladen
+                    if (window.docx) {
+                        resolve();
+                    } else {
+                        reject(new Error('docx-Bibliothek konnte nicht geladen werden'));
+                    }
+                };
+                script.onerror = () => reject(new Error('Fehler beim Laden der docx-Bibliothek'));
+                document.head.appendChild(script);
+            });
+        }
+
+        // Word-Export-Buttons
+        const exportWordBtn = document.getElementById('exportWordBtn');
+        const exportWordWithSolutionBtn = document.getElementById('exportWordWithSolutionBtn');
+        
+        if (exportWordBtn) {
+            exportWordBtn.addEventListener('click', () => exportToWord(false));
+        }
+        if (exportWordWithSolutionBtn) {
+            exportWordWithSolutionBtn.addEventListener('click', () => exportToWord(true));
+        }
 
         // Verhindere Navigation bei ungespeicherten Änderungen (optional)
         window.addEventListener('beforeunload', function(e) {
