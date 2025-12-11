@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  johnnymonkey:
+    # Verwende ein bereits gebautes Image statt build
+    # Image muss vorher gebaut werden: docker build -t johnnymonkey:latest .
+    image: johnnymonkey:latest
+    container_name: johnnymonkey-app
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - johnnymonkey_db:/app/server/prisma
+      - johnnymonkey_material:/app/material:ro
+      - johnnymonkey_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.portainer.io.name=JohnnyMonkey"
+      - "com.portainer.io.description=Educational Learning Platform"
+      - "com.portainer.io.category=Application"
+    networks:
+      - johnnymonkey-network
+
+networks:
+  johnnymonkey-network:
+    driver: bridge
+
+volumes:
+  johnnymonkey_db:
+    name: johnnymonkey_database
+  johnnymonkey_material:
+    name: johnnymonkey_material
+  johnnymonkey_logs:
+    name: johnnymonkey_logs
+
