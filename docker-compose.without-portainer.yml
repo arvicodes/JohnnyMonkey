@@ -34,22 +34,6 @@ services:
     networks:
       - johnnymonkey-network
 
-  # Optional: Separate database service (for PostgreSQL)
-  # postgres:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_DB: johnnymonkey
-  #     POSTGRES_USER: johnnymonkey
-  #     POSTGRES_PASSWORD: your_password
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   restart: unless-stopped
-
-  # Portainer läuft bereits separat - nicht hier einbinden
-  # Portainer kann über http://localhost:9000 erreicht werden
-
 networks:
   johnnymonkey-network:
     driver: bridge
@@ -64,3 +48,4 @@ volumes:
   johnnymonkey_logs:
     name: johnnymonkey_logs
     driver: local
+
