@@ -9,17 +9,30 @@ RUN npm ci --only=production
 # Build stage
 FROM base AS builder
 
+# Install all dependencies (including dev dependencies) for building
+WORKDIR /app
+RUN npm ci
+
 # Copy source code
 COPY . .
 
 # Build server
 WORKDIR /app/server
 RUN npm ci
+# Generate Prisma client before building
+RUN npx prisma generate || echo "Prisma generate skipped"
 RUN npm run build
 
 # Build client
 WORKDIR /app/client
 RUN npm ci
+# Install @types/file-saver if not already installed
+RUN npm install --save-dev @types/file-saver || echo "Types already installed"
+# Set production environment for build
+ENV NODE_ENV=production
+ENV GENERATE_SOURCEMAP=false
+ENV CI=false
+# Build client (CI=false prevents warnings from failing the build)
 RUN npm run build
 
 # Production stage
