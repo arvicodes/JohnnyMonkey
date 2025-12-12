@@ -9,7 +9,7 @@ services:
     pull_policy: build
     container_name: johnnymonkey-app
     ports:
-      - "3001:3001"  # Server API (serves both API and frontend)
+      - "127.0.0.1:3001:3001"  # Server API (serves both API and frontend) - explizit localhost für macOS
     environment:
       - NODE_ENV=production
       - PORT=3001
