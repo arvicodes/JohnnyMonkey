@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  johnnymonkey:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: johnnymonkey:latest
+    pull_policy: build
+    container_name: johnnymonkey-app
+    ports:
+      - "80:80"  # Host-Port 80 für Sophos Firewall → Container-Port 80
+    environment:
+      - NODE_ENV=production
+      - PORT=80  # Server läuft auf Port 80 im Container
+    volumes:
+      # Persistente Datenbank
+      - johnnymonkey_db:/app/server/prisma
+      # Material-Dateien
+      - ./material:/app/material:ro
+      # Optional: Logs für einfacheren Zugriff
+      - johnnymonkey_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      # Portainer Labels für bessere Organisation
+      - "com.portainer.io.name=JohnnyMonkey"
+      - "com.portainer.io.description=Educational Learning Platform"
+      - "com.portainer.io.category=Application"
+      - "com.portainer.io.managed=true"
+    networks:
+      - johnnymonkey-network
+
+networks:
+  johnnymonkey-network:
+    driver: bridge
+    name: johnnymonkey-network
+
+volumes:
+  postgres_data:
+    name: johnnymonkey_postgres_data
+  johnnymonkey_db:
+    name: johnnymonkey_database
+    driver: local
+  johnnymonkey_logs:
+    name: johnnymonkey_logs
+    driver: local
+
