@@ -33,6 +33,10 @@ import path from 'path';
 const app = express();
 const prisma = new PrismaClient();
 
+// Trust proxy - wichtig für nginx Reverse Proxy und X-Forwarded-Proto
+// Erlaubt Express, die X-Forwarded-* Header von nginx zu respektieren
+app.set('trust proxy', true);
+
 // Enable CORS with better configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
