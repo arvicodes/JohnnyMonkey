@@ -1,227 +1,188 @@
-# JohnnyMonkey in Portainer deployen (Schulserver)
+# Portainer.io Deployment - Schulserver
 
-## 🎯 Übersicht
+Diese Anleitung beschreibt, wie die JohnnyMonkey App auf Portainer.io auf dem Schulserver deployed wird.
 
-Diese Anleitung zeigt, wie du die JohnnyMonkey-App auf deinem Schulserver mit Portainer.io deployst. Die App läuft dann auf Port 80, damit die Sophos Firewall sie erreichen kann.
+## Voraussetzungen
 
-## 📋 Voraussetzungen
+- Portainer.io läuft auf dem Server
+- Git-Repository ist verfügbar
+- Sophos Firewall übernimmt HTTPS-Terminierung
 
-- ✅ Portainer.io läuft bereits auf dem Server (https://192.168.8.1:9443)
-- ✅ Du hast Zugriff auf Portainer
-- ✅ Die App-Dateien sind auf dem Server verfügbar (oder per Git)
+## ⚠️ Wichtiger Hinweis: Port-Konflikt mit bestehendem nginx-Container
 
-## 🚀 Schritt-für-Schritt Anleitung
-
-### Schritt 1: Code auf den Server bringen
+**Es läuft bereits ein nginx-Container ("webserver") auf Port 80!**
 
 Du hast zwei Optionen:
 
-#### Option A: Git Repository (empfohlen)
-1. Auf dem Server: Code klonen oder pullen
-2. In das Projektverzeichnis wechseln
+### Option 1: Node.js direkt auf Port 80 (Empfohlen gemäß Anweisung)
 
-#### Option B: Dateien hochladen
-1. Alle Projektdateien auf den Server kopieren
-2. Stelle sicher, dass `Dockerfile` und `docker-compose.portainer-production.yml` vorhanden sind
+**Schritt 1:** Bestehenden nginx-Container stoppen:
+1. In Portainer.io zu **Containers** navigieren
+2. Den Container **webserver** (nginx) auswählen
+3. **Stop** klicken
+4. Optional: Container löschen, wenn er nicht mehr benötigt wird
 
-### Schritt 2: Portainer öffnen
+**Schritt 2:** JohnnyMonkey Stack deployen (verwendet Port 80 direkt)
 
-1. Öffne: **https://192.168.8.1:9443**
-2. Logge dich ein
-3. Wähle deine Docker-Umgebung aus (falls mehrere vorhanden)
+### Option 2: Bestehenden nginx als Reverse Proxy nutzen
 
-### Schritt 3: Stack erstellen
+Wenn der bestehende nginx-Container weiterhin benötigt wird:
+1. Konfiguriere den nginx-Container so, dass er auf `johnnymonkey-app:3000` weiterleitet
+2. Deploye den JohnnyMonkey Stack **ohne** Port-Mapping (nur expose 3000)
+3. Der nginx leitet dann Anfragen an den Node.js Container weiter
 
-1. **Links im Menü**: Klicke auf **"Stacks"**
-2. Klicke oben rechts auf **"Add stack"** oder **"+"**
-3. **Name**: `johnnymonkey` (oder wie du willst)
-4. **Description**: Optional, z.B. "JohnnyMonkey Learning Platform"
+**Für Option 2:** Ändere in `docker-compose.yml`:
+```yaml
+ports:
+  - "80:3000"  # ENTFERNEN - nur expose verwenden
+expose:
+  - "3000"     # Nur intern verfügbar
+```
 
-### Schritt 4: Build-Methode wählen
-
-Du hast zwei Optionen:
-
-#### Option A: Web Editor (wenn Code bereits auf Server)
-1. **Build method**: Wähle **"Web editor"**
-2. Öffne die Datei `docker-compose.portainer-production.yml` auf dem Server
-3. Kopiere den gesamten Inhalt (Cmd+A, Cmd+C)
-4. Füge ihn in den Portainer Web-Editor ein
-
-#### Option B: Git Repository (empfohlen für Updates)
-1. **Build method**: Wähle **"Repository"**
-2. **Repository URL**: Deine Git-URL (z.B. `https://github.com/username/johnnymonkey.git`)
-3. **Compose path**: `docker-compose.portainer-production.yml`
-4. **Reference**: `main` oder `master` (dein Branch)
-5. **Auto-update**: Optional aktivieren für automatische Updates
-
-### Schritt 5: Stack deployen
-
-1. Scrolle nach unten
-2. **Wichtig**: Aktiviere **"Always pull the image"** oder **"Rebuild"** (falls Code geändert)
-3. Klicke auf **"Deploy the stack"**
-4. Warte, bis Portainer den Stack erstellt hat
-   - Das kann einige Minuten dauern (Build-Prozess)
-   - Du siehst den Fortschritt in den Logs
-
-### Schritt 6: Container prüfen
-
-1. **Links im Menü**: Klicke auf **"Containers"**
-2. Du solltest sehen: `johnnymonkey-app`
-3. **Status prüfen**:
-   - 🟢 Grüner Punkt = läuft ✅
-   - 🔴 Roter Punkt = gestoppt ❌
-   - 🟡 Gelber Punkt = startet gerade
-
-### Schritt 7: Logs prüfen (falls Probleme)
-
-1. **Containers** → `johnnymonkey-app` → Klicke darauf
-2. Klicke auf **"Logs"** Tab
-3. Prüfe auf Fehlermeldungen
-4. Häufige Probleme:
-   - Port 80 bereits belegt → Anderen Container stoppen
-   - Build-Fehler → Prisma oder npm Probleme
-   - Datenbank-Fehler → Prisma Schema prüfen
-
-### Schritt 8: App testen
-
-1. **Containers** → `johnnymonkey-app` → Klicke darauf
-2. Scrolle zu **"Published ports"**
-3. Du siehst: `80:80`
-4. Die App sollte erreichbar sein über:
-   - **Intern**: `http://192.168.8.1` (ohne Port, da Port 80)
-   - **Extern**: Über die Sophos Firewall (HTTPS mit Zertifikat)
-
-## 🔧 Wichtige Konfigurationen
+## Konfiguration
 
 ### Port-Mapping
-- **Host-Port**: `80` (für Sophos Firewall)
-- **Container-Port**: `80` (Server läuft auf Port 80)
-- **Umgebungsvariable**: `PORT=80`
 
-### Volumes (persistente Daten)
-- **Datenbank**: `johnnymonkey_db` → `/app/server/prisma`
-- **Material**: `./material` → `/app/material` (read-only)
-- **Logs**: `johnnymonkey_logs` → `/app/logs`
+- **Host-Port 80** → **Container-Port 3000** (Node.js Server)
+- Die Sophos Firewall übernimmt die HTTPS-Terminierung
+- Kein nginx-Container erforderlich
 
-### Netzwerk
-- **Netzwerk**: `johnnymonkey-network` (Bridge-Modus)
-- Alle Container können sich darüber erreichen
+### Docker Compose Konfiguration
 
-## 🔄 Updates deployen
+Die `docker-compose.yml` ist bereits für Portainer.io konfiguriert:
 
-Wenn du Code geändert hast:
+```yaml
+ports:
+  - "80:3000"  # Host Port 80 → Container Port 3000
+```
 
-### Methode 1: Über Portainer (mit Rebuild)
-1. **Stacks** → `johnnymonkey` → Klicke darauf
-2. Klicke auf **"Editor"** Tab
-3. Ändere die `docker-compose.yml` falls nötig
-4. Aktiviere **"Rebuild"** (Checkbox)
-5. Klicke auf **"Update the stack"**
+## Deployment in Portainer.io
 
-### Methode 2: Über Git (wenn Repository-Methode)
-1. Code committen und pushen
-2. **Stacks** → `johnnymonkey` → **"Editor"**
-3. Klicke auf **"Pull and redeploy"** (falls verfügbar)
-4. Oder: **"Update the stack"** mit aktiviertem **"Rebuild"**
+### Option 1: Stack aus Git-Repository erstellen (Empfohlen)
 
-## 🐛 Troubleshooting
+1. **Portainer.io öffnen** und zu **Stacks** navigieren
+2. **Add Stack** klicken
+3. **Build method**: "Repository" auswählen
+4. **Repository URL** eingeben (z.B. Git-Repository URL)
+5. **Compose path**: `docker-compose.yml` (Standard)
+6. **Branch**: `main` (oder entsprechender Branch)
+7. **Deploy the stack** klicken
 
-### Problem: Port 80 bereits belegt
-**Lösung**:
-1. **Containers** → Prüfe, welcher Container Port 80 nutzt
-2. Stoppe den anderen Container
-3. Oder: Ändere den Port in der docker-compose.yml (aber dann funktioniert Sophos Firewall nicht)
+### Option 2: Stack aus Editor erstellen
 
-### Problem: Container startet nicht
-**Lösung**:
-1. **Containers** → `johnnymonkey-app` → **"Logs"**
-2. Lies die Fehlermeldung
-3. Häufige Ursachen:
-   - Datenbank-Fehler → Prisma Schema prüfen
-   - Build-Fehler → Node-Version prüfen
-   - Port-Konflikt → Port 80 prüfen
+1. **Portainer.io öffnen** und zu **Stacks** navigieren
+2. **Add Stack** klicken
+3. **Build method**: "Web editor" auswählen
+4. Inhalt der `docker-compose.yml` einfügen
+5. **Deploy the stack** klicken
 
-### Problem: Build schlägt fehl
-**Lösung**:
-1. **Stacks** → `johnnymonkey` → **"Logs"**
-2. Prüfe Build-Logs
-3. Häufige Probleme:
-   - `npm ci` Fehler → Dependencies prüfen
-   - Prisma Fehler → Schema prüfen
-   - TypeScript Fehler → Code prüfen
+### Option 3: Container direkt erstellen
 
-### Problem: App nicht erreichbar
-**Lösung**:
-1. **Containers** → `johnnymonkey-app` → **"Logs"**
-2. Prüfe, ob Server läuft: `🎯 Server is running on port 80`
-3. Prüfe Health-Check: `http://192.168.8.1/health`
-4. Prüfe Firewall-Regeln in Sophos
+1. **Portainer.io öffnen** und zu **Containers** navigieren
+2. **Add container** klicken
+3. **Image**: `johnnymonkey:latest` (wird gebaut)
+4. **Port mapping**: `80:3000`
+5. **Environment variables**:
+   - `NODE_ENV=production`
+   - `PORT=3000`
+6. **Volumes** konfigurieren:
+   - `johnnymonkey_db:/app/server/prisma`
+   - `johnnymonkey_material:/app/material:ro`
+   - `johnnymonkey_logs:/app/logs`
+7. **Deploy the container** klicken
 
-### Problem: Datenbank-Fehler
-**Lösung**:
-1. **Volumes** → `johnnymonkey_database` → Prüfe, ob vorhanden
-2. **Containers** → `johnnymonkey-app` → **"Logs"**
-3. Prisma-Fehler prüfen
-4. Falls nötig: Container neu starten
+## Netzwerk-Konfiguration
 
-## 📊 Monitoring
+Die App verwendet ein eigenes Docker-Netzwerk:
+- **Network name**: `johnnymonkey-network`
+- **Driver**: `bridge`
 
-### Container-Status
-- **Containers** → `johnnymonkey-app` → **"Stats"** Tab
-- Siehst CPU, RAM, Netzwerk-Nutzung
+## Volumes
 
-### Logs
-- **Containers** → `johnnymonkey-app` → **"Logs"** Tab
-- Echtzeit-Logs der App
+Folgende Volumes werden verwendet:
 
-### Health-Check
-- Die App hat einen Health-Check: `http://192.168.8.1/health`
-- Portainer zeigt den Status im Container-Status
+1. **johnnymonkey_database**: Persistente Datenbank
+   - Pfad: `/app/server/prisma`
 
-## 🔐 Sicherheit
+2. **johnnymonkey_material**: Material-Dateien (read-only)
+   - Pfad: `/app/material`
 
-### Port 80 vs HTTPS
-- Die App läuft intern auf Port 80 (HTTP)
-- Die Sophos Firewall kümmert sich um HTTPS (Zertifikat)
-- Externe Zugriffe sollten über HTTPS gehen
+3. **johnnymonkey_logs**: Log-Dateien
+   - Pfad: `/app/logs`
 
-### Volumes
-- Datenbank-Volume ist persistent
-- Backups: **Volumes** → `johnnymonkey_database` → **"Backup"**
+## Health Check
 
-## ✅ Checkliste
+Der Container hat einen Health Check konfiguriert:
+- **Endpoint**: `http://localhost:3000/health`
+- **Interval**: 30 Sekunden
+- **Timeout**: 10 Sekunden
+- **Retries**: 3
+- **Start period**: 40 Sekunden
 
-- [ ] Code auf Server verfügbar (Git oder Dateien)
-- [ ] Portainer geöffnet (https://192.168.8.1:9443)
-- [ ] Stacks → Add stack geklickt
-- [ ] Name vergeben: `johnnymonkey`
-- [ ] docker-compose.portainer-production.yml eingefügt
-- [ ] "Deploy the stack" geklickt
-- [ ] Build erfolgreich (Logs prüfen)
-- [ ] Container läuft (grüner Punkt)
-- [ ] App erreichbar (http://192.168.8.1)
-- [ ] Health-Check funktioniert (/health)
-- [ ] Sophos Firewall konfiguriert (HTTPS)
+## Zugriff
 
-## 🎓 Nächste Schritte
+Nach dem Deployment ist die App erreichbar über:
+- **HTTP**: `http://<server-ip>` (Port 80)
+- **HTTPS**: Die Sophos Firewall übernimmt die HTTPS-Terminierung
+
+## Konflikt mit bestehendem nginx-Container
+
+Wenn der bestehende **webserver** (nginx) Container noch läuft, gibt es einen Port-Konflikt!
+
+**Lösung:**
+1. Stoppe den nginx-Container in Portainer.io
+2. Oder ändere den Port des nginx-Containers auf einen anderen Port (z.B. 8080)
+3. Deploye dann den JohnnyMonkey Stack
+
+## Updates
+
+### Stack aktualisieren (Git-basiert)
+
+1. Änderungen in Git committen und pushen
+2. In Portainer.io zu **Stacks** navigieren
+3. Stack auswählen
+4. **Editor** öffnen
+5. **Pull and redeploy** klicken
+
+### Container neu bauen
+
+1. In Portainer.io zu **Stacks** navigieren
+2. Stack auswählen
+3. **Editor** öffnen
+4. **Rebuild** klicken
+
+## Troubleshooting
+
+### Container startet nicht
+
+- Prüfe die Logs in Portainer.io: **Containers** → Container auswählen → **Logs**
+- Prüfe, ob Port 80 bereits belegt ist
+- Prüfe die Health Check Logs
+
+### App nicht erreichbar
+
+- Prüfe, ob der Container läuft
+- Prüfe die Port-Mappings (80:3000)
+- Prüfe die Sophos Firewall Konfiguration
+
+### Datenbank-Probleme
+
+- Prüfe das Volume `johnnymonkey_database`
+- Prüfe die Logs für Datenbank-Fehler
+- Stelle sicher, dass das Volume persistent ist
+
+## Wichtige Hinweise
+
+1. **Port 80**: Muss für den Node.js Container verfügbar sein
+2. **HTTPS**: Wird von der Sophos Firewall übernommen
+3. **Volumes**: Werden automatisch erstellt, wenn sie nicht existieren
+4. **Netzwerk**: Wird automatisch erstellt, wenn es nicht existiert
+5. **Health Check**: Überwacht den Container-Status automatisch
+
+## Nächste Schritte
 
 Nach erfolgreichem Deployment:
-
-1. ✅ **Sophos Firewall konfigurieren**
-   - Port 80 → HTTPS mit Zertifikat
-   - Externe Zugriffe erlauben
-
-2. ✅ **Domain konfigurieren** (optional)
-   - DNS-Eintrag für deine Domain
-   - Sophos Firewall: Domain → Port 80
-
-3. ✅ **Backup-Strategie**
-   - Regelmäßige Backups des Datenbank-Volumes
-   - Portainer → Volumes → Backup
-
-4. ✅ **Monitoring einrichten**
-   - Health-Check überwachen
-   - Logs regelmäßig prüfen
-
-Viel Erfolg! 🚀
-
+1. Prüfe die Logs auf Fehler
+2. Teste die App über HTTP (Port 80)
+3. Konfiguriere die Sophos Firewall für HTTPS-Weiterleitung
+4. Teste die HTTPS-Verbindung
