@@ -9,12 +9,14 @@ Diese Anleitung beschreibt die Einrichtung von nginx als Reverse Proxy für die 
 Internet/Schulnetz
   ↓ HTTPS (Sophos macht TLS-Termination)
 Sophos Firewall
-  ↓ HTTP auf Port 80
-Docker Host (Port 80)
-  ↓ nginx Container
+  ↓ HTTP auf Port 8080
+Docker Host (Port 8080)
+  ↓ nginx Container (intern Port 80)
   ↓ HTTP im Docker-Netzwerk
 Node.js App Container (Port 3000)
 ```
+
+**Hinweis:** Port 80 ist nicht verfügbar, daher verwenden wir Port **8080** auf dem Host.
 
 ## Voraussetzungen
 
@@ -33,7 +35,7 @@ Node.js App Container (Port 3000)
 - WebSocket-Support vorbereitet
 
 ### 2. docker-compose.yml
-- **nginx Service**: Veröffentlicht Port 80:80
+- **nginx Service**: Veröffentlicht Port 8080:80 (Host Port 8080 → Container Port 80)
 - **johnnymonkey Service**: Keine published ports mehr (nur expose 3000)
 - Beide Container im selben Netzwerk
 
@@ -103,7 +105,7 @@ Node.js App Container (Port 3000)
        image: nginx:alpine
        container_name: johnnymonkey-nginx
        ports:
-         - "80:80"
+         - "8080:80"  # Host Port 8080 → Container Port 80
        volumes:
          - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
        depends_on:
@@ -192,7 +194,7 @@ Node.js App Container (Port 3000)
 
    **johnnymonkey-nginx:**
    - Status: Running (grün)
-   - Published Ports: `80:80` ✓
+   - Published Ports: `8080:80` ✓
    - Keine anderen Ports
 
    **johnnymonkey-app:**
@@ -229,9 +231,9 @@ Node.js App Container (Port 3000)
    - Externe Anfragen kommen per HTTPS an Sophos
 
 2. **Weiterleitung konfigurieren:**
-   - Sophos leitet HTTP-Anfragen weiter an Docker Host Port 80
+   - Sophos leitet HTTP-Anfragen weiter an Docker Host Port **8080**
    - Ziel: IP-Adresse deines Docker Hosts
-   - Port: 80 (HTTP, nicht HTTPS!)
+   - Port: **8080** (HTTP, nicht HTTPS!)
 
 3. **Regel erstellen:**
    - NAT-Regel oder Reverse Proxy Regel
@@ -317,7 +319,7 @@ Node.js App Container (Port 3000)
 
 | Service | Host Port | Container Port | Beschreibung |
 |---------|-----------|----------------|--------------|
-| nginx | 80 | 80 | Reverse Proxy (für Sophos) |
+| nginx | **8080** | 80 | Reverse Proxy (für Sophos) |
 | johnnymonkey | - | 3000 | App (nur intern) |
 | Portainer | 9443 | 9443 | Portainer UI |
 
