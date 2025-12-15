@@ -8,9 +8,11 @@ services:
     image: johnnymonkey:latest
     pull_policy: build
     container_name: johnnymonkey-app
-    # Keine published ports mehr - nginx leitet weiter
+    # Direkter Port für Tests/Debugging + nginx Reverse Proxy
+    ports:
+      - "3000:3000"  # Direkter Zugang: http://<host>:3000
     expose:
-      - "3000"
+      - "3000"  # Für nginx im Docker-Netzwerk
     environment:
       - NODE_ENV=production
       - PORT=3000
