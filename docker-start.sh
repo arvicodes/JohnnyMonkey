@@ -14,8 +14,17 @@ npx prisma generate
 
 # Datenbank initialisieren (falls nicht vorhanden)
 if [ ! -f "prisma/dev.db" ]; then
-    echo "🗄️  Initializing database..."
-    npx prisma migrate deploy || npx prisma db push || echo "⚠️  Database initialization skipped"
+    echo "🗄️  Database file not found, checking for backup..."
+    
+    # Prüfe ob backup_latest.db existiert (aus Git-Repository)
+    if [ -f "/app/backup_latest.db" ]; then
+        echo "📥 Found backup_latest.db, importing..."
+        cp /app/backup_latest.db prisma/dev.db
+        echo "✅ Database imported from backup_latest.db"
+    else
+        echo "🗄️  No backup found, initializing new database..."
+        npx prisma migrate deploy || npx prisma db push || echo "⚠️  Database initialization skipped"
+    fi
 else
     echo "✅ Database file exists"
 fi
