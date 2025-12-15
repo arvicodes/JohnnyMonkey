@@ -21,12 +21,16 @@ if [ ! -f "prisma/dev.db" ]; then
         echo "📥 Found backup_latest.db, importing..."
         cp /app/backup_latest.db prisma/dev.db
         echo "✅ Database imported from backup_latest.db"
+        echo "🔄 Updating database schema to match current migrations..."
+        npx prisma migrate deploy || npx prisma db push || echo "⚠️  Schema update skipped"
     else
         echo "🗄️  No backup found, initializing new database..."
         npx prisma migrate deploy || npx prisma db push || echo "⚠️  Database initialization skipped"
     fi
 else
     echo "✅ Database file exists"
+    echo "🔄 Ensuring database schema is up to date..."
+    npx prisma migrate deploy || npx prisma db push || echo "⚠️  Schema update skipped"
 fi
 
 # Server starten
