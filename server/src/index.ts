@@ -169,7 +169,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server with Render compatibility
 async function startServer() {
   try {
-    const port = parseInt(process.env.PORT || '3001', 10);
+    const port = parseInt(process.env.PORT || '3000', 10);
     
     // For Render, use simple server start
     if (process.env.NODE_ENV === 'production') {

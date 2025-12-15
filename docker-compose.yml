@@ -10,10 +10,10 @@ services:
     container_name: johnnymonkey-app
     # Keine published ports mehr - nginx leitet weiter
     expose:
-      - "3001"
+      - "3000"
     environment:
       - NODE_ENV=production
-      - PORT=3001
+      - PORT=3000
     volumes:
       # Persistente Datenbank
       - johnnymonkey_db:/app/server/prisma
@@ -23,7 +23,7 @@ services:
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3

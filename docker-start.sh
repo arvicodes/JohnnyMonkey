@@ -21,6 +21,6 @@ else
 fi
 
 # Server starten
-echo "🚀 Starting server on port ${PORT:-3001}..."
+echo "🚀 Starting server on port ${PORT:-3000}..."
 NODE_ENV=production node dist/index.js
 
