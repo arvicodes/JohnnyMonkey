@@ -133,51 +133,37 @@ volumes:
     driver: local
 ```
 
-## Schritt 4: nginx.conf sicherstellen
+## Schritt 4: nginx.conf - Automatisch erstellt
 
-**Wichtig:** Die `nginx.conf` muss im Git Repository vorhanden sein oder manuell hochgeladen werden.
+**Wichtig:** Die `nginx.conf` wird automatisch im Container erstellt. Du musst nichts tun!
 
-### Wenn Git-basiert:
-- Die `nginx.conf` ist bereits im Repository
-- Portainer lädt sie automatisch mit
+Die aktuelle `docker-compose.yml` erstellt die nginx-Konfiguration direkt beim Container-Start. Das funktioniert sowohl mit Git-basierten als auch mit Web Editor Stacks.
 
-### Wenn Web Editor:
-1. Nach dem Stack-Deploy, gehe zu **Containers**
-2. Klicke auf **johnnymonkey-nginx**
-3. Gehe zu **Console** oder **Exec**
-4. Prüfe, ob die Datei existiert:
+**Falls du die nginx.conf manuell ändern möchtest:**
+
+1. Gehe zu **Containers** → **johnnymonkey-nginx** → **Console**
+2. Prüfe die aktuelle Config:
    ```bash
    cat /etc/nginx/conf.d/default.conf
    ```
-5. Falls nicht vorhanden, musst du sie manuell erstellen:
-   - Verwende Portainer's File Manager (falls verfügbar)
-   - Oder erstelle sie auf dem Docker Host im Stack-Verzeichnis
+3. Die Config wird automatisch beim Container-Start erstellt
 
-**Inhalt der nginx.conf:**
+**Inhalt der automatisch erstellten nginx.conf:**
 ```nginx
 server {
   listen 80;
   server_name _;
-
-  # Increase body size limit for file uploads
   client_max_body_size 50M;
-
   location / {
     proxy_pass http://johnnymonkey:3000;
     proxy_http_version 1.1;
-    
-    # Preserve original host and IP
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header X-Forwarded-Host $host;
-    
-    # WebSocket support (falls benötigt)
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
-    
-    # Timeouts
     proxy_connect_timeout 60s;
     proxy_send_timeout 60s;
     proxy_read_timeout 60s;
@@ -293,18 +279,16 @@ Die App sollte erreichbar sein!
 ### Problem: nginx.conf wird nicht gefunden
 
 **Lösung:**
-1. Prüfe Volume-Mapping in docker-compose.yml:
-   ```yaml
-   volumes:
-     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-   ```
-2. Bei Git-basiertem Stack: Stelle sicher, dass `nginx.conf` im Repository ist
-3. Prüfe im nginx Container:
+1. Die nginx.conf wird automatisch beim Container-Start erstellt
+2. Prüfe im nginx Container:
    ```bash
    # In Portainer: johnnymonkey-nginx → Console
-   ls -la /etc/nginx/conf.d/
    cat /etc/nginx/conf.d/default.conf
    ```
+3. Falls die Datei leer ist oder fehlt:
+   - Prüfe Container-Logs auf Fehler
+   - Starte den Container neu
+   - Die Config wird beim Start automatisch erstellt
 
 ### Problem: Build schlägt fehl
 
