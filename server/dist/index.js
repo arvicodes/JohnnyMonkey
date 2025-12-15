@@ -157,7 +157,8 @@ async function startServer() {
         const port = parseInt(process.env.PORT || '3001', 10);
         // For Render, use simple server start
         if (process.env.NODE_ENV === 'production') {
-            const server = app.listen(port, () => {
+            // Listen on 0.0.0.0 to accept connections from outside the container
+            const server = app.listen(port, '0.0.0.0', () => {
                 console.log(`🎯 Server is running on port ${port}`);
                 console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
                 console.log(`🔗 Health check: http://localhost:${port}/health`);
