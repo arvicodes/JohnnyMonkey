@@ -43,7 +43,7 @@ RUN apk add --no-cache curl
 
 # Copy built application
 COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/client/build ./client/build
+COPY --from=builder /app/client/build ./server/client-build
 COPY --from=builder /app/server/prisma ./server/prisma
 COPY --from=builder /app/server/package*.json ./server/
 COPY --from=builder /app/docker-start.sh ./docker-start.sh
