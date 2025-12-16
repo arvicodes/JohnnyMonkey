@@ -21,8 +21,8 @@ if [ ! -f "prisma/dev.db" ]; then
         echo "📥 Found backup_latest.db, importing..."
         cp /app/backup_latest.db prisma/dev.db
         echo "✅ Database imported from backup_latest.db"
-        echo "🔄 Updating database schema to match current Prisma schema..."
-        # Füge fehlende Spalten direkt hinzu (falls db push sie nicht hinzufügt)
+        echo "🔄 Adding missing columns if needed..."
+        # Füge nur fehlende Spalten hinzu - KEIN db push (würde Daten löschen!)
         node -e "
         const { PrismaClient } = require('@prisma/client');
         const prisma = new PrismaClient();
@@ -33,11 +33,19 @@ if [ ! -f "prisma/dev.db" ]; then
             if (!colNames.includes('period1Hours')) {
               await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period1Hours INTEGER\`;
               console.log('✅ Added period1Hours');
+            } else {
+              console.log('ℹ️  period1Hours already exists');
             }
             if (!colNames.includes('period2Hours')) {
               await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period2Hours INTEGER\`;
               console.log('✅ Added period2Hours');
+            } else {
+              console.log('ℹ️  period2Hours already exists');
             }
+            // Prüfe Datenbank-Inhalt
+            const userCount = await prisma.user.count();
+            const groupCount = await prisma.learningGroup.count();
+            console.log('📊 Database contains:', userCount, 'users,', groupCount, 'groups');
           } catch (e) {
             if (!e.message.includes('duplicate')) console.error('Error:', e.message);
           } finally {
@@ -45,16 +53,15 @@ if [ ! -f "prisma/dev.db" ]; then
           }
         })();
         " || echo "⚠️  Column addition skipped"
-        # Nur Schema aktualisieren, KEINE Daten löschen!
-        npx prisma db push --skip-generate --accept-data-loss || echo "⚠️  Schema update failed, but continuing..."
+        echo "✅ Database ready (no db push to preserve data)"
     else
         echo "🗄️  No backup found, initializing new database..."
         npx prisma migrate deploy || npx prisma db push || echo "⚠️  Database initialization skipped"
     fi
 else
     echo "✅ Database file exists"
-    echo "🔄 Ensuring database schema is up to date..."
-    # Füge fehlende Spalten direkt hinzu (falls db push sie nicht hinzufügt)
+    echo "🔄 Adding missing columns if needed..."
+    # Füge nur fehlende Spalten hinzu - KEIN db push (würde Daten löschen!)
     node -e "
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
@@ -65,11 +72,19 @@ else
         if (!colNames.includes('period1Hours')) {
           await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period1Hours INTEGER\`;
           console.log('✅ Added period1Hours');
+        } else {
+          console.log('ℹ️  period1Hours already exists');
         }
         if (!colNames.includes('period2Hours')) {
           await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN period2Hours INTEGER\`;
           console.log('✅ Added period2Hours');
+        } else {
+          console.log('ℹ️  period2Hours already exists');
         }
+        // Prüfe Datenbank-Inhalt
+        const userCount = await prisma.user.count();
+        const groupCount = await prisma.learningGroup.count();
+        console.log('📊 Database contains:', userCount, 'users,', groupCount, 'groups');
       } catch (e) {
         if (!e.message.includes('duplicate')) console.error('Error:', e.message);
       } finally {
@@ -77,7 +92,7 @@ else
       }
     })();
     " || echo "⚠️  Column addition skipped"
-    npx prisma db push --accept-data-loss || npx prisma migrate deploy || echo "⚠️  Schema update skipped"
+    echo "✅ Database ready (no db push to preserve data)"
 fi
 
 # Server starten
