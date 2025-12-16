@@ -45,7 +45,8 @@ if [ ! -f "prisma/dev.db" ]; then
           }
         })();
         " || echo "⚠️  Column addition skipped"
-        npx prisma db push --accept-data-loss || echo "⚠️  Schema update failed, but continuing..."
+        # Nur Schema aktualisieren, KEINE Daten löschen!
+        npx prisma db push --skip-generate --accept-data-loss || echo "⚠️  Schema update failed, but continuing..."
     else
         echo "🗄️  No backup found, initializing new database..."
         npx prisma migrate deploy || npx prisma db push || echo "⚠️  Database initialization skipped"
