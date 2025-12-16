@@ -49,6 +49,8 @@ COPY --from=builder /app/server/package*.json ./server/
 COPY --from=builder /app/docker-start.sh ./docker-start.sh
 # Copy backup database for automatic import
 COPY --from=builder /app/backup_latest.db ./backup_latest.db
+# Copy J-M-Reihen directory for FileSystemPath
+COPY --from=builder /app/J-M-Reihen ./J-M-Reihen
 
 # Install production dependencies
 WORKDIR /app/server

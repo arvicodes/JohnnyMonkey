@@ -21,8 +21,7 @@ services:
       - johnnymonkey_db:/app/server/prisma
       # Material-Dateien
       - ./material:/app/material:ro
-      # J-M-Reihen Verzeichnis (für FileSystemPath)
-      - ./J-M-Reihen:/app/J-M-Reihen:ro
+      # J-M-Reihen ist jetzt im Docker-Image, kein Volume-Mount nötig
       # Optional: Logs für einfacheren Zugriff
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
