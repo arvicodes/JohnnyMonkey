@@ -142,9 +142,17 @@ export class StorageManager {
    * Read local directory
    */
   private static readLocalDirectory(dirPath: string, recursive: boolean): any {
-    const normalizedPath = path.resolve(dirPath);
+    // Convert macOS paths to container paths
+    let normalizedPath = dirPath;
+    if (dirPath.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
+      // Replace macOS path with container path
+      normalizedPath = dirPath.replace('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey', this.config.basePath || '/app');
+      console.log('🔄 Converted path:', dirPath, '→', normalizedPath);
+    }
+    normalizedPath = path.resolve(normalizedPath);
     
     if (!fs.existsSync(normalizedPath)) {
+      console.error('❌ Path does not exist:', normalizedPath);
       return { error: 'Path does not exist' };
     }
     
