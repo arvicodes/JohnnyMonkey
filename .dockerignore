@@ -47,6 +47,8 @@ backups/
 *.db
 *.sqlite3
 backup_*.db
+# BUT: backup_latest.db is needed for container initialization
+!backup_latest.db
 
 # Development scripts (nicht für Production)
 start-all.sh

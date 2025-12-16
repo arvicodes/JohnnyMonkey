@@ -47,6 +47,8 @@ COPY --from=builder /app/client/build ./server/client-build
 COPY --from=builder /app/server/prisma ./server/prisma
 COPY --from=builder /app/server/package*.json ./server/
 COPY --from=builder /app/docker-start.sh ./docker-start.sh
+# Copy backup database for automatic import
+COPY --from=builder /app/backup_latest.db ./backup_latest.db
 
 # Install production dependencies
 WORKDIR /app/server
