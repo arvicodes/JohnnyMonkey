@@ -9,7 +9,6 @@ const JohnnyDemoPage: React.FC = () => {
     { id: 'dashboard', name: 'Dashboard', description: 'Hauptseite mit Übersicht' },
     { id: 'quiz', name: 'Quiz', description: 'Lernquiz mit Fragen' },
     { id: 'flashcards', name: 'Karteikarten', description: 'Karteikarten lernen' },
-    { id: 'geocoding', name: 'GeoCoding', description: 'Geocaching Abenteuer' }
   ];
 
   const simulateProgress = () => {

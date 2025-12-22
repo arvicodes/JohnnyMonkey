@@ -4889,6 +4889,87 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 >
                   Logout
                 </Button>
+                {/* Adventskalender Button */}
+                <Button 
+                  variant="contained"
+                  size="small"
+                  onClick={() => navigate('/advent-calendar')}
+                  startIcon={
+                    <Typography
+                      className="calendar-emoji"
+                      component="span"
+                      sx={{
+                        fontSize: '1.3rem',
+                        lineHeight: 1,
+                        transition: 'transform 0.3s',
+                        display: 'inline-block'
+                      }}
+                    >
+                      🎄
+                    </Typography>
+                  }
+                  sx={{
+                    bgcolor: '#c62828',
+                    color: 'white',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)',
+                    border: '2px solid #ffd700',
+                    borderRadius: 1.4,
+                    fontSize: '0.75rem',
+                    py: 0.5,
+                    px: 2.5,
+                    minWidth: 200,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.8,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    animation: 'pulse 2s ease-in-out infinite',
+                    '@keyframes pulse': {
+                      '0%, 100%': { boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)' },
+                      '50%': { boxShadow: '0 4px 20px rgba(198, 40, 40, 0.7)' }
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: '-50%',
+                      left: '-50%',
+                      width: '200%',
+                      height: '200%',
+                      background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
+                      animation: 'shimmer 3s infinite',
+                      '@keyframes shimmer': {
+                        '0%': { transform: 'rotate(0deg)' },
+                        '100%': { transform: 'rotate(360deg)' }
+                      }
+                    },
+                    '&:hover': {
+                      bgcolor: '#b71c1c',
+                      transform: 'translateY(-2px) scale(1.05)',
+                      boxShadow: '0 6px 16px rgba(198, 40, 40, 0.6)',
+                      borderColor: '#ffed4e',
+                      '& .calendar-emoji': {
+                        transform: 'scale(1.2) rotate(10deg)',
+                        animation: 'bounce 0.6s ease-in-out',
+                        '@keyframes bounce': {
+                          '0%, 100%': { transform: 'scale(1.2) rotate(10deg) translateY(0)' },
+                          '50%': { transform: 'scale(1.3) rotate(-10deg) translateY(-4px)' }
+                        }
+                      }
+                    },
+                    '&:active': {
+                      transform: 'translateY(0) scale(1.02)'
+                    },
+                    '& .MuiButton-startIcon': {
+                      marginRight: 0,
+                      marginLeft: 0
+                    }
+                  }}
+                >
+                  <Typography sx={{ position: 'relative', zIndex: 1 }}>
+                    Adventskalender
+                  </Typography>
+                </Button>
               </Box>
             </Box>
           </Box>

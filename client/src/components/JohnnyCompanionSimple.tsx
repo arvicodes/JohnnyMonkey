@@ -126,16 +126,6 @@ const JohnnyCompanionSimple: React.FC<JohnnyCompanionSimpleProps> = ({
       { id: '28', text: 'Werde zum Meister! 🥇', type: 'celebration' },
       { id: '29', text: 'Dein Gedächtnis wird besser! 🧠', type: 'encouragement' },
       { id: '30', text: 'Karten sind deine Freunde! 🃏❤️', type: 'encouragement' }
-    ],
-    geocoding: [
-      { id: '31', text: 'Auf zur nächsten Station! 🗺️', type: 'encouragement' },
-      { id: '32', text: 'Du bist ein echter Entdecker! 🏆', type: 'celebration' },
-      { id: '33', text: 'Die Schätze warten auf dich! 💎', type: 'encouragement' },
-      { id: '34', text: 'Erkunde neue Welten! 🌍', type: 'encouragement' },
-      { id: '35', text: 'Entdecke Geheimnisse! 🔍', type: 'encouragement' },
-      { id: '36', text: 'Lass uns reisen! ✈️', type: 'encouragement' },
-      { id: '37', text: 'Die Welt ist groß! 🌎', type: 'tip' },
-      { id: '38', text: 'Abenteuer warten! 🏔️', type: 'encouragement' }
     ]
   };
 

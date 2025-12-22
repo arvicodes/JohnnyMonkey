@@ -130,6 +130,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [gradingSchemas, setGradingSchemas] = useState<{[groupId: string]: GradingSchema}>({});
   const [grades, setGrades] = useState<{[groupId: string]: Grade[]}>({});
   const [gradesLoading, setGradesLoading] = useState(false);
+  const [gradeReleases, setGradeReleases] = useState<{[schemaId: string]: boolean}>({});
   
   // Assignment Maps wie im TeacherDashboard
   const [subjectAssignments, setSubjectAssignments] = useState<{ [subjectId: string]: string[] }>({});
@@ -1914,9 +1915,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const hasChildren = node.children && node.children.length > 0;
     const isLeafNode = !hasChildren;
     const calculatedGrade = hasChildren ? calculateWeightedGrade(node) : null;
+    const isGesamtnote = node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe");
+    const isGradeReleased = gradeReleases[schema.id] || false;
     
     // Blende die oberste Ebene aus, wenn es "Unter- und Mittelstufe" ist
-    if (level === 0 && node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe")) {
+    if (level === 0 && isGesamtnote) {
+      // Zeige immer die Kinder (Teilnoten), aber nur die Gesamtnote selbst wenn freigegeben
       return (
         <Box key={node.name}>
           {hasChildren && (
@@ -1990,9 +1994,42 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               })()}
             </Box>
           ) : (node.grade !== undefined || calculatedGrade !== null) ? (
+            // Wenn es die Gesamtnote ist und nicht freigegeben, zeige nichts im Feld
+            isGesamtnote && !isGradeReleased ? (
+              <Typography variant="caption" sx={{ 
+                color: colors.textSecondary,
+                fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
+                fontStyle: 'italic'
+              }}>
+                {/* Feld bleibt leer */}
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box sx={{ 
+                  bgcolor: getGradeColor((node.grade !== undefined ? node.grade : calculatedGrade)!, schema?.gradingSystem),
+                  color: 'white',
+                  px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+                  py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
+                  borderRadius: 1,
+                  fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+                  fontWeight: 'bold',
+                  minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
+                  textAlign: 'center',
+                  opacity: 0.8,
+                  border: '2px solid #1976d2',
+                  boxShadow: '0 2px 4px rgba(25, 118, 210, 0.3)'
+                }}>
+                  {schema?.gradingSystem === 'MSS' ? 
+                    (node.grade !== undefined ? node.grade : calculatedGrade)!.toFixed(0) : 
+                    formatGermanGrade((node.grade !== undefined ? node.grade : calculatedGrade)!)
+                  }
+                </Box>
+              </Box>
+            )
+          ) : isLeafNode ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Box sx={{ 
-                bgcolor: getGradeColor((node.grade !== undefined ? node.grade : calculatedGrade)!, schema?.gradingSystem),
+                bgcolor: '#9E9E9E',
                 color: 'white',
                 px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
                 py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
@@ -2001,14 +2038,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 fontWeight: 'bold',
                 minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
                 textAlign: 'center',
-                opacity: 0.8,
-                border: '2px solid #1976d2',
-                boxShadow: '0 2px 4px rgba(25, 118, 210, 0.3)'
+                opacity: 0.6,
+                border: '1px solid #999'
               }}>
-                {schema?.gradingSystem === 'MSS' ? 
-                  (node.grade !== undefined ? node.grade : calculatedGrade)!.toFixed(0) : 
-                  formatGermanGrade((node.grade !== undefined ? node.grade : calculatedGrade)!)
-                }
+                0
               </Box>
               <Typography variant="caption" sx={{ 
                 color: colors.textSecondary,
@@ -2024,7 +2057,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
               fontStyle: 'italic'
             }}>
-              {isLeafNode ? 'Keine Note' : 'Keine Daten'}
+              {isLeafNode ? '0' : 'Keine Daten'}
             </Typography>
           )}
         </Box>
@@ -2125,6 +2158,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           if (gradesResponse.ok) {
             const studentGrades = await gradesResponse.json();
             setGrades(prev => ({ ...prev, [groupId]: studentGrades }));
+          }
+          
+          // Lade Freigabestatus der Gesamtnote
+          const releaseResponse = await fetch(`/api/grades/release/${userId}/${schema.id}`);
+          if (releaseResponse.ok) {
+            const releaseData = await releaseResponse.json();
+            setGradeReleases(prev => ({ ...prev, [schema.id]: releaseData.isReleased || false }));
           }
         }
       }
@@ -2395,87 +2435,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
-                {/* Adventskalender Button */}
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={() => navigate('/advent-calendar')}
-                  startIcon={
-                    <Typography
-                      className="calendar-emoji"
-                      component="span"
-                      sx={{
-                        fontSize: '1.3rem',
-                        lineHeight: 1,
-                        transition: 'transform 0.3s',
-                        display: 'inline-block'
-                      }}
-                    >
-                      🎄
-                    </Typography>
-                  }
-                  sx={{
-                    bgcolor: '#c62828',
-                    color: 'white',
-                    fontWeight: 700,
-                    boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)',
-                    border: '2px solid #ffd700',
-                    borderRadius: 1.4,
-                    fontSize: '0.75rem',
-                    py: 0.5,
-                    px: 2.5,
-                    minWidth: 200,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.8,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    animation: 'pulse 2s ease-in-out infinite',
-                    '@keyframes pulse': {
-                      '0%, 100%': { boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)' },
-                      '50%': { boxShadow: '0 4px 20px rgba(198, 40, 40, 0.7)' }
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: '-50%',
-                      left: '-50%',
-                      width: '200%',
-                      height: '200%',
-                      background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
-                      animation: 'shimmer 3s infinite',
-                      '@keyframes shimmer': {
-                        '0%': { transform: 'rotate(0deg)' },
-                        '100%': { transform: 'rotate(360deg)' }
-                      }
-                    },
-                    '&:hover': {
-                      bgcolor: '#b71c1c',
-                      transform: 'translateY(-2px) scale(1.05)',
-                      boxShadow: '0 6px 16px rgba(198, 40, 40, 0.6)',
-                      borderColor: '#ffed4e',
-                      '& .calendar-emoji': {
-                        transform: 'scale(1.2) rotate(10deg)',
-                        animation: 'bounce 0.6s ease-in-out',
-                        '@keyframes bounce': {
-                          '0%, 100%': { transform: 'scale(1.2) rotate(10deg) translateY(0)' },
-                          '50%': { transform: 'scale(1.3) rotate(-10deg) translateY(-4px)' }
-                        }
-                      }
-                    },
-                    '&:active': {
-                      transform: 'translateY(0) scale(1.02)'
-                    },
-                    '& .MuiButton-startIcon': {
-                      marginRight: 0,
-                      marginLeft: 0
-                    }
-                  }}
-                >
-                  <Typography sx={{ position: 'relative', zIndex: 1 }}>
-                    Adventskalender
-                  </Typography>
-                </Button>
                 {/* Logout Button */}
                 <Button 
                   variant="contained"
@@ -2698,52 +2657,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Grid>
                 </Grid>
 
-                {/* Character Skills */}
-                <Box>
-                  <Typography variant="body2" sx={{ 
-                    color: 'text.secondary',
-                    fontSize: '0.7rem',
-                    mb: 1,
-                    fontWeight: 600
-                  }}>
-                    Fähigkeiten:
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.7, flexWrap: 'wrap' }}>
-                    <Box sx={{ 
-                      bgcolor: '#E3F2FD',
-                      color: '#1976d2',
-                      px: 1.4,
-                      py: 0.35,
-                      borderRadius: 2.1,
-                      fontSize: '0.65rem',
-                      fontWeight: 600
-                    }}>
-                      Mathematik
-                    </Box>
-                    <Box sx={{ 
-                      bgcolor: '#E8F5E8',
-                      color: '#2E7D32',
-                      px: 1.4,
-                      py: 0.35,
-                      borderRadius: 2.1,
-                      fontSize: '0.65rem',
-                      fontWeight: 600
-                    }}>
-                      Sprachen
-                    </Box>
-                    <Box sx={{ 
-                      bgcolor: '#FFF3E0',
-                      color: '#F57C00',
-                      px: 1.4,
-                      py: 0.35,
-                      borderRadius: 2.1,
-                      fontSize: '0.65rem',
-                      fontWeight: 600
-                    }}>
-                      Naturwissenschaften
-                    </Box>
-                  </Box>
-                </Box>
 
 
 
@@ -3409,51 +3322,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             </Card>
           </Box>
         </Grid>
-
-        {/* GeoQuests Section */}
-        <Grid item xs={12} md={6}>
-          <Box sx={{ p: 1.4 }}>
-            <Card sx={{ 
-              borderRadius: 2.8,
-              boxShadow: '0 2.8px 8.4px rgba(0,0,0,0.07)',
-              bgcolor: colors.cardBg,
-              transition: 'transform 0.14s',
-              '&:hover': {
-                transform: 'translateY(-2.8px)'
-              }
-            }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2.1 }}>
-                  <QuizIcon sx={{ mr: 1.4, color: colors.accent1, fontSize: 28 }} />
-                  <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: colors.accent1, fontSize: '1.12rem' }}>
-                    Deine GeoQuests
-                  </Typography>
-                </Box>
-                <Typography variant="body1" sx={{ mb: 2.1, color: 'text.secondary', fontSize: '0.84rem' }}>
-                  Starte spannende GeoCoding-Abenteuer! 🗺️
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  sx={{ 
-                    bgcolor: colors.accent1,
-                    '&:hover': {
-                      bgcolor: colors.accent1,
-                      filter: 'brightness(1.1)'
-                    },
-                    borderRadius: 2.1,
-                    px: 2.8,
-                    fontSize: '0.7rem',
-                    py: 0.35
-                  }}
-                  onClick={() => window.open('http://localhost:5000', '_blank')}
-                >
-                  GeoCodingQuest starten 🌍
-                </Button>
-              </CardContent>
-            </Card>
-          </Box>
-        </Grid>
-
 
       </Grid>
 

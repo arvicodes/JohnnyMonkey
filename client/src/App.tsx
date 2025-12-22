@@ -4,7 +4,6 @@ import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import LearningGroupPage from './pages/LearningGroupPage';
-import GeoCodingQuest from './pages/GeoCodingQuest';
 import QuizPlayerPage from './pages/QuizPlayerPage';
 import QuizSessionPage from './pages/QuizSessionPage';
 import QuizParticipationPage from './pages/QuizParticipationPage';
@@ -32,8 +31,8 @@ function AppContent() {
   const [message, setMessage] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [johnnyVisible, setJohnnyVisible] = useState(true);
-  const [elfVisible, setElfVisible] = useState(true);
+  const [johnnyVisible, setJohnnyVisible] = useState(false);
+  const [elfVisible, setElfVisible] = useState(false);
   const navigate = useNavigate();
   const loginInputRef = useRef<HTMLInputElement>(null);
 
@@ -208,7 +207,6 @@ function AppContent() {
         />
         <Route path="/dashboard" element={renderDashboard()} />
         <Route path="/learning-group/:id" element={<LearningGroupPage />} />
-        <Route path="/geocoding-quest" element={<GeoCodingQuest />} />
         <Route path="/quiz-player/:quizId" element={<QuizPlayerPage />} />
         <Route path="/quiz-session/:quizId" element={<QuizSessionPage />} />
         <Route path="/quiz-participation/:sessionId" element={<QuizParticipationPage />} />
@@ -223,16 +221,20 @@ function AppContent() {
 
       </Routes>
       
-      {/* Johnny Companion - Global auf allen Seiten */}
-      <JohnnyCompanionSimple 
-        userId={user?.id || 'guest-user'}
-        userRole={user?.role as 'TEACHER' | 'STUDENT' || 'STUDENT'}
-        currentPage="dashboard"
-        isVisible={johnnyVisible}
-      />
+      {/* Johnny Companion - Für alle sichtbar, wenn eingeblendet */}
+      {user && (
+        <JohnnyCompanionSimple 
+          userId={user?.id || 'guest-user'}
+          userRole={user?.role as 'TEACHER' | 'STUDENT' || 'STUDENT'}
+          currentPage="dashboard"
+          isVisible={johnnyVisible}
+        />
+      )}
       
-      {/* FlutterElf - Animierte Begleiterfigur auf allen Seiten */}
-      <FlutterElf isVisible={elfVisible} />
+      {/* FlutterElf - Für alle sichtbar, wenn eingeblendet */}
+      {user && (
+        <FlutterElf isVisible={elfVisible} />
+      )}
       
       <Snackbar
         open={showSuccessMessage}

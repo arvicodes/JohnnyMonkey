@@ -24,7 +24,9 @@ import {
   Alert,
   LinearProgress,
   IconButton,
-  InputAdornment
+  InputAdornment,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 
 interface GradeNode {
@@ -88,6 +90,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
   const [success, setSuccess] = useState('');
   const [lockedGrades, setLockedGrades] = useState<Set<string>>(new Set()); // Neu: Set der gesperrten Noten-IDs
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set()); // Neu: Set der erweiterten Kategorien
+  const [isGradeReleased, setIsGradeReleased] = useState(false); // Freigabestatus der Gesamtnote
 
   // Alle Kategorien standardmäßig aufgeklappt
   useEffect(() => {
@@ -136,6 +139,65 @@ const GradesModal: React.FC<GradesModalProps> = ({
       fetchGradingSchema();
     }
   }, [open, groupId, student, fetchGradingSchema]);
+
+  useEffect(() => {
+    if (open && student && gradingSchema?.id) {
+      loadGradeRelease();
+    }
+  }, [open, student, gradingSchema?.id]);
+
+  const loadGradeRelease = async () => {
+    try {
+      if (!gradingSchema?.id) return;
+      const response = await fetch(`/api/grades/release/${student.id}/${gradingSchema.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsGradeReleased(data.isReleased || false);
+      }
+    } catch (error) {
+      console.error('Error loading grade release status:', error);
+    }
+  };
+
+  const toggleGradeRelease = async (isReleased: boolean) => {
+    try {
+      console.log('toggleGradeRelease called with:', isReleased);
+      console.log('gradingSchema?.id:', gradingSchema?.id);
+      console.log('student.id:', student.id);
+      
+      if (!gradingSchema?.id) {
+        console.error('No grading schema ID');
+        return;
+      }
+      
+      const response = await fetch('/api/grades/release', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: student.id,
+          schemaId: gradingSchema.id,
+          isReleased
+        })
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Response data:', data);
+        setIsGradeReleased(isReleased);
+        setSuccess(isReleased ? 'Gesamtnote wurde freigegeben' : 'Gesamtnote wurde gesperrt');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const errorText = await response.text();
+        console.error('Response error:', errorText);
+        setError('Fehler beim Freigeben der Gesamtnote');
+      }
+    } catch (error) {
+      console.error('Error toggling grade release:', error);
+      setError('Fehler beim Freigeben der Gesamtnote');
+    }
+  };
 
   // Don't render if no student is selected
   if (!student) {
@@ -399,16 +461,17 @@ const GradesModal: React.FC<GradesModalProps> = ({
   // Gültige Notenwerte basierend auf dem Notensystem
   const getValidGradeValues = (gradingSystem: string = 'GERMAN'): number[] => {
     if (gradingSystem === 'MSS') {
-      // MSS: 0-15 Punkte (nur ganze Zahlen)
+      // MSS: 0-15 Punkte (nur ganze Zahlen), 0 = Zurücksetzen
       return Array.from({ length: 16 }, (_, i) => i);
     } else {
-      // Deutsches System: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0
-      return [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0];
+      // Deutsches System: 0 = Zurücksetzen, dann 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0
+      return [0, 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0];
     }
   };
 
   // Funktion zur Formatierung der deutschen Notenanzeige
   const formatGermanGrade = (grade: number): string => {
+    if (grade === 0) return '0'; // 0 = Zurücksetzen
     if (grade === 1.0) return '1';
     if (grade === 1.3) return '1-';
     if (grade === 1.7) return '2+';
@@ -469,15 +532,17 @@ const GradesModal: React.FC<GradesModalProps> = ({
 
   const getGradeColor = (grade: number, gradingSystem: string = 'GERMAN'): string => {
     if (gradingSystem === 'MSS') {
-      // MSS-Farben: 15-13 = sehr gut, 12-10 = gut, 9-7 = befriedigend, 6-4 = ausreichend, 3-1 = mangelhaft, 0 = ungenügend
+      // MSS-Farben: 15-13 = sehr gut, 12-10 = gut, 9-7 = befriedigend, 6-4 = ausreichend, 3-1 = mangelhaft, 0 = ungenügend/zurücksetzen
       if (grade >= 13) return colors.success;
       if (grade >= 10) return '#4CAF50';
       if (grade >= 7) return '#FF9800';
       if (grade >= 4) return '#F57C00';
       if (grade >= 1) return '#FF5722';
-      return colors.accent2; // 0 = ungenügend
+      return colors.accent2; // 0 = ungenügend/zurücksetzen
     } else {
       // Deutsches Schulnotensystem (korrigierte Werte)
+      // 0 = Zurücksetzen (graue Farbe)
+      if (grade === 0) return colors.textSecondary;
       if (grade >= 1.0 && grade <= 1.7) return colors.success; // 1, 1-, 2+
       if (grade >= 2.0 && grade <= 2.7) return '#4CAF50'; // 2, 2-, 3+
       if (grade >= 3.0 && grade <= 3.7) return '#FF9800'; // 3, 3-, 4+
@@ -540,10 +605,23 @@ const GradesModal: React.FC<GradesModalProps> = ({
         return;
       }
 
-      // Validiere finale Note
-      const validGrades = getValidGradeValues(gradingSchema?.gradingSystem || 'GERMAN');
-      if (!validGrades.includes(finalGrade)) {
-        setError(`Ungültige finale Note: ${finalGrade}`);
+      // Validiere finale Note - erlaube berechnete Werte innerhalb des gültigen Bereichs
+      const gradingSystem = gradingSchema?.gradingSystem || 'GERMAN';
+      let isValidFinalGrade = false;
+      
+      if (finalGrade === 0) {
+        // 0 ist immer erlaubt (Zurücksetzen)
+        isValidFinalGrade = true;
+      } else if (gradingSystem === 'MSS') {
+        // MSS: 0-15, ganze Zahlen
+        isValidFinalGrade = Number.isInteger(finalGrade) && finalGrade >= 0 && finalGrade <= 15;
+      } else {
+        // GERMAN: 0-6.0, erlaube berechnete Dezimalwerte
+        isValidFinalGrade = finalGrade >= 0 && finalGrade <= 6.0;
+      }
+      
+      if (!isValidFinalGrade) {
+        setError(`Ungültige finale Note: ${finalGrade.toFixed(2)}. ${gradingSystem === 'MSS' ? 'MSS: 0-15 (ganze Zahlen)' : 'GERMAN: 0-6.0'}`);
         return;
       }
 
@@ -757,11 +835,19 @@ const GradesModal: React.FC<GradesModalProps> = ({
             <TextField
               size="small"
               type="number"
-              value={node.grade || ''}
+              value={node.grade !== undefined ? node.grade : ''}
               onChange={(e) => {
                 const value = e.target.value;
-                const grade = value === '' ? undefined : parseFloat(value);
-                updateGrade(node.id, grade);
+                // Erlaube explizit "0" als Wert zum Zurücksetzen
+                if (value === '') {
+                  updateGrade(node.id, undefined);
+                } else {
+                  const grade = parseFloat(value);
+                  // Erlaube 0 als gültigen Wert (zum Zurücksetzen)
+                  if (!isNaN(grade) && grade >= 0) {
+                    updateGrade(node.id, grade);
+                  }
+                }
               }}
               disabled={isLocked}
               sx={{
@@ -785,7 +871,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
                 }
               }}
               placeholder={node.grade === undefined ? 
-                (gradingSchema?.gradingSystem === 'MSS' ? '0-15' : '1, 1-, 2+, 2, 2-, 3+, 3, 3-, 4+, 4, 4-, 5+, 5, 5-, 6') : 
+                '0' : 
                 'Bereits gesetzt'
               }
               error={gradingSchema?.gradingSystem === 'MSS' &&
@@ -795,7 +881,7 @@ const GradesModal: React.FC<GradesModalProps> = ({
               helperText={gradingSchema?.gradingSystem === 'MSS' &&
                 node.grade !== undefined &&
                 (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15) &&
-                'MSS: 0-15'
+                'MSS: 0-15 (0 = Zurücksetzen)'
               }
               InputProps={{
                 endAdornment: (
@@ -937,79 +1023,146 @@ const GradesModal: React.FC<GradesModalProps> = ({
         </Box>
         
         {finalGrade !== null && finalGrade > 0 && (
-          <Paper elevation={0} sx={{ 
-            p: 1, 
-            background: `linear-gradient(135deg, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}15 0%, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}08 100%)`,
-            borderRadius: 1,
-            border: `2px solid ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <Box sx={{ 
-              position: 'absolute', 
-              top: 0, 
-              right: 0, 
-              width: 50, 
-              height: 50, 
-              background: `radial-gradient(circle, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}20 0%, transparent 70%)`,
-              borderRadius: '50%',
-              transform: 'translate(15px, -15px)'
-            }} />
-            
-            <Typography variant="h6" sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 0.8,
-              fontSize: '0.7rem',
-              fontWeight: 700,
-              color: colors.textPrimary,
-              mb: 0.8,
+          <>
+            <Paper elevation={0} sx={{ 
+              p: 1, 
+              mb: 1,
+              background: `linear-gradient(135deg, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}15 0%, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}08 100%)`,
+              borderRadius: 1,
+              border: `2px solid ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
               position: 'relative',
-              zIndex: 1
+              overflow: 'hidden'
             }}>
-              <AssessmentIcon sx={{ 
-                fontSize: 14, 
-                color: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
-                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+              <Box sx={{ 
+                position: 'absolute', 
+                top: 0, 
+                right: 0, 
+                width: 50, 
+                height: 50, 
+                background: `radial-gradient(circle, ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}20 0%, transparent 70%)`,
+                borderRadius: '50%',
+                transform: 'translate(15px, -15px)',
+                zIndex: 0,
+                pointerEvents: 'none'
               }} />
-              🎯 Gesamtnote
-            </Typography>
+              
+              <Typography variant="h6" sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 0.8,
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: colors.textPrimary,
+                mb: 0.8,
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <AssessmentIcon sx={{ 
+                  fontSize: 14, 
+                  color: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+                }} />
+                🎯 Gesamtnote
+              </Typography>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1.2,
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <Chip 
+                  label={gradingSchema?.gradingSystem === 'MSS' ? 
+                    `${finalGrade!.toFixed(0)} Punkte` : 
+                    formatGermanGrade(finalGrade!)
+                  }
+                  sx={{ 
+                    bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.65rem',
+                    height: 28,
+                    px: 1.2,
+                    boxShadow: `0 2px 8px ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
+                    '& .MuiChip-label': { px: 1.2 }
+                  }}
+                />
+                <Typography variant="body2" sx={{ 
+                  fontSize: '0.6rem',
+                  color: colors.textSecondary,
+                  fontWeight: 500
+                }}>
+                  {gradingSchema?.gradingSystem === 'MSS' ? 
+                    'MSS-System' : 
+                    'Deutsches System'
+                  }
+                </Typography>
+              </Box>
+            </Paper>
             
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 1.2,
-              position: 'relative',
-              zIndex: 1
-            }}>
-              <Chip 
-                label={gradingSchema?.gradingSystem === 'MSS' ? 
-                  `${finalGrade!.toFixed(0)} Punkte` : 
-                  formatGermanGrade(finalGrade!)
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                p: 0.8,
+                bgcolor: '#f8f9fa',
+                borderRadius: 1,
+                border: '1px solid #e0e0e0',
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: '#f0f0f0'
                 }
-                sx={{ 
-                  bgcolor: getGradeColor(finalGrade, gradingSchema?.gradingSystem),
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '0.65rem',
-                  height: 28,
-                  px: 1.2,
-                  boxShadow: `0 2px 8px ${getGradeColor(finalGrade, gradingSchema?.gradingSystem)}40`,
-                  '& .MuiChip-label': { px: 1.2 }
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Box clicked, current state:', isGradeReleased);
+                toggleGradeRelease(!isGradeReleased);
+              }}
+            >
+              <Checkbox
+                checked={isGradeReleased}
+                onChange={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Checkbox onChange, checked:', e.target.checked);
+                  toggleGradeRelease(e.target.checked);
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Checkbox onClick');
+                }}
+                size="small"
+                sx={{
+                  color: colors.primary,
+                  pointerEvents: 'auto',
+                  '&.Mui-checked': {
+                    color: colors.primary
+                  }
                 }}
               />
-              <Typography variant="body2" sx={{ 
-                fontSize: '0.6rem',
-                color: colors.textSecondary,
-                fontWeight: 500
-              }}>
-                {gradingSchema?.gradingSystem === 'MSS' ? 
-                  'MSS-System' : 
-                  'Deutsches System'
-                }
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  color: colors.textPrimary,
+                  ml: 0.5,
+                  userSelect: 'none',
+                  pointerEvents: 'auto'
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Typography clicked');
+                  toggleGradeRelease(!isGradeReleased);
+                }}
+              >
+                Gesamtnote für Schüler freigeben
               </Typography>
             </Box>
-          </Paper>
+          </>
         )}
       </DialogContent>
       
