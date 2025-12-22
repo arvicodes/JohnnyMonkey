@@ -1,0 +1,488 @@
+[
+  {
+    "id": "4408af74-4592-4d64-8060-13956d5c0a4b",
+    "name": "Aaron Herrenkind",
+    "currentLoginCode": "HERAar07",
+    "newLoginCode": "HerAar07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "d866d2a9-a845-4b21-abb6-df3f0f48d3e8",
+    "name": "Adela Mureşan",
+    "currentLoginCode": "MURAde13",
+    "newLoginCode": "MurAde13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "1f073b27-d3bb-49f0-bbe4-61d55f4a9585",
+    "name": "Alex Koch",
+    "currentLoginCode": "KOCAle07",
+    "newLoginCode": "KocAle07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "e986f536-a9e6-49b5-817d-29a5de414d0f",
+    "name": "Andreas Thielen",
+    "currentLoginCode": "THIAnd13",
+    "newLoginCode": "ThiAnd13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "4723e20b-7928-4cfb-b184-2b4ef1c91594",
+    "name": "Arthur Potemkin",
+    "currentLoginCode": "POTArt13",
+    "newLoginCode": "PotArt13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "0ad59b7c-6c2d-44b2-a8d2-6e207781c5e7",
+    "name": "Benjamin Clos",
+    "currentLoginCode": "CLOBen07",
+    "newLoginCode": "CloBen07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "d9e0e507-1432-464f-a6ff-cbcb3e2ce35b",
+    "name": "Bruno Scavio",
+    "currentLoginCode": "SCABru13",
+    "newLoginCode": "ScaBru13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "a29225ed-0b95-4de5-b91f-11f2af0f4daa",
+    "name": "Dennis Miller",
+    "currentLoginCode": "MILDen13",
+    "newLoginCode": "MilDen13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "979152b3-4e43-4710-b5dc-3d014b96e795",
+    "name": "Duy Anh Trân",
+    "currentLoginCode": "ANHDuy07",
+    "newLoginCode": "AnhDuy07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "007bb4b3-dc86-4996-99ac-9f712880be63",
+    "name": "Erich König",
+    "currentLoginCode": "KÖNEri07",
+    "newLoginCode": "KönEri07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "b3c30888-7797-46f6-b4cb-4ee63bba6dcf",
+    "name": "Fabio Urso",
+    "currentLoginCode": "URSFab13",
+    "newLoginCode": "UrsFab13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "3fcca169-2005-4e19-bea8-79b56a7f67a5",
+    "name": "Felix Schmelzlin",
+    "currentLoginCode": "SCHFel13",
+    "newLoginCode": "SchFel13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "b3841f96-70ec-4ebe-aee1-01701451f66a",
+    "name": "Freya Zipper",
+    "currentLoginCode": "ZIPFre13",
+    "newLoginCode": "ZipFre13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "c10279e5-5586-4c2a-a39f-288ae4bf7f69",
+    "name": "Friederike Bremser",
+    "currentLoginCode": "BREFri13",
+    "newLoginCode": "BreFri13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "331c4df7-26ec-4ea2-b756-81a408317d9b",
+    "name": "Hannah Hagedorn",
+    "currentLoginCode": "HAGHan13",
+    "newLoginCode": "HagHan13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "6d88244d-18fe-478b-ac69-8e1b9418a734",
+    "name": "Helge Nebendahl",
+    "currentLoginCode": "NEBHel07",
+    "newLoginCode": "NebHel07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "4b09f68d-a1cd-4a5a-9cf8-e30d2732942e",
+    "name": "Jakob Ackermann",
+    "currentLoginCode": "ACKJak13",
+    "newLoginCode": "AckJak13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "586e65a3-ec61-4884-adde-045e7a0ad0d6",
+    "name": "Jakob Weyerhäuser",
+    "currentLoginCode": "WEYJak07",
+    "newLoginCode": "WeyJak07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "a1d1dc91-63e7-404f-a63c-97f8763a4fe2",
+    "name": "Jan Wimmershoff",
+    "currentLoginCode": "WIMJan13",
+    "newLoginCode": "WimJan13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "3d58905c-7d17-4b9a-93ec-11bbc2b24b9d",
+    "name": "Jana Schiffer",
+    "currentLoginCode": "SCHJan07",
+    "newLoginCode": "SchJan07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "530fee57-6c45-42af-abd7-c51a742fde41",
+    "name": "Janic Schaaf",
+    "currentLoginCode": "SCHJan071",
+    "newLoginCode": "SchJan071",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "bf106cab-4261-4264-b8ae-6bf3df4e1989",
+    "name": "Jasmin Farnung",
+    "currentLoginCode": "FARJas13",
+    "newLoginCode": "FarJas13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "00e860f5-2ebf-4217-8418-ed5198a11e38",
+    "name": "Jasper Wagner",
+    "currentLoginCode": "WAGJas07",
+    "newLoginCode": "WagJas07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "30ad265d-e41f-4048-abd5-5babf328c700",
+    "name": "Jonas Maxeiner",
+    "currentLoginCode": "MAXJon13",
+    "newLoginCode": "MaxJon13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "634f0240-954b-4799-ad51-ef349f93050b",
+    "name": "Jonathan Dillmann",
+    "currentLoginCode": "DILJon13",
+    "newLoginCode": "DilJon13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "9fe8b6f8-5a76-48ee-bfd3-51f2c114dee2",
+    "name": "Josefine Baierl",
+    "currentLoginCode": "BAIJos13",
+    "newLoginCode": "BaiJos13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "2b81ce9e-f697-4677-b6cf-6cac3db844da",
+    "name": "Julia Reiners",
+    "currentLoginCode": "REIJul13",
+    "newLoginCode": "ReiJul13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "567961b6-7109-46b2-a17f-0b9580621a61",
+    "name": "Julian Weitz",
+    "currentLoginCode": "WEIJul07",
+    "newLoginCode": "WeiJul07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "14e28c99-888e-4581-9386-fdad3be79415",
+    "name": "Julius Schöning",
+    "currentLoginCode": "SCHJul07",
+    "newLoginCode": "SchJul07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "9b417759-b1cb-4a92-bb32-e2510d7b1575",
+    "name": "Justus Damm",
+    "currentLoginCode": "DAMJus07",
+    "newLoginCode": "DamJus07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "359611d5-7441-4015-8572-38dc77b557a1",
+    "name": "Kilian Jahnke",
+    "currentLoginCode": "JAHKil13",
+    "newLoginCode": "JahKil13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "b4419672-b2f8-402c-8a1c-52253e6a5067",
+    "name": "Laureen Budka",
+    "currentLoginCode": "BUDLau07",
+    "newLoginCode": "BudLau07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "266d9abf-794d-4096-9c68-7bff58245aec",
+    "name": "Lennas Weinem",
+    "currentLoginCode": "WEILen13",
+    "newLoginCode": "WeiLen13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "459fc2c2-5b97-46a6-93d1-82ed430e828d",
+    "name": "Louis Gerharz",
+    "currentLoginCode": "GERLou13",
+    "newLoginCode": "GerLou13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "9f0bab97-72ae-490a-97e8-8d55de7b6217",
+    "name": "Louis Scheerer",
+    "currentLoginCode": "SCHLou07",
+    "newLoginCode": "SchLou07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "2ce55242-4d3d-438d-a305-98b1b148408e",
+    "name": "Louisa Plattes",
+    "currentLoginCode": "PLALou13",
+    "newLoginCode": "PlaLou13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "74e89399-f46b-41c6-ad6b-bcb06bf0a449",
+    "name": "Luise Habach",
+    "currentLoginCode": "HABLui13",
+    "newLoginCode": "HabLui13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "14f17127-552f-4356-95ac-f6d32aec0d0e",
+    "name": "Lukas Wetzlar",
+    "currentLoginCode": "WETLuk07",
+    "newLoginCode": "WetLuk07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "d53ee972-3396-4cc2-a6e9-14b7fc24eb54",
+    "name": "Marlene Geis",
+    "currentLoginCode": "GEIMar13",
+    "newLoginCode": "GeiMar13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "37942bea-1eee-407e-8816-54beb08ac2a1",
+    "name": "Marlene Krall",
+    "currentLoginCode": "KRAMar13",
+    "newLoginCode": "KraMar13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "bbc64e54-b489-4aaa-97ba-c4949c2819ae",
+    "name": "Martin Bindewald",
+    "currentLoginCode": "BINMar07",
+    "newLoginCode": "BinMar07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "7ea63607-b859-4703-b2c2-b025a42389e2",
+    "name": "Miró Mohr",
+    "currentLoginCode": "MOHMir13",
+    "newLoginCode": "MohMir13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "c9095bc2-ec8d-4e6c-bf35-98c9cdc10e81",
+    "name": "Nikita Kling",
+    "currentLoginCode": "KLINik07",
+    "newLoginCode": "KliNik07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "fa0454e9-acea-472a-b530-1130e1c61cfd",
+    "name": "Niklas Schmitz",
+    "currentLoginCode": "SCHNik13",
+    "newLoginCode": "SchNik13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "0d92033b-bf1f-4ea1-9012-99f8eadded43",
+    "name": "Nils Weiß",
+    "currentLoginCode": "WEINil13",
+    "newLoginCode": "WeiNil13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "8829e4d5-e609-4fcd-82ca-d6390be42c71",
+    "name": "Paul Pfeifer",
+    "currentLoginCode": "PFEPau13",
+    "newLoginCode": "PfePau13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "2b43da98-c067-4e6f-b1d0-4184e9abc5d9",
+    "name": "Paul Ulrich",
+    "currentLoginCode": "ULRPau07",
+    "newLoginCode": "UlrPau07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "b08f382a-0125-494a-93ae-a97b294ad6d6",
+    "name": "Robin Maas",
+    "currentLoginCode": "MAARob13",
+    "newLoginCode": "MaaRob13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "5ff022a3-475a-4394-9d0e-f788df4b43a1",
+    "name": "Samuel May",
+    "currentLoginCode": "MAYSam13",
+    "newLoginCode": "MaySam13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "cb2086a0-3ac2-4c5d-a0f8-7d671ed3d158",
+    "name": "Sophie Schaaf",
+    "currentLoginCode": "SCHSop07",
+    "newLoginCode": "SchSop07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "0eb2aeda-09f6-40ca-b2c3-60b18737e61d",
+    "name": "Stipe Drmic",
+    "currentLoginCode": "DRMSti07",
+    "newLoginCode": "DrmSti07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "e51e14b0-66a5-4a61-a19e-6dec36f07cb5",
+    "name": "Tom Kup",
+    "currentLoginCode": "KUPTom07",
+    "newLoginCode": "KupTom07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  },
+  {
+    "id": "33dac493-32e7-4e4e-a267-c3125d10821a",
+    "name": "Vincent Schlag",
+    "currentLoginCode": "SCHVin13",
+    "newLoginCode": "SchVin13",
+    "groups": [
+      "Klasse 7a"
+    ]
+  },
+  {
+    "id": "3588315a-a57e-4d27-8ec4-8e87714caece",
+    "name": "Wiebke Schmidt",
+    "currentLoginCode": "SCHWie07",
+    "newLoginCode": "SchWie07",
+    "groups": [
+      "Informatik GK 12"
+    ]
+  }
+]

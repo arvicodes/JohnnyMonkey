@@ -1,0 +1,127 @@
+VOLLSTÄNDIGE LISTE DER SCHÜLER-LOGIN-CODES
+================================================================================
+Erstellt am: 22.12.2025, 09:06:51
+Anzahl Schüler: 54
+
+SCHEMA:
+- Erste 3 Buchstaben des Nachnamens (erster groß, rest klein)
+- Erste 3 Buchstaben des Vornamens (erster groß, rest klein)
+- Nummer: 13 für Klasse 7a, 07 für GK Informatik
+- Bei Duplikaten wird eine zusätzliche Nummer angehängt
+- Beispiel: Jakob Ackermann -> AckJak13
+
+================================================================================
+
+  1. Aaron Herrenkind                    | HerAar07     | Gruppen: Informatik GK 12
+  2. Adela Mureşan                       | MurAde13     | Gruppen: Klasse 7a
+  3. Alex Koch                           | KocAle07     | Gruppen: Informatik GK 12
+  4. Andreas Thielen                     | ThiAnd13     | Gruppen: Klasse 7a
+  5. Arthur Potemkin                     | PotArt13     | Gruppen: Klasse 7a
+  6. Benjamin Clos                       | CloBen07     | Gruppen: Informatik GK 12
+  7. Bruno Scavio                        | ScaBru13     | Gruppen: Klasse 7a
+  8. Dennis Miller                       | MilDen13     | Gruppen: Klasse 7a
+  9. Duy Anh Trân                        | AnhDuy07     | Gruppen: Informatik GK 12
+ 10. Erich König                         | KönEri07     | Gruppen: Informatik GK 12
+ 11. Fabio Urso                          | UrsFab13     | Gruppen: Klasse 7a
+ 12. Felix Schmelzlin                    | SchFel13     | Gruppen: Klasse 7a
+ 13. Freya Zipper                        | ZipFre13     | Gruppen: Klasse 7a
+ 14. Friederike Bremser                  | BreFri13     | Gruppen: Klasse 7a
+ 15. Hannah Hagedorn                     | HagHan13     | Gruppen: Klasse 7a
+ 16. Helge Nebendahl                     | NebHel07     | Gruppen: Informatik GK 12
+ 17. Jakob Ackermann                     | AckJak13     | Gruppen: Klasse 7a
+ 18. Jakob Weyerhäuser                   | WeyJak07     | Gruppen: Informatik GK 12
+ 19. Jan Wimmershoff                     | WimJan13     | Gruppen: Klasse 7a
+ 20. Jana Schiffer                       | SchJan07     | Gruppen: Informatik GK 12
+ 21. Janic Schaaf                        | SchJan071    | Gruppen: Informatik GK 12
+ 22. Jasmin Farnung                      | FarJas13     | Gruppen: Klasse 7a
+ 23. Jasper Wagner                       | WagJas07     | Gruppen: Informatik GK 12
+ 24. Jonas Maxeiner                      | MaxJon13     | Gruppen: Klasse 7a
+ 25. Jonathan Dillmann                   | DilJon13     | Gruppen: Klasse 7a
+ 26. Josefine Baierl                     | BaiJos13     | Gruppen: Klasse 7a
+ 27. Julia Reiners                       | ReiJul13     | Gruppen: Klasse 7a
+ 28. Julian Weitz                        | WeiJul07     | Gruppen: Informatik GK 12
+ 29. Julius Schöning                     | SchJul07     | Gruppen: Informatik GK 12
+ 30. Justus Damm                         | DamJus07     | Gruppen: Informatik GK 12
+ 31. Kilian Jahnke                       | JahKil13     | Gruppen: Klasse 7a
+ 32. Laureen Budka                       | BudLau07     | Gruppen: Informatik GK 12
+ 33. Lennas Weinem                       | WeiLen13     | Gruppen: Klasse 7a
+ 34. Louis Gerharz                       | GerLou13     | Gruppen: Klasse 7a
+ 35. Louis Scheerer                      | SchLou07     | Gruppen: Informatik GK 12
+ 36. Louisa Plattes                      | PlaLou13     | Gruppen: Klasse 7a
+ 37. Luise Habach                        | HabLui13     | Gruppen: Klasse 7a
+ 38. Lukas Wetzlar                       | WetLuk07     | Gruppen: Informatik GK 12
+ 39. Marlene Geis                        | GeiMar13     | Gruppen: Klasse 7a
+ 40. Marlene Krall                       | KraMar13     | Gruppen: Klasse 7a
+ 41. Martin Bindewald                    | BinMar07     | Gruppen: Informatik GK 12
+ 42. Miró Mohr                           | MohMir13     | Gruppen: Klasse 7a
+ 43. Nikita Kling                        | KliNik07     | Gruppen: Informatik GK 12
+ 44. Niklas Schmitz                      | SchNik13     | Gruppen: Klasse 7a
+ 45. Nils Weiß                           | WeiNil13     | Gruppen: Klasse 7a
+ 46. Paul Pfeifer                        | PfePau13     | Gruppen: Klasse 7a
+ 47. Paul Ulrich                         | UlrPau07     | Gruppen: Informatik GK 12
+ 48. Robin Maas                          | MaaRob13     | Gruppen: Klasse 7a
+ 49. Samuel May                          | MaySam13     | Gruppen: Klasse 7a
+ 50. Sophie Schaaf                       | SchSop07     | Gruppen: Informatik GK 12
+ 51. Stipe Drmic                         | DrmSti07     | Gruppen: Informatik GK 12
+ 52. Tom Kup                             | KupTom07     | Gruppen: Informatik GK 12
+ 53. Vincent Schlag                      | SchVin13     | Gruppen: Klasse 7a
+ 54. Wiebke Schmidt                      | SchWie07     | Gruppen: Informatik GK 12
+
+================================================================================
+
+ALPHABETISCHE SORTIERUNG:
+
+  1. Aaron Herrenkind                    | HerAar07
+  2. Adela Mureşan                       | MurAde13
+  3. Alex Koch                           | KocAle07
+  4. Andreas Thielen                     | ThiAnd13
+  5. Arthur Potemkin                     | PotArt13
+  6. Benjamin Clos                       | CloBen07
+  7. Bruno Scavio                        | ScaBru13
+  8. Dennis Miller                       | MilDen13
+  9. Duy Anh Trân                        | AnhDuy07
+ 10. Erich König                         | KönEri07
+ 11. Fabio Urso                          | UrsFab13
+ 12. Felix Schmelzlin                    | SchFel13
+ 13. Freya Zipper                        | ZipFre13
+ 14. Friederike Bremser                  | BreFri13
+ 15. Hannah Hagedorn                     | HagHan13
+ 16. Helge Nebendahl                     | NebHel07
+ 17. Jakob Ackermann                     | AckJak13
+ 18. Jakob Weyerhäuser                   | WeyJak07
+ 19. Jan Wimmershoff                     | WimJan13
+ 20. Jana Schiffer                       | SchJan07
+ 21. Janic Schaaf                        | SchJan071
+ 22. Jasmin Farnung                      | FarJas13
+ 23. Jasper Wagner                       | WagJas07
+ 24. Jonas Maxeiner                      | MaxJon13
+ 25. Jonathan Dillmann                   | DilJon13
+ 26. Josefine Baierl                     | BaiJos13
+ 27. Julia Reiners                       | ReiJul13
+ 28. Julian Weitz                        | WeiJul07
+ 29. Julius Schöning                     | SchJul07
+ 30. Justus Damm                         | DamJus07
+ 31. Kilian Jahnke                       | JahKil13
+ 32. Laureen Budka                       | BudLau07
+ 33. Lennas Weinem                       | WeiLen13
+ 34. Louis Gerharz                       | GerLou13
+ 35. Louis Scheerer                      | SchLou07
+ 36. Louisa Plattes                      | PlaLou13
+ 37. Luise Habach                        | HabLui13
+ 38. Lukas Wetzlar                       | WetLuk07
+ 39. Marlene Geis                        | GeiMar13
+ 40. Marlene Krall                       | KraMar13
+ 41. Martin Bindewald                    | BinMar07
+ 42. Miró Mohr                           | MohMir13
+ 43. Nikita Kling                        | KliNik07
+ 44. Niklas Schmitz                      | SchNik13
+ 45. Nils Weiß                           | WeiNil13
+ 46. Paul Pfeifer                        | PfePau13
+ 47. Paul Ulrich                         | UlrPau07
+ 48. Robin Maas                          | MaaRob13
+ 49. Samuel May                          | MaySam13
+ 50. Sophie Schaaf                       | SchSop07
+ 51. Stipe Drmic                         | DrmSti07
+ 52. Tom Kup                             | KupTom07
+ 53. Vincent Schlag                      | SchVin13
+ 54. Wiebke Schmidt                      | SchWie07
