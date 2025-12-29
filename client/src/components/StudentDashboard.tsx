@@ -16,7 +16,11 @@ import {
   DialogTitle,
   DialogContent,
   Chip,
-  Paper
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Popover
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -26,13 +30,21 @@ import {
   Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  RecordVoiceOver as ParticipationIcon
+  RecordVoiceOver as ParticipationIcon,
+  HelpOutline as HelpIcon
 } from '@mui/icons-material';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
 import InboxModal from './InboxModal';
 import QuizStartButton from './QuizStartButton';
 import SubmissionUpload from './SubmissionUpload';
+
+/**
+ * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
+ */
+const isCorrectionFile = (fileName: string): boolean => {
+  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_');
+};
 
 interface Teacher {
   id: string;
@@ -185,6 +197,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [participationLoading, setParticipationLoading] = useState(false);
   const [participationExpanded, setParticipationExpanded] = useState(false);
   const [epoGrades, setEpoGrades] = useState<any[]>([]);
+
+  // Hilfe-Popover State
+  const [helpAnchorEl, setHelpAnchorEl] = useState<HTMLElement | null>(null);
 
   // Spielerische Farbpalette
   const colors = {
@@ -624,11 +639,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       } else {
         // Dateien
-        if (item.name.startsWith('KA_')) {
-          // Klassenarbeiten bekommen ein spezielles, größeres Icon
-          icon = '📝'; // Klassenarbeit-Icon
-          color = '#ff9800'; // Gelb-orange für Klassenarbeiten
-          fontWeight = 700; // Fett für Klassenarbeiten
+        if (isCorrectionFile(item.name)) {
+          // Klassenarbeiten/Hausaufgabenüberprüfungen bekommen ein spezielles, größeres Icon
+          icon = '📝'; // Klassenarbeit/HÜ-Icon
+          color = '#ff9800'; // Gelb-orange für Klassenarbeiten/HÜ
+          fontWeight = 700; // Fett für Klassenarbeiten/HÜ
         } else {
           icon = '📄'; // Dokument
           color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
@@ -674,11 +689,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
               )
             ) : null} {/* Kein Dreieck für Dateien */}
-            <span style={{ fontSize: item.name.startsWith('KA_') ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
+            <span style={{ fontSize: isCorrectionFile(item.name) ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
             <span style={{ 
-              fontWeight: item.name.startsWith('KA_') ? 700 : fontWeight,
-              fontSize: item.name.startsWith('KA_') ? '0.9rem' : '0.75rem',
-              color: item.name.startsWith('KA_') ? '#ff9800' : color
+              fontWeight: isCorrectionFile(item.name) ? 700 : fontWeight,
+              fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
+              color: isCorrectionFile(item.name) ? '#ff9800' : color
             }}>{item.name}</span>
             {/* Check-Icon für H_ Dateien mit Abgabe */}
             {item.type === 'file' && item.name.startsWith('H_') && submissionStatuses[item.path] && (
@@ -1359,13 +1374,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const fileExtension = item.name.split('.').pop()?.toLowerCase();
     
     if (fileExtension === 'html' || fileExtension === 'htm') {
-      // Prüfe ob es eine KA_ Datei ist und ob sie bereits abgegeben wurde
-      const isKAFile = item.name.startsWith('KA_');
-      if (isKAFile) {
+      // Prüfe ob es eine korrigierbare Datei (KA_, HÜ_, HU_) ist und ob sie bereits abgegeben wurde
+      const isCorrectionFileType = isCorrectionFile(item.name);
+      if (isCorrectionFileType) {
         // Prüfe in der Datenbank, ob bereits abgegeben
         try {
           const loginCode = localStorage.getItem('loginCode');
-          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html"
+          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html" oder "HU_geometrische-abbildungen.html"
           
           if (loginCode) {
             const response = await fetch(`/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
@@ -1378,7 +1393,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             if (response.ok) {
               const data = await response.json();
               if (data.exists === true) {
-                alert('⏳ Diese Klassenarbeit wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
+                const fileType = item.name.startsWith('KA_') ? 'Klassenarbeit' : 'Hausaufgabenüberprüfung';
+                alert(`⏳ Diese ${fileType} wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.`);
                 return;
               }
             }
@@ -1528,13 +1544,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const fileExtension = item.name.split('.').pop()?.toLowerCase();
     
     if (fileExtension === 'html' || fileExtension === 'htm') {
-      // Prüfe ob es eine KA_ Datei ist und ob sie bereits abgegeben wurde
-      const isKAFile = item.name.startsWith('KA_');
-      if (isKAFile) {
+      // Prüfe ob es eine korrigierbare Datei (KA_, HÜ_, HU_) ist und ob sie bereits abgegeben wurde
+      const isCorrectionFileType = isCorrectionFile(item.name);
+      if (isCorrectionFileType) {
         // Prüfe in der Datenbank, ob bereits abgegeben
         try {
           const loginCode = localStorage.getItem('loginCode');
-          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html"
+          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html" oder "HU_geometrische-abbildungen.html"
           
           if (loginCode) {
             const response = await fetch(`/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
@@ -1547,7 +1563,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             if (response.ok) {
               const data = await response.json();
               if (data.exists === true) {
-                alert('⏳ Diese Klassenarbeit wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.');
+                const fileType = item.name.startsWith('KA_') ? 'Klassenarbeit' : 'Hausaufgabenüberprüfung';
+                alert(`⏳ Diese ${fileType} wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.`);
                 return;
               }
             }
@@ -2532,24 +2549,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
                   <Grid item xs={4}>
                     <Box sx={{ 
-                      bgcolor: '#fff3e0',
+                      bgcolor: '#f5f5f5',
                       borderRadius: 1.4,
                       p: 1.4,
                       textAlign: 'center',
                       cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      border: '2px solid #ffb74d',
+                      transition: 'all 0.2s',
                       '&:hover': {
-                        bgcolor: '#ffe0b2',
-                        transform: 'translateY(-1px)',
-                        boxShadow: '0 2px 8px rgba(255, 107, 53, 0.2)',
-                        borderColor: '#ff6b35'
+                        bgcolor: '#e0e0e0'
                       }
                     }}
-                    onClick={() => setFlashcardLearningOpen(true)}
+                    onClick={() => {
+                      setFlashcardLearningOpen(true);
+                      setGradesExpanded(false);
+                      setParticipationExpanded(false);
+                    }}
                     >
                       <Typography variant="h4" sx={{ 
-                        color: '#ff6b35',
+                        color: '#424242',
                         fontWeight: 'bold',
                         fontSize: '1.8rem',
                         mb: 0.35
@@ -2557,7 +2574,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         🗂️
                       </Typography>
                       <Typography variant="caption" sx={{ 
-                        color: '#e65100',
+                        color: '#424242',
                         fontSize: '0.65rem',
                         fontWeight: 600,
                         textTransform: 'uppercase'
@@ -2575,14 +2592,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       '&:hover': {
-                        bgcolor: '#e3f2fd',
-                        transform: 'translateY(-2px)'
+                        bgcolor: '#e0e0e0'
                       }
                     }}
-                    onClick={() => setShowSubmissionStats(true)}
+                    onClick={() => {
+                      setShowSubmissionStats(true);
+                      setGradesExpanded(false);
+                      setParticipationExpanded(false);
+                    }}
                     >
                       <Typography variant="h4" sx={{ 
-                        color: '#4caf50',
+                        color: '#424242',
                         fontWeight: 'bold',
                         fontSize: '1.8rem',
                         mb: 0.35
@@ -2590,7 +2610,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         📊
                       </Typography>
                       <Typography variant="caption" sx={{ 
-                        color: '#2e7d32',
+                        color: '#424242',
                         fontSize: '0.65rem',
                         fontWeight: 600,
                         textTransform: 'uppercase'
@@ -2601,21 +2621,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Grid>
                   <Grid item xs={4}>
                     <Box sx={{ 
-                      bgcolor: '#e3f2fd',
+                      bgcolor: '#f5f5f5',
                       borderRadius: 1.4,
                       p: 1.4,
                       textAlign: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       position: 'relative',
-                      border: '2px solid #1976d2',
                       '&:hover': {
-                        bgcolor: '#bbdefb',
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0 2px 8px rgba(25, 118, 210, 0.2)'
+                        bgcolor: '#e0e0e0'
                       }
                     }}
-                    onClick={() => setShowInbox(true)}
+                    onClick={() => {
+                      setShowInbox(true);
+                      setGradesExpanded(false);
+                      setParticipationExpanded(false);
+                    }}
                     >
                       {unreadMessageCount > 0 && (
                         <Box sx={{
@@ -2638,7 +2659,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         </Box>
                       )}
                       <Typography variant="h4" sx={{ 
-                        color: '#1976d2',
+                        color: '#424242',
                         fontWeight: 'bold',
                         fontSize: '1.8rem',
                         mb: 0.35
@@ -2646,7 +2667,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         📬
                       </Typography>
                       <Typography variant="caption" sx={{ 
-                        color: '#1976d2',
+                        color: '#424242',
                         fontSize: '0.65rem',
                         fontWeight: 600,
                         textTransform: 'uppercase'
@@ -2657,49 +2678,94 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   </Grid>
                 </Grid>
 
-
-
-
-                {/* Noten Anzeige */}
+                {/* Noten und Mitarbeit Kacheln */}
                 {lerngruppen.length > 0 && (
-                  <Box sx={{ mt: 2.1 }}>
-                    <Box 
-                      sx={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
+                  <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
+                    <Grid item xs={6}>
+                      <Box sx={{ 
+                        bgcolor: '#f5f5f5',
+                        borderRadius: 1.4,
+                        p: 1.4,
+                        textAlign: 'center',
                         cursor: 'pointer',
-                        p: 1,
-                        borderRadius: 1,
-                        bgcolor: gradesExpanded ? '#f0f8ff' : 'transparent',
-                        transition: 'background-color 0.2s',
+                        transition: 'all 0.2s',
                         '&:hover': {
-                          bgcolor: '#f0f8ff'
+                          bgcolor: '#e0e0e0'
                         }
                       }}
-                      onClick={() => setGradesExpanded(!gradesExpanded)}
-                    >
-                      <Typography variant="body2" sx={{ 
-                        color: 'text.secondary',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                      }}>
-                        <GradeIcon sx={{ fontSize: 16 }} />
-                        Noten
-                      </Typography>
-                      {gradesExpanded ? (
-                        <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      ) : (
-                        <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      )}
-                    </Box>
-                    
-                    {gradesExpanded && (
-                      <>
-                        {gradesLoading ? (
+                      onClick={() => {
+                        if (gradesExpanded) {
+                          setGradesExpanded(false);
+                        } else {
+                          setGradesExpanded(true);
+                          setParticipationExpanded(false);
+                        }
+                      }}
+                      >
+                        <Typography variant="h4" sx={{ 
+                          color: '#424242',
+                          fontWeight: 'bold',
+                          fontSize: '1.8rem',
+                          mb: 0.35
+                        }}>
+                          📝
+                        </Typography>
+                        <Typography variant="caption" sx={{ 
+                          color: '#424242',
+                          fontSize: '0.65rem',
+                          fontWeight: 600,
+                          textTransform: 'uppercase'
+                        }}>
+                          Noten
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Box sx={{ 
+                        bgcolor: '#f5f5f5',
+                        borderRadius: 1.4,
+                        p: 1.4,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          bgcolor: '#e0e0e0'
+                        }
+                      }}
+                      onClick={() => {
+                        if (participationExpanded) {
+                          setParticipationExpanded(false);
+                        } else {
+                          setParticipationExpanded(true);
+                          setGradesExpanded(false);
+                        }
+                      }}
+                      >
+                        <Typography variant="h4" sx={{ 
+                          color: '#424242',
+                          fontWeight: 'bold',
+                          fontSize: '1.8rem',
+                          mb: 0.35
+                        }}>
+                          👋
+                        </Typography>
+                        <Typography variant="caption" sx={{ 
+                          color: '#424242',
+                          fontSize: '0.65rem',
+                          fontWeight: 600,
+                          textTransform: 'uppercase'
+                        }}>
+                          Mitarbeit
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {/* Noten Anzeige */}
+                {lerngruppen.length > 0 && gradesExpanded && (
+                  <Box sx={{ mt: 2.1 }}>
+                    {gradesLoading ? (
                           <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
                             <CircularProgress size={20} />
                           </Box>
@@ -2765,51 +2831,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                             })}
                           </Box>
                         )}
-                      </>
-                    )}
                   </Box>
                 )}
 
                 {/* Mitarbeitsbewertungen Anzeige */}
-                {lerngruppen.length > 0 && (
+                {lerngruppen.length > 0 && participationExpanded && (
                   <Box sx={{ mt: 2.1 }}>
-                    <Box 
-                      sx={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        p: 1,
-                        borderRadius: 1,
-                        bgcolor: participationExpanded ? '#fff3e0' : 'transparent',
-                        transition: 'background-color 0.2s',
-                        '&:hover': {
-                          bgcolor: '#fff3e0'
-                        }
-                      }}
-                      onClick={() => setParticipationExpanded(!participationExpanded)}
-                    >
-                      <Typography variant="body2" sx={{ 
-                        color: 'text.secondary',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                      }}>
-                        <ParticipationIcon sx={{ fontSize: 16 }} />
-                        Mitarbeit
-                      </Typography>
-                      {participationExpanded ? (
-                        <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      ) : (
-                        <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      )}
-                    </Box>
-                    
-                    {participationExpanded && (
-                      <>
-                        {participationLoading ? (
+                    {participationLoading ? (
                           <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
                             <CircularProgress size={20} />
                           </Box>
@@ -3097,8 +3125,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                             )}
                           </Box>
                         )}
-                      </>
-                    )}
                   </Box>
                 )}
               </CardContent>
@@ -3431,10 +3457,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 interface FlashcardLearningModalProps {
   open: boolean;
   onClose: () => void;
-  studentId: string;
+  studentId?: string;
+  isTeacher?: boolean;
+  teacherDeck?: any; // Deck für Lehrer-Modus
 }
 
-const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, onClose, studentId }) => {
+export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, onClose, studentId, isTeacher = false, teacherDeck }) => {
   const [assignedDecks, setAssignedDecks] = useState<any[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -3447,9 +3475,16 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
     correctAnswers: 0,
     incorrectAnswers: 0
   });
+  const [helpAnchorEl, setHelpAnchorEl] = useState<HTMLElement | null>(null);
+  // Für Lehrer: Track welche Karten bereits gelernt wurden
+  const [teacherLearnedCards, setTeacherLearnedCards] = useState<Set<string>>(new Set());
 
   // Export-Funktionen für Lern-Fortschritt
   const exportLearningProgress = async (format: 'json' | 'csv', deckId?: string) => {
+    if (isTeacher || !studentId) {
+      // Lehrer haben keine Lern-Fortschritte zum Exportieren
+      return;
+    }
     try {
       const params = new URLSearchParams({
         format,
@@ -3561,11 +3596,46 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
   // Lade zugewiesene Karteikarten beim Öffnen
   useEffect(() => {
     if (open) {
-      fetchAssignedDecks();
+      if (isTeacher && teacherDeck) {
+        // Lehrer-Modus: Deck als Array formatieren, wie bei Schülern
+        // Berücksichtige bereits gelernte Karten
+        const totalCards = teacherDeck.cards?.length || 0;
+        const unlearnedCards = teacherDeck.cards?.filter((card: any) => !teacherLearnedCards.has(card.id)) || [];
+        const dueCardsCount = unlearnedCards.length;
+        
+        const formattedDeck = {
+          ...teacherDeck,
+          totalCards: totalCards,
+          dueCards: dueCardsCount, // Nur nicht gelernte Karten sind fällig
+          completedCards: 0,
+          progressPercentage: 0,
+          qualityStats: { perfect: 0, partial: 0, notKnown: 0 },
+          levelStats: { level0: 0, level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 },
+          dueCardsByDate: { today: dueCardsCount, tomorrow: 0, thisWeek: 0, later: 0 },
+          reviewStats: { totalReviews: 0, avgReviewCount: 0, lastReviewDate: '-' }
+        };
+        setAssignedDecks([formattedDeck]);
+        setLearningMode('selection');
+        setSelectedDeck(null);
+        setCurrentCardIndex(0);
+        setShowAnswer(false);
+        setLoading(false);
+      } else if (studentId) {
+        // Schüler-Modus: Decks laden
+        fetchAssignedDecks();
+      }
+    } else {
+      // Reset beim Schließen
+      setSelectedDeck(null);
+      setLearningMode('selection');
+      setCurrentCardIndex(0);
+      setShowAnswer(false);
+      setAssignedDecks([]);
     }
-  }, [open]);
+  }, [open, isTeacher, teacherDeck, studentId, teacherLearnedCards]);
 
   const fetchAssignedDecks = async () => {
+    if (!studentId || isTeacher) return; // Nur für Schüler
     try {
       setLoading(true);
       const response = await fetch(`/api/flashcards/student/${studentId}/assigned`);
@@ -3768,6 +3838,37 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
   };
 
   const startLearningSession = async (deck: any) => {
+    // Lehrer-Modus: Gleiche Logik wie Schüler
+    if (isTeacher) {
+      // Filtere nicht gelernte Karten für Lehrer
+      const allCards = deck.cards || [];
+      const unlearnedCards = allCards.filter((card: any) => !teacherLearnedCards.has(card.id));
+      const dueCardsCount = unlearnedCards.length;
+      
+      const deckWithCards = {
+        ...deck,
+        cards: unlearnedCards.length > 0 ? unlearnedCards : allCards, // Wenn alle gelernt, zeige alle im viewing-Modus
+        totalCards: allCards.length,
+        dueCards: dueCardsCount
+      };
+      
+      setSelectedDeck(deckWithCards);
+      setCurrentCardIndex(0);
+      setShowAnswer(false);
+      setSessionStats({
+        cardsReviewed: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0
+      });
+      
+      // Bestimme den Modus basierend auf fälligen Karten (genau wie bei Schülern)
+      if (dueCardsCount > 0) {
+        setLearningMode('learning');
+      } else {
+        setLearningMode('viewing');
+      }
+      return;
+    }
     try {
       // Lade den aktuellen Fortschritt für das Deck
       const progressResponse = await fetch(`/api/flashcards/student/${studentId}/progress`);
@@ -3903,6 +4004,42 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
 
     const currentCard = selectedDeck.cards[currentCardIndex];
     
+    // Aktualisiere Session-Statistiken (für Lehrer und Schüler)
+    setSessionStats(prev => ({
+      cardsReviewed: prev.cardsReviewed + 1,
+      correctAnswers: prev.correctAnswers + (quality >= 4 ? 1 : 0), // 4-5 = korrekt
+      incorrectAnswers: prev.incorrectAnswers + (quality <= 2 ? 1 : 0) // 1-2 = inkorrekt
+    }));
+
+    // Für Lehrer: Track gelernte Karten lokal
+    if (isTeacher) {
+      setTeacherLearnedCards(prev => {
+        const newLearnedCards = new Set([...prev, currentCard.id]);
+        
+        // Prüfe ob alle Karten gelernt wurden (nach dem Update)
+        const allCardsLearned = selectedDeck.cards.every((card: any) => 
+          newLearnedCards.has(card.id)
+        );
+        
+        if (allCardsLearned) {
+          // Alle Karten gelernt - wechsle zu viewing-Modus
+          setTimeout(() => {
+            setLearningMode('viewing');
+            setCurrentCardIndex(0);
+            setShowAnswer(false);
+          }, 500); // Kurze Verzögerung für bessere UX
+        }
+        
+        return newLearnedCards;
+      });
+      return; // Lehrer speichern keine Fortschritte in der DB
+    }
+
+    // Nur für Schüler: Fortschritt in der Datenbank speichern
+    if (!studentId) {
+      return;
+    }
+    
     try {
       const response = await fetch(`/api/flashcards/student/progress`, {
         method: 'POST',
@@ -3917,13 +4054,6 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
       if (response.ok) {
         const data = await response.json();
         console.log('Card progress updated:', data);
-        
-        // Aktualisiere Session-Statistiken
-        setSessionStats(prev => ({
-          cardsReviewed: prev.cardsReviewed + 1,
-          correctAnswers: prev.correctAnswers + (quality >= 4 ? 1 : 0), // 4-5 = korrekt
-          incorrectAnswers: prev.incorrectAnswers + (quality <= 2 ? 1 : 0) // 1-2 = inkorrekt
-        }));
         
         // Sofortige lokale Aktualisierung der Statistiken
         setAssignedDecks(prevDecks => 
@@ -4114,59 +4244,125 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
       <Box
         sx={{
           background: 'linear-gradient(135deg, #fff 0%, #f8f9fa 100%)',
-          borderRadius: 6,
-          p: 4,
-          width: '95%',
-          height: '95%',
-          maxWidth: '1200px',
-          maxHeight: '900px',
+          borderRadius: 4,
+          p: 2.5,
+          width: '90%',
+          height: '90%',
+          maxWidth: '1000px',
+          maxHeight: '800px',
           overflow: 'auto',
           position: 'relative',
           boxShadow: '0 25px 70px rgba(255, 107, 53, 0.2)',
-          border: '3px solid #ffb74d',
+          border: '2px solid #ffb74d',
           backdropFilter: 'blur(10px)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header - kompakt */}
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          mb: 1,
-          pb: 0.5,
+          mb: 1.5,
+          pb: 0.75,
           borderBottom: '1px solid #f0f0f0'
         }}>
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Typography variant="h6" sx={{ 
               fontWeight: 'bold',
               color: '#2c3e50',
-              mb: 0
+              mb: 0,
+              fontSize: '1rem'
             }}>
-              {learningMode === 'selection' ? '🗂️ Karteikarten lernen' : `📚 ${selectedDeck?.title}`}
+              {learningMode === 'selection' ? '🗂️ Karteikarten lernen' : `📚 ${selectedDeck?.title || teacherDeck?.title || 'Karteikarten'}`}
             </Typography>
-            {learningMode === 'learning' && (
-              <Typography variant="body2" sx={{ 
-                color: '#7f8c8d',
-                fontStyle: 'italic',
-                fontSize: '0.65rem'
-              }}>
-                Klicke auf die Karte zum Umdrehen
-              </Typography>
-            )}
-            {learningMode === 'viewing' && (
-              <Typography variant="body2" sx={{ 
-                color: '#7f8c8d',
-                fontStyle: 'italic',
-                fontSize: '0.65rem'
-              }}>
-                Leertaste: Karte umdrehen | Pfeiltasten: Navigation
-              </Typography>
+            {/* Hilfe-Icon für Hinweise */}
+            {(learningMode === 'learning' || learningMode === 'viewing') && (
+              <IconButton
+                size="small"
+                onClick={(e) => setHelpAnchorEl(e.currentTarget)}
+                sx={{
+                  width: 20,
+                  height: 20,
+                  color: '#6c757d',
+                  '&:hover': {
+                    color: '#495057',
+                    bgcolor: '#f8f9fa'
+                  }
+                }}
+              >
+                <HelpIcon sx={{ fontSize: 16 }} />
+              </IconButton>
             )}
           </Box>
           
           {/* Header-Actions */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+            {/* Reset-Button für Lehrer - nur im Selection-Modus */}
+            {isTeacher && learningMode === 'selection' && teacherLearnedCards.size > 0 && (
+              <Button
+                variant="outlined"
+                color="warning"
+                size="small"
+                sx={{ 
+                  fontSize: '0.6rem', 
+                  py: 0.3, 
+                  px: 1,
+                  borderColor: '#ff9800',
+                  color: '#ff9800',
+                  minWidth: 'auto',
+                  '&:hover': {
+                    borderColor: '#f57c00',
+                    color: '#f57c00',
+                    bgcolor: '#fff3e0'
+                  }
+                }}
+                onClick={() => {
+                  setTeacherLearnedCards(new Set());
+                  // Aktualisiere die Decks, um die fälligen Karten neu zu berechnen
+                  if (teacherDeck) {
+                    const totalCards = teacherDeck.cards?.length || 0;
+                    const formattedDeck = {
+                      ...teacherDeck,
+                      totalCards: totalCards,
+                      dueCards: totalCards,
+                      completedCards: 0,
+                      progressPercentage: 0,
+                      qualityStats: { perfect: 0, partial: 0, notKnown: 0 },
+                      levelStats: { level0: 0, level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 },
+                      dueCardsByDate: { today: totalCards, tomorrow: 0, thisWeek: 0, later: 0 },
+                      reviewStats: { totalReviews: 0, avgReviewCount: 0, lastReviewDate: '-' }
+                    };
+                    setAssignedDecks([formattedDeck]);
+                  }
+                }}
+              >
+                🔄 Lernstand zurücksetzen
+              </Button>
+            )}
+            {/* Session beenden Button - nur im Lern- oder Ansehen-Modus */}
+            {(learningMode === 'learning' || learningMode === 'viewing') && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                size="small"
+                sx={{ 
+                  fontSize: '0.6rem', 
+                  py: 0.3, 
+                  px: 1,
+                  borderColor: '#6c757d',
+                  color: '#6c757d',
+                  minWidth: 'auto',
+                  '&:hover': {
+                    borderColor: '#495057',
+                    color: '#495057'
+                  }
+                }}
+                onClick={endLearningSession}
+              >
+                🏁 Beenden
+              </Button>
+            )}
             {/* Export-Buttons nur im Selection-Modus */}
             {learningMode === 'selection' && (
               <>
@@ -4176,9 +4372,9 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                   onClick={() => exportLearningProgress('json')}
                   sx={{
                     color: '#6c757d',
-                    fontSize: '0.6rem',
-                    py: 0.25,
-                    px: 0.75,
+                    fontSize: '0.55rem',
+                    py: 0.2,
+                    px: 0.6,
                     minWidth: 'auto',
                     '&:hover': {
                       color: '#495057',
@@ -4186,7 +4382,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                     }
                   }}
                 >
-                  📊 Alle
+                  📊
                 </Button>
                 <Button
                   variant="text"
@@ -4194,9 +4390,9 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                   onClick={() => exportLearningProgress('csv')}
                   sx={{
                     color: '#6c757d',
-                    fontSize: '0.6rem',
-                    py: 0.25,
-                    px: 0.75,
+                    fontSize: '0.55rem',
+                    py: 0.2,
+                    px: 0.6,
                     minWidth: 'auto',
                     '&:hover': {
                       color: '#495057',
@@ -4204,25 +4400,24 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                     }
                   }}
                 >
-                  📈 Alle
+                  📈
                 </Button>
               </>
             )}
             
-            <Button 
+            <IconButton 
               onClick={handleClose} 
+              size="small"
               sx={{ 
-                minWidth: 'auto',
-                borderRadius: '50%',
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 bgcolor: '#f8f9fa',
                 color: '#6c757d',
                 '&:hover': { bgcolor: '#e9ecef' }
               }}
             >
-              ✕
-            </Button>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
           </Box>
         </Box>
 
@@ -4254,8 +4449,28 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                         transform: 'translateY(-2px) scale(1.01)',
                         boxShadow: '0 6px 15px rgba(255, 107, 53, 0.15)',
                         borderColor: '#ff6b35'
-                      }
+                      },
+                      position: 'relative'
                     }}>
+                      {/* Gesamtzahl der Karten oben rechts */}
+                      <Box sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        bgcolor: '#f8f9fa',
+                        borderRadius: 1,
+                        px: 0.75,
+                        py: 0.25
+                      }}>
+                        <Typography variant="caption" sx={{ 
+                          color: '#6c757d',
+                          fontSize: '0.65rem',
+                          fontWeight: 600
+                        }}>
+                          {deck.totalCards || 0} Karten
+                        </Typography>
+                      </Box>
+                      
                       <CardContent sx={{ textAlign: 'center', p: 3 }}>
                         <Box sx={{
                           width: 60,
@@ -4274,297 +4489,275 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                           </Typography>
                         </Box>
                         <Typography variant="h6" sx={{ 
-                          mb: 1, 
+                          mb: 1.5, 
                           fontWeight: 700,
                           color: '#2c3e50'
                         }}>
                           {deck.title}
                         </Typography>
-                        <Typography variant="body2" sx={{ 
-                          color: '#7f8c8d', 
-                          mb: 1,
-                          fontSize: '0.9rem'
-                        }}>
-                          {deck.totalCards || 0} Karten verfügbar
-                        </Typography>
-                        
 
-                        
-                        {/* Detaillierte Statistiken */}
-                        <Box sx={{ mb: 2 }}>
-                          {/* Bewertungs-Statistiken */}
-                          <Box sx={{ mb: 1.5 }}>
-                            <Typography variant="caption" sx={{ 
-                              color: '#6c757d', 
-                              fontSize: '0.6rem', 
-                              fontWeight: 600,
-                              display: 'block',
-                              mb: 0.5
-                            }}>
-                              📊 Bewertungen
+                        {/* Detaillierte Statistiken - ausklappbar */}
+                        <Accordion sx={{ mb: 1.5, boxShadow: 'none', '&:before': { display: 'none' } }}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: '0.9rem' }} />} sx={{ minHeight: 32, py: 0 }}>
+                            <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#6c757d' }}>
+                              📊 Details anzeigen
                             </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
-                              <Box sx={{ 
-                                textAlign: 'center', 
-                                flex: 1,
-                                p: 0.5,
-                                bgcolor: '#d4edda',
-                                borderRadius: 0.5,
-                                border: '1px solid #c3e6cb'
+                          </AccordionSummary>
+                          <AccordionDetails sx={{ pt: 0, pb: 1 }}>
+                            {/* Bewertungs-Statistiken */}
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" sx={{ 
+                                color: '#6c757d', 
+                                fontSize: '0.6rem', 
+                                fontWeight: 600,
+                                display: 'block',
+                                mb: 0.5
                               }}>
-                                <Typography variant="caption" sx={{ 
-                                  color: '#155724', 
-                                  fontSize: '0.6rem', 
-                                  fontWeight: 'bold',
-                                  display: 'block'
-                                }}>
-                                  {deck.qualityStats?.perfect || 0}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: '#155724', 
-                                  fontSize: '0.5rem'
-                                }}>
-                                  ✅ 4-5
-                                </Typography>
-                              </Box>
-                              <Box sx={{ 
-                                textAlign: 'center', 
-                                flex: 1,
-                                p: 0.5,
-                                bgcolor: '#fff3cd',
-                                borderRadius: 0.5,
-                                border: '1px solid #ffeaa7'
-                              }}>
-                                <Typography variant="caption" sx={{ 
-                                  color: '#856404', 
-                                  fontSize: '0.6rem', 
-                                  fontWeight: 'bold',
-                                  display: 'block'
-                                }}>
-                                  {deck.qualityStats?.partial || 0}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: '#856404', 
-                                  fontSize: '0.5rem'
-                                }}>
-                                  ℹ️ 3
-                                </Typography>
-                              </Box>
-                              <Box sx={{ 
-                                textAlign: 'center', 
-                                flex: 1,
-                                p: 0.5,
-                                bgcolor: '#f8d7da',
-                                borderRadius: 0.5,
-                                border: '1px solid #f5c6cb'
-                              }}>
-                                <Typography variant="caption" sx={{ 
-                                  color: '#721c24', 
-                                  fontSize: '0.6rem', 
-                                  fontWeight: 'bold',
-                                  display: 'block'
-                                }}>
-                                  {deck.qualityStats?.notKnown || 0}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: '#721c24', 
-                                  fontSize: '0.5rem'
-                                }}>
-                                  ❌ 1-2
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </Box>
-                          
-                          {/* Level-Statistiken */}
-                          <Box sx={{ mb: 1.5 }}>
-                            <Typography variant="caption" sx={{ 
-                              color: '#6c757d', 
-                              fontSize: '0.6rem', 
-                              fontWeight: 600,
-                              display: 'block',
-                              mb: 0.5
-                            }}>
-                              🎯 Level-Verteilung
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
-                              {[0, 1, 2, 3, 4, 5].map((level) => (
-                                <Box key={level} sx={{ 
+                                📊 Bewertungen
+                              </Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
+                                <Box sx={{ 
                                   textAlign: 'center', 
                                   flex: 1,
                                   p: 0.5,
-                                  bgcolor: level >= 3 ? '#d4edda' : '#e9ecef',
+                                  bgcolor: '#d4edda',
                                   borderRadius: 0.5,
-                                  border: `1px solid ${level >= 3 ? '#c3e6cb' : '#dee2e6'}`
+                                  border: '1px solid #c3e6cb'
                                 }}>
                                   <Typography variant="caption" sx={{ 
-                                    color: level >= 3 ? '#155724' : '#6c757d', 
+                                    color: '#155724', 
                                     fontSize: '0.6rem', 
                                     fontWeight: 'bold',
                                     display: 'block'
                                   }}>
-                                    {deck.levelStats?.[`level${level}`] || 0}
+                                    {deck.qualityStats?.perfect || 0}
                                   </Typography>
                                   <Typography variant="caption" sx={{ 
-                                    color: level >= 3 ? '#155724' : '#6c757d', 
+                                    color: '#155724', 
                                     fontSize: '0.5rem'
                                   }}>
-                                    L{level}
+                                    ✅ 4-5
                                   </Typography>
                                 </Box>
-                              ))}
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  flex: 1,
+                                  p: 0.5,
+                                  bgcolor: '#fff3cd',
+                                  borderRadius: 0.5,
+                                  border: '1px solid #ffeaa7'
+                                }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: '#856404', 
+                                    fontSize: '0.6rem', 
+                                    fontWeight: 'bold',
+                                    display: 'block'
+                                  }}>
+                                    {deck.qualityStats?.partial || 0}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: '#856404', 
+                                    fontSize: '0.5rem'
+                                  }}>
+                                    ℹ️ 3
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  flex: 1,
+                                  p: 0.5,
+                                  bgcolor: '#f8d7da',
+                                  borderRadius: 0.5,
+                                  border: '1px solid #f5c6cb'
+                                }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: '#721c24', 
+                                    fontSize: '0.6rem', 
+                                    fontWeight: 'bold',
+                                    display: 'block'
+                                  }}>
+                                    {deck.qualityStats?.notKnown || 0}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: '#721c24', 
+                                    fontSize: '0.5rem'
+                                  }}>
+                                    ❌ 1-2
+                                  </Typography>
+                                </Box>
+                              </Box>
                             </Box>
-                          </Box>
-                          
+                            
+                            {/* Level-Statistiken */}
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" sx={{ 
+                                color: '#6c757d', 
+                                fontSize: '0.6rem', 
+                                fontWeight: 600,
+                                display: 'block',
+                                mb: 0.5
+                              }}>
+                                🎯 Level-Verteilung
+                              </Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
+                                {[0, 1, 2, 3, 4, 5].map((level) => (
+                                  <Box key={level} sx={{ 
+                                    textAlign: 'center', 
+                                    flex: 1,
+                                    p: 0.5,
+                                    bgcolor: level >= 3 ? '#d4edda' : '#e9ecef',
+                                    borderRadius: 0.5,
+                                    border: `1px solid ${level >= 3 ? '#c3e6cb' : '#dee2e6'}`
+                                  }}>
+                                    <Typography variant="caption" sx={{ 
+                                      color: level >= 3 ? '#155724' : '#6c757d', 
+                                      fontSize: '0.6rem', 
+                                      fontWeight: 'bold',
+                                      display: 'block'
+                                    }}>
+                                      {deck.levelStats?.[`level${level}`] || 0}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ 
+                                      color: level >= 3 ? '#155724' : '#6c757d', 
+                                      fontSize: '0.5rem'
+                                    }}>
+                                      L{level}
+                                    </Typography>
+                                  </Box>
+                                ))}
+                              </Box>
+                            </Box>
+                            
+                            {/* Fällige Karten nach Datum */}
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" sx={{ 
+                                color: '#6c757d', 
+                                fontSize: '0.6rem', 
+                                fontWeight: 600,
+                                display: 'block',
+                                mb: 0.5
+                              }}>
+                                📅 Nächste Reviews
+                              </Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  flex: 1,
+                                  p: 0.5,
+                                  bgcolor: deck.dueCardsByDate?.today > 0 ? '#fff3cd' : '#e9ecef',
+                                  borderRadius: 0.5,
+                                  border: `1px solid ${deck.dueCardsByDate?.today > 0 ? '#ffeaa7' : '#dee2e6'}`
+                                }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: deck.dueCardsByDate?.today > 0 ? '#856404' : '#6c757d', 
+                                    fontSize: '0.6rem', 
+                                    fontWeight: 'bold',
+                                    display: 'block'
+                                  }}>
+                                    {deck.dueCardsByDate?.today || 0}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: deck.dueCardsByDate?.today > 0 ? '#856404' : '#6c757d', 
+                                    fontSize: '0.5rem'
+                                  }}>
+                                    Heute
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  flex: 1,
+                                  p: 0.5,
+                                  bgcolor: deck.dueCardsByDate?.tomorrow > 0 ? '#fff3cd' : '#e9ecef',
+                                  borderRadius: 0.5,
+                                  border: `1px solid ${deck.dueCardsByDate?.tomorrow > 0 ? '#ffeaa7' : '#dee2e6'}`
+                                }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: deck.dueCardsByDate?.tomorrow > 0 ? '#856404' : '#6c757d', 
+                                    fontSize: '0.6rem', 
+                                    fontWeight: 'bold',
+                                    display: 'block'
+                                  }}>
+                                    {deck.dueCardsByDate?.tomorrow || 0}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: deck.dueCardsByDate?.tomorrow > 0 ? '#856404' : '#6c757d', 
+                                    fontSize: '0.5rem'
+                                  }}>
+                                    Morgen
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  flex: 1,
+                                  p: 0.5,
+                                  bgcolor: deck.dueCardsByDate?.thisWeek > 0 ? '#fff3cd' : '#e9ecef',
+                                  borderRadius: 0.5,
+                                  border: `1px solid ${deck.dueCardsByDate?.thisWeek > 0 ? '#ffeaa7' : '#dee2e6'}`
+                                }}>
+                                  <Typography variant="caption" sx={{ 
+                                    color: deck.dueCardsByDate?.thisWeek > 0 ? '#856404' : '#6c757d', 
+                                    fontSize: '0.6rem', 
+                                    fontWeight: 'bold',
+                                    display: 'block'
+                                  }}>
+                                    {deck.dueCardsByDate?.thisWeek || 0}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    color: deck.dueCardsByDate?.thisWeek > 0 ? '#856404' : '#6c757d', 
+                                    fontSize: '0.5rem'
+                                  }}>
+                                    Woche
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </Box>
 
-                          
-                          {/* Fällige Karten nach Datum */}
-                          <Box sx={{ mb: 1.5 }}>
-                            <Typography variant="caption" sx={{ 
-                              color: '#6c757d', 
-                              fontSize: '0.6rem', 
-                              fontWeight: 600,
-                              display: 'block',
-                              mb: 0.5
+                            {/* Export-Buttons */}
+                            <Box sx={{ 
+                              mt: 1,
+                              display: 'flex',
+                              gap: 0.5,
+                              justifyContent: 'center'
                             }}>
-                              📅 Nächste Reviews
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5 }}>
-                              <Box sx={{ 
-                                textAlign: 'center', 
-                                flex: 1,
-                                p: 0.5,
-                                bgcolor: deck.dueCardsByDate?.today > 0 ? '#fff3cd' : '#e9ecef',
-                                borderRadius: 0.5,
-                                border: `1px solid ${deck.dueCardsByDate?.today > 0 ? '#ffeaa7' : '#dee2e6'}`
-                              }}>
-                                <Typography variant="caption" sx={{ 
-                                  color: deck.dueCardsByDate?.today > 0 ? '#856404' : '#6c757d', 
-                                  fontSize: '0.6rem', 
-                                  fontWeight: 'bold',
-                                  display: 'block'
-                                }}>
-                                  {deck.dueCardsByDate?.today || 0}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: deck.dueCardsByDate?.today > 0 ? '#856404' : '#6c757d', 
-                                  fontSize: '0.5rem'
-                                }}>
-                                  Heute
-                                </Typography>
-                              </Box>
-                              <Box sx={{ 
-                                textAlign: 'center', 
-                                flex: 1,
-                                p: 0.5,
-                                bgcolor: deck.dueCardsByDate?.tomorrow > 0 ? '#fff3cd' : '#e9ecef',
-                                borderRadius: 0.5,
-                                border: `1px solid ${deck.dueCardsByDate?.tomorrow > 0 ? '#ffeaa7' : '#dee2e6'}`
-                              }}>
-                                <Typography variant="caption" sx={{ 
-                                  color: deck.dueCardsByDate?.tomorrow > 0 ? '#856404' : '#6c757d', 
-                                  fontSize: '0.6rem', 
-                                  fontWeight: 'bold',
-                                  display: 'block'
-                                }}>
-                                  {deck.dueCardsByDate?.tomorrow || 0}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: deck.dueCardsByDate?.tomorrow > 0 ? '#856404' : '#6c757d', 
-                                  fontSize: '0.5rem'
-                                }}>
-                                  Morgen
-                                </Typography>
-                              </Box>
-                              <Box sx={{ 
-                                textAlign: 'center', 
-                                flex: 1,
-                                p: 0.5,
-                                bgcolor: deck.dueCardsByDate?.thisWeek > 0 ? '#fff3cd' : '#e9ecef',
-                                borderRadius: 0.5,
-                                border: `1px solid ${deck.dueCardsByDate?.thisWeek > 0 ? '#ffeaa7' : '#dee2e6'}`
-                              }}>
-                                <Typography variant="caption" sx={{ 
-                                  color: deck.dueCardsByDate?.thisWeek > 0 ? '#856404' : '#6c757d', 
-                                  fontSize: '0.6rem', 
-                                  fontWeight: 'bold',
-                                  display: 'block'
-                                }}>
-                                  {deck.dueCardsByDate?.thisWeek || 0}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  color: deck.dueCardsByDate?.thisWeek > 0 ? '#856404' : '#6c757d', 
-                                  fontSize: '0.5rem'
-                                }}>
-                                  Woche
-                                </Typography>
-                              </Box>
+                              <Button
+                                variant="text"
+                                size="small"
+                                onClick={() => exportLearningProgress('json', deck.id)}
+                                sx={{
+                                  color: '#6c757d',
+                                  fontSize: '0.6rem',
+                                  py: 0.25,
+                                  px: 0.75,
+                                  minWidth: 'auto',
+                                  '&:hover': {
+                                    color: '#495057',
+                                    bgcolor: '#f8f9fa'
+                                  }
+                                }}
+                              >
+                                📊 JSON
+                              </Button>
+                              <Button
+                                variant="text"
+                                size="small"
+                                onClick={() => exportLearningProgress('csv', deck.id)}
+                                sx={{
+                                  color: '#6c757d',
+                                  fontSize: '0.6rem',
+                                  py: 0.25,
+                                  px: 0.75,
+                                  minWidth: 'auto',
+                                  '&:hover': {
+                                    color: '#495057',
+                                    bgcolor: '#f8f9fa'
+                                  }
+                                }}
+                              >
+                                📈 CSV
+                              </Button>
                             </Box>
-                          </Box>
-                        </Box>
-                        
-                        {/* Export-Buttons */}
-                        <Box sx={{ 
-                          mb: 1.5,
-                          display: 'flex',
-                          gap: 0.5,
-                          justifyContent: 'center'
-                        }}>
-                          <Button
-                            variant="text"
-                            size="small"
-                            onClick={() => exportLearningProgress('json', deck.id)}
-                            sx={{
-                              color: '#6c757d',
-                              fontSize: '0.6rem',
-                              py: 0.25,
-                              px: 0.75,
-                              minWidth: 'auto',
-                              '&:hover': {
-                                color: '#495057',
-                                bgcolor: '#f8f9fa'
-                              }
-                            }}
-                          >
-                            📊 JSON
-                          </Button>
-                          <Button
-                            variant="text"
-                            size="small"
-                            onClick={() => exportLearningProgress('csv', deck.id)}
-                            sx={{
-                              color: '#6c757d',
-                              fontSize: '0.6rem',
-                              py: 0.25,
-                              px: 0.75,
-                              minWidth: 'auto',
-                              '&:hover': {
-                                color: '#495057',
-                                bgcolor: '#f8f9fa'
-                              }
-                            }}
-                          >
-                            📈 CSV
-                          </Button>
-                        </Box>
-
-                        {/* Fällige Karten Zusammenfassung */}
-                        <Box sx={{ 
-                          mb: 3,
-                          p: 1,
-                          bgcolor: deck.dueCards > 0 ? '#fff3cd' : '#d4edda',
-                          borderRadius: 1,
-                          border: `1px solid ${deck.dueCards > 0 ? '#ffeaa7' : '#c3e6cb'}`
-                        }}>
-                          <Typography variant="body2" sx={{ 
-                            color: deck.dueCards > 0 ? '#856404' : '#155724',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            textAlign: 'center'
-                          }}>
-                            {deck.dueCards > 0 ? `📚 ${deck.dueCards} Karten fällig` : '✅ Alle Karten gelernt'}
-                          </Typography>
-                        </Box>
+                          </AccordionDetails>
+                        </Accordion>
                         <Button
                           variant="contained"
                           fullWidth
@@ -4572,9 +4765,9 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                             bgcolor: '#ff6b35',
                             color: 'white',
                             fontWeight: 600,
-                            py: 1.5,
-                            borderRadius: 3,
-                            fontSize: '0.9rem',
+                            py: 1,
+                            borderRadius: 2,
+                            fontSize: '0.8rem',
                             textTransform: 'none',
                             boxShadow: '0 4px 15px rgba(255, 107, 53, 0.3)',
                             '&:hover': {
@@ -4590,7 +4783,7 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                             }
                           }}
                         >
-                          {deck.dueCards > 0 ? '📚 Fällige Karten lernen' : '👁️ Karten einfach nur ansehen'}
+                          {deck.dueCards > 0 ? `📚 ${deck.dueCards} fällige Karten lernen` : '👁️ Karten ansehen'}
                         </Button>
                       </CardContent>
                     </Card>
@@ -4601,53 +4794,39 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
           </Box>
         ) : (
           /* Lern-Modus */
-          <Box>
+          <Box sx={{ position: 'relative', minHeight: '400px' }}>
             {selectedDeck && selectedDeck.cards && selectedDeck.cards[currentCardIndex] && (
               <>
-                {/* Fortschritt und Level */}
+                {/* Fortschritt und Level - kompakt */}
                 <Box sx={{ 
                   mb: 1, 
                   textAlign: 'center',
                   bgcolor: '#f8f9fa',
-                  p: 1,
+                  p: 0.75,
                   borderRadius: 1
                 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                  <Typography variant="body2" sx={{ 
-                    color: '#2c3e50',
-                    fontWeight: 600,
-                    fontSize: '0.7rem'
-                  }}>
-                    {currentCardIndex + 1} / {selectedDeck.cards.length}
-                  </Typography>
+                    <Typography variant="caption" sx={{ 
+                      color: '#2c3e50',
+                      fontWeight: 600,
+                      fontSize: '0.65rem'
+                    }}>
+                      {currentCardIndex + 1} / {selectedDeck.cards.length}
+                    </Typography>
                     
                     {/* Level-Anzeige */}
                     {selectedDeck.cards[currentCardIndex].progress && (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 0.5,
-                        bgcolor: '#e3f2fd',
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 1,
-                        border: '1px solid #bbdefb'
-                      }}>
-                        <Typography variant="caption" sx={{ 
-                          color: '#1976d2',
+                      <Chip 
+                        label={`Level ${selectedDeck.cards[currentCardIndex].progress.level}`}
+                        size="small"
+                        sx={{ 
+                          height: 20,
                           fontSize: '0.6rem',
-                          fontWeight: 600
-                        }}>
-                          Level
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
+                          bgcolor: '#e3f2fd',
                           color: '#1976d2',
-                          fontSize: '0.7rem',
-                          fontWeight: 'bold'
-                        }}>
-                          {selectedDeck.cards[currentCardIndex].progress.level}
-                        </Typography>
-                      </Box>
+                          border: '1px solid #bbdefb'
+                        }}
+                      />
                     )}
                   </Box>
                   
@@ -4655,32 +4834,32 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                     variant="determinate" 
                     value={((currentCardIndex + 1) / selectedDeck.cards.length) * 100}
                     sx={{ 
-                      height: 3,
-                      borderRadius: 1.5,
+                      height: 2,
+                      borderRadius: 1,
                       bgcolor: '#e9ecef',
                       '& .MuiLinearProgress-bar': {
-                        borderRadius: 1.5,
+                        borderRadius: 1,
                         bgcolor: '#ff6b35'
                       }
                     }}
                   />
                 </Box>
 
-                {/* Karteikarte */}
+                {/* Karteikarte - kompakter */}
                 <Card sx={{ 
-                  mb: 0, 
-                  minHeight: 120,
-                  width: '70%',
+                  mb: 1, 
+                  minHeight: 100,
+                  width: '75%',
                   mx: 'auto',
                   perspective: '1000px',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
                   transformStyle: 'preserve-3d',
-                  borderRadius: 3,
+                  borderRadius: 2,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                   border: '1px solid #e0e0e0',
                   background: !showAnswer 
-                    ? 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+                    ? 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)'
                     : 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)',
                   '&:hover': {
                     transform: 'translateY(0px)',
@@ -4691,15 +4870,14 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                 >
                   <CardContent sx={{ 
                     textAlign: 'center', 
-                    py: 1,
-                    px: 3,
+                    py: 1.5,
+                    px: 2.5,
                     position: 'relative',
-                    minHeight: 120,
+                    minHeight: 100,
                     display: 'flex',
                     flexDirection: 'column',
-                    justifyContent: 'flex-start',
-                    alignItems: 'center',
-                    paddingTop: '25px'
+                    justifyContent: 'center',
+                    alignItems: 'center'
                   }}>
                     <Box sx={{
                       position: 'relative',
@@ -4716,11 +4894,11 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                         transform: showAnswer ? 'rotateY(180deg)' : 'rotateY(0deg)',
                         transition: 'transform 0.6s'
                       }}>
-                        <Typography variant="h6" sx={{ 
+                        <Typography variant="body1" sx={{ 
                           mb: 0,
                           fontWeight: 400,
                           color: '#000000',
-                          fontSize: '1.1rem'
+                          fontSize: '0.95rem'
                         }}
                         dangerouslySetInnerHTML={{ __html: formatCardText(selectedDeck.cards[currentCardIndex].front) }}
                         />
@@ -4734,11 +4912,11 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                         transform: showAnswer ? 'rotateY(0deg)' : 'rotateY(-180deg)',
                         transition: 'transform 0.6s'
                       }}>
-                        <Typography variant="h6" sx={{ 
+                        <Typography variant="body1" sx={{ 
                           mb: 0,
                           fontWeight: 400,
                           color: '#000000',
-                          fontSize: '1.1rem'
+                          fontSize: '0.95rem'
                         }}
                         dangerouslySetInnerHTML={{ __html: formatCardText(selectedDeck.cards[currentCardIndex].back) }}
                         />
@@ -4749,81 +4927,98 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
 
                 {/* Bewertungs-Buttons - nur im Lern-Modus */}
                 {showAnswer && learningMode === 'learning' && (
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ 
-                      color: '#7f8c8d',
-                      mb: 1.5,
-                      fontSize: '0.7rem',
-                      fontStyle: 'italic'
+                  <Box sx={{ textAlign: 'center', mt: 1.5 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      gap: 0.5, 
+                      flexWrap: 'nowrap',
+                      alignItems: 'center',
+                      width: '100%',
+                      maxWidth: '600px',
+                      mx: 'auto'
                     }}>
-                      Bewerte deine Antwort: Drücke 1-5 auf der Tastatur oder klicke auf die Buttons
-                    </Typography>
-                    
-                    <Typography variant="caption" sx={{ 
-                      color: '#6c757d',
-                      mb: 1.5,
-                      fontSize: '0.7rem',
-                      display: 'block',
-                      fontWeight: 'bold'
-                    }}>
-                      💡 Bewerte deine Antwort: Wie gut hast du die Karte gewusst?
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, flexWrap: 'wrap' }}>
                       <Button
                         variant="contained"
                         color="success"
                         size="small"
-                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          py: 0.5, 
+                          px: 0.75,
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: 'nowrap'
+                        }}
                         onClick={() => handleNextCard(1)}
                       >
-                        🌟 Perfekt
+                        🌟 Perfekt 1
                       </Button>
                       <Button
                         variant="contained"
                         color="success"
                         size="small"
-                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          py: 0.5, 
+                          px: 0.75,
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: 'nowrap'
+                        }}
                         onClick={() => handleNextCard(2)}
                       >
-                        ✅ Sehr gut
+                        ✅ Sehr gut 2
                       </Button>
                       <Button
                         variant="contained"
                         color="info"
                         size="small"
-                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          py: 0.5, 
+                          px: 0.75,
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: 'nowrap'
+                        }}
                         onClick={() => handleNextCard(3)}
                       >
-                        ℹ️ Gut
+                        ℹ️ Gut 3
                       </Button>
                       <Button
                         variant="contained"
                         color="warning"
                         size="small"
-                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          py: 0.5, 
+                          px: 0.75,
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: 'nowrap'
+                        }}
                         onClick={() => handleNextCard(4)}
                       >
-                        ⚠️ Schwierig
+                        ⚠️ Schwierig 4
                       </Button>
                       <Button
                         variant="contained"
                         color="error"
                         size="small"
-                        sx={{ width: '120px', fontSize: '0.7rem', py: 0.5, px: 0.5, flexShrink: 0, whiteSpace: 'nowrap' }}
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          py: 0.5, 
+                          px: 0.75,
+                          flex: 1,
+                          minWidth: 0,
+                          whiteSpace: 'nowrap'
+                        }}
                         onClick={() => handleNextCard(5)}
                       >
-                        ❌ Nicht gewusst
+                        ❌ Nicht gewusst 5
                       </Button>
                     </Box>
-                    <Typography variant="caption" sx={{ 
-                      color: '#6c757d',
-                      mt: 1.5,
-                      fontSize: '0.6rem',
-                      display: 'block',
-                      fontStyle: 'italic'
-                    }}>
-                      💡 Spaced Repetition: 1-2 = Level steigt, 3 = bleibt gleich, 4-5 = Level sinkt
-                    </Typography>
                   </Box>
                 )}
                 
@@ -4872,33 +5067,58 @@ const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, o
                     </Box>
                   </Box>
                 )}
-                
-                {/* Session beenden Button - immer sichtbar */}
-                <Box sx={{ textAlign: 'center', mt: 2 }}>
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    size="small"
-                    sx={{ 
-                      fontSize: '0.7rem', 
-                      py: 0.5, 
-                      px: 2,
-                      borderColor: '#6c757d',
-                      color: '#6c757d',
-                      '&:hover': {
-                        borderColor: '#495057',
-                        color: '#495057'
-                      }
-                    }}
-                    onClick={endLearningSession}
-                  >
-                    🏁 Session beenden
-                  </Button>
-                </Box>
               </>
             )}
           </Box>
         )}
+
+        {/* Hilfe-Popover */}
+        <Popover
+          open={Boolean(helpAnchorEl)}
+          anchorEl={helpAnchorEl}
+          onClose={() => setHelpAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'left',
+          }}
+          container={document.body}
+          sx={{
+            zIndex: 10001 // Höher als der Modal-Overlay (10000)
+          }}
+        >
+          <Box sx={{ p: 1.5, maxWidth: 300 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, fontSize: '0.75rem' }}>
+              💡 Hilfe
+            </Typography>
+            {learningMode === 'learning' && (
+              <>
+                <Typography variant="body2" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
+                  • Karte anklicken zum Umdrehen
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
+                  • Tasten 1-5 oder Buttons zum Bewerten
+                </Typography>
+                <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
+                  • 1-2 = Level steigt, 3 = bleibt gleich, 4-5 = Level sinkt
+                </Typography>
+              </>
+            )}
+            {learningMode === 'viewing' && (
+              <>
+                <Typography variant="body2" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
+                  • Leertaste: Karte umdrehen
+                </Typography>
+                <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
+                  • ← →: Navigation zwischen Karten
+                </Typography>
+              </>
+            )}
+          </Box>
+        </Popover>
       </Box>
     </Box>
   );

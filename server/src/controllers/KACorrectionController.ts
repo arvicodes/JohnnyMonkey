@@ -3,6 +3,42 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+/**
+ * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
+ */
+function isCorrectionFile(fileName: string): boolean {
+  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_');
+}
+
+/**
+ * Helper-Funktion: Generiert mögliche Pfad-Varianten für eine Datei
+ */
+function getPossiblePaths(filePath: string): string[] {
+  const possiblePaths = [
+    filePath,
+    filePath.replace('.html', ''),
+    filePath.replace('.htm', ''),
+  ];
+  
+  // Entferne Präfixe und füge sie wieder hinzu
+  if (filePath.startsWith('KA_')) {
+    const withoutPrefix = filePath.replace('KA_', '');
+    possiblePaths.push(withoutPrefix, `KA_${withoutPrefix}`);
+  } else if (filePath.startsWith('HÜ_')) {
+    const withoutPrefix = filePath.replace('HÜ_', '');
+    possiblePaths.push(withoutPrefix, `HÜ_${withoutPrefix}`, `HU_${withoutPrefix}`);
+  } else if (filePath.startsWith('HU_')) {
+    const withoutPrefix = filePath.replace('HU_', '');
+    possiblePaths.push(withoutPrefix, `HU_${withoutPrefix}`, `HÜ_${withoutPrefix}`);
+  } else {
+    // Wenn kein Präfix vorhanden, füge alle möglichen hinzu
+    possiblePaths.push(`KA_${filePath}`, `HÜ_${filePath}`, `HU_${filePath}`);
+  }
+  
+  // Entferne Duplikate
+  return [...new Set(possiblePaths)];
+}
+
 export class KACorrectionController {
   /**
    * Abgabe einer Klassenarbeit speichern
@@ -124,17 +160,7 @@ export class KACorrectionController {
       })));
 
       // Versuche auch mit verschiedenen Varianten zu suchen (falls es Unterschiede gibt)
-      const possiblePaths = [
-        kaFilePath,
-        kaFilePath.replace('.html', ''),
-        kaFilePath.replace('.htm', ''),
-        kaFilePath.replace('KA_', ''),
-        `KA_${kaFilePath.replace('KA_', '')}`,
-        kaFilePath.startsWith('KA_') ? kaFilePath : `KA_${kaFilePath}`
-      ];
-      
-      // Entferne Duplikate
-      const uniquePaths = [...new Set(possiblePaths)];
+      const uniquePaths = getPossiblePaths(kaFilePath);
       
       console.log('🔍 Gesuchter Pfad:', kaFilePath);
       console.log('🔍 Versuche Pfade:', uniquePaths);
@@ -269,7 +295,16 @@ export class KACorrectionController {
       const { submissionId, taskNumber, manualPoints, comment } = req.body;
       const loginCode = req.headers['x-login-code'] as string;
 
+      console.log('💾 Speichere Korrektur:', {
+        submissionId,
+        taskNumber,
+        manualPoints,
+        comment: comment ? comment.substring(0, 50) + '...' : null,
+        loginCode: loginCode ? 'vorhanden' : 'fehlt'
+      });
+
       if (!loginCode) {
+        console.error('❌ Kein Login-Code vorhanden');
         return res.status(401).json({ error: 'Nicht angemeldet' });
       }
 
@@ -278,13 +313,20 @@ export class KACorrectionController {
         select: { id: true, role: true }
       });
 
-      if (!user || user.role !== 'TEACHER') {
+      if (!user) {
+        console.error('❌ Benutzer nicht gefunden für Login-Code');
+        return res.status(401).json({ error: 'Benutzer nicht gefunden' });
+      }
+
+      if (user.role !== 'TEACHER') {
+        console.error('❌ Benutzer ist kein Lehrer:', user.role);
         return res.status(403).json({ error: 'Nur Lehrer können korrigieren' });
       }
 
       const teacherId = user.id;
 
       if (!submissionId || !taskNumber) {
+        console.error('❌ Fehlende Parameter:', { submissionId, taskNumber });
         return res.status(400).json({ error: 'submissionId und taskNumber sind erforderlich' });
       }
 
@@ -294,8 +336,15 @@ export class KACorrectionController {
       });
 
       if (!submission) {
+        console.error('❌ Submission nicht gefunden:', submissionId);
         return res.status(404).json({ error: 'Abgabe nicht gefunden' });
       }
+
+      console.log('✅ Submission gefunden:', {
+        id: submission.id,
+        kaFilePath: submission.kaFilePath,
+        autoPoints: submission.autoPoints
+      });
 
       // Upsert Korrektur
       const correction = await prisma.kACorrection.upsert({
@@ -309,14 +358,20 @@ export class KACorrectionController {
           submissionId,
           teacherId,
           taskNumber,
-          manualPoints: manualPoints !== undefined ? manualPoints : null,
+          manualPoints: manualPoints !== undefined && manualPoints !== null ? manualPoints : null,
           comment: comment || null
         },
         update: {
-          manualPoints: manualPoints !== undefined ? manualPoints : null,
+          manualPoints: manualPoints !== undefined && manualPoints !== null ? manualPoints : null,
           comment: comment || null,
           updatedAt: new Date()
         }
+      });
+
+      console.log('✅ Korrektur gespeichert:', {
+        id: correction.id,
+        taskNumber: correction.taskNumber,
+        manualPoints: correction.manualPoints
       });
 
       // Berechne Gesamtpunkte neu
@@ -327,6 +382,12 @@ export class KACorrectionController {
       const totalManualPoints = allCorrections.reduce((sum, c) => sum + (c.manualPoints || 0), 0);
       const totalPoints = submission.autoPoints + totalManualPoints;
 
+      console.log('📊 Punkteberechnung:', {
+        autoPoints: submission.autoPoints,
+        totalManualPoints,
+        totalPoints
+      });
+
       // Update Submission
       await prisma.kASubmission.update({
         where: { id: submissionId },
@@ -336,10 +397,19 @@ export class KACorrectionController {
         }
       });
 
+      console.log('✅ Submission aktualisiert mit Gesamtpunkten:', totalPoints);
+
       res.json({ success: true, correction, totalPoints });
     } catch (error) {
-      console.error('Error saving correction:', error);
-      res.status(500).json({ error: 'Fehler beim Speichern der Korrektur' });
+      console.error('❌ Fehler beim Speichern der Korrektur:', error);
+      console.error('Fehler-Details:', {
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      res.status(500).json({ 
+        error: 'Fehler beim Speichern der Korrektur',
+        details: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
     }
   }
 
@@ -369,17 +439,7 @@ export class KACorrectionController {
       }
 
       // Versuche auch mit verschiedenen Varianten zu suchen (falls es Unterschiede gibt)
-      const possiblePaths = [
-        kaFilePath,
-        kaFilePath.replace('.html', ''),
-        kaFilePath.replace('.htm', ''),
-        kaFilePath.replace('KA_', ''),
-        `KA_${kaFilePath.replace('KA_', '')}`,
-        kaFilePath.startsWith('KA_') ? kaFilePath : `KA_${kaFilePath}`
-      ];
-      
-      // Entferne Duplikate
-      const uniquePaths = [...new Set(possiblePaths)];
+      const uniquePaths = getPossiblePaths(kaFilePath);
       
       console.log('🔍 Lösche Abgaben für Pfade:', uniquePaths);
 

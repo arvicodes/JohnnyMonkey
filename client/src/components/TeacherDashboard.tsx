@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import KACorrectionMode from './KACorrectionMode';
 import TeacherMessageBox from './TeacherMessageBox';
+import { FlashcardLearningModal } from './StudentDashboard';
 import {
   Box,
   Typography,
@@ -290,6 +291,13 @@ import { SubmissionStatistics } from './StudentDashboard';
 import { RichTextEditor } from './ui/rich-text-editor';
 import { FlashcardCreationModal } from './FlashcardCreationModal';
 import SubmissionViewer from './SubmissionViewer';
+
+/**
+ * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
+ */
+const isCorrectionFile = (fileName: string): boolean => {
+  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_');
+};
 
 interface TeacherDashboardProps {
   userId: string;
@@ -581,6 +589,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
   const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
+  
+  // States für zugeordnete Karteikarten-Decks
+  const [assignedFlashcardDecks, setAssignedFlashcardDecks] = useState<{[groupId: string]: FlashcardDeck[]}>({});
+  const [loadingFlashcardDecks, setLoadingFlashcardDecks] = useState<{[groupId: string]: boolean}>({});
+  const [showFlashcardModal, setShowFlashcardModal] = useState(false);
+  const [selectedFlashcardDeck, setSelectedFlashcardDeck] = useState<FlashcardDeck | null>(null);
 
   // Submission States (Abgabesystem für H_ Dateien)
   const [showSubmissionViewer, setShowSubmissionViewer] = useState(false);
@@ -1067,6 +1081,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       // Lade zugeordnete Ordner für alle Gruppen
       for (const group of groupsData) {
         await fetchAssignedFolders(group.id);
+        await fetchAssignedFlashcardDecks(group.id);
       }
       
       // Lade Karteikarten-Fortschritt für alle Schüler
@@ -1225,6 +1240,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  // Funktion zum Laden der zugeordneten Karteikarten-Decks für eine Lerngruppe
+  const fetchAssignedFlashcardDecks = async (groupId: string) => {
+    try {
+      setLoadingFlashcardDecks(prev => ({ ...prev, [groupId]: true }));
+      
+      const response = await fetch(`/api/flashcards/assignments/group/${groupId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAssignedFlashcardDecks(prev => ({
+          ...prev,
+          [groupId]: data.decks || []
+        }));
+      } else {
+        console.error('Fehler beim Laden der Karteikarten-Decks');
+        setAssignedFlashcardDecks(prev => ({
+          ...prev,
+          [groupId]: []
+        }));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Karteikarten-Decks:', error);
+      setAssignedFlashcardDecks(prev => ({
+        ...prev,
+        [groupId]: []
+      }));
+    } finally {
+      setLoadingFlashcardDecks(prev => ({ ...prev, [groupId]: false }));
+    }
+  };
 
   // Neue Funktion zum Laden des Inhalts zugeordneter Ordner
   const fetchAssignedFolderContent = async (groupId: string, folderPath: string) => {
@@ -1934,8 +1978,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     
     const fileExtension = item.name.split('.').pop()?.toLowerCase();
     
-    // KA-Dateien: Korrekturmodus öffnen
-    if (item.name.startsWith('KA_') && (fileExtension === 'html' || fileExtension === 'htm')) {
+    // Korrigierbare Dateien (KA_, HÜ_, HU_): Korrekturmodus öffnen
+    if (isCorrectionFile(item.name) && (fileExtension === 'html' || fileExtension === 'htm')) {
       setSelectedKAFilePath(item.path); // Verwende den vollständigen Pfad, nicht nur den Dateinamen
       setShowKACorrectionMode(true);
       return;
@@ -2204,11 +2248,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         }
       } else {
         // Dateien
-        if (item.name.startsWith('KA_')) {
-          // Klassenarbeiten bekommen ein spezielles, größeres Icon
-          icon = '📝'; // Klassenarbeit-Icon
-          color = '#ff9800'; // Gelb-orange für Klassenarbeiten
-          fontWeight = 700; // Fett für Klassenarbeiten
+        if (isCorrectionFile(item.name)) {
+          // Klassenarbeiten/Hausaufgabenüberprüfungen bekommen ein spezielles, größeres Icon
+          icon = '📝'; // Klassenarbeit/HÜ-Icon
+          color = '#ff9800'; // Gelb-orange für Klassenarbeiten/HÜ
+          fontWeight = 700; // Fett für Klassenarbeiten/HÜ
         } else {
           icon = '📄'; // Dokument
           color = '#03a9f4'; // Hellblau für Dateien (wie im Screenshot)
@@ -2297,7 +2341,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
             <Typography variant="body2" sx={{ 
               color: color,
-              fontSize: item.name.startsWith('KA_') ? '0.9rem' : '0.75rem',
+              fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
               fontWeight: fontWeight,
               display: 'flex',
               alignItems: 'flex-start',
@@ -2333,11 +2377,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
               )
             ) : null} {/* Kein Dreieck für Dateien */}
-            <span style={{ fontSize: item.name.startsWith('KA_') ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
+            <span style={{ fontSize: isCorrectionFile(item.name) ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
             <span style={{ 
-              fontWeight: item.name.startsWith('KA_') ? 700 : fontWeight,
-              fontSize: item.name.startsWith('KA_') ? '0.9rem' : '0.75rem',
-              color: item.name.startsWith('KA_') ? '#ff9800' : color
+              fontWeight: isCorrectionFile(item.name) ? 700 : fontWeight,
+              fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
+              color: isCorrectionFile(item.name) ? '#ff9800' : color
             }}>{item.name}</span>
             
 
@@ -2363,7 +2407,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 if (item.name.startsWith('Quiz')) {
                   // Öffne das Quiz-Erstellungsmodal direkt im Dashboard
                   handleQuizDialogOpen(item.path, item.name);
-                } else if (item.name.startsWith('K_')) {
+                } else if (item.name.startsWith('K_') || (item.name.endsWith('.md') && item.name.toLowerCase().includes('karteikarten'))) {
                   // Öffne das Karteikarten-Erstellungsmodal
                   handleFlashcardDialogOpen(item.path, item.name);
                 } else if (item.name.startsWith('H_')) {
@@ -2381,7 +2425,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             )}
 
             {/* Verarbeitungshistorie für Cards-Dateien als grünes Icon rechts neben dem Karteikarten-Icon */}
-            {item.type === 'file' && item.name.startsWith('K_') && documentHistoryMap[item.path] && documentHistoryMap[item.path].length > 0 && (
+            {item.type === 'file' && (item.name.startsWith('K_') || (item.name.endsWith('.md') && item.name.toLowerCase().includes('karteikarten'))) && documentHistoryMap[item.path] && documentHistoryMap[item.path].length > 0 && (
               <Typography variant="caption" sx={{ 
                 color: '#4caf50',
                 fontSize: '0.7rem',
@@ -5632,7 +5676,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                             border: '1px solid #e0e0e0'
                           }}>
-
+                            <Typography variant="h6" sx={{ 
+                              fontSize: '0.9rem', 
+                              fontWeight: 600, 
+                              mb: 1.5, 
+                              color: colors.primary,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5
+                            }}>
+                              <FolderIcon sx={{ fontSize: 18 }} />
+                              Zugeordnete Ordner
+                            </Typography>
                             <Box sx={{ 
                               ml: 1,
                               p: 1.4,
@@ -5658,7 +5713,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             </Box>
                           </Box>
                           
-                          {/* Zugeordnete Inhalte */}
+                          {/* Zugeordnete Karteikarten-Decks */}
                           <Box sx={{ 
                             p: 2.1, 
                             bgcolor: '#fff', 
@@ -5666,7 +5721,181 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                             border: '1px solid #e0e0e0'
                           }}>
-
+                            <Typography variant="h6" sx={{ 
+                              fontSize: '0.9rem', 
+                              fontWeight: 600, 
+                              mb: 1.5, 
+                              color: colors.primary,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5
+                            }}>
+                              📚 Karteikarten-Decks
+                            </Typography>
+                            <Box sx={{ 
+                              ml: 1,
+                              p: 1.4,
+                              bgcolor: '#fafbfc',
+                              borderRadius: 1.4,
+                              border: '1px solid #f0f0f0'
+                            }}>
+                              {loadingFlashcardDecks[group.id] ? (
+                                <Typography variant="body2" sx={{ 
+                                  color: colors.textSecondary,
+                                  fontSize: '0.75rem',
+                                  fontStyle: 'italic'
+                                }}>
+                                  Lade Decks...
+                                </Typography>
+                              ) : assignedFlashcardDecks[group.id] && assignedFlashcardDecks[group.id].length > 0 ? (
+                                <Box>
+                                  {assignedFlashcardDecks[group.id].map((deck: FlashcardDeck) => (
+                                    <Box 
+                                      key={deck.id} 
+                                      onClick={async () => {
+                                        // Lade das vollständige Deck mit Karten
+                                        try {
+                                          const response = await fetch(`/api/flashcards/${deck.id}`);
+                                          if (response.ok) {
+                                            const responseData = await response.json();
+                                            // Die API gibt { deck } zurück
+                                            const deckData = responseData.deck || responseData;
+                                            setSelectedFlashcardDeck(deckData);
+                                            setShowFlashcardModal(true);
+                                          }
+                                        } catch (error) {
+                                          console.error('Fehler beim Laden des Decks:', error);
+                                        }
+                                      }}
+                                      sx={{ 
+                                        mb: 1, 
+                                        p: 1, 
+                                        bgcolor: '#fff',
+                                        borderRadius: 1,
+                                        border: '1px solid #e0e0e0',
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        justifyContent: 'space-between',
+                                        gap: 1,
+                                        cursor: 'pointer',
+                                        '&:hover': {
+                                          bgcolor: '#f5f5f5'
+                                        }
+                                      }}
+                                    >
+                                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <Typography variant="body2" sx={{ 
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          color: colors.primary,
+                                          mb: 0.3
+                                        }}>
+                                          {deck.title}
+                                        </Typography>
+                                        {deck.description && (
+                                          <Typography variant="caption" sx={{ 
+                                            fontSize: '0.65rem',
+                                            color: colors.textSecondary,
+                                            display: 'block'
+                                          }}>
+                                            {deck.description}
+                                          </Typography>
+                                        )}
+                                        <Typography variant="caption" sx={{ 
+                                          fontSize: '0.65rem',
+                                          color: colors.textSecondary,
+                                          display: 'block',
+                                          mt: 0.3
+                                        }}>
+                                          {deck.cards?.length || 0} Karten
+                                        </Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (deck.id) {
+                                              handleEditDeck(deck);
+                                            }
+                                          }}
+                                          sx={{ 
+                                            color: colors.accent1,
+                                            width: 24,
+                                            height: 24,
+                                            '&:hover': { 
+                                              bgcolor: colors.accent1 + '20'
+                                            }
+                                          }}
+                                          title="Deck bearbeiten"
+                                        >
+                                          <StyleIcon sx={{ fontSize: 14 }} />
+                                        </IconButton>
+                                        <IconButton
+                                          size="small"
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (deck.id && (deck as any).assignmentId) {
+                                              try {
+                                                const response = await fetch(`/api/flashcards/assignments/${(deck as any).assignmentId}`, {
+                                                  method: 'DELETE',
+                                                  headers: {
+                                                    'Content-Type': 'application/json'
+                                                  },
+                                                  body: JSON.stringify({ teacherId: userId })
+                                                });
+                                                if (response.ok) {
+                                                  // Reload decks for this group
+                                                  await fetchAssignedFlashcardDecks(group.id);
+                                                  showSnackbar('Zuweisung entfernt', 'success');
+                                                } else {
+                                                  const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+                                                  console.error('Fehler beim Entfernen der Zuweisung:', errorData);
+                                                  showSnackbar(errorData.error || 'Fehler beim Entfernen der Zuweisung', 'error');
+                                                }
+                                              } catch (error) {
+                                                console.error('Fehler beim Entfernen der Zuweisung:', error);
+                                                showSnackbar('Fehler beim Entfernen der Zuweisung', 'error');
+                                              }
+                                            }
+                                          }}
+                                          sx={{ 
+                                            color: colors.error,
+                                            width: 24,
+                                            height: 24,
+                                            '&:hover': { 
+                                              bgcolor: colors.error + '20'
+                                            }
+                                          }}
+                                          title="Zuweisung entfernen"
+                                        >
+                                          <DeleteIcon sx={{ fontSize: 14 }} />
+                                        </IconButton>
+                                      </Box>
+                                    </Box>
+                                  ))}
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" sx={{ 
+                                  color: colors.textSecondary,
+                                  fontSize: '0.75rem',
+                                  fontStyle: 'italic'
+                                }}>
+                                  Keine Karteikarten-Decks zugeordnet
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                          
+                          {/* Zugeordnete Inhalte - nur anzeigen wenn welche vorhanden */}
+                          {subjects.filter(subject => (subjectAssignments[subject.id] || []).includes(group.id)).length > 0 && (
+                            <Box sx={{ 
+                              p: 2.1, 
+                              bgcolor: '#fff', 
+                              borderRadius: 2.8, 
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                              border: '1px solid #e0e0e0'
+                            }}>
                             {/* Verschachtelte Darstellung */}
                             <Box sx={{ 
                               ml: 1,
@@ -5802,7 +6031,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 ))}
                             </Box>
                           </Box>
-                          
+                          )}
 
                         </Grid>
                       </Grid>
@@ -9223,6 +9452,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Flashcard Learning Modal für Lehrer */}
+      <FlashcardLearningModal
+        open={showFlashcardModal}
+        onClose={() => {
+          setShowFlashcardModal(false);
+          setSelectedFlashcardDeck(null);
+        }}
+        isTeacher={true}
+        teacherDeck={selectedFlashcardDeck}
+      />
     </Box>
   );
 };
