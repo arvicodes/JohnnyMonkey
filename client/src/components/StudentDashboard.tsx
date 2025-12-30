@@ -3460,9 +3460,10 @@ interface FlashcardLearningModalProps {
   studentId?: string;
   isTeacher?: boolean;
   teacherDeck?: any; // Deck für Lehrer-Modus
+  teacherId?: string; // Lehrer-ID für Export
 }
 
-export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, onClose, studentId, isTeacher = false, teacherDeck }) => {
+export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, onClose, studentId, isTeacher = false, teacherDeck, teacherId }) => {
   const [assignedDecks, setAssignedDecks] = useState<any[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -3479,19 +3480,29 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
   // Für Lehrer: Track welche Karten bereits gelernt wurden
   const [teacherLearnedCards, setTeacherLearnedCards] = useState<Set<string>>(new Set());
 
-  // Export-Funktionen für Lern-Fortschritt
+  // Export-Funktionen für Lern-Fortschritt (Schüler) oder Deck-Daten (Lehrer)
   const exportLearningProgress = async (format: 'json' | 'csv', deckId?: string) => {
-    if (isTeacher || !studentId) {
-      // Lehrer haben keine Lern-Fortschritte zum Exportieren
-      return;
-    }
     try {
       const params = new URLSearchParams({
         format,
         ...(deckId && { deckId })
       });
       
-      const response = await fetch(`/api/flashcards/student/${studentId}/export?${params}`);
+      let response: Response;
+      let filenamePrefix: string;
+      
+      if (isTeacher && teacherId) {
+        // Lehrer-Export: Deck-Daten
+        response = await fetch(`/api/flashcards/teacher/${teacherId}/export?${params}`);
+        filenamePrefix = `flashcard-decks-${deckId ? 'deck-' + deckId : 'all'}`;
+      } else if (studentId) {
+        // Schüler-Export: Lern-Fortschritt
+        response = await fetch(`/api/flashcards/student/${studentId}/export?${params}`);
+        filenamePrefix = `learning-progress-${deckId ? 'deck-' + deckId : 'all'}`;
+      } else {
+        alert('Export nicht verfügbar: Keine Benutzer-ID gefunden.');
+        return;
+      }
       
       if (response.ok) {
         if (format === 'csv') {
@@ -3500,7 +3511,7 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `learning-progress-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.csv`;
+          a.download = `${filenamePrefix}-${new Date().toISOString().split('T')[0]}.csv`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -3511,17 +3522,20 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `learning-progress-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.json`;
+          a.download = `${filenamePrefix}-${new Date().toISOString().split('T')[0]}.json`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           window.URL.revokeObjectURL(url);
         }
       } else {
-        console.error('Export fehlgeschlagen:', response.statusText);
+        const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        console.error('Export fehlgeschlagen:', response.statusText, errorData);
+        alert(`Export fehlgeschlagen: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
       console.error('Fehler beim Exportieren:', error);
+      alert(`Fehler beim Exportieren: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     }
   };
 

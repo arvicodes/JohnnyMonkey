@@ -165,3 +165,4 @@
 | Verschiebung | keine | ✓ | ✓ | ✓ |
 | Drehung | Drehzentrum Z | ✓ | ✓ | ✓ |
 
+

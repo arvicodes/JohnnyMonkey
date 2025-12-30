@@ -86,3 +86,4 @@ Mit diesen Informationen kann ich das Problem genau identifizieren!
 
 **Wichtig:** Verwende Node.js/Prisma statt sqlite3 - das ist bereits im Container verfügbar!
 
+

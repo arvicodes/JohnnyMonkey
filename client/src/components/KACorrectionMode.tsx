@@ -506,24 +506,42 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     return `${grade}${tendency}`;
   };
 
+  // Berechne maximale Gesamtpunkte aus der Punkteverteilung
+  const calculateMaxTotalPoints = (): number => {
+    // Aufgabe 1: 8 Punkte
+    const task1Points = 8;
+    // Aufgabe 2: 3 Punkte
+    const task2Points = 3;
+    // Aufgabe 3: 4 Teilaufgaben × 3.5 Punkte = 14 Punkte
+    const task3Points = 14;
+    return task1Points + task2Points + task3Points; // 25 Punkte
+  };
+
+  const maxTotalPoints = calculateMaxTotalPoints();
+
   // Punkte-zu-Note-Zuordnung für Tooltip
   const getGradeScale = (total: number): string => {
     const scale = [
       `1+: ${Math.ceil(total * 0.97)} - ${total} Punkte`,
       `1: ${Math.ceil(total * 0.95)} - ${Math.floor(total * 0.97)} Punkte`,
       `1-: ${Math.ceil(total * 0.92)} - ${Math.floor(total * 0.95)} Punkte`,
+      ``,
       `2+: ${Math.ceil(total * 0.86)} - ${Math.floor(total * 0.92)} Punkte`,
       `2: ${Math.ceil(total * 0.84)} - ${Math.floor(total * 0.86)} Punkte`,
       `2-: ${Math.ceil(total * 0.81)} - ${Math.floor(total * 0.84)} Punkte`,
+      ``,
       `3+: ${Math.ceil(total * 0.72)} - ${Math.floor(total * 0.81)} Punkte`,
       `3: ${Math.ceil(total * 0.70)} - ${Math.floor(total * 0.72)} Punkte`,
       `3-: ${Math.ceil(total * 0.67)} - ${Math.floor(total * 0.70)} Punkte`,
+      ``,
       `4+: ${Math.ceil(total * 0.55)} - ${Math.floor(total * 0.67)} Punkte`,
       `4: ${Math.ceil(total * 0.53)} - ${Math.floor(total * 0.55)} Punkte`,
       `4-: ${Math.ceil(total * 0.50)} - ${Math.floor(total * 0.53)} Punkte`,
+      ``,
       `5+: ${Math.ceil(total * 0.35)} - ${Math.floor(total * 0.50)} Punkte`,
       `5: ${Math.ceil(total * 0.33)} - ${Math.floor(total * 0.35)} Punkte`,
       `5-: ${Math.ceil(total * 0.30)} - ${Math.floor(total * 0.33)} Punkte`,
+      ``,
       `6: 0 - ${Math.floor(total * 0.30)} Punkte`
     ];
     return scale.join('\n');
@@ -910,55 +928,61 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               
               {/* Info Row: Chips und Zeit */}
               <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={0.5}>
-                <Box display="flex" gap={0.5} flexWrap="wrap">
+                <Box display="flex" gap={0.5} flexWrap="wrap" alignItems="center">
                     <Chip
-                    label={`Auto: ${selectedSubmission.autoPoints.toFixed(1)}`}
-                      size="small"
-                    sx={{ 
-                      bgcolor: '#e3f2fd', 
-                      color: '#1976d2', 
-                      fontWeight: 600,
-                      fontSize: '0.7rem',
-                      height: 24
-                    }}
-                    />
-                    <Chip
-                    label={`Gesamt: ${selectedSubmission.totalPoints.toFixed(1)}/38`}
-                      size="small"
-                    sx={{ 
-                      bgcolor: '#c8e6c9', 
-                      color: '#2e7d32', 
-                      fontWeight: 600,
-                      fontSize: '0.7rem',
-                      height: 24
-                    }}
-                    />
-                    <Chip
-                    label={selectedSubmission.status === 'submitted' ? '✅' : '⏰'}
+                      label={`${selectedSubmission.totalPoints.toFixed(1)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(1)} auto)`}
                       size="small"
                       sx={{ 
-                        bgcolor: selectedSubmission.status === 'submitted' ? '#e8f5e9' : '#fff3e0',
-                        color: selectedSubmission.status === 'submitted' ? '#2e7d32' : '#f57c00',
-                      fontWeight: 600,
-                      fontSize: '0.7rem',
-                      height: 24
+                        bgcolor: '#c8e6c9', 
+                        color: '#2e7d32', 
+                        fontWeight: 600,
+                        fontSize: '0.7rem',
+                        height: 24
                       }}
                     />
                     <Tooltip 
-                      title={getGradeScale(38)}
+                      title={
+                        <Box component="div" sx={{ whiteSpace: 'pre-line', fontSize: '0.75rem', lineHeight: 1.6 }}>
+                          {getGradeScale(maxTotalPoints)}
+                        </Box>
+                      }
                       arrow
-                      placement="top"
+                      placement="bottom"
+                      PopperProps={{
+                        modifiers: [
+                          {
+                            name: 'preventOverflow',
+                            enabled: true,
+                            options: {
+                              altAxis: true,
+                              altBoundary: true,
+                              tether: true,
+                              rootBoundary: 'viewport',
+                            },
+                          },
+                          {
+                            name: 'flip',
+                            enabled: true,
+                            options: {
+                              altBoundary: true,
+                              rootBoundary: 'viewport',
+                              padding: 8,
+                            },
+                          },
+                        ],
+                      }}
                     >
                       <Chip
-                        label={`Note: ${calculateGrade(selectedSubmission.totalPoints, 38)}`}
-                        size="small"
+                        label={`Note: ${calculateGrade(selectedSubmission.totalPoints, maxTotalPoints)}`}
+                        size="medium"
                         sx={{ 
                           bgcolor: '#1976d2', 
                           color: '#fff', 
                           fontWeight: 700,
-                          fontSize: '0.75rem',
-                          height: 24,
-                          cursor: 'help'
+                          fontSize: '0.9rem',
+                          height: 32,
+                          cursor: 'help',
+                          px: 1.5
                         }}
                       />
                     </Tooltip>
@@ -1623,43 +1647,61 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           {/* Summary Card - Kompakt */}
           <Card sx={{ mt: 0.75, bgcolor: '#e3f2fd', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <CardContent sx={{ p: 0.5, '&:last-child': { pb: 0.5 } }}>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap alignItems="center">
                   <Chip
-                    label={`Auto: ${selectedSubmission.autoPoints.toFixed(1)}`}
+                    label={`${selectedSubmission.totalPoints.toFixed(1)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(1)} auto)`}
                     size="small"
-                    sx={{ bgcolor: '#fff', color: '#1976d2', fontWeight: 600, fontSize: '0.7rem', height: 22 }}
-                  />
-                  <Chip
-                    label={`Manuell: ${(selectedSubmission.totalPoints - selectedSubmission.autoPoints).toFixed(1)}`}
-                    size="small"
-                    sx={{ bgcolor: '#fff', color: '#7b1fa2', fontWeight: 600, fontSize: '0.7rem', height: 22 }}
-                  />
-                  <Chip
-                    label={`Gesamt: ${selectedSubmission.totalPoints.toFixed(1)}/38`}
-                    size="small"
-                    sx={{ bgcolor: '#c8e6c9', color: '#2e7d32', fontWeight: 700, fontSize: '0.7rem', height: 22 }}
+                    sx={{ bgcolor: '#c8e6c9', color: '#2e7d32', fontWeight: 600, fontSize: '0.7rem', height: 24 }}
                   />
                   <Tooltip 
-                    title={getGradeScale(38)}
+                    title={
+                      <Box component="div" sx={{ whiteSpace: 'pre-line', fontSize: '0.75rem', lineHeight: 1.6 }}>
+                        {getGradeScale(maxTotalPoints)}
+                      </Box>
+                    }
                     arrow
-                    placement="top"
+                    placement="bottom"
+                    PopperProps={{
+                      modifiers: [
+                        {
+                          name: 'preventOverflow',
+                          enabled: true,
+                          options: {
+                            altAxis: true,
+                            altBoundary: true,
+                            tether: true,
+                            rootBoundary: 'viewport',
+                          },
+                        },
+                        {
+                          name: 'flip',
+                          enabled: true,
+                          options: {
+                            altBoundary: true,
+                            rootBoundary: 'viewport',
+                            padding: 8,
+                          },
+                        },
+                      ],
+                    }}
                   >
                     <Chip
-                      label={`Note: ${calculateGrade(selectedSubmission.totalPoints, 38)}`}
-                      size="small"
+                      label={`Note: ${calculateGrade(selectedSubmission.totalPoints, maxTotalPoints)}`}
+                      size="medium"
                       sx={{ 
                         bgcolor: '#1976d2', 
                         color: '#fff', 
                         fontWeight: 700,
-                        fontSize: '0.75rem',
-                        height: 22,
-                        cursor: 'help'
+                        fontSize: '0.9rem',
+                        height: 32,
+                        cursor: 'help',
+                        px: 1.5
                       }}
                     />
                   </Tooltip>
                 </Stack>
               </CardContent>
-            </Card>
+          </Card>
         </Box>
       )}
 

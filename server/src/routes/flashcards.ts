@@ -14,6 +14,7 @@ import {
   createAssignment,
   deleteAssignment,
   getFlashcardAssignments,
+  getGroupFlashcardDecks,
   getDocumentProcessingHistory,
   getStudentAssignedFlashcards,
   updateCardProgress,
@@ -24,7 +25,9 @@ import {
   endLearningSession,
   migrateToNewSpacedRepetitionSystem,
   markAllDueCardsAsLearned,
-  submitCardReview
+  submitCardReview,
+  exportStudentProgress,
+  exportTeacherDecks
 } from '../controllers/FlashcardController';
 
 const router = express.Router();
@@ -37,6 +40,7 @@ router.post('/add-to-existing', addFlashcardsToExistingDeck);
 
 // Get all flashcard decks for a teacher
 router.get('/teacher/:teacherId', getFlashcardDecks);
+router.get('/teacher/:teacherId/export', exportTeacherDecks);
 
 // Deck routes
 router.post('/decks', createDeck);
@@ -55,6 +59,7 @@ router.delete('/cards/:cardId', deleteCard);
 // Assignment routes
 router.post('/assignments', createAssignment);
 router.get('/assignments', getFlashcardAssignments);
+router.get('/assignments/group/:groupId', getGroupFlashcardDecks);
 router.delete('/assignments/:assignmentId', deleteAssignment);
 
 // Document processing history
@@ -73,6 +78,7 @@ router.get('/student/:studentId/assigned', getStudentAssignedFlashcards);
 router.get('/student/:studentId/progress', getStudentAllProgress);
 router.get('/student/:studentId/today', getTodayCards);
 router.get('/student/:studentId/all-assigned', getAllAssignedCards);
+router.get('/student/:studentId/export', exportStudentProgress);
 
 // Lernstand aktualisieren
 router.post('/student/progress', updateCardProgress);

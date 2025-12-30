@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getGradesByStudent = exports.getGrades = exports.saveGrades = void 0;
+exports.getGradeRelease = exports.toggleGradeRelease = exports.getGradesByStudent = exports.getGrades = exports.saveGrades = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 const saveGrades = async (req, res) => {
@@ -86,4 +86,62 @@ const getGradesByStudent = async (req, res) => {
     }
 };
 exports.getGradesByStudent = getGradesByStudent;
+// Freigabe der Gesamtnote für einen Schüler
+const toggleGradeRelease = async (req, res) => {
+    try {
+        const { studentId, schemaId, isReleased } = req.body;
+        console.log('toggleGradeRelease - Request body:', req.body);
+        console.log('toggleGradeRelease - studentId:', studentId, 'schemaId:', schemaId, 'isReleased:', isReleased);
+        if (!studentId || !schemaId) {
+            return res.status(400).json({ error: 'Student ID und Schema ID erforderlich' });
+        }
+        const gradeRelease = await prisma.gradeRelease.upsert({
+            where: {
+                studentId_schemaId: {
+                    studentId,
+                    schemaId
+                }
+            },
+            update: {
+                isReleased: isReleased !== undefined ? isReleased : true
+            },
+            create: {
+                studentId,
+                schemaId,
+                isReleased: isReleased !== undefined ? isReleased : true
+            }
+        });
+        console.log('toggleGradeRelease - Success:', gradeRelease);
+        res.json(gradeRelease);
+    }
+    catch (error) {
+        console.error('Error toggling grade release:', error);
+        console.error('Error details:', error.message, error.stack);
+        res.status(500).json({ error: 'Fehler beim Freigeben der Gesamtnote', details: error.message });
+    }
+};
+exports.toggleGradeRelease = toggleGradeRelease;
+// Hole Freigabestatus für einen Schüler und Schema
+const getGradeRelease = async (req, res) => {
+    try {
+        const { studentId, schemaId } = req.params;
+        if (!studentId || !schemaId) {
+            return res.status(400).json({ error: 'Student ID und Schema ID erforderlich' });
+        }
+        const gradeRelease = await prisma.gradeRelease.findUnique({
+            where: {
+                studentId_schemaId: {
+                    studentId,
+                    schemaId
+                }
+            }
+        });
+        res.json(gradeRelease || { isReleased: false });
+    }
+    catch (error) {
+        console.error('Error fetching grade release:', error);
+        res.status(500).json({ error: 'Fehler beim Laden des Freigabestatus' });
+    }
+};
+exports.getGradeRelease = getGradeRelease;
 //# sourceMappingURL=GradesController.js.map

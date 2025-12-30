@@ -36,6 +36,9 @@ const adventCalendar_1 = __importDefault(require("./routes/adventCalendar"));
 const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
+// Trust proxy - wichtig für nginx Reverse Proxy und X-Forwarded-Proto
+// Erlaubt Express, die X-Forwarded-* Header von nginx zu respektieren
+app.set('trust proxy', true);
 // Enable CORS with better configuration
 app.use((0, cors_1.default)({
     origin: process.env.NODE_ENV === 'production'
@@ -154,7 +157,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server with Render compatibility
 async function startServer() {
     try {
-        const port = parseInt(process.env.PORT || '3001', 10);
+        const port = parseInt(process.env.PORT || '3000', 10);
         // For Render, use simple server start
         if (process.env.NODE_ENV === 'production') {
             // Listen on 0.0.0.0 to accept connections from outside the container

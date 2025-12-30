@@ -244,3 +244,4 @@ Bitte kopiere die **letzten 50 Zeilen** aus den Container-Logs und teile sie mit
 
 **Wichtig:** Die Logs zeigen die genaue Ursache des Fehlers!
 
+

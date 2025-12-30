@@ -12,6 +12,7 @@ router.post('/create-from-word', FlashcardController_1.createFlashcardDeckFromWo
 router.post('/add-to-existing', FlashcardController_1.addFlashcardsToExistingDeck);
 // Get all flashcard decks for a teacher
 router.get('/teacher/:teacherId', FlashcardController_1.getFlashcardDecks);
+router.get('/teacher/:teacherId/export', FlashcardController_1.exportTeacherDecks);
 // Deck routes
 router.post('/decks', FlashcardController_1.createDeck);
 router.get('/decks/:id', FlashcardController_1.getFlashcardDeck);
@@ -26,6 +27,7 @@ router.delete('/cards/:cardId', FlashcardController_1.deleteCard);
 // Assignment routes
 router.post('/assignments', FlashcardController_1.createAssignment);
 router.get('/assignments', FlashcardController_1.getFlashcardAssignments);
+router.get('/assignments/group/:groupId', FlashcardController_1.getGroupFlashcardDecks);
 router.delete('/assignments/:assignmentId', FlashcardController_1.deleteAssignment);
 // Document processing history
 router.get('/document-history', FlashcardController_1.getDocumentProcessingHistory);
@@ -39,6 +41,7 @@ router.get('/student/:studentId/assigned', FlashcardController_1.getStudentAssig
 router.get('/student/:studentId/progress', FlashcardController_1.getStudentAllProgress);
 router.get('/student/:studentId/today', FlashcardController_1.getTodayCards);
 router.get('/student/:studentId/all-assigned', FlashcardController_1.getAllAssignedCards);
+router.get('/student/:studentId/export', FlashcardController_1.exportStudentProgress);
 // Lernstand aktualisieren
 router.post('/student/progress', FlashcardController_1.updateCardProgress);
 // Karten-Review (Bewertung 1-2-3)

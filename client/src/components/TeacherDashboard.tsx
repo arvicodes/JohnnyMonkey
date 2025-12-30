@@ -1248,19 +1248,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const response = await fetch(`/api/flashcards/assignments/group/${groupId}`);
       if (response.ok) {
         const data = await response.json();
+        console.log(`Loaded flashcard decks for group ${groupId}:`, data.decks?.length || 0, 'decks');
         setAssignedFlashcardDecks(prev => ({
           ...prev,
           [groupId]: data.decks || []
         }));
       } else {
-        console.error('Fehler beim Laden der Karteikarten-Decks');
+        const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        console.error('Fehler beim Laden der Karteikarten-Decks für Gruppe', groupId, ':', errorData);
         setAssignedFlashcardDecks(prev => ({
           ...prev,
           [groupId]: []
         }));
       }
     } catch (error) {
-      console.error('Fehler beim Laden der Karteikarten-Decks:', error);
+      console.error('Fehler beim Laden der Karteikarten-Decks für Gruppe', groupId, ':', error);
       setAssignedFlashcardDecks(prev => ({
         ...prev,
         [groupId]: []
@@ -9462,6 +9464,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         }}
         isTeacher={true}
         teacherDeck={selectedFlashcardDeck}
+        teacherId={userId}
       />
     </Box>
   );

@@ -491,6 +491,63 @@ export const getFlashcardAssignments = async (req: Request, res: Response) => {
   }
 };
 
+// Get flashcard decks assigned to a learning group
+export const getGroupFlashcardDecks = async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    
+    if (!groupId) {
+      return res.status(400).json({ error: 'groupId ist erforderlich' });
+    }
+
+    const assignments = await prisma.flashcardAssignment.findMany({
+      where: {
+        groupId
+      },
+      include: {
+        deck: {
+          include: {
+            cards: {
+              orderBy: { order: 'asc' }
+            },
+            subject: true,
+            teacher: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        },
+        group: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Extract decks from assignments (filter out null/undefined decks)
+    const decks = assignments
+      .filter(assignment => assignment.deck !== null && assignment.deck !== undefined)
+      .map(assignment => ({
+        ...assignment.deck,
+        assignmentId: assignment.id,
+        dueDate: assignment.dueDate
+      }));
+
+    console.log(`Found ${decks.length} decks for group ${groupId} (from ${assignments.length} assignments)`);
+    res.json({ decks, assignments });
+  } catch (error) {
+    console.error('Fehler beim Abrufen der Karteikarten-Decks für die Lerngruppe:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
 // Flashcard Progress Controller
 export const getStudentProgress = async (req: Request, res: Response) => {
   try {
@@ -1477,5 +1534,169 @@ export const markAllDueCardsAsLearned = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error marking cards as learned:', error);
     res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+// Export Lern-Fortschritt
+export const exportStudentProgress = async (req: Request, res: Response) => {
+  try {
+    const { studentId } = req.params;
+    const { format, deckId } = req.query;
+    
+    if (!studentId) {
+      return res.status(400).json({ error: 'Schüler-ID ist erforderlich' });
+    }
+
+    const where: any = { studentId };
+    if (deckId) {
+      where.card = { deckId: deckId as string };
+    }
+
+    const progress = await prisma.flashcardProgress.findMany({
+      where,
+      include: {
+        card: {
+          include: {
+            deck: {
+              select: {
+                id: true,
+                title: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { lastReviewed: 'desc' }
+    });
+
+    if (format === 'csv') {
+      // CSV-Format
+      const csvHeader = 'Deck,Front,Back,Level,Ease Factor,Interval,Review Count,Last Reviewed,Next Review,Quality\n';
+      const csvRows = progress.map(p => {
+        const deckTitle = p.card?.deck?.title || 'Unbekannt';
+        const front = (p.card?.front || '').replace(/"/g, '""').replace(/\n/g, ' ');
+        const back = (p.card?.back || '').replace(/"/g, '""').replace(/\n/g, ' ');
+        const lastReviewed = p.lastReviewed ? new Date(p.lastReviewed).toISOString() : '';
+        const nextReview = p.nextReview ? new Date(p.nextReview).toISOString() : '';
+        return `"${deckTitle}","${front}","${back}",${p.level},${p.easeFactor},${p.interval},${p.reviewCount},"${lastReviewed}","${nextReview}",${p.quality || ''}`;
+      }).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="learning-progress-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send('\ufeff' + csvHeader + csvRows); // BOM für Excel-Kompatibilität
+    } else {
+      // JSON-Format
+      const jsonData = progress.map(p => ({
+        deckId: p.card?.deck?.id,
+        deckTitle: p.card?.deck?.title,
+        cardId: p.cardId,
+        front: p.card?.front,
+        back: p.card?.back,
+        level: p.level,
+        easeFactor: p.easeFactor,
+        interval: p.interval,
+        reviewCount: p.reviewCount,
+        lastReviewed: p.lastReviewed,
+        nextReview: p.nextReview,
+        quality: p.quality
+      }));
+      
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="learning-progress-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(jsonData);
+    }
+  } catch (error) {
+    console.error('Error exporting student progress:', error);
+    res.status(500).json({ error: 'Interner Serverfehler beim Exportieren' });
+  }
+};
+
+// Export Deck-Daten für Lehrer
+export const exportTeacherDecks = async (req: Request, res: Response) => {
+  try {
+    const { teacherId } = req.params;
+    const { format, deckId } = req.query;
+    
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Lehrer-ID ist erforderlich' });
+    }
+
+    const where: any = { teacherId };
+    if (deckId) {
+      where.id = deckId as string;
+    }
+
+    const decks = await prisma.flashcardDeck.findMany({
+      where,
+      include: {
+        cards: {
+          orderBy: { order: 'asc' }
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (format === 'csv') {
+      // CSV-Format für Decks
+      const csvHeader = 'Deck ID,Deck Titel,Deck Beschreibung,Fach,Front,Back,Hinweis,Reihenfolge\n';
+      const csvRows: string[] = [];
+      
+      decks.forEach(deck => {
+        const deckTitle = (deck.title || '').replace(/"/g, '""');
+        const deckDescription = (deck.description || '').replace(/"/g, '""').replace(/\n/g, ' ');
+        const subjectName = deck.subject?.name || 'Kein Fach';
+        
+        if (deck.cards && deck.cards.length > 0) {
+          deck.cards.forEach(card => {
+            const front = (card.front || '').replace(/"/g, '""').replace(/\n/g, ' ');
+            const back = (card.back || '').replace(/"/g, '""').replace(/\n/g, ' ');
+            const hint = (card.hint || '').replace(/"/g, '""').replace(/\n/g, ' ');
+            csvRows.push(`"${deck.id}","${deckTitle}","${deckDescription}","${subjectName}","${front}","${back}","${hint}",${card.order}`);
+          });
+        } else {
+          // Deck ohne Karten
+          csvRows.push(`"${deck.id}","${deckTitle}","${deckDescription}","${subjectName}","","","",0`);
+        }
+      });
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="flashcard-decks-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send('\ufeff' + csvHeader + csvRows.join('\n')); // BOM für Excel-Kompatibilität
+    } else {
+      // JSON-Format
+      const jsonData = decks.map(deck => ({
+        id: deck.id,
+        title: deck.title,
+        description: deck.description,
+        subject: deck.subject ? {
+          id: deck.subject.id,
+          name: deck.subject.name
+        } : null,
+        isPublic: deck.isPublic,
+        createdAt: deck.createdAt,
+        updatedAt: deck.updatedAt,
+        cards: deck.cards.map(card => ({
+          id: card.id,
+          front: card.front,
+          back: card.back,
+          hint: card.hint,
+          order: card.order,
+          difficulty: card.difficulty
+        }))
+      }));
+      
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="flashcard-decks-${deckId ? 'deck-' + deckId : 'all'}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(jsonData);
+    }
+  } catch (error) {
+    console.error('Error exporting teacher decks:', error);
+    res.status(500).json({ error: 'Interner Serverfehler beim Exportieren' });
   }
 };

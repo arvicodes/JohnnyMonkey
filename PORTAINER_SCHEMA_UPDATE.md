@@ -49,3 +49,4 @@ npx prisma db push --force-reset  # ⚠️ Vorsicht: Löscht Daten!
 
 **Wichtig:** Nach Schema-Updates immer Container neu starten!
 
+

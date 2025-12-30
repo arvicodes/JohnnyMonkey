@@ -61,3 +61,4 @@ Portainer hat auch eine **Quick Access** Funktion:
 
 Die App sollte sich dann automatisch öffnen! 🚀
 
+

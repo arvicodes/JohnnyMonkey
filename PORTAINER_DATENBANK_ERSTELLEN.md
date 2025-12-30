@@ -70,3 +70,4 @@ Nach dem Import:
 - 61 Benutzer und 6 LearningGroups vorhanden
 - Login sollte funktionieren
 
+
