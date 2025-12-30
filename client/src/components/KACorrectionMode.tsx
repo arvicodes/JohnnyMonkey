@@ -520,31 +520,105 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const maxTotalPoints = calculateMaxTotalPoints();
 
   // Punkte-zu-Note-Zuordnung für Tooltip
-  const getGradeScale = (total: number): string => {
-    const scale = [
-      `1+: ${Math.ceil(total * 0.97)} - ${total} Punkte`,
-      `1: ${Math.ceil(total * 0.95)} - ${Math.floor(total * 0.97)} Punkte`,
-      `1-: ${Math.ceil(total * 0.92)} - ${Math.floor(total * 0.95)} Punkte`,
-      ``,
-      `2+: ${Math.ceil(total * 0.86)} - ${Math.floor(total * 0.92)} Punkte`,
-      `2: ${Math.ceil(total * 0.84)} - ${Math.floor(total * 0.86)} Punkte`,
-      `2-: ${Math.ceil(total * 0.81)} - ${Math.floor(total * 0.84)} Punkte`,
-      ``,
-      `3+: ${Math.ceil(total * 0.72)} - ${Math.floor(total * 0.81)} Punkte`,
-      `3: ${Math.ceil(total * 0.70)} - ${Math.floor(total * 0.72)} Punkte`,
-      `3-: ${Math.ceil(total * 0.67)} - ${Math.floor(total * 0.70)} Punkte`,
-      ``,
-      `4+: ${Math.ceil(total * 0.55)} - ${Math.floor(total * 0.67)} Punkte`,
-      `4: ${Math.ceil(total * 0.53)} - ${Math.floor(total * 0.55)} Punkte`,
-      `4-: ${Math.ceil(total * 0.50)} - ${Math.floor(total * 0.53)} Punkte`,
-      ``,
-      `5+: ${Math.ceil(total * 0.35)} - ${Math.floor(total * 0.50)} Punkte`,
-      `5: ${Math.ceil(total * 0.33)} - ${Math.floor(total * 0.35)} Punkte`,
-      `5-: ${Math.ceil(total * 0.30)} - ${Math.floor(total * 0.33)} Punkte`,
-      ``,
-      `6: 0 - ${Math.floor(total * 0.30)} Punkte`
+  const getGradeScale = (total: number, currentPoints?: number): React.ReactNode => {
+    // Hilfsfunktion: Prüft ob ein Punktestand in einem Prozentbereich liegt
+    const isInRange = (points: number, minPercent: number, maxPercent: number): boolean => {
+      const percentage = (points / total) * 100;
+      return percentage >= minPercent && (maxPercent === 100 ? percentage <= maxPercent : percentage < maxPercent);
+    };
+
+    // Bestimme welche Note der aktuelle Punktestand hat
+    let currentGrade = '';
+    if (currentPoints !== undefined) {
+      const percentage = (currentPoints / total) * 100;
+      if (percentage >= 97) currentGrade = '1+';
+      else if (percentage >= 95) currentGrade = '1';
+      else if (percentage >= 92) currentGrade = '1-';
+      else if (percentage >= 86) currentGrade = '2+';
+      else if (percentage >= 84) currentGrade = '2';
+      else if (percentage >= 81) currentGrade = '2-';
+      else if (percentage >= 72) currentGrade = '3+';
+      else if (percentage >= 70) currentGrade = '3';
+      else if (percentage >= 67) currentGrade = '3-';
+      else if (percentage >= 55) currentGrade = '4+';
+      else if (percentage >= 53) currentGrade = '4';
+      else if (percentage >= 50) currentGrade = '4-';
+      else if (percentage >= 35) currentGrade = '5+';
+      else if (percentage >= 33) currentGrade = '5';
+      else if (percentage >= 30) currentGrade = '5-';
+      else currentGrade = '6';
+    }
+
+    const ranges = [
+      { grade: '1+', minPercent: 97, maxPercent: 100 },
+      { grade: '1', minPercent: 95, maxPercent: 97 },
+      { grade: '1-', minPercent: 92, maxPercent: 95 },
+      { grade: '2+', minPercent: 86, maxPercent: 92 },
+      { grade: '2', minPercent: 84, maxPercent: 86 },
+      { grade: '2-', minPercent: 81, maxPercent: 84 },
+      { grade: '3+', minPercent: 72, maxPercent: 81 },
+      { grade: '3', minPercent: 70, maxPercent: 72 },
+      { grade: '3-', minPercent: 67, maxPercent: 70 },
+      { grade: '4+', minPercent: 55, maxPercent: 67 },
+      { grade: '4', minPercent: 53, maxPercent: 55 },
+      { grade: '4-', minPercent: 50, maxPercent: 53 },
+      { grade: '5+', minPercent: 35, maxPercent: 50 },
+      { grade: '5', minPercent: 33, maxPercent: 35 },
+      { grade: '5-', minPercent: 30, maxPercent: 33 },
+      { grade: '6', minPercent: 0, maxPercent: 30 }
     ];
-    return scale.join('\n');
+
+    const scale = ranges.map((range) => {
+      const minPoints = range.minPercent === 0 ? 0 : Math.ceil(total * (range.minPercent / 100));
+      const maxPoints = range.maxPercent === 100 ? total : Math.floor(total * (range.maxPercent / 100));
+      const isCurrent = currentGrade === range.grade;
+      return { range, minPoints, maxPoints, isCurrent };
+    });
+
+    // Erstelle JSX-Elemente mit farblicher Hervorhebung
+    const result: React.ReactNode[] = [];
+    scale.forEach((item, index) => {
+      const { range, minPoints, maxPoints, isCurrent } = item;
+      const lineContent = `${range.grade}: ${minPoints} - ${maxPoints} Punkte${isCurrent ? ' ← Aktuell' : ''}`;
+      
+      result.push(
+        <Box
+          key={`grade-${range.grade}`}
+          component="div"
+          sx={{
+            backgroundColor: isCurrent ? '#e3f2fd' : 'transparent',
+            color: isCurrent ? '#1976d2' : 'inherit',
+            fontWeight: isCurrent ? 600 : 400,
+            padding: '2px 4px',
+            borderRadius: isCurrent ? '4px' : '0',
+            display: 'block',
+            minHeight: '20px',
+            lineHeight: '1.6'
+          }}
+        >
+          {lineContent}
+        </Box>
+      );
+      
+      // Leerzeile nach 1-, 2-, 3-, 4-, 5-
+      if (range.grade === '1-' || range.grade === '2-' || range.grade === '3-' || range.grade === '4-' || range.grade === '5-') {
+        result.push(<Box key={`spacer-${index}`} component="div" sx={{ height: '4px', display: 'block', flexShrink: 0 }} />);
+      }
+    });
+
+    return (
+      <Box 
+        component="div" 
+        sx={{ 
+          minWidth: '200px',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative'
+        }}
+      >
+        {result}
+      </Box>
+    );
   };
 
   if (loading) {
@@ -926,28 +1000,29 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   </Box>
               </Box>
               
-              {/* Info Row: Chips und Zeit */}
-              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={0.5}>
-                <Box display="flex" gap={0.5} flexWrap="wrap" alignItems="center">
+              {/* Info Row: Chips */}
+              <Box display="flex" gap={0.5} flexWrap="wrap" alignItems="center">
                     <Chip
                       label={`${selectedSubmission.totalPoints.toFixed(1)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(1)} auto)`}
                       size="small"
-                      sx={{ 
+                    sx={{ 
                         bgcolor: '#c8e6c9', 
                         color: '#2e7d32', 
-                        fontWeight: 600,
-                        fontSize: '0.7rem',
-                        height: 24
-                      }}
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      height: 24
+                    }}
                     />
                     <Tooltip 
                       title={
-                        <Box component="div" sx={{ whiteSpace: 'pre-line', fontSize: '0.75rem', lineHeight: 1.6 }}>
-                          {getGradeScale(maxTotalPoints)}
+                        <Box component="div" sx={{ fontSize: '0.75rem', lineHeight: 1.6 }}>
+                          {getGradeScale(maxTotalPoints, selectedSubmission.totalPoints)}
                         </Box>
                       }
                       arrow
-                      placement="bottom"
+                      placement="top"
+                      enterDelay={100}
+                      leaveDelay={0}
                       PopperProps={{
                         modifiers: [
                           {
@@ -956,8 +1031,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             options: {
                               altAxis: true,
                               altBoundary: true,
-                              tether: true,
+                              tether: false,
                               rootBoundary: 'viewport',
+                              padding: 8,
                             },
                           },
                           {
@@ -969,10 +1045,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                               padding: 8,
                             },
                           },
+                          {
+                            name: 'offset',
+                            enabled: true,
+                            options: {
+                              offset: [0, 8],
+                            },
+                          },
                         ],
                       }}
                     >
-                      <Chip
+                    <Chip
                         label={`Note: ${calculateGrade(selectedSubmission.totalPoints, maxTotalPoints)}`}
                         size="medium"
                         sx={{ 
@@ -986,16 +1069,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         }}
                       />
                     </Tooltip>
-                  </Box>
-                
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                      {new Date(selectedSubmission.submittedAt).toLocaleString('de-DE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Typography>
               </Box>
             </CardContent>
           </Card>
@@ -1228,8 +1301,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                         {allCorrect && (
                                           <Chip
                                             label="✓"
-                                            size="small"
-                                            sx={{ 
+                      size="small"
+                    sx={{ 
                                               bgcolor: '#4caf50', 
                                               color: '#fff',
                                               height: 18,
@@ -1240,10 +1313,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                           />
                                         )}
                                         {!allCorrect && someCorrect && (
-                                          <Chip
+                    <Chip
                                             label="~"
-                                            size="small"
-                                            sx={{ 
+                      size="small"
+                      sx={{ 
                                               bgcolor: '#ff9800', 
                                               color: '#fff',
                                               height: 18,
@@ -1254,22 +1327,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                           />
                                         )}
                                         {!someCorrect && subtaskAnswers.length > 0 && (
-                                          <Chip
+                    <Chip
                                             label="✗"
-                                            size="small"
-                                            sx={{ 
+                      size="small"
+                      sx={{ 
                                               bgcolor: '#f44336', 
-                                              color: '#fff',
+                        color: '#fff', 
                                               height: 18,
                                               fontSize: '0.6rem',
-                                              fontWeight: 700,
+                        fontWeight: 700,
                                               '& .MuiChip-label': { px: 0.5 }
-                                            }}
-                                          />
+                      }}
+                    />
                                         )}
                                       </Box>
-                                    </Box>
-                                    
+                  </Box>
+                
                                     {/* Koordinaten Anzeige */}
                                     <Box sx={{ 
                                       bgcolor: 'rgba(255,255,255,0.5)',
@@ -1330,8 +1403,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                         mt: 0.25
                                       }}>
                                         {formatCorrectCoordinates()}
-                                      </Typography>
-                                    </Box>
+                    </Typography>
+              </Box>
 
                                     {/* Eingabefeld: Konstruktionspunkte pro Teilaufgabe */}
                                     {needsManualCorrection && (
@@ -1380,8 +1453,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                         </Box>
                                       </Box>
                                     )}
-                                  </CardContent>
-                                </Card>
+            </CardContent>
+          </Card>
                               </Grid>
                             );
                           }).filter(Boolean)}
@@ -1655,12 +1728,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   />
                   <Tooltip 
                     title={
-                      <Box component="div" sx={{ whiteSpace: 'pre-line', fontSize: '0.75rem', lineHeight: 1.6 }}>
-                        {getGradeScale(maxTotalPoints)}
+                      <Box component="div" sx={{ fontSize: '0.75rem', lineHeight: 1.6 }}>
+                        {getGradeScale(maxTotalPoints, selectedSubmission.totalPoints)}
                       </Box>
                     }
                     arrow
-                    placement="bottom"
+                    placement="top"
+                    enterDelay={100}
+                    leaveDelay={0}
                     PopperProps={{
                       modifiers: [
                         {
@@ -1669,8 +1744,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                           options: {
                             altAxis: true,
                             altBoundary: true,
-                            tether: true,
+                            tether: false,
                             rootBoundary: 'viewport',
+                            padding: 8,
                           },
                         },
                         {
@@ -1682,16 +1758,23 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             padding: 8,
                           },
                         },
+                        {
+                          name: 'offset',
+                          enabled: true,
+                          options: {
+                            offset: [0, 8],
+                          },
+                        },
                       ],
                     }}
                   >
-                    <Chip
+                  <Chip
                       label={`Note: ${calculateGrade(selectedSubmission.totalPoints, maxTotalPoints)}`}
                       size="medium"
-                      sx={{ 
-                        bgcolor: '#1976d2', 
-                        color: '#fff', 
-                        fontWeight: 700,
+                    sx={{ 
+                      bgcolor: '#1976d2', 
+                      color: '#fff', 
+                      fontWeight: 700,
                         fontSize: '0.9rem',
                         height: 32,
                         cursor: 'help',
@@ -1701,7 +1784,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   </Tooltip>
                 </Stack>
               </CardContent>
-          </Card>
+            </Card>
         </Box>
       )}
 

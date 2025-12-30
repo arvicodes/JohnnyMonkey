@@ -537,9 +537,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       const groupSharedFiles = sharedFiles[groupId] || [];
       
       // Wenn es eine Datei ist, prüfe ob sie freigegeben ist
-      // K_ Dateien sind automatisch freigegeben
+      // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
       if (item.type === 'file') {
-        let isFileShared = item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+        let isFileShared = groupSharedFiles.includes(item.path);
         
         // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
         // dann ist auch die PDF-Datei freigegeben
@@ -566,8 +566,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const renderItemRecursively = (item: any, level: number = 0) => {
       // Prüfe, ob die Datei für diese Gruppe freigegeben ist
       const groupSharedFiles = sharedFiles[groupId] || [];
-      // K_ Dateien sind immer automatisch freigegeben
-      let isFileShared = item.name.startsWith('K_') || groupSharedFiles.includes(item.path);
+      // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
+      let isFileShared = groupSharedFiles.includes(item.path);
       
       // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
       // dann ist auch die PDF-Datei freigegeben
@@ -600,9 +600,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       }
       
       // Cards-Dateien werden weiterhin ausgeblendet
-      if (item.type === 'file' && item.name.startsWith('K_')) {
-        return null; // Diese Dateien werden für Schüler nicht angezeigt
-      }
+      // K_ Dateien werden angezeigt, wenn sie explizit freigegeben wurden
       
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -1882,17 +1880,62 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   };
 
   // Funktion zum Kombinieren von Schema und Noten
-  const combineSchemaWithGrades = (schema: GradingSchema, grades: Grade[]) => {
+  const combineSchemaWithGrades = (schema: GradingSchema, grades: Grade[], groupId: string) => {
     const schemaStructure = parseSchemaStructure(schema.structure);
     const gradesMap = new Map(grades.map(g => [g.categoryName, g]));
     
+    // Prüfe, welche EPO-Noten freigegeben sind
+    const releasedEpoGrades = new Set<string>();
+    epoGrades.forEach((epo: any) => {
+      if ((epo.groupId === groupId || epo.group?.id === groupId) && epo.isReleased) {
+        releasedEpoGrades.add(`epo ${epo.period}`);
+      }
+    });
+    
+    // Hilfsfunktion: Prüft, ob ein Knoten nur EPO-Noten enthält
+    const containsOnlyEpo = (node: any): boolean => {
+      if (node.children && node.children.length > 0) {
+        return node.children.every((child: any) => containsOnlyEpo(child));
+      }
+      return node.name.toLowerCase().includes('epo');
+    };
+    
+    // Hilfsfunktion: Prüft, ob ein Knoten nur nicht freigegebene EPO-Noten enthält
+    const containsOnlyUnreleasedEpo = (node: any): boolean => {
+      if (node.children && node.children.length > 0) {
+        return node.children.every((child: any) => containsOnlyUnreleasedEpo(child));
+      }
+      const isEpo = node.name.toLowerCase().includes('epo');
+      if (isEpo) {
+        const epoKey = node.name.toLowerCase().trim();
+        return !releasedEpoGrades.has(epoKey);
+      }
+      return false;
+    };
+    
     const processNode = (node: any): any => {
-      const grade = gradesMap.get(node.name);
+      const isEpo = node.name.toLowerCase().includes('epo');
+      let grade = gradesMap.get(node.name);
+      
+      // Für EPO-Noten: Nur anzeigen, wenn freigegeben
+      if (isEpo) {
+        const epoKey = node.name.toLowerCase().trim();
+        if (!releasedEpoGrades.has(epoKey)) {
+          grade = undefined; // Nicht freigegeben, also nicht anzeigen
+        }
+      }
+      
+      const processedChildren = node.children.map(processNode);
+      
+      // Markiere Knoten, die nur nicht freigegebene EPO-Noten enthalten
+      const onlyUnreleasedEpo = containsOnlyEpo(node) && containsOnlyUnreleasedEpo(node);
+      
       return {
         ...node,
         grade: grade?.grade,
         weight: grade?.weight || node.weight,
-        children: node.children.map(processNode)
+        children: processedChildren,
+        onlyUnreleasedEpo: onlyUnreleasedEpo // Flag für spätere Verarbeitung
       };
     };
     
@@ -1935,6 +1978,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const isGesamtnote = node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe");
     const isGradeReleased = gradeReleases[schema.id] || false;
     
+    // Wenn der Knoten nur nicht freigegebene EPO-Noten enthält, nicht anzeigen
+    if (node.onlyUnreleasedEpo) {
+      return null;
+    }
+    
     // Blende die oberste Ebene aus, wenn es "Unter- und Mittelstufe" ist
     if (level === 0 && isGesamtnote) {
       // Zeige immer die Kinder (Teilnoten), aber nur die Gesamtnote selbst wenn freigegeben
@@ -1942,7 +1990,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         <Box key={node.name}>
           {hasChildren && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
-              {node.children.map((child: any) => renderGradeNode(child, schema, level + 1))}
+              {node.children
+                .filter((child: any) => !child.onlyUnreleasedEpo) // Filtere nicht freigegebene EPO-Kategorien
+                .map((child: any) => renderGradeNode(child, schema, level + 1))}
             </Box>
           )}
         </Box>
@@ -1971,25 +2021,59 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             {level === 0 ? '📚 ' : level === 1 ? '📝 ' : '• '}{node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe") ? "Gesamtnote" : node.name}
           </Typography>
           
+          {(() => {
+            const isEpo = node.name.toLowerCase().includes('epo');
+            // Für EPO-Noten: Wenn keine Note vorhanden (nicht freigegeben), zeige -.-
+            if (isEpo && !hasChildren && node.grade === undefined) {
+              return (
+                <Typography variant="caption" sx={{ 
+                  color: colors.textSecondary,
+                  fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+                  fontStyle: 'italic'
+                }}>
+                  -.-
+                </Typography>
+              );
+            }
+            return null;
+          })()}
+          
           {node.grade !== undefined && !hasChildren ? (
             // Nur für Blattknoten - eingegebene Noten
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Box sx={{ 
-                bgcolor: getGradeColor(node.grade, schema?.gradingSystem),
-                color: 'white',
-                px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
-                py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
-                borderRadius: 1,
-                fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
-                fontWeight: 'bold',
-                minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
-                textAlign: 'center'
-              }}>
-                {schema?.gradingSystem === 'MSS' ? 
-                  node.grade.toFixed(0) : 
-                  formatGermanGrade(node.grade)
+              {(() => {
+                const isEpo = node.name.toLowerCase().includes('epo');
+                // Für EPO-Noten: Prüfe ob Note vorhanden (freigegeben), sonst zeige -.-
+                if (isEpo && node.grade === undefined) {
+                  return (
+                    <Typography variant="caption" sx={{ 
+                      color: colors.textSecondary,
+                      fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+                      fontStyle: 'italic'
+                    }}>
+                      -.-
+                    </Typography>
+                  );
                 }
-              </Box>
+                return (
+                  <Box sx={{ 
+                    bgcolor: getGradeColor(node.grade, schema?.gradingSystem),
+                    color: 'white',
+                    px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+                    py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
+                    borderRadius: 1,
+                    fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+                    fontWeight: 'bold',
+                    minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
+                    textAlign: 'center'
+                  }}>
+                    {schema?.gradingSystem === 'MSS' ? 
+                      node.grade.toFixed(0) : 
+                      formatGermanGrade(node.grade)
+                    }
+                  </Box>
+                );
+              })()}
               {(() => {
                 const isEpo = node.name.toLowerCase().includes('epo');
                 return isEpo ? (
@@ -2081,7 +2165,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         
         {hasChildren && (
           <Box sx={{ mt: 0.3 }}>
-            {node.children.map((child: any) => renderGradeNode(child, schema, level + 1))}
+            {node.children
+              .filter((child: any) => !child.onlyUnreleasedEpo) // Filtere nicht freigegebene EPO-Kategorien
+              .map((child: any) => renderGradeNode(child, schema, level + 1))}
           </Box>
         )}
       </Box>
@@ -2436,20 +2522,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   sx={{ 
                     width: 28, 
                     height: 28, 
-                    bgcolor: colors.secondary,
+                    bgcolor: '#1976d2', // Blau wie die Fläche unten
                     boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)'
                   }}
                 >
                   {studentName.charAt(0)}
                 </Avatar>
-                <Box>
-                  <Typography variant="h6" component="h1" sx={{ fontWeight: 600, fontSize: '0.77rem', mb: 0 }}>
-                    Hallo {studentName.split(' ')[0]}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontSize: '0.67rem', opacity: 0.85 }}>
-                    Willkommen zurück
-                  </Typography>
-                </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
                 {/* Logout Button */}
@@ -2803,7 +2881,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                               }
 
                               // Kombiniere Schema mit Noten für hierarchische Anzeige
-                              const hierarchicalGrades = combineSchemaWithGrades(schema, groupGrades);
+                              const hierarchicalGrades = combineSchemaWithGrades(schema, groupGrades, gruppe.id);
 
                               return (
                                 <Box key={gruppe.id} sx={{ 
@@ -2916,41 +2994,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                         📚 {group.name}
                                       </Typography>
                                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                        {(() => {
-                                          const epo1 = epoGrades.find((g: any) => g.groupId === groupId && g.period === 1);
-                                          const epo2 = epoGrades.find((g: any) => g.groupId === groupId && g.period === 2);
-                                          return (
-                                            <>
-                                              {epo1 && (
-                                                <Typography 
-                                                  variant="body2" 
-                                                  sx={{ 
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 600,
-                                                    color: getGradeColor(epo1.grade)
-                                                  }}
-                                                >
-                                                  EPO 1: {epo1.grade.toFixed(1)}
-                                                </Typography>
-                                              )}
-                                              {epo2 && (
-                                                <Typography 
-                                                  variant="body2" 
-                                                  sx={{ 
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 600,
-                                                    color: getGradeColor(epo2.grade)
-                                                  }}
-                                                >
-                                                  EPO 2: {epo2.grade.toFixed(1)}
-                                                </Typography>
-                                              )}
-                                              {groupData.grade !== null && (
-                                                <></>
-                                              )}
-                                            </>
-                                          );
-                                        })()}
                                       </Box>
                                     </Box>
                                     
@@ -3162,32 +3205,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         }
                       }}>
                         <CardContent sx={{ p: 2.1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.4 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="h6" sx={{ 
-                                color: colors.textPrimary, 
-                                fontWeight: 'bold', 
-                                fontSize: '0.9rem',
-                                letterSpacing: '0.5px'
-                              }}>
-                                {gruppe.name}
-                              </Typography>
-                              <Typography variant="body2" sx={{ 
-                                fontSize: '0.75rem', 
-                                color: colors.textSecondary,
-                                fontWeight: 500
-                              }}>
-                                • {gruppe.teacher.name}
-                              </Typography>
-                            </Box>
-                          </Box>
+                          {/* Überschrift entfernt */}
                           
                           {/* Zugeordnete Ordner - direkt unterhalb des Headers, exakt wie im TeacherDashboard */}
                           {assignedFolders[gruppe.id] && assignedFolders[gruppe.id].length > 0 ? (
                             <Box>
-                              {assignedFolders[gruppe.id].map((folderPath: string) => {
-                                return renderAssignedFolderPreview(gruppe.id, folderPath);
-                              })}
+                              {assignedFolders[gruppe.id]
+                                .filter((folderPath: string) => {
+                                  // Filtere Ordner mit dem Namen "Karteikarten" aus
+                                  const folderName = folderPath.split('/').pop() || folderPath;
+                                  return !folderName.toLowerCase().includes('karteikarten');
+                                })
+                                .map((folderPath: string) => {
+                                  return renderAssignedFolderPreview(gruppe.id, folderPath);
+                                })}
                             </Box>
                           ) : (
                             <Typography variant="body2" sx={{ 
@@ -3200,20 +3231,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           )}
                           
                           {/* Zugeordnete Inhalte anzeigen */}
-                          {assignments.length > 0 && (
-                            <Box sx={{ mt: 2 }}>
-                              
-                              {/* Verschachtelte Darstellung wie im TeacherDashboard */}
-                              <Box sx={{ 
-                                ml: 1,
-                                p: 1.4,
-                                bgcolor: '#fafbfc',
-                                borderRadius: 1.4,
-                                border: '1px solid #f0f0f0'
-                              }}>
-                                {subjects
-                                  .filter(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id))
-                                  .map(subject => (
+                          {(() => {
+                            // Prüfe, ob es tatsächlich zugeordnete Inhalte gibt
+                            const hasAssignedContent = subjects.some(subject => 
+                              (subjectAssignments[subject.id] || []).includes(gruppe.id)
+                            );
+                            
+                            if (!hasAssignedContent) {
+                              return null; // Keine Box anzeigen, wenn leer
+                            }
+                            
+                            return (
+                              <Box sx={{ mt: 2 }}>
+                                
+                                {/* Verschachtelte Darstellung wie im TeacherDashboard */}
+                                <Box sx={{ 
+                                  ml: 1,
+                                  p: 1.4,
+                                  bgcolor: '#fafbfc',
+                                  borderRadius: 1.4,
+                                  border: '1px solid #f0f0f0'
+                                }}>
+                                  {subjects
+                                    .filter(subject => (subjectAssignments[subject.id] || []).includes(gruppe.id))
+                                    .map(subject => (
                                     <Box key={subject.id} sx={{ mb: 1.4 }}>
                                       <Typography variant="body2" sx={{ 
                                         fontWeight: 'bold', 
@@ -3336,9 +3377,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                         ))}
                                     </Box>
                                   ))}
+                                </Box>
                               </Box>
-                            </Box>
-                          )}
+                            );
+                          })()}
                         </CardContent>
                       </Card>
                     </Grid>

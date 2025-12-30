@@ -153,9 +153,12 @@ async function integrateEpoGradesToSchema(groupId: string): Promise<void> {
     }
     const schemaId = schema.id;
 
-    // Lade aktuelle EPO-Noten der Gruppe
+    // Lade aktuelle EPO-Noten der Gruppe - nur freigegebene
     const epoGrades = await prisma.participationPeriodGrade.findMany({
-      where: { groupId },
+      where: { 
+        groupId,
+        isReleased: true // Nur freigegebene Noten ins Schema integrieren
+      },
       select: {
         studentId: true,
         period: true,
@@ -804,7 +807,10 @@ router.get('/student/:studentId/epo-grades', async (req: Request, res: Response)
     const { studentId } = req.params;
     
     const epoGrades = await prisma.participationPeriodGrade.findMany({
-      where: { studentId },
+      where: { 
+        studentId,
+        isReleased: true // Nur freigegebene Noten für Schüler
+      },
       include: {
         group: {
           select: {
@@ -826,7 +832,117 @@ router.get('/student/:studentId/epo-grades', async (req: Request, res: Response)
   }
 });
 
+// EPO-Note freigeben/sperren
+// WICHTIG: Diese Route muss VOR der /:groupId/epo-grades Route kommen!
+router.post('/:groupId/epo-grades/release', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const { period, isReleased } = req.body; // period: 1 oder 2, isReleased: boolean
+    
+    console.log('EPO Release Request:', { groupId, period, isReleased });
+    
+    if (!period || (period !== 1 && period !== 2)) {
+      return res.status(400).json({ error: 'Ungültiger Zeitraum. Muss 1 oder 2 sein.' });
+    }
+    
+    if (typeof isReleased !== 'boolean') {
+      return res.status(400).json({ error: 'isReleased muss ein Boolean sein.' });
+    }
+    
+    // Aktualisiere alle EPO-Noten für diesen Zeitraum in dieser Gruppe
+    const result = await prisma.participationPeriodGrade.updateMany({
+      where: {
+        groupId,
+        period: period
+      },
+      data: {
+        isReleased: isReleased
+      }
+    });
+    
+    console.log(`Updated ${result.count} EPO grades for period ${period}, isReleased: ${isReleased}`);
+    
+    // Wenn gesperrt: Entferne Noten aus dem Notenschema
+    // Wenn freigegeben: Integriere Noten ins Notenschema
+    if (isReleased) {
+      try {
+        await integrateEpoGradesToSchema(groupId);
+        console.log('EPO grades integrated into schema');
+      } catch (integrationError) {
+        console.error('Error integrating EPO grades:', integrationError);
+        // Weiter machen, auch wenn Integration fehlschlägt
+      }
+    } else {
+      // Entferne gesperrte Noten aus dem Notenschema
+      try {
+        const schema = await prisma.gradingSchema.findFirst({
+          where: { groupId },
+          select: { id: true }
+        });
+        
+        if (schema) {
+          // Finde alle betroffenen Schüler
+          const affectedGrades = await prisma.participationPeriodGrade.findMany({
+            where: {
+              groupId,
+              period: period
+            },
+            select: {
+              studentId: true
+            }
+          });
+          
+          const studentIds = [...new Set(affectedGrades.map(g => g.studentId))];
+          const categoryName = `epo ${period}`;
+          
+          // Lösche die Noten aus dem Schema (case-insensitive)
+          // Hole alle Noten und filtere case-insensitive
+          const allGrades = await prisma.grade.findMany({
+            where: {
+              schemaId: schema.id,
+              studentId: { in: studentIds }
+            },
+            select: {
+              id: true,
+              categoryName: true
+            }
+          });
+          
+          const gradesToDelete = allGrades.filter(g => 
+            g.categoryName.trim().toLowerCase() === categoryName.toLowerCase()
+          );
+          
+          if (gradesToDelete.length > 0) {
+            await prisma.grade.deleteMany({
+              where: {
+                id: { in: gradesToDelete.map(g => g.id) }
+              }
+            });
+            console.log(`Deleted ${gradesToDelete.length} grades from schema`);
+          }
+        }
+      } catch (deleteError) {
+        console.error('Error deleting grades from schema:', deleteError);
+        // Weiter machen, auch wenn Löschen fehlschlägt
+      }
+    }
+    
+    res.json({ 
+      message: `Zeitraum ${period} ${isReleased ? 'freigegeben' : 'gesperrt'}`,
+      count: result.count
+    });
+  } catch (error: any) {
+    console.error('Error releasing EPO grades:', error);
+    console.error('Error details:', error?.message, error?.stack);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error?.message || 'Unbekannter Fehler'
+    });
+  }
+});
+
 // Get EPO grades for a learning group
+// WICHTIG: Diese Route muss NACH der /:groupId/epo-grades/release Route kommen!
 router.get('/:groupId/epo-grades', async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;

@@ -2178,9 +2178,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  // Hilfsfunktion zum Filtern von PDF-Dateien, die zu .wb Dateien gehören
+  // Hilfsfunktion zum Filtern von PDF-Dateien, die zu .wb Dateien gehören, und temporären Dateien
   const filterPdfFiles = (items: any[]): any[] => {
     return items.filter((item) => {
+      // Filtere temporäre Dateien, die mit ~$ starten (z.B. Microsoft Office temporäre Dateien)
+      if (item.type === 'file' && item.name.startsWith('~$')) {
+        return false;
+      }
+      
       if (item.type === 'file' && item.name.endsWith('.pdf')) {
         // Prüfe ob es eine entsprechende .wb Datei gibt (irgendwo in der Liste)
         const wbFileName = item.name.replace('.pdf', '.wb');
@@ -2206,6 +2211,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
+      // Filtere temporäre Dateien, die mit ~$ starten
+      if (item.type === 'file' && item.name.startsWith('~$')) {
+        return null;
+      }
       
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -2272,6 +2281,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           showCreateIcon = true;
           createIcon = '🗂️';
           createTooltip = 'Karteikarten erstellen';
+          color = '#666'; // Grau für K_ Dateien
 
         } else if (item.name.startsWith('H_')) {
           showCreateIcon = true;
@@ -2296,18 +2306,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           }}>
             {/* Checkbox/Grüner Punkt LINKS - nur für Dateien */}
             {item.type === 'file' && (
-              item.name.startsWith('K_') ? (
-                // Grüner Punkt für K_ Dateien (automatisch freigegeben)
-                <Box sx={{ 
-                  width: '14px', 
-                  height: '14px', 
-                  borderRadius: '50%', 
-                  bgcolor: '#4caf50',
-                  flexShrink: 0,
-                  mt: 0.2
-                }} title="Karteikarten-Datei (automatisch freigegeben)" />
-              ) : (
-                // Checkbox für alle anderen Dateien
+              // Checkbox für alle Dateien (inklusive K_ Dateien)
                 <Box
                   sx={{
                     display: 'flex',
@@ -2338,7 +2337,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     }}
                   />
                 </Box>
-              )
             )}
 
             <Typography variant="body2" sx={{ 
@@ -2693,7 +2691,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     await initializeNeutralParticipations(groupId, 0);
     // Lade Zeitraum-Konfiguration
     await loadPeriodConfig(groupId);
-    // Lade EPO-Noten
+    // Lade EPO-Noten für diese Gruppe
     await loadEpoGrades(groupId);
   };
   
@@ -2799,13 +2797,72 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
   const loadEpoGrades = async (groupId: string) => {
     try {
+      console.log('Loading EPO grades for group:', groupId);
       const response = await fetch(`/api/participation/${groupId}/epo-grades`);
+      console.log('EPO grades response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('Loaded EPO grades:', data);
+        console.log('EPO grades count:', data.length);
         setEpoGrades(data);
+      } else {
+        const errorText = await response.text();
+        console.error('Error loading EPO grades:', response.status, errorText);
       }
     } catch (error) {
       console.error('Fehler beim Laden der EPO-Noten:', error);
+    }
+  };
+  
+  const releaseEpoGrade = async (period: number, isReleased: boolean) => {
+    if (!participationGroupId) {
+      showSnackbar('Keine Lerngruppe ausgewählt', 'error');
+      return;
+    }
+    try {
+      console.log('Releasing EPO grade:', { period, isReleased, groupId: participationGroupId });
+      const response = await fetch(`/api/participation/${participationGroupId}/epo-grades/release`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period, isReleased })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        showSnackbar(data.message, 'success');
+        // Lade EPO-Noten neu, um den Status zu aktualisieren
+        await loadEpoGrades(participationGroupId);
+      } else {
+        let errorMessage = 'Fehler beim Freigeben';
+        try {
+          const errorData = await response.json();
+          console.error('Error response:', errorData);
+          // Extrahiere die Fehlermeldung aus verschiedenen möglichen Feldern
+          if (errorData.error) {
+            errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+          } else if (errorData.message) {
+            errorMessage = typeof errorData.message === 'string' ? errorData.message : JSON.stringify(errorData.message);
+          } else {
+            errorMessage = JSON.stringify(errorData);
+          }
+        } catch (parseError) {
+          console.error('Error parsing JSON:', parseError);
+          try {
+            const text = await response.text();
+            console.error('Error response (text):', text);
+            errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+          } catch (textError) {
+            console.error('Error reading response text:', textError);
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+        }
+        console.error('Final error message:', errorMessage);
+        showSnackbar(errorMessage, 'error');
+      }
+    } catch (error: any) {
+      console.error('Fehler beim Freigeben der EPO-Note:', error);
+      const errorMessage = error?.message || error?.toString() || 'Fehler beim Freigeben';
+      showSnackbar(errorMessage, 'error');
     }
   };
   const integrateEpoGradesToSchema = async (groupId: string) => {
@@ -9040,6 +9097,67 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             >
               EPO-Noten berechnen
             </Button>
+            {/* Freigabe-Buttons für Zeitraum 1 und 2 */}
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {(() => {
+                if (!participationGroupId) return null;
+                const period1Grades = epoGrades.filter((g: any) => g.period === 1 && (g.groupId === participationGroupId || g.group?.id === participationGroupId));
+                const allReleased1 = period1Grades.length > 0 && period1Grades.every((g: any) => g.isReleased === true);
+                const hasPeriod1Grades = period1Grades.length > 0;
+                return (
+                  <Button
+                    variant="contained"
+                    color={allReleased1 ? "success" : "error"}
+                    size="small"
+                    disabled={!hasPeriod1Grades}
+                    startIcon={allReleased1 ? <CheckIcon sx={{ fontSize: 14, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 14, color: 'white' }} />}
+                    onClick={() => {
+                      releaseEpoGrade(1, !allReleased1);
+                    }}
+                    sx={{ 
+                      fontSize: '0.7rem', 
+                      py: 0.4,
+                      flex: 1,
+                      '& .MuiButton-startIcon': {
+                        marginRight: '4px'
+                      }
+                    }}
+                    title={!hasPeriod1Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
+                  >
+                    Zeitraum 1 {allReleased1 ? 'freigegeben' : 'gesperrt'}
+                  </Button>
+                );
+              })()}
+              {(() => {
+                if (!participationGroupId) return null;
+                const period2Grades = epoGrades.filter((g: any) => g.period === 2 && (g.groupId === participationGroupId || g.group?.id === participationGroupId));
+                const allReleased2 = period2Grades.length > 0 && period2Grades.every((g: any) => g.isReleased === true);
+                const hasPeriod2Grades = period2Grades.length > 0;
+                return (
+                  <Button
+                    variant="contained"
+                    color={allReleased2 ? "success" : "error"}
+                    size="small"
+                    disabled={!hasPeriod2Grades}
+                    startIcon={allReleased2 ? <CheckIcon sx={{ fontSize: 14, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 14, color: 'white' }} />}
+                    onClick={() => {
+                      releaseEpoGrade(2, !allReleased2);
+                    }}
+                    sx={{ 
+                      fontSize: '0.7rem', 
+                      py: 0.4,
+                      flex: 1,
+                      '& .MuiButton-startIcon': {
+                        marginRight: '4px'
+                      }
+                    }}
+                    title={!hasPeriod2Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
+                  >
+                    Zeitraum 2 {allReleased2 ? 'freigegeben' : 'gesperrt'}
+                  </Button>
+                );
+              })()}
+            </Box>
             <Button
               fullWidth
               variant="outlined"

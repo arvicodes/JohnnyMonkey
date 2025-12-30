@@ -107,5 +107,5 @@
   "devDependencies": {
     "@types/file-saver": "^2.0.7"
   },
-  "proxy": "http://localhost:3000"
+  "proxy": "http://localhost:3003"
 }
