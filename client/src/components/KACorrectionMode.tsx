@@ -663,7 +663,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
   const exportToWord = async (includeSolutions: boolean) => {
     try {
-      setExporting(true);
       const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`);
       
       if (!response.ok) {
@@ -682,74 +681,482 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         solutions.forEach(sol => sol.remove());
       }
 
-      // Extrahiere den Titel
-      const title = doc.querySelector('title')?.textContent || getFileTypeName();
+      // Entferne Scripts und Styles
+      doc.querySelectorAll('script, style').forEach(el => el.remove());
+      
       const fileName = kaFilePath.split('/').pop()?.replace('.html', '') || 'klassenarbeit';
+      
+      // Hilfsfunktion: Erstellt TextRun mit Aptos-Schriftart
+      const createTextRun = (text: string, options?: { bold?: boolean; italics?: boolean; size?: number; color?: string }) => {
+        return new TextRun({
+          text,
+          font: 'Aptos',
+          bold: options?.bold,
+          italics: options?.italics,
+          size: options?.size || 22, // 11pt = 22 half-points
+          color: options?.color || '1a1a1a' // Dunkles Grau statt Schwarz
+        });
+      };
       
       // Erstelle Word-Dokument
       const paragraphs: Paragraph[] = [];
       
-      // Titel
+      // Header-Bereich
+      const header = doc.querySelector('.header');
+      if (header) {
+        const headerTitle = header.querySelector('.header-title')?.textContent?.trim();
+        const headerDate = header.querySelector('.header-date')?.textContent?.trim();
+        const headerBottom = header.querySelector('.header-bottom');
+        const headerName = header.querySelector('.header-name');
+        
+        if (headerTitle) {
       paragraphs.push(
         new Paragraph({
-          text: title,
+              children: [createTextRun(headerTitle, { bold: true, size: 32, color: '1565C0' })],
           heading: HeadingLevel.HEADING_1,
           alignment: AlignmentType.CENTER,
-          spacing: { after: 400 }
-        })
-      );
+              spacing: { after: 240, line: 360 }
+            })
+          );
+        }
+        
+        if (headerDate) {
+          paragraphs.push(
+            new Paragraph({
+              children: [createTextRun(headerDate, { bold: true, size: 24, color: '1565C0' })],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 240, line: 300 }
+            })
+          );
+        }
+        
+        if (headerBottom) {
+          const bottomText = Array.from(headerBottom.children)
+            .map(child => child.textContent?.trim())
+            .filter(Boolean)
+            .join(' • ');
+          if (bottomText) {
+            paragraphs.push(
+              new Paragraph({
+                children: [createTextRun(bottomText, { bold: true, size: 20, color: '2E7D32' })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 240, line: 280 }
+              })
+            );
+          }
+        }
+        
+        if (headerName) {
+          const nameText = headerName.textContent?.trim();
+          if (nameText) {
+            paragraphs.push(
+              new Paragraph({
+                children: [createTextRun(nameText, { size: 22 })],
+                alignment: AlignmentType.JUSTIFIED,
+                spacing: { after: 360, line: 300 }
+              })
+            );
+          }
+        }
+      }
+
+      // Info-Box
+      const infoBox = doc.querySelector('.info-box');
+      if (infoBox) {
+        const infoTitle = infoBox.querySelector('strong')?.textContent?.trim();
+        const infoList = infoBox.querySelectorAll('li');
+        
+        if (infoTitle) {
+          paragraphs.push(
+            new Paragraph({
+              children: [
+                createTextRun('ℹ️ ', { size: 24, color: 'D32F2F' }),
+                createTextRun(infoTitle, { bold: true, size: 24, color: 'D32F2F' })
+              ],
+              alignment: AlignmentType.JUSTIFIED,
+              spacing: { after: infoList.length > 0 ? 0 : 120, line: 300 },
+              indent: { left: 200 },
+              border: {
+                top: {
+                  color: 'D32F2F',
+                  size: 12,
+                  style: 'single'
+                },
+                left: {
+                  color: 'D32F2F',
+                  size: 12,
+                  style: 'single'
+                },
+                right: {
+                  color: 'D32F2F',
+                  size: 12,
+                  style: 'single'
+                }
+              }
+            })
+          );
+        }
+        
+        infoList.forEach((li, index) => {
+          const text = li.textContent?.trim();
+          if (text) {
+            const isLast = index === infoList.length - 1;
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  createTextRun('• ', { size: 22, color: 'D32F2F' }),
+                  createTextRun(text, { size: 22 })
+                ],
+                alignment: AlignmentType.JUSTIFIED,
+                spacing: { after: isLast ? 120 : 80, line: 280 },
+                indent: { left: 400 },
+                border: {
+                  left: {
+                    color: 'D32F2F',
+                    size: 12,
+                    style: 'single'
+                  },
+                  right: {
+                    color: 'D32F2F',
+                    size: 12,
+                    style: 'single'
+                  },
+                  ...(isLast ? {
+                    bottom: {
+                      color: 'D32F2F',
+                      size: 12,
+                      style: 'single'
+                    }
+                  } : {})
+                }
+              })
+            );
+          }
+        });
+        
+        paragraphs.push(
+          new Paragraph({
+            text: '',
+            spacing: { after: 360 }
+          })
+        );
+      }
 
       // Extrahiere alle Aufgaben
       const tasks = doc.querySelectorAll('.task');
-      tasks.forEach((task, taskIndex) => {
-        const taskNumber = task.querySelector('.task-number')?.textContent || `Aufgabe ${taskIndex + 1}`;
+      tasks.forEach((task) => {
+        const taskHeader = task.querySelector('.task-header');
+        const taskNumber = taskHeader?.querySelector('.task-number')?.textContent?.trim();
         const taskContent = task.querySelector('.task-content');
         
-        if (taskContent) {
-          // Aufgabenüberschrift
+        if (taskNumber) {
+          // Trenne Aufgabenname und Punkteangabe
+          const match = taskNumber.match(/^(.*?)\s*(\(.*?\))$/);
+          let runs: TextRun[] = [];
+          
+          if (match) {
+            const taskName = match[1].trim(); // z.B. "Aufgabe 1"
+            const pointsInfo = match[2]; // z.B. "(8 Punkte - je 1 Punkt pro Lücke)"
+            
+            runs.push(createTextRun(taskName, { bold: true, size: 26, color: '1565C0' }));
+            runs.push(createTextRun(' ', { size: 26 }));
+            runs.push(createTextRun(pointsInfo, { bold: false, size: 18, color: '999999' }));
+          } else {
+            // Fallback: Wenn kein Klammer-Teil gefunden wird
+            runs.push(createTextRun(taskNumber, { bold: true, size: 26, color: '1565C0' }));
+          }
+          
           paragraphs.push(
             new Paragraph({
-              text: taskNumber,
+              children: runs,
               heading: HeadingLevel.HEADING_2,
-              spacing: { before: 400, after: 200 }
+              spacing: { before: 480, after: 240, line: 320 }
             })
           );
-
-          // Szenario/Text
-          const scenario = taskContent.querySelector('.task-scenario');
-          if (scenario) {
-            const scenarioText = scenario.textContent?.trim() || '';
-            if (scenarioText) {
+        }
+        
+        if (taskContent) {
+          // Alle Absätze im task-content - mit spezieller Behandlung für Input-Felder
+          const allParagraphs = taskContent.querySelectorAll('p');
+          allParagraphs.forEach(p => {
+            // Prüfe ob es ein Lösungsparagraph ist
+            const isSolution = p.closest('.solution');
+            if (isSolution && !includeSolutions) return;
+            
+            // Wenn es ein Lösungsparagraph ist, wird er separat verarbeitet - überspringe hier
+            if (isSolution) return;
+            
+            // Prüfe ob der Absatz Input-Felder enthält (Lückentext)
+            const hasInputs = p.querySelector('input[type="text"]');
+            
+            if (hasInputs) {
+              // Spezielle Behandlung für Lückentext-Absätze
+              const runs: TextRun[] = [];
+              const processNodeWithInputs = (node: Node): void => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                  const text = node.textContent || '';
+                  if (text) {
+                    runs.push(createTextRun(text));
+                  }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                  const element = node as Element;
+                  if (element.tagName === 'INPUT' && element.getAttribute('type') === 'text') {
+                    // Erstelle unterstrichene Lücke
+                    const placeholder = element.getAttribute('placeholder') || '_____________';
+                    const gapLength = Math.max(placeholder.length, 15);
+                    const gapText = '_'.repeat(gapLength);
+                    runs.push(new TextRun({
+                      text: gapText,
+                      font: 'Aptos',
+                      underline: { type: 'single', color: '64B5F6' },
+                      color: '64B5F6',
+                      size: 22
+                    }));
+                    runs.push(createTextRun(' ')); // Leerzeichen nach Lücke
+                  } else if (element.tagName === 'STRONG' || element.tagName === 'B') {
+                    // Verarbeite Kindknoten, um Leerzeichen zu erhalten
+                    Array.from(element.childNodes).forEach(processNodeWithInputs);
+                  } else if (element.tagName === 'EM' || element.tagName === 'I') {
+                    // Verarbeite Kindknoten, um Leerzeichen zu erhalten
+                    Array.from(element.childNodes).forEach(processNodeWithInputs);
+                  } else {
+                    Array.from(element.childNodes).forEach(processNodeWithInputs);
+                  }
+                }
+              };
+              Array.from(p.childNodes).forEach(processNodeWithInputs);
+              
+              if (runs.length > 0) {
               paragraphs.push(
                 new Paragraph({
-                  text: scenarioText,
-                  spacing: { after: 200 }
+                    children: runs,
+                    alignment: AlignmentType.JUSTIFIED,
+                    spacing: { after: 180, line: 300 }
                 })
               );
             }
-          }
-
-          // Input-Gruppen (Fragen)
+            } else {
+              // Normale Absätze ohne Input-Felder
+              const text = p.textContent?.trim();
+              if (text) {
+                // Prüfe auf fettgedruckte Teile
+                const boldElements = p.querySelectorAll('strong');
+                if (boldElements.length > 0 || p.querySelector('em')) {
+                  // Erstelle TextRun-Array für gemischte Formatierung
+                  const runs: TextRun[] = [];
+                  let currentText = p.innerHTML;
+                  
+                  // Einfache Lösung: Extrahiere Text und markiere <strong> als fett
+                  const tempDiv = document.createElement('div');
+                  tempDiv.innerHTML = currentText;
+                  const processNode = (node: Node, isBold = false, isItalic = false): void => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                      const text = node.textContent || '';
+                      if (text) {
+                        runs.push(createTextRun(text, { bold: isBold, italics: isItalic }));
+                      }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                      const element = node as Element;
+                      if (element.tagName === 'STRONG' || element.tagName === 'B') {
+                        // Verarbeite Kindknoten mit bold-Flag, um Leerzeichen zu erhalten
+                        Array.from(element.childNodes).forEach(child => processNode(child, true, isItalic));
+                      } else if (element.tagName === 'EM' || element.tagName === 'I') {
+                        // Verarbeite Kindknoten mit italic-Flag, um Leerzeichen zu erhalten
+                        Array.from(element.childNodes).forEach(child => processNode(child, isBold, true));
+                      } else {
+                        Array.from(element.childNodes).forEach(child => processNode(child, isBold, isItalic));
+                      }
+                    }
+                  };
+                  Array.from(tempDiv.childNodes).forEach((node) => processNode(node));
+                  
+                  if (runs.length > 0) {
+                    paragraphs.push(
+                      new Paragraph({
+                        children: runs,
+                        alignment: AlignmentType.JUSTIFIED,
+                        spacing: { after: 180, line: 300 }
+                      })
+                    );
+                  }
+                } else {
+                  paragraphs.push(
+                    new Paragraph({
+                      children: [createTextRun(text, { size: 22 })],
+                      alignment: AlignmentType.JUSTIFIED,
+                      spacing: { after: 180, line: 300 }
+                    })
+                  );
+                }
+              }
+            }
+          });
+          
+          // Input-Gruppen (Fragen mit Eingabefeldern)
           const inputGroups = taskContent.querySelectorAll('.input-group');
           inputGroups.forEach((group) => {
-            const label = group.querySelector('label')?.textContent?.trim() || '';
+            const label = group.querySelector('label');
             if (label) {
+              const labelText = label.textContent?.trim();
+              if (labelText) {
+                // Entferne Radio-Button-Markierungen aus dem Text
+                const cleanText = labelText.replace(/^\s*[a-z]\)\s*/, '').trim();
               paragraphs.push(
                 new Paragraph({
-                  text: label,
-                  spacing: { after: 100 }
-                })
-              );
+                    children: [createTextRun(cleanText, { bold: true, size: 22 })],
+                    alignment: AlignmentType.JUSTIFIED,
+                    spacing: { after: 120, line: 300 }
+                  })
+                );
+              }
+              
+              // Radio-Buttons oder Checkboxen
+              const options = group.querySelectorAll('label');
+              options.forEach(option => {
+                const input = option.querySelector('input[type="radio"], input[type="checkbox"]');
+                if (input) {
+                  const optionText = option.textContent?.trim().replace(/^\s*[a-z]\)\s*/, '').trim();
+                  if (optionText) {
+                    paragraphs.push(
+                      new Paragraph({
+                        children: [createTextRun(`○ ${optionText}`, { size: 22, color: '64B5F6' })],
+                        alignment: AlignmentType.JUSTIFIED,
+                        spacing: { after: 80, line: 280 },
+                        indent: { left: 400 }
+                      })
+                    );
+                  }
+                }
+              });
+              
+              // Text-Input-Felder
+              const textInputs = group.querySelectorAll('input[type="text"]');
+              if (textInputs.length > 0) {
+                const placeholder = textInputs[0].getAttribute('placeholder') || '_____________';
+                paragraphs.push(
+                  new Paragraph({
+                    children: [createTextRun(`[${placeholder}]`, { size: 22, color: '64B5F6' })],
+                    spacing: { after: 120, line: 300 },
+                    indent: { left: 400 }
+                  })
+                );
+              }
+              
+              // Number-Input-Felder (Koordinaten) - als schöne Koordinaten-Formatierung
+              const numberInputs = group.querySelectorAll('input[type="number"]');
+              if (numberInputs.length > 0) {
+                // Gruppiere Koordinaten nach Punkten (A, B, C, etc.)
+                const coordGroups: { point: string; x?: string; y?: string }[] = [];
+                numberInputs.forEach((input) => {
+                  const id = input.getAttribute('id') || '';
+                  const match = id.match(/a\d+([a-z])_([xy])/);
+                  if (match) {
+                    const pointLetter = match[1];
+                    const coord = match[2];
+                    const pointName = String.fromCharCode(65 + (pointLetter.charCodeAt(0) - 97)); // a->A, b->B, etc.
+                    const pointIndex = pointName.charCodeAt(0) - 65;
+                    const subscript = pointIndex > 0 ? String(pointIndex + 1) : '';
+                    const fullPointName = `P${subscript || ''}`;
+                    
+                    let group = coordGroups.find(g => g.point === fullPointName);
+                    if (!group) {
+                      group = { point: fullPointName };
+                      coordGroups.push(group);
+                    }
+                    
+                    const placeholder = input.getAttribute('placeholder') || coord;
+                    if (coord === 'x') {
+                      group.x = placeholder;
+                    } else if (coord === 'y') {
+                      group.y = placeholder;
+                    }
+                  }
+                });
+                
+                if (coordGroups.length > 0) {
+                  const coordText = coordGroups.map(g => {
+                    const xGap = '_'.repeat(Math.max(g.x?.length || 3, 5));
+                    const yGap = '_'.repeat(Math.max(g.y?.length || 3, 5));
+                    return `${g.point}(${xGap}|${yGap})`;
+                  }).join(', ');
+                  
+                  const runs: TextRun[] = [];
+                  coordGroups.forEach((g, idx) => {
+                    if (idx > 0) runs.push(createTextRun(', '));
+                    runs.push(createTextRun(g.point + '(', { size: 22 }));
+                    const xGap = '_'.repeat(Math.max(g.x?.length || 3, 5));
+                    runs.push(new TextRun({
+                      text: xGap,
+                      font: 'Aptos',
+                      underline: { type: 'single', color: '64B5F6' },
+                      color: '64B5F6',
+                      size: 22
+                    }));
+                    runs.push(createTextRun('|', { size: 22 }));
+                    const yGap = '_'.repeat(Math.max(g.y?.length || 3, 5));
+                    runs.push(new TextRun({
+                      text: yGap,
+                      font: 'Aptos',
+                      underline: { type: 'single', color: '64B5F6' },
+                      color: '64B5F6',
+                      size: 22
+                    }));
+                    runs.push(createTextRun(')', { size: 22 }));
+                  });
+                  
+                  paragraphs.push(
+                    new Paragraph({
+                      children: runs,
+                      alignment: AlignmentType.JUSTIFIED,
+                      spacing: { after: 120, line: 300 },
+                      indent: { left: 400 }
+                    })
+                  );
+                }
+              }
             }
           });
 
           // Rechenweg-Hinweis
           const rechenweg = taskContent.querySelector('.rechenweg-required');
           if (rechenweg) {
+            const rechenwegText = rechenweg.textContent?.trim();
+            if (rechenwegText) {
             paragraphs.push(
               new Paragraph({
-                text: rechenweg.textContent?.trim() || '',
-                spacing: { after: 200 }
+                  children: [
+                    createTextRun('⚠️ ', { size: 24, color: 'F57C00' }),
+                    createTextRun(rechenwegText, { bold: true, size: 22, color: 'F57C00' })
+                  ],
+                  alignment: AlignmentType.JUSTIFIED,
+                  spacing: { before: 120, after: 240, line: 300 },
+                  indent: { left: 200 }
+                })
+              );
+            }
+          }
+          
+          // SVG-Grafiken (als schöner Hinweis)
+          const svgs = taskContent.querySelectorAll('svg');
+          if (svgs.length > 0) {
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  createTextRun('📐 ', { size: 24 }),
+                  createTextRun('Koordinatensystem mit Konstruktion', { 
+                    bold: true, 
+                    size: 22, 
+                    color: '1976D2' 
+                  }),
+                  createTextRun(' - siehe Original-Datei für vollständige Grafik', { 
+                    size: 20, 
+                    color: '666666', 
+                    italics: true 
+                  })
+                ],
+                alignment: AlignmentType.JUSTIFIED,
+                spacing: { before: 240, after: 240, line: 300 },
+                indent: { left: 400 }
               })
             );
           }
@@ -758,24 +1165,63 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           if (includeSolutions) {
             const solution = taskContent.querySelector('.solution');
             if (solution) {
-              paragraphs.push(
-                new Paragraph({
-                  text: 'Musterlösung:',
-                  heading: HeadingLevel.HEADING_3,
-                  spacing: { before: 200, after: 100 }
-                })
-              );
+              // Entferne h4-Überschriften "Musterlösung:" aus der Lösung
+              const h4Elements = solution.querySelectorAll('h4');
+              h4Elements.forEach(h4 => {
+                if (h4.textContent?.trim().toLowerCase().includes('musterlösung')) {
+                  h4.remove();
+                }
+              });
               
               const solutionParagraphs = solution.querySelectorAll('p');
               solutionParagraphs.forEach((p) => {
-                const text = p.textContent?.trim() || '';
+                const text = p.textContent?.trim();
                 if (text) {
+                  // Prüfe auf fettgedruckte Teile
+                  const boldElements = p.querySelectorAll('strong');
+                  if (boldElements.length > 0 || p.querySelector('em')) {
+                    const runs: TextRun[] = [];
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = p.innerHTML;
+                    const processNode = (node: Node, isBold = false, isItalic = false): void => {
+                      if (node.nodeType === Node.TEXT_NODE) {
+                        const text = node.textContent || '';
+                        if (text) {
+                          runs.push(createTextRun(text, { bold: isBold, italics: isItalic, color: 'D32F2F' }));
+                        }
+                      } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        const element = node as Element;
+                        if (element.tagName === 'STRONG' || element.tagName === 'B') {
+                          // Verarbeite Kindknoten mit bold-Flag, um Leerzeichen zu erhalten
+                          Array.from(element.childNodes).forEach(child => processNode(child, true, isItalic));
+                        } else if (element.tagName === 'EM' || element.tagName === 'I') {
+                          // Verarbeite Kindknoten mit italic-Flag, um Leerzeichen zu erhalten
+                          Array.from(element.childNodes).forEach(child => processNode(child, isBold, true));
+                        } else {
+                          Array.from(element.childNodes).forEach(child => processNode(child, isBold, isItalic));
+                        }
+                      }
+                    };
+                    Array.from(tempDiv.childNodes).forEach((node) => processNode(node));
+                    
+                    if (runs.length > 0) {
+              paragraphs.push(
+                new Paragraph({
+                          children: runs,
+                          alignment: AlignmentType.JUSTIFIED,
+                          spacing: { after: 120, line: 300 }
+                        })
+                      );
+                    }
+                  } else {
                   paragraphs.push(
                     new Paragraph({
-                      text: text,
-                      spacing: { after: 100 }
+                        children: [createTextRun(text, { size: 22, color: 'D32F2F' })],
+                        alignment: AlignmentType.JUSTIFIED,
+                        spacing: { after: 120, line: 300 }
                     })
                   );
+                  }
                 }
               });
             }
@@ -784,26 +1230,66 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           paragraphs.push(
             new Paragraph({
               text: '',
-              spacing: { after: 300 }
+              spacing: { after: 400 }
             })
           );
         }
       });
 
-      // Erstelle das Word-Dokument
+      // Erstelle das Word-Dokument mit professioneller Formatierung
       const wordDoc = new Document({
         sections: [{
-          properties: {},
+          properties: {
+            page: {
+              margin: {
+                top: 1440,    // 2.54cm = 1 inch = 1440 twips
+                right: 1440,
+                bottom: 1440,
+                left: 1440
+              }
+            }
+          },
           children: paragraphs
-        }]
+        }],
+        styles: {
+          default: {
+            document: {
+              run: {
+                font: 'Aptos',
+                size: 22, // 11pt
+                color: '1a1a1a' // Dunkles Grau statt Schwarz
+              },
+              paragraph: {
+                alignment: AlignmentType.JUSTIFIED,
+                spacing: {
+                  line: 300, // 1.5 line spacing
+                  lineRule: 'auto'
+                }
+              }
+            }
+          }
+        }
       });
 
       // Generiere und speichere
       const blob = await Packer.toBlob(wordDoc);
-      const exportFileName = `${fileName}${includeSolutions ? '_mit_Musterloesung' : ''}.docx`;
+      const exportFileName = `${fileName}${includeSolutions ? '_mit_Musterloesung' : '_ohne_Musterloesung'}.docx`;
       saveAs(blob, exportFileName);
-      
-      alert(`${getFileTypeName()} erfolgreich als Word-Datei exportiert!`);
+    } catch (error) {
+      console.error('Fehler beim Exportieren:', error);
+      throw error;
+    }
+  };
+
+  const exportBothWordVersions = async () => {
+    try {
+      setExporting(true);
+      // Lade beide Versionen nacheinander
+      await exportToWord(false);
+      // Kurze Verzögerung, damit der Browser beide Downloads verarbeiten kann
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await exportToWord(true);
+      // Erfolgreich - kein Popup mehr
     } catch (error) {
       console.error('Fehler beim Exportieren:', error);
       alert(`Fehler beim Exportieren: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
@@ -826,35 +1312,37 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 {kaFilePath.split('/').pop() || kaFilePath} {submissions.length > 0 && `• ${submissions.length} Abgabe${submissions.length > 1 ? 'n' : ''}`}
               </Typography>
             </Box>
-            <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
+            <Box display="flex" gap={0.5} alignItems="center" flexWrap="nowrap">
               <Button 
                 onClick={handleOpenKA}
                 variant="outlined"
                 size="small"
                 startIcon={<Description />}
-                sx={{ fontSize: '0.8rem' }}
+                sx={{ 
+                  fontSize: '0.75rem',
+                  px: 1,
+                  py: 0.5,
+                  minWidth: 'auto',
+                  whiteSpace: 'nowrap'
+                }}
               >
                 KA öffnen
               </Button>
               <Button 
-                onClick={() => exportToWord(false)}
+                onClick={exportBothWordVersions}
                 variant="outlined"
                 size="small"
                 startIcon={<FileDownload />}
                 disabled={exporting}
-                sx={{ fontSize: '0.8rem' }}
+                sx={{ 
+                  fontSize: '0.75rem',
+                  px: 1,
+                  py: 0.5,
+                  minWidth: 'auto',
+                  whiteSpace: 'nowrap'
+                }}
               >
-                {exporting ? 'Exportiert...' : 'Als Word (ohne Lösung)'}
-              </Button>
-              <Button 
-                onClick={() => exportToWord(true)}
-                variant="outlined"
-                size="small"
-                startIcon={<FileDownload />}
-                disabled={exporting}
-                sx={{ fontSize: '0.8rem' }}
-              >
-                {exporting ? 'Exportiert...' : 'Als Word (mit Lösung)'}
+                {exporting ? 'Exportiert...' : 'Word Download'}
               </Button>
               {submissions.length > 0 && (
                 <>
@@ -864,7 +1352,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     color="primary"
                     size="small"
                     startIcon={<BarChart />}
-                    sx={{ fontSize: '0.8rem' }}
+                    sx={{ 
+                      fontSize: '0.75rem',
+                      px: 1,
+                      py: 0.5,
+                      minWidth: 'auto',
+                      whiteSpace: 'nowrap'
+                    }}
                   >
                     Dreierprobe
                   </Button>
@@ -874,7 +1368,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   color="error"
                   size="small"
                   disabled={resetting}
-                    sx={{ fontSize: '0.8rem' }}
+                  sx={{ 
+                    fontSize: '0.75rem',
+                    px: 1,
+                    py: 0.5,
+                    minWidth: 'auto',
+                    whiteSpace: 'nowrap'
+                  }}
                   >
                     {resetting ? 'Zurücksetzen...' : '🗑️ Zurücksetzen'}
                 </Button>
@@ -883,12 +1383,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               <IconButton
                 onClick={onClose} 
                 sx={{ 
-                  p: 0,
-                  minWidth: 32,
-                  width: 32,
-                  height: 32,
+                  p: 0.5,
+                  minWidth: 28,
+                  width: 28,
+                  height: 28,
+                  ml: 0.5,
                   '& .MuiSvgIcon-root': {
-                    fontSize: 20
+                    fontSize: 18
                   }
                 }}
               >

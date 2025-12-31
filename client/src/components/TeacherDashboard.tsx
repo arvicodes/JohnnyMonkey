@@ -468,11 +468,77 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Debug: Log userId
   
   const [groups, setGroups] = useState<LearningGroup[]>([]);
+  const [teacherName, setTeacherName] = useState<string>('');
   const [subjectTabValue, setSubjectTabValue] = useState(0);
   const [blockTabValue, setBlockTabValue] = useState(0);
   useEffect(() => {
     setBlockTabValue(0);
   }, [subjectTabValue]);
+
+  // Load teacher name from database
+  useEffect(() => {
+    const fetchTeacherName = async () => {
+      try {
+        const response = await fetch('/api/users/me', {
+          headers: {
+            'x-login-code': localStorage.getItem('loginCode') || ''
+          }
+        });
+        if (response.ok) {
+          const user = await response.json();
+          setTeacherName(user.name || '');
+        }
+      } catch (error) {
+        console.error('Error fetching teacher name:', error);
+      }
+    };
+    fetchTeacherName();
+  }, []);
+
+  // Extract initials from name (first letter of first name and last name, ignoring titles)
+  const getInitials = (name: string): string => {
+    if (!name || !name.trim()) return '';
+    const words = name.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return '';
+    
+    // Filter out common titles
+    const titles = ['frau', 'herr', 'dr', 'prof', 'prof.'];
+    const nameWords = words.filter(word => {
+      const normalized = word.toLowerCase().replace('.', '').trim();
+      return !titles.includes(normalized);
+    });
+    
+    // Special case: If name is "Frau Christ" or just "Christ", use "Vera" as first name
+    if (nameWords.length === 1 && nameWords[0].toLowerCase() === 'christ') {
+      return 'VC'; // Vera Christ
+    }
+    
+    // If we have at least 2 name words (after filtering titles), use first and last
+    if (nameWords.length >= 2) {
+      const firstInitial = nameWords[0].charAt(0).toUpperCase();
+      const lastInitial = nameWords[nameWords.length - 1].charAt(0).toUpperCase();
+      return firstInitial + lastInitial;
+    }
+    
+    // If we have only 1 name word, try to use first and last word of original (might be title + name)
+    if (words.length >= 2) {
+      const firstInitial = words[0].charAt(0).toUpperCase();
+      const lastInitial = words[words.length - 1].charAt(0).toUpperCase();
+      // If the result would be "FC" (Frau Christ), use "VC" instead (Vera Christ)
+      if (firstInitial === 'F' && lastInitial === 'C') {
+        return 'VC';
+      }
+      return firstInitial + lastInitial;
+    }
+    
+    // Fallback: single word - use first letter twice
+    if (words.length === 1) {
+      const letter = words[0].charAt(0).toUpperCase();
+      return letter + letter;
+    }
+    
+    return '';
+  };
 
   // Wenn genau 2 Fächer vorhanden sind, automatisch mit rechtem (Informatik) starten
   useEffect(() => {
@@ -481,6 +547,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   }, []);
   // Track which groups are expanded (default: expanded)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  // Track which groups' student lists are expanded (default: collapsed)
+  const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
 
   // Ensure newly loaded groups get a default expanded state
   useEffect(() => {
@@ -488,7 +556,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setExpandedGroups(prev => {
       const next: Record<string, boolean> = { ...prev };
       for (const g of groups) {
-        if (next[g.id] === undefined) next[g.id] = false; // default collapsed
+        if (next[g.id] === undefined) {
+          // Klasse 7a should be expanded by default
+          next[g.id] = g.name === 'Klasse 7a' ? true : false;
+        }
+      }
+      return next;
+    });
+    // Initialize student lists as collapsed by default
+    setExpandedStudents(prev => {
+      const next: Record<string, boolean> = { ...prev };
+      for (const g of groups) {
+        if (next[g.id] === undefined) {
+          next[g.id] = false; // default collapsed
+        }
       }
       return next;
     });
@@ -498,6 +579,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !(prev[groupId] ?? false) }));
+  };
+
+  const toggleStudentsExpanded = (groupId: string) => {
+    setExpandedStudents(prev => ({ ...prev, [groupId]: !(prev[groupId] ?? false) }));
   };
   const [openNewGroupDialog, setOpenNewGroupDialog] = useState(false);
   const [openAddStudentsDialog, setOpenAddStudentsDialog] = useState(false);
@@ -848,7 +933,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const colors = {
     primary: '#2E7D32', // Dunkleres Grün für besseren Kontrast
     secondary: '#F57C00', // Dunkleres Orange
-    accent1: '#1976D32', // Dunkleres Blau
+    accent1: '#1976D2', // Dunkleres Blau
     accent2: '#C2185B', // Dunkleres Pink
     background: '#F8FAFC', // Helleres, moderneres Blau
     cardBg: '#FFFFFF',
@@ -5218,7 +5303,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
   return (
     <Box 
-      sx={{ width: '100%', bgcolor: colors.background, p: 0 }}
+      sx={{ width: '100%', bgcolor: colors.background, p: 0, outline: 'none', '&:focus': { outline: 'none' } }}
       ref={dashboardRef}
       tabIndex={-1}
       onKeyDown={async (e) => { 
@@ -5297,24 +5382,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Avatar 
+                <Avatar
                   sx={{ 
                     width: 28, 
                     height: 28, 
-                    bgcolor: colors.secondary,
-                    boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)'
+                    bgcolor: colors.accent1,
+                    boxShadow: '0 1.4px 2.8px rgba(0,0,0,0.12)',
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    color: 'white'
                   }}
                 >
-                  L
+                  {getInitials(teacherName) || userId.substring(0, 2).toUpperCase()}
                 </Avatar>
-                <Box>
-                  <Typography variant="h6" component="h1" sx={{ fontWeight: 600, fontSize: '0.77rem', mb: 0 }}>
-                    Lehrer-Dashboard
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontSize: '0.67rem', opacity: 0.85 }}>
-                    Willkommen im Lehrerbereich
-                  </Typography>
-                </Box>
               </Box>
               <Box display="flex" gap={0.5} alignItems="center">
                 <IconButton
@@ -5325,7 +5405,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     width: 32,
                     height: 32,
                     color: '#1976d2',
-                    '&:hover': { bgcolor: '#e3f2fd' }
+                    bgcolor: '#9e9e9e',
+                    borderRadius: 1.4,
+                    '&:hover': { bgcolor: '#757575' }
                   }}
                   title="Nachrichten"
                 >
@@ -5337,7 +5419,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   size="small"
                   sx={{
                     width: '5%',
-                    minWidth: 49,
+                    minWidth: 70,
+                    height: 32,
                     bgcolor: '#333',
                     color: 'white',
                     fontWeight: 500,
@@ -5346,93 +5429,38 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     borderRadius: 1.4,
                     fontSize: '0.7rem',
                     py: 0.35,
-                    px: 0.7
+                    px: 2.0
                   }}
                   onClick={onLogout}
                 >
                   Logout
                 </Button>
                 {/* Adventskalender Button */}
-                <Button 
-                  variant="contained"
-                  size="small"
+                <IconButton
                   onClick={() => navigate('/advent-calendar')}
-                  startIcon={
-                    <Typography
-                      className="calendar-emoji"
-                      component="span"
-                      sx={{
-                        fontSize: '1.3rem',
-                        lineHeight: 1,
-                        transition: 'transform 0.3s',
-                        display: 'inline-block'
-                      }}
-                    >
-                      🎄
-                    </Typography>
-                  }
                   sx={{
-                    bgcolor: '#c62828',
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
                     color: 'white',
-                    fontWeight: 700,
-                    boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)',
-                    border: '2px solid #ffd700',
+                    bgcolor: '#c62828',
                     borderRadius: 1.4,
-                    fontSize: '0.75rem',
-                    py: 0.5,
-                    px: 2.5,
-                    minWidth: 200,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.8,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    animation: 'pulse 2s ease-in-out infinite',
-                    '@keyframes pulse': {
-                      '0%, 100%': { boxShadow: '0 4px 12px rgba(198, 40, 40, 0.4)' },
-                      '50%': { boxShadow: '0 4px 20px rgba(198, 40, 40, 0.7)' }
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: '-50%',
-                      left: '-50%',
-                      width: '200%',
-                      height: '200%',
-                      background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
-                      animation: 'shimmer 3s infinite',
-                      '@keyframes shimmer': {
-                        '0%': { transform: 'rotate(0deg)' },
-                        '100%': { transform: 'rotate(360deg)' }
-                      }
-                    },
-                    '&:hover': {
-                      bgcolor: '#b71c1c',
-                      transform: 'translateY(-2px) scale(1.05)',
-                      boxShadow: '0 6px 16px rgba(198, 40, 40, 0.6)',
-                      borderColor: '#ffed4e',
-                      '& .calendar-emoji': {
-                        transform: 'scale(1.2) rotate(10deg)',
-                        animation: 'bounce 0.6s ease-in-out',
-                        '@keyframes bounce': {
-                          '0%, 100%': { transform: 'scale(1.2) rotate(10deg) translateY(0)' },
-                          '50%': { transform: 'scale(1.3) rotate(-10deg) translateY(-4px)' }
-                        }
-                      }
-                    },
-                    '&:active': {
-                      transform: 'translateY(0) scale(1.02)'
-                    },
-                    '& .MuiButton-startIcon': {
-                      marginRight: 0,
-                      marginLeft: 0
-                    }
+                    '&:hover': { bgcolor: '#b71c1c' }
                   }}
+                  title="Adventskalender"
                 >
-                  <Typography sx={{ position: 'relative', zIndex: 1 }}>
-                    Adventskalender
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '1.2rem',
+                      lineHeight: 1,
+                      display: 'inline-block'
+                    }}
+                  >
+                    🎄
                   </Typography>
-                </Button>
+                </IconButton>
               </Box>
             </Box>
           </Box>
@@ -5460,39 +5488,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 bgcolor: colors.cardBg
               }}>
                 <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-                      <GroupIcon sx={{ mr: 1.4, color: colors.primary, fontSize: 28 }} />
-                      <Typography variant="h5" component="h2" sx={{ 
-                        fontWeight: 'bold', 
-                        color: colors.primary,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        fontSize: '1.12rem'
-                      }}>
-                        Meine Lerngruppen
-                      </Typography>
-                    </Box>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={() => setOpenNewGroupDialog(true)}
-                      sx={{ 
-                        bgcolor: colors.primary,
-                        '&:hover': { bgcolor: colors.primary, filter: 'brightness(1.1)' },
-                        ml: 1.0,
-                        py: 0.25,
-                        px: 1.0,
-                        fontSize: '0.48rem',
-                        height: '20px',
-                        width: '12%'
-                      }}
-                    >
-                      Neue Gruppe
-                    </Button>
-                  </Box>
-
                   {groups.map((group) => (
                     <Box key={group.id} sx={{ mb: 1.4 }}>
                       <Box sx={{ 
@@ -5584,6 +5579,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             <HandRaiseIcon sx={{ fontSize: 24 }} />
                           </IconButton>
                           <IconButton
+                            aria-label={expandedStudents[group.id] ? 'Schülerliste einklappen' : 'Schülerliste aufklappen'}
+                            onClick={e => { e.stopPropagation(); toggleStudentsExpanded(group.id); }}
+                            size="small"
+                            sx={{ 
+                              width: 24, 
+                              height: 24, 
+                              p: 0, 
+                              mr: 0.5, 
+                              color: colors.accent1,
+                              '& svg': {
+                                width: '100%',
+                                height: '100%'
+                              }
+                            }}
+                            title="Schülerliste"
+                          >
+                            <GroupIcon sx={{ fontSize: 24 }} />
+                          </IconButton>
+                          <IconButton
                             aria-label="Mehr"
                             onClick={e => { e.stopPropagation(); handleMenuOpen(e, group.id); }}
                             size="small"
@@ -5603,7 +5617,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       </Box>
                       <Grid container spacing={0.8} sx={{ display: expandedGroups[group.id] === false ? 'none' : 'flex' }}>
                         <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Grid container spacing={0.8}>
+                          <Grid container spacing={0.8} sx={{ display: expandedStudents[group.id] ? 'flex' : 'none' }}>
                             {group.students.map((student) => (
                               <Grid item xs={12} sm={6} md={6} lg={3} key={student.id}>
                                 <Card 
@@ -6458,6 +6472,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
                     </Box>
                   ))}
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setOpenNewGroupDialog(true)}
+                    sx={{ 
+                      bgcolor: `${colors.primary}20`,
+                      color: colors.primary,
+                      '&:hover': { bgcolor: `${colors.primary}30` },
+                      mt: 1.0,
+                      py: 0.4,
+                      px: 1.0,
+                      fontSize: '0.65rem',
+                      alignSelf: 'flex-start',
+                      minWidth: 'auto',
+                      width: 'auto'
+                    }}
+                  >
+                    Neue Lerngruppe hinzufügen
+                  </Button>
                 </CardContent>
               </Card>
             </Box>

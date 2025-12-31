@@ -551,6 +551,15 @@
             width: 100%;
         }
 
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: nowrap;
+            align-items: center;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
         .print-button {
             background: #1976d2;
             color: white;
@@ -725,7 +734,7 @@
         </div>
         <div class="header-name">
             <label>Name:</label>
-            <span id="studentName">Lade...</span>
+            <span id="studentName"></span>
         </div>
         <div class="header-info">
             <div class="timer-container" id="timer">
@@ -738,6 +747,12 @@
                     <span class="slider"></span>
                 </label>
             </div>
+        </div>
+        <div class="header-buttons">
+            <button class="submit-button" id="submitBtn">Abgeben</button>
+            <button class="print-button teacher-only" id="printBtn">Druckversion</button>
+            <button class="export-button teacher-only" id="exportWordBtn">Word (ohne Lösung)</button>
+            <button class="export-button teacher-only" id="exportWordWithSolutionBtn">Word (mit Lösung)</button>
         </div>
     </div>
 
@@ -1116,12 +1131,6 @@
             
 
     <div class="submit-section">
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-        <button class="submit-button" id="submitBtn">Abgeben</button>
-        <button class="print-button teacher-only" id="printBtn">Druckversion</button>
-            <button class="export-button teacher-only" id="exportWordBtn">Word (ohne Lösung)</button>
-            <button class="export-button teacher-only" id="exportWordWithSolutionBtn">Word (mit Lösung)</button>
-        </div>
         <div class="submitted" id="submittedMsg">
             ✓ Hausaufgabenüberprüfung (HÜ) wurde abgegeben. Vielen Dank!
         </div>
