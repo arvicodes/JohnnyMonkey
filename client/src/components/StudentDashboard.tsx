@@ -1892,6 +1892,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       }
     });
     
+    // Hilfsfunktion: Prüft, ob ein Knoten EPO-Noten enthält (direkt oder indirekt)
+    const containsEpo = (node: any): boolean => {
+      if (node.children && node.children.length > 0) {
+        return node.children.some((child: any) => containsEpo(child));
+      }
+      return node.name.toLowerCase().includes('epo');
+    };
+    
     // Hilfsfunktion: Prüft, ob ein Knoten nur EPO-Noten enthält
     const containsOnlyEpo = (node: any): boolean => {
       if (node.children && node.children.length > 0) {
@@ -1913,6 +1921,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       return false;
     };
     
+    // Hilfsfunktion: Prüft, ob mindestens eine EPO-Note in diesem Knoten freigegeben ist
+    const hasAnyReleasedEpo = (node: any): boolean => {
+      if (node.children && node.children.length > 0) {
+        return node.children.some((child: any) => hasAnyReleasedEpo(child));
+      }
+      const isEpo = node.name.toLowerCase().includes('epo');
+      if (isEpo) {
+        const epoKey = node.name.toLowerCase().trim();
+        return releasedEpoGrades.has(epoKey);
+      }
+      return false;
+    };
+    
     const processNode = (node: any): any => {
       const isEpo = node.name.toLowerCase().includes('epo');
       let grade = gradesMap.get(node.name);
@@ -1927,15 +1948,21 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       
       const processedChildren = node.children.map(processNode);
       
+      // Prüfe, ob dieser Knoten EPO-Noten enthält, aber keine freigegeben sind
+      // Dies betrifft übergeordnete Kategorien wie "Sonstige Leistungen" oder "Mündliche Leistungen"
+      const hasEpoButNoneReleased = containsEpo(node) && !hasAnyReleasedEpo(node);
+      
       // Markiere Knoten, die nur nicht freigegebene EPO-Noten enthalten
-      const onlyUnreleasedEpo = containsOnlyEpo(node) && containsOnlyUnreleasedEpo(node);
+      // ABER: Nur wenn es KEINE übergeordnete Kategorie ist (die soll immer angezeigt werden)
+      const onlyUnreleasedEpo = containsOnlyEpo(node) && containsOnlyUnreleasedEpo(node) && !hasEpoButNoneReleased;
       
       return {
         ...node,
         grade: grade?.grade,
         weight: grade?.weight || node.weight,
         children: processedChildren,
-        onlyUnreleasedEpo: onlyUnreleasedEpo // Flag für spätere Verarbeitung
+        onlyUnreleasedEpo: onlyUnreleasedEpo, // Nur für vollständig EPO-basierte Blattknoten
+        hasEpoButNoneReleased: hasEpoButNoneReleased // Flag für übergeordnete Kategorien mit EPO
       };
     };
     
@@ -1978,10 +2005,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const isGesamtnote = node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe");
     const isGradeReleased = gradeReleases[schema.id] || false;
     
-    // Wenn der Knoten nur nicht freigegebene EPO-Noten enthält, nicht anzeigen
-    if (node.onlyUnreleasedEpo) {
-      return null;
-    }
+    // Kategorien mit EPO-Noten werden immer angezeigt (auch wenn nicht freigegeben)
+    // Sie zeigen dann einen grauen Platzhalter
     
     // Blende die oberste Ebene aus, wenn es "Unter- und Mittelstufe" ist
     if (level === 0 && isGesamtnote) {
@@ -1990,9 +2015,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         <Box key={node.name}>
           {hasChildren && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
-              {node.children
-                .filter((child: any) => !child.onlyUnreleasedEpo) // Filtere nicht freigegebene EPO-Kategorien
-                .map((child: any) => renderGradeNode(child, schema, level + 1))}
+              {node.children.map((child: any) => renderGradeNode(child, schema, level + 1))}
             </Box>
           )}
         </Box>
@@ -2010,7 +2033,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           borderRadius: 0.7,
           border: '1px solid #e0e0e0',
           ml: level * 2.5, // Einrückung basierend auf Level
-          borderLeft: level > 0 ? `3px solid ${level === 1 ? '#1976d2' : level === 2 ? '#2E7D32' : '#F57C00'}` : '1px solid #e0e0e0'
+          borderLeft: (level > 0 || (node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe"))) 
+            ? `3px solid ${getLevelColor(level, node.name, isLeafNode)}` 
+            : '1px solid #e0e0e0'
         }}>
           <Typography variant="caption" sx={{ 
             color: colors.textPrimary,
@@ -2021,43 +2046,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             {level === 0 ? '📚 ' : level === 1 ? '📝 ' : '• '}{node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe") ? "Gesamtnote" : node.name}
           </Typography>
           
-          {(() => {
-            const isEpo = node.name.toLowerCase().includes('epo');
-            // Für EPO-Noten: Wenn keine Note vorhanden (nicht freigegeben), zeige -.-
-            if (isEpo && !hasChildren && node.grade === undefined) {
-              return (
-                <Typography variant="caption" sx={{ 
-                  color: colors.textSecondary,
-                  fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
-                  fontStyle: 'italic'
-                }}>
-                  -.-
-                </Typography>
-              );
-            }
-            return null;
-          })()}
+          {/* Entfernt - wird später in der Hauptlogik behandelt */}
           
-          {node.grade !== undefined && !hasChildren ? (
-            // Nur für Blattknoten - eingegebene Noten
+          {(!hasChildren && (node.grade !== undefined || (node.name.toLowerCase().includes('epo') && node.grade === undefined))) ? (
+            // Nur für Blattknoten - eingegebene Noten oder EPO-Noten (auch wenn nicht freigegeben)
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               {(() => {
                 const isEpo = node.name.toLowerCase().includes('epo');
-                // Für EPO-Noten: Prüfe ob Note vorhanden (freigegeben), sonst zeige -.-
+                // Für EPO-Noten: Prüfe ob Note vorhanden (freigegeben), sonst zeige grauen Platzhalter
                 if (isEpo && node.grade === undefined) {
                   return (
-                    <Typography variant="caption" sx={{ 
-                      color: colors.textSecondary,
+                    <Box sx={{ 
+                      bgcolor: '#9E9E9E',
+                      color: 'white',
+                      px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+                      py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
+                      borderRadius: 1,
                       fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
-                      fontStyle: 'italic'
+                      fontWeight: 'bold',
+                      minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
+                      textAlign: 'center',
+                      opacity: 0.6
                     }}>
-                      -.-
-                    </Typography>
+                      0.0
+                    </Box>
                   );
                 }
                 return (
                   <Box sx={{ 
-                    bgcolor: getGradeColor(node.grade, schema?.gradingSystem),
+                    bgcolor: getLevelColor(level, node.name, true),
                     color: 'white',
                     px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
                     py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
@@ -2094,7 +2111,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 );
               })()}
             </Box>
-          ) : (node.grade !== undefined || calculatedGrade !== null) ? (
+          ) : (node.grade !== undefined || calculatedGrade !== null || node.hasEpoButNoneReleased) ? (
             // Wenn es die Gesamtnote ist und nicht freigegeben, zeige nichts im Feld
             isGesamtnote && !isGradeReleased ? (
               <Typography variant="caption" sx={{ 
@@ -2104,10 +2121,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               }}>
                 {/* Feld bleibt leer */}
               </Typography>
-            ) : (
+            ) : node.hasEpoButNoneReleased ? (
+              // Wenn keine EPO-Noten freigegeben sind, zeige grauen Platzhalter
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Box sx={{ 
-                  bgcolor: getGradeColor((node.grade !== undefined ? node.grade : calculatedGrade)!, schema?.gradingSystem),
+                  bgcolor: '#9E9E9E',
                   color: 'white',
                   px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
                   py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
@@ -2116,9 +2134,25 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   fontWeight: 'bold',
                   minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
                   textAlign: 'center',
-                  opacity: 0.8,
-                  border: '2px solid #1976d2',
-                  boxShadow: '0 2px 4px rgba(25, 118, 210, 0.3)'
+                  opacity: 0.6
+                }}>
+                  0.0
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box sx={{ 
+                  bgcolor: getLevelColor(level, node.name, isLeafNode),
+                  color: 'white',
+                  px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+                  py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
+                  borderRadius: 1,
+                  fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+                  fontWeight: 'bold',
+                  minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
+                  textAlign: 'center',
+                  opacity: 0.9,
+                  boxShadow: `0 2px 4px ${getLevelColor(level, node.name, isLeafNode)}40`
                 }}>
                   {schema?.gradingSystem === 'MSS' ? 
                     (node.grade !== undefined ? node.grade : calculatedGrade)!.toFixed(0) : 
@@ -2172,6 +2206,68 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         )}
       </Box>
     );
+  };
+
+  // Funktion zur Bestimmung der Farbe basierend auf dem Level und Knotennamen
+  const getLevelColor = (level: number, nodeName?: string, isLeafNode: boolean = false): string => {
+    const name = (nodeName || '').toLowerCase();
+    
+    // Gesamtnote: Hellgrün (auch für "Unter- und Mittelstufe")
+    if (name.includes('gesamtnote') || name.includes('gesamt') || 
+        (name.includes('unter') && name.includes('mittelstufe'))) {
+      return '#81C784'; // Hellgrün für Gesamtnote
+    }
+    
+    // EPO 1: Hellblau
+    if (name.includes('epo 1') || name.includes('epo1')) {
+      return '#64B5F6'; // Hellblau für EPO 1
+    }
+    
+    // EPO 2: Orange (bleibt wie bisher)
+    if (name.includes('epo 2') || name.includes('epo2')) {
+      return '#F57C00'; // Orange für EPO 2
+    }
+    
+    // KA 1 und KA 2: Rosaiges Rot
+    if (name.includes('ka 1') || name.includes('ka 2') || 
+        name.includes('ka1') || name.includes('ka2') ||
+        (name.includes('klassenarbeit') && (name.includes('1') || name.includes('2')))) {
+      return '#F48FB1'; // Rosaiges Rot für KA 1 und KA 2
+    }
+    
+    // Quizze / Hüs, Sonstiges und Mündliche Leistungen: Grün
+    if (name.includes('quizze') || name.includes('hüs') || name.includes('hü') ||
+        name.includes('sonstiges') || name.includes('mündlich')) {
+      return '#2E7D32'; // Grün für Quizze/Hüs, Sonstiges und Mündliche Leistungen
+    }
+    
+    // EPO-Noten (allgemein, falls nicht 1 oder 2): Orange
+    if (name.includes('epo')) {
+      return '#F57C00'; // Orange für EPO-Noten
+    }
+    
+    // Allerunterste Ebene (Blattknoten): Gelb (nur wenn keine spezifische Kategorie)
+    if (isLeafNode && !name.includes('ka') && !name.includes('epo') && 
+        !name.includes('quizze') && !name.includes('hü') && !name.includes('sonstiges')) {
+      return '#FFC107'; // Gelb für unterste Ebene
+    }
+    
+    // Klassenarbeiten (allgemein): Lila
+    if (name.includes('klassenarbeit') || name.includes('ka')) {
+      return '#9C27B0'; // Lila für Klassenarbeiten
+    }
+    
+    // Sonstige Leistungen: Lila
+    if (name.includes('sonstige') || (name.includes('leistungen') && !name.includes('mündlich'))) {
+      return '#9C27B0'; // Lila für Sonstige Leistungen
+    }
+    
+    // Fallback basierend auf Level
+    if (level === 0) return '#1565C0'; // Dunkelblau für oberste Ebene
+    if (level === 1) return '#2E7D32'; // Grün für mittlere Ebene
+    if (level >= 2) return '#FFC107'; // Gelb für untere Ebene
+    
+    return '#9E9E9E'; // Grau für weitere Ebenen
   };
 
   const getGradeColor = (grade: number, gradingSystem: string = 'GERMAN'): string => {
@@ -2833,7 +2929,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           fontWeight: 600,
                           textTransform: 'uppercase'
                         }}>
-                          Mitarbeit
+                          Epochal
                         </Typography>
                       </Box>
                     </Grid>
@@ -2929,7 +3025,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                 textAlign: 'center',
                                 py: 1
                               }}>
-                                Noch keine Mitarbeitsbewertungen vorhanden
+                                Noch keine Epochalbewertungen vorhanden
                               </Typography>
                             ) : (
                               Object.keys(participationData).map((groupId) => {

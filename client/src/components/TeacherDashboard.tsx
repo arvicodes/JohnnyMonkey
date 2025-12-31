@@ -277,7 +277,10 @@ import {
   SkipPrevious as SkipPreviousIcon,
   Shuffle as ShuffleIcon,
   Repeat as RepeatIcon,
-  VolumeMute as VolumeMuteIcon
+  VolumeMute as VolumeMuteIcon,
+  TableChart as TableChartIcon,
+  PictureAsPdf as PictureAsPdfIcon,
+  Code as CodeIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -653,6 +656,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   }, [participationModalOpen]);
 
+  // Aktualisiere lessonKeyword, wenn sich die Unterrichtsstunde ändert
+  useEffect(() => {
+    if (!participationGroupId) return;
+    const mapped = lessonKeywordsMap[participationGroupId]?.[currentLessonIndex];
+    if (mapped !== undefined) {
+      setLessonKeyword(mapped);
+    } else {
+      // Versuche aus Kommentaren zu extrahieren
+      const groupData = participations[participationGroupId] || {};
+      const lessonData = groupData[currentLessonIndex] || {};
+      const anyStudentId = Object.keys(lessonData)[0];
+      if (anyStudentId) {
+        const data = lessonData[anyStudentId];
+        const comment = data && typeof data === 'object' ? (data.comment as string | undefined) : undefined;
+        const extracted = extractLessonKeywordFromComment(comment);
+        setLessonKeyword(extracted);
+      } else {
+        setLessonKeyword('');
+      }
+    }
+  }, [currentLessonIndex, participationGroupId, lessonKeywordsMap, participations]);
+
   // Fokussiere das Betreff-Feld beim Öffnen des Nachrichten-Dialogs
   useEffect(() => {
     if (showSendMessageDialog && messageSubjectInputRef.current) {
@@ -661,6 +686,37 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }, 100);
     }
   }, [showSendMessageDialog]);
+
+  // Fokussiere das Kommentar-Feld beim Öffnen des Kommentar-Dialogs
+  useEffect(() => {
+    if (commentModalOpen && commentInputRef.current) {
+      setTimeout(() => {
+        commentInputRef.current?.focus();
+      }, 100);
+    }
+  }, [commentModalOpen]);
+
+  // Enter-Taste für Kommentar-Dialog
+  useEffect(() => {
+    if (!commentModalOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        const target = e.target as HTMLElement;
+        // Nur speichern, wenn der Fokus nicht im TextField/TextArea ist
+        if (target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT' && !target.isContentEditable) {
+          e.preventDefault();
+          handleCommentSave();
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentModalOpen]);
 
   // Funktion zum Senden der Nachricht
   const handleSendMessage = async () => {
@@ -2693,6 +2749,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     await loadPeriodConfig(groupId);
     // Lade EPO-Noten für diese Gruppe
     await loadEpoGrades(groupId);
+    // Lade Stichworte für alle Stunden
+    await loadLessonKeywords(groupId);
   };
   
   const loadPeriodConfig = async (groupId: string) => {
@@ -2706,6 +2764,45 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }
     } catch (error) {
       console.error('Fehler beim Laden der Zeitraum-Konfiguration:', error);
+    }
+  };
+
+  // Lade alle Stichworte für eine Gruppe
+  const loadLessonKeywords = async (groupId: string) => {
+    try {
+      const response = await fetch(`/api/participation/${groupId}/keywords`);
+      if (response.ok) {
+        const data = await response.json();
+        setLessonKeywordsMap(prev => ({
+          ...prev,
+          [groupId]: data
+        }));
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Stichworte:', error);
+    }
+  };
+
+  // Speichere Stichwort für eine Stunde
+  const saveLessonKeyword = async (groupId: string, lessonIndex: number, keyword: string) => {
+    try {
+      const response = await fetch(`/api/participation/${groupId}/${lessonIndex}/keyword`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword })
+      });
+      if (response.ok) {
+        // Aktualisiere lokale Map
+        setLessonKeywordsMap(prev => ({
+          ...prev,
+          [groupId]: {
+            ...(prev[groupId] || {}),
+            [lessonIndex]: keyword
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Fehler beim Speichern des Stichworts:', error);
     }
   };
   
@@ -2895,7 +2992,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         return;
       }
       
-      // Für jeden Schüler: Speichere EPO 1 und EPO 2 als Noten
+      // Für jeden Schüler: Speichere Epo 1 und Epo 2 als Noten
       let successCount = 0;
       for (const epoGrade of currentEpoGrades) {
         const categoryName = `EPO ${epoGrade.period}`;
@@ -3109,6 +3206,61 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setCommentStudentName('');
     setCommentText('');
   };
+
+  // Funktion zum Löschen aller Kommentare für eine bestimmte Unterrichtsstunde
+  const deleteAllCommentsForLesson = async (groupId: string, lessonIndex: number) => {
+    if (!groupId) return;
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    const confirmed = window.confirm(`Möchten Sie wirklich alle Kommentare für Unterrichtsstunde ${lessonIndex + 1} löschen?`);
+    if (!confirmed) return;
+
+    try {
+      // Lösche alle Kommentare für diese Stunde
+      for (const student of group.students) {
+        await fetch(`/api/participation/${groupId}/${lessonIndex}/${student.id}/comment`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment: null })
+        });
+      }
+
+      // Aktualisiere lokalen State
+      setParticipations(prev => {
+        const groupData = prev[groupId] || {};
+        const lessonData = { ...(groupData[lessonIndex] || {}) };
+        
+        // Entferne Kommentare aus allen Schülern dieser Stunde
+        Object.keys(lessonData).forEach(studentId => {
+          const studentData = lessonData[studentId];
+          if (studentData && typeof studentData === 'object') {
+            lessonData[studentId] = {
+              value: studentData.value,
+              // Kommentar entfernen
+            };
+          }
+        });
+
+        return {
+          ...prev,
+          [groupId]: {
+            ...groupData,
+            [lessonIndex]: lessonData
+          }
+        };
+      });
+
+      // Lade die Daten neu, um sicherzustellen, dass alles synchron ist
+      await loadParticipations(groupId);
+
+      alert(`Alle Kommentare für Unterrichtsstunde ${lessonIndex + 1} wurden gelöscht.`);
+    } catch (error) {
+      console.error('Fehler beim Löschen der Kommentare:', error);
+      alert('Fehler beim Löschen der Kommentare.');
+    }
+  };
+
   const saveParticipation = async (groupId: string, lessonIndex: number, studentId: string, value: number) => {
     try {
       const response = await fetch(`/api/participation/${groupId}/${lessonIndex}`, {
@@ -3226,6 +3378,202 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setStatisticsModalOpen(false);
     setParticipationStats([]);
   };
+
+  // Export-Funktionen für Epochalstatistik
+  const exportToCSV = () => {
+    if (!participationStats.length || !participationGroupId) return;
+    const headers = ['Schüler', 'Anzahl', 'Durchschnitt', 'Zeitraum 1', 'Zeitraum 2', 'Gesamtnote', 'Epo 1', 'Epo 2'];
+    const rows = participationStats.map((stat: any) => {
+      const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
+      const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
+      return [
+        stat.student.name,
+        stat.count,
+        stat.average.toFixed(2),
+        stat.period1 ? `${stat.period1.count}× ${stat.period1.grade?.toFixed(1) || '-'}` : '-',
+        stat.period2 ? `${stat.period2.count}× ${stat.period2.grade?.toFixed(1) || '-'}` : '-',
+        stat.grade?.toFixed(1) || '-',
+        epo1 ? epo1.grade.toFixed(1) : '-',
+        epo2 ? epo2.grade.toFixed(1) : '-'
+      ];
+    });
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Epochalstatistik_${participationGroupName}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToExcel = async () => {
+    if (!participationStats.length || !participationGroupId) return;
+    // Excel-Export als CSV mit Tab-Trennung (kann in Excel geöffnet werden)
+    const headers = ['Schüler', 'Anzahl', 'Durchschnitt', 'Zeitraum 1', 'Zeitraum 2', 'Gesamtnote', 'Epo 1', 'Epo 2'];
+    const rows = participationStats.map((stat: any) => {
+      const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
+      const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
+      return [
+        stat.student.name,
+        stat.count,
+        stat.average.toFixed(2),
+        stat.period1 ? `${stat.period1.count}× ${stat.period1.grade?.toFixed(1) || '-'}` : '-',
+        stat.period2 ? `${stat.period2.count}× ${stat.period2.grade?.toFixed(1) || '-'}` : '-',
+        stat.grade?.toFixed(1) || '-',
+        epo1 ? epo1.grade.toFixed(1) : '-',
+        epo2 ? epo2.grade.toFixed(1) : '-'
+      ];
+    });
+    // Tab-getrenntes Format für Excel
+    const excelContent = [headers, ...rows].map(row => row.join('\t')).join('\n');
+    const blob = new Blob(['\ufeff' + excelContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Epochalstatistik_${participationGroupName}_${new Date().toISOString().split('T')[0]}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToPDF = async () => {
+    if (!participationStats.length || !participationGroupId) return;
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text(`Epochalstatistik: ${participationGroupName}`, 14, 20);
+      doc.setFontSize(10);
+      let y = 35;
+      const headers = ['Schüler', 'Anzahl', 'Ø', 'Z1', 'Z2', 'Gesamt', 'EPO1', 'EPO2'];
+      const colWidths = [60, 20, 15, 20, 20, 20, 20, 20];
+      let x = 14;
+      headers.forEach((header, i) => {
+        doc.text(header, x, y);
+        x += colWidths[i];
+      });
+      y += 7;
+      participationStats.forEach((stat: any) => {
+        if (y > 280) {
+          doc.addPage();
+          y = 20;
+        }
+        const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
+        const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
+        x = 14;
+        const row = [
+          stat.student.name.substring(0, 25),
+          stat.count.toString(),
+          stat.average.toFixed(1),
+          stat.period1 ? `${stat.period1.count}×` : '-',
+          stat.period2 ? `${stat.period2.count}×` : '-',
+          stat.grade?.toFixed(1) || '-',
+          epo1 ? epo1.grade.toFixed(1) : '-',
+          epo2 ? epo2.grade.toFixed(1) : '-'
+        ];
+        row.forEach((cell, i) => {
+          doc.text(cell, x, y);
+          x += colWidths[i];
+        });
+        y += 7;
+      });
+      doc.save(`Epochalstatistik_${participationGroupName}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Fehler beim PDF-Export:', error);
+      alert('Fehler beim Exportieren als PDF');
+    }
+  };
+
+  const exportToWord = async () => {
+    if (!participationStats.length || !participationGroupId) return;
+    try {
+      const { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, WidthType } = await import('docx');
+      const rows = participationStats.map((stat: any) => {
+        const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
+        const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
+        return new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph(stat.student.name)] }),
+            new TableCell({ children: [new Paragraph(stat.count.toString())] }),
+            new TableCell({ children: [new Paragraph(stat.average.toFixed(2))] }),
+            new TableCell({ children: [new Paragraph(stat.period1 ? `${stat.period1.count}× ${stat.period1.grade?.toFixed(1) || '-'}` : '-')] }),
+            new TableCell({ children: [new Paragraph(stat.period2 ? `${stat.period2.count}× ${stat.period2.grade?.toFixed(1) || '-'}` : '-')] }),
+            new TableCell({ children: [new Paragraph(stat.grade?.toFixed(1) || '-')] }),
+            new TableCell({ children: [new Paragraph(epo1 ? epo1.grade.toFixed(1) : '-')] }),
+            new TableCell({ children: [new Paragraph(epo2 ? epo2.grade.toFixed(1) : '-')] })
+          ]
+        });
+      });
+      const doc = new Document({
+        sections: [{
+          children: [
+            new Paragraph({
+              text: `Epochalstatistik: ${participationGroupName}`,
+              heading: HeadingLevel.HEADING_1
+            }),
+            new Table({
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({ children: [new Paragraph('Schüler')] }),
+                    new TableCell({ children: [new Paragraph('Anzahl')] }),
+                    new TableCell({ children: [new Paragraph('Durchschnitt')] }),
+                    new TableCell({ children: [new Paragraph('Zeitraum 1')] }),
+                    new TableCell({ children: [new Paragraph('Zeitraum 2')] }),
+                    new TableCell({ children: [new Paragraph('Gesamtnote')] }),
+                    new TableCell({ children: [new Paragraph('Epo 1')] }),
+                    new TableCell({ children: [new Paragraph('Epo 2')] })
+                  ]
+                }),
+                ...rows
+              ],
+              width: { size: 100, type: WidthType.PERCENTAGE }
+            })
+          ]
+        }]
+      });
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Epochalstatistik_${participationGroupName}_${new Date().toISOString().split('T')[0]}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Fehler beim Word-Export:', error);
+      alert('Fehler beim Exportieren als Word');
+    }
+  };
+
+  const exportToJSON = () => {
+    if (!participationStats.length || !participationGroupId) return;
+    const data = {
+      groupName: participationGroupName,
+      exportDate: new Date().toISOString(),
+      stats: participationStats.map((stat: any) => {
+        const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
+        const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
+        return {
+          student: stat.student.name,
+          count: stat.count,
+          average: stat.average,
+          period1: stat.period1 ? { count: stat.period1.count, grade: stat.period1.grade } : null,
+          period2: stat.period2 ? { count: stat.period2.count, grade: stat.period2.grade } : null,
+          grade: stat.grade,
+          epo1: epo1 ? epo1.grade : null,
+          epo2: epo2 ? epo2.grade : null
+        };
+      })
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Epochalstatistik_${participationGroupName}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDeleteDialogOpen = (groupId: string) => {
     setDeleteGroupId(groupId);
     setDeleteDialogOpen(true);
@@ -4144,7 +4492,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }
 
       // Direkt Word-Export starten (ohne Popup)
-      await exportToWord(deck, cards);
+      await exportFlashcardDeckToWord(deck, cards);
 
     } catch (error) {
       console.error('Fehler beim Exportieren des Decks:', error);
@@ -4155,7 +4503,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       });
     }
   };
-  const exportToWord = async (deck: FlashcardDeck, cards: Flashcard[]) => {
+  const exportFlashcardDeckToWord = async (deck: FlashcardDeck, cards: Flashcard[]) => {
     try {
       // Importiere die benötigten docx-Module dynamisch
       const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, TextRun, BorderStyle, WidthType, Table, TableRow, TableCell } = await import('docx');
@@ -4886,13 +5234,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               const lessonData = groupData[currentLessonIndex] || {};
               const studentData = lessonData[student.id];
               const existingComment = studentData && typeof studentData === 'object' ? (studentData.comment as string | undefined) : undefined;
+              // Nur Kommentar aktualisieren, wenn bereits einer existiert
+              if (existingComment) {
               const updatedComment = injectLessonKeywordIntoComment(existingComment, lessonKeyword);
-              if ((existingComment || '') !== updatedComment) {
+                if (existingComment !== updatedComment) {
                 await fetch(`/api/participation/${participationGroupId}/${currentLessonIndex}/${student.id}/comment`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ comment: updatedComment })
                 });
+                }
               }
             }
             setParticipations(prev => {
@@ -4901,12 +5252,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               const lessonData2 = { ...(groupData2[currentLessonIndex] || {}) };
               for (const student of (groups.find(g => g.id === participationGroupId)?.students || [])) {
                 const sd = lessonData2[student.id] || { value: 0 };
-                lessonData2[student.id] = { value: (sd as any).value ?? 0, comment: injectLessonKeywordIntoComment(sd.comment as (string | undefined), lessonKeyword) };
+                const existingComment = sd.comment as (string | undefined);
+                // Nur Kommentar aktualisieren, wenn bereits einer existiert
+                const updatedComment = existingComment ? injectLessonKeywordIntoComment(existingComment, lessonKeyword) : undefined;
+                lessonData2[student.id] = { 
+                  value: (sd as any).value ?? 0, 
+                  ...(updatedComment ? { comment: updatedComment } : {})
+                };
               }
               copy[participationGroupId] = { ...groupData2, [currentLessonIndex]: lessonData2 };
               return copy;
             });
-            // persist per-lesson keyword in map
+            // persist per-lesson keyword in map und Datenbank
             setLessonKeywordsMap(prev => ({
               ...prev,
               [participationGroupId]: {
@@ -4914,8 +5271,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 [currentLessonIndex]: lessonKeyword
               }
             }));
-            // Eingabefeld räumen und Fokus verlassen
-            setLessonKeyword('');
+            // Speichere in Datenbank
+            if (participationGroupId) {
+              await saveLessonKeyword(participationGroupId, currentLessonIndex, lessonKeyword);
+            }
+            // Fokus verlassen, aber Stichwort nicht löschen - es bleibt in der Map gespeichert
             lessonKeywordInputRef.current?.blur();
           } catch (err) {
             console.error('Fehler beim Anwenden des Stunden-Schlagworts:', err);
@@ -5205,7 +5565,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             <BrushIcon sx={{ fontSize: 24 }} />
                           </IconButton>
                           <IconButton
-                            aria-label="Mitarbeit eintragen"
+                            aria-label="Epochal eintragen"
                             onClick={e => { e.stopPropagation(); handleParticipationOpen(group.id, group.name); }}
                             size="small"
                             sx={{ 
@@ -5219,7 +5579,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                 height: '100%'
                               }
                             }}
-                            title="Mitarbeit eintragen"
+                            title="Epochal eintragen"
                           >
                             <HandRaiseIcon sx={{ fontSize: 24 }} />
                           </IconButton>
@@ -8437,8 +8797,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         }}
       >
         <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
               <Box sx={{ 
                 width: 28, 
                 height: 28, 
@@ -8452,21 +8812,156 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     </Box>
               <Box>
                 <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
-                  Mitarbeitsstatistik
+                  Epochalstatistik
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2 }}>
                   {participationGroupName}
                 </Typography>
               </Box>
             </Box>
+            {/* Buttons kompakt nebeneinander mittig zwischen Titel und X */}
+            <Box sx={{ display: 'flex', gap: 0.4, alignItems: 'center', flexWrap: 'nowrap', flex: '1 1 auto', justifyContent: 'center', mx: 1 }}>
+              {/* Zeiträume einstellen */}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<GradeIcon sx={{ fontSize: 12 }} />}
+                onClick={() => setPeriodConfigModalOpen(true)}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                Zeiträume
+              </Button>
+              {/* EPO-Noten berechnen */}
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<BarChartIcon sx={{ fontSize: 12 }} />}
+                onClick={calculateEpoGrades}
+                disabled={!periodConfig.period1Hours || !periodConfig.period2Hours}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                Berechnen
+              </Button>
+              {/* Zeitraum 1 */}
+              {(() => {
+                if (!participationGroupId) return null;
+                const period1Grades = epoGrades.filter((g: any) => g.period === 1 && (g.groupId === participationGroupId || g.group?.id === participationGroupId));
+                const allReleased1 = period1Grades.length > 0 && period1Grades.every((g: any) => g.isReleased === true);
+                const hasPeriod1Grades = period1Grades.length > 0;
+                return (
+                  <Button
+                    variant="contained"
+                    color={allReleased1 ? "success" : "error"}
+                    size="small"
+                    disabled={!hasPeriod1Grades}
+                    startIcon={allReleased1 ? <CheckIcon sx={{ fontSize: 12, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 12, color: 'white' }} />}
+                    onClick={() => {
+                      releaseEpoGrade(1, !allReleased1);
+                    }}
+                    sx={{ 
+                      fontSize: '0.65rem', 
+                      py: 0.25,
+                      px: 0.6,
+                      minWidth: 'auto',
+                      textTransform: 'none',
+                      height: '24px',
+                      '& .MuiButton-startIcon': {
+                        marginRight: '4px',
+                        marginLeft: 0
+                      }
+                    }}
+                    title={!hasPeriod1Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
+                  >
+                    Z1 {allReleased1 ? '✓' : '✗'}
+                  </Button>
+                );
+              })()}
+              {/* Zeitraum 2 */}
+              {(() => {
+                if (!participationGroupId) return null;
+                const period2Grades = epoGrades.filter((g: any) => g.period === 2 && (g.groupId === participationGroupId || g.group?.id === participationGroupId));
+                const allReleased2 = period2Grades.length > 0 && period2Grades.every((g: any) => g.isReleased === true);
+                const hasPeriod2Grades = period2Grades.length > 0;
+                return (
+                  <Button
+                    variant="contained"
+                    color={allReleased2 ? "success" : "error"}
+                    size="small"
+                    disabled={!hasPeriod2Grades}
+                    startIcon={allReleased2 ? <CheckIcon sx={{ fontSize: 12, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 12, color: 'white' }} />}
+                    onClick={() => {
+                      releaseEpoGrade(2, !allReleased2);
+                    }}
+                    sx={{ 
+                      fontSize: '0.65rem', 
+                      py: 0.25,
+                      px: 0.6,
+                      minWidth: 'auto',
+                      textTransform: 'none',
+                      height: '24px',
+                      '& .MuiButton-startIcon': {
+                        marginRight: '4px',
+                        marginLeft: 0
+                      }
+                    }}
+                    title={!hasPeriod2Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
+                  >
+                    Z2 {allReleased2 ? '✓' : '✗'}
+                  </Button>
+                );
+              })()}
+              {/* Statistik anzeigen */}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<BarChartIcon sx={{ fontSize: 12 }} />}
+                onClick={handleStatisticsOpen}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                Statistik
+              </Button>
+            </Box>
             <IconButton 
               size="small" 
               onClick={handleParticipationClose}
               sx={{ 
-                ml: 1, 
                 p: 0,
                 width: 20,
                 height: 20,
+                flexShrink: 0,
                 '& svg': {
                   width: '100%',
                   height: '100%'
@@ -8570,6 +9065,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         [currentLessonIndex]: v
                       }
                     }));
+                    // Speichere in Datenbank mit kurzer Verzögerung (Debounce)
+                    clearTimeout((window as any).lessonKeywordSaveTimeout);
+                    (window as any).lessonKeywordSaveTimeout = setTimeout(() => {
+                      if (participationGroupId) {
+                        saveLessonKeyword(participationGroupId, currentLessonIndex, v);
+                      }
+                    }, 1000); // 1 Sekunde Verzögerung
                   }
                 }}
                 inputRef={lessonKeywordInputRef}
@@ -8584,13 +9086,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       const lessonData = groupData[currentLessonIndex] || {};
                       const studentData = lessonData[student.id];
                       const existingComment = studentData && typeof studentData === 'object' ? (studentData.comment as string | undefined) : undefined;
+                      // Nur Kommentar aktualisieren, wenn bereits einer existiert
+                      if (existingComment) {
                       const updatedComment = injectLessonKeywordIntoComment(existingComment, lessonKeyword);
-                      if ((existingComment || '') !== updatedComment) {
+                        if (existingComment !== updatedComment) {
                         await fetch(`/api/participation/${participationGroupId}/${currentLessonIndex}/${student.id}/comment`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ comment: updatedComment })
                         });
+                        }
                       }
                     }
                     setParticipations(prev => {
@@ -8599,12 +9104,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       const lessonData2 = { ...(groupData2[currentLessonIndex] || {}) };
                       for (const student of (groups.find(g => g.id === participationGroupId)?.students || [])) {
                         const sd = lessonData2[student.id] || { value: 0 };
-                        lessonData2[student.id] = { value: (sd as any).value ?? 0, comment: injectLessonKeywordIntoComment(sd.comment as (string | undefined), lessonKeyword) };
+                        const existingComment = sd.comment as (string | undefined);
+                        // Nur Kommentar aktualisieren, wenn bereits einer existiert
+                        const updatedComment = existingComment ? injectLessonKeywordIntoComment(existingComment, lessonKeyword) : undefined;
+                        lessonData2[student.id] = { 
+                          value: (sd as any).value ?? 0, 
+                          ...(updatedComment ? { comment: updatedComment } : {})
+                        };
                       }
                       copy[participationGroupId] = { ...groupData2, [currentLessonIndex]: lessonData2 };
                       return copy;
                     });
-                    // persist per-lesson keyword in map
+                    // persist per-lesson keyword in map und Datenbank
                     setLessonKeywordsMap(prev => ({
                       ...prev,
                       [participationGroupId]: {
@@ -8612,12 +9123,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         [currentLessonIndex]: lessonKeyword
                       }
                     }));
+                    // Speichere in Datenbank
+                    if (participationGroupId) {
+                      await saveLessonKeyword(participationGroupId, currentLessonIndex, lessonKeyword);
+                    }
                   } catch (err) {
                     console.error('Fehler beim Anwenden des Stunden-Schlagworts:', err);
                   } finally {
                     setApplyingLessonKeyword(false);
-                    // Eingabefeld räumen und Fokus verlassen
-                    setLessonKeyword('');
+                    // Fokus verlassen, aber Stichwort nicht löschen - es bleibt in der Map gespeichert
                     lessonKeywordInputRef.current?.blur();
                     navFocusRef.current?.focus();
                   }
@@ -8635,13 +9149,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         const lessonData = groupData[currentLessonIndex] || {};
                         const studentData = lessonData[student.id];
                         const existingComment = studentData && typeof studentData === 'object' ? (studentData.comment as string | undefined) : undefined;
+                        // Nur Kommentar aktualisieren, wenn bereits einer existiert
+                        if (existingComment) {
                         const updatedComment = injectLessonKeywordIntoComment(existingComment, lessonKeyword);
-                        if ((existingComment || '') !== updatedComment) {
+                          if (existingComment !== updatedComment) {
                           await fetch(`/api/participation/${participationGroupId}/${currentLessonIndex}/${student.id}/comment`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ comment: updatedComment })
                           });
+                          }
                         }
                       }
                       setParticipations(prev => {
@@ -8650,12 +9167,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         const lessonData2 = { ...(groupData2[currentLessonIndex] || {}) };
                         for (const student of (groups.find(g => g.id === participationGroupId)?.students || [])) {
                           const sd = lessonData2[student.id] || { value: 0 };
-                          lessonData2[student.id] = { value: (sd as any).value ?? 0, comment: injectLessonKeywordIntoComment(sd.comment as (string | undefined), lessonKeyword) };
+                          const existingComment = sd.comment as (string | undefined);
+                          // Nur Kommentar aktualisieren, wenn bereits einer existiert
+                          const updatedComment = existingComment ? injectLessonKeywordIntoComment(existingComment, lessonKeyword) : undefined;
+                          lessonData2[student.id] = { 
+                            value: (sd as any).value ?? 0, 
+                            ...(updatedComment ? { comment: updatedComment } : {})
+                          };
                         }
                         copy[participationGroupId] = { ...groupData2, [currentLessonIndex]: lessonData2 };
                         return copy;
                       });
-                      // persist per-lesson keyword in map
+                      // persist per-lesson keyword in map und Datenbank
                       setLessonKeywordsMap(prev => ({
                         ...prev,
                         [participationGroupId]: {
@@ -8663,12 +9186,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           [currentLessonIndex]: lessonKeyword
                         }
                       }));
+                      // Speichere in Datenbank
+                      if (participationGroupId) {
+                        await saveLessonKeyword(participationGroupId, currentLessonIndex, lessonKeyword);
+                      }
                     } catch (err) {
                       console.error('Fehler beim Anwenden des Stunden-Schlagworts:', err);
                     } finally {
                       setApplyingLessonKeyword(false);
-                      // Eingabefeld räumen und Fokus verlassen
-                      setLessonKeyword('');
+                      // Fokus verlassen, aber Stichwort nicht löschen - es bleibt in der Map gespeichert
                       lessonKeywordInputRef.current?.blur();
                       navFocusRef.current?.focus();
                     }
@@ -9074,101 +9600,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               })}
             </Grid>
           )}
-          {/* Zeitraum-Einstellungen und EPO-Buttons */}
-          <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              size="small"
-              startIcon={<GradeIcon sx={{ fontSize: 16 }} />}
-              onClick={() => setPeriodConfigModalOpen(true)}
-              sx={{ fontSize: '0.75rem', py: 0.5 }}
-            >
-              Zeiträume einstellen
-            </Button>
-            <Button
-              fullWidth
-              variant="contained"
-              size="small"
-              startIcon={<BarChartIcon sx={{ fontSize: 16 }} />}
-              onClick={calculateEpoGrades}
-              disabled={!periodConfig.period1Hours || !periodConfig.period2Hours}
-              sx={{ fontSize: '0.75rem', py: 0.5 }}
-            >
-              EPO-Noten berechnen
-            </Button>
-            {/* Freigabe-Buttons für Zeitraum 1 und 2 */}
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {(() => {
-                if (!participationGroupId) return null;
-                const period1Grades = epoGrades.filter((g: any) => g.period === 1 && (g.groupId === participationGroupId || g.group?.id === participationGroupId));
-                const allReleased1 = period1Grades.length > 0 && period1Grades.every((g: any) => g.isReleased === true);
-                const hasPeriod1Grades = period1Grades.length > 0;
-                return (
-                  <Button
-                    variant="contained"
-                    color={allReleased1 ? "success" : "error"}
-                    size="small"
-                    disabled={!hasPeriod1Grades}
-                    startIcon={allReleased1 ? <CheckIcon sx={{ fontSize: 14, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 14, color: 'white' }} />}
-                    onClick={() => {
-                      releaseEpoGrade(1, !allReleased1);
-                    }}
-                    sx={{ 
-                      fontSize: '0.7rem', 
-                      py: 0.4,
-                      flex: 1,
-                      '& .MuiButton-startIcon': {
-                        marginRight: '4px'
-                      }
-                    }}
-                    title={!hasPeriod1Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
-                  >
-                    Zeitraum 1 {allReleased1 ? 'freigegeben' : 'gesperrt'}
-                  </Button>
-                );
-              })()}
-              {(() => {
-                if (!participationGroupId) return null;
-                const period2Grades = epoGrades.filter((g: any) => g.period === 2 && (g.groupId === participationGroupId || g.group?.id === participationGroupId));
-                const allReleased2 = period2Grades.length > 0 && period2Grades.every((g: any) => g.isReleased === true);
-                const hasPeriod2Grades = period2Grades.length > 0;
-                return (
-                  <Button
-                    variant="contained"
-                    color={allReleased2 ? "success" : "error"}
-                    size="small"
-                    disabled={!hasPeriod2Grades}
-                    startIcon={allReleased2 ? <CheckIcon sx={{ fontSize: 14, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 14, color: 'white' }} />}
-                    onClick={() => {
-                      releaseEpoGrade(2, !allReleased2);
-                    }}
-                    sx={{ 
-                      fontSize: '0.7rem', 
-                      py: 0.4,
-                      flex: 1,
-                      '& .MuiButton-startIcon': {
-                        marginRight: '4px'
-                      }
-                    }}
-                    title={!hasPeriod2Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
-                  >
-                    Zeitraum 2 {allReleased2 ? 'freigegeben' : 'gesperrt'}
-                  </Button>
-                );
-              })()}
-            </Box>
-            <Button
-              fullWidth
-              variant="outlined"
-              size="small"
-              startIcon={<BarChartIcon sx={{ fontSize: 16 }} />}
-              onClick={handleStatisticsOpen}
-              sx={{ fontSize: '0.75rem', py: 0.5 }}
-            >
-              Statistik anzeigen
-            </Button>
-          </Box>
         </DialogContent>
       </Dialog>
 
@@ -9186,8 +9617,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         }}
       >
         <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '1 1 auto', minWidth: 0 }}>
               <Box sx={{ 
                 width: 28, 
                 height: 28, 
@@ -9195,27 +9626,136 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 bgcolor: '#2196F3', 
                 display: 'flex', 
                 alignItems: 'center', 
-                justifyContent: 'center' 
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
                 <BarChartIcon sx={{ color: 'white', fontSize: 16 }} />
               </Box>
-              <Box>
+              <Box sx={{ minWidth: 0 }}>
                 <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
-                  Mitarbeitsstatistik
+                  Epochalstatistik
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2 }}>
                   {participationGroupName}
                 </Typography>
               </Box>
             </Box>
+            {/* Export-Buttons kompakt nebeneinander in der Leiste */}
+            <Box sx={{ display: 'flex', gap: 0.3, alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<TableChartIcon sx={{ fontSize: 12 }} />}
+                onClick={exportToCSV}
+                disabled={!participationStats.length}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                CSV
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<TableChartIcon sx={{ fontSize: 12 }} />}
+                onClick={exportToExcel}
+                disabled={!participationStats.length}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                Excel
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<PictureAsPdfIcon sx={{ fontSize: 12 }} />}
+                onClick={exportToPDF}
+                disabled={!participationStats.length}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                PDF
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<DescriptionIcon sx={{ fontSize: 12 }} />}
+                onClick={exportToWord}
+                disabled={!participationStats.length}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                Word
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<CodeIcon sx={{ fontSize: 12 }} />}
+                onClick={exportToJSON}
+                disabled={!participationStats.length}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                JSON
+              </Button>
+            </Box>
             <IconButton 
               size="small" 
               onClick={handleStatisticsClose}
               sx={{ 
-                ml: 1, 
                 p: 0,
                 width: 20,
                 height: 20,
+                flexShrink: 0,
                 '& svg': {
                   width: '100%',
                   height: '100%'
@@ -9361,7 +9901,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         <Box sx={{ width: '1px', height: '16px', bgcolor: '#d0d0d0', mx: 0.5 }} />
                         
                         {epo1 && (
-                          <Tooltip title="EPO 1 (Zeitraum 1)" arrow>
+                          <Tooltip title="Epo 1 (Zeitraum 1)" arrow>
                             <Typography 
                               variant="body2" 
                               sx={{ 
@@ -9378,7 +9918,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         )}
                         
                         {epo2 && (
-                          <Tooltip title="EPO 2 (Zeitraum 2)" arrow>
+                          <Tooltip title="Epo 2 (Zeitraum 2)" arrow>
                             <Typography 
                               variant="body2" 
                               sx={{ 
@@ -9439,12 +9979,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         
         <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
           <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 2 }}>
-            Geben Sie an, wie viele Stunden zu jedem Zeitraum gehören. Am Ende werden automatisch EPO 1 und EPO 2 berechnet.
+            Geben Sie an, wie viele Stunden zu jedem Zeitraum gehören. Am Ende werden automatisch Epo 1 und Epo 2 berechnet.
           </Typography>
           
           <TextField
             fullWidth
-            label="Zeitraum 1 (EPO 1) - Anzahl Stunden"
+            label="Zeitraum 1 (Epo 1) - Anzahl Stunden"
             type="number"
             value={tempPeriod1Hours}
             onChange={(e) => setTempPeriod1Hours(e.target.value)}
@@ -9455,7 +9995,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           
           <TextField
             fullWidth
-            label="Zeitraum 2 (EPO 2) - Anzahl Stunden"
+            label="Zeitraum 2 (Epo 2) - Anzahl Stunden"
             type="number"
             value={tempPeriod2Hours}
             onChange={(e) => setTempPeriod2Hours(e.target.value)}
@@ -9569,6 +10109,113 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             data-send-message-button
           >
             {sendingMessage ? 'Wird gesendet...' : 'Senden'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Kommentar-Dialog für Schüler */}
+      <Dialog 
+        open={commentModalOpen} 
+        onClose={handleCommentClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
+              Kommentar für {commentStudentName}
+            </Typography>
+            <IconButton 
+              size="small" 
+              onClick={handleCommentClose}
+              sx={{ 
+                p: 0,
+                width: 20,
+                height: 20,
+                '& svg': {
+                  width: '100%',
+                  height: '100%'
+                }
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
+          <TextField
+            inputRef={commentInputRef}
+            label="Kommentar"
+            fullWidth
+            multiline
+            rows={6}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            onKeyDown={(e) => {
+              // Strg+Enter oder Cmd+Enter speichert auch im TextField
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                handleCommentSave();
+              }
+            }}
+            margin="normal"
+            placeholder="Kommentar eingeben... (Enter zum Speichern, Strg+Enter im Textfeld)"
+            sx={{ mt: 0 }}
+          />
+          {/* Vordefinierte Schlagworte */}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', mb: 1, display: 'block' }}>
+              Schnellauswahl:
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {Object.entries(commentShortcuts).map(([color, shortcuts]) => (
+                <Box key={color} sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {shortcuts.map((shortcut: string) => (
+                    <Chip
+                      key={shortcut}
+                      label={shortcut}
+                      size="small"
+                      onClick={() => {
+                        const current = commentText.trim();
+                        const newText = current ? `${current}, ${shortcut}` : shortcut;
+                        setCommentText(newText);
+                        commentInputRef.current?.focus();
+                      }}
+                      sx={{ 
+                        fontSize: '0.65rem',
+                        height: '24px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  ))}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 1.5, pb: 1.5, pt: 1 }}>
+          <Button onClick={handleCommentClose} size="small" sx={{ fontSize: '0.75rem' }}>
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleCommentSave} 
+            variant="contained" 
+            size="small" 
+            sx={{ fontSize: '0.75rem' }}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCommentSave();
+              }
+            }}
+          >
+            Speichern
           </Button>
         </DialogActions>
       </Dialog>

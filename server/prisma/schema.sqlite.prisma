@@ -99,6 +99,7 @@ model LearningGroup {
   fileShares           FileShare[]
   participations       Participation[]
   epoGrades            ParticipationPeriodGrade[]
+  lessonKeywords       LessonKeyword[]
   teacher              User                       @relation("TeacherGroups", fields: [teacherId], references: [id])
   students             User[]                     @relation("StudentGroups")
 }
@@ -488,8 +489,19 @@ model ParticipationPeriodGrade {
 
   @@unique([groupId, studentId, period])
   @@index([groupId])
-  @@index([studentId])
-  @@index([groupId, period])
+}
+
+model LessonKeyword {
+  id          String        @id @default(uuid())
+  groupId     String
+  lessonIndex Int
+  keyword     String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  group       LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, lessonIndex])
+  @@index([groupId])
 }
 
 // Adventskalender System

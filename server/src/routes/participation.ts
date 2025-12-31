@@ -970,5 +970,101 @@ router.get('/:groupId/epo-grades', async (req: Request, res: Response) => {
   }
 });
 
+// Get lesson keyword for a specific lesson
+router.get('/:groupId/:lessonIndex/keyword', async (req: Request, res: Response) => {
+  try {
+    const { groupId, lessonIndex } = req.params;
+    const lessonIndexNum = parseInt(lessonIndex);
+    
+    if (isNaN(lessonIndexNum)) {
+      return res.status(400).json({ error: 'Ungültiger lessonIndex' });
+    }
+    
+    const keyword = await prisma.lessonKeyword.findUnique({
+      where: {
+        groupId_lessonIndex: {
+          groupId,
+          lessonIndex: lessonIndexNum
+        }
+      }
+    });
+    
+    res.json({ keyword: keyword?.keyword || null });
+  } catch (error) {
+    console.error('Error fetching lesson keyword:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Save or update lesson keyword
+router.put('/:groupId/:lessonIndex/keyword', async (req: Request, res: Response) => {
+  try {
+    const { groupId, lessonIndex } = req.params;
+    const { keyword } = req.body;
+    const lessonIndexNum = parseInt(lessonIndex);
+    
+    if (isNaN(lessonIndexNum)) {
+      return res.status(400).json({ error: 'Ungültiger lessonIndex' });
+    }
+    
+    // Prüfe ob die Lerngruppe existiert
+    const group = await prisma.learningGroup.findUnique({
+      where: { id: groupId }
+    });
+    
+    if (!group) {
+      return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+    }
+    
+    const lessonKeyword = await prisma.lessonKeyword.upsert({
+      where: {
+        groupId_lessonIndex: {
+          groupId,
+          lessonIndex: lessonIndexNum
+        }
+      },
+      update: {
+        keyword: keyword || '',
+        updatedAt: new Date()
+      },
+      create: {
+        groupId,
+        lessonIndex: lessonIndexNum,
+        keyword: keyword || ''
+      }
+    });
+    
+    res.json(lessonKeyword);
+  } catch (error) {
+    console.error('Error saving lesson keyword:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get all lesson keywords for a group
+router.get('/:groupId/keywords', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    
+    const keywords = await prisma.lessonKeyword.findMany({
+      where: { groupId },
+      orderBy: {
+        lessonIndex: 'asc'
+      }
+    });
+    
+    // Konvertiere zu einem Objekt mit lessonIndex als Key
+    const keywordsMap: {[lessonIndex: number]: string} = {};
+    keywords.forEach(k => {
+      keywordsMap[k.lessonIndex] = k.keyword;
+    });
+    
+    res.json(keywordsMap);
+  } catch (error) {
+    console.error('Error fetching lesson keywords:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 export default router;
 
