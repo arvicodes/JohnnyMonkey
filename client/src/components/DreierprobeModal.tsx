@@ -149,6 +149,7 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   const [sentMessagesInfo, setSentMessagesInfo] = useState<{ date: string; hour: string; count: number } | null>(null);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentHour, setAppointmentHour] = useState('');
+  const [gradesReleased, setGradesReleased] = useState(false);
   const [emailTemplate, setEmailTemplate] = useState(`Liebe/r XYZ,
 
 ich hoffe es geht dir nicht allzu schlecht und wünsche dir auf jeden Fall schon einmal gute Besserung und dass du dich gut und schnell erholst.
@@ -169,8 +170,61 @@ Vera Christ`);
   useEffect(() => {
     if (open && learningGroupStudents.length > 0 && submissions.length > 0) {
       checkSentMessages();
+      checkGradesReleased();
     }
-  }, [open, learningGroupStudents, submissions]);
+  }, [open, learningGroupStudents, submissions, kaFilePath]);
+
+  const checkGradesReleased = async () => {
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const response = await fetch(`/api/ka-corrections/release-status?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGradesReleased(data.isReleased || false);
+      }
+    } catch (error) {
+      console.error('Fehler beim Prüfen der Freigabe:', error);
+    }
+  };
+
+  const handleReleaseAllGrades = async () => {
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const response = await fetch('/api/ka-corrections/release-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        },
+        body: JSON.stringify({ kaFilePath })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGradesReleased(data.isReleased || false);
+      } else {
+        const errorText = await response.text();
+        let errorMessage = 'Unbekannter Fehler';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        console.error('Fehler beim Freigeben:', errorMessage);
+        alert(`❌ Fehler: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Freigeben:', error);
+      alert(`❌ Fehler beim Freigeben der Noten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    }
+  };
 
   const checkSentMessages = async () => {
     try {
@@ -267,9 +321,22 @@ Vera Christ`);
     }
   };
 
+  // Berechne maximale Punktzahl (wie in KACorrectionMode)
+  const calculateMaxTotalPoints = (): number => {
+    // Aufgabe 1: 8 Punkte
+    const task1Points = 8;
+    // Aufgabe 2: 3 Punkte
+    const task2Points = 3;
+    // Aufgabe 3: 4 Teilaufgaben × 3.5 Punkte = 14 Punkte
+    const task3Points = 14;
+    return task1Points + task2Points + task3Points; // 25 Punkte
+  };
+
+  const maxTotalPoints = calculateMaxTotalPoints();
+
   // Berechne Noten für alle Submissions
   const submissionsWithGrades = submissions.map(sub => {
-    const gradeData = calculateGrade(sub.totalPoints, 38);
+    const gradeData = calculateGrade(sub.totalPoints, maxTotalPoints);
     return {
       ...sub,
       grade: gradeData.numeric,
@@ -287,7 +354,7 @@ Vera Christ`);
   const averagePoints = submissionsWithGrades.length > 0
     ? submissionsWithGrades.reduce((sum, sub) => sum + sub.totalPoints, 0) / submissionsWithGrades.length
     : 0;
-  const averageGradeData = calculateGrade(averagePoints, 38);
+  const averageGradeData = calculateGrade(averagePoints, maxTotalPoints);
 
   // Notenverteilung
   const gradeDistribution: Record<string, number> = {};
@@ -340,28 +407,57 @@ Vera Christ`);
             Dreierprobe-Statistik
           </Typography>
         </Box>
-        <IconButton
-          onClick={onClose}
-          sx={{ 
-            color: '#fff', 
-            p: 0,
-            minWidth: 32,
-            width: 32,
-            height: 32,
-            '& .MuiSvgIcon-root': {
-              fontSize: 20
-            }
-          }}
-        >
-          <Close sx={{ width: '100%', height: '100%' }} />
-        </IconButton>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Button
+            variant="contained"
+            onClick={handleReleaseAllGrades}
+            size="small"
+            sx={{
+              minWidth: 'auto',
+              height: 28,
+              px: 1.5,
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              borderRadius: 1,
+              bgcolor: gradesReleased ? '#4caf50' : '#f44336',
+              color: 'white',
+              boxShadow: gradesReleased 
+                ? '0 1px 4px rgba(76, 175, 80, 0.3)' 
+                : '0 1px 4px rgba(244, 67, 54, 0.3)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                bgcolor: gradesReleased ? '#45a049' : '#da190b',
+                boxShadow: gradesReleased 
+                  ? '0 2px 6px rgba(76, 175, 80, 0.4)' 
+                  : '0 2px 6px rgba(244, 67, 54, 0.4)',
+                transform: 'translateY(-1px)'
+              },
+              '&:active': {
+                transform: 'translateY(0px)'
+              }
+            }}
+          >
+            Alle Noten freigeben
+          </Button>
+          <IconButton
+            onClick={onClose}
+            sx={{ 
+              color: '#fff', 
+              p: 0,
+              minWidth: 32,
+              width: 32,
+              height: 32,
+              '& .MuiSvgIcon-root': {
+                fontSize: 20
+              }
+            }}
+          >
+            <Close sx={{ width: '100%', height: '100%' }} />
+          </IconButton>
+        </Box>
       </DialogTitle>
       
       <DialogContent sx={{ p: 2, bgcolor: '#f5f7fa' }}>
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-          {kaFilePath}
-        </Typography>
-
         {/* Tabs - nur anzeigen wenn fehlende Schüler vorhanden */}
         {missingStudents.length > 0 && (
           <Tabs value={emailTab} onChange={(_, v) => setEmailTab(v)} sx={{ mb: 2 }}>
@@ -719,12 +815,6 @@ Vera Christ`);
           </Box>
         )}
       </DialogContent>
-
-      <DialogActions sx={{ p: 2, bgcolor: '#fff' }}>
-        <Button onClick={onClose} variant="contained" color="primary">
-          Schließen
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 };

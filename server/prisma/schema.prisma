@@ -547,6 +547,7 @@ model KASubmission {
   answers     String // JSON mit allen Antworten des Schülers
   autoPoints  Float          @default(0) // Automatisch berechnete Punkte
   totalPoints Float          @default(0) // Gesamtpunkte nach Korrektur
+  isReleased  Boolean        @default(false) // Freigabe für Schüler
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   student     User           @relation("StudentKASubmissions", fields: [studentId], references: [id], onDelete: Cascade)

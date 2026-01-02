@@ -89,6 +89,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [resetting, setResetting] = useState(false);
   const [showDreierprobe, setShowDreierprobe] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [learningGroupStudents, setLearningGroupStudents] = useState<Array<{ id: string; name: string; loginCode: string }>>([]);
 
   // Helper-Funktion: Bestimmt den Dateityp für Texte
   const getFileTypeName = (): string => {
@@ -104,6 +105,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   useEffect(() => {
     loadSubmissions();
   }, [kaFilePath]);
+
+  useEffect(() => {
+    loadLearningGroup();
+  }, [submissions]);
 
   const loadSubmissions = async () => {
     try {
@@ -150,6 +155,47 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     }
   };
 
+  const loadLearningGroup = async () => {
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      
+      // Lade alle Lerngruppen des Lehrers
+      const response = await fetch('/api/learning-groups', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        }
+      });
+
+      if (response.ok) {
+        const groups = await response.json();
+        
+        // Wenn Submissions vorhanden, finde die Gruppe basierend auf dem ersten Schüler
+        if (submissions.length > 0) {
+          const firstStudentId = submissions[0]?.student?.id;
+          if (firstStudentId) {
+            const group = groups.find((g: any) => 
+              g.students?.some((s: any) => s.id === firstStudentId)
+            );
+            
+            if (group && group.students) {
+              setLearningGroupStudents(group.students);
+              return;
+            }
+          }
+        }
+        
+        // Wenn keine Submissions oder keine passende Gruppe gefunden,
+        // nimm die erste verfügbare Gruppe
+        if (groups.length > 0 && groups[0].students) {
+          setLearningGroupStudents(groups[0].students);
+        }
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Lerngruppe:', error);
+    }
+  };
+
   const loadCorrections = async (submissionId: string) => {
     try {
       const loginCode = localStorage.getItem('loginCode') || '';
@@ -169,13 +215,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       
       if (submission) {
         setSelectedSubmission(submission);
-        // Lade bestehende Korrekturen
-        const correctionsMap: Record<string, { points?: number; comment?: string }> = {};
+        // Lade bestehende Korrekturen - RESET für neuen Schüler (nicht preserve!)
+        const correctionsMap: Record<string, { points?: number; comment?: string; constructionPoints?: number }> = {};
         submission.corrections?.forEach((corr: KACorrection) => {
+          // Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d): manualPoints sind die Konstruktionspunkte
+          if (corr.taskNumber.match(/^3[a-d]$/)) {
+            correctionsMap[corr.taskNumber] = {
+              constructionPoints: corr.manualPoints,
+              comment: corr.comment || ''
+            };
+          } else {
+            // Für andere Aufgaben: manualPoints sind die normalen Punkte
           correctionsMap[corr.taskNumber] = {
             points: corr.manualPoints,
             comment: corr.comment || ''
           };
+          }
         });
         setCorrections(correctionsMap);
       }
@@ -234,11 +289,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       const data = await response.json();
       console.log('✅ Korrektur gespeichert:', data);
       
-      // Update local state
+      // Update local state - preserve existing constructionPoints
       const correctionKey = submissionIdOverride ? `${submissionIdOverride}_${taskNumber}` : taskNumber;
       setCorrections(prev => ({
         ...prev,
-        [correctionKey]: { points, comment }
+        [correctionKey]: { ...prev[correctionKey], points, comment }
       }));
 
       // Reload submission to get updated total points
@@ -248,6 +303,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         await loadSubmissions();
       } else if (selectedSubmission) {
         await loadCorrections(selectedSubmission.id);
+        // Reload all submissions to update totals and breadcrumb status
+        await loadSubmissions();
       }
     } catch (err) {
       console.error('❌ Fehler beim Speichern der Korrektur:', err);
@@ -1139,8 +1196,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           // SVG-Grafiken (als schöner Hinweis)
           const svgs = taskContent.querySelectorAll('svg');
           if (svgs.length > 0) {
-            paragraphs.push(
-              new Paragraph({
+              paragraphs.push(
+                new Paragraph({
                 children: [
                   createTextRun('📐 ', { size: 24 }),
                   createTextRun('Koordinatensystem mit Konstruktion', { 
@@ -1205,8 +1262,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     Array.from(tempDiv.childNodes).forEach((node) => processNode(node));
                     
                     if (runs.length > 0) {
-              paragraphs.push(
-                new Paragraph({
+                  paragraphs.push(
+                    new Paragraph({
                           children: runs,
                           alignment: AlignmentType.JUSTIFIED,
                           spacing: { after: 120, line: 300 }
@@ -1400,6 +1457,132 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         </CardContent>
       </Card>
 
+      {/* Breadcrumb-Liste aller Schüler */}
+      {learningGroupStudents.length > 0 && (
+        <Box sx={{ 
+          mb: 1, 
+          p: 0.75, 
+          bgcolor: '#fff', 
+          borderRadius: 1, 
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 0.5,
+          alignItems: 'center'
+        }}>
+          {/* Schüler mit Abgaben */}
+          {submissions.map((submission, index) => {
+            // Prüfe ob korrigiert: status === 'corrected' oder corrections vorhanden
+            const isCorrected = submission.status === 'corrected' || 
+                                (submission.corrections && submission.corrections.length > 0);
+            const isSelected = selectedSubmission?.id === submission.id;
+            
+            // Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
+            const firstName = submission.student.name.split(' ')[0];
+            
+            // Berechne Note
+            const grade = calculateGrade(submission.totalPoints, maxTotalPoints);
+            
+            // Bestimme Farbe basierend auf Note
+            const getGradeColor = (gradeStr: string): string => {
+              if (gradeStr === '-' || !gradeStr) return '#666';
+              const gradeNum = parseFloat(gradeStr.replace(/[+-]/g, ''));
+              if (gradeNum <= 1.3) return '#2e7d32'; // Grün für 1, 1+, 1-
+              if (gradeNum <= 2.3) return '#4caf50'; // Hellgrün für 2, 2+, 2-
+              if (gradeNum <= 3.3) return '#ff9800'; // Orange für 3, 3+, 3-
+              if (gradeNum <= 4.3) return '#f57c00'; // Dunkelorange für 4, 4+, 4-
+              if (gradeNum <= 5.3) return '#f44336'; // Rot für 5, 5+, 5-
+              return '#c62828'; // Dunkelrot für 6
+            };
+            
+            const gradeColor = getGradeColor(grade);
+            
+            return (
+              <Chip
+                key={submission.id}
+                label={
+                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <span>{firstName}</span>
+                    <span style={{ fontSize: '0.65rem', opacity: 0.9, fontWeight: 600, color: gradeColor }}>{grade}</span>
+                  </Box>
+                }
+                onClick={() => {
+                  setCurrentStudentIndex(index);
+                  setSelectedSubmission(submission);
+                  loadCorrections(submission.id);
+                }}
+                sx={{
+                  height: 24,
+                  fontSize: '0.7rem',
+                  fontWeight: isSelected ? 600 : 400,
+                  bgcolor: isCorrected 
+                    ? '#e8f5e9' 
+                    : '#fff3e0',
+                  color: isCorrected 
+                    ? '#2e7d32' 
+                    : '#f57c00',
+                  border: isSelected 
+                    ? '2px solid #1976d2' 
+                    : isCorrected 
+                      ? '1px solid #4caf50' 
+                      : '1px solid #ffb74d',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    bgcolor: isCorrected 
+                      ? '#c8e6c9' 
+                      : '#ffe0b2',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  },
+                  '&:active': {
+                    transform: 'translateY(0px)'
+                  },
+                  '& .MuiChip-label': {
+                    padding: '0 8px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }
+                }}
+              />
+            );
+          })}
+          
+          {/* Fehlende Schüler (noch nicht abgegeben) */}
+          {learningGroupStudents.length > 0 && submissions.length > 0 && (() => {
+            const submittedStudentIds = new Set(submissions.map(sub => sub.student.id));
+            const missingStudents = learningGroupStudents.filter(
+              student => !submittedStudentIds.has(student.id)
+            );
+            
+            return missingStudents.map((student) => {
+              const firstName = student.name.split(' ')[0];
+              
+              return (
+                <Chip
+                  key={student.id}
+                  label={firstName}
+                  sx={{
+                    height: 24,
+                    fontSize: '0.7rem',
+                    fontWeight: 400,
+                    bgcolor: '#ffebee',
+                    color: '#b71c1c',
+                    opacity: 0.5,
+                    border: '1px solid #ef9a9a',
+                    cursor: 'default',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      opacity: 0.7
+                    }
+                  }}
+                />
+              );
+            });
+          })()}
+        </Box>
+      )}
+
       {/* Tabs */}
       {submissions.length > 0 && (
       <Tabs 
@@ -1589,6 +1772,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 // Berechne erreichte und maximale Punkte für diese Aufgabe
                 let totalPoints = 0;
                 let achievedPoints = 0;
+                let autoPoints = 0;
+                let manualPoints = 0;
                 
                 if (taskNum === '3') {
                   // Aufgabe 3: Spezielle Behandlung - Koordinatenpunkte (automatisch, 0.25 pro Koordinate) + Konstruktionspunkte (manuell, 0-2)
@@ -1616,6 +1801,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         ? subtaskCorrection.constructionPoints 
                         : 0;
                       
+                      autoPoints += coordinatePoints;
+                      manualPoints += constructionPoints;
                       achievedPoints += coordinatePoints + constructionPoints;
                       
                       // Gesamtpunkte: 3.5 Punkte pro Teilaufgabe (1.5 Punkte für Koordinaten maximal + 2 Punkte Konstruktion)
@@ -1628,14 +1815,20 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     const maxPoints = pointsDistribution[taskId] || 0;
                     totalPoints += maxPoints;
                     
+                    if (taskNum === '1') {
+                      // Aufgabe 1: Manuelle Korrektur
+                      const correction = corrections[taskId] || {};
+                      const points = correction.points || 0;
+                      manualPoints += points;
+                      achievedPoints += points;
+                    } else if (taskNum === '2') {
+                      // Aufgabe 2: Automatische Korrektur
                     if (isCorrect === true) {
+                        autoPoints += maxPoints;
                       achievedPoints += maxPoints;
                     } else if (isCorrect === false) {
                       achievedPoints += 0;
-                    } else if (taskNum === '1') {
-                      // Aufgabe 1: Manuelle Korrektur, verwende points aus correction falls vorhanden
-                      const correction = corrections[taskId] || {};
-                      achievedPoints += correction.points || 0;
+                      }
                     }
                   });
                 }
@@ -1651,7 +1844,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       borderBottom: '2px solid #1976d2',
                       pb: 0.5
                     }}>
-                      Aufgabe {taskNum} <span style={{ color: '#666', fontWeight: 500, fontSize: '0.85rem' }}>({achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)})</span>
+                      Aufgabe {taskNum} <span style={{ color: '#666', fontWeight: 500, fontSize: '0.85rem' }}>
+                        {taskNum === '1' ? (
+                          <>{(manualPoints % 1 === 0 ? manualPoints : manualPoints.toFixed(2))} (manuell) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}</>
+                        ) : taskNum === '2' ? (
+                          <>{(autoPoints % 1 === 0 ? autoPoints : autoPoints.toFixed(2))} (auto) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}</>
+                        ) : (
+                          <>{(autoPoints % 1 === 0 ? autoPoints : autoPoints.toFixed(2))} (auto) + {(manualPoints % 1 === 0 ? manualPoints : manualPoints.toFixed(2))} (manuell) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}</>
+                        )}
+                      </span>
             </Typography>
             
                     {/* Lösungen dieser Aufgabe */}
@@ -1790,12 +1991,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   <CardContent sx={{ p: 0.5, '&:last-child': { pb: 0.5 } }}>
                                     {/* Header: Teilaufgabe + Punkte */}
                                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.25}>
-                                      <Box display="flex" alignItems="center" gap={0.5}>
+                                      <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
                                         <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.7rem' }}>
                                           A3 {subtask}
                                         </Typography>
                                     <Typography variant="caption" sx={{ color: '#666', fontSize: '0.65rem' }}>
-                                      {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}
+                                          {(coordinateAchieved % 1 === 0 ? coordinateAchieved : coordinateAchieved.toFixed(2))} (auto) + {(constructionAchieved % 1 === 0 ? constructionAchieved : constructionAchieved.toFixed(2))} (manuell) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}
                                     </Typography>
                                       </Box>
                                       <Box display="flex" gap={0.25} alignItems="center">
@@ -1911,36 +2112,40 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                     {needsManualCorrection && (
                                       <Box sx={{ mt: 0.5 }}>
                                         <Box display="flex" alignItems="center" gap={0.5}>
+                                          <Box sx={{ position: 'relative', width: 100 }}>
                                           <TextField
                                             label="Konstruktion"
                                             type="number"
                                             value={correction.constructionPoints ?? ''}
                                             onChange={(e) => {
-                                              const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                                const numValue = parseFloat(e.target.value);
+                                                const value = e.target.value === '' ? undefined : (!isNaN(numValue) ? numValue : undefined);
                                               setCorrections(prev => ({
                                                 ...prev,
                                                 [subtaskKey]: { ...prev[subtaskKey], constructionPoints: value }
                                               }));
                                             }}
                                             onBlur={() => {
-                                              // Speichere die Konstruktionspunkte
+                                                // Speichere die Konstruktionspunkte als manualPoints für diese Teilaufgabe
                                               const currentCorrection = corrections[subtaskKey] || {};
-                                              saveCorrection(subtaskKey, currentCorrection.points, currentCorrection.comment);
+                                                const constructionPoints = currentCorrection.constructionPoints;
+                                                // Speichere constructionPoints als manualPoints für diese Teilaufgabe
+                                                saveCorrection(subtaskKey, constructionPoints, currentCorrection.comment);
                                             }}
                                             inputProps={{ min: 0, max: 2, step: 0.5 }}
                                             size="small"
                                             sx={{ 
                                               width: 100,
                                               '& .MuiOutlinedInput-root': {
-                                                bgcolor: '#e3f2fd',
-                                                border: '2px solid #9c27b0',
+                                                  bgcolor: (correction.constructionPoints !== undefined && correction.constructionPoints !== null && !isNaN(correction.constructionPoints) && correction.constructionPoints >= 0 && correction.constructionPoints <= 2) ? '#e8f5e9' : '#ffebee',
+                                                  border: (correction.constructionPoints !== undefined && correction.constructionPoints !== null && !isNaN(correction.constructionPoints) && correction.constructionPoints >= 0 && correction.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336',
                                                 fontSize: '0.7rem',
                                                 height: 32,
                                                 '&:hover': {
-                                                  border: '2px solid #7b1fa2'
+                                                    border: (correction.constructionPoints !== undefined && correction.constructionPoints !== null && !isNaN(correction.constructionPoints) && correction.constructionPoints >= 0 && correction.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336'
                                                 },
                                                 '&.Mui-focused': {
-                                                  border: '2px solid #7b1fa2'
+                                                    border: (correction.constructionPoints !== undefined && correction.constructionPoints !== null && !isNaN(correction.constructionPoints) && correction.constructionPoints >= 0 && correction.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336'
                                                 }
                                               },
                                               '& .MuiInputLabel-root': {
@@ -1948,6 +2153,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                               }
                                             }}
                                           />
+                                            {(correction.constructionPoints !== undefined && correction.constructionPoints !== null && !isNaN(correction.constructionPoints) && correction.constructionPoints >= 0 && correction.constructionPoints <= 2) && (
+                                              <CheckCircle 
+                                                sx={{ 
+                                                  position: 'absolute',
+                                                  right: 4,
+                                                  top: '50%',
+                                                  transform: 'translateY(-50%)',
+                                                  fontSize: 18,
+                                                  color: '#4caf50'
+                                                }}
+                                              />
+                                            )}
+                                          </Box>
                                           <Typography variant="caption" sx={{ color: '#9c27b0', fontSize: '0.7rem', fontWeight: 500 }}>
                                             max: 2
                                           </Typography>
@@ -1962,7 +2180,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                           
                           {/* Kommentarbox für die ganze Aufgabe 3 - direkt nach den Teilaufgaben */}
                           {needsManualCorrection && (
-                            <Grid item xs={12} sx={{ mt: 0.5 }}>
+                            <Grid item xs={12} sx={{ mt: 2 }}>
                               <TextField
                                 label="Kommentar"
                                 multiline
@@ -2147,12 +2365,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         {needsManualCorrection && (
                                   <Box sx={{ mt: 0.5 }}>
                                     <Box display="flex" gap={0.5} alignItems="flex-start">
+                                <Box sx={{ position: 'relative', width: 70 }}>
                                 <TextField
                                   label="Pkt."
                                   type="number"
                                   value={correction.points ?? ''}
                                   onChange={(e) => {
-                                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                      const numValue = parseFloat(e.target.value);
+                                      const value = e.target.value === '' ? undefined : (!isNaN(numValue) ? numValue : undefined);
                                     setCorrections(prev => ({
                                       ...prev,
                                       [taskNum]: { ...prev[taskNum], points: value }
@@ -2164,16 +2384,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   sx={{ 
                                           width: 70,
                                     '& .MuiOutlinedInput-root': {
-                                            bgcolor: '#fff3e0',
-                                            border: '1px solid #ff9800',
+                                        bgcolor: (correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) ? '#e8f5e9' : '#ffebee',
+                                        border: (correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) ? '2px solid #4caf50' : '2px solid #f44336',
                                             fontSize: '0.7rem',
-                                            height: 32
+                                        height: 32,
+                                        pr: (correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) ? 3 : 1
                                     },
                                     '& .MuiInputLabel-root': {
                                             fontSize: '0.65rem'
                                     }
                                   }}
                                 />
+                                  {(correction.points !== undefined && correction.points !== null && !isNaN(correction.points) && correction.points >= 0 && correction.points <= 10) && (
+                                    <CheckCircle 
+                                      sx={{ 
+                                        position: 'absolute',
+                                        right: 4,
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        fontSize: 16,
+                                        color: '#4caf50'
+                                      }}
+                                    />
+                                  )}
+                                </Box>
                                 <TextField
                                   label="Kommentar"
                                   multiline
@@ -2190,6 +2424,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                         placeholder="..."
                                   sx={{ 
                                           flex: 1,
+                                          mt: 2,
                                     '& .MuiOutlinedInput-root': {
                                       bgcolor: '#fff',
                                             fontSize: '0.7rem',
@@ -2352,6 +2587,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             comment: correction?.comment || ''
                           };
 
+                          // Prüfe ob alle Felder für diese Aufgabe ausgefüllt sind
+                          let allFieldsFilled = false;
+                          if (taskNum === '3') {
+                            // Für Aufgabe 3: Prüfe ob alle 4 Teilaufgaben Konstruktionspunkte haben
+                            const subtasks = ['3a', '3b', '3c', '3d'];
+                            allFieldsFilled = subtasks.every(subtask => {
+                              const subtaskKey = `${submission.id}_${subtask}`;
+                              const subtaskCorrection = corrections[subtaskKey] || {};
+                              return subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null;
+                            });
+                          } else {
+                            // Für Aufgabe 1 und 2: Prüfe ob Punkte eingegeben sind
+                            allFieldsFilled = correctionState.points !== undefined && correctionState.points !== null;
+                          }
+
                           return (
                             <TableRow 
                               key={submission.id}
@@ -2361,7 +2611,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                               }}
                             >
                               <TableCell>
-                                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    fontSize: '0.7rem',
+                                    color: allFieldsFilled ? '#2e7d32' : '#d32f2f'
+                                  }}
+                                >
                                     {submission.student.name}
                                   </Typography>
                               </TableCell>
@@ -2383,11 +2640,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                 ))}
                               </TableCell>
                               <TableCell>
+                                <Box sx={{ position: 'relative', width: '70px' }}>
                                 <TextField
                                   type="number"
                                   value={correctionState.points ?? ''}
                                   onChange={(e) => {
-                                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                                      const numValue = parseFloat(e.target.value);
+                                      const value = e.target.value === '' ? undefined : (!isNaN(numValue) ? numValue : undefined);
                                     setCorrections(prev => ({
                                       ...prev,
                                       [correctionKey]: { ...prev[correctionKey], points: value }
@@ -2399,10 +2658,26 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   sx={{ 
                                     width: '70px',
                                     '& .MuiOutlinedInput-root': {
-                                      fontSize: '0.7rem'
+                                        bgcolor: (correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) ? '#e8f5e9' : '#ffebee',
+                                        border: (correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) ? '2px solid #4caf50' : '2px solid #f44336',
+                                        fontSize: '0.7rem',
+                                        pr: (correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) ? 3 : 1
                                     }
                                   }}
                                 />
+                                  {(correctionState.points !== undefined && correctionState.points !== null && !isNaN(correctionState.points) && correctionState.points >= 0 && correctionState.points <= 10) && (
+                                    <CheckCircle 
+                                      sx={{ 
+                                        position: 'absolute',
+                                        right: 4,
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        fontSize: 16,
+                                        color: '#4caf50'
+                                      }}
+                                    />
+                                  )}
+                                </Box>
                               </TableCell>
                               <TableCell>
                                 <TextField
@@ -2420,6 +2695,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   fullWidth
                                   placeholder="..."
                                   sx={{ 
+                                    mt: 2,
                                     '& .MuiOutlinedInput-root': {
                                       bgcolor: '#fff',
                                       fontSize: '0.7rem'

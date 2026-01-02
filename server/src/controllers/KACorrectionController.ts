@@ -542,8 +542,20 @@ export class KACorrectionController {
 
       const studentId = user.id;
 
+      console.log('🔍 checkMySubmission:', {
+        kaFilePath,
+        studentId,
+        loginCode: loginCode ? 'vorhanden' : 'fehlt'
+      });
+
       // Prüfe ob eine Submission für diesen Schüler existiert
-      const submission = await prisma.kASubmission.findUnique({
+      // Versuche auch mit verschiedenen Varianten (HU_ vs HÜ_)
+      const uniquePaths = getPossiblePaths(kaFilePath);
+      
+      console.log('🔍 Prüfe Pfade:', uniquePaths);
+      
+      // Zuerst: Suche mit exaktem Match
+      let submission = await prisma.kASubmission.findUnique({
         where: {
           kaFilePath_studentId: {
             kaFilePath,
@@ -555,14 +567,170 @@ export class KACorrectionController {
           status: true
         }
       });
+      
+      console.log('🔍 Exakte Suche Ergebnis:', submission ? 'gefunden' : 'nicht gefunden');
+      
+      // Falls keine gefunden, versuche mit Varianten
+      if (!submission) {
+        const submissions = await prisma.kASubmission.findMany({
+          where: {
+            OR: uniquePaths.map(path => ({
+              kaFilePath: path
+            })),
+            studentId
+          },
+          select: {
+            id: true,
+            status: true
+          },
+          take: 1
+        });
+        
+        console.log('🔍 Varianten-Suche Ergebnis:', submissions.length > 0 ? 'gefunden' : 'nicht gefunden');
+        
+        if (submissions.length > 0) {
+          submission = submissions[0];
+        }
+      }
+
+      const exists = !!submission;
+      console.log('🔍 Finales Ergebnis:', exists ? 'Submission existiert' : 'Keine Submission');
 
       res.json({ 
-        exists: !!submission,
+        exists,
         submission: submission || null
       });
     } catch (error) {
       console.error('Error checking submission:', error);
       res.status(500).json({ error: 'Fehler beim Prüfen der Abgabe' });
+    }
+  }
+
+  /**
+   * Alle Noten für eine Klassenarbeit freigeben/zurücknehmen (nur für Lehrer)
+   */
+  static async releaseAllGrades(req: Request, res: Response) {
+    try {
+      const { kaFilePath } = req.body;
+      const loginCode = req.headers['x-login-code'] as string;
+
+      if (!loginCode) {
+        return res.status(401).json({ error: 'Nicht angemeldet' });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { loginCode },
+        select: { id: true, role: true }
+      });
+
+      if (!user || user.role !== 'TEACHER') {
+        return res.status(403).json({ error: 'Nur Lehrer können Noten freigeben' });
+      }
+
+      if (!kaFilePath || typeof kaFilePath !== 'string') {
+        return res.status(400).json({ error: 'kaFilePath ist erforderlich' });
+      }
+
+      // Versuche auch mit verschiedenen Varianten zu suchen
+      const uniquePaths = getPossiblePaths(kaFilePath);
+      
+      // Finde alle Submissions für diese KA
+      const submissions = await prisma.kASubmission.findMany({
+        where: {
+          OR: uniquePaths.map(path => ({
+            kaFilePath: path
+          }))
+        }
+      });
+
+      if (submissions.length === 0) {
+        return res.status(404).json({ error: 'Keine Abgaben für diese Klassenarbeit gefunden' });
+      }
+
+      // Prüfe ob alle bereits freigegeben sind
+      const allReleased = submissions.every(sub => sub.isReleased);
+      const newReleaseStatus = !allReleased;
+
+      // Aktualisiere alle Submissions
+      const result = await prisma.kASubmission.updateMany({
+        where: {
+          OR: uniquePaths.map(path => ({
+            kaFilePath: path
+          }))
+        },
+        data: {
+          isReleased: newReleaseStatus
+        }
+      });
+
+      console.log(`✅ ${result.count} Abgabe(n) ${newReleaseStatus ? 'freigegeben' : 'zurückgenommen'}`);
+
+      res.json({ 
+        success: true,
+        isReleased: newReleaseStatus,
+        count: result.count,
+        message: `${result.count} Abgabe(n) wurden ${newReleaseStatus ? 'freigegeben' : 'zurückgenommen'}` 
+      });
+    } catch (error) {
+      console.error('Error releasing grades:', error);
+      res.status(500).json({ error: 'Fehler beim Freigeben der Noten' });
+    }
+  }
+
+  /**
+   * Prüfe Freigabestatus für eine Klassenarbeit (nur für Lehrer)
+   */
+  static async getReleaseStatus(req: Request, res: Response) {
+    try {
+      const { kaFilePath } = req.query;
+      const loginCode = req.headers['x-login-code'] as string;
+
+      if (!loginCode) {
+        return res.status(401).json({ error: 'Nicht angemeldet' });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { loginCode },
+        select: { id: true, role: true }
+      });
+
+      if (!user || user.role !== 'TEACHER') {
+        return res.status(403).json({ error: 'Nur Lehrer können den Freigabestatus prüfen' });
+      }
+
+      if (!kaFilePath || typeof kaFilePath !== 'string') {
+        return res.status(400).json({ error: 'kaFilePath ist erforderlich' });
+      }
+
+      // Versuche auch mit verschiedenen Varianten zu suchen
+      const uniquePaths = getPossiblePaths(kaFilePath);
+      
+      // Finde alle Submissions für diese KA
+      const submissions = await prisma.kASubmission.findMany({
+        where: {
+          OR: uniquePaths.map(path => ({
+            kaFilePath: path
+          }))
+        },
+        select: {
+          isReleased: true
+        }
+      });
+
+      if (submissions.length === 0) {
+        return res.json({ isReleased: false, count: 0 });
+      }
+
+      // Prüfe ob alle freigegeben sind
+      const allReleased = submissions.length > 0 && submissions.every(sub => sub.isReleased);
+
+      res.json({ 
+        isReleased: allReleased,
+        count: submissions.length
+      });
+    } catch (error) {
+      console.error('Error checking release status:', error);
+      res.status(500).json({ error: 'Fehler beim Prüfen des Freigabestatus' });
     }
   }
 }
