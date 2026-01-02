@@ -142,6 +142,33 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       console.log('📋 Daten:', data);
       setSubmissions(data.submissions || []);
       
+      // Lade alle Korrekturen für alle Submissions in den State (für aufgabenweise Ansicht)
+      const allCorrections: Record<string, { points?: number; comment?: string; constructionPoints?: number }> = {};
+      data.submissions?.forEach((submission: KASubmission) => {
+        submission.corrections?.forEach((corr: KACorrection) => {
+          const correctionKey = `${submission.id}_${corr.taskNumber}`;
+          // Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d): manualPoints sind die Konstruktionspunkte
+          if (corr.taskNumber.match(/^3[a-d]$/)) {
+            allCorrections[correctionKey] = {
+              constructionPoints: corr.manualPoints,
+              comment: corr.comment || ''
+            };
+          } else if (corr.taskNumber === '3_comment') {
+            // Kommentar für die ganze Aufgabe 3
+            allCorrections[correctionKey] = {
+              comment: corr.comment || ''
+            };
+          } else {
+            // Für andere Aufgaben: manualPoints sind die normalen Punkte
+            allCorrections[correctionKey] = {
+              points: corr.manualPoints,
+              comment: corr.comment || ''
+            };
+          }
+        });
+      });
+      setCorrections(allCorrections);
+      
       if (data.submissions && data.submissions.length > 0) {
         setSelectedSubmission(data.submissions[0]);
         loadCorrections(data.submissions[0].id);
@@ -215,24 +242,44 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       
       if (submission) {
         setSelectedSubmission(submission);
-        // Lade bestehende Korrekturen - RESET für neuen Schüler (nicht preserve!)
-        const correctionsMap: Record<string, { points?: number; comment?: string; constructionPoints?: number }> = {};
+        // Lade bestehende Korrekturen - verwende das gleiche Key-Format wie loadSubmissions
+        // Aktualisiere nur die Korrekturen für diesen Schüler, überschreibe nicht den gesamten State
+        // Wichtig: Setze Werte aus der DB, auch wenn sie bereits im State sind (beim Neuladen)
+        // Aber nur wenn der Wert im State undefined ist, um lokale Änderungen zu erhalten
+        setCorrections(prev => {
+          const updated = { ...prev };
         submission.corrections?.forEach((corr: KACorrection) => {
+            const correctionKey = `${submission.id}_${corr.taskNumber}`;
+            // Setze Wert aus DB, wenn Key nicht existiert oder Wert im State undefined ist
+            const currentValue = updated[correctionKey];
+            if (currentValue === undefined || 
+                (corr.taskNumber.match(/^3[a-d]$/) && currentValue.constructionPoints === undefined) ||
+                (!corr.taskNumber.match(/^3[a-d]$/) && corr.taskNumber !== '3_comment' && currentValue.points === undefined)) {
           // Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d): manualPoints sind die Konstruktionspunkte
           if (corr.taskNumber.match(/^3[a-d]$/)) {
-            correctionsMap[corr.taskNumber] = {
+                updated[correctionKey] = {
+                  ...currentValue,
               constructionPoints: corr.manualPoints,
+                  comment: corr.comment || currentValue?.comment || ''
+                };
+              } else if (corr.taskNumber === '3_comment') {
+                // Kommentar für die ganze Aufgabe 3
+                updated[correctionKey] = {
+                  ...currentValue,
               comment: corr.comment || ''
             };
           } else {
             // Für andere Aufgaben: manualPoints sind die normalen Punkte
-          correctionsMap[corr.taskNumber] = {
+                updated[correctionKey] = {
+                  ...currentValue,
             points: corr.manualPoints,
-            comment: corr.comment || ''
+                  comment: corr.comment || currentValue?.comment || ''
           };
+              }
           }
         });
-        setCorrections(correctionsMap);
+          return updated;
+        });
       }
     } catch (err) {
       console.error('Error loading corrections:', err);
@@ -255,10 +302,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         throw new Error('Nicht angemeldet');
       }
 
+      // Validiere Punkte: Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d) sind nur 0-2 erlaubt
+      let validatedPoints: number | undefined = points;
+      if (taskNumber.match(/^3[a-d]$/)) {
+        if (validatedPoints !== undefined && validatedPoints !== null) {
+          // Wenn Wert außerhalb des Bereichs: nicht speichern (undefined setzen)
+          if (validatedPoints < 0 || validatedPoints > 2) {
+            validatedPoints = undefined;
+          }
+        }
+      }
+
       const requestBody = {
         submissionId: targetSubmissionId,
         taskNumber,
-        manualPoints: points !== undefined && points !== null ? points : null,
+        manualPoints: validatedPoints !== undefined && validatedPoints !== null ? validatedPoints : null,
         comment: comment || ''
       };
 
@@ -291,20 +349,93 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       
       // Update local state - preserve existing constructionPoints
       const correctionKey = submissionIdOverride ? `${submissionIdOverride}_${taskNumber}` : taskNumber;
+      // Für Aufgabe 3 Teilaufgaben (3a, 3b, 3c, 3d): points sind die Konstruktionspunkte
+      if (taskNumber.match(/^3[a-d]$/)) {
+        setCorrections(prev => ({
+          ...prev,
+          [correctionKey]: { ...prev[correctionKey], constructionPoints: points, comment }
+        }));
+      } else {
       setCorrections(prev => ({
         ...prev,
         [correctionKey]: { ...prev[correctionKey], points, comment }
       }));
+      }
 
-      // Reload submission to get updated total points
+      // Update submission in local state without reloading all submissions
+      // This prevents the modal from reloading on every blur event
       if (submissionIdOverride) {
-        await loadCorrections(submissionIdOverride);
-        // Reload all submissions to update totals
-        await loadSubmissions();
+        setSubmissions(prev => prev.map(sub => {
+          if (sub.id === submissionIdOverride) {
+            // Update corrections array
+            const updatedCorrections = sub.corrections ? [...sub.corrections] : [];
+            const existingCorrectionIndex = updatedCorrections.findIndex(c => c.taskNumber === taskNumber);
+            
+            if (existingCorrectionIndex >= 0) {
+              updatedCorrections[existingCorrectionIndex] = {
+                ...updatedCorrections[existingCorrectionIndex],
+                manualPoints: points,
+                comment: comment || ''
+              };
+            } else {
+              updatedCorrections.push({
+                id: '',
+                taskNumber,
+                manualPoints: points,
+                comment: comment || ''
+              });
+            }
+            
+            // Recalculate totalPoints
+            const autoPoints = sub.autoPoints || 0;
+            const manualPointsSum = updatedCorrections.reduce((sum, c) => sum + (c.manualPoints || 0), 0);
+            const newTotalPoints = autoPoints + manualPointsSum;
+            
+            return {
+              ...sub,
+              corrections: updatedCorrections,
+              totalPoints: newTotalPoints
+            };
+          }
+          return sub;
+        }));
       } else if (selectedSubmission) {
-        await loadCorrections(selectedSubmission.id);
-        // Reload all submissions to update totals and breadcrumb status
-        await loadSubmissions();
+        // Update selected submission
+        const updatedCorrections = selectedSubmission.corrections ? [...selectedSubmission.corrections] : [];
+        const existingCorrectionIndex = updatedCorrections.findIndex(c => c.taskNumber === taskNumber);
+        
+        if (existingCorrectionIndex >= 0) {
+          updatedCorrections[existingCorrectionIndex] = {
+            ...updatedCorrections[existingCorrectionIndex],
+            manualPoints: points,
+            comment: comment || ''
+          };
+        } else {
+          updatedCorrections.push({
+            id: '',
+            taskNumber,
+            manualPoints: points,
+            comment: comment || ''
+          });
+        }
+        
+        // Recalculate totalPoints
+        const autoPoints = selectedSubmission.autoPoints || 0;
+        const manualPointsSum = updatedCorrections.reduce((sum, c) => sum + (c.manualPoints || 0), 0);
+        const newTotalPoints = autoPoints + manualPointsSum;
+        
+        const updatedSubmission = {
+          ...selectedSubmission,
+          corrections: updatedCorrections,
+          totalPoints: newTotalPoints
+        };
+        
+        setSelectedSubmission(updatedSubmission);
+        
+        // Also update in submissions array
+        setSubmissions(prev => prev.map(sub => 
+          sub.id === selectedSubmission.id ? updatedSubmission : sub
+        ));
       }
     } catch (err) {
       console.error('❌ Fehler beim Speichern der Korrektur:', err);
@@ -1375,6 +1506,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 variant="outlined"
                 size="small"
                 startIcon={<Description />}
+                tabIndex={-1}
                 sx={{ 
                   fontSize: '0.75rem',
                   px: 1,
@@ -1391,6 +1523,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 size="small"
                 startIcon={<FileDownload />}
                 disabled={exporting}
+                tabIndex={-1}
                 sx={{ 
                   fontSize: '0.75rem',
                   px: 1,
@@ -1409,6 +1542,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     color="primary"
                     size="small"
                     startIcon={<BarChart />}
+                    tabIndex={-1}
                     sx={{ 
                       fontSize: '0.75rem',
                       px: 1,
@@ -1425,6 +1559,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   color="error"
                   size="small"
                   disabled={resetting}
+                  tabIndex={-1}
                   sx={{ 
                     fontSize: '0.75rem',
                     px: 1,
@@ -1439,6 +1574,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               )}
               <IconButton
                 onClick={onClose} 
+                tabIndex={-1}
                 sx={{ 
                   p: 0.5,
                   minWidth: 28,
@@ -1477,6 +1613,87 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                 (submission.corrections && submission.corrections.length > 0);
             const isSelected = selectedSubmission?.id === submission.id;
             
+            // Prüfe ob alle Korrekturfelder von mir ausgefüllt sind
+            const checkAllFieldsFilled = () => {
+              // Bestimme welche Aufgaben vorhanden sind basierend auf den Antworten des Schülers
+              const answers = parseAnswers(submission.answers);
+              const existingTasks = new Set<string>();
+              Object.keys(answers).forEach(taskId => {
+                const match = taskId.match(/a(\d+)/);
+                if (match) {
+                  existingTasks.add(match[1]);
+                }
+              });
+              
+              // Prüfe nur Aufgaben, die manuell korrigiert werden müssen (tasksWithRechenweg)
+              // Aufgabe 1 und 2 werden automatisch korrigiert, daher nicht prüfen
+              
+              // Prüfe Aufgabe 3: Alle 4 Teilaufgaben (3a, 3b, 3c, 3d) müssen Konstruktionspunkte haben
+              // Aber nur wenn Aufgabe 3 vorhanden ist
+              // Verwende die gleiche Logik wie in der aufgabenweisen Ansicht (Zeile 2963-2967)
+              let allTask3Filled = true;
+              if (existingTasks.has('3')) {
+                const subtaskKeys = ['3a', '3b', '3c', '3d'];
+                allTask3Filled = subtaskKeys.filter(subtask => {
+                  // Verwende den gleichen Key-Format wie in der aufgabenweisen Ansicht
+                  const subtaskKey = `${submission.id}_${subtask}`;
+                  // Verwende die gleiche Logik wie in der aufgabenweisen Ansicht: || {} für Fallback
+                  const subtaskCorrection = corrections[subtaskKey] || {};
+                  return subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null;
+                }).length === subtaskKeys.length;
+              }
+              
+              // Prüfe andere Aufgaben mit Rechenweg (4, 5, 6, 7, 8, 9): Punkte müssen gesetzt sein
+              // Nur wenn die Aufgabe vorhanden ist UND manuell korrigiert werden muss
+              const tasksNeedingManualCorrection: string[] = [];
+              if (existingTasks.has('3')) {
+                tasksNeedingManualCorrection.push('3');
+              }
+              // Prüfe auch andere Aufgaben mit Rechenweg, falls vorhanden
+              ['4', '5', '6', '7', '8', '9'].forEach(taskNum => {
+                if (existingTasks.has(taskNum)) {
+                  tasksNeedingManualCorrection.push(taskNum);
+                }
+              });
+              
+              // Prüfe ob alle Aufgaben mit Rechenweg von mir korrigiert wurden
+              const allTasksFilled = tasksNeedingManualCorrection.every(taskNum => {
+                if (taskNum === '3') {
+                  return allTask3Filled;
+                } else {
+                  // Für andere Aufgaben: Punkte müssen von mir gesetzt sein
+                  // Verwende die gleiche Logik wie in der aufgabenweisen Ansicht
+                  const taskKey = `${submission.id}_${taskNum}`;
+                  const taskCorrection = corrections[taskKey] || {};
+                  // Prüfe ob Punkte gesetzt sind
+                  return taskCorrection.points !== undefined && taskCorrection.points !== null;
+                }
+              });
+              
+              // Wenn keine Aufgaben mit Rechenweg vorhanden sind, gelte als ausgefüllt (nichts zu korrigieren)
+              return tasksNeedingManualCorrection.length === 0 || allTasksFilled;
+            };
+            
+            const allFieldsFilled = checkAllFieldsFilled();
+            const hasSomeFieldsFilled = () => {
+              // Prüfe ob mindestens ein Feld ausgefüllt ist
+              const subtaskKeys = ['3a', '3b', '3c', '3d'];
+              const someTask3Filled = subtaskKeys.some(subtask => {
+                const subtaskKey = `${submission.id}_3${subtask}`;
+                const subtaskCorrection = corrections[subtaskKey];
+                return subtaskCorrection?.constructionPoints !== undefined && subtaskCorrection?.constructionPoints !== null;
+              });
+              
+              const task1Key = `${submission.id}_1`;
+              const task2Key = `${submission.id}_2`;
+              const task1Filled = corrections[task1Key]?.points !== undefined && corrections[task1Key]?.points !== null;
+              const task2Filled = corrections[task2Key]?.points !== undefined && corrections[task2Key]?.points !== null;
+              
+              return someTask3Filled || task1Filled || task2Filled;
+            };
+            
+            const someFieldsFilled = hasSomeFieldsFilled();
+            
             // Extrahiere Vornamen (alles vor dem ersten Leerzeichen)
             const firstName = submission.student.name.split(' ')[0];
             
@@ -1502,8 +1719,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 key={submission.id}
                 label={
                   <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <span>{firstName}</span>
-                    <span style={{ fontSize: '0.65rem', opacity: 0.9, fontWeight: 600, color: gradeColor }}>{grade}</span>
+                    <span style={{ color: allFieldsFilled ? '#2e7d32' : '#f57c00' }}>{firstName}</span>
+                    <span style={{ fontSize: '0.65rem', opacity: 0.9, fontWeight: 600, color: allFieldsFilled ? '#2e7d32' : gradeColor }}>{grade}</span>
                   </Box>
                 }
                 onClick={() => {
@@ -1511,25 +1728,26 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                   setSelectedSubmission(submission);
                   loadCorrections(submission.id);
                 }}
+                tabIndex={-1}
                 sx={{
                   height: 24,
                   fontSize: '0.7rem',
                   fontWeight: isSelected ? 600 : 400,
-                  bgcolor: isCorrected 
+                  bgcolor: allFieldsFilled 
                     ? '#e8f5e9' 
                     : '#fff3e0',
-                  color: isCorrected 
+                  color: allFieldsFilled 
                     ? '#2e7d32' 
                     : '#f57c00',
                   border: isSelected 
                     ? '2px solid #1976d2' 
-                    : isCorrected 
+                    : allFieldsFilled 
                       ? '1px solid #4caf50' 
                       : '1px solid #ffb74d',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    bgcolor: isCorrected 
+                    bgcolor: allFieldsFilled 
                       ? '#c8e6c9' 
                       : '#ffe0b2',
                     transform: 'translateY(-1px)',
@@ -1588,6 +1806,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       <Tabs 
         value={mode} 
         onChange={(_, v) => setMode(v)} 
+        TabIndicatorProps={{ tabIndex: -1 }}
         sx={{ 
             mb: 1,
             minHeight: 36,
@@ -1605,8 +1824,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         }}
         indicatorColor="primary"
       >
-        <Tab label="👤 Schülerweise" value="by-student" />
-        <Tab label="📋 Aufgabenweise" value="by-task" />
+        <Tab label="👤 Schülerweise" value="by-student" tabIndex={-1} />
+        <Tab label="📋 Aufgabenweise" value="by-task" tabIndex={-1} />
       </Tabs>
       )}
 
@@ -1634,6 +1853,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     onClick={handlePreviousStudent}
                     disabled={currentStudentIndex === 0}
                     size="small"
+                    tabIndex={-1}
                     sx={{ 
                       p: 0.5,
                       width: 28,
@@ -1665,6 +1885,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     onClick={handleNextStudent}
                     disabled={currentStudentIndex === submissions.length - 1}
                     size="small"
+                    tabIndex={-1}
                     sx={{ 
                       p: 0.5,
                       width: 28,
@@ -1786,7 +2007,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     const subtaskAnswers = subtasks[subtaskLetter] || [];
                     
                     if (subtaskAnswers.length > 0) {
-                      const subtaskCorrection = corrections[subtaskKey] || {};
+                      // Verwende den gleichen Key-Format wie im aufgabenweisen Modus
+                      const subtaskCorrectionKey = selectedSubmission ? `${selectedSubmission.id}_${subtaskKey}` : subtaskKey;
+                      const subtaskCorrection = corrections[subtaskCorrectionKey] || {};
                       
                       // Automatische Bewertung: jede richtige Koordinate = 0.25 Punkte
                       const coordinatePoints = subtaskAnswers.reduce((sum, item) => {
@@ -1797,9 +2020,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       }, 0);
                       
                       // Konstruktionspunkte (0-2) aus manueller Korrektur
-                      const constructionPoints = subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null 
+                      let constructionPoints = subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null 
                         ? subtaskCorrection.constructionPoints 
                         : 0;
+                      // Validiere: nur Werte zwischen 0 und 2 erlauben
+                      if (constructionPoints < 0) constructionPoints = 0;
+                      if (constructionPoints > 2) constructionPoints = 2;
                       
                       autoPoints += coordinatePoints;
                       manualPoints += constructionPoints;
@@ -1845,13 +2071,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                       pb: 0.5
                     }}>
                       Aufgabe {taskNum} <span style={{ color: '#666', fontWeight: 500, fontSize: '0.85rem' }}>
-                        {taskNum === '1' ? (
-                          <>{(manualPoints % 1 === 0 ? manualPoints : manualPoints.toFixed(2))} (manuell) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}</>
-                        ) : taskNum === '2' ? (
-                          <>{(autoPoints % 1 === 0 ? autoPoints : autoPoints.toFixed(2))} (auto) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}</>
-                        ) : (
-                          <>{(autoPoints % 1 === 0 ? autoPoints : autoPoints.toFixed(2))} (auto) + {(manualPoints % 1 === 0 ? manualPoints : manualPoints.toFixed(2))} (manuell) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}</>
-                        )}
+                        {Math.round(achievedPoints)} / {Math.round(totalPoints)}
                       </span>
             </Typography>
             
@@ -1862,7 +2082,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         (() => {
                           const subtasks = groupTask3BySubtask(taskAnswers);
                           const needsManualCorrection = tasksWithRechenweg.includes('3');
-                          const task3CommentKey = '3_comment';
+                          // Verwende den gleichen Key-Format wie im aufgabenweisen Modus
+                          const task3CommentKey = selectedSubmission ? `${selectedSubmission.id}_3_comment` : '3_comment';
                           const task3Comment = corrections[task3CommentKey]?.comment || '';
                           
                           return (
@@ -1882,7 +2103,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
                             // Korrektur für diese Teilaufgabe (z.B. "3a")
                             const subtaskKey = `3${subtask}`;
-                            const correction = corrections[subtaskKey] || {};
+                            // Verwende den gleichen Key-Format wie im aufgabenweisen Modus: ${submission.id}_${subtaskKey}
+                            const correctionKey = selectedSubmission ? `${selectedSubmission.id}_${subtaskKey}` : subtaskKey;
+                            // Wichtig: Nur Fallback verwenden, wenn Key nicht im State existiert (nicht wenn Wert undefined ist)
+                            const savedCorrection = selectedSubmission?.corrections?.find(c => c.taskNumber === subtaskKey);
+                            const correction = corrections[correctionKey] !== undefined
+                              ? corrections[correctionKey]
+                              : {
+                                  constructionPoints: savedCorrection?.manualPoints,
+                                  comment: savedCorrection?.comment || ''
+                                };
                             
                             // Berechne erreichte Punkte: Koordinatenpunkte (automatisch) + Konstruktionspunkte (manuell)
                             // Automatische Bewertung: jede richtige Koordinate = 0.5 Punkte
@@ -1896,9 +2126,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                             }, 0);
                             
                             // Konstruktionspunkte (0-2) aus manueller Korrektur
-                            const constructionAchieved = correction && correction.constructionPoints !== undefined && correction.constructionPoints !== null 
+                            let constructionAchieved = correction && correction.constructionPoints !== undefined && correction.constructionPoints !== null 
                               ? correction.constructionPoints 
                               : 0;
+                            // Validiere: nur Werte zwischen 0 und 2 erlauben
+                            if (constructionAchieved < 0) constructionAchieved = 0;
+                            if (constructionAchieved > 2) constructionAchieved = 2;
                             
                             const achievedPoints = coordinateAchieved + constructionAchieved;
                             const needsManualCorrection = tasksWithRechenweg.includes('3');
@@ -1996,7 +2229,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                           A3 {subtask}
                                         </Typography>
                                     <Typography variant="caption" sx={{ color: '#666', fontSize: '0.65rem' }}>
-                                          {(coordinateAchieved % 1 === 0 ? coordinateAchieved : coordinateAchieved.toFixed(2))} (auto) + {(constructionAchieved % 1 === 0 ? constructionAchieved : constructionAchieved.toFixed(2))} (manuell) = {achievedPoints % 1 === 0 ? achievedPoints : achievedPoints.toFixed(2)} / {totalPoints % 1 === 0 ? totalPoints : totalPoints.toFixed(2)}
+                                          {Math.round(achievedPoints)} / {Math.round(totalPoints)}
                                     </Typography>
                                       </Box>
                                       <Box display="flex" gap={0.25} alignItems="center">
@@ -2098,7 +2331,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                       </Typography>
                                       <Typography variant="caption" sx={{ 
                                         fontFamily: 'monospace',
-                                        fontSize: '0.7rem',
+                                        fontSize: '0.6rem',
+                                        fontStyle: 'italic',
                                         lineHeight: 1.2,
                                         color: '#2e7d32',
                                         display: 'block',
@@ -2118,19 +2352,79 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                             type="number"
                                             value={correction.constructionPoints ?? ''}
                                             onChange={(e) => {
+                                                const inputValue = e.target.value.trim().toLowerCase();
+                                                let value: number | undefined = undefined;
+                                                
+                                                // Wenn "x" eingegeben wird, leere das Feld
+                                                if (inputValue === 'x') {
+                                                  value = undefined;
+                                                } else if (inputValue === '') {
+                                                  value = undefined;
+                                                } else {
                                                 const numValue = parseFloat(e.target.value);
-                                                const value = e.target.value === '' ? undefined : (!isNaN(numValue) ? numValue : undefined);
+                                                  if (!isNaN(numValue)) {
+                                                    // Validiere: nur Werte zwischen 0 und 2 erlauben
+                                                    if (numValue >= 0 && numValue <= 2) {
+                                                      value = numValue;
+                                                    }
+                                                    // Wenn Wert außerhalb des Bereichs: ignorieren (nicht setzen)
+                                                  }
+                                                }
+                                                
+                                                // Nur setzen, wenn Wert gültig ist, leer oder "x"
+                                                // Verwende den gleichen Key-Format wie im aufgabenweisen Modus
+                                                const correctionKey = selectedSubmission ? `${selectedSubmission.id}_${subtaskKey}` : subtaskKey;
+                                                if (value !== undefined || e.target.value === '' || inputValue === 'x') {
                                               setCorrections(prev => ({
                                                 ...prev,
-                                                [subtaskKey]: { ...prev[subtaskKey], constructionPoints: value }
+                                                [correctionKey]: { ...prev[correctionKey], constructionPoints: value }
                                               }));
+                                                }
                                             }}
-                                            onBlur={() => {
+                                            onBlur={(e) => {
                                                 // Speichere die Konstruktionspunkte als manualPoints für diese Teilaufgabe
-                                              const currentCorrection = corrections[subtaskKey] || {};
-                                                const constructionPoints = currentCorrection.constructionPoints;
-                                                // Speichere constructionPoints als manualPoints für diese Teilaufgabe
-                                                saveCorrection(subtaskKey, constructionPoints, currentCorrection.comment);
+                                                // Verwende den gleichen Key-Format wie im aufgabenweisen Modus
+                                                const correctionKey = selectedSubmission ? `${selectedSubmission.id}_${subtaskKey}` : subtaskKey;
+                                              const currentCorrection = corrections[correctionKey] || {};
+                                                let constructionPoints = currentCorrection.constructionPoints;
+                                                
+                                                // Prüfe den aktuellen Wert im TextField
+                                                const inputValue = e.target.value.trim().toLowerCase();
+                                                
+                                                // Wenn "x" eingegeben wurde, leere das Feld
+                                                if (inputValue === 'x') {
+                                                  constructionPoints = undefined;
+                                                  // Aktualisiere den State
+                                                  setCorrections(prev => ({
+                                                    ...prev,
+                                                    [correctionKey]: { ...prev[correctionKey], constructionPoints: undefined }
+                                                  }));
+                                                  // Leere das TextField
+                                                  e.target.value = '';
+                                                } else if (inputValue !== '') {
+                                                  const numValue = parseFloat(inputValue);
+                                                  if (!isNaN(numValue)) {
+                                                    // Validiere: nur Werte zwischen 0 und 2 erlauben
+                                                    if (numValue >= 0 && numValue <= 2) {
+                                                      constructionPoints = numValue;
+                                                      // Aktualisiere den State mit dem neuen Wert
+                                                      setCorrections(prev => ({
+                                                        ...prev,
+                                                        [correctionKey]: { ...prev[correctionKey], constructionPoints }
+                                                      }));
+                                                    } else {
+                                                      // Ungültiger Wert: auf vorherigen Wert zurücksetzen oder undefined
+                                                      constructionPoints = currentCorrection.constructionPoints;
+                                                      // Setze das TextField auf den gültigen Wert zurück
+                                                      e.target.value = constructionPoints !== undefined ? String(constructionPoints) : '';
+                                                    }
+                                                  }
+                                                }
+                                                
+                                                // Speichere nur, wenn ein gültiger Wert vorhanden ist (oder undefined für "x")
+                                                if (constructionPoints === undefined || (constructionPoints !== null && constructionPoints >= 0 && constructionPoints <= 2)) {
+                                                saveCorrection(subtaskKey, constructionPoints, currentCorrection.comment, selectedSubmission?.id);
+                                                }
                                             }}
                                             inputProps={{ min: 0, max: 2, step: 0.5 }}
                                             size="small"
@@ -2194,7 +2488,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                 }}
                                 onBlur={() => {
                                   const currentCorrection = corrections[task3CommentKey] || {};
-                                  saveCorrection(task3CommentKey, currentCorrection.points, currentCorrection.comment);
+                                  saveCorrection('3_comment', currentCorrection.points, currentCorrection.comment, selectedSubmission?.id);
                                 }}
                                 size="small"
                                 placeholder="Kommentar für die gesamte Aufgabe 3..."
@@ -2371,8 +2665,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   type="number"
                                   value={correction.points ?? ''}
                                   onChange={(e) => {
+                                      const inputValue = e.target.value.trim().toLowerCase();
+                                      let value: number | undefined = undefined;
+                                      
+                                      // Wenn "x" eingegeben wird, leere das Feld
+                                      if (inputValue === 'x') {
+                                        value = undefined;
+                                      } else if (inputValue === '') {
+                                        value = undefined;
+                                      } else {
                                       const numValue = parseFloat(e.target.value);
-                                      const value = e.target.value === '' ? undefined : (!isNaN(numValue) ? numValue : undefined);
+                                        value = !isNaN(numValue) ? numValue : undefined;
+                                      }
+                                      
                                     setCorrections(prev => ({
                                       ...prev,
                                       [taskNum]: { ...prev[taskNum], points: value }
@@ -2572,35 +2877,387 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 0.75, fontSize: '0.75rem' } }}>
                       <TableHead>
                         <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                          {taskNum === '3' ? (
+                            <>
+                              <TableCell sx={{ fontWeight: 700, width: '12%', fontSize: '0.7rem' }}>Schüler</TableCell>
+                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3a</TableCell>
+                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3b</TableCell>
+                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3c</TableCell>
+                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3d</TableCell>
+                              <TableCell sx={{ fontWeight: 700, width: '16%', fontSize: '0.7rem' }}>Kommentar</TableCell>
+                            </>
+                          ) : (
+                            <>
                           <TableCell sx={{ fontWeight: 700, width: '20%', fontSize: '0.7rem' }}>Schüler</TableCell>
                           <TableCell sx={{ fontWeight: 700, width: '30%', fontSize: '0.7rem' }}>Antwort</TableCell>
                           <TableCell sx={{ fontWeight: 700, width: '15%', fontSize: '0.7rem' }}>Pkt.</TableCell>
                           <TableCell sx={{ fontWeight: 700, width: '35%', fontSize: '0.7rem' }}>Kommentar</TableCell>
+                            </>
+                          )}
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {taskSubmissions.map(({ submission, answers }, idx) => {
                           const correction = submission.corrections?.find(c => c.taskNumber === taskNum);
                           const correctionKey = `${submission.id}_${taskNum}`;
-                          const correctionState = corrections[correctionKey] || {
+                          // Wichtig: Nur Fallback verwenden, wenn Key nicht im State existiert (nicht wenn Wert undefined ist)
+                          const correctionState = corrections[correctionKey] !== undefined
+                            ? corrections[correctionKey]
+                            : {
                             points: correction?.manualPoints,
                             comment: correction?.comment || ''
                           };
 
-                          // Prüfe ob alle Felder für diese Aufgabe ausgefüllt sind
-                          let allFieldsFilled = false;
+                          // Für Aufgabe 3: Zeige Teilaufgaben (a, b, c, d) separat, aber Kommentar nur einmal
                           if (taskNum === '3') {
-                            // Für Aufgabe 3: Prüfe ob alle 4 Teilaufgaben Konstruktionspunkte haben
-                            const subtasks = ['3a', '3b', '3c', '3d'];
-                            allFieldsFilled = subtasks.every(subtask => {
+                            const subtasks = groupTask3BySubtask(answers.map(({ taskId, answer }) => {
+                              const parsedAnswers = parseAnswers(submission.answers);
+                              const isCorrect = parsedAnswers[taskId]?.isCorrect;
+                              return { taskId, answer, isCorrect };
+                            }));
+                            
+                            // Kommentar für die ganze Aufgabe 3 (nur einmal pro Schüler)
+                            const task3CommentKey = '3_comment';
+                            const task3CommentCorrectionKey = `${submission.id}_${task3CommentKey}`;
+                            // Lade Kommentar aus State oder aus submission.corrections
+                            // Wichtig: Nur Fallback verwenden, wenn Key nicht im State existiert (nicht wenn Wert undefined ist)
+                            const savedTask3Comment = submission.corrections?.find(c => c.taskNumber === task3CommentKey);
+                            const task3Comment = corrections[task3CommentCorrectionKey] !== undefined
+                              ? corrections[task3CommentCorrectionKey]
+                              : {
+                                  comment: savedTask3Comment?.comment || ''
+                                };
+                            
+                            // Formatiere korrekte Koordinaten
+                            const formatCorrectCoordinates = (subtaskAnswers: Array<{ taskId: string; answer: any; isCorrect?: boolean }>) => {
+                              const points: Record<string, { x?: any; y?: any }> = {};
+                              subtaskAnswers.forEach(({ taskId }) => {
+                                const correctAnswer = correctAnswers[taskId];
+                                if (correctAnswer !== undefined) {
+                                  const pointMatch = taskId.match(/a3([a-l])/);
+                                  if (pointMatch) {
+                                    const pointLetter = pointMatch[1];
+                                    const pointName = String.fromCharCode(65 + (pointLetter.charCodeAt(0) - 97));
+                                    if (!points[pointName]) points[pointName] = {};
+                                    if (taskId.includes('_x')) {
+                                      points[pointName].x = correctAnswer;
+                                    } else if (taskId.includes('_y')) {
+                                      points[pointName].y = correctAnswer;
+                                    }
+                                  }
+                                }
+                              });
+                              return Object.entries(points)
+                                .map(([pointName, coords]) => {
+                                  const x = coords.x !== undefined ? coords.x : '?';
+                                  const y = coords.y !== undefined ? coords.y : '?';
+                                  return `${pointName}(${x}|${y})`;
+                                })
+                                .join(', ');
+                            };
+                            
+                            // Prüfe ob alle Felder für diese Aufgabe ausgefüllt sind
+                            const subtaskKeys = ['3a', '3b', '3c', '3d'];
+                            const filledFields = subtaskKeys.filter(subtask => {
                               const subtaskKey = `${submission.id}_${subtask}`;
                               const subtaskCorrection = corrections[subtaskKey] || {};
                               return subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null;
                             });
+                            const allFieldsFilled = filledFields.length === subtaskKeys.length;
+                            const someFieldsFilled = filledFields.length > 0 && filledFields.length < subtaskKeys.length;
+                            
+                            // Render-Funktion für eine Teilaufgabe
+                            const renderSubtask = (subtask: string) => {
+                              const subtaskAnswers = subtasks[subtask] || [];
+                              if (subtaskAnswers.length === 0) return null;
+                              
+                              const subtaskKey = `3${subtask}`;
+                              const subtaskCorrectionKey = `${submission.id}_${subtaskKey}`;
+                              // Lade Korrektur aus State oder aus submission.corrections
+                              // Wichtig: Nur Fallback verwenden, wenn Key nicht im State existiert (nicht wenn Wert undefined ist)
+                              const savedCorrection = submission.corrections?.find(c => c.taskNumber === subtaskKey);
+                              const subtaskCorrection = corrections[subtaskCorrectionKey] !== undefined
+                                ? corrections[subtaskCorrectionKey]
+                                : {
+                                    constructionPoints: savedCorrection?.manualPoints,
+                                    comment: savedCorrection?.comment || ''
+                                  };
+                              
+                              // Berechne Koordinatenpunkte (automatisch)
+                              const coordinateAchieved = subtaskAnswers.reduce((sum, item) => {
+                                const maxPoints = pointsDistribution[item.taskId] || 0;
+                                if (item.isCorrect === true) {
+                                  return sum + maxPoints;
+                                }
+                                return sum;
+                              }, 0);
+                              
+                              // Konstruktionspunkte (manuell)
+                              let constructionAchieved = subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null 
+                                ? subtaskCorrection.constructionPoints 
+                                : 0;
+                              // Validiere: nur Werte zwischen 0 und 2 erlauben
+                              if (constructionAchieved < 0) constructionAchieved = 0;
+                              if (constructionAchieved > 2) constructionAchieved = 2;
+                              
+                              const achievedPoints = coordinateAchieved + constructionAchieved;
+                              const coordinatePoints = subtaskAnswers.reduce((sum, item) => {
+                                return sum + (pointsDistribution[item.taskId] || 0);
+                              }, 0);
+                              const totalPoints = coordinatePoints + 2; // 1.5 + 2 = 3.5
+                              
+                              // Bestimme Hintergrundfarbe basierend auf Bewertung
+                              const allCorrect = subtaskAnswers.every(item => item.isCorrect === true);
+                              const someCorrect = subtaskAnswers.some(item => item.isCorrect === true);
+                              
+                              return (
+                                <Box>
+                                  {/* Header: Teilaufgabe + Punkte + Status */}
+                                  <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap" mb={0.25}>
+                                    <Typography 
+                                      variant="caption" 
+                                      sx={{ 
+                                        fontWeight: 700, 
+                                        color: '#1976d2', 
+                                        fontSize: '0.7rem'
+                                      }}
+                                    >
+                                      A3 {subtask}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: '#666', fontSize: '0.65rem' }}>
+                                      {Math.round(achievedPoints)} / {Math.round(totalPoints)}
+                                    </Typography>
+                                    <Box display="flex" gap={0.25} alignItems="center">
+                                      {allCorrect && (
+                                        <Chip
+                                          label="✓"
+                                          size="small"
+                                          sx={{ 
+                                            bgcolor: '#4caf50', 
+                                            color: '#fff',
+                                            height: 18,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 700,
+                                            '& .MuiChip-label': { px: 0.5 }
+                                          }}
+                                        />
+                                      )}
+                                      {!allCorrect && someCorrect && (
+                                        <Chip
+                                          label="~"
+                                          size="small"
+                                          sx={{ 
+                                            bgcolor: '#ff9800', 
+                                            color: '#fff',
+                                            height: 18,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 700,
+                                            '& .MuiChip-label': { px: 0.5 }
+                                          }}
+                                        />
+                                      )}
+                                      {!someCorrect && subtaskAnswers.length > 0 && (
+                                        <Chip
+                                          label="✗"
+                                          size="small"
+                                          sx={{ 
+                                            bgcolor: '#f44336', 
+                                            color: '#fff', 
+                                            height: 18,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 700,
+                                            '& .MuiChip-label': { px: 0.5 }
+                                          }}
+                                        />
+                                      )}
+                                    </Box>
+                                  </Box>
+                                  
+                                  {/* Koordinaten Anzeige */}
+                                  <Box sx={{ 
+                                    bgcolor: 'rgba(255,255,255,0.5)',
+                                    p: 0.25,
+                                    borderRadius: 0.25,
+                                    mb: 0.5,
+                                    border: '1px solid rgba(0,0,0,0.1)',
+                                    minHeight: 24
+                                  }}>
+                                    <Typography variant="caption" sx={{ 
+                                      fontFamily: 'monospace',
+                                      fontSize: '0.7rem',
+                                      lineHeight: 1.2
+                                    }}>
+                                      {(() => {
+                                        // Gruppiere x und y Koordinaten nach Punkt
+                                        const points: Record<string, { x?: any; y?: any; xCorrect?: boolean; yCorrect?: boolean }> = {};
+                                        subtaskAnswers.forEach(({ taskId, answer, isCorrect }) => {
+                                          const pointMatch = taskId.match(/a3([a-l])/);
+                                          if (pointMatch) {
+                                            const pointLetter = pointMatch[1];
+                                            const pointName = String.fromCharCode(65 + (pointLetter.charCodeAt(0) - 97));
+                                            if (!points[pointName]) points[pointName] = {};
+                                            if (taskId.includes('_x')) {
+                                              points[pointName].x = answer;
+                                              points[pointName].xCorrect = isCorrect;
+                                            } else if (taskId.includes('_y')) {
+                                              points[pointName].y = answer;
+                                              points[pointName].yCorrect = isCorrect;
+                                            }
+                                          }
+                                        });
+                                        
+                                        // Formatiere als P(x|y) mit Farben
+                                        return Object.entries(points).map(([pointName, coords], idx) => {
+                                          const x = coords.x !== undefined && coords.x !== null && coords.x !== '' ? coords.x : '?';
+                                          const y = coords.y !== undefined && coords.y !== null && coords.y !== '' ? coords.y : '?';
+                                          const xColor = coords.xCorrect === true ? '#2e7d32' : coords.xCorrect === false ? '#c62828' : '#1a1a1a';
+                                          const yColor = coords.yCorrect === true ? '#2e7d32' : coords.yCorrect === false ? '#c62828' : '#1a1a1a';
+                                          
+                                          return (
+                                            <span key={pointName}>
+                                              {idx > 0 && ', '}
+                                              {pointName}(
+                                              <span style={{ color: xColor }}>{x}</span>|
+                                              <span style={{ color: yColor }}>{y}</span>)
+                                            </span>
+                                          );
+                                        });
+                                      })()}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ 
+                                      fontFamily: 'monospace',
+                                      fontSize: '0.6rem',
+                                      fontStyle: 'italic',
+                                      lineHeight: 1.2,
+                                      color: '#2e7d32',
+                                      display: 'block',
+                                      mt: 0.25
+                                    }}>
+                                      {formatCorrectCoordinates(subtaskAnswers)}
+                                    </Typography>
+                                  </Box>
+                                  
+                                  {/* Eingabefeld: Konstruktionspunkte */}
+                                  <Box sx={{ mt: 0.5 }}>
+                                    <Box display="flex" alignItems="center" gap={0.5}>
+                                      <Box sx={{ position: 'relative', width: 100 }}>
+                                        <TextField
+                                          label="Konstruktion"
+                                          type="number"
+                                          value={subtaskCorrection.constructionPoints ?? ''}
+                                          onChange={(e) => {
+                                            const inputValue = e.target.value.trim().toLowerCase();
+                                            let value: number | undefined = undefined;
+                                            
+                                            // Wenn "x" eingegeben wird, leere das Feld
+                                            if (inputValue === 'x') {
+                                              value = undefined;
+                                            } else if (inputValue === '') {
+                                              value = undefined;
                           } else {
-                            // Für Aufgabe 1 und 2: Prüfe ob Punkte eingegeben sind
-                            allFieldsFilled = correctionState.points !== undefined && correctionState.points !== null;
-                          }
+                                              const numValue = parseFloat(e.target.value);
+                                              if (!isNaN(numValue)) {
+                                                // Validiere: nur Werte zwischen 0 und 2 erlauben
+                                                if (numValue >= 0 && numValue <= 2) {
+                                                  value = numValue;
+                                                }
+                                                // Wenn Wert außerhalb des Bereichs: ignorieren (nicht setzen)
+                                              }
+                                            }
+                                            
+                                            // Nur setzen, wenn Wert gültig ist, leer oder "x"
+                                            if (value !== undefined || e.target.value === '' || inputValue === 'x') {
+                                              setCorrections(prev => ({
+                                                ...prev,
+                                                [subtaskCorrectionKey]: { ...prev[subtaskCorrectionKey], constructionPoints: value }
+                                              }));
+                                            }
+                                          }}
+                                          onBlur={(e) => {
+                                            const currentCorrection = corrections[subtaskCorrectionKey] || {};
+                                            let constructionPoints = currentCorrection.constructionPoints;
+                                            
+                                            // Prüfe den aktuellen Wert im TextField
+                                            const inputValue = e.target.value.trim().toLowerCase();
+                                            
+                                            // Wenn "x" eingegeben wurde, leere das Feld
+                                            if (inputValue === 'x') {
+                                              constructionPoints = undefined;
+                                              // Aktualisiere den State
+                                              setCorrections(prev => ({
+                                                ...prev,
+                                                [subtaskCorrectionKey]: { ...prev[subtaskCorrectionKey], constructionPoints: undefined }
+                                              }));
+                                              // Leere das TextField
+                                              e.target.value = '';
+                                            } else if (inputValue !== '') {
+                                              const numValue = parseFloat(inputValue);
+                                              if (!isNaN(numValue)) {
+                                                // Validiere: nur Werte zwischen 0 und 2 erlauben
+                                                if (numValue >= 0 && numValue <= 2) {
+                                                  constructionPoints = numValue;
+                                                  // Aktualisiere den State mit dem neuen Wert
+                                                  setCorrections(prev => ({
+                                                    ...prev,
+                                                    [subtaskCorrectionKey]: { ...prev[subtaskCorrectionKey], constructionPoints }
+                                                  }));
+                                                } else {
+                                                  // Ungültiger Wert: auf vorherigen Wert zurücksetzen oder undefined
+                                                  constructionPoints = currentCorrection.constructionPoints;
+                                                  // Setze das TextField auf den gültigen Wert zurück
+                                                  e.target.value = constructionPoints !== undefined ? String(constructionPoints) : '';
+                                                }
+                                              }
+                                            }
+                                            
+                                            // Speichere nur, wenn ein gültiger Wert vorhanden ist (oder undefined für "x")
+                                            if (constructionPoints === undefined || (constructionPoints !== null && constructionPoints >= 0 && constructionPoints <= 2)) {
+                                              saveCorrection(subtaskKey, constructionPoints, currentCorrection.comment, submission.id);
+                                            }
+                                          }}
+                                          inputProps={{ min: 0, max: 2, step: 0.5 }}
+                                          tabIndex={idx * 5 + (subtask === 'a' ? 1 : subtask === 'b' ? 2 : subtask === 'c' ? 3 : 4)}
+                                          size="small"
+                                          sx={{ 
+                                            width: 100,
+                                            '& .MuiOutlinedInput-root': {
+                                              bgcolor: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '#e8f5e9' : '#ffebee',
+                                              border: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336',
+                                              fontSize: '0.7rem',
+                                              height: 32,
+                                              '&:hover': {
+                                                border: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336'
+                                              },
+                                              '&.Mui-focused': {
+                                                border: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336'
+                                              }
+                                            },
+                                            '& .MuiInputLabel-root': {
+                                              fontSize: '0.65rem'
+                                            }
+                                          }}
+                                        />
+                                        {(subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) && (
+                                          <CheckCircle 
+                                            sx={{ 
+                                              position: 'absolute',
+                                              right: 4,
+                                              top: '50%',
+                                              transform: 'translateY(-50%)',
+                                              fontSize: 18,
+                                              color: '#4caf50'
+                                            }}
+                                          />
+                                        )}
+                                      </Box>
+                                      <Typography variant="caption" sx={{ color: '#9c27b0', fontSize: '0.7rem', fontWeight: 500 }}>
+                                        max: 2
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                </Box>
+                              );
+                            };
 
                           return (
                             <TableRow 
@@ -2616,7 +3273,91 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   sx={{ 
                                     fontWeight: 600, 
                                     fontSize: '0.7rem',
-                                    color: allFieldsFilled ? '#2e7d32' : '#d32f2f'
+                                      color: allFieldsFilled ? '#2e7d32' : (someFieldsFilled ? '#f57c00' : '#d32f2f'),
+                                      bgcolor: allFieldsFilled ? 'transparent' : (someFieldsFilled ? '#fff3e0' : 'transparent'),
+                                      px: someFieldsFilled ? 0.5 : 0,
+                                      py: someFieldsFilled ? 0.25 : 0,
+                                      borderRadius: someFieldsFilled ? 0.5 : 0
+                                    }}
+                                  >
+                                    {submission.student.name}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  {renderSubtask('a')}
+                                </TableCell>
+                                <TableCell>
+                                  {renderSubtask('b')}
+                                </TableCell>
+                                <TableCell>
+                                  {renderSubtask('c')}
+                                </TableCell>
+                                <TableCell>
+                                  {renderSubtask('d')}
+                                </TableCell>
+                                <TableCell>
+                                  <TextField
+                                    multiline
+                                    rows={4}
+                                    value={task3Comment.comment ?? ''}
+                                    onChange={(e) => {
+                                      setCorrections(prev => ({
+                                        ...prev,
+                                        [task3CommentCorrectionKey]: { ...prev[task3CommentCorrectionKey], comment: e.target.value }
+                                      }));
+                                    }}
+                                    onBlur={() => {
+                                      const correction = corrections[task3CommentCorrectionKey] || {};
+                                      saveCorrection(task3CommentKey, undefined, correction.comment, submission.id);
+                                    }}
+                                    tabIndex={idx * 5 + 5}
+                                    size="small"
+                                    fullWidth
+                                    placeholder="Kommentar für die gesamte Aufgabe 3..."
+                                    sx={{ 
+                                      '& .MuiOutlinedInput-root': {
+                                        bgcolor: '#e3f2fd',
+                                        border: '2px solid #9c27b0',
+                                        fontSize: '0.7rem',
+                                        '&:hover': {
+                                          border: '2px solid #7b1fa2'
+                                        },
+                                        '&.Mui-focused': {
+                                          border: '2px solid #7b1fa2'
+                                        }
+                                      },
+                                      '& .MuiInputLabel-root': {
+                                        fontSize: '0.65rem'
+                                      }
+                                    }}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          }
+                          
+                          // Für Aufgabe 1 und 2: Normale Darstellung
+                          let allFieldsFilled = correctionState.points !== undefined && correctionState.points !== null;
+
+                          return (
+                            <TableRow 
+                              key={submission.id}
+                              sx={{ 
+                                '&:nth-of-type(even)': { bgcolor: '#fafafa' },
+                                '&:hover': { bgcolor: '#f0f0f0' }
+                              }}
+                            >
+                              <TableCell>
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    fontSize: '0.7rem',
+                                    color: allFieldsFilled ? '#2e7d32' : '#f57c00',
+                                    bgcolor: allFieldsFilled ? 'transparent' : '#fff3e0',
+                                    px: !allFieldsFilled ? 0.5 : 0,
+                                    py: !allFieldsFilled ? 0.25 : 0,
+                                    borderRadius: !allFieldsFilled ? 0.5 : 0
                                   }}
                                 >
                                     {submission.student.name}
@@ -2645,8 +3386,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                   type="number"
                                   value={correctionState.points ?? ''}
                                   onChange={(e) => {
+                                      const inputValue = e.target.value.trim().toLowerCase();
+                                      let value: number | undefined = undefined;
+                                      
+                                      // Wenn "x" eingegeben wird, leere das Feld
+                                      if (inputValue === 'x') {
+                                        value = undefined;
+                                      } else if (inputValue === '') {
+                                        value = undefined;
+                                      } else {
                                       const numValue = parseFloat(e.target.value);
-                                      const value = e.target.value === '' ? undefined : (!isNaN(numValue) ? numValue : undefined);
+                                        value = !isNaN(numValue) ? numValue : undefined;
+                                      }
+                                      
                                     setCorrections(prev => ({
                                       ...prev,
                                       [correctionKey]: { ...prev[correctionKey], points: value }

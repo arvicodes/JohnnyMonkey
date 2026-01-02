@@ -188,7 +188,7 @@ export class FileSystemPathController {
     }
   }
 
-  // HTML-Datei lesen
+  // HTML-Datei lesen (für Lehrer und Schüler - keine Authentifizierung erforderlich)
   static async readHtmlFile(req: Request, res: Response) {
     try {
       const { filePath } = req.query;
