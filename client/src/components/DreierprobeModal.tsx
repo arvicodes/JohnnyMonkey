@@ -1870,7 +1870,7 @@ Vera Christ`);
             onClick={handleReleaseAllGrades}
             size="small"
             sx={{
-              minWidth: 'auto',
+              minWidth: 160,
               height: 28,
               px: 1.5,
               fontSize: '0.7rem',
