@@ -119,8 +119,11 @@ export class KACorrectionController {
    * Alle Abgaben für eine Klassenarbeit abrufen (für Lehrer)
    */
   static async getSubmissions(req: Request, res: Response) {
+    let kaFilePath: string = '';
+    let fileName: string = '';
+    
     try {
-      const { kaFilePath } = req.query;
+      const kaFilePathParam = req.query.kaFilePath;
       const loginCode = req.headers['x-login-code'] as string;
 
       if (!loginCode) {
@@ -137,69 +140,101 @@ export class KACorrectionController {
       }
 
       const teacherId = user.id;
+      console.log('👤 Lehrer ID:', teacherId);
+      
+      if (!teacherId) {
+        return res.status(500).json({ error: 'Lehrer-ID nicht gefunden' });
+      }
 
-      if (!kaFilePath || typeof kaFilePath !== 'string') {
+      if (!kaFilePathParam || typeof kaFilePathParam !== 'string') {
         return res.status(400).json({ error: 'kaFilePath ist erforderlich' });
       }
 
-      // Debug: Log den gesuchten kaFilePath
+      kaFilePath = kaFilePathParam;
+      
+      // SOFORTIGE LÖSUNG: Einfachste Methode - hole ALLE und filtere
       console.log('🔍 Suche Abgaben für kaFilePath:', kaFilePath);
       
-      // Prüfe alle Submissions in der DB (für Debugging)
-      const allSubmissions = await prisma.kASubmission.findMany({
-        select: {
-          id: true,
-          kaFilePath: true,
-          status: true,
-          studentId: true
-        }
-      });
-      console.log('📊 Alle Submissions in DB:', allSubmissions.map(s => ({ 
-        kaFilePath: s.kaFilePath, 
-        status: s.status 
-      })));
-
-      // Versuche auch mit verschiedenen Varianten zu suchen (falls es Unterschiede gibt)
-      const uniquePaths = getPossiblePaths(kaFilePath);
+      // Extrahiere den Dateinamen
+      fileName = kaFilePath.split('/').pop() || kaFilePath;
+      const fileNameWithoutExt = fileName.replace(/\.(html|htm)$/i, '');
+      const fileNameLower = fileName.toLowerCase();
       
-      console.log('🔍 Gesuchter Pfad:', kaFilePath);
-      console.log('🔍 Versuche Pfade:', uniquePaths);
+      console.log('🔍 Dateiname:', fileName);
       
-      // Zuerst: Suche mit exaktem Match
-      let submissions = await prisma.kASubmission.findMany({
-        where: {
-          kaFilePath,
-          status: {
-            in: ['submitted', 'expired', 'corrected']
-          }
-        },
-        include: {
-          student: {
-            select: {
-              id: true,
-              name: true,
-              loginCode: true
+      let submissions: any[] = [];
+      
+      try {
+        // Schritt 1: Hole ALLE Submissions (ohne include, um Fehler zu vermeiden)
+        const allSubmissionsRaw = await prisma.kASubmission.findMany({
+          where: {
+            status: {
+              in: ['submitted', 'expired', 'corrected']
             }
           },
-          corrections: {
-            where: {
-              teacherId
-            }
+          select: {
+            id: true,
+            kaFilePath: true,
+            status: true,
+            studentId: true,
+            submittedAt: true
+          },
+          orderBy: {
+            submittedAt: 'desc'
           }
-        },
-        orderBy: {
-          submittedAt: 'desc'
+        });
+        
+        console.log(`📊 Gesamt Submissions: ${allSubmissionsRaw.length}`);
+        
+        // Schritt 2: Filtere nach Dateiname
+        const matchingIds = allSubmissionsRaw
+          .filter(sub => {
+            const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
+            return subFileName.toLowerCase() === fileNameLower;
+          })
+          .map(sub => sub.id);
+        
+        console.log(`✅ Gefundene IDs: ${matchingIds.length}`);
+        
+        // Schritt 3: Lade mit include nur die gefundenen
+        if (matchingIds.length > 0) {
+          submissions = await prisma.kASubmission.findMany({
+            where: {
+              id: { in: matchingIds }
+            },
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  name: true,
+                  loginCode: true
+                }
+              },
+              corrections: {
+                where: {
+                  teacherId: teacherId
+                }
+              }
+            },
+            orderBy: {
+              submittedAt: 'desc'
+            }
+          });
         }
-      });
+        
+        console.log(`✅ Final: ${submissions.length} Submissions`);
+        
+      } catch (queryError) {
+        console.error('❌ Fehler:', queryError);
+        throw queryError;
+      }
       
-      // Falls keine gefunden, versuche mit Varianten
+      // Falls immer noch keine gefunden, versuche alternative Suche
       if (submissions.length === 0) {
         console.log('⚠️ Keine Submissions mit exaktem Match gefunden, versuche Varianten...');
-        submissions = await prisma.kASubmission.findMany({
+        // Hole alle Submissions und filtere manuell (da Prisma SQLite keine case-insensitive Suche unterstützt)
+        const allSubmissionsForVariantSearch = await prisma.kASubmission.findMany({
           where: {
-            OR: uniquePaths.map(path => ({
-              kaFilePath: path
-            })),
             status: {
               in: ['submitted', 'expired', 'corrected']
             }
@@ -222,13 +257,118 @@ export class KACorrectionController {
             submittedAt: 'desc'
           }
         });
+        
+        // Filtere manuell mit case-insensitive Vergleich
+        // WICHTIG: Studenten speichern oft nur den Dateinamen (z.B. "HU_geometrische-abbildungen.html")
+        // Lehrer verwenden vollständigen Pfad (z.B. "J-M-Reihen/Mathe/.../HU_geometrische-abbildungen.html")
+        console.log(`🔍 Filtere ${allSubmissionsForVariantSearch.length} Submissions mit Dateiname: ${fileName}`);
+        submissions = allSubmissionsForVariantSearch.filter(sub => {
+          const subPathLower = sub.kaFilePath.toLowerCase();
+          const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
+          const subFileNameLower = subFileName.toLowerCase();
+          const subFileNameWithoutExt = subFileName.replace(/\.(html|htm)$/i, '').toLowerCase();
+          
+          // Prüfe alle möglichen Matches - PRIORITÄT: Dateiname-Match
+          const matches = sub.kaFilePath === fileName ||
+                 subPathLower === fileName.toLowerCase() ||
+                 subFileName === fileName ||
+                 subFileNameLower === fileName.toLowerCase() ||
+                 subFileName === fileNameWithoutExt ||
+                 subFileNameLower === fileNameWithoutExt.toLowerCase() ||
+                 subFileNameWithoutExt === fileNameWithoutExt.toLowerCase() ||
+                 // Auch umgekehrt: Prüfe ob der gesuchte Dateiname im gespeicherten Pfad vorkommt
+                 subFileName.includes(fileNameWithoutExt) ||
+                 subFileNameLower.includes(fileNameWithoutExt.toLowerCase());
+          
+          if (matches) {
+            console.log(`✅ Match gefunden: ${sub.kaFilePath} (Student: ${sub.student?.name})`);
+          }
+          
+          return matches;
+        });
+        
+        console.log(`✅ Nach Varianten-Suche: ${submissions.length} Submissions gefunden`);
+      }
+      
+      // Falls immer noch keine gefunden, hole alle Submissions und filtere manuell mit erweiterten Kriterien
+      if (submissions.length === 0) {
+        console.log('⚠️ Keine Submissions mit Varianten gefunden, suche in allen Submissions...');
+        const allSubmissionsForFilter = await prisma.kASubmission.findMany({
+          where: {
+            status: {
+              in: ['submitted', 'expired', 'corrected']
+            }
+          },
+          include: {
+            student: {
+              select: {
+                id: true,
+                name: true,
+                loginCode: true
+              }
+            },
+            corrections: {
+              where: {
+                teacherId
+              }
+            }
+          },
+          orderBy: {
+            submittedAt: 'desc'
+          }
+        });
+        
+        // Filtere manuell: Prüfe ob der Dateiname im kaFilePath enthalten ist
+        // WICHTIG: Studenten speichern oft nur den Dateinamen, Lehrer verwenden den vollständigen Pfad
+        submissions = allSubmissionsForFilter.filter(sub => {
+          const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
+          const subFileNameWithoutExt = subFileName.replace(/\.(html|htm)$/i, '');
+          const subFileNameLower = subFileName.toLowerCase();
+          const fileNameLower = fileName.toLowerCase();
+          const fileNameWithoutExtLower = fileNameWithoutExt.toLowerCase();
+          
+          // Prüfe verschiedene Match-Varianten
+          return subFileName === fileName || 
+                 subFileNameLower === fileNameLower ||
+                 subFileNameWithoutExt === fileNameWithoutExt ||
+                 subFileNameWithoutExt.toLowerCase() === fileNameWithoutExtLower ||
+                 sub.kaFilePath === kaFilePath ||
+                 sub.kaFilePath.toLowerCase() === kaFilePath.toLowerCase() ||
+                 sub.kaFilePath.includes(fileName) ||
+                 sub.kaFilePath.toLowerCase().includes(fileNameLower) ||
+                 sub.kaFilePath.includes(fileNameWithoutExt) ||
+                 sub.kaFilePath.toLowerCase().includes(fileNameWithoutExtLower) ||
+                 // Auch umgekehrt: Prüfe ob der gesuchte Dateiname im gespeicherten Pfad vorkommt
+                 subFileName.includes(fileNameWithoutExt) ||
+                 subFileNameLower.includes(fileNameWithoutExtLower);
+        });
+        
+        console.log(`✅ Nach manuellem Filtern: ${submissions.length} Submissions gefunden`);
       }
       
       console.log(`✅ Gefunden: ${submissions.length} Submissions`);
+      console.log('📋 Submissions Details:', submissions.map(s => ({
+        id: s.id,
+        kaFilePath: s.kaFilePath,
+        studentName: s.student?.name || 'Unbekannt',
+        status: s.status
+      })));
+      
       res.json({ submissions });
     } catch (error) {
-      console.error('Error getting submissions:', error);
-      res.status(500).json({ error: 'Fehler beim Abrufen der Abgaben' });
+      console.error('❌ Error getting submissions:', error);
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unbekannter Fehler',
+        kaFilePath: kaFilePath || 'unknown',
+        fileName: fileName || 'unknown',
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        errorString: String(error)
+      });
+      res.status(500).json({ 
+        error: 'Fehler beim Abrufen der Abgaben',
+        details: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
     }
   }
 
