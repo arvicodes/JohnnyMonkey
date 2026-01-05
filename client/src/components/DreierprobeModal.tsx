@@ -88,46 +88,46 @@ const calculateGrade = (achieved: number, total: number): { numeric: number; str
   // Verwende die gleiche Logik wie percentageToGrade in gradeConverter.ts
   if (percentage >= 95.0) {
     grade = 1.0;
-    gradeString = '1+';
+      gradeString = '1+';
   } else if (percentage >= 90.0) {
     grade = 1.3;
-    gradeString = '1-';
+      gradeString = '1-';
   } else if (percentage >= 85.0) {
     grade = 1.7;
-    gradeString = '2+';
+      gradeString = '2+';
   } else if (percentage >= 80.0) {
     grade = 2.0;
-    gradeString = '2';
+      gradeString = '2';
   } else if (percentage >= 75.0) {
     grade = 2.3;
     gradeString = '2-';
   } else if (percentage >= 70.0) {
     grade = 2.7;
-    gradeString = '3+';
+      gradeString = '3+';
   } else if (percentage >= 65.0) {
     grade = 3.0;
-    gradeString = '3';
+      gradeString = '3';
   } else if (percentage >= 60.0) {
     grade = 3.3;
     gradeString = '3-';
   } else if (percentage >= 55.0) {
     grade = 3.7;
-    gradeString = '4+';
+      gradeString = '4+';
   } else if (percentage >= 50.0) {
     grade = 4.0;
-    gradeString = '4';
+      gradeString = '4';
   } else if (percentage >= 45.0) {
     grade = 4.3;
     gradeString = '4-';
   } else if (percentage >= 40.0) {
     grade = 4.7;
-    gradeString = '5+';
+      gradeString = '5+';
   } else if (percentage >= 35.0) {
     grade = 5.0;
     gradeString = '5';
   } else if (percentage >= 20.0) {
     grade = 5.3;
-    gradeString = '5-';
+      gradeString = '5-';
   } else {
     grade = 6.0;
     gradeString = '6';
@@ -390,7 +390,7 @@ Vera Christ`);
       });
 
       console.log('📥 Response Status:', saveResponse.status, saveResponse.statusText);
-      
+
       if (!saveResponse.ok) {
         const errorText = await saveResponse.text();
         console.error('❌ Fehler beim Speichern:', errorText);
@@ -2763,16 +2763,29 @@ Vera Christ`);
           border: 2px solid #4caf50 !important;
           color: #1b5e20 !important;
         }
+        .points-badge {
+          display: inline-block;
+          margin-left: 5px;
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-size: 0.85em;
+          font-weight: bold;
+        }
+        .points-correct {
+          background-color: #4caf50;
+          color: white;
+        }
         input[type="text"], input:not([type]), textarea, input[type="number"] {
-          min-height: 40px !important;
+          min-height: 24px !important;
           height: auto !important;
-          padding: 8px 12px !important;
-          line-height: 1.6 !important;
+          padding: 4px 8px !important;
+          line-height: 1.4 !important;
+          font-size: 0.85em !important;
         }
       `;
       solutionDoc.head.appendChild(solutionStyle);
       
-      // Fülle Musterlösung ein
+      // Fülle Musterlösung ein und füge Punkte hinzu
       Object.entries(correctAnswers).forEach(([taskId, correctAnswer]) => {
         let input = solutionDoc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
         if (!input) {
@@ -2784,6 +2797,8 @@ Vera Christ`);
         
         if (input) {
           const answerStr = String(correctAnswer || '').trim();
+          const maxPoints = pointsDistribution[taskId] || 0;
+          const achievedPoints = maxPoints; // In Musterlösung sind alle Antworten richtig
           
           if (input.tagName === 'INPUT') {
             const inputEl = input as HTMLInputElement;
@@ -2792,15 +2807,100 @@ Vera Christ`);
                 inputEl.checked = true;
               }
             } else {
+              inputEl.setAttribute('value', answerStr);
               inputEl.value = answerStr;
             }
           } else if (input.tagName === 'TEXTAREA') {
-            (input as HTMLTextAreaElement).value = answerStr;
+            const textareaEl = input as HTMLTextAreaElement;
+            textareaEl.textContent = answerStr;
+            textareaEl.value = answerStr;
           } else if (input.tagName === 'SELECT') {
-            (input as unknown as HTMLSelectElement).value = answerStr;
+            const selectEl = input as unknown as HTMLSelectElement;
+            selectEl.value = answerStr;
+            // Setze auch selectedIndex
+            for (let i = 0; i < selectEl.options.length; i++) {
+              if (selectEl.options[i].value === answerStr) {
+                selectEl.selectedIndex = i;
+                break;
+              }
+            }
           }
           
           input.classList.add('answer-correct');
+          
+          // Füge Punkte-Badge hinzu
+          if (maxPoints > 0 && !input.parentElement?.querySelector('.points-badge')) {
+            const container = solutionDoc.createElement('span');
+            container.style.display = 'inline-flex';
+            container.style.alignItems = 'center';
+            container.style.gap = '5px';
+            container.style.marginLeft = '5px';
+            
+            if (input.parentElement) {
+              const parent = input.parentElement;
+              parent.insertBefore(container, input);
+              container.appendChild(input);
+              
+              const pointsBadge = solutionDoc.createElement('span');
+              pointsBadge.className = 'points-badge points-correct';
+              const pointsText = maxPoints % 1 === 0 && achievedPoints % 1 === 0 
+                ? `${achievedPoints}/${maxPoints}` 
+                : `${achievedPoints.toFixed(2)}/${maxPoints}`;
+              pointsBadge.textContent = pointsText;
+              pointsBadge.style.whiteSpace = 'nowrap';
+              pointsBadge.style.marginLeft = '3px';
+              container.appendChild(pointsBadge);
+            }
+          }
+        }
+      });
+      
+      // Ersetze Input-Felder für Aufgabe 3 in Musterlösung durch Text (Format: A₁(-6/-4))
+      const solutionTask3Inputs = solutionDoc.querySelectorAll('input[id^="a3"], input[name^="a3"]');
+      solutionTask3Inputs.forEach((input) => {
+        const inputEl = input as HTMLInputElement;
+        const inputId = inputEl.id || inputEl.name || '';
+        const answerValue = inputEl.value || '';
+        
+        if (answerValue.trim()) {
+          // Finde Punkt-Label (A₁, B₁, C₁, etc.)
+          let pointLabel = '';
+          const matchA = inputId.match(/a3([a-d])_?A(\d?)/i);
+          const matchB = inputId.match(/a3([a-d])_?B(\d?)/i);
+          const matchC = inputId.match(/a3([a-d])_?C(\d?)/i);
+          
+          if (matchA) {
+            const subtaskNum = matchA[1];
+            pointLabel = 'A' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
+          } else if (matchB) {
+            const subtaskNum = matchB[1];
+            pointLabel = 'B' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
+          } else if (matchC) {
+            const subtaskNum = matchC[1];
+            pointLabel = 'C' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
+          }
+          
+          if (pointLabel) {
+            const formattedAnswer = `${pointLabel}(${answerValue})`;
+            const textSpan = solutionDoc.createElement('span');
+            textSpan.textContent = formattedAnswer;
+            textSpan.style.cssText = 'display: inline;';
+            
+            if (inputEl.parentElement) {
+              inputEl.parentElement.replaceChild(textSpan, inputEl);
+            }
+          } else {
+            // Fallback: Zeige einfach den Wert
+            const textSpan = solutionDoc.createElement('span');
+            textSpan.textContent = answerValue;
+            textSpan.style.cssText = 'display: inline;';
+            
+            if (inputEl.parentElement) {
+              inputEl.parentElement.replaceChild(textSpan, inputEl);
+            }
+          }
+        } else {
+          inputEl.remove();
         }
       });
       
@@ -2861,12 +2961,18 @@ Vera Christ`);
       
       // Zusätzlich: Entferne alle Body-Kinder, die nach dem Container kommen (Musterlösung)
       const solutionBodyChildren = Array.from(solutionDoc.body.children);
+      const solutionAllTask3SpansForBody = Array.from(solutionDoc.querySelectorAll('span')).filter(span => {
+        const text = span.textContent || '';
+        return text.match(/[ABC][₁₂₃₄]\(/);
+      });
       const solutionAllTask3InputsForBody = solutionDoc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
-      if (solutionAllTask3InputsForBody.length > 0) {
-        const solutionLastTask3InputForBody = solutionAllTask3InputsForBody[solutionAllTask3InputsForBody.length - 1] as HTMLElement;
+      const solutionLastTask3ElementForBody = solutionAllTask3SpansForBody.length > 0 
+        ? solutionAllTask3SpansForBody[solutionAllTask3SpansForBody.length - 1] as HTMLElement
+        : (solutionAllTask3InputsForBody.length > 0 ? solutionAllTask3InputsForBody[solutionAllTask3InputsForBody.length - 1] as HTMLElement : null);
+      if (solutionLastTask3ElementForBody) {
         let solutionFoundTask3 = false;
         for (const child of solutionBodyChildren) {
-          if (child.contains(solutionLastTask3InputForBody)) {
+          if (child.contains(solutionLastTask3ElementForBody)) {
             solutionFoundTask3 = true;
           } else if (solutionFoundTask3) {
             child.remove();
@@ -2890,16 +2996,33 @@ Vera Christ`);
         // Ersetze "Frau Christ" durch Schülername
         doc.body.innerHTML = doc.body.innerHTML.replace(/Frau Christ/g, studentName);
         
+        // Entferne "Nicht angemeldet" Text
+        doc.body.innerHTML = doc.body.innerHTML.replace(/Nicht angemeldet/gi, '');
+        
         // Sammle Kommentar für Aufgabe 3 (falls vorhanden)
         let task3CommentForReplacement = '';
         if (submission.corrections) {
-          const task3Corrections = submission.corrections.filter(corr => corr.taskNumber.match(/^3[a-d]$/));
-          // Nimm den letzten Kommentar (gehe rückwärts durch die Liste)
-          for (let i = task3Corrections.length - 1; i >= 0; i--) {
-            const comment = task3Corrections[i].comment;
-            if (comment && comment.trim()) {
-              task3CommentForReplacement = comment.trim();
+          // Suche nach Kommentaren für Aufgabe 3 - verschiedene Varianten
+          const task3Corrections = submission.corrections.filter(corr => 
+            corr.taskNumber === '3' || corr.taskNumber.match(/^3[a-d]$/)
+          );
+          
+          // Nimm den ersten Kommentar, der gefunden wird (von "3" oder "3a"-"3d")
+          for (const corr of task3Corrections) {
+            if (corr.comment && corr.comment.trim()) {
+              task3CommentForReplacement = corr.comment.trim();
               break;
+            }
+          }
+          
+          // Fallback: Suche auch in ALLEN Korrekturen nach Kommentaren, die "Aufgabe 3" enthalten
+          if (!task3CommentForReplacement) {
+            for (const corr of submission.corrections) {
+              if (corr.comment && corr.comment.trim() && 
+                  (corr.taskNumber.includes('3') || corr.comment.toLowerCase().includes('aufgabe 3'))) {
+                task3CommentForReplacement = corr.comment.trim();
+                break;
+              }
             }
           }
         }
@@ -2946,33 +3069,148 @@ Vera Christ`);
           }
         }
         
-        // Ersetze Texte durch TreeWalker für Kommentar-Ersetzung
-        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
-        const textNodes: Text[] = [];
-        let node: Node | null;
-        while (node = walker.nextNode()) {
-          textNodes.push(node as Text);
+        // Ersetze "⚠️ Zeichne alles schön ordentlich in dein großes Koordinatensystem!" durch grüne Kommentar-Box (oder entferne Text, wenn kein Kommentar)
+        // Suche nach Elementen, die den Text enthalten (kann in einem Container-Element wie div, p, span sein)
+        const allElements = Array.from(doc.querySelectorAll('div, p, span, td, th, li, h1, h2, h3, h4, h5, h6'));
+        let elementToReplace: Element | null = null;
+        
+        // Finde das kleinste Element, das den Text enthält (um Container-Elemente zu finden)
+        for (const el of allElements) {
+          const text = el.textContent || '';
+          if (text.includes('⚠️') && text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem') ||
+              text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem')) {
+            // Prüfe, ob dieses Element keinen anderen Container-Element mit dem Text enthält
+            const hasChildWithText = Array.from(el.querySelectorAll('div, p, span, td, th, li, h1, h2, h3, h4, h5, h6')).some(child => {
+              const childText = child.textContent || '';
+              return childText.includes('⚠️') && childText.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem') ||
+                     childText.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem');
+            });
+            
+            if (!hasChildWithText) {
+              elementToReplace = el;
+              break;
+            }
+          }
         }
         
-        textNodes.forEach(textNode => {
-          let text = textNode.textContent || '';
+        if (elementToReplace) {
+          if (task3CommentForReplacement) {
+            // Erstelle grüne Kommentar-Box
+            const commentBox = doc.createElement('div');
+            commentBox.style.cssText = `
+              margin-top: 16px;
+              margin-bottom: 16px;
+              padding: 12px 16px;
+              background-color: #c8e6c9;
+              border: 2px solid #4caf50;
+              border-left: 5px solid #4caf50;
+              border-radius: 6px;
+              font-size: 0.95em;
+              line-height: 1.6;
+              display: block;
+              width: 100%;
+            `;
+            
+            // Titel mit Icon
+            const titleDiv = doc.createElement('div');
+            titleDiv.style.cssText = 'font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px;';
+            titleDiv.textContent = '💬 Kommentar:';
+            
+            // Kommentar-Text
+            const commentDiv = doc.createElement('div');
+            commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
+            commentDiv.textContent = task3CommentForReplacement;
+            
+            commentBox.appendChild(titleDiv);
+            commentBox.appendChild(commentDiv);
+            
+            // Ersetze das Element (inklusive gelber Box)
+            if (elementToReplace.parentElement) {
+              elementToReplace.parentElement.replaceChild(commentBox, elementToReplace);
+            }
+          } else {
+            // Wenn kein Kommentar vorhanden, entferne das Element einfach
+            elementToReplace.remove();
+          }
+        } else if (task3CommentForReplacement) {
+          // Fallback: Suche nach Text-Nodes und ersetze sie
+          const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+          let node: Node | null;
+          while (node = walker.nextNode()) {
+            const text = node.textContent || '';
+            if (text.includes('⚠️') && text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem') ||
+                text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem')) {
+              const parent = node.parentNode;
+              if (parent && parent instanceof Element) {
+                // Erstelle grüne Kommentar-Box
+                const commentBox = doc.createElement('div');
+                commentBox.style.cssText = `
+                  margin-top: 16px;
+                  margin-bottom: 16px;
+                  padding: 12px 16px;
+                  background-color: #c8e6c9;
+                  border: 2px solid #4caf50;
+                  border-left: 5px solid #4caf50;
+                  border-radius: 6px;
+                  font-size: 0.95em;
+                  line-height: 1.6;
+                  display: block;
+                  width: 100%;
+                `;
+                
+                const titleDiv = doc.createElement('div');
+                titleDiv.style.cssText = 'font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px;';
+                titleDiv.textContent = '💬 Kommentar:';
+                
+                const commentDiv = doc.createElement('div');
+                commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
+                commentDiv.textContent = task3CommentForReplacement;
+                
+                commentBox.appendChild(titleDiv);
+                commentBox.appendChild(commentDiv);
+                
+                parent.replaceChild(commentBox, node);
+                break;
+              }
+            }
+          }
+        }
+        
+        // Entferne Text auch aus Text-Nodes, wenn kein Kommentar vorhanden
+        if (!task3CommentForReplacement) {
+          const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+          let node: Node | null;
+          while (node = walker.nextNode()) {
+            let text = node.textContent || '';
+            if (text.includes('⚠️') && text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem') ||
+                text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem')) {
+              text = text.replace(/⚠️\s*Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, '');
+              text = text.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, '');
+              text = text.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem/gi, '');
+              node.textContent = text;
+              // Wenn der Text-Node jetzt leer ist, entferne ihn
+              if (!text.trim() && node.parentNode) {
+                node.parentNode.removeChild(node);
+              }
+            }
+          }
+        }
+        
+        // Entferne "Viel Glück", "Viel Erfolg" und "Nicht angemeldet" aus Text-Nodes
+        const walkerForRemoval = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+        let removalNode: Node | null;
+        while (removalNode = walkerForRemoval.nextNode()) {
+          let text = removalNode.textContent || '';
           const originalText = text;
           
-          // Ersetze "⚠️ Zeichne alles schön ordentlich in dein großes Koordinatensystem!" durch Kommentar
-          if (task3CommentForReplacement) {
-            text = text.replace(/⚠️\s*Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
-            text = text.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
-            text = text.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem/gi, task3CommentForReplacement);
-          }
-          
-          // Entferne "Viel Glück" und "Viel Erfolg"
           text = text.replace(/Viel Glück/gi, '');
           text = text.replace(/Viel Erfolg/gi, '');
+          text = text.replace(/Nicht angemeldet/gi, '');
           
           if (text !== originalText) {
-            textNode.textContent = text;
+            removalNode.textContent = text;
           }
-        });
+        }
         
         // Entferne alle Buttons und Submit-Buttons
         const submitButtons = doc.querySelectorAll('button[type="submit"], input[type="submit"]');
@@ -3090,10 +3328,11 @@ Vera Christ`);
             color: white;
           }
           input[type="text"], input:not([type]), textarea, input[type="number"] {
-            min-height: 40px !important;
+            min-height: 24px !important;
             height: auto !important;
-            padding: 8px 12px !important;
-            line-height: 1.6 !important;
+            padding: 4px 8px !important;
+            line-height: 1.4 !important;
+            font-size: 0.85em !important;
           }
         `;
         doc.head.appendChild(style);
@@ -3247,6 +3486,53 @@ Vera Christ`);
           }
         });
         
+        // Ersetze Input-Felder für Aufgabe 3 durch Text (Format: A₁(0.00/0.25))
+        const task3Inputs = doc.querySelectorAll('input[id^="a3"], input[name^="a3"]');
+        
+        task3Inputs.forEach((input) => {
+          const inputEl = input as HTMLInputElement;
+          const inputId = inputEl.id || inputEl.name || '';
+          // Verwende Wert aus Input (der bereits aus answers gesetzt wurde) oder aus answers
+          let answerValue = inputEl.value || '';
+          if (!answerValue && answers[inputId]) {
+            answerValue = String(answers[inputId] || '').trim();
+          }
+          
+          if (answerValue.trim()) {
+            // Finde Punkt-Label (A₁, B₁, C₁, etc.)
+            let pointLabel = '';
+            const matchA = inputId.match(/a3([a-d])_?A(\d?)/i);
+            const matchB = inputId.match(/a3([a-d])_?B(\d?)/i);
+            const matchC = inputId.match(/a3([a-d])_?C(\d?)/i);
+            
+            if (matchA) {
+              const subtaskNum = matchA[1];
+              pointLabel = 'A' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
+            } else if (matchB) {
+              const subtaskNum = matchB[1];
+              pointLabel = 'B' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
+            } else if (matchC) {
+              const subtaskNum = matchC[1];
+              pointLabel = 'C' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
+            }
+            
+            // Formatierte Antwort: "A₁(0.00/0.25)"
+            const formattedAnswer = `${pointLabel}(${answerValue})`;
+            
+            // Ersetze Input durch span
+            const textSpan = doc.createElement('span');
+            textSpan.textContent = formattedAnswer;
+            textSpan.style.cssText = 'display: inline;';
+            
+            if (inputEl.parentElement) {
+              inputEl.parentElement.replaceChild(textSpan, inputEl);
+            }
+          } else {
+            // Wenn kein Wert, entferne Input einfach
+            inputEl.remove();
+          }
+        });
+        
         // Füge Bewertungen bei Aufgabe 3 hinzu (Konstruktionspunkte und Kommentare)
         if (submission.corrections) {
           // Sammle alle Aufgabe-3-Korrekturen
@@ -3279,171 +3565,137 @@ Vera Christ`);
               ? Number(corr.manualPoints) 
               : 0;
             
-            // Finde die Input-Felder für diese Teilaufgabe
-            const taskInputs = doc.querySelectorAll(`input[id^="a3${subtask}"], input[name^="a3${subtask}"]`);
+            // Finde die Text-Spans für diese Teilaufgabe (nachdem Inputs ersetzt wurden)
+            const taskSpans = Array.from(doc.querySelectorAll('span')).filter(span => {
+              const text = span.textContent || '';
+              // Suche nach Spans mit A₁, B₁, C₁ etc. für diese Teilaufgabe
+              const subtaskLabel = subtask === 'a' ? '₁' : subtask === 'b' ? '₂' : subtask === 'c' ? '₃' : '₄';
+              return text.includes('A' + subtaskLabel) || text.includes('B' + subtaskLabel) || text.includes('C' + subtaskLabel);
+            });
             
-            if (taskInputs.length > 0) {
-              // Finde das letzte Input-Feld dieser Teilaufgabe
-              const lastInput = taskInputs[taskInputs.length - 1] as HTMLElement;
+            if (taskSpans.length > 0) {
+              // Finde das letzte Span dieser Teilaufgabe
+              const lastSpan = taskSpans[taskSpans.length - 1] as HTMLElement;
               
-              // Erstelle Konstruktionspunkte-Element in neuer Zeile
+              // Erstelle Konstruktionspunkte-Element in neuer Zeile (hellblaue Box)
               const constructionPointsDiv = doc.createElement('div');
               constructionPointsDiv.style.cssText = `
                 display: block !important;
                 width: 100% !important;
                 margin-top: 8px !important;
                 margin-bottom: 12px !important;
-                padding: 0 !important;
-                background-color: transparent !important;
-                border: none !important;
+                padding: 8px 12px !important;
+                background-color: #e3f2fd !important;
+                border: 1px solid #90caf9 !important;
+                border-radius: 4px !important;
                 font-size: 0.9em !important;
-                margin-left: 10% !important;
                 clear: both !important;
               `;
               constructionPointsDiv.innerHTML = `<strong>Konstruktion:</strong> ${achievedPoints.toFixed(2)} / ${maxPoints.toFixed(2)} Punkten`;
               
-              // Finde den Container des letzten Inputs
-              let inputContainer = lastInput.closest('span[style*="inline-flex"]');
-              if (!inputContainer) {
-                inputContainer = lastInput.parentElement;
-              }
+              // Finde den Container des letzten Spans
+              let spanContainer = lastSpan.parentElement;
               
               // Füge direkt nach dem Container ein (neue Zeile)
-              if (inputContainer && inputContainer.parentElement) {
+              if (spanContainer && spanContainer.parentElement) {
                 // Füge nach dem Container ein
-                inputContainer.parentElement.insertBefore(constructionPointsDiv, inputContainer.nextSibling);
-              } else if (lastInput.parentElement) {
-                // Fallback: Füge nach dem Input selbst ein
-                lastInput.parentElement.insertBefore(constructionPointsDiv, lastInput.nextSibling);
+                spanContainer.parentElement.insertBefore(constructionPointsDiv, spanContainer.nextSibling);
+              } else if (lastSpan.parentElement) {
+                // Fallback: Füge nach dem Span selbst ein
+                lastSpan.parentElement.insertBefore(constructionPointsDiv, lastSpan.nextSibling);
               }
             }
           });
           
-          // Entferne alle Elemente nach Aufgabe 3 (Buttons, etc.)
-          const allTask3Inputs = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
-          if (allTask3Inputs.length > 0) {
-            const lastTask3Input = allTask3Inputs[allTask3Inputs.length - 1] as HTMLElement;
-            
-            // Finde das übergeordnete Element, das alle Aufgabe-3 Inputs enthält
-            let task3Container: HTMLElement | null = lastTask3Input;
-            while (task3Container && task3Container !== doc.body) {
-              const tagName = task3Container.tagName.toLowerCase();
-              if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
-                const allInputsInContainer = task3Container.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
-                if (allInputsInContainer.length === allTask3Inputs.length) {
-                  // Entferne alle nachfolgenden Elemente (Buttons, etc.)
-                  let nextSibling = task3Container.nextSibling;
-                  while (nextSibling) {
-                    const toRemove = nextSibling;
-                    nextSibling = nextSibling.nextSibling;
-                    toRemove.remove();
-                  }
-                  break;
-                }
-              }
-              task3Container = task3Container.parentElement;
-            }
+          // Finde das letzte Element von Aufgabe 3 (die letzte Konstruktionspunkte-Box für Teilaufgabe d)
+          const allConstructionBoxes = Array.from(doc.querySelectorAll('div')).filter(div => {
+            const text = div.textContent || '';
+            return text.includes('Konstruktion:') && text.includes('Punkten');
+          });
+          
+          let lastTask3Element: HTMLElement | null = null;
+          if (allConstructionBoxes.length > 0) {
+            lastTask3Element = allConstructionBoxes[allConstructionBoxes.length - 1] as HTMLElement;
           }
           
-          // Füge Kommentar ganz am Ende der Aufgabe 3 hinzu (in neuer Zeile)
-          if (overallComment) {
-            // Finde alle Aufgabe-3 Input-Felder
-            const allTask3Inputs = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+          // Füge Kommentar ganz am Ende hinzu (falls vorhanden) - NACH den Konstruktionspunkten
+          let commentBox: HTMLElement | null = null;
+          if (task3CommentForReplacement) {
+            commentBox = doc.createElement('div');
+            commentBox.style.cssText = `
+              margin-top: 16px;
+              margin-bottom: 16px;
+              padding: 12px 16px;
+              background-color: #c8e6c9;
+              border: 2px solid #4caf50;
+              border-left: 5px solid #4caf50;
+              border-radius: 6px;
+              font-size: 0.95em;
+              line-height: 1.6;
+              display: block;
+              width: 100%;
+            `;
             
-            if (allTask3Inputs.length > 0) {
-              // Finde das allerletzte Input-Feld von Aufgabe 3 (sollte 3d sein)
-              const lastTask3Input = allTask3Inputs[allTask3Inputs.length - 1] as HTMLElement;
-              
-              // Erstelle Kommentar-Element in einer Box (neue Zeile)
+            const titleDiv = doc.createElement('div');
+            titleDiv.style.cssText = 'font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px;';
+            titleDiv.textContent = '💬 Kommentar:';
+            
               const commentDiv = doc.createElement('div');
-              commentDiv.style.cssText = `
-                display: block !important;
-                width: 100% !important;
-                margin-top: 16px !important;
-                margin-bottom: 8px !important;
-                padding: 12px 16px !important;
-                background-color: #f5f5f5 !important;
-                border: 2px solid #1976d2 !important;
-                border-radius: 4px !important;
-                font-size: 0.9em !important;
-                margin-left: 10% !important;
-                clear: both !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-              `;
-              commentDiv.innerHTML = `<strong>Kommentar:</strong> ${overallComment}`;
-              
-              // Finde das übergeordnete Block-Element des letzten Inputs
-              let insertAfter: HTMLElement | null = lastTask3Input;
-              
-              // Gehe hoch bis wir ein Block-Element finden, das alle Aufgabe-3 Inputs enthält
-              while (insertAfter && insertAfter !== doc.body) {
-                const tagName = insertAfter.tagName.toLowerCase();
-                if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
-                  // Prüfe ob dieses Element alle Aufgabe-3 Inputs enthält
-                  const allInputsInContainer = insertAfter.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
-                  if (allInputsInContainer.length === allTask3Inputs.length) {
-                    // Dieses Element enthält alle Aufgabe-3 Inputs
-                    // Füge Kommentar am Ende ein
-                    insertAfter.appendChild(commentDiv);
-                    break;
-                  }
-                }
-                insertAfter = insertAfter.parentElement;
-              }
-              
-              // Fallback: Füge nach dem letzten Input-Container ein
-              if (!commentDiv.parentElement && lastTask3Input.parentElement) {
-                const parent = lastTask3Input.parentElement;
-                const inputContainer = lastTask3Input.closest('span[style*="inline-flex"]') || lastTask3Input.parentElement;
-                if (inputContainer && inputContainer.parentElement) {
-                  inputContainer.parentElement.insertBefore(commentDiv, inputContainer.nextSibling);
-                } else {
-                  parent.insertBefore(commentDiv, lastTask3Input.nextSibling);
-                }
-              }
+            commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
+            commentDiv.textContent = task3CommentForReplacement;
+            
+            commentBox.appendChild(titleDiv);
+            commentBox.appendChild(commentDiv);
+            
+            if (lastTask3Element && lastTask3Element.parentElement) {
+              lastTask3Element.parentElement.insertBefore(commentBox, lastTask3Element.nextSibling);
+              lastTask3Element = commentBox;
+            } else {
+              doc.body.appendChild(commentBox);
+              lastTask3Element = commentBox;
             }
           }
-        }
-        
-        // FINALE BEREINIGUNG: Entferne ALLES nach Aufgabe 3 - EINFACHER ANSATZ
-        const finalAllTask3Inputs = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
-        if (finalAllTask3Inputs.length > 0) {
-          const finalLastTask3Input = finalAllTask3Inputs[finalAllTask3Inputs.length - 1] as HTMLElement;
           
-          // Finde das übergeordnete Container-Element
-          let task3Container: HTMLElement | null = finalLastTask3Input;
-          while (task3Container && task3Container !== doc.body) {
-            const tagName = task3Container.tagName.toLowerCase();
-            if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
-              const allInputsInContainer = task3Container.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
-              if (allInputsInContainer.length === finalAllTask3Inputs.length) {
-                // Entferne alle nachfolgenden Geschwister
-                if (task3Container.parentElement) {
-                  let current: Node | null = task3Container.nextSibling;
-                  while (current) {
-                    const next = current.nextSibling;
-                    task3Container.parentElement.removeChild(current);
-                    current = next;
-                  }
-                }
-                break;
+          // FINALE BEREINIGUNG: Entferne ALLES nach dem letzten Aufgabe-3-Element (Konstruktionspunkte oder Kommentar)
+          if (lastTask3Element) {
+            // Finde das Container-Element, das das letzte Element enthält
+            let container = lastTask3Element.parentElement;
+            while (container && container !== doc.body) {
+              // Entferne alle nachfolgenden Geschwister
+              let nextSibling = container.nextSibling;
+              while (nextSibling) {
+                const toRemove = nextSibling;
+                nextSibling = nextSibling.nextSibling;
+                toRemove.remove();
               }
+              container = container.parentElement;
             }
-            task3Container = task3Container.parentElement;
-          }
-        }
-        
-        // Zusätzlich: Entferne alle Body-Kinder, die nach dem Container kommen
-        const bodyChildren = Array.from(doc.body.children);
-        const allTask3InputsForBody = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
-        if (allTask3InputsForBody.length > 0) {
-          const lastTask3InputForBody = allTask3InputsForBody[allTask3InputsForBody.length - 1] as HTMLElement;
-          let foundTask3 = false;
-          for (const child of bodyChildren) {
-            if (child.contains(lastTask3InputForBody)) {
-              foundTask3 = true;
-            } else if (foundTask3) {
-              child.remove();
+            
+            // Entferne alle Body-Kinder nach dem Container
+            const bodyChildren = Array.from(doc.body.children);
+            let foundLastElement = false;
+            for (const child of bodyChildren) {
+              if (child.contains(lastTask3Element) || child === lastTask3Element) {
+                foundLastElement = true;
+                // Finde das größte Container-Element, das lastTask3Element enthält
+                let largestContainer: Element = child;
+                let current: Element | null = child;
+                while (current && current !== doc.body) {
+                  if (current.contains(lastTask3Element)) {
+                    largestContainer = current;
+                  }
+                  current = current.parentElement;
+                }
+                // Entferne alle nachfolgenden Geschwister dieses Containers
+                let nextSibling = largestContainer.nextSibling;
+                while (nextSibling) {
+                  const toRemove = nextSibling;
+                  nextSibling = nextSibling.nextSibling;
+                  toRemove.remove();
+                }
+              } else if (foundLastElement) {
+                child.remove();
+              }
             }
           }
         }
