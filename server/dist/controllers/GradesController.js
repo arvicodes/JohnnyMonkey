@@ -44,20 +44,37 @@ const getGrades = async (req, res) => {
         if (!studentId || !schemaId) {
             return res.status(400).json({ error: 'Student ID und Schema ID erforderlich' });
         }
-        const grades = await prisma.grade.findMany({
-            where: {
-                studentId,
-                schemaId
-            },
-            orderBy: {
-                categoryName: 'asc'
-            }
+        // Verwende raw SQL, um Dezimalstellen genau zu erhalten
+        // WICHTIG: Hole grade als TEXT, um Rundungsprobleme zu vermeiden!
+        const rawGrades = await prisma.$queryRaw `
+      SELECT 
+        id, 
+        "studentId", 
+        "schemaId", 
+        "categoryName", 
+        CAST(grade AS TEXT) as grade, 
+        weight, 
+        "createdAt", 
+        "updatedAt"
+      FROM Grade
+      WHERE "studentId" = ${studentId} AND "schemaId" = ${schemaId}
+      ORDER BY "categoryName" ASC
+    `;
+        // Konvertiere die raw Ergebnisse in das erwartete Format
+        const formattedGrades = rawGrades.map(grade => {
+            // Konvertiere grade von String zu number und behalte Dezimalstellen
+            const gradeValue = parseFloat(grade.grade);
+            return {
+                id: grade.id,
+                studentId: grade.studentId,
+                schemaId: grade.schemaId,
+                categoryName: grade.categoryName,
+                grade: gradeValue, // Direkt verwenden, keine weitere Rundung
+                weight: grade.weight,
+                createdAt: grade.createdAt,
+                updatedAt: grade.updatedAt
+            };
         });
-        // Stelle sicher, dass Dezimalstellen erhalten bleiben
-        const formattedGrades = grades.map(grade => ({
-            ...grade,
-            grade: typeof grade.grade === 'number' ? parseFloat(grade.grade.toFixed(1)) : grade.grade
-        }));
         res.json(formattedGrades);
     }
     catch (error) {

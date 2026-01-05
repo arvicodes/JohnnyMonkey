@@ -2702,9 +2702,40 @@ Vera Christ`);
       const solutionDoc = solutionParser.parseFromString(htmlText, 'text/html');
       solutionDoc.body.innerHTML = solutionDoc.body.innerHTML.replace(/Frau Christ/g, 'Musterlösung');
       
-      // Entferne "Viel Glück" und "Viel Erfolg" Text
-      solutionDoc.body.innerHTML = solutionDoc.body.innerHTML.replace(/Viel Glück/gi, '');
-      solutionDoc.body.innerHTML = solutionDoc.body.innerHTML.replace(/Viel Erfolg/gi, '');
+      // Ersetze "Name: ____" durch "Name: Musterlösung" (mit TreeWalker für zuverlässige Ersetzung)
+      const solutionWalker = solutionDoc.createTreeWalker(solutionDoc.body, NodeFilter.SHOW_TEXT, null);
+      const solutionTextNodes: Text[] = [];
+      let solutionNode: Node | null;
+      while (solutionNode = solutionWalker.nextNode()) {
+        solutionTextNodes.push(solutionNode as Text);
+      }
+      
+      solutionTextNodes.forEach(textNode => {
+        let text = textNode.textContent || '';
+        const originalText = text;
+        
+        // Ersetze "Name: ____" durch "Name: Musterlösung"
+        text = text.replace(/Name:\s*_+/gi, 'Name: Musterlösung');
+        
+        // Entferne "Viel Glück" und "Viel Erfolg"
+        text = text.replace(/Viel Glück/gi, '');
+        text = text.replace(/Viel Erfolg/gi, '');
+        
+        if (text !== originalText) {
+          textNode.textContent = text;
+        }
+      });
+      
+      // Zusätzlich: Ersetze auch in Input-Feldern der Musterlösung
+      const solutionAllInputs = solutionDoc.querySelectorAll('input, textarea');
+      solutionAllInputs.forEach((input: Element) => {
+        const inputEl = input as HTMLInputElement | HTMLTextAreaElement;
+        if (inputEl.value) {
+          let value = inputEl.value;
+          value = value.replace(/Name:\s*_+/gi, 'Name: Musterlösung');
+          inputEl.value = value;
+        }
+      });
       
       // Entferne alle Buttons und Submit-Buttons
       const solutionSubmitButtons = solutionDoc.querySelectorAll('button[type="submit"], input[type="submit"]');
@@ -2873,7 +2904,49 @@ Vera Christ`);
           }
         }
         
-        // Ersetze Texte durch TreeWalker (funktioniert besser als innerHTML.replace)
+        // EINFACHER UND ROBUSTER ANSATZ: Ersetze "Name:" im gesamten HTML-Inhalt
+        // Ersetze "Name:" gefolgt von Leerzeichen/Unterstrichen ODER nichts
+        // Verwende einen einfachen replace auf dem gesamten innerHTML
+        let bodyHTML = doc.body.innerHTML;
+        
+        // Methode 1: Ersetze "Name:" gefolgt von Unterstrichen
+        bodyHTML = bodyHTML.replace(/Name:\s*_+/gi, `Name: ${studentName}`);
+        
+        // Methode 2: Ersetze "Name:" gefolgt von Leerzeichen und dann einem schließenden Tag oder Zeilenumbruch
+        bodyHTML = bodyHTML.replace(/Name:\s+(?=\s*<|$|\n)/gi, `Name: ${studentName} `);
+        
+        // Methode 3: Ersetze "Name:" am Ende eines Text-Knotens (vor einem HTML-Tag)
+        bodyHTML = bodyHTML.replace(/Name:\s*(?=[<\n])/gi, `Name: ${studentName}`);
+        
+        doc.body.innerHTML = bodyHTML;
+        
+        // Zusätzlich: Gehe durch alle Text-Knoten und ersetze
+        const walkerForName = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+        let nameNode: Node | null;
+        while (nameNode = walkerForName.nextNode()) {
+          let text = nameNode.textContent || '';
+          const originalText = text;
+          
+          // Ersetze "Name:" gefolgt von nichts oder nur Leerzeichen/Unterstrichen
+          if (text.includes('Name:')) {
+            // Prüfe, ob nach "Name:" wirklich nichts oder nur Leerzeichen/Unterstriche kommen
+            const nameIndex = text.toLowerCase().indexOf('name:');
+            if (nameIndex !== -1) {
+              const afterName = text.substring(nameIndex + 5).trim();
+              // Wenn nach "Name:" nichts oder nur Unterstriche/Leerzeichen kommen
+              if (!afterName || /^[\s_]*$/.test(afterName)) {
+                text = text.substring(0, nameIndex + 5) + ` ${studentName}` + text.substring(nameIndex + 5);
+                nameNode.textContent = text;
+              } else if (/^[\s_]+/.test(afterName)) {
+                // Ersetze Unterstriche/Leerzeichen durch Schülername
+                text = text.substring(0, nameIndex + 5) + ` ${studentName}` + afterName.replace(/^[\s_]+/, '');
+                nameNode.textContent = text;
+              }
+            }
+          }
+        }
+        
+        // Ersetze Texte durch TreeWalker für Kommentar-Ersetzung
         const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
         const textNodes: Text[] = [];
         let node: Node | null;
@@ -2884,9 +2957,6 @@ Vera Christ`);
         textNodes.forEach(textNode => {
           let text = textNode.textContent || '';
           const originalText = text;
-          
-          // Ersetze "Name: ____" durch "Name: [Schülername]"
-          text = text.replace(/Name:\s*_+/gi, `Name: ${studentName}`);
           
           // Ersetze "⚠️ Zeichne alles schön ordentlich in dein großes Koordinatensystem!" durch Kommentar
           if (task3CommentForReplacement) {
@@ -2901,27 +2971,6 @@ Vera Christ`);
           
           if (text !== originalText) {
             textNode.textContent = text;
-          }
-        });
-        
-        // Zusätzlich: Ersetze auch in Input-Feldern (value-Attribute)
-        const allInputs = doc.querySelectorAll('input, textarea');
-        allInputs.forEach((input: Element) => {
-          const inputEl = input as HTMLInputElement | HTMLTextAreaElement;
-          if (inputEl.value) {
-            let value = inputEl.value;
-            
-            // Ersetze "Name: ____" in Input-Werten
-            value = value.replace(/Name:\s*_+/gi, `Name: ${studentName}`);
-            
-            // Ersetze "⚠️ Zeichne alles schön ordentlich..." in Input-Werten
-            if (task3CommentForReplacement) {
-              value = value.replace(/⚠️\s*Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
-              value = value.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
-              value = value.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem/gi, task3CommentForReplacement);
-            }
-            
-            inputEl.value = value;
           }
         });
         
