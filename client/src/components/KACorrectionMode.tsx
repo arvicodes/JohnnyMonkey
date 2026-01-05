@@ -116,13 +116,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       setError(null);
       const loginCode = localStorage.getItem('loginCode') || '';
       
-      // Extrahiere nur den Dateinamen aus dem Pfad (für die Datenbank)
-      const fileName = kaFilePath.split('/').pop() || kaFilePath;
+      // Verwende den vollständigen kaFilePath, nicht nur den Dateinamen
+      // Die API kann mit verschiedenen Pfad-Varianten umgehen (getPossiblePaths)
+      console.log('🔍 Lade Abgaben für:', kaFilePath);
       
-      // Debug: Log den kaFilePath
-      console.log('🔍 Lade Abgaben für:', kaFilePath, '(Dateiname:', fileName, ')');
-      
-      const response = await fetch(`/api/ka-corrections/submissions?kaFilePath=${encodeURIComponent(fileName)}`, {
+      const response = await fetch(`/api/ka-corrections/submissions?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
         headers: {
           'Content-Type': 'application/json',
           'x-login-code': loginCode

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getGradeRelease = exports.toggleGradeRelease = exports.getGradesByStudent = exports.getGrades = exports.saveGrades = void 0;
+exports.releaseBulkGrades = exports.saveBulkGrades = exports.getGradeRelease = exports.toggleGradeRelease = exports.getGradesByStudent = exports.getGrades = exports.saveGrades = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 const saveGrades = async (req, res) => {
@@ -53,7 +53,12 @@ const getGrades = async (req, res) => {
                 categoryName: 'asc'
             }
         });
-        res.json(grades);
+        // Stelle sicher, dass Dezimalstellen erhalten bleiben
+        const formattedGrades = grades.map(grade => ({
+            ...grade,
+            grade: typeof grade.grade === 'number' ? parseFloat(grade.grade.toFixed(1)) : grade.grade
+        }));
+        res.json(formattedGrades);
     }
     catch (error) {
         console.error('Error fetching grades:', error);
@@ -144,4 +149,72 @@ const getGradeRelease = async (req, res) => {
     }
 };
 exports.getGradeRelease = getGradeRelease;
+// Speichere Noten für mehrere Schüler auf einmal (Bulk)
+const saveBulkGrades = async (req, res) => {
+    try {
+        const { schemaId, categoryName, grades } = req.body;
+        if (!schemaId || !categoryName || !grades || !Array.isArray(grades)) {
+            return res.status(400).json({ error: 'Ungültige Daten' });
+        }
+        // Verwende upsert für jede Note (erstellt neue oder aktualisiert bestehende)
+        const createdGrades = await Promise.all(grades.map((gradeData) => prisma.grade.upsert({
+            where: {
+                studentId_schemaId_categoryName: {
+                    studentId: gradeData.studentId,
+                    schemaId,
+                    categoryName
+                }
+            },
+            update: {
+                grade: typeof gradeData.grade === 'number' ? parseFloat(gradeData.grade.toFixed(1)) : gradeData.grade,
+                weight: gradeData.weight || 1.0
+            },
+            create: {
+                studentId: gradeData.studentId,
+                schemaId,
+                categoryName,
+                grade: typeof gradeData.grade === 'number' ? parseFloat(gradeData.grade.toFixed(1)) : gradeData.grade,
+                weight: gradeData.weight || 1.0
+            }
+        })));
+        res.status(201).json({ count: createdGrades.length, grades: createdGrades });
+    }
+    catch (error) {
+        console.error('Error saving bulk grades:', error);
+        res.status(500).json({ error: 'Fehler beim Speichern der Noten' });
+    }
+};
+exports.saveBulkGrades = saveBulkGrades;
+// Freigabe der Noten für mehrere Schüler auf einmal (Bulk)
+const releaseBulkGrades = async (req, res) => {
+    try {
+        const { schemaId, studentIds } = req.body;
+        if (!schemaId || !studentIds || !Array.isArray(studentIds)) {
+            return res.status(400).json({ error: 'Ungültige Daten' });
+        }
+        // Erstelle oder aktualisiere Freigabe für alle Schüler
+        const releases = await Promise.all(studentIds.map((studentId) => prisma.gradeRelease.upsert({
+            where: {
+                studentId_schemaId: {
+                    studentId,
+                    schemaId
+                }
+            },
+            update: {
+                isReleased: true
+            },
+            create: {
+                studentId,
+                schemaId,
+                isReleased: true
+            }
+        })));
+        res.json({ count: releases.length, releases });
+    }
+    catch (error) {
+        console.error('Error releasing bulk grades:', error);
+        res.status(500).json({ error: 'Fehler beim Freigeben der Noten' });
+    }
+};
+exports.releaseBulkGrades = releaseBulkGrades;
 //# sourceMappingURL=GradesController.js.map

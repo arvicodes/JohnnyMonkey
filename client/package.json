@@ -60,6 +60,7 @@
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
     "jspdf": "^3.0.3",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.525.0",
     "mammoth": "^1.10.0",
@@ -79,7 +80,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "PORT=3000 react-scripts start",
+    "start": "PORT=3001 react-scripts start",
     "start:smart": "./scripts/start-dev.sh",
     "start:clean": "npm run cleanup && npm start",
     "cleanup": "node -e \"const { exec } = require('child_process'); exec('lsof -ti:3000,3001,3002,3003 | xargs kill -9 2>/dev/null || echo \\\"No processes on ports 3000-3003\\\"', console.log);\"",

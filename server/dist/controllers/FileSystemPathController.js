@@ -178,7 +178,7 @@ class FileSystemPathController {
             res.status(500).json({ error: 'Fehler beim Löschen des Pfades' });
         }
     }
-    // HTML-Datei lesen
+    // HTML-Datei lesen (für Lehrer und Schüler - keine Authentifizierung erforderlich)
     static async readHtmlFile(req, res) {
         try {
             const { filePath } = req.query;

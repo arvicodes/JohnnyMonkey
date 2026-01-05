@@ -1879,16 +1879,130 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     return grade.toFixed(1);
   };
 
+  // Prüft rekursiv, ob ein Knoten oder seine Nachkommen "Sonstige Leistungen" oder "Klassensenarbeiten" enthalten
+  const hasExcludedDescendant = (node: any): boolean => {
+    const nodeName = node.name.toLowerCase();
+    
+    // Prüfe ob der Knoten selbst "Sonstige Leistungen" oder "Klassensenarbeiten"/"Klassenarbeiten" ist
+    if ((nodeName.includes('sonstige') && nodeName.includes('leistung')) ||
+        nodeName.includes('klassensenarbeiten') || 
+        nodeName.includes('klassenarbeiten')) {
+      return true;
+    }
+    
+    // Prüfe rekursiv alle Nachkommen
+    if (node.children && node.children.length > 0) {
+      return node.children.some((child: any) => hasExcludedDescendant(child));
+    }
+    
+    return false;
+  };
+
+  // Prüft, ob ein Knoten in einer ausgeschlossenen Kategorie ist (Sonstige Leistungen, Klassensenarbeiten oder deren Eltern)
+  const isExcludedCategory = (node: any): boolean => {
+    const nodeName = node.name.toLowerCase();
+    
+    // Prüfe ob der Knoten selbst "Sonstige Leistungen" oder "Klassensenarbeiten"/"Klassenarbeiten" ist
+    if ((nodeName.includes('sonstige') && nodeName.includes('leistung')) ||
+        nodeName.includes('klassensenarbeiten') || 
+        nodeName.includes('klassenarbeiten')) {
+      return true;
+    }
+    
+    // Prüfe ob der Knoten ein Elternteil (direkt oder indirekt) von "Sonstige Leistungen" oder "Klassensenarbeiten" ist
+    if (node.children && node.children.length > 0) {
+      return hasExcludedDescendant(node);
+    }
+    
+    return false;
+  };
+
+  // Formatiert eine Note mit Tendenzen, außer wenn sie in einer ausgeschlossenen Kategorie ist
+  const formatGradeWithTendency = (grade: number, node: any, schema: GradingSchema): string => {
+    if (schema?.gradingSystem === 'MSS') {
+      return grade.toFixed(0);
+    }
+    
+    // Wenn die Kategorie ausgeschlossen ist, formatiere ohne Tendenz (nur ganze Noten)
+    if (isExcludedCategory(node)) {
+      // Runde auf ganze Note ohne Tendenz
+      const rounded = Math.round(grade);
+      if (rounded >= 1 && rounded <= 6) {
+        return rounded.toString();
+      }
+      return grade.toFixed(1);
+    }
+    
+    // Für nicht-ausgeschlossene Kategorien: Formatiere IMMER mit Tendenz
+    // Verwende einen Toleranzwert für Gleitkomma-Vergleiche
+    const tolerance = 0.01;
+    
+    // Standardwerte mit Tendenzen - mit Toleranz für Gleitkomma-Vergleiche
+    if (Math.abs(grade - 1.0) < tolerance) return '1+';
+    if (Math.abs(grade - 1.3) < tolerance) return '1-';
+    if (Math.abs(grade - 1.7) < tolerance) return '2+';
+    if (Math.abs(grade - 2.0) < tolerance) return '2+';
+    if (Math.abs(grade - 2.3) < tolerance) return '2-';
+    if (Math.abs(grade - 2.7) < tolerance) return '3+';
+    if (Math.abs(grade - 3.0) < tolerance) return '3+';
+    if (Math.abs(grade - 3.3) < tolerance) return '3-';
+    if (Math.abs(grade - 3.7) < tolerance) return '4+';
+    if (Math.abs(grade - 4.0) < tolerance) return '4+';
+    if (Math.abs(grade - 4.3) < tolerance) return '4-';
+    if (Math.abs(grade - 4.7) < tolerance) return '5+';
+    if (Math.abs(grade - 5.0) < tolerance) return '5+';
+    if (Math.abs(grade - 5.3) < tolerance) return '5-';
+    if (Math.abs(grade - 6.0) < tolerance) return '6';
+    
+    // Wenn die Note nicht exakt einem Standardwert entspricht, runde auf den nächsten Wert mit Tendenz
+    const standardGrades = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 6.0];
+    let closestGrade = standardGrades[0];
+    let minDiff = Math.abs(grade - closestGrade);
+    
+    for (const stdGrade of standardGrades) {
+      const diff = Math.abs(grade - stdGrade);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestGrade = stdGrade;
+      }
+    }
+    
+    // Formatiere den nächsten Standardwert mit Tendenz
+    if (Math.abs(closestGrade - 1.0) < tolerance) return '1+';
+    if (Math.abs(closestGrade - 1.3) < tolerance) return '1-';
+    if (Math.abs(closestGrade - 1.7) < tolerance) return '2+';
+    if (Math.abs(closestGrade - 2.0) < tolerance) return '2+';
+    if (Math.abs(closestGrade - 2.3) < tolerance) return '2-';
+    if (Math.abs(closestGrade - 2.7) < tolerance) return '3+';
+    if (Math.abs(closestGrade - 3.0) < tolerance) return '3+';
+    if (Math.abs(closestGrade - 3.3) < tolerance) return '3-';
+    if (Math.abs(closestGrade - 3.7) < tolerance) return '4+';
+    if (Math.abs(closestGrade - 4.0) < tolerance) return '4+';
+    if (Math.abs(closestGrade - 4.3) < tolerance) return '4-';
+    if (Math.abs(closestGrade - 4.7) < tolerance) return '5+';
+    if (Math.abs(closestGrade - 5.0) < tolerance) return '5+';
+    if (Math.abs(closestGrade - 5.3) < tolerance) return '5-';
+    if (Math.abs(closestGrade - 6.0) < tolerance) return '6';
+    
+    return grade.toFixed(1);
+  };
+
   // Funktion zum Kombinieren von Schema und Noten
   const combineSchemaWithGrades = (schema: GradingSchema, grades: Grade[], groupId: string) => {
     const schemaStructure = parseSchemaStructure(schema.structure);
     const gradesMap = new Map(grades.map(g => [g.categoryName, g]));
     
     // Prüfe, welche EPO-Noten freigegeben sind
+    // Erstelle ein Set mit verschiedenen Schreibweisen für case-insensitive Vergleich
     const releasedEpoGrades = new Set<string>();
     epoGrades.forEach((epo: any) => {
       if ((epo.groupId === groupId || epo.group?.id === groupId) && epo.isReleased) {
-        releasedEpoGrades.add(`epo ${epo.period}`);
+        const epoKey = `epo ${epo.period}`;
+        releasedEpoGrades.add(epoKey.toLowerCase().trim());
+        // Füge auch Varianten hinzu für besseren Abgleich
+        releasedEpoGrades.add(`epo${epo.period}`);
+        releasedEpoGrades.add(`EPO ${epo.period}`);
+        releasedEpoGrades.add(`Epo ${epo.period}`);
       }
     });
     
@@ -1916,7 +2030,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       const isEpo = node.name.toLowerCase().includes('epo');
       if (isEpo) {
         const epoKey = node.name.toLowerCase().trim();
-        return !releasedEpoGrades.has(epoKey);
+        // Prüfe verschiedene Varianten des EPO-Namens
+        const epoKeyVariants = [
+          epoKey,
+          epoKey.replace(/\s+/g, ''), // "epo1" statt "epo 1"
+          node.name.trim() // Original-Name
+        ];
+        const isReleased = epoKeyVariants.some(variant => 
+          releasedEpoGrades.has(variant.toLowerCase().trim())
+        );
+        return !isReleased;
       }
       return false;
     };
@@ -1929,19 +2052,47 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       const isEpo = node.name.toLowerCase().includes('epo');
       if (isEpo) {
         const epoKey = node.name.toLowerCase().trim();
-        return releasedEpoGrades.has(epoKey);
+        // Prüfe verschiedene Varianten des EPO-Namens
+        const epoKeyVariants = [
+          epoKey,
+          epoKey.replace(/\s+/g, ''), // "epo1" statt "epo 1"
+          node.name.trim() // Original-Name
+        ];
+        return epoKeyVariants.some(variant => 
+          releasedEpoGrades.has(variant.toLowerCase().trim())
+        );
       }
       return false;
     };
     
     const processNode = (node: any): any => {
       const isEpo = node.name.toLowerCase().includes('epo');
+      // Suche nach der Note - case-insensitive für EPO-Noten
       let grade = gradesMap.get(node.name);
+      if (!grade && isEpo) {
+        // Für EPO-Noten: Suche case-insensitive
+        const nodeNameLower = node.name.toLowerCase().trim();
+        for (const [categoryName, gradeData] of gradesMap.entries()) {
+          if (categoryName.toLowerCase().trim() === nodeNameLower) {
+            grade = gradeData;
+            break;
+          }
+        }
+      }
       
       // Für EPO-Noten: Nur anzeigen, wenn freigegeben
       if (isEpo) {
         const epoKey = node.name.toLowerCase().trim();
-        if (!releasedEpoGrades.has(epoKey)) {
+        // Prüfe verschiedene Varianten des EPO-Namens
+        const epoKeyVariants = [
+          epoKey,
+          epoKey.replace(/\s+/g, ''), // "epo1" statt "epo 1"
+          node.name.trim() // Original-Name
+        ];
+        const isReleased = epoKeyVariants.some(variant => 
+          releasedEpoGrades.has(variant.toLowerCase().trim())
+        );
+        if (!isReleased) {
           grade = undefined; // Nicht freigegeben, also nicht anzeigen
         }
       }
@@ -2068,7 +2219,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       textAlign: 'center',
                       opacity: 0.6
                     }}>
-                      0.0
+                      -
                     </Box>
                   );
                 }
@@ -2084,30 +2235,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
                     textAlign: 'center'
                   }}>
-                    {schema?.gradingSystem === 'MSS' ? 
-                      node.grade.toFixed(0) : 
-                      formatGermanGrade(node.grade)
-                    }
+                    {formatGradeWithTendency(node.grade, node, schema)}
                   </Box>
-                );
-              })()}
-              {(() => {
-                const isEpo = node.name.toLowerCase().includes('epo');
-                return isEpo ? (
-                  <Typography variant="caption" sx={{ 
-                    color: colors.textSecondary,
-                    fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
-                    fontStyle: 'italic'
-                  }}>
-                    siehe Stunden
-                  </Typography>
-                ) : (
-                  <Typography variant="caption" sx={{ 
-                    color: colors.textSecondary,
-                    fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem'
-                  }}>
-                    ({node.weight}%)
-                  </Typography>
                 );
               })()}
             </Box>
@@ -2136,7 +2265,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   textAlign: 'center',
                   opacity: 0.6
                 }}>
-                  0.0
+                  -
                 </Box>
               </Box>
             ) : (
@@ -2154,10 +2283,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   opacity: 0.9,
                   boxShadow: `0 2px 4px ${getLevelColor(level, node.name, isLeafNode)}40`
                 }}>
-                  {schema?.gradingSystem === 'MSS' ? 
-                    (node.grade !== undefined ? node.grade : calculatedGrade)!.toFixed(0) : 
-                    formatGermanGrade((node.grade !== undefined ? node.grade : calculatedGrade)!)
-                  }
+                  {formatGradeWithTendency((node.grade !== undefined ? node.grade : calculatedGrade)!, node, schema)}
                 </Box>
               </Box>
             )
@@ -2176,24 +2302,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 opacity: 0.6,
                 border: '1px solid #999'
               }}>
-                0
+                -
               </Box>
-              <Typography variant="caption" sx={{ 
-                color: colors.textSecondary,
-                fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
-                fontStyle: 'italic'
-              }}>
-                {node.name.toLowerCase().includes('epo') ? 'siehe Stunden' : 'berechnet'}
-              </Typography>
             </Box>
           ) : (
-            <Typography variant="caption" sx={{ 
-              color: colors.textSecondary,
-              fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
-              fontStyle: 'italic'
-            }}>
-              {isLeafNode ? '0' : 'Keine Daten'}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ 
+                bgcolor: '#9E9E9E',
+                color: 'white',
+                px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+                py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
+                borderRadius: 1,
+                fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+                fontWeight: 'bold',
+                minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
+                textAlign: 'center',
+                opacity: 0.6,
+                border: '1px solid #999'
+              }}>
+                -
+              </Box>
+            </Box>
           )}
         </Box>
         

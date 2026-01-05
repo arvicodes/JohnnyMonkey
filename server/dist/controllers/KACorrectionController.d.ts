@@ -28,5 +28,13 @@ export declare class KACorrectionController {
      * Prüfe ob eine Submission für einen Schüler existiert (für Schüler)
      */
     static checkMySubmission(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Alle Noten für eine Klassenarbeit freigeben/zurücknehmen (nur für Lehrer)
+     */
+    static releaseAllGrades(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Prüfe Freigabestatus für eine Klassenarbeit (nur für Lehrer)
+     */
+    static getReleaseStatus(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=KACorrectionController.d.ts.map

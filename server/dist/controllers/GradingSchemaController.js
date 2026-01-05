@@ -193,22 +193,129 @@ const getGradingSchemas = async (req, res) => {
 };
 exports.getGradingSchemas = getGradingSchemas;
 const updateGradingSchema = async (req, res) => {
+    var _a;
     try {
         const { id } = req.params;
-        const { name, structure, gradingSystem } = req.body;
-        const schema = await prisma.gradingSchema.update({
-            where: { id },
-            data: {
-                name,
-                structure,
-                gradingSystem
-            }
+        const { name, structure, gradingSystem, groupId } = req.body;
+        console.log('🔄 Updating grading schema:', { id, name, hasStructure: !!structure, gradingSystem, groupId });
+        console.log('📄 Structure preview (first 500 chars):', structure.substring(0, 500));
+        if (!name || !structure) {
+            return res.status(400).json({ error: 'Missing required fields: name, structure' });
+        }
+        // Check if the schema exists
+        const existingSchema = await prisma.gradingSchema.findUnique({
+            where: { id }
         });
+        if (!existingSchema) {
+            console.error('❌ Schema not found:', id);
+            return res.status(404).json({ error: 'Bewertungsschema nicht gefunden' });
+        }
+        console.log('📋 Existing schema:', {
+            id: existingSchema.id,
+            name: existingSchema.name,
+            structureLength: existingSchema.structure.length,
+            gradingSystem: existingSchema.gradingSystem,
+            groupId: existingSchema.groupId
+        });
+        // If groupId is provided, validate it
+        if (groupId) {
+            const learningGroup = await prisma.learningGroup.findUnique({
+                where: { id: groupId }
+            });
+            if (!learningGroup) {
+                return res.status(400).json({ error: `Lerngruppe mit ID ${groupId} nicht gefunden` });
+            }
+        }
+        // Parse and validate the schema
+        let schemaNode;
+        try {
+            console.log('📄 Parsing schema structure (first 500 chars):', structure.substring(0, 500));
+            schemaNode = schemaService.parseSchemaString(structure);
+            console.log('✅ Schema parsed successfully, root name:', schemaNode.name, 'children count:', ((_a = schemaNode.children) === null || _a === void 0 ? void 0 : _a.length) || 0);
+            if (schemaNode.children && schemaNode.children.length > 0) {
+                const weightSum = schemaNode.children.reduce((sum, child) => sum + child.weight, 0);
+                console.log('📊 Root level weight sum:', weightSum);
+            }
+        }
+        catch (parseError) {
+            console.error('❌ Error parsing schema:', parseError);
+            console.error('❌ Error stack:', parseError instanceof Error ? parseError.stack : 'No stack trace');
+            const errorMessage = parseError instanceof Error ? parseError.message : 'Ungültiges Schema-Format';
+            return res.status(400).json({ error: `Fehler beim Parsen des Schemas: ${errorMessage}` });
+        }
+        const isValid = schemaService.validateSchema(schemaNode);
+        if (!isValid) {
+            console.error('❌ Schema validation failed - weights do not sum to 100%');
+            if (schemaNode.children && schemaNode.children.length > 0) {
+                const weightSum = schemaNode.children.reduce((sum, child) => sum + child.weight, 0);
+                console.error('❌ Actual weight sum:', weightSum);
+                schemaNode.children.forEach((child, index) => {
+                    console.error(`   Child ${index}: ${child.name} = ${child.weight}%`);
+                });
+            }
+            return res.status(400).json({ error: 'Ungültiges Schema: Die Hauptkategorien müssen zusammen 100% ergeben' });
+        }
+        const updateData = {
+            name,
+            structure: structure, // Speichere als String, nicht als JSON
+        };
+        // Füge gradingSystem hinzu, falls es im Request vorhanden ist
+        if (gradingSystem) {
+            updateData.gradingSystem = gradingSystem;
+        }
+        // Füge groupId hinzu, falls es im Request vorhanden ist (normalerweise sollte es nicht geändert werden)
+        if (groupId) {
+            updateData.groupId = groupId;
+        }
+        console.log('💾 Update data:', {
+            name: updateData.name,
+            structureLength: updateData.structure.length,
+            gradingSystem: updateData.gradingSystem,
+            groupId: updateData.groupId
+        });
+        let schema;
+        try {
+            schema = await prisma.gradingSchema.update({
+                where: { id },
+                data: updateData
+            });
+            console.log('✅ Schema updated successfully:', {
+                id: schema.id,
+                name: schema.name,
+                structureLength: schema.structure.length,
+                gradingSystem: schema.gradingSystem,
+                groupId: schema.groupId
+            });
+        }
+        catch (dbError) {
+            console.error('❌ Database error updating schema:', dbError);
+            if (dbError instanceof Error) {
+                // Prisma-spezifische Fehler
+                if (dbError.message.includes('Unique constraint')) {
+                    return res.status(400).json({ error: 'Ein Schema mit diesem Namen existiert bereits' });
+                }
+                if (dbError.message.includes('Foreign key constraint')) {
+                    return res.status(400).json({ error: 'Die angegebene Lerngruppe existiert nicht' });
+                }
+                return res.status(400).json({ error: `Datenbankfehler: ${dbError.message}` });
+            }
+            throw dbError; // Re-throw für den äußeren catch-Block
+        }
         res.json(schema);
     }
     catch (error) {
-        console.error('Error updating grading schema:', error);
-        res.status(500).json({ error: 'Fehler beim Aktualisieren des Bewertungsschemas' });
+        console.error('❌ Error updating grading schema:', error);
+        if (error instanceof Error) {
+            // Wenn es bereits eine Response gesendet wurde, nicht erneut senden
+            if (!res.headersSent) {
+                res.status(400).json({ error: error.message });
+            }
+        }
+        else {
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Fehler beim Aktualisieren des Bewertungsschemas' });
+            }
+        }
     }
 };
 exports.updateGradingSchema = updateGradingSchema;

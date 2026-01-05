@@ -51,12 +51,14 @@ async function calculateEpoGradesForGroup(groupId) {
                 studentData[p.studentId].period2.count += 1;
             }
         });
-        // Feingranulare Abbildung des Durchschnitts [-2, 2] auf deutsches Notenschema mit +/-:
-        // 16 Stufen: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0
+        // Notenskala basierend auf Mitarbeitsbewertungen:
+        // Alles grün (+2) = 1.0, alles blau (+1) = 2.0, alles grau (0) = 3.0, alles gelb (-1) = 4.0, alles rot (-2) = 5.0
+        // Mit Zwischenstufen für Tendenzen
         const calculateGradeFromAverage = (average) => {
-            const steps = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 4.3, 4.7, 5.0, 5.3, 5.7, 6.0];
-            // Mappe average (best = +2, worst = -2) in 0..15 über 0.25er Intervalle
-            const rawIndex = Math.floor((2 - average) / 0.25);
+            const steps = [1.0, 1.3, 2.0, 2.3, 3.0, 3.3, 4.0, 4.3, 5.0];
+            // Mappe average (best = +2, worst = -2) in 0..8 über 0.5er Intervalle
+            // +2.0 → 1.0, +1.0 → 2.0, 0.0 → 3.0, -1.0 → 4.0, -2.0 → 5.0
+            const rawIndex = Math.floor((2 - average) / 0.5);
             const index = Math.max(0, Math.min(steps.length - 1, rawIndex));
             return steps[index];
         };
@@ -137,9 +139,11 @@ async function integrateEpoGradesToSchema(groupId) {
         });
         if (!schema) {
             // Kein Schema vorhanden → Abbruch ohne Fehler
+            console.log(`No grading schema found for group ${groupId}`);
             return;
         }
         const schemaId = schema.id;
+        console.log(`Found grading schema ${schemaId} for group ${groupId}`);
         // Lade aktuelle EPO-Noten der Gruppe - nur freigegebene
         const epoGrades = await prisma.participationPeriodGrade.findMany({
             where: {
@@ -152,10 +156,14 @@ async function integrateEpoGradesToSchema(groupId) {
                 grade: true
             }
         });
+        console.log(`Found ${epoGrades.length} released EPO grades for group ${groupId}`);
         if (epoGrades.length === 0) {
+            console.log(`No released EPO grades to integrate for group ${groupId}`);
             return;
         }
         // Upsert pro Eintrag
+        let updatedCount = 0;
+        let createdCount = 0;
         for (const eg of epoGrades) {
             // Verwende kleingeschriebene Kategorienamen: "epo 1" / "epo 2"
             const targetName = `epo ${eg.period}`;
@@ -175,6 +183,8 @@ async function integrateEpoGradesToSchema(groupId) {
                         weight: 1.0
                     }
                 });
+                updatedCount++;
+                console.log(`Updated grade for student ${eg.studentId}, category: ${targetName}, grade: ${eg.grade}`);
             }
             else {
                 // Falls keine case-insensitive Übereinstimmung: neu anlegen (mit kleingeschriebenem Namen)
@@ -187,8 +197,11 @@ async function integrateEpoGradesToSchema(groupId) {
                         weight: 1.0
                     }
                 });
+                createdCount++;
+                console.log(`Created grade for student ${eg.studentId}, category: ${targetName}, grade: ${eg.grade}`);
             }
         }
+        console.log(`Integration complete: ${createdCount} created, ${updatedCount} updated`);
     }
     catch (error) {
         console.error('Error integrating EPO grades into grading schema for group:', groupId, error);
@@ -455,7 +468,8 @@ router.post('/:groupId/calculate-epo', async (req, res) => {
         }
         // Verwende die wiederverwendbare Funktion
         await calculateEpoGradesForGroup(groupId);
-        // Integriere EPO-Noten ins Notenschema (Server-seitig automatisch)
+        // Integriere EPO-Noten ins Notenschema (nur freigegebene Noten werden aktualisiert)
+        // Dies aktualisiert auch bereits freigegebene Noten mit den neu berechneten Werten
         await integrateEpoGradesToSchema(groupId);
         // Lade die berechneten EPO-Noten, um die Anzahl zurückzugeben
         const epoGrades = await prisma.participationPeriodGrade.findMany({
@@ -784,8 +798,11 @@ router.post('/:groupId/epo-grades/release', async (req, res) => {
         // Wenn freigegeben: Integriere Noten ins Notenschema
         if (isReleased) {
             try {
+                // Warte kurz, um sicherzustellen, dass die Datenbank-Transaktion committed ist
+                await new Promise(resolve => setTimeout(resolve, 100));
+                console.log(`Integrating EPO grades for period ${period} into schema for group ${groupId}`);
                 await integrateEpoGradesToSchema(groupId);
-                console.log('EPO grades integrated into schema');
+                console.log(`EPO grades integrated into schema for period ${period}`);
             }
             catch (integrationError) {
                 console.error('Error integrating EPO grades:', integrationError);
@@ -878,6 +895,91 @@ router.get('/:groupId/epo-grades', async (req, res) => {
     }
     catch (error) {
         console.error('Error fetching EPO grades:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+// Get lesson keyword for a specific lesson
+router.get('/:groupId/:lessonIndex/keyword', async (req, res) => {
+    try {
+        const { groupId, lessonIndex } = req.params;
+        const lessonIndexNum = parseInt(lessonIndex);
+        if (isNaN(lessonIndexNum)) {
+            return res.status(400).json({ error: 'Ungültiger lessonIndex' });
+        }
+        const keyword = await prisma.lessonKeyword.findUnique({
+            where: {
+                groupId_lessonIndex: {
+                    groupId,
+                    lessonIndex: lessonIndexNum
+                }
+            }
+        });
+        res.json({ keyword: (keyword === null || keyword === void 0 ? void 0 : keyword.keyword) || null });
+    }
+    catch (error) {
+        console.error('Error fetching lesson keyword:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+// Save or update lesson keyword
+router.put('/:groupId/:lessonIndex/keyword', async (req, res) => {
+    try {
+        const { groupId, lessonIndex } = req.params;
+        const { keyword } = req.body;
+        const lessonIndexNum = parseInt(lessonIndex);
+        if (isNaN(lessonIndexNum)) {
+            return res.status(400).json({ error: 'Ungültiger lessonIndex' });
+        }
+        // Prüfe ob die Lerngruppe existiert
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId }
+        });
+        if (!group) {
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        }
+        const lessonKeyword = await prisma.lessonKeyword.upsert({
+            where: {
+                groupId_lessonIndex: {
+                    groupId,
+                    lessonIndex: lessonIndexNum
+                }
+            },
+            update: {
+                keyword: keyword || '',
+                updatedAt: new Date()
+            },
+            create: {
+                groupId,
+                lessonIndex: lessonIndexNum,
+                keyword: keyword || ''
+            }
+        });
+        res.json(lessonKeyword);
+    }
+    catch (error) {
+        console.error('Error saving lesson keyword:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+// Get all lesson keywords for a group
+router.get('/:groupId/keywords', async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const keywords = await prisma.lessonKeyword.findMany({
+            where: { groupId },
+            orderBy: {
+                lessonIndex: 'asc'
+            }
+        });
+        // Konvertiere zu einem Objekt mit lessonIndex als Key
+        const keywordsMap = {};
+        keywords.forEach(k => {
+            keywordsMap[k.lessonIndex] = k.keyword;
+        });
+        res.json(keywordsMap);
+    }
+    catch (error) {
+        console.error('Error fetching lesson keywords:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });

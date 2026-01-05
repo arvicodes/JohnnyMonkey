@@ -3799,7 +3799,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const calculateWeightedMini = (node: any, gradesByName: Map<string, GradeMini>): number | null => {
     if (!node.children || node.children.length === 0) {
-      const g = gradesByName.get(node.name);
+      // Suche case-insensitive nach der Note
+      let g = gradesByName.get(node.name);
+      if (!g) {
+        // Fallback: Suche case-insensitive
+        const nodeNameLower = node.name.toLowerCase().trim();
+        for (const [categoryName, gradeData] of gradesByName.entries()) {
+          if (categoryName.toLowerCase().trim() === nodeNameLower) {
+            g = gradeData;
+            break;
+          }
+        }
+      }
       return g ? g.grade : null;
     }
     const childGrades: { grade: number; weight: number }[] = [];
@@ -9007,6 +9018,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         </DialogTitle>
         
         <DialogContent sx={{ p: 1, pt: 1 }}>
+          {/* Erklärung der Notenberechnung */}
+          <Box sx={{ 
+            mt: 1,
+            mb: 1, 
+            p: 0.6, 
+            bgcolor: '#f5f5f5', 
+            borderRadius: 0.8, 
+            border: '1px solid #e0e0e0' 
+          }}>
+            <Typography variant="body2" sx={{ fontSize: '0.65rem', lineHeight: 1.4, color: 'text.secondary' }}>
+              <strong>Notenberechnung:</strong> Grün = 1.0, Blau = 2.0, Grau = 3.0, Gelb = 4.0, Rot = 5.0
+            </Typography>
+          </Box>
+          
           {/* Unterrichtsstunden-Navigation */}
           <Box
             ref={navFocusRef}

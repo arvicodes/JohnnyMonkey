@@ -106,6 +106,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
   const [selectedSchema, setSelectedSchema] = useState<GradingSchema | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const resetForm = () => {
     setSchemaName('');
@@ -123,6 +124,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
       const response = await fetch('/api/grading-schemas/all');
       if (response.ok) {
         const allSchemas = await response.json();
+        console.log('📋 Fetched schemas:', allSchemas.map((s: any) => ({ id: s.id, name: s.name, groupId: s.groupId })));
         
         // Mark the active schema (the one that belongs to the current group)
         const schemasWithActiveStatus = allSchemas.map((schema: any) => ({
@@ -133,7 +135,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
         setExistingSchemas(schemasWithActiveStatus);
       }
     } catch (error) {
-      console.error('Error fetching schemas:', error);
+      console.error('❌ Error fetching schemas:', error);
     }
   }, [groupId]);
 
@@ -175,6 +177,8 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
 
     const result: GradeNode[] = [];
     const stack: { node: GradeNode; indent: number }[] = [];
+    let rootName: string | null = null;
+    let rootProcessed = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -200,26 +204,50 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
 
       const [, name, weightStr] = match;
       const weight = parseFloat(weightStr);
+      const trimmedName = name.trim();
 
       if (isNaN(weight)) {
         console.warn('Invalid weight in line:', line);
         continue;
       }
 
+      // Erkenne die Root-Zeile (keine Einrückung und 100% Gewichtung)
+      const isRoot = indent === 0 && Math.abs(weight - 100) < 0.01;
+      
+      if (isRoot) {
+        if (!rootProcessed) {
+          // Erste Root-Zeile - speichere den Namen, aber erstelle keinen Node dafür
+          // Die Root-Zeile wird beim Speichern automatisch hinzugefügt
+          rootName = trimmedName;
+          rootProcessed = true;
+          continue; // Überspringe die Root-Zeile beim Parsen
+        } else {
+          // Weitere Root-Zeile - überspringe sie
+          console.warn('Skipping duplicate root line:', trimmedName);
+          continue;
+        }
+      }
+      
+      // Überspringe Zeilen, die den Root-Namen als Kind haben (sollte nicht passieren)
+      if (rootName && trimmedName === rootName) {
+        console.warn('Skipping root name as child:', trimmedName);
+        continue;
+      }
+
       // Filtere doppelte Einträge mit gleichem Namen und gleicher Einrückung
       const isDuplicate = stack.some(item => 
         item.indent === indent && 
-        item.node.name === name.trim()
+        item.node.name === trimmedName
       );
       
       if (isDuplicate) {
-        console.warn('Skipping duplicate entry:', name.trim(), 'at level', indent);
+        console.warn('Skipping duplicate entry:', trimmedName, 'at level', indent);
         continue;
       }
 
       const node: GradeNode = {
         id: generateId(),
-        name: name.trim(),
+        name: trimmedName,
         weight: weight,
         children: [],
         isExpanded: true
@@ -231,7 +259,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
       }
 
       if (stack.length === 0) {
-        // This is a top-level node
+        // This is a top-level node (nach der Root-Zeile)
         result.push(node);
       } else {
         // This is a child node
@@ -244,50 +272,114 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
     return result;
   };
 
-  const loadSchema = (schema: GradingSchema) => {
+  const loadSchema = async (schema: GradingSchema) => {
     try {
-      setSelectedSchema(schema);
-      setSchemaName(schema.name);
-      setGradingSystem(schema.gradingSystem || 'GERMAN');
-      console.log('Loading schema structure:', schema.structure);
+      console.log('📖 Loading schema for editing:', { id: schema.id, name: schema.name });
       
-      // Bereinige das Schema vor dem Parsen
-      const cleanedStructure = cleanSchemaStructure(schema.structure);
-      const parsedNodes = parseSchemaString(cleanedStructure);
-      
-      console.log('Cleaned structure:', cleanedStructure);
-      console.log('Parsed nodes:', parsedNodes);
-      setGradeNodes(parsedNodes);
-      setIsEditing(true);
+      // Lade die neuesten Daten vom Server, um sicherzustellen, dass wir die aktuellste Version haben
+      const response = await fetch('/api/grading-schemas/all');
+      if (response.ok) {
+        const allSchemas = await response.json();
+        const freshSchema = allSchemas.find((s: GradingSchema) => s.id === schema.id);
+        
+        if (freshSchema) {
+          console.log('✅ Loaded fresh schema from server:', { id: freshSchema.id, name: freshSchema.name, structureLength: freshSchema.structure?.length });
+          setSelectedSchema(freshSchema);
+          setSchemaName(freshSchema.name);
+          setGradingSystem(freshSchema.gradingSystem || 'GERMAN');
+          console.log('📋 Schema structure:', freshSchema.structure);
+          
+          // Bereinige das Schema vor dem Parsen
+          const cleanedStructure = cleanSchemaStructure(freshSchema.structure);
+          const parsedNodes = parseSchemaString(cleanedStructure);
+          
+          console.log('🧹 Cleaned structure:', cleanedStructure);
+          console.log('✅ Parsed nodes:', parsedNodes);
+          setGradeNodes(parsedNodes);
+          setIsEditing(true);
+        } else {
+          // Fallback: Verwende das übergebene Schema
+          console.warn('⚠️ Fresh schema not found, using provided schema');
+          setSelectedSchema(schema);
+          setSchemaName(schema.name);
+          setGradingSystem(schema.gradingSystem || 'GERMAN');
+          const cleanedStructure = cleanSchemaStructure(schema.structure);
+          const parsedNodes = parseSchemaString(cleanedStructure);
+          setGradeNodes(parsedNodes);
+          setIsEditing(true);
+        }
+      } else {
+        // Fallback: Verwende das übergebene Schema
+        console.warn('⚠️ Failed to fetch fresh schema, using provided schema');
+        setSelectedSchema(schema);
+        setSchemaName(schema.name);
+        setGradingSystem(schema.gradingSystem || 'GERMAN');
+        const cleanedStructure = cleanSchemaStructure(schema.structure);
+        const parsedNodes = parseSchemaString(cleanedStructure);
+        setGradeNodes(parsedNodes);
+        setIsEditing(true);
+      }
     } catch (error) {
-      console.error('Error loading schema:', error);
+      console.error('❌ Error loading schema:', error);
       setError('Fehler beim Laden des Schemas: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
   // Funktion zum Bereinigen der Schema-Struktur
+  // Entfernt doppelte Root-Zeilen und echte Duplikate
   const cleanSchemaStructure = (structure: string): string => {
     const lines = structure.split('\n');
     const cleanedLines: string[] = [];
-    const seenNames = new Set<string>();
+    const seenEntries = new Map<string, number>(); // Map von "name:indent" zu Zeilennummer
+    let rootName: string | null = null;
+    let rootFound = false;
     
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
       
-      // Extrahiere den Namen (alles vor dem ersten % oder ()
-      const nameMatch = trimmedLine.match(/^(.+?)(?:\s*\([^)]*\)|\s+\d+%?|%)/);
+      const indent = line.search(/\S/);
+      
+      // Extrahiere den vollständigen Namen (alles vor dem ersten ( mit Gewichtung)
+      const nameMatch = trimmedLine.match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
       if (nameMatch) {
-        const name = nameMatch[1].trim();
+        const fullName = nameMatch[1].trim(); // Vollständiger Name inkl. Zahlen
+        const weight = parseFloat(nameMatch[2]);
         
-        // Wenn der Name bereits gesehen wurde, überspringe diese Zeile
-        if (seenNames.has(name)) {
-          console.log('Skipping duplicate name:', name);
-          continue;
+        // Erkenne die Root-Zeile (keine Einrückung und 100% Gewichtung)
+        const isRoot = indent === 0 && Math.abs(weight - 100) < 0.01;
+        
+        if (isRoot) {
+          if (!rootFound) {
+            // Erste Root-Zeile - behalte sie
+            rootName = fullName;
+            rootFound = true;
+            cleanedLines.push(line);
+          } else {
+            // Weitere Root-Zeile mit gleichem Namen - überspringe sie
+            console.log('Skipping duplicate root line:', fullName);
+            continue;
+          }
+        } else {
+          // Nicht-Root-Zeile
+          // Überspringe, wenn sie den gleichen Namen wie die Root hat (sollte nicht als Kind existieren)
+          if (rootName && fullName === rootName) {
+            console.log('Skipping root name as child:', fullName, 'at indent', indent);
+            continue;
+          }
+          
+          const key = `${fullName}:${indent}`;
+          
+          // Prüfe, ob wir bereits eine Zeile mit demselben Namen und derselben Einrückung gesehen haben
+          if (seenEntries.has(key)) {
+            console.log('Skipping duplicate entry:', fullName, 'at indent level', indent);
+            continue;
+          }
+          
+          seenEntries.set(key, i);
+          cleanedLines.push(line);
         }
-        
-        seenNames.add(name);
-        cleanedLines.push(line);
       } else {
         // Wenn kein Name extrahiert werden kann, füge die Zeile trotzdem hinzu
         cleanedLines.push(line);
@@ -430,6 +522,10 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
         groupId
       };
 
+      console.log('💾 Saving schema:', { method, url });
+      console.log('📋 Full schema structure:', schemaString);
+      console.log('📊 Grade nodes:', gradeNodes);
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -439,7 +535,14 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
       });
 
       if (response.ok) {
+        const updatedSchema = await response.json();
+        console.log('✅ Schema saved successfully:', { id: updatedSchema.id, name: updatedSchema.name, structureLength: updatedSchema.structure?.length });
+        // Aktualisiere die Liste der Schemata
         await fetchExistingSchemas();
+        // Wenn wir gerade ein Schema bearbeitet haben, aktualisiere es auch im State
+        if (isEditing && selectedSchema && selectedSchema.id === updatedSchema.id) {
+          setSelectedSchema(updatedSchema);
+        }
         resetForm();
         onClose();
       } else {
@@ -450,7 +553,13 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
         } catch (e) {
           errorData = { error: responseText };
         }
-        setError(errorData.error || 'Fehler beim Speichern des Bewertungsschemas');
+        console.error('❌ Error saving schema:', { 
+          status: response.status, 
+          statusText: response.statusText,
+          error: errorData 
+        });
+        const errorMessage = errorData.error || `Fehler beim Speichern des Bewertungsschemas (Status: ${response.status})`;
+        setError(errorMessage);
       }
     } catch (error) {
       setError('Fehler beim Speichern des Bewertungsschemas');
@@ -752,16 +861,21 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
   };
 
   return (
+    <>
     <Dialog 
       open={open} 
       onClose={onClose}
-      maxWidth="md" // Wieder breiter gemacht
+      maxWidth={false} // Keine maximale Breite
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: 2,
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-          background: colors.background
+          background: colors.background,
+          maxHeight: '98vh', // Maximale Höhe
+          height: '95vh', // Feste Höhe für mehr Platz
+          width: '95vw', // Sehr breit
+          maxWidth: '95vw' // Maximale Breite
         }
       }}
     >
@@ -783,10 +897,15 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
         </Box>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 2, background: colors.background }}>
+      <DialogContent sx={{ 
+        p: 3, 
+        background: colors.background,
+        overflow: 'auto',
+        maxHeight: 'calc(90vh - 120px)' // Mehr Platz für den Inhalt
+      }}>
         <Grid container spacing={2}>
-          {/* Existing Schemata Section - Schmaler */}
-          <Grid item xs={12} md={4}>
+          {/* Existing Schemata Section - Volle Breite wenn nicht bearbeitet */}
+          <Grid item xs={12} md={isEditing ? 4 : 12}>
             <Paper elevation={0} sx={{ 
               p: 2, 
               height: 'fit-content', 
@@ -815,7 +934,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   </Typography>
                 </Box>
               ) : (
-                <List dense sx={{ maxHeight: 400, overflowY: 'auto' }}>
+                <List dense sx={{ maxHeight: '60vh', overflowY: 'auto' }}>
                   {existingSchemas.map((schema) => (
                     <ListItem 
                       key={schema.id}
@@ -914,8 +1033,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                 variant="contained"
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 onClick={() => {
-                  resetForm();
-                  setIsEditing(false);
+                  setShowCreateModal(true);
                 }}
                 fullWidth
                 sx={{ 
@@ -925,6 +1043,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   px: 2,
                   fontSize: '0.8rem',
                   height: '36px',
+                  whiteSpace: 'nowrap', // Kein Zeilenumbruch
                   background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
                   '&:hover': { 
                     background: `linear-gradient(135deg, ${colors.accent1} 0%, ${colors.primary} 100%)`,
@@ -938,26 +1057,27 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
             </Paper>
           </Grid>
 
-          {/* Schema Editor Section - Breiter */}
-          <Grid item xs={12} md={8}>
-            <Paper elevation={0} sx={{ 
-              p: 2, 
-              borderRadius: 2,
-              border: `2px solid ${colors.border}`,
-              background: colors.cardBg
-            }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1,
-                  fontSize: '0.9rem',
-                  fontWeight: 'bold',
-                  color: colors.textPrimary
-                }}>
-                  <AssessmentIcon sx={{ fontSize: 18, color: colors.primary }} />
-                  {isEditing ? 'Schema bearbeiten' : 'Neues Schema erstellen'}
-                </Typography>
+          {/* Schema Editor Section - Nur beim Bearbeiten */}
+          {isEditing && (
+            <Grid item xs={12} md={8}>
+              <Paper elevation={0} sx={{ 
+                p: 2, 
+                borderRadius: 2,
+                border: `2px solid ${colors.border}`,
+                background: colors.cardBg
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    color: colors.textPrimary
+                  }}>
+                    <AssessmentIcon sx={{ fontSize: 18, color: colors.primary }} />
+                    Schema bearbeiten
+                  </Typography>
                 <Button
                   variant="outlined"
                   startIcon={showPreview ? <VisibilityOffIcon sx={{ fontSize: 16 }} /> : <VisibilityIcon sx={{ fontSize: 16 }} />}
@@ -1100,7 +1220,7 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                 </Button>
               </Box>
               
-              <Box sx={{ maxHeight: 350, overflowY: 'auto', pr: 1 }}>
+              <Box sx={{ maxHeight: '50vh', overflowY: 'auto', pr: 1 }}>
                 {gradeNodes.map(node => renderCategoryCard(node))}
               </Box>
               
@@ -1144,28 +1264,334 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   )}
                 </Paper>
               )}
-            </Paper>
-          </Grid>
+              </Paper>
+            </Grid>
+          )}
         </Grid>
       </DialogContent>
       
-      <DialogActions sx={{ 
-        p: 2, 
-        background: colors.background,
-        borderTop: `1px solid ${colors.border}`,
-        borderRadius: '0 0 8px 8px'
+      {isEditing ? (
+        <DialogActions sx={{ 
+          p: 2, 
+          background: colors.background,
+          borderTop: `1px solid ${colors.border}`,
+          borderRadius: '0 0 8px 8px'
+        }}>
+          <Button 
+            onClick={() => {
+              resetForm();
+            }}
+            variant="outlined"
+            sx={{ 
+              borderRadius: 2, 
+              px: 2,
+              py: 1,
+              fontSize: '0.8rem',
+              height: '36px',
+              borderColor: colors.textSecondary,
+              color: colors.textSecondary,
+              '&:hover': {
+                borderColor: colors.textPrimary,
+                bgcolor: colors.hover
+              }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={loading || !validateSchema(gradeNodes)}
+            startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 16 }} />}
+            sx={{ 
+              borderRadius: 2, 
+              px: 2,
+              py: 1,
+              fontSize: '0.8rem',
+              height: '36px',
+              fontWeight: 'bold',
+              background: `linear-gradient(135deg, ${colors.success} 0%, ${colors.primary} 100%)`,
+              '&:hover': { 
+                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.success} 100%)`,
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              },
+              '&:disabled': {
+                background: colors.textSecondary
+              }
+            }}
+          >
+            {loading ? 'Speichern...' : 'Aktualisieren'}
+          </Button>
+        </DialogActions>
+      ) : (
+        <DialogActions sx={{ 
+          p: 2, 
+          background: colors.background,
+          borderTop: `1px solid ${colors.border}`,
+          borderRadius: '0 0 8px 8px'
+        }}>
+          <Button 
+            onClick={onClose}
+            variant="outlined"
+            sx={{ 
+              borderRadius: 2, 
+              px: 2,
+              py: 1,
+              fontSize: '0.8rem',
+              height: '36px',
+              borderColor: colors.textSecondary,
+              color: colors.textSecondary,
+              '&:hover': {
+                borderColor: colors.textPrimary,
+                bgcolor: colors.hover
+              }
+            }}
+          >
+            Schließen
+          </Button>
+        </DialogActions>
+      )}
+    </Dialog>
+
+    {/* Separates Modal für "Neues Schema erstellen" */}
+    <Dialog 
+      open={showCreateModal} 
+      onClose={() => {
+        setShowCreateModal(false);
+        resetForm();
+      }}
+      maxWidth="lg"
+      fullWidth
+      sx={{
+        zIndex: 1400, // Höherer z-index als das Hauptmodal (1300)
+        '& .MuiBackdrop-root': {
+          backgroundColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }}
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          background: colors.background,
+          maxHeight: '85vh',
+          height: 'auto',
+          width: '80vw',
+          maxWidth: '900px',
+          margin: '8vh auto 0 auto' // Zentriert mit Margin oben
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        pb: 1, 
+        background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.accent1} 100%)`,
+        color: 'white',
+        borderRadius: '8px 8px 0 0'
       }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AssessmentIcon sx={{ color: 'white', fontSize: 20 }} />
+          <Typography variant="h6" sx={{ 
+            fontWeight: 600, 
+            fontSize: '1rem',
+            color: 'white'
+          }}>
+            Neues Bewertungsschema erstellen - {groupName}
+          </Typography>
+        </Box>
+      </DialogTitle>
+      
+      <DialogContent sx={{ 
+        p: 3, 
+        pt: 6, // Viel mehr Padding oben
+        background: colors.background,
+        overflow: 'auto',
+        maxHeight: 'calc(85vh - 120px)'
+      }}>
+        <Box sx={{ mt: 4, mb: 2 }}> {/* Zusätzlicher Container mit viel Abstand */}
+        <TextField
+          fullWidth
+          label="Name des Bewertungsschemas"
+          value={schemaName}
+          onChange={(e) => setSchemaName(e.target.value)}
+          placeholder="z.B. Mathematik Bewertung 2024"
+          variant="outlined"
+          size="small"
+          sx={{ 
+            mb: 2,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+              fontSize: '0.8rem',
+              minHeight: '40px',
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: colors.primary
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: colors.primary,
+                borderWidth: 2
+              }
+            },
+            '& .MuiInputLabel-root': {
+              fontSize: '0.8rem',
+              color: colors.textSecondary
+            }
+          }}
+        />
+        </Box>
+        
+        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <InputLabel sx={{ fontSize: '0.8rem', color: colors.textSecondary }}>Notensystem</InputLabel>
+          <Select
+            value={gradingSystem}
+            onChange={(e) => setGradingSystem(e.target.value)}
+            label="Notensystem"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                fontSize: '0.8rem',
+                minHeight: '40px',
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: colors.primary
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: colors.primary,
+                  borderWidth: 2
+                }
+              },
+              '& .MuiInputLabel-root': {
+                fontSize: '0.8rem',
+                color: colors.textSecondary
+              }
+            }}
+          >
+            <MenuItem value="GERMAN" sx={{ fontSize: '0.8rem' }}>
+              Deutsches Schulnotensystem (1-6)
+            </MenuItem>
+            <MenuItem value="MSS" sx={{ fontSize: '0.8rem' }}>
+              MSS-Punktesystem (0-15)
+            </MenuItem>
+          </Select>
+        </FormControl>
+        
+        {renderPreview()}
+        
+        {error && (
+          <Alert severity="error" sx={{ 
+            mb: 2, 
+            borderRadius: 2, 
+            fontSize: '0.8rem',
+            border: `1px solid ${colors.error}`,
+            '& .MuiAlert-icon': {
+              color: colors.error
+            }
+          }}>
+            {error}
+          </Alert>
+        )}
+        
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            fontSize: '0.9rem',
+            fontWeight: 'bold',
+            color: colors.textPrimary,
+            mb: 1
+          }}>
+            <CategoryIcon sx={{ fontSize: 18, color: colors.primary }} />
+            Bewertungskategorien
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5, fontSize: '0.75rem', lineHeight: 1.4 }}>
+            Erstellen Sie Kategorien und Unterkategorien mit Gewichtungen. 
+            Die Hauptkategorien müssen zusammen 100% ergeben. Unterkategorien können beliebige Gewichtungen haben.
+          </Typography>
+          
+          <Button
+            variant="contained"
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+            onClick={() => addGradeNode()}
+            sx={{ 
+              mb: 1.5,
+              borderRadius: 2,
+              py: 0.8,
+              px: 2,
+              fontSize: '0.8rem',
+              height: '36px',
+              background: `linear-gradient(135deg, ${colors.secondary} 0%, ${colors.accent2} 100%)`,
+              '&:hover': { 
+                background: `linear-gradient(135deg, ${colors.accent2} 0%, ${colors.secondary} 100%)`,
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              }
+            }}
+          >
+            Hauptkategorie hinzufügen
+          </Button>
+        </Box>
+        
+        <Box sx={{ maxHeight: '35vh', overflowY: 'auto', pr: 1 }}>
+          {gradeNodes.map(node => renderCategoryCard(node))}
+        </Box>
+        
+        {gradeNodes.length > 0 && (
+          <Paper elevation={0} sx={{ 
+            mt: 2, 
+            p: 2, 
+            bgcolor: colors.hover, 
+            borderRadius: 2,
+            border: `1px solid ${colors.border}`
+          }}>
+            <Typography variant="h6" gutterBottom sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              fontSize: '0.9rem',
+              fontWeight: 'bold',
+              color: colors.textPrimary,
+              mb: 1
+            }}>
+              <InfoIcon sx={{ fontSize: 18, color: colors.primary }} />
+              Gesamtsumme: {calculateWeightSum(gradeNodes).toFixed(1)}%
+            </Typography>
+            <LinearProgress 
+              variant="determinate" 
+              value={Math.min(calculateWeightSum(gradeNodes), 100)} 
+              sx={{ 
+                height: 8,
+                borderRadius: 4,
+                bgcolor: colors.border,
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 4,
+                  background: calculateWeightSum(gradeNodes) === 100 
+                    ? `linear-gradient(90deg, ${colors.success} 0%, ${colors.primary} 100%)`
+                    : `linear-gradient(90deg, ${colors.warning} 0%, ${colors.error} 100%)`
+                }
+              }}
+            />
+            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block', fontSize: '0.7rem' }}>
+              {calculateWeightSum(gradeNodes) === 100 
+                ? '✅ Die Gewichtungen sind korrekt (100%)'
+                : `⚠️ Die Summe sollte 100% sein (aktuell: ${calculateWeightSum(gradeNodes).toFixed(1)}%)`}
+            </Typography>
+          </Paper>
+        )}
+      </DialogContent>
+      
+      <DialogActions sx={{ p: 2, background: colors.background, borderTop: `1px solid ${colors.border}` }}>
         <Button 
-          onClick={onClose}
+          onClick={() => {
+            setShowCreateModal(false);
+            resetForm();
+          }} 
           variant="outlined"
           sx={{ 
-            borderRadius: 2, 
+            borderRadius: 2,
             px: 2,
             py: 1,
             fontSize: '0.8rem',
             height: '36px',
-            borderColor: colors.textSecondary,
-            color: colors.textSecondary,
+            borderColor: colors.textPrimary,
+            color: colors.textPrimary,
             '&:hover': {
               borderColor: colors.textPrimary,
               bgcolor: colors.hover
@@ -1175,7 +1601,14 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
           Abbrechen
         </Button>
         <Button 
-          onClick={handleSave} 
+          onClick={async () => {
+            await handleSave();
+            if (!error) {
+              setShowCreateModal(false);
+              resetForm();
+              fetchExistingSchemas();
+            }
+          }} 
           variant="contained" 
           disabled={loading || !validateSchema(gradeNodes)}
           startIcon={loading ? undefined : <SaveIcon sx={{ fontSize: 16 }} />}
@@ -1197,10 +1630,11 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
             }
           }}
         >
-          {loading ? 'Speichern...' : (isEditing ? 'Aktualisieren' : 'Speichern')}
+          {loading ? 'Speichern...' : 'Speichern'}
         </Button>
       </DialogActions>
     </Dialog>
+    </>
   );
 };
 

@@ -20,5 +20,9 @@ router.patch('/submissions/:id/status', KACorrectionController_1.KACorrectionCon
 router.post('/reset-all', KACorrectionController_1.KACorrectionController.resetAllSubmissions);
 // Prüfe ob eigene Submission existiert (für Schüler)
 router.get('/check-my-submission', KACorrectionController_1.KACorrectionController.checkMySubmission);
+// Alle Noten für eine Klassenarbeit freigeben/zurücknehmen (nur für Lehrer)
+router.post('/release-all', KACorrectionController_1.KACorrectionController.releaseAllGrades);
+// Freigabestatus für eine Klassenarbeit prüfen (nur für Lehrer)
+router.get('/release-status', KACorrectionController_1.KACorrectionController.getReleaseStatus);
 exports.default = router;
 //# sourceMappingURL=kaCorrections.js.map

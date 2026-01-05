@@ -36,6 +36,9 @@ export class GradingSchemaService {
       throw new Error('Empty schema string');
     }
 
+    console.log('📋 Parsing schema with', lines.length, 'lines');
+    console.log('📄 First few lines:', lines.slice(0, 5));
+
     const root: GradeNode = { name: lines[0].trim(), weight: 100, children: [] };
     const stack: { node: GradeNode; indent: number }[] = [{ node: root, indent: -1 }];
 
@@ -47,7 +50,9 @@ export class GradingSchemaService {
       const match = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
       
       if (!match) {
-        throw new Error(`Invalid line format: ${line}`);
+        console.error('❌ Failed to parse line:', line);
+        console.error('   Indent:', indent, 'Trimmed:', line.trim());
+        throw new Error(`Invalid line format: "${line.trim()}"`);
       }
 
       const [, name, weightStr] = match;

@@ -208,28 +208,20 @@ const GradesModal: React.FC<GradesModalProps> = ({
     try {
       const currentSchema = schema || gradingSchema;
       if (!currentSchema?.id) {
-        console.log('Debug - No schema ID, setting nodes directly');
         setGradeNodes(nodes);
         return;
       }
       
-      console.log('Debug - Loading grades for student:', student.id, 'schema:', currentSchema.id);
       const response = await fetch(`/api/grades/${student.id}/${currentSchema.id}`);
-      console.log('Debug - Load response status:', response.status);
       
       if (response.ok) {
         const grades = await response.json();
-        console.log('Debug - Loaded grades:', grades);
         const updatedNodes = updateNodesWithGrades(nodes, grades);
-        console.log('Debug - Updated nodes:', updatedNodes);
         setGradeNodes(updatedNodes);
       } else {
-        console.log('Debug - No existing grades found, setting nodes directly');
         setGradeNodes(nodes);
       }
     } catch (error) {
-      console.log('Debug - Error loading grades:', error);
-      console.log('Debug - Setting nodes directly due to error');
       setGradeNodes(nodes);
     }
   };
@@ -239,10 +231,16 @@ const GradesModal: React.FC<GradesModalProps> = ({
     
     const updateNodes = (nodeList: GradeNode[]): GradeNode[] => {
       return nodeList.map(node => {
-        const gradeData = grades.find(g => g.categoryName === node.name);
+        // Suche case-insensitive nach der Note
+        let gradeData = grades.find(g => g.categoryName === node.name);
+        if (!gradeData) {
+          // Fallback: Suche case-insensitive
+          const nodeNameLower = node.name.toLowerCase().trim();
+          gradeData = grades.find(g => g.categoryName.toLowerCase().trim() === nodeNameLower);
+        }
         const updatedNode = {
           ...node,
-          grade: gradeData?.grade || undefined,
+          grade: gradeData?.grade !== undefined && gradeData?.grade !== null ? parseFloat(gradeData.grade.toString()) : undefined,
           locked: false // Neue Noten sind nicht gesperrt
         };
         
@@ -832,81 +830,103 @@ const GradesModal: React.FC<GradesModalProps> = ({
           </Typography>
 
           {isLeaf && (
-            <TextField
-              size="small"
-              type="number"
-              value={node.grade !== undefined ? node.grade : ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Erlaube explizit "0" als Wert zum Zurücksetzen
-                if (value === '') {
-                  updateGrade(node.id, undefined);
-                } else {
-                  const grade = parseFloat(value);
-                  // Erlaube 0 als gültigen Wert (zum Zurücksetzen)
-                  if (!isNaN(grade) && grade >= 0) {
-                    updateGrade(node.id, grade);
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>
+              {/* Formatierte Anzeige der Note */}
+              {node.grade !== undefined && gradingSchema?.gradingSystem !== 'MSS' && (
+                <Chip
+                  label={formatGermanGrade(node.grade)}
+                  size="small"
+                  sx={{
+                    backgroundColor: getGradeColor(node.grade, gradingSchema?.gradingSystem),
+                    color: 'white',
+                    fontSize: '0.65rem',
+                    height: '22px',
+                    fontWeight: 600,
+                    minWidth: '35px'
+                  }}
+                />
+              )}
+              <TextField
+                size="small"
+                type="number"
+                inputProps={{ 
+                  step: "0.1", 
+                  min: "0", 
+                  max: "6"
+                }}
+                value={node.grade !== undefined ? node.grade : ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Erlaube explizit "0" als Wert zum Zurücksetzen
+                  if (value === '') {
+                    updateGrade(node.id, undefined);
+                  } else {
+                    const grade = parseFloat(value);
+                    // Erlaube 0 als gültigen Wert (zum Zurücksetzen)
+                    if (!isNaN(grade) && grade >= 0) {
+                      // Stelle sicher, dass Dezimalstellen erhalten bleiben
+                      updateGrade(node.id, Math.round(grade * 10) / 10);
+                    }
                   }
-                }
-              }}
-              disabled={isLocked}
-              sx={{
-                width: 100,
-                ml: 'auto',
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 0.6,
-                  fontSize: '0.65rem',
-                  minHeight: '24px',
-                  maxHeight: '24px',
-                  // Eindeutige Markierung: Gesetzte Noten haben farbigen Hintergrund
-                  bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}15` : '#f5f5f5',
-                  border: node.grade !== undefined ? `2px solid ${getGradeColor(node.grade, gradingSchema?.gradingSystem)}40` : '1px solid #ddd',
-                  '&:hover': {
-                    bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}20` : '#eeeeee'
-                  },
-                  '&.Mui-focused': {
-                    bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}25` : '#ffffff',
-                    borderColor: node.grade !== undefined ? getGradeColor(node.grade, gradingSchema?.gradingSystem) : colors.primary
+                }}
+                disabled={isLocked}
+                sx={{
+                  width: 100,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 0.6,
+                    fontSize: '0.65rem',
+                    minHeight: '24px',
+                    maxHeight: '24px',
+                    // Eindeutige Markierung: Gesetzte Noten haben farbigen Hintergrund
+                    bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}15` : '#f5f5f5',
+                    border: node.grade !== undefined ? `2px solid ${getGradeColor(node.grade, gradingSchema?.gradingSystem)}40` : '1px solid #ddd',
+                    '&:hover': {
+                      bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}20` : '#eeeeee'
+                    },
+                    '&.Mui-focused': {
+                      bgcolor: node.grade !== undefined ? `${getGradeColor(node.grade, gradingSchema?.gradingSystem)}25` : '#ffffff',
+                      borderColor: node.grade !== undefined ? getGradeColor(node.grade, gradingSchema?.gradingSystem) : colors.primary
+                    }
                   }
+                }}
+                placeholder={node.grade === undefined ? 
+                  '0' : 
+                  'Bereits gesetzt'
                 }
-              }}
-              placeholder={node.grade === undefined ? 
-                '0' : 
-                'Bereits gesetzt'
-              }
-              error={gradingSchema?.gradingSystem === 'MSS' &&
-                node.grade !== undefined &&
-                (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15)
-              }
-              helperText={gradingSchema?.gradingSystem === 'MSS' &&
-                node.grade !== undefined &&
-                (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15) &&
-                'MSS: 0-15 (0 = Zurücksetzen)'
-              }
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() => toggleGradeLock(node.id)}
-                      sx={{ 
-                        p: 0,
-                        minWidth: 18,
-                        width: 18,
-                        height: 18,
-                        '& .MuiSvgIcon-root': {
-                          fontSize: 14,
-                          width: 14,
-                          height: 14
-                        }
-                      }}
-                    >
-                      {isLocked ? <LockIcon /> : <LockOpenIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
+                error={gradingSchema?.gradingSystem === 'MSS' &&
+                  node.grade !== undefined &&
+                  (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15)
+                }
+                helperText={gradingSchema?.gradingSystem === 'MSS' &&
+                  node.grade !== undefined &&
+                  (!Number.isInteger(node.grade) || node.grade < 0 || node.grade > 15) &&
+                  'MSS: 0-15 (0 = Zurücksetzen)'
+                }
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => toggleGradeLock(node.id)}
+                        sx={{ 
+                          p: 0,
+                          minWidth: 18,
+                          width: 18,
+                          height: 18,
+                          '& .MuiSvgIcon-root': {
+                            fontSize: 14,
+                            width: 14,
+                            height: 14
+                          }
+                        }}
+                      >
+                        {isLocked ? <LockIcon /> : <LockOpenIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+            </Box>
           )}
 
           {isCalculated && (

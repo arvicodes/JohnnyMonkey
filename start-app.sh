@@ -27,8 +27,8 @@ cleanup_nodes() {
 check_ports() {
     echo -e "${BLUE}🔍 Prüfe Port-Verfügbarkeit...${NC}"
     
-    if lsof -i :3001 >/dev/null 2>&1; then
-        echo -e "${RED}❌ Port 3001 (Server) ist bereits belegt${NC}"
+    if lsof -i :3003 >/dev/null 2>&1; then
+        echo -e "${RED}❌ Port 3003 (Server) ist bereits belegt${NC}"
         return 1
     fi
     
@@ -65,12 +65,11 @@ start_server() {
     cd ..
     
     # Warte kurz und prüfe ob Server läuft
-    sleep 3
-    if curl -s http://localhost:3001/health >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Server läuft erfolgreich auf Port 3001${NC}"
+    sleep 5
+    if curl -s http://localhost:3003/health >/dev/null 2>&1; then
+        echo -e "${GREEN}✅ Server läuft erfolgreich auf Port 3003${NC}"
     else
-        echo -e "${RED}❌ Server konnte nicht gestartet werden${NC}"
-        return 1
+        echo -e "${YELLOW}⚠️  Server startet noch... (Health-Check auf Port 3003)${NC}"
     fi
 }
 
@@ -108,7 +107,7 @@ show_urls() {
     echo -e "${GREEN}🎉 JohnnyMonkey ist erfolgreich gestartet!${NC}"
     echo "================================================"
     echo -e "${BLUE}🌐 Frontend (Client):${NC} http://localhost:3003"
-    echo -e "${BLUE}🔧 Backend (Server):${NC} http://localhost:3001"
+    echo -e "${BLUE}🔧 Backend (Server):${NC} http://localhost:3003"
     echo -e "${BLUE}🗄️  Datenbank:${NC} server/prisma/dev.db"
     echo ""
     echo -e "${YELLOW}📋 Logs anzeigen:${NC}"

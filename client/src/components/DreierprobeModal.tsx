@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, WidthType } from 'docx';
 import { saveAs } from 'file-saver';
+import JSZip from 'jszip';
 
 interface KASubmission {
   id: string;
@@ -76,7 +77,7 @@ const getFirstName = (fullName: string): string => {
   return fullName.split(' ')[0];
 };
 
-// Notenberechnung (wie in KACorrectionMode)
+// Notenberechnung (wie in gradeConverter.ts - korrekte Tendenzen)
 const calculateGrade = (achieved: number, total: number): { numeric: number; string: string } => {
   if (total === 0) return { numeric: 0, string: '-' };
   
@@ -84,61 +85,49 @@ const calculateGrade = (achieved: number, total: number): { numeric: number; str
   let grade: number;
   let gradeString: string;
   
-  if (percentage >= 92) {
-    if (percentage >= 97) {
-      grade = 1.0; // 1+
-      gradeString = '1+';
-    } else if (percentage < 95) {
-      grade = 1.3; // 1-
-      gradeString = '1-';
-    } else {
-      grade = 1.2; // 1
-      gradeString = '1';
-    }
-  } else if (percentage >= 81) {
-    if (percentage >= 86) {
-      grade = 2.0; // 2+
-      gradeString = '2+';
-    } else if (percentage < 84) {
-      grade = 2.3; // 2-
-      gradeString = '2-';
-    } else {
-      grade = 2.2; // 2
-      gradeString = '2';
-    }
-  } else if (percentage >= 67) {
-    if (percentage >= 72) {
-      grade = 3.0; // 3+
-      gradeString = '3+';
-    } else if (percentage < 70) {
-      grade = 3.3; // 3-
-      gradeString = '3-';
-    } else {
-      grade = 3.2; // 3
-      gradeString = '3';
-    }
-  } else if (percentage >= 50) {
-    if (percentage >= 55) {
-      grade = 4.0; // 4+
-      gradeString = '4+';
-    } else if (percentage < 53) {
-      grade = 4.3; // 4-
-      gradeString = '4-';
-    } else {
-      grade = 4.2; // 4
-      gradeString = '4';
-    }
-  } else if (percentage >= 30) {
-    if (percentage >= 35) {
-      grade = 5.0; // 5+
-      gradeString = '5+';
-    } else if (percentage < 33) {
-      grade = 5.3; // 5-
-      gradeString = '5-';
-    } else {
-      grade = 5.2; // 5
-      gradeString = '5';
-    }
+  // Verwende die gleiche Logik wie percentageToGrade in gradeConverter.ts
+  if (percentage >= 95.0) {
+    grade = 1.0;
+    gradeString = '1+';
+  } else if (percentage >= 90.0) {
+    grade = 1.3;
+    gradeString = '1-';
+  } else if (percentage >= 85.0) {
+    grade = 1.7;
+    gradeString = '2+';
+  } else if (percentage >= 80.0) {
+    grade = 2.0;
+    gradeString = '2';
+  } else if (percentage >= 75.0) {
+    grade = 2.3;
+    gradeString = '2-';
+  } else if (percentage >= 70.0) {
+    grade = 2.7;
+    gradeString = '3+';
+  } else if (percentage >= 65.0) {
+    grade = 3.0;
+    gradeString = '3';
+  } else if (percentage >= 60.0) {
+    grade = 3.3;
+    gradeString = '3-';
+  } else if (percentage >= 55.0) {
+    grade = 3.7;
+    gradeString = '4+';
+  } else if (percentage >= 50.0) {
+    grade = 4.0;
+    gradeString = '4';
+  } else if (percentage >= 45.0) {
+    grade = 4.3;
+    gradeString = '4-';
+  } else if (percentage >= 40.0) {
+    grade = 4.7;
+    gradeString = '5+';
+  } else if (percentage >= 35.0) {
+    grade = 5.0;
+    gradeString = '5';
+  } else if (percentage >= 20.0) {
+    grade = 5.3;
+    gradeString = '5-';
   } else {
     grade = 6.0;
     gradeString = '6';
@@ -147,6 +136,7 @@ const calculateGrade = (achieved: number, total: number): { numeric: number; str
   return { numeric: grade, string: gradeString };
 };
 
+
 const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   open,
   onClose,
@@ -154,6 +144,7 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   submissions
 }) => {
   const [learningGroupStudents, setLearningGroupStudents] = useState<LearningGroupStudent[]>([]);
+  const [learningGroupId, setLearningGroupId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailTab, setEmailTab] = useState(0);
   const [messagesSent, setMessagesSent] = useState(false);
@@ -161,8 +152,12 @@ const DreierprobeModal: React.FC<DreierprobeModalProps> = ({
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentHour, setAppointmentHour] = useState('');
   const [gradesReleased, setGradesReleased] = useState(false);
+  const [exportingHTML, setExportingHTML] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportingIndividually, setExportingIndividually] = useState(false);
+  const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
+  const [gradingSchemas, setGradingSchemas] = useState<any[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<Array<{schemaId: string; schemaName: string; categoryName: string}>>([]);
+  const [selectedCategory, setSelectedCategory] = useState<{schemaId: string; schemaName: string; categoryName: string} | null>(null);
   const [emailTemplate, setEmailTemplate] = useState(`Liebe/r XYZ,
 
 ich hoffe es geht dir nicht allzu schlecht und wünsche dir auf jeden Fall schon einmal gute Besserung und dass du dich gut und schnell erholst.
@@ -206,36 +201,230 @@ Vera Christ`);
     }
   };
 
-  const handleReleaseAllGrades = async () => {
+  // Lade GradingSchemas und extrahiere Kategorien
+  const loadGradingSchemas = async () => {
+    if (!learningGroupId) return;
+    
     try {
       const loginCode = localStorage.getItem('loginCode') || '';
-      const response = await fetch('/api/ka-corrections/release-all', {
+      const response = await fetch(`/api/grading-schemas/${learningGroupId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        }
+      });
+
+      if (response.ok) {
+        const schemas = await response.json();
+        setGradingSchemas(schemas);
+        
+        // Extrahiere alle Kategorien aus den Schemas
+        const categories: Array<{schemaId: string; schemaName: string; categoryName: string}> = [];
+        
+        schemas.forEach((schema: any) => {
+          try {
+            const structure = schema.structure;
+            // Prüfe ob JSON-Format
+            let parsed: any;
+            if (structure.trim().startsWith('{')) {
+              parsed = JSON.parse(structure);
+            } else {
+              // Text-Format: Parse die Struktur zu einem Baum
+              const lines = structure.split('\n').filter((line: string) => line.trim());
+              if (lines.length === 0) return;
+              
+              // Erstelle einen Baum aus der Text-Struktur
+              const root: any = { name: lines[0].trim(), children: [] };
+              const stack: Array<{ node: any; indent: number }> = [{ node: root, indent: -1 }];
+              
+              for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line.trim()) continue;
+                
+                const indent = line.search(/\S/);
+                // Verschiedene Formate unterstützen
+                let match = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
+                if (!match) {
+                  match = line.trim().match(/^(.+?)\s+(\d+(?:\.\d+)?)%?$/);
+                }
+                if (!match) {
+                  match = line.trim().match(/^(.+?)\s*(\d+(?:\.\d+)?)%$/);
+                }
+                
+                if (!match) continue;
+                
+                const [, name] = match;
+                const node: any = {
+                  name: name.trim(),
+                  children: []
+                };
+                
+                // Finde den richtigen Parent basierend auf Einrückung
+                while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+                  stack.pop();
+                }
+                
+                const parent = stack[stack.length - 1].node;
+                parent.children.push(node);
+                stack.push({ node, indent });
+              }
+              
+              parsed = root;
+            }
+            
+            // JSON-Format: Rekursiv alle Blattknoten finden
+            const extractLeafNodes = (node: any, path: string[] = []): void => {
+              if (!node.children || node.children.length === 0) {
+                // Blattknoten gefunden
+                categories.push({
+                  schemaId: schema.id,
+                  schemaName: schema.name,
+                  categoryName: node.name || path.join(' > ')
+                });
+              } else {
+                node.children.forEach((child: any) => {
+                  extractLeafNodes(child, [...path, node.name]);
+                });
+              }
+            };
+            
+            extractLeafNodes(parsed);
+          } catch (error) {
+            console.error('Fehler beim Parsen des Schemas:', error);
+          }
+        });
+        
+        setAvailableCategories(categories);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der GradingSchemas:', error);
+    }
+  };
+
+  const handleReleaseAllGrades = async () => {
+    // Lade zuerst die GradingSchemas und zeige dann den Dialog
+    await loadGradingSchemas();
+    setOpenCategoryDialog(true);
+  };
+
+  const handleConfirmReleaseGrades = async () => {
+    if (!selectedCategory) {
+      alert('Bitte wählen Sie eine Kategorie aus');
+      return;
+    }
+
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      
+      // Prüfe ob Submissions vorhanden sind
+      if (!submissions || submissions.length === 0) {
+        alert('❌ Keine Abgaben vorhanden. Bitte laden Sie die Abgaben erneut.');
+        return;
+      }
+      
+      console.log('📊 Speichere Noten für', submissions.length, 'Abgaben');
+      console.log('📋 Kategorie:', selectedCategory.categoryName);
+      console.log('📋 Schema ID:', selectedCategory.schemaId);
+      
+      // Finde die Gewichtung aus dem Schema
+      const schema = gradingSchemas.find(s => s.id === selectedCategory.schemaId);
+      let weight = 1.0; // Standard-Gewichtung
+      
+      if (schema) {
+        try {
+          const structure = schema.structure;
+          const lines = structure.split('\n').filter((line: string) => line.trim());
+          
+          // Suche nach der Kategorie im Schema
+          for (const line of lines) {
+            const match = line.trim().match(/^(.+?)\s*\((\d+(?:\.\d+)?)%?\)$/);
+            if (match) {
+              const [, name] = match;
+              const weightStr = match[2];
+              if (name.trim() === selectedCategory.categoryName) {
+                weight = parseFloat(weightStr);
+                console.log('✅ Gewichtung gefunden:', weight, '% für', selectedCategory.categoryName);
+                break;
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Fehler beim Extrahieren der Gewichtung, verwende Standard:', error);
+        }
+      }
+      
+      // Berechne Noten für alle Schüler
+      const maxTotalPoints = calculateMaxTotalPoints();
+      const gradesToSave: Array<{studentId: string; grade: number; weight: number}> = [];
+      
+      submissions.forEach(submission => {
+        const totalPoints = submission.totalPoints || 0;
+        const gradeResult = calculateGrade(totalPoints, maxTotalPoints);
+        console.log(`📝 Schüler: ${submission.student.name}, Punkte: ${totalPoints}/${maxTotalPoints}, Note: ${gradeResult.numeric}`);
+        gradesToSave.push({
+          studentId: submission.student.id,
+          grade: gradeResult.numeric,
+          weight: weight
+        });
+      });
+      
+      console.log('💾 Speichere', gradesToSave.length, 'Noten...');
+      console.log('📤 Request Body:', JSON.stringify({
+        schemaId: selectedCategory.schemaId,
+        categoryName: selectedCategory.categoryName,
+        grades: gradesToSave
+      }, null, 2));
+
+      // Speichere Noten für alle Schüler
+      const saveResponse = await fetch('/api/grades/save-bulk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-login-code': loginCode
         },
-        body: JSON.stringify({ kaFilePath })
+        body: JSON.stringify({
+          schemaId: selectedCategory.schemaId,
+          categoryName: selectedCategory.categoryName,
+          grades: gradesToSave
+        })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setGradesReleased(data.isReleased || false);
-      } else {
-        const errorText = await response.text();
-        let errorMessage = 'Unbekannter Fehler';
-        try {
-          const error = JSON.parse(errorText);
-          errorMessage = error.error || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        console.error('Fehler beim Freigeben:', errorMessage);
-        alert(`❌ Fehler: ${errorMessage}`);
+      console.log('📥 Response Status:', saveResponse.status, saveResponse.statusText);
+      
+      if (!saveResponse.ok) {
+        const errorText = await saveResponse.text();
+        console.error('❌ Fehler beim Speichern:', errorText);
+        throw new Error(errorText || 'Fehler beim Speichern der Noten');
       }
+      
+      const saveResult = await saveResponse.json();
+      console.log('✅ Noten gespeichert:', saveResult);
+
+      // Freigabe der Noten für alle Schüler
+      const releaseResponse = await fetch('/api/grades/release-bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        },
+        body: JSON.stringify({
+          schemaId: selectedCategory.schemaId,
+          studentIds: submissions.map(s => s.student.id)
+        })
+      });
+
+      if (!releaseResponse.ok) {
+        const errorText = await releaseResponse.text();
+        throw new Error(errorText || 'Fehler beim Freigeben der Noten');
+      }
+
+      setGradesReleased(true);
+      setOpenCategoryDialog(false);
+      setSelectedCategory(null);
+      alert(`✅ Noten wurden erfolgreich in "${selectedCategory.categoryName}" gespeichert und freigegeben!`);
     } catch (error) {
-      console.error('Fehler beim Freigeben:', error);
-      alert(`❌ Fehler beim Freigeben der Noten: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      console.error('Fehler beim Speichern/Freigeben der Noten:', error);
+      alert(`❌ Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     }
   };
 
@@ -258,898 +447,13 @@ Vera Christ`);
     return taskId.replace(/([a-z])(\d)/g, '$1 $2').toUpperCase();
   };
 
-  const exportAllToPDF = async () => {
-    try {
-      setExporting(true);
-      
-      // Dynamisch jsPDF und html2canvas importieren
-      const { jsPDF } = await import('jspdf');
-      const html2canvas = (await import('html2canvas')).default;
-      
-      // Lade die HTML-Datei
-      const loginCode = localStorage.getItem('loginCode') || '';
-      const fileName = kaFilePath.split('/').pop() || kaFilePath;
-      const htmlResponse = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`, {
-        headers: {
-          'x-login-code': loginCode
-        }
-      });
-      
-      if (!htmlResponse.ok) {
-        const errorText = await htmlResponse.text();
-        throw new Error(`HTML-Datei konnte nicht geladen werden: ${errorText}`);
-      }
-      
-      const htmlText = await htmlResponse.text();
-      
-      // Richtige Antworten für die automatische Bewertung (aus KACorrectionMode)
-      const correctAnswers: Record<string, any> = {
-        // Aufgabe 1: Lückentext
-        a1a: 'Mittelsenkrechte',
-        a1b: 'Winkelhalbierende',
-        a1c: 'Achsenspiegelung',
-        a1d: 'Punktspiegelung',
-        a1e: 'Verschiebung',
-        a1f: 'Drehung',
-        a1g: 'Kongruenzabbildung',
-        a1h: 'Doppelspiegelung',
-        // Aufgabe 2: Multiple Choice
-        a2a: 'b',
-        a2b: 'a',
-        a2c: 'a',
-        // Aufgabe 3: Koordinaten
-        'a3a_x': -6, 'a3a_y': -4,
-        'a3b_x': -3, 'a3b_y': -7,
-        'a3c_x': -4, 'a3c_y': -2,
-        'a3d_x': -4, 'a3d_y': -6,
-        'a3e_x': -7, 'a3e_y': -3,
-        'a3f_x': -2, 'a3f_y': -4,
-        'a3g_x': 2, 'a3g_y': 7,
-        'a3h_x': 5, 'a3h_y': 10,
-        'a3i_x': 4, 'a3i_y': 5,
-        'a3j_x': 10, 'a3j_y': -6,
-        'a3k_x': 7, 'a3k_y': -9,
-        'a3l_x': 8, 'a3l_y': -4
-      };
+  // PDF-Funktionen entfernt - nur noch HTML-Download verfügbar
+  // Alle PDF-Funktionen (exportAllToPDF, createSolutionPDF, createSingleStudentPDF, createSingleStudentPDFAsBlob, exportAllIndividually) wurden entfernt
 
-      // Punkteverteilung
-      const pointsDistribution: Record<string, number> = {
-        a1a: 1, a1b: 1, a1c: 1, a1d: 1, a1e: 1, a1f: 1, a1g: 1, a1h: 1,
-        a2a: 1, a2b: 1, a2c: 1,
-        'a3a_x': 0.25, 'a3a_y': 0.25, 'a3b_x': 0.25, 'a3b_y': 0.25, 'a3c_x': 0.25, 'a3c_y': 0.25,
-        'a3d_x': 0.25, 'a3d_y': 0.25, 'a3e_x': 0.25, 'a3e_y': 0.25, 'a3f_x': 0.25, 'a3f_y': 0.25,
-        'a3g_x': 0.25, 'a3g_y': 0.25, 'a3h_x': 0.25, 'a3h_y': 0.25, 'a3i_x': 0.25, 'a3i_y': 0.25,
-        'a3j_x': 0.25, 'a3j_y': 0.25, 'a3k_x': 0.25, 'a3k_y': 0.25, 'a3l_x': 0.25, 'a3l_y': 0.25
-      };
+  // PDF-Funktionen entfernt - nur noch HTML-Download verfügbar
+  // Alle PDF-Funktionen (createSolutionPDF, createSingleStudentPDF, createSingleStudentPDFAsBlob, exportAllToPDF) wurden entfernt
 
-      // Prüft ob eine Antwort richtig ist
-      const isAnswerCorrect = (taskId: string, studentAnswer: any): boolean => {
-        const correctAnswer = correctAnswers[taskId];
-        if (correctAnswer === undefined) return false;
-        
-        const studentValue = String(studentAnswer || '').trim();
-        const correctValue = String(correctAnswer).trim();
-        
-        // Für Koordinaten: numerischer Vergleich
-        if (taskId.includes('_x') || taskId.includes('_y')) {
-          const studentNum = parseFloat(studentValue);
-          const correctNum = parseFloat(correctValue);
-          return !isNaN(studentNum) && !isNaN(correctNum) && studentNum === correctNum;
-        }
-        
-        // Für Text/Multiple Choice: Groß-/Kleinschreibung ignorieren
-        return studentValue.toLowerCase() === correctValue.toLowerCase();
-      };
-
-      // Sortiere Submissions nach Schülernamen
-      const sortedSubmissions = [...submissions].sort((a, b) => 
-        a.student.name.localeCompare(b.student.name)
-      );
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      // Für jede Abgabe
-      for (let i = 0; i < sortedSubmissions.length; i++) {
-        const submission = sortedSubmissions[i];
-        const answers = parseAnswers(submission.answers);
-
-        // Erstelle ein temporäres iframe für vollständiges Rendering
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.left = '-9999px';
-        iframe.style.width = '210mm';
-        iframe.style.height = '297mm';
-        iframe.style.border = 'none';
-        document.body.appendChild(iframe);
-
-        // Warte bis iframe geladen ist
-        await new Promise<void>((resolve) => {
-          iframe.onload = () => resolve();
-          iframe.src = 'about:blank';
-        });
-
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (!iframeDoc) {
-          throw new Error('Iframe konnte nicht erstellt werden');
-        }
-
-        // Parse HTML und füge Antworten mit Bewertungen ein
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlText, 'text/html');
-        
-        // Ersetze "Frau Christ" durch Schülername überall im Dokument
-        const studentName = submission.student.name;
-        const bodyText = doc.body.innerHTML;
-        doc.body.innerHTML = bodyText.replace(/Frau Christ/g, studentName);
-        
-        // Entferne Abgabebutton
-        const submitButtons = doc.querySelectorAll('button[type="submit"], input[type="submit"]');
-        submitButtons.forEach(btn => {
-          const text = btn.textContent || (btn as HTMLInputElement).value || '';
-          if (text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit') || 
-              btn.id?.toLowerCase().includes('submit') || btn.className?.toLowerCase().includes('submit')) {
-            btn.remove();
-          }
-        });
-        
-        // Entferne auch Buttons mit onclick-Handlern, die submit enthalten
-        const allButtons = doc.querySelectorAll('button');
-        allButtons.forEach(btn => {
-          const onclick = btn.getAttribute('onclick') || '';
-          if (onclick.toLowerCase().includes('submit') || onclick.toLowerCase().includes('abgeben')) {
-            btn.remove();
-          }
-        });
-        
-        // Entferne Timer-Elemente
-        const timerElements = doc.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
-        timerElements.forEach(el => {
-          const text = el.textContent || '';
-          if (text.match(/\d+:\d+/) || text.includes('Verbleibend') || text.includes('verbleibend') || 
-              text.includes('Zeit') || el.id?.toLowerCase().includes('timer')) {
-            el.remove();
-          }
-        });
-        
-        // Berechne Gesamtpunkte und Note (berücksichtigt manuelle Korrekturen)
-        // Verwende totalPoints aus submission, da dies bereits alle Korrekturen enthält
-        const totalAchieved = submission.totalPoints;
-        const maxTotalPoints = 25; // Aufgabe 1: 8, Aufgabe 2: 3, Aufgabe 3: 14
-        const gradeData = calculateGrade(totalAchieved, maxTotalPoints);
-        
-        // Füge Punkte und Note in die HTML ein (falls es Felder dafür gibt)
-        const pointsInput = doc.querySelector('#points, [name="points"], [id*="punkt"], [name*="punkt"]') as HTMLInputElement;
-        if (pointsInput) {
-          pointsInput.value = `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
-        }
-        
-        const gradeInput = doc.querySelector('#grade, [name="grade"], [id*="note"], [name*="note"]') as HTMLInputElement;
-        if (gradeInput) {
-          gradeInput.value = gradeData.string;
-        }
-        
-        // Erstelle Map für manuelle Korrekturen
-        const correctionsMap: Record<string, { points?: number; constructionPoints?: number }> = {};
-        if (submission.corrections) {
-          submission.corrections.forEach((corr) => {
-            if (corr.taskNumber.match(/^3[a-d]$/)) {
-              // Aufgabe 3 Teilaufgaben: manualPoints sind Konstruktionspunkte
-              correctionsMap[corr.taskNumber] = { constructionPoints: corr.manualPoints };
-            } else {
-              // Andere Aufgaben: manualPoints sind normale Punkte
-              correctionsMap[corr.taskNumber] = { points: corr.manualPoints };
-            }
-          });
-        }
-        
-        // Füge kombinierte Header-Box oben hinzu
-        const headerContainer = doc.createElement('div');
-        headerContainer.style.cssText = `
-          margin-bottom: 20px;
-          padding: 0;
-        `;
-        
-        const combinedHeader = doc.createElement('div');
-        combinedHeader.style.cssText = `
-          background-color: #1976d2;
-          color: white;
-          padding: 15px 20px;
-          border-radius: 5px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 15px;
-        `;
-        
-        // Linke Seite: Name und Datum
-        const leftSection = doc.createElement('div');
-        leftSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
-        const nameDiv = doc.createElement('div');
-        nameDiv.style.cssText = 'font-size: 1.3em; font-weight: bold;';
-        nameDiv.textContent = submission.student.name;
-        const dateDiv = doc.createElement('div');
-        dateDiv.style.cssText = 'font-size: 0.85em; font-weight: normal; opacity: 0.95;';
-        dateDiv.textContent = `Abgabe vom ${new Date(submission.submittedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} um ${new Date(submission.submittedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
-        leftSection.appendChild(nameDiv);
-        leftSection.appendChild(dateDiv);
-        
-        // Rechte Seite: Punkte und Note
-        const rightSection = doc.createElement('div');
-        rightSection.style.cssText = 'display: flex; gap: 30px; align-items: center;';
-        rightSection.innerHTML = `
-          <div style="text-align: center;">
-            <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Punkte</div>
-            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
-          </div>
-          <div style="text-align: center;">
-            <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
-            <div style="font-size: 1.2em; font-weight: bold;">${gradeData.string}</div>
-          </div>
-        `;
-        
-        combinedHeader.appendChild(leftSection);
-        combinedHeader.appendChild(rightSection);
-        headerContainer.appendChild(combinedHeader);
-        
-        // Füge Header am Anfang des Body ein
-        if (doc.body) {
-          doc.body.insertBefore(headerContainer, doc.body.firstChild);
-        }
-        
-        // Füge CSS für farbliche Markierung hinzu
-        const style = doc.createElement('style');
-        style.textContent = `
-          .answer-correct {
-            background-color: #c8e6c9 !important;
-            border: 2px solid #4caf50 !important;
-            color: #1b5e20 !important;
-          }
-          .answer-incorrect {
-            background-color: #ffcdd2 !important;
-            border: 2px solid #f44336 !important;
-            color: #b71c1c !important;
-          }
-          .points-badge {
-            display: inline-block;
-            margin-left: 5px;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.85em;
-            font-weight: bold;
-          }
-          .points-correct {
-            background-color: #4caf50;
-            color: white;
-          }
-          .points-incorrect {
-            background-color: #f44336;
-            color: white;
-          }
-        `;
-        doc.head.appendChild(style);
-        
-        // Fülle alle Input-Felder mit den Antworten und markiere sie
-        Object.entries(answers).forEach(([taskId, answer]) => {
-          // Suche nach Input-Feldern mit diesem taskId als id oder name
-          // Versuche verschiedene Selektoren
-          let input = doc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-          if (!input) {
-            input = doc.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-          }
-          if (!input) {
-            // Versuche auch mit data-task-id Attribut
-            input = doc.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-          }
-          
-          if (input) {
-            const isCorrect = isAnswerCorrect(taskId, answer);
-            const maxPoints = pointsDistribution[taskId] || 0;
-            
-            // Berechne erreichte Punkte
-            let achievedPoints = isCorrect ? maxPoints : 0;
-            
-            // Für Aufgabe 3: Berücksichtige manuelle Korrekturen
-            if (taskId.startsWith('a3')) {
-              // Extrahiere Teilaufgabe (a, b, c, d) aus taskId
-              const match = taskId.match(/a3([a-d])/);
-              if (match) {
-                const subtask = match[1];
-                const subtaskKey = `3${subtask}`;
-                const subtaskCorrection = correctionsMap[subtaskKey];
-                
-                // Koordinatenpunkte (automatisch)
-                if (isCorrect) {
-                  achievedPoints = maxPoints; // 0.25 pro richtige Koordinate
-                }
-                
-                // Konstruktionspunkte werden separat für die gesamte Teilaufgabe angezeigt
-                // Hier zeigen wir nur die Koordinatenpunkte
-              }
-            } else {
-              // Für andere Aufgaben: Prüfe manuelle Korrekturen
-              const taskNum = taskId.match(/a(\d+)/)?.[1];
-              if (taskNum && correctionsMap[taskNum]) {
-                const correction = correctionsMap[taskNum];
-                if (correction.points !== undefined && correction.points !== null) {
-                  // Manuelle Korrektur überschreibt automatische Bewertung
-                  achievedPoints = correction.points;
-                }
-              }
-            }
-            
-            // Setze Wert basierend auf Element-Typ
-            const answerStr = String(answer || '').trim();
-            if (input.tagName === 'INPUT') {
-              const inputEl = input as HTMLInputElement;
-              if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
-                // Für Radio/Checkbox: Prüfe ob value übereinstimmt
-                if (inputEl.value === answerStr || inputEl.id === taskId || inputEl.name === taskId) {
-                  inputEl.checked = true;
-                }
-              } else {
-                inputEl.value = answerStr;
-              }
-            } else if (input.tagName === 'TEXTAREA') {
-              (input as HTMLTextAreaElement).value = answerStr;
-            } else if (input.tagName === 'SELECT') {
-              (input as unknown as HTMLSelectElement).value = answerStr;
-            } else {
-              // Für andere Elemente: Setze textContent
-              input.textContent = answerStr;
-            }
-            
-            // Markiere Input-Feld farblich
-            input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
-            
-            // Erstelle Container für Input und Badge
-            const container = doc.createElement('span');
-            container.style.display = 'inline-flex';
-            container.style.alignItems = 'center';
-            container.style.gap = '5px';
-            container.style.position = 'relative';
-            container.style.verticalAlign = 'middle';
-            container.style.marginLeft = '5px';
-            
-            // Wrappe Input in Container (nur wenn noch nicht gewrappt)
-            if (input.parentElement && !input.parentElement.classList.contains('answer-container')) {
-              const parent = input.parentElement;
-              parent.insertBefore(container, input);
-              container.appendChild(input);
-              container.classList.add('answer-container');
-              
-              // Füge Punkte-Badge hinzu
-              const pointsBadge = doc.createElement('span');
-              pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
-              // Zeige Punkte ohne Dezimalstellen wenn möglich
-              const pointsText = maxPoints % 1 === 0 && achievedPoints % 1 === 0 
-                ? `${achievedPoints}/${maxPoints}` 
-                : `${achievedPoints.toFixed(2)}/${maxPoints}`;
-              pointsBadge.textContent = pointsText;
-              pointsBadge.style.whiteSpace = 'nowrap';
-              pointsBadge.style.marginLeft = '3px';
-              container.appendChild(pointsBadge);
-            }
-          } else {
-            // Debug: Log wenn Input nicht gefunden wird
-            console.warn(`Input-Feld nicht gefunden für taskId: ${taskId}, answer: ${answer}`);
-          }
-        });
-
-        // Setze HTML in iframe
-        iframeDoc.open();
-        iframeDoc.write(doc.documentElement.outerHTML);
-        iframeDoc.close();
-
-        // Warte bis alles gerendert ist
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Rendere iframe body als Canvas
-        const body = iframeDoc.body;
-        if (!body) {
-          throw new Error('Iframe body nicht gefunden');
-        }
-        
-        // Wende alle Änderungen auch im iframe-DOM an (da das iframe ein neues DOM hat)
-        // 1. Ersetze "Frau Christ" durch Schülername
-        const iframeBodyText = body.innerHTML;
-        body.innerHTML = iframeBodyText.replace(/Frau Christ/g, studentName);
-        
-        // 1b. Aktualisiere den kombinierten Header im iframe
-        const iframeHeader = body.querySelector('[style*="background-color: #1976d2"]') as HTMLElement;
-        if (iframeHeader) {
-          const headerText = iframeHeader.textContent || '';
-          if (headerText.includes('Abgabe vom') || headerText.includes(submission.student.name)) {
-            // Header bereits vorhanden, aktualisiere ihn zu kombinierter Version
-            iframeHeader.style.display = 'flex';
-            iframeHeader.style.justifyContent = 'space-between';
-            iframeHeader.style.alignItems = 'center';
-            iframeHeader.style.flexWrap = 'wrap';
-            iframeHeader.style.gap = '15px';
-            
-            // Linke Seite: Name und Datum
-            const leftSection = iframeDoc.createElement('div');
-            leftSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
-            const nameDiv = iframeDoc.createElement('div');
-            nameDiv.style.cssText = 'font-size: 1.3em; font-weight: bold;';
-            nameDiv.textContent = studentName;
-            const dateDiv = iframeDoc.createElement('div');
-            dateDiv.style.cssText = 'font-size: 0.85em; font-weight: normal; opacity: 0.95;';
-            dateDiv.textContent = `Abgabe vom ${new Date(submission.submittedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} um ${new Date(submission.submittedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
-            leftSection.appendChild(nameDiv);
-            leftSection.appendChild(dateDiv);
-            
-            // Rechte Seite: Punkte und Note
-            const rightSection = iframeDoc.createElement('div');
-            rightSection.style.cssText = 'display: flex; gap: 30px; align-items: center;';
-            rightSection.innerHTML = `
-              <div style="text-align: center;">
-                <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Punkte</div>
-                <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
-              </div>
-              <div style="text-align: center;">
-                <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
-                <div style="font-size: 1.2em; font-weight: bold;">${gradeData.string}</div>
-              </div>
-            `;
-            
-            iframeHeader.innerHTML = '';
-            iframeHeader.appendChild(leftSection);
-            iframeHeader.appendChild(rightSection);
-          }
-        }
-        
-        // 2. Entferne Abgabebutton im iframe
-        const iframeSubmitButtons = body.querySelectorAll('button[type="submit"], input[type="submit"]');
-        iframeSubmitButtons.forEach(btn => {
-          const text = btn.textContent || (btn as HTMLInputElement).value || '';
-          if (text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit') || 
-              btn.id?.toLowerCase().includes('submit') || btn.className?.toLowerCase().includes('submit')) {
-            btn.remove();
-          }
-        });
-        
-        const iframeAllButtons = body.querySelectorAll('button');
-        iframeAllButtons.forEach(btn => {
-          const onclick = btn.getAttribute('onclick') || '';
-          const text = btn.textContent || '';
-          if (onclick.toLowerCase().includes('submit') || onclick.toLowerCase().includes('abgeben') ||
-              text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit')) {
-            btn.remove();
-          }
-        });
-        
-        // Entferne Timer-Elemente im iframe
-        const iframeTimerElements = body.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
-        iframeTimerElements.forEach(el => {
-          const text = el.textContent || '';
-          if (text.match(/\d+:\d+/) || text.includes('Verbleibend') || text.includes('verbleibend') || 
-              text.includes('Zeit') || el.id?.toLowerCase().includes('timer')) {
-            el.remove();
-          }
-        });
-        
-        // 3. Füge Antworten in iframe ein und markiere sie
-        Object.entries(answers).forEach(([taskId, answer]) => {
-          let input = body.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-          if (!input) {
-            input = body.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-          }
-          if (!input) {
-            input = body.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-          }
-          
-          if (input) {
-            const isCorrect = isAnswerCorrect(taskId, answer);
-            const maxPoints = pointsDistribution[taskId] || 0;
-            let achievedPoints = isCorrect ? maxPoints : 0;
-            
-            // Berücksichtige manuelle Korrekturen
-            if (taskId.startsWith('a3')) {
-              const match = taskId.match(/a3([a-d])/);
-              if (match) {
-                const subtask = match[1];
-                const subtaskKey = `3${subtask}`;
-                const subtaskCorrection = correctionsMap[subtaskKey];
-                if (isCorrect) {
-                  achievedPoints = maxPoints;
-                }
-              }
-            } else {
-              const taskNum = taskId.match(/a(\d+)/)?.[1];
-              if (taskNum && correctionsMap[taskNum]) {
-                const correction = correctionsMap[taskNum];
-                if (correction.points !== undefined && correction.points !== null) {
-                  achievedPoints = correction.points;
-                }
-              }
-            }
-            
-            // Setze Wert
-            const answerStr = String(answer || '').trim();
-            if (input.tagName === 'INPUT') {
-              const inputEl = input as HTMLInputElement;
-              if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
-                if (inputEl.value === answerStr || inputEl.id === taskId || inputEl.name === taskId) {
-                  inputEl.checked = true;
-                }
-              } else {
-                inputEl.value = answerStr;
-              }
-            } else if (input.tagName === 'TEXTAREA') {
-              (input as HTMLTextAreaElement).value = answerStr;
-            } else if (input.tagName === 'SELECT') {
-              (input as unknown as HTMLSelectElement).value = answerStr;
-            } else {
-              input.textContent = answerStr;
-            }
-            
-            // Markiere farblich
-            input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
-            
-            // Füge Punkte-Badge hinzu (nur wenn noch nicht vorhanden)
-            if (!input.parentElement?.querySelector('.points-badge')) {
-              const container = iframeDoc.createElement('span');
-              container.style.display = 'inline-flex';
-              container.style.alignItems = 'center';
-              container.style.gap = '5px';
-              container.style.marginLeft = '5px';
-              
-              if (input.parentElement) {
-                const parent = input.parentElement;
-                parent.insertBefore(container, input);
-                container.appendChild(input);
-                
-                const pointsBadge = iframeDoc.createElement('span');
-                pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
-                const pointsText = maxPoints % 1 === 0 && achievedPoints % 1 === 0 
-                  ? `${achievedPoints}/${maxPoints}` 
-                  : `${achievedPoints.toFixed(2)}/${maxPoints}`;
-                pointsBadge.textContent = pointsText;
-                pointsBadge.style.whiteSpace = 'nowrap';
-                pointsBadge.style.marginLeft = '3px';
-                container.appendChild(pointsBadge);
-              }
-            }
-          }
-        });
-        
-        // 4. Füge CSS für farbliche Markierung im iframe hinzu
-        const iframeStyle = iframeDoc.createElement('style');
-        iframeStyle.textContent = `
-          .answer-correct {
-            background-color: #c8e6c9 !important;
-            border: 2px solid #4caf50 !important;
-            color: #1b5e20 !important;
-          }
-          .answer-incorrect {
-            background-color: #ffcdd2 !important;
-            border: 2px solid #f44336 !important;
-            color: #b71c1c !important;
-          }
-          .points-badge {
-            display: inline-block;
-            margin-left: 5px;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.85em;
-            font-weight: bold;
-          }
-          .points-correct {
-            background-color: #4caf50;
-            color: white;
-          }
-          .points-incorrect {
-            background-color: #f44336;
-            color: white;
-          }
-          /* Sicherstellen, dass Input-Felder nicht abgeschnitten werden */
-          input[type="text"], input:not([type]), textarea, input[type="number"] {
-            min-height: 40px !important;
-            height: auto !important;
-            padding: 8px 12px !important;
-            line-height: 1.6 !important;
-            overflow: visible !important;
-            white-space: normal !important;
-            word-wrap: break-word !important;
-            box-sizing: border-box !important;
-            vertical-align: top !important;
-          }
-          /* Speziell für Koordinaten-Input-Felder */
-          input[type="number"], input[id*="x"], input[id*="y"], input[name*="x"], input[name*="y"] {
-            min-height: 45px !important;
-            padding: 10px 12px !important;
-            font-size: 1em !important;
-          }
-          textarea {
-            resize: vertical !important;
-            min-height: 70px !important;
-            padding: 10px 12px !important;
-          }
-          /* Verhindere Seitenumbrüche innerhalb von Elementen - KRITISCH */
-          input, textarea, select, label, .answer-container {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            margin-bottom: 10px !important;
-            margin-top: 5px !important;
-          }
-          /* Verhindere Seitenumbrüche innerhalb von Aufgaben und Containern */
-          div, section, article, p, form, fieldset {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-          /* Verhindere dass Input-Felder am Seitenende abgeschnitten werden */
-          input, textarea {
-            page-break-after: avoid !important;
-            break-after: avoid !important;
-          }
-          /* Mehr Abstand zwischen Elementen für bessere Lesbarkeit und Seitenumbrüche */
-          * {
-            margin-top: 3px !important;
-            margin-bottom: 3px !important;
-          }
-          /* Zusätzlicher Abstand für bessere Trennung */
-          br {
-            line-height: 1.5 !important;
-          }
-        `;
-        if (!iframeDoc.head.querySelector('style[data-export-style]')) {
-          iframeStyle.setAttribute('data-export-style', 'true');
-          iframeDoc.head.appendChild(iframeStyle);
-        }
-        
-        // 5. Fülle nur die "__" Platzhalter für Punkte und Note aus
-        // WICHTIG: Nur in spezifischen Kontexten, nicht in den Antwort-Feldern der Aufgaben
-        
-        // Durchsuche alle Textknoten und ersetze nur "__" Platzhalter im richtigen Kontext
-        const walker = iframeDoc.createTreeWalker(
-          body,
-          NodeFilter.SHOW_TEXT,
-          null
-        );
-        
-        let textNode;
-        while (textNode = walker.nextNode()) {
-          let text = textNode.textContent || '';
-          let updated = false;
-          
-          // Prüfe den Kontext - muss "Punkten erreicht" oder ähnliches enthalten
-          const parentText = textNode.parentElement?.textContent || '';
-          const fullContext = text + ' ' + parentText;
-          
-          // Ersetze "__ / __" Pattern für Punkte NUR wenn im Kontext von "Punkten erreicht" oder "erreicht"
-          if (text.includes('__') && text.includes('/') && 
-              (fullContext.includes('Punkten erreicht') || fullContext.includes('Punkte erreicht') || 
-               fullContext.includes('erreicht') && fullContext.includes('Punkt'))) {
-            text = text.replace(/__+\s*\/\s*__+/g, (match) => {
-              updated = true;
-              return `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
-            });
-          }
-          
-          // Ersetze "____" oder "__" für Note NUR wenn im Kontext von "Note"
-          if (fullContext.includes('Note') && (text.includes('____') || text.includes('__'))) {
-            // Ersetze "____" für Note
-            text = text.replace(/____+/g, (match) => {
-              updated = true;
-              return gradeData.string;
-            });
-            // Ersetze "__" nach "Note:"
-            text = text.replace(/Note\s*:\s*__+/g, (match) => {
-              updated = true;
-              return `Note: ${gradeData.string}`;
-            });
-            // Ersetze "__" wenn es direkt nach "Note" kommt
-            text = text.replace(/Note\s+__+/g, (match) => {
-              updated = true;
-              return match.replace(/__+/, gradeData.string);
-            });
-          }
-          
-          if (updated && textNode.textContent) {
-            textNode.textContent = text;
-          }
-        }
-        
-        // Suche nach Input-Feldern, die NUR für Punkte/Note gedacht sind
-        // Prüfe, ob das Input-Feld im Kontext von "Punkten erreicht" oder "Note" steht
-        const pointsNoteInputs = body.querySelectorAll('input[type="text"], input:not([type]), textarea');
-        pointsNoteInputs.forEach((input: Element) => {
-          const inputEl = input as HTMLInputElement | HTMLTextAreaElement;
-          
-          // Prüfe ob dieses Input-Feld bereits eine Antwort enthält (dann nicht ändern!)
-          if (inputEl.value && inputEl.value.trim() && !inputEl.value.match(/^[_]+$/)) {
-            return; // Überspringe, wenn bereits ein Wert vorhanden ist
-          }
-          
-          // Prüfe den Kontext des Input-Felds
-          const parentText = inputEl.parentElement?.textContent || '';
-          const previousSibling = inputEl.previousElementSibling?.textContent || '';
-          const nextSibling = inputEl.nextElementSibling?.textContent || '';
-          const context = parentText + ' ' + previousSibling + ' ' + nextSibling;
-          
-          // Prüfe auf Punkte-Pattern - muss "Punkten erreicht" oder ähnliches im Kontext haben
-          if (context.includes('Punkten erreicht') || context.includes('Punkte erreicht') || 
-              (context.includes('erreicht') && context.includes('Punkt'))) {
-            // Prüfe ob der Wert oder Placeholder "__" enthält
-            const value = inputEl.value || '';
-            const placeholder = inputEl.placeholder || '';
-            if ((value.includes('__') || placeholder.includes('__')) && context.includes('/')) {
-              inputEl.value = `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
-            }
-          }
-          
-          // Prüfe auf Note-Pattern - muss "Note" im Kontext haben
-          if (context.includes('Note')) {
-            const value = inputEl.value || '';
-            const placeholder = inputEl.placeholder || '';
-            if (value.includes('__') || placeholder.includes('__') || value === '' || value.match(/^[_]+$/)) {
-              // Nur wenn es wirklich ein Note-Feld ist (im Kontext von "Note")
-              inputEl.value = gradeData.string;
-            }
-          }
-        });
-        
-        // Warte kurz, damit alle Änderungen gerendert werden
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Finde das Ende der letzten Aufgabe und entferne alles danach
-        // Suche nach dem letzten Input-Feld, das zu einer Aufgabe gehört (nicht Punkte/Note)
-        const taskInputs = body.querySelectorAll('input, textarea, select');
-        let lastTaskElement: Element | null = null;
-        
-        if (taskInputs.length > 0) {
-          // Finde das letzte Input-Feld, das zu einer Aufgabe gehört
-          for (let i = taskInputs.length - 1; i >= 0; i--) {
-            const input = taskInputs[i];
-            const parentText = input.parentElement?.textContent || '';
-            // Überspringe Input-Felder für Punkte/Note
-            if (!parentText.includes('Punkten erreicht') && !parentText.includes('Note:')) {
-              lastTaskElement = input;
-              break;
-            }
-          }
-        }
-        
-        // Wenn kein Input-Feld gefunden, suche nach "Note" oder "Punkten erreicht"
-        if (!lastTaskElement) {
-          const allElements = Array.from(body.querySelectorAll('*'));
-          for (let i = allElements.length - 1; i >= 0; i--) {
-            const el = allElements[i];
-            const text = el.textContent || '';
-            if (text.includes('Note:') || text.includes('Punkten erreicht')) {
-              lastTaskElement = el;
-              break;
-            }
-          }
-        }
-        
-        // Entferne alle Elemente nach dem letzten Aufgaben-Element
-        if (lastTaskElement) {
-          // Finde den Container, der das letzte Element enthält
-          let container = lastTaskElement.parentElement;
-          while (container && container !== body) {
-            // Entferne alle nachfolgenden Geschwister
-            let sibling = container.nextSibling;
-            while (sibling) {
-              const nextSibling = sibling.nextSibling;
-              if (sibling.parentNode) {
-                sibling.parentNode.removeChild(sibling);
-              }
-              sibling = nextSibling;
-            }
-            container = container.parentElement;
-          }
-          
-          // Entferne auch alle nachfolgenden Geschwister des letzten Elements selbst
-          let sibling = lastTaskElement.nextSibling;
-          while (sibling) {
-            const nextSibling = sibling.nextSibling;
-            if (sibling.parentNode) {
-              sibling.parentNode.removeChild(sibling);
-            }
-            sibling = nextSibling;
-          }
-        }
-        
-        // Setze die Höhe des Body auf den Inhalt
-        body.style.height = 'auto';
-        body.style.overflow = 'visible';
-        
-        // Warte nochmal, damit alle Änderungen gerendert werden
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        const canvas = await html2canvas(body, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          width: body.scrollWidth,
-          height: body.scrollHeight
-        });
-
-        // Berechne Dimensionen für PDF mit sicherer Seitenumbrüche-Logik
-        const margin = 15; // Rand für jede Seite
-        const safetyMargin = 20; // Zusätzlicher Sicherheitsabstand für Seitenumbrüche
-        const imgWidth = pageWidth - 2 * margin;
-        const scale = imgWidth / canvas.width;
-        const imgHeight = canvas.height * scale;
-        const usablePageHeight = pageHeight - 2 * margin - safetyMargin; // Sicherheitsabstand abziehen
-
-        // Neue Seite für jeden Schüler (außer dem ersten)
-        if (i > 0) {
-          pdf.addPage();
-        }
-
-        // Wenn das Bild auf eine Seite passt
-        if (imgHeight <= usablePageHeight) {
-          const imgData = canvas.toDataURL('image/png');
-          pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-        } else {
-          // Teile auf mehrere Seiten auf - mit Sicherheitsabstand
-          let sourceY = 0;
-          let pageNum = 0;
-          
-          while (sourceY < canvas.height) {
-            if (pageNum > 0) {
-              pdf.addPage();
-            }
-            
-            // Berechne wie viel auf diese Seite passt (mit Sicherheitsabstand)
-            const remainingHeight = canvas.height - sourceY;
-            // Verwende Math.floor für saubere Pixel-Grenzen
-            const maxClipHeight = Math.floor(usablePageHeight / scale);
-            const clipHeight = Math.min(remainingHeight, maxClipHeight);
-            const displayHeight = clipHeight * scale;
-            
-            // Erstelle temporäres Canvas für diesen Ausschnitt
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = clipHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            if (tempCtx) {
-              // Zeichne den entsprechenden Ausschnitt des Original-Canvas
-              tempCtx.drawImage(
-                canvas,
-                0, sourceY, canvas.width, clipHeight,  // Source rectangle
-                0, 0, canvas.width, clipHeight         // Destination rectangle
-              );
-              
-              const tempImgData = tempCanvas.toDataURL('image/png');
-              // Füge mit Sicherheitsabstand hinzu
-              pdf.addImage(tempImgData, 'PNG', margin, margin, imgWidth, displayHeight);
-            }
-            
-            sourceY += clipHeight;
-            pageNum++;
-          }
-        }
-
-        // Entferne temporären iframe
-        document.body.removeChild(iframe);
-      }
-
-      // Speichere PDF
-      const fileName_pdf = `Alle_Abgaben_${fileName.replace('.html', '') || 'statistik'}.pdf`;
-      pdf.save(fileName_pdf);
-    } catch (error) {
-      console.error('Fehler beim Exportieren:', error);
-      alert(`❌ Fehler beim Exportieren: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Hilfsfunktion: Erstellt ein PDF für einen einzelnen Schüler
+  // PDF-Funktionen entfernt - nur noch HTML-Download verfügbar
   const createSingleStudentPDF = async (
     submission: KASubmission,
     htmlText: string,
@@ -1201,9 +505,17 @@ Vera Christ`);
     const bodyText = doc.body.innerHTML;
     doc.body.innerHTML = bodyText.replace(/Frau Christ/g, studentName);
 
-    // Entferne Buttons und Timer
+    // Entferne Abgabebutton
     const submitButtons = doc.querySelectorAll('button[type="submit"], input[type="submit"]');
-    submitButtons.forEach(btn => btn.remove());
+    submitButtons.forEach(btn => {
+      const text = btn.textContent || (btn as HTMLInputElement).value || '';
+      if (text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit') || 
+          btn.id?.toLowerCase().includes('submit') || btn.className?.toLowerCase().includes('submit')) {
+        btn.remove();
+      }
+    });
+    
+    // Entferne auch Buttons mit onclick-Handlern, die submit enthalten
     const allButtons = doc.querySelectorAll('button');
     allButtons.forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
@@ -1211,8 +523,16 @@ Vera Christ`);
         btn.remove();
       }
     });
-    const timerElements = doc.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"]');
-    timerElements.forEach(el => el.remove());
+    
+    // Entferne Timer-Elemente
+    const timerElements = doc.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
+    timerElements.forEach(el => {
+      const text = el.textContent || '';
+      if (text.match(/\d+:\d+/) || text.includes('Verbleibend') || text.includes('verbleibend') || 
+          text.includes('Zeit') || el.id?.toLowerCase().includes('timer')) {
+        el.remove();
+      }
+    });
 
     // Erstelle Map für manuelle Korrekturen
     const correctionsMap: Record<string, { points?: number; constructionPoints?: number }> = {};
@@ -1231,8 +551,9 @@ Vera Christ`);
     headerContainer.style.cssText = 'margin-bottom: 20px; padding: 0;';
     const combinedHeader = doc.createElement('div');
     combinedHeader.style.cssText = `
-      background-color: #1976d2;
-      color: white;
+      background-color: transparent;
+      border: 3px solid #1976d2;
+      color: #1976d2;
       padding: 15px 20px;
       border-radius: 5px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -1245,7 +566,7 @@ Vera Christ`);
     const leftSection = doc.createElement('div');
     leftSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
     const nameDiv = doc.createElement('div');
-    nameDiv.style.cssText = 'font-size: 1.3em; font-weight: bold;';
+    nameDiv.style.cssText = 'font-size: 1.1em; font-weight: bold;';
     nameDiv.textContent = studentName;
     const dateDiv = doc.createElement('div');
     dateDiv.style.cssText = 'font-size: 0.85em; font-weight: normal; opacity: 0.95;';
@@ -1261,7 +582,7 @@ Vera Christ`);
       </div>
       <div style="text-align: center;">
         <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
-        <div style="font-size: 1.2em; font-weight: bold;">${gradeData.string}</div>
+        <div style="font-size: 3em; font-weight: bold;">${gradeData.string}</div>
       </div>
     `;
     combinedHeader.appendChild(leftSection);
@@ -1271,9 +592,675 @@ Vera Christ`);
       doc.body.insertBefore(headerContainer, doc.body.firstChild);
     }
 
-    // Füge CSS hinzu (gleiche Logik wie exportAllToPDF)
+    // Füge CSS hinzu
     const style = doc.createElement('style');
     style.textContent = `
+      html, body {
+        border: none !important;
+        outline: none !important;
+        background-color: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .answer-correct {
+        background-color: #c8e6c9 !important;
+        border: 2px solid #4caf50 !important;
+        color: #1b5e20 !important;
+      }
+      .answer-incorrect {
+        background-color: #ffcdd2 !important;
+        border: 2px solid #f44336 !important;
+        color: #b71c1c !important;
+      }
+      .points-badge {
+        display: inline-block;
+        margin-left: 5px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.85em;
+        font-weight: bold;
+      }
+      .points-correct {
+        background-color: #4caf50;
+        color: white;
+      }
+      .points-incorrect {
+        background-color: #f44336;
+        color: white;
+      }
+    `;
+    doc.head.appendChild(style);
+
+    // Fülle alle Input-Felder mit den Antworten und markiere sie (vollständige Logik)
+    Object.entries(answers).forEach(([taskId, answer]) => {
+      let input = doc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      if (!input) {
+        input = doc.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
+      if (!input) {
+        input = doc.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
+      
+      if (input) {
+        const isCorrect = isAnswerCorrect(taskId, answer);
+        const maxPoints = pointsDistribution[taskId] || 0;
+        let achievedPoints = isCorrect ? maxPoints : 0;
+        
+        // Für Aufgabe 3: Berücksichtige manuelle Korrekturen
+        if (taskId.startsWith('a3')) {
+          const match = taskId.match(/a3([a-d])/);
+          if (match) {
+            const subtask = match[1];
+            const subtaskKey = `3${subtask}`;
+            const subtaskCorrection = correctionsMap[subtaskKey];
+            if (isCorrect) {
+              achievedPoints = maxPoints;
+            }
+          }
+        } else {
+          const taskNum = taskId.match(/a(\d+)/)?.[1];
+          if (taskNum && correctionsMap[taskNum]) {
+            const correction = correctionsMap[taskNum];
+            if (correction.points !== undefined && correction.points !== null) {
+              achievedPoints = correction.points;
+            }
+          }
+        }
+        
+        const answerStr = String(answer || '').trim();
+        if (input.tagName === 'INPUT') {
+          const inputEl = input as HTMLInputElement;
+          if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
+            if (inputEl.value === answerStr || inputEl.id === taskId || inputEl.name === taskId) {
+              inputEl.checked = true;
+            }
+          } else {
+            inputEl.value = answerStr;
+          }
+        } else if (input.tagName === 'TEXTAREA') {
+          (input as HTMLTextAreaElement).value = answerStr;
+        } else if (input.tagName === 'SELECT') {
+          (input as unknown as HTMLSelectElement).value = answerStr;
+        } else {
+          input.textContent = answerStr;
+        }
+        
+        input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+        
+        // Erstelle Container für Input und Badge
+        const container = doc.createElement('span');
+        container.style.display = 'inline-flex';
+        container.style.alignItems = 'center';
+        container.style.gap = '5px';
+        container.style.position = 'relative';
+        container.style.verticalAlign = 'middle';
+        container.style.marginLeft = '5px';
+        
+        if (input.parentElement && !input.parentElement.classList.contains('answer-container')) {
+          const parent = input.parentElement;
+          parent.insertBefore(container, input);
+          container.appendChild(input);
+          container.classList.add('answer-container');
+          
+          const pointsBadge = doc.createElement('span');
+          pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
+          const pointsText = maxPoints % 1 === 0 && achievedPoints % 1 === 0 
+            ? `${achievedPoints}/${maxPoints}` 
+            : `${achievedPoints.toFixed(2)}/${maxPoints}`;
+          pointsBadge.textContent = pointsText;
+          pointsBadge.style.whiteSpace = 'nowrap';
+          pointsBadge.style.marginLeft = '3px';
+          container.appendChild(pointsBadge);
+        }
+      }
+    });
+
+    // Füge Korrekturen DIREKT in doc ein, BEVOR es ins iframe geschrieben wird
+    if (submission.corrections && submission.corrections.length > 0) {
+      const task3SubtaskCorrections: Array<{taskNumber: string; manualPoints?: number}> = [];
+      let task3Comment: string | null = null;
+      
+      submission.corrections.forEach((corr) => {
+        if (corr.taskNumber.match(/^3[a-d]$/)) {
+          task3SubtaskCorrections.push({
+            taskNumber: corr.taskNumber,
+            manualPoints: corr.manualPoints
+          });
+          if (corr.comment && !task3Comment) {
+            task3Comment = corr.comment;
+          }
+        }
+      });
+      
+      // Füge Konstruktionspunkte für jede Teilaufgabe hinzu
+      task3SubtaskCorrections.forEach((corr) => {
+        const taskNumber = corr.taskNumber;
+        const subtaskLetter = taskNumber[1];
+        const allInputs = Array.from(doc.querySelectorAll('input, textarea, select'));
+        const taskInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith(`a3${subtaskLetter}`);
+        });
+        
+        if (taskInputs.length > 0 && (corr.manualPoints !== undefined && corr.manualPoints !== null)) {
+          taskInputs.sort((a, b) => {
+            const posA = Array.from(doc.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(doc.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = taskInputs[0];
+          
+          if (lastInput) {
+            const constructionDiv = doc.createElement('div');
+            constructionDiv.setAttribute('data-correction', 'construction-points');
+            constructionDiv.style.cssText = 'margin-top: 8px; margin-bottom: 12px; padding: 8px 12px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9em; display: block; width: 100%;';
+            constructionDiv.innerHTML = `<strong>Konstruktionspunkte:</strong> ${corr.manualPoints} / 2`;
+            
+            let parent = lastInput.parentElement;
+            if (!parent) {
+              parent = doc.createElement('div');
+              lastInput.parentNode?.insertBefore(parent, lastInput);
+              parent.appendChild(lastInput);
+            }
+            
+            let insertAfter = lastInput;
+            let nextSibling = lastInput.nextElementSibling;
+            while (nextSibling) {
+              const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+              if (nextTaskId.startsWith(`a3${subtaskLetter}`)) {
+                insertAfter = nextSibling as Element;
+                nextSibling = nextSibling.nextElementSibling;
+              } else {
+                break;
+              }
+            }
+            
+            if (insertAfter.nextSibling) {
+              parent.insertBefore(constructionDiv, insertAfter.nextSibling);
+            } else {
+              parent.appendChild(constructionDiv);
+            }
+          }
+        }
+      });
+      
+      // Füge Kommentar am Ende von Aufgabe 3 hinzu
+      if (task3Comment) {
+        const allInputs = Array.from(doc.querySelectorAll('input, textarea, select'));
+        const task3dInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith('a3d');
+        });
+        
+        if (task3dInputs.length > 0) {
+          task3dInputs.sort((a, b) => {
+            const posA = Array.from(doc.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(doc.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = task3dInputs[0];
+          
+          if (lastInput) {
+            const commentDiv = doc.createElement('div');
+            commentDiv.setAttribute('data-correction', 'task3-comment');
+            commentDiv.style.cssText = 'margin-top: 16px; margin-bottom: 16px; padding: 12px 16px; background-color: #c8e6c9; border: 2px solid #4caf50; border-left: 5px solid #4caf50; border-radius: 6px; font-size: 0.95em; line-height: 1.6; display: block; width: 100%;';
+            commentDiv.innerHTML = `
+              <div style="font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px; border-bottom: 1px solid #81c784; padding-bottom: 4px;">Aufgabe 3 - Kommentar</div>
+              <div style="color: #1b5e20; white-space: pre-wrap;">${task3Comment}</div>
+            `;
+            
+            let parent = lastInput.parentElement;
+            if (!parent) {
+              parent = doc.createElement('div');
+              lastInput.parentNode?.insertBefore(parent, lastInput);
+              parent.appendChild(lastInput);
+            }
+            
+            let insertAfter = lastInput;
+            let nextSibling = lastInput.nextElementSibling;
+            while (nextSibling) {
+              const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+              if (nextTaskId.startsWith('a3')) {
+                insertAfter = nextSibling as Element;
+                nextSibling = nextSibling.nextElementSibling;
+              } else {
+                break;
+              }
+            }
+            
+            if (insertAfter.nextSibling) {
+              parent.insertBefore(commentDiv, insertAfter.nextSibling);
+            } else {
+              parent.appendChild(commentDiv);
+            }
+          }
+        }
+      }
+    }
+
+    // Setze HTML in iframe
+    iframeDoc.open();
+    iframeDoc.write(doc.documentElement.outerHTML);
+    iframeDoc.close();
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const body = iframeDoc.body;
+    if (!body) {
+      throw new Error('Iframe body nicht gefunden');
+    }
+
+    // Wende alle Änderungen im iframe an (vollständige Logik wie exportAllToPDF)
+    body.innerHTML = body.innerHTML.replace(/Frau Christ/g, studentName);
+    
+    // Aktualisiere den kombinierten Header im iframe
+    const iframeHeader = body.querySelector('[style*="border: 3px solid #1976d2"], [style*="background-color: #1976d2"]') as HTMLElement;
+    if (iframeHeader) {
+      const headerText = iframeHeader.textContent || '';
+      if (headerText.includes('Abgabe vom') || headerText.includes(submission.student.name)) {
+        iframeHeader.style.display = 'flex';
+        iframeHeader.style.justifyContent = 'space-between';
+        iframeHeader.style.alignItems = 'center';
+        iframeHeader.style.flexWrap = 'wrap';
+        iframeHeader.style.gap = '15px';
+        iframeHeader.style.backgroundColor = 'transparent';
+        iframeHeader.style.border = '3px solid #1976d2';
+        iframeHeader.style.color = '#1976d2';
+        
+        const leftSection = iframeDoc.createElement('div');
+        leftSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
+        const nameDiv = iframeDoc.createElement('div');
+        nameDiv.style.cssText = 'font-size: 1.1em; font-weight: bold;';
+        nameDiv.textContent = studentName;
+        const dateDiv = iframeDoc.createElement('div');
+        dateDiv.style.cssText = 'font-size: 0.75em; font-weight: normal; opacity: 0.95;';
+        dateDiv.textContent = `Abgabe vom ${new Date(submission.submittedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} um ${new Date(submission.submittedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+        leftSection.appendChild(nameDiv);
+        leftSection.appendChild(dateDiv);
+        
+        const rightSection = iframeDoc.createElement('div');
+        rightSection.style.cssText = 'display: flex; gap: 20px; align-items: center;';
+        rightSection.innerHTML = `
+          <div style="text-align: center;">
+            <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Punkte</div>
+            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Note</div>
+            <div style="font-size: 3em; font-weight: bold;">${gradeData.string}</div>
+          </div>
+        `;
+        
+        iframeHeader.innerHTML = '';
+        iframeHeader.appendChild(leftSection);
+        iframeHeader.appendChild(rightSection);
+      }
+    }
+    
+    // Entferne Abgabebutton im iframe
+    const iframeSubmitButtons = body.querySelectorAll('button[type="submit"], input[type="submit"]');
+    iframeSubmitButtons.forEach(btn => {
+      const text = btn.textContent || (btn as HTMLInputElement).value || '';
+      if (text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit') || 
+          btn.id?.toLowerCase().includes('submit') || btn.className?.toLowerCase().includes('submit')) {
+        btn.remove();
+      }
+    });
+    
+    const iframeAllButtons = body.querySelectorAll('button');
+    iframeAllButtons.forEach(btn => {
+      const onclick = btn.getAttribute('onclick') || '';
+      const text = btn.textContent || '';
+      if (onclick.toLowerCase().includes('submit') || onclick.toLowerCase().includes('abgeben') ||
+          text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit')) {
+        btn.remove();
+      }
+    });
+    
+    // Entferne Timer-Elemente im iframe
+    const iframeTimerElements = body.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
+    iframeTimerElements.forEach(el => {
+      const text = el.textContent || '';
+      if (text.match(/\d+:\d+/) || text.includes('Verbleibend') || text.includes('verbleibend') || 
+          text.includes('Zeit') || el.id?.toLowerCase().includes('timer')) {
+        el.remove();
+      }
+    });
+    
+    // Füge Antworten in iframe ein und markiere sie
+    Object.entries(answers).forEach(([taskId, answer]) => {
+      let input = body.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      if (!input) {
+        input = body.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
+      if (!input) {
+        input = body.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
+      
+      if (input) {
+        const isCorrect = isAnswerCorrect(taskId, answer);
+        const maxPoints = pointsDistribution[taskId] || 0;
+        let achievedPoints = isCorrect ? maxPoints : 0;
+        
+        if (taskId.startsWith('a3')) {
+          const match = taskId.match(/a3([a-d])/);
+          if (match) {
+            const subtask = match[1];
+            const subtaskKey = `3${subtask}`;
+            const subtaskCorrection = correctionsMap[subtaskKey];
+            if (isCorrect) {
+              achievedPoints = maxPoints;
+            }
+          }
+        } else {
+          const taskNum = taskId.match(/a(\d+)/)?.[1];
+          if (taskNum && correctionsMap[taskNum]) {
+            const correction = correctionsMap[taskNum];
+            if (correction.points !== undefined && correction.points !== null) {
+              achievedPoints = correction.points;
+            }
+          }
+        }
+        
+        const answerStr = String(answer || '').trim();
+        if (input.tagName === 'INPUT') {
+          const inputEl = input as HTMLInputElement;
+          if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
+            if (inputEl.value === answerStr || inputEl.id === taskId || inputEl.name === taskId) {
+              inputEl.checked = true;
+            }
+          } else {
+            inputEl.value = answerStr;
+          }
+        } else if (input.tagName === 'TEXTAREA') {
+          (input as HTMLTextAreaElement).value = answerStr;
+        } else if (input.tagName === 'SELECT') {
+          (input as unknown as HTMLSelectElement).value = answerStr;
+        } else {
+          input.textContent = answerStr;
+        }
+        
+        input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+        
+        if (!input.parentElement?.querySelector('.points-badge')) {
+          const container = iframeDoc.createElement('span');
+          container.style.display = 'inline-flex';
+          container.style.alignItems = 'center';
+          container.style.gap = '5px';
+          container.style.marginLeft = '5px';
+          
+          if (input.parentElement) {
+            const parent = input.parentElement;
+            parent.insertBefore(container, input);
+            container.appendChild(input);
+            
+            const pointsBadge = iframeDoc.createElement('span');
+            pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
+            const pointsText = maxPoints % 1 === 0 && achievedPoints % 1 === 0 
+              ? `${achievedPoints}/${maxPoints}` 
+              : `${achievedPoints.toFixed(2)}/${maxPoints}`;
+            pointsBadge.textContent = pointsText;
+            pointsBadge.style.whiteSpace = 'nowrap';
+            pointsBadge.style.marginLeft = '3px';
+            container.appendChild(pointsBadge);
+          }
+        }
+      }
+    });
+    
+    // Trenne Korrekturen für Aufgabe 3 (Teilaufgaben und Kommentar) - iframe Version
+    const task3SubtaskCorrectionsIframe: Array<{taskNumber: string; manualPoints?: number}> = [];
+    let task3CommentIframe: string | null = null;
+    const otherTaskCorrectionsIframe: Array<{taskNumber: string; manualPoints?: number; comment?: string}> = [];
+    
+    if (submission.corrections && submission.corrections.length > 0) {
+      submission.corrections.forEach((corr) => {
+        if (corr.taskNumber.match(/^3[a-d]$/)) {
+          task3SubtaskCorrectionsIframe.push({
+            taskNumber: corr.taskNumber,
+            manualPoints: corr.manualPoints
+          });
+          if (corr.comment && !task3CommentIframe) {
+            task3CommentIframe = corr.comment;
+          }
+        } else {
+          otherTaskCorrectionsIframe.push({
+            taskNumber: corr.taskNumber,
+            manualPoints: corr.manualPoints,
+            comment: corr.comment
+          });
+        }
+      });
+    }
+    
+    // Füge Konstruktionspunkte am Ende jeder Teilaufgabe 3a, 3b, 3c, 3d ein - iframe
+    task3SubtaskCorrectionsIframe.forEach((corr) => {
+        const taskNumber = corr.taskNumber;
+      const subtaskLetter = taskNumber[1];
+        
+        const allInputs = Array.from(body.querySelectorAll('input, textarea, select'));
+        let inputsInSubtask: Element[] = [];
+        
+        allInputs.forEach((input) => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+            if (taskId.startsWith(`a3${subtaskLetter}`)) {
+              inputsInSubtask.push(input);
+          }
+        });
+        
+        let lastInputInSubtask: Element | null = null;
+        if (inputsInSubtask.length > 0) {
+          inputsInSubtask.sort((a, b) => {
+            const posA = Array.from(body.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(body.querySelectorAll('*')).indexOf(b);
+          return posB - posA;
+          });
+          lastInputInSubtask = inputsInSubtask[0];
+        }
+        
+      if (lastInputInSubtask && (corr.manualPoints !== undefined && corr.manualPoints !== null)) {
+        const constructionPointsDiv = iframeDoc.createElement('div');
+        constructionPointsDiv.style.cssText = `
+          margin-top: 8px;
+          margin-bottom: 12px;
+          padding: 8px 12px;
+          background-color: #f5f5f5;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 0.9em;
+          display: block;
+          width: 100%;
+        `;
+        constructionPointsDiv.innerHTML = `<strong>Konstruktionspunkte:</strong> ${corr.manualPoints} / 2`;
+        
+        if (lastInputInSubtask.parentElement) {
+          const parent = lastInputInSubtask.parentElement;
+          // Finde das nächste Element, das NICHT zu dieser Teilaufgabe gehört
+          let insertAfter = lastInputInSubtask;
+          let nextSibling = lastInputInSubtask.nextElementSibling;
+          while (nextSibling) {
+            const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+            if (nextTaskId.startsWith(`a3${subtaskLetter}`)) {
+              insertAfter = nextSibling;
+              nextSibling = nextSibling.nextElementSibling;
+            } else {
+              break;
+            }
+          }
+          
+          // Füge nach dem letzten Element dieser Teilaufgabe ein
+          if (insertAfter.nextSibling) {
+            parent.insertBefore(constructionPointsDiv, insertAfter.nextSibling);
+          } else {
+            parent.appendChild(constructionPointsDiv);
+          }
+              }
+            }
+          });
+    
+    // Füge Kommentar am Ende der gesamten Aufgabe 3 ein - iframe
+    if (task3CommentIframe) {
+      const allInputs = Array.from(body.querySelectorAll('input, textarea, select'));
+      let lastTask3Input: Element | null = null;
+      
+      const task3dInputs = allInputs.filter(input => {
+        const taskId = input.id || (input as HTMLInputElement).name || '';
+        return taskId.startsWith('a3d');
+      });
+      
+      if (task3dInputs.length > 0) {
+        task3dInputs.sort((a, b) => {
+          const posA = Array.from(body.querySelectorAll('*')).indexOf(a);
+          const posB = Array.from(body.querySelectorAll('*')).indexOf(b);
+          return posB - posA;
+        });
+        lastTask3Input = task3dInputs[0];
+      }
+      
+      if (lastTask3Input) {
+        const commentDiv = iframeDoc.createElement('div');
+        commentDiv.style.cssText = `
+          margin-top: 16px;
+          margin-bottom: 16px;
+          padding: 12px 16px;
+          background-color: #c8e6c9;
+          border: 2px solid #4caf50;
+          border-left: 5px solid #4caf50;
+          border-radius: 6px;
+          font-size: 0.95em;
+          line-height: 1.6;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          display: block;
+          width: 100%;
+        `;
+        commentDiv.innerHTML = `
+          <div style="font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px; border-bottom: 1px solid #81c784; padding-bottom: 4px;">Aufgabe 3 - Kommentar</div>
+          <div style="color: #1b5e20; white-space: pre-wrap;">${task3CommentIframe}</div>
+        `;
+        
+        if (lastTask3Input.parentElement) {
+          const parent = lastTask3Input.parentElement;
+          // Finde das letzte Element von Aufgabe 3
+          let insertAfter = lastTask3Input;
+          let nextSibling = lastTask3Input.nextElementSibling;
+          while (nextSibling) {
+            const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+            if (nextTaskId.startsWith('a3')) {
+              insertAfter = nextSibling;
+              nextSibling = nextSibling.nextElementSibling;
+        } else {
+              break;
+            }
+          }
+          
+          // Füge nach dem letzten Element von Aufgabe 3 ein
+          if (insertAfter.nextSibling) {
+            parent.insertBefore(commentDiv, insertAfter.nextSibling);
+          } else {
+            parent.appendChild(commentDiv);
+          }
+        }
+      }
+    }
+    
+    // Füge Korrekturen für andere Aufgaben (1, 2) ein - iframe
+    otherTaskCorrectionsIframe.forEach((corr) => {
+      const taskNumber = corr.taskNumber;
+      
+      const allInputs = Array.from(body.querySelectorAll('input, textarea, select'));
+      let inputsInTask: Element[] = [];
+      
+      allInputs.forEach((input) => {
+        const taskId = input.id || (input as HTMLInputElement).name || '';
+        if (taskNumber === '1' && taskId.startsWith('a1')) {
+          inputsInTask.push(input);
+        } else if (taskNumber === '2' && taskId.startsWith('a2')) {
+          inputsInTask.push(input);
+        }
+      });
+      
+      let lastInputInTask: Element | null = null;
+      if (inputsInTask.length > 0) {
+        inputsInTask.sort((a, b) => {
+          const posA = Array.from(body.querySelectorAll('*')).indexOf(a);
+          const posB = Array.from(body.querySelectorAll('*')).indexOf(b);
+          return posB - posA;
+        });
+        lastInputInTask = inputsInTask[0];
+      }
+      
+      let automaticPoints = 0;
+          Object.entries(answers).forEach(([taskId, answer]) => {
+            const taskNum = taskId.match(/a(\d+)/)?.[1];
+            if (taskNum === taskNumber) {
+              const isCorrect = isAnswerCorrect(taskId, answer);
+              const maxPoints = pointsDistribution[taskId] || 0;
+              if (isCorrect) {
+                automaticPoints += maxPoints;
+              }
+            }
+          });
+        
+        const correctionDiv = iframeDoc.createElement('div');
+        correctionDiv.style.cssText = `
+        margin-top: 12px;
+        margin-bottom: 12px;
+        padding: 12px 16px;
+        background-color: #e3f2fd;
+        border: 2px solid #1976d2;
+        border-left: 5px solid #1976d2;
+        border-radius: 6px;
+        font-size: 0.95em;
+        line-height: 1.6;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      `;
+      
+      let correctionText = `<div style="font-weight: bold; font-size: 1.05em; color: #1976d2; margin-bottom: 8px; border-bottom: 1px solid #90caf9; padding-bottom: 4px;">Aufgabe ${taskNumber} - Korrektur</div>`;
+      correctionText += '<div style="margin-bottom: 6px;">';
+          if (automaticPoints > 0) {
+        correctionText += `<span style="display: inline-block; margin-right: 15px;"><strong>Automatische Punkte:</strong> <span style="color: #2e7d32; font-weight: bold;">${automaticPoints.toFixed(2)}</span></span>`;
+          }
+          if (corr.manualPoints !== undefined && corr.manualPoints !== null) {
+        correctionText += `<span style="display: inline-block;"><strong>Manuelle Punkte:</strong> <span style="color: #1976d2; font-weight: bold;">${corr.manualPoints}</span></span>`;
+      }
+      correctionText += '</div>';
+      
+        if (corr.comment) {
+        correctionText += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #90caf9;"><strong style="color: #1976d2;">Kommentar:</strong><br><span style="color: #333; white-space: pre-wrap;">${corr.comment}</span></div>`;
+        }
+        
+          correctionDiv.innerHTML = correctionText;
+          
+      if (lastInputInTask && lastInputInTask.parentElement) {
+        const parent = lastInputInTask.parentElement;
+        let nextSibling = lastInputInTask.nextElementSibling;
+              while (nextSibling && (nextSibling.tagName === 'INPUT' || nextSibling.tagName === 'TEXTAREA' || nextSibling.tagName === 'SELECT' || nextSibling.tagName === 'LABEL')) {
+                const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+          if ((taskNumber === '1' && nextTaskId.startsWith('a1')) || (taskNumber === '2' && nextTaskId.startsWith('a2'))) {
+                    nextSibling = nextSibling.nextElementSibling;
+                } else {
+                  break;
+                }
+              }
+              
+              if (nextSibling) {
+                parent.insertBefore(correctionDiv, nextSibling);
+              } else {
+          parent.insertBefore(correctionDiv, lastInputInTask.nextSibling);
+          }
+        }
+      });
+    
+    // Füge CSS für farbliche Markierung im iframe hinzu
+    const iframeStyle = iframeDoc.createElement('style');
+    iframeStyle.textContent = `
+      html, body {
+        border: none !important;
+        outline: none !important;
+        background-color: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
       .answer-correct {
         background-color: #c8e6c9 !important;
         border: 2px solid #4caf50 !important;
@@ -1340,66 +1327,93 @@ Vera Christ`);
         margin-bottom: 3px !important;
       }
     `;
-    doc.head.appendChild(style);
-
-    // Fülle Antworten ein (vereinfacht - sollte die vollständige Logik verwenden)
-    Object.entries(answers).forEach(([taskId, answer]) => {
-      let input = doc.querySelector(`#${taskId}, [name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-      if (input) {
-        const isCorrect = isAnswerCorrect(taskId, answer);
-        const answerStr = String(answer || '').trim();
-        if (input.tagName === 'INPUT') {
-          const inputEl = input as HTMLInputElement;
-          if (inputEl.type !== 'radio' && inputEl.type !== 'checkbox') {
-            inputEl.value = answerStr;
-          }
-        } else if (input.tagName === 'TEXTAREA') {
-          (input as HTMLTextAreaElement).value = answerStr;
-        } else if (input.tagName === 'SELECT') {
-          (input as unknown as HTMLSelectElement).value = answerStr;
-        }
-        input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
-      }
-    });
-
-    // Setze HTML in iframe
-    iframeDoc.open();
-    iframeDoc.write(doc.documentElement.outerHTML);
-    iframeDoc.close();
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const body = iframeDoc.body;
-    if (!body) {
-      throw new Error('Iframe body nicht gefunden');
+    if (!iframeDoc.head.querySelector('style[data-export-style]')) {
+      iframeStyle.setAttribute('data-export-style', 'true');
+      iframeDoc.head.appendChild(iframeStyle);
     }
-
-    // Wende alle Änderungen im iframe an (vereinfacht)
-    body.innerHTML = body.innerHTML.replace(/Frau Christ/g, studentName);
-
-    // Fülle Antworten im iframe
-    Object.entries(answers).forEach(([taskId, answer]) => {
-      let input = body.querySelector(`#${taskId}, [name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-      if (input) {
-        const answerStr = String(answer || '').trim();
-        if (input.tagName === 'INPUT') {
-          const inputEl = input as HTMLInputElement;
-          if (inputEl.type !== 'radio' && inputEl.type !== 'checkbox') {
-            inputEl.value = answerStr;
-          }
-        } else if (input.tagName === 'TEXTAREA') {
-          (input as HTMLTextAreaElement).value = answerStr;
-        } else if (input.tagName === 'SELECT') {
-          (input as unknown as HTMLSelectElement).value = answerStr;
+    
+    // Fülle nur die "__" Platzhalter für Punkte und Note aus
+    const walker = iframeDoc.createTreeWalker(
+      body,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    let textNode;
+    while (textNode = walker.nextNode()) {
+      let text = textNode.textContent || '';
+      let updated = false;
+      
+      const parentText = textNode.parentElement?.textContent || '';
+      const fullContext = text + ' ' + parentText;
+      
+      if (text.includes('__') && text.includes('/') && 
+          (fullContext.includes('Punkten erreicht') || fullContext.includes('Punkte erreicht') || 
+           fullContext.includes('erreicht') && fullContext.includes('Punkt'))) {
+        text = text.replace(/__+\s*\/\s*__+/g, (match) => {
+          updated = true;
+          return `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
+        });
+      }
+      
+      if (fullContext.includes('Note') && (text.includes('____') || text.includes('__'))) {
+        text = text.replace(/____+/g, (match) => {
+          updated = true;
+          return gradeData.string;
+        });
+        text = text.replace(/Note\s*:\s*__+/g, (match) => {
+          updated = true;
+          return `Note: ${gradeData.string}`;
+        });
+        text = text.replace(/Note\s+__+/g, (match) => {
+          updated = true;
+          return match.replace(/__+/, gradeData.string);
+        });
+      }
+      
+      if (updated && textNode.textContent) {
+        textNode.textContent = text;
+      }
+    }
+    
+    // Suche nach Input-Feldern, die NUR für Punkte/Note gedacht sind
+    const pointsNoteInputs = body.querySelectorAll('input[type="text"], input:not([type]), textarea');
+    pointsNoteInputs.forEach((input: Element) => {
+      const inputEl = input as HTMLInputElement | HTMLTextAreaElement;
+      
+      if (inputEl.value && inputEl.value.trim() && !inputEl.value.match(/^[_]+$/)) {
+        return;
+      }
+      
+      const parentText = inputEl.parentElement?.textContent || '';
+      const previousSibling = inputEl.previousElementSibling?.textContent || '';
+      const nextSibling = inputEl.nextElementSibling?.textContent || '';
+      const context = parentText + ' ' + previousSibling + ' ' + nextSibling;
+      
+      if (context.includes('Punkten erreicht') || context.includes('Punkte erreicht') || 
+          (context.includes('erreicht') && context.includes('Punkt'))) {
+        const value = inputEl.value || '';
+        const placeholder = inputEl.placeholder || '';
+        if ((value.includes('__') || placeholder.includes('__')) && context.includes('/')) {
+          inputEl.value = `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
         }
-        const isCorrect = isAnswerCorrect(taskId, answer);
-        input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+      }
+      
+      if (context.includes('Note')) {
+        const value = inputEl.value || '';
+        const placeholder = inputEl.placeholder || '';
+        if (value.includes('__') || placeholder.includes('__') || value === '' || value.match(/^[_]+$/)) {
+          inputEl.value = gradeData.string;
+        }
       }
     });
-
-    // Entferne alles nach der letzten Aufgabe
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Finde das Ende der letzten Aufgabe und entferne alles danach (aber nicht die Korrekturen!)
     const taskInputs = body.querySelectorAll('input, textarea, select');
     let lastTaskElement: Element | null = null;
+    
     if (taskInputs.length > 0) {
       for (let i = taskInputs.length - 1; i >= 0; i--) {
         const input = taskInputs[i];
@@ -1410,29 +1424,215 @@ Vera Christ`);
         }
       }
     }
+    
+    if (!lastTaskElement) {
+      const allElements = Array.from(body.querySelectorAll('*'));
+      for (let i = allElements.length - 1; i >= 0; i--) {
+        const el = allElements[i];
+        const text = el.textContent || '';
+        if (text.includes('Note:') || text.includes('Punkten erreicht')) {
+          lastTaskElement = el;
+          break;
+        }
+      }
+    }
+    
+    // Finde alle Korrektur-Elemente, die wir hinzugefügt haben
+    const correctionElements = body.querySelectorAll('[style*="background-color: #f5f5f5"], [style*="background-color: #c8e6c9"], [style*="background-color: #e3f2fd"]');
+    const correctionElementSet = new Set(correctionElements);
+    
     if (lastTaskElement) {
+      let container = lastTaskElement.parentElement;
+      while (container && container !== body) {
+        let sibling = container.nextSibling;
+        while (sibling) {
+          const nextSibling = sibling.nextSibling;
+          // Überspringe Korrektur-Elemente
+          const siblingElement = sibling as Element;
+          if (siblingElement && siblingElement.nodeType === Node.ELEMENT_NODE) {
+            if (!correctionElementSet.has(siblingElement) && !Array.from(siblingElement.querySelectorAll('*')).some(el => correctionElementSet.has(el))) {
+          if (sibling.parentNode) {
+            sibling.parentNode.removeChild(sibling);
+              }
+            }
+          } else {
+            // Wenn es kein Element ist, entferne es normal
+            if (sibling.parentNode) {
+              sibling.parentNode.removeChild(sibling);
+            }
+          }
+          sibling = nextSibling;
+        }
+        container = container.parentElement;
+      }
+      
       let sibling = lastTaskElement.nextSibling;
       while (sibling) {
         const nextSibling = sibling.nextSibling;
+        // Überspringe Korrektur-Elemente
+        const siblingElement = sibling as Element;
+        if (siblingElement && siblingElement.nodeType === Node.ELEMENT_NODE) {
+          if (!correctionElementSet.has(siblingElement) && !Array.from(siblingElement.querySelectorAll('*')).some(el => correctionElementSet.has(el))) {
         if (sibling.parentNode) {
           sibling.parentNode.removeChild(sibling);
+            }
+          }
+        } else {
+          // Wenn es kein Element ist, entferne es normal
+          if (sibling.parentNode) {
+            sibling.parentNode.removeChild(sibling);
+          }
         }
         sibling = nextSibling;
       }
     }
-
+    
     body.style.height = 'auto';
     body.style.overflow = 'visible';
-    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Füge Korrekturen DIREKT in body ein, nachdem alles geladen ist
+    if (submission.corrections && submission.corrections.length > 0) {
+      const task3SubtaskCorrections: Array<{taskNumber: string; manualPoints?: number}> = [];
+      let task3Comment: string | null = null;
+      
+      submission.corrections.forEach((corr) => {
+        if (corr.taskNumber.match(/^3[a-d]$/)) {
+          task3SubtaskCorrections.push({
+            taskNumber: corr.taskNumber,
+            manualPoints: corr.manualPoints
+          });
+          if (corr.comment && !task3Comment) {
+            task3Comment = corr.comment;
+          }
+        }
+      });
+      
+      // Füge Konstruktionspunkte für jede Teilaufgabe hinzu - DIREKT in body
+      task3SubtaskCorrections.forEach((corr) => {
+        const taskNumber = corr.taskNumber;
+        const subtaskLetter = taskNumber[1];
+        const allInputs = Array.from(body.querySelectorAll('input, textarea, select'));
+        const taskInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith(`a3${subtaskLetter}`);
+        });
+        
+        if (taskInputs.length > 0 && (corr.manualPoints !== undefined && corr.manualPoints !== null)) {
+          taskInputs.sort((a, b) => {
+            const posA = Array.from(body.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(body.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = taskInputs[0] as HTMLElement;
+          
+          if (lastInput) {
+            // Erstelle sehr sichtbares Div
+            const constructionDiv = iframeDoc.createElement('div');
+            constructionDiv.setAttribute('data-correction', 'construction-points');
+            constructionDiv.style.cssText = `
+              margin-top: 10px !important;
+              margin-bottom: 15px !important;
+              padding: 10px 15px !important;
+              background-color: #f5f5f5 !important;
+              border: 2px solid #333 !important;
+              border-radius: 5px !important;
+              font-size: 1em !important;
+              font-weight: bold !important;
+              display: block !important;
+              width: 100% !important;
+              box-sizing: border-box !important;
+              position: relative !important;
+              z-index: 9999 !important;
+            `;
+            constructionDiv.innerHTML = `<strong style="font-size: 1.1em;">Konstruktionspunkte:</strong> <span style="font-size: 1.2em; color: #1976d2;">${corr.manualPoints} / 2</span>`;
+            
+            // Füge direkt nach dem Input ein
+            if (lastInput.nextSibling) {
+              lastInput.parentElement?.insertBefore(constructionDiv, lastInput.nextSibling);
+            } else {
+              lastInput.parentElement?.appendChild(constructionDiv);
+            }
+          }
+        }
+      });
+      
+      // Füge Kommentar am Ende von Aufgabe 3 hinzu - DIREKT in body
+      if (task3Comment) {
+        const allInputs = Array.from(body.querySelectorAll('input, textarea, select'));
+        const task3dInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith('a3d');
+        });
+        
+        if (task3dInputs.length > 0) {
+          task3dInputs.sort((a, b) => {
+            const posA = Array.from(body.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(body.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = task3dInputs[0] as HTMLElement;
+          
+          if (lastInput) {
+            // Erstelle sehr sichtbares Div
+            const commentDiv = iframeDoc.createElement('div');
+            commentDiv.setAttribute('data-correction', 'task3-comment');
+            commentDiv.style.cssText = `
+              margin-top: 20px !important;
+              margin-bottom: 20px !important;
+              padding: 15px 20px !important;
+              background-color: #c8e6c9 !important;
+              border: 3px solid #4caf50 !important;
+              border-left: 6px solid #4caf50 !important;
+              border-radius: 8px !important;
+              font-size: 1em !important;
+              line-height: 1.8 !important;
+              display: block !important;
+              width: 100% !important;
+              box-sizing: border-box !important;
+              position: relative !important;
+              z-index: 9999 !important;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+            `;
+            commentDiv.innerHTML = `
+              <div style="font-weight: bold; font-size: 1.2em; color: #2e7d32; margin-bottom: 10px; border-bottom: 2px solid #81c784; padding-bottom: 6px;">Aufgabe 3 - Kommentar</div>
+              <div style="color: #1b5e20; white-space: pre-wrap; font-size: 1.05em;">${task3Comment}</div>
+            `;
+            
+            // Finde das letzte Element von Aufgabe 3
+            let insertAfter = lastInput;
+            let nextSibling = lastInput.nextElementSibling;
+            while (nextSibling) {
+              const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+              if (nextTaskId.startsWith('a3')) {
+                insertAfter = nextSibling as HTMLElement;
+                nextSibling = nextSibling.nextElementSibling;
+              } else {
+                break;
+              }
+            }
+            
+            if (insertAfter.nextSibling) {
+              insertAfter.parentElement?.insertBefore(commentDiv, insertAfter.nextSibling);
+            } else {
+              insertAfter.parentElement?.appendChild(commentDiv);
+            }
+          }
+        }
+      }
+    }
+    
+    // Warte, damit DOM aktualisiert wird
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Rendere Canvas
+    // Rendere Canvas mit optimierten Einstellungen
     const canvas = await html2canvas(body, {
-      scale: 2,
+      scale: 1.5,
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
       width: body.scrollWidth,
-      height: body.scrollHeight
+      height: body.scrollHeight,
+      removeContainer: false
     });
 
     // Füge zu PDF hinzu (gleiche Logik wie exportAllToPDF)
@@ -1479,12 +1679,949 @@ Vera Christ`);
     pdf.save(fileName_pdf);
   };
 
-  const exportAllIndividually = async () => {
-    try {
-      setExportingIndividually(true);
+  // Hilfsfunktion: Erstellt ein PDF für einen einzelnen Schüler als Blob
+  const createSingleStudentPDFAsBlob = async (
+    submission: KASubmission,
+    htmlText: string,
+    correctAnswers: Record<string, any>,
+    pointsDistribution: Record<string, number>,
+    isAnswerCorrect: (taskId: string, studentAnswer: any) => boolean,
+    fileName: string
+  ): Promise<{ blob: Blob; fileName: string }> => {
+    const { jsPDF } = await import('jspdf');
+    const html2canvas = (await import('html2canvas')).default;
+    
+    const answers = parseAnswers(submission.answers);
+    const totalAchieved = submission.totalPoints;
+    const maxTotalPoints = 25;
+    const gradeData = calculateGrade(totalAchieved, maxTotalPoints);
+    const studentName = submission.student.name;
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Erstelle iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-9999px';
+    iframe.style.width = '210mm';
+    iframe.style.height = '297mm';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    await new Promise<void>((resolve) => {
+      iframe.onload = () => resolve();
+      iframe.src = 'about:blank';
+    });
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      throw new Error('Iframe konnte nicht erstellt werden');
+    }
+
+    // Parse HTML und wende alle Änderungen an (gleiche Logik wie createSingleStudentPDF)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, 'text/html');
+    const bodyText = doc.body.innerHTML;
+    doc.body.innerHTML = bodyText.replace(/Frau Christ/g, studentName);
+
+    // Entferne Abgabebutton
+    const submitButtons = doc.querySelectorAll('button[type="submit"], input[type="submit"]');
+    submitButtons.forEach(btn => {
+      const text = btn.textContent || (btn as HTMLInputElement).value || '';
+      if (text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit') || 
+          btn.id?.toLowerCase().includes('submit') || btn.className?.toLowerCase().includes('submit')) {
+        btn.remove();
+      }
+    });
+    
+    const allButtons = doc.querySelectorAll('button');
+    allButtons.forEach(btn => {
+      const onclick = btn.getAttribute('onclick') || '';
+      if (onclick.toLowerCase().includes('submit') || onclick.toLowerCase().includes('abgeben')) {
+        btn.remove();
+      }
+    });
+    
+    const timerElements = doc.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
+    timerElements.forEach(el => {
+      const text = el.textContent || '';
+      if (text.match(/\d+:\d+/) || text.includes('Verbleibend') || text.includes('verbleibend') || 
+          text.includes('Zeit') || el.id?.toLowerCase().includes('timer')) {
+        el.remove();
+      }
+    });
+
+    const correctionsMap: Record<string, { points?: number; constructionPoints?: number }> = {};
+    if (submission.corrections) {
+      submission.corrections.forEach((corr) => {
+        if (corr.taskNumber.match(/^3[a-d]$/)) {
+          correctionsMap[corr.taskNumber] = { constructionPoints: corr.manualPoints };
+        } else {
+          correctionsMap[corr.taskNumber] = { points: corr.manualPoints };
+        }
+      });
+    }
+
+    const headerContainer = doc.createElement('div');
+    headerContainer.style.cssText = 'margin-bottom: 20px; padding: 0;';
+    const combinedHeader = doc.createElement('div');
+    combinedHeader.style.cssText = `
+      background-color: transparent;
+      border: 3px solid #1976d2;
+      color: #1976d2;
+      padding: 15px 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    `;
+    const leftSection = doc.createElement('div');
+    leftSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
+    const nameDiv = doc.createElement('div');
+    nameDiv.style.cssText = 'font-size: 1.1em; font-weight: bold;';
+    nameDiv.textContent = studentName;
+    const dateDiv = doc.createElement('div');
+    dateDiv.style.cssText = 'font-size: 0.85em; font-weight: normal; opacity: 0.95;';
+    dateDiv.textContent = `Abgabe vom ${new Date(submission.submittedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} um ${new Date(submission.submittedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+    leftSection.appendChild(nameDiv);
+    leftSection.appendChild(dateDiv);
+    const rightSection = doc.createElement('div');
+    rightSection.style.cssText = 'display: flex; gap: 30px; align-items: center;';
+    rightSection.innerHTML = `
+      <div style="text-align: center;">
+        <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Punkte</div>
+        <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
+        <div style="font-size: 3em; font-weight: bold;">${gradeData.string}</div>
+      </div>
+    `;
+    combinedHeader.appendChild(leftSection);
+    combinedHeader.appendChild(rightSection);
+    headerContainer.appendChild(combinedHeader);
+    if (doc.body) {
+      doc.body.insertBefore(headerContainer, doc.body.firstChild);
+    }
+
+    const style = doc.createElement('style');
+    style.textContent = `
+      html, body {
+        border: none !important;
+        outline: none !important;
+        background-color: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .answer-correct {
+        background-color: #c8e6c9 !important;
+        border: 2px solid #4caf50 !important;
+        color: #1b5e20 !important;
+      }
+      .answer-incorrect {
+        background-color: #ffcdd2 !important;
+        border: 2px solid #f44336 !important;
+        color: #b71c1c !important;
+      }
+      .points-badge {
+        display: inline-block;
+        margin-left: 5px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.85em;
+        font-weight: bold;
+      }
+      .points-correct {
+        background-color: #4caf50;
+        color: white;
+      }
+      .points-incorrect {
+        background-color: #f44336;
+        color: white;
+      }
+    `;
+    doc.head.appendChild(style);
+
+    Object.entries(answers).forEach(([taskId, answer]) => {
+      let input = doc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      if (!input) {
+        input = doc.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
+      if (!input) {
+        input = doc.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
       
-      const { jsPDF } = await import('jspdf');
-      const html2canvas = (await import('html2canvas')).default;
+      if (input) {
+        const isCorrect = isAnswerCorrect(taskId, answer);
+        const maxPoints = pointsDistribution[taskId] || 0;
+        let achievedPoints = isCorrect ? maxPoints : 0;
+        
+        if (taskId.startsWith('a3')) {
+          const match = taskId.match(/a3([a-d])/);
+          if (match) {
+            const subtask = match[1];
+            const subtaskKey = `3${subtask}`;
+            const subtaskCorrection = correctionsMap[subtaskKey];
+            if (isCorrect) {
+              achievedPoints = maxPoints;
+            }
+          }
+        } else {
+          const taskNum = taskId.match(/a(\d+)/)?.[1];
+          if (taskNum && correctionsMap[taskNum]) {
+            const correction = correctionsMap[taskNum];
+            if (correction.points !== undefined && correction.points !== null) {
+              achievedPoints = correction.points;
+            }
+          }
+        }
+        
+        const answerStr = String(answer || '').trim();
+        if (input.tagName === 'INPUT') {
+          const inputEl = input as HTMLInputElement;
+          if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
+            if (inputEl.value === answerStr || inputEl.id === taskId || inputEl.name === taskId) {
+              inputEl.checked = true;
+            }
+          } else {
+            inputEl.value = answerStr;
+          }
+        } else if (input.tagName === 'TEXTAREA') {
+          (input as HTMLTextAreaElement).value = answerStr;
+        } else if (input.tagName === 'SELECT') {
+          (input as unknown as HTMLSelectElement).value = answerStr;
+        } else {
+          input.textContent = answerStr;
+        }
+        
+        input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+        
+        const container = doc.createElement('span');
+        container.style.display = 'inline-flex';
+        container.style.alignItems = 'center';
+        container.style.gap = '5px';
+        container.style.position = 'relative';
+        container.style.verticalAlign = 'middle';
+        container.style.marginLeft = '5px';
+        
+        if (input.parentElement && !input.parentElement.classList.contains('answer-container')) {
+          const parent = input.parentElement;
+          parent.insertBefore(container, input);
+          container.appendChild(input);
+          container.classList.add('answer-container');
+          
+          const pointsBadge = doc.createElement('span');
+          pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
+          const pointsText = maxPoints % 1 === 0 && achievedPoints % 1 === 0 
+            ? `${achievedPoints}/${maxPoints}` 
+            : `${achievedPoints.toFixed(2)}/${maxPoints}`;
+          pointsBadge.textContent = pointsText;
+          pointsBadge.style.whiteSpace = 'nowrap';
+          pointsBadge.style.marginLeft = '3px';
+          container.appendChild(pointsBadge);
+        }
+      }
+    });
+
+    // Füge Korrekturen DIREKT in doc ein, BEVOR es ins iframe geschrieben wird
+    if (submission.corrections && submission.corrections.length > 0) {
+      const task3SubtaskCorrections: Array<{taskNumber: string; manualPoints?: number}> = [];
+      let task3Comment: string | null = null;
+      
+      submission.corrections.forEach((corr) => {
+        if (corr.taskNumber.match(/^3[a-d]$/)) {
+          task3SubtaskCorrections.push({
+            taskNumber: corr.taskNumber,
+            manualPoints: corr.manualPoints
+          });
+          if (corr.comment && !task3Comment) {
+            task3Comment = corr.comment;
+          }
+        }
+      });
+      
+      // Füge Konstruktionspunkte für jede Teilaufgabe hinzu
+      task3SubtaskCorrections.forEach((corr) => {
+        const taskNumber = corr.taskNumber;
+        const subtaskLetter = taskNumber[1];
+        const allInputs = Array.from(doc.querySelectorAll('input, textarea, select'));
+        const taskInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith(`a3${subtaskLetter}`);
+        });
+        
+        if (taskInputs.length > 0 && (corr.manualPoints !== undefined && corr.manualPoints !== null)) {
+          taskInputs.sort((a, b) => {
+            const posA = Array.from(doc.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(doc.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = taskInputs[0];
+          
+          if (lastInput) {
+            const constructionDiv = doc.createElement('div');
+            constructionDiv.setAttribute('data-correction', 'construction-points');
+            constructionDiv.style.cssText = 'margin-top: 8px; margin-bottom: 12px; padding: 8px 12px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9em; display: block; width: 100%;';
+            constructionDiv.innerHTML = `<strong>Konstruktionspunkte:</strong> ${corr.manualPoints} / 2`;
+            
+            let parent = lastInput.parentElement;
+            if (!parent) {
+              parent = doc.createElement('div');
+              lastInput.parentNode?.insertBefore(parent, lastInput);
+              parent.appendChild(lastInput);
+            }
+            
+            let insertAfter = lastInput;
+            let nextSibling = lastInput.nextElementSibling;
+            while (nextSibling) {
+              const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+              if (nextTaskId.startsWith(`a3${subtaskLetter}`)) {
+                insertAfter = nextSibling as Element;
+                nextSibling = nextSibling.nextElementSibling;
+              } else {
+                break;
+              }
+            }
+            
+            if (insertAfter.nextSibling) {
+              parent.insertBefore(constructionDiv, insertAfter.nextSibling);
+            } else {
+              parent.appendChild(constructionDiv);
+            }
+          }
+        }
+      });
+      
+      // Füge Kommentar am Ende von Aufgabe 3 hinzu
+      if (task3Comment) {
+        const allInputs = Array.from(doc.querySelectorAll('input, textarea, select'));
+        const task3dInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith('a3d');
+        });
+        
+        if (task3dInputs.length > 0) {
+          task3dInputs.sort((a, b) => {
+            const posA = Array.from(doc.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(doc.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = task3dInputs[0];
+          
+          if (lastInput) {
+            const commentDiv = doc.createElement('div');
+            commentDiv.setAttribute('data-correction', 'task3-comment');
+            commentDiv.style.cssText = 'margin-top: 16px; margin-bottom: 16px; padding: 12px 16px; background-color: #c8e6c9; border: 2px solid #4caf50; border-left: 5px solid #4caf50; border-radius: 6px; font-size: 0.95em; line-height: 1.6; display: block; width: 100%;';
+            commentDiv.innerHTML = `
+              <div style="font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px; border-bottom: 1px solid #81c784; padding-bottom: 4px;">Aufgabe 3 - Kommentar</div>
+              <div style="color: #1b5e20; white-space: pre-wrap;">${task3Comment}</div>
+            `;
+            
+            let parent = lastInput.parentElement;
+            if (!parent) {
+              parent = doc.createElement('div');
+              lastInput.parentNode?.insertBefore(parent, lastInput);
+              parent.appendChild(lastInput);
+            }
+            
+            let insertAfter = lastInput;
+            let nextSibling = lastInput.nextElementSibling;
+            while (nextSibling) {
+              const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+              if (nextTaskId.startsWith('a3')) {
+                insertAfter = nextSibling as Element;
+                nextSibling = nextSibling.nextElementSibling;
+              } else {
+                break;
+              }
+            }
+            
+            if (insertAfter.nextSibling) {
+              parent.insertBefore(commentDiv, insertAfter.nextSibling);
+            } else {
+              parent.appendChild(commentDiv);
+            }
+          }
+        }
+      }
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(doc.documentElement.outerHTML);
+    iframeDoc.close();
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const body = iframeDoc.body;
+    if (!body) {
+      throw new Error('Iframe body nicht gefunden');
+    }
+
+    body.innerHTML = body.innerHTML.replace(/Frau Christ/g, studentName);
+    
+    const iframeHeader = body.querySelector('[style*="border: 3px solid #1976d2"], [style*="background-color: #1976d2"]') as HTMLElement;
+    if (iframeHeader) {
+      const headerText = iframeHeader.textContent || '';
+      if (headerText.includes('Abgabe vom') || headerText.includes(submission.student.name)) {
+        iframeHeader.style.display = 'flex';
+        iframeHeader.style.justifyContent = 'space-between';
+        iframeHeader.style.alignItems = 'center';
+        iframeHeader.style.flexWrap = 'wrap';
+        iframeHeader.style.gap = '15px';
+        iframeHeader.style.backgroundColor = 'transparent';
+        iframeHeader.style.border = '3px solid #1976d2';
+        iframeHeader.style.color = '#1976d2';
+        
+        const leftSection = iframeDoc.createElement('div');
+        leftSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
+        const nameDiv = iframeDoc.createElement('div');
+        nameDiv.style.cssText = 'font-size: 1.1em; font-weight: bold;';
+        nameDiv.textContent = studentName;
+        const dateDiv = iframeDoc.createElement('div');
+        dateDiv.style.cssText = 'font-size: 0.75em; font-weight: normal; opacity: 0.95;';
+        dateDiv.textContent = `Abgabe vom ${new Date(submission.submittedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} um ${new Date(submission.submittedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+        leftSection.appendChild(nameDiv);
+        leftSection.appendChild(dateDiv);
+        
+        const rightSection = iframeDoc.createElement('div');
+        rightSection.style.cssText = 'display: flex; gap: 20px; align-items: center;';
+        rightSection.innerHTML = `
+          <div style="text-align: center;">
+            <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Punkte</div>
+            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Note</div>
+            <div style="font-size: 3em; font-weight: bold;">${gradeData.string}</div>
+          </div>
+        `;
+        
+        iframeHeader.innerHTML = '';
+        iframeHeader.appendChild(leftSection);
+        iframeHeader.appendChild(rightSection);
+      }
+    }
+    
+    const iframeSubmitButtons = body.querySelectorAll('button[type="submit"], input[type="submit"]');
+    iframeSubmitButtons.forEach(btn => {
+      const text = btn.textContent || (btn as HTMLInputElement).value || '';
+      if (text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit') || 
+          btn.id?.toLowerCase().includes('submit') || btn.className?.toLowerCase().includes('submit')) {
+        btn.remove();
+      }
+    });
+    
+    const iframeAllButtons = body.querySelectorAll('button');
+    iframeAllButtons.forEach(btn => {
+      const onclick = btn.getAttribute('onclick') || '';
+      const text = btn.textContent || '';
+      if (onclick.toLowerCase().includes('submit') || onclick.toLowerCase().includes('abgeben') ||
+          text.toLowerCase().includes('abgeben') || text.toLowerCase().includes('submit')) {
+        btn.remove();
+      }
+    });
+    
+    const iframeTimerElements = body.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
+    iframeTimerElements.forEach(el => {
+      const text = el.textContent || '';
+      if (text.match(/\d+:\d+/) || text.includes('Verbleibend') || text.includes('verbleibend') || 
+          text.includes('Zeit') || el.id?.toLowerCase().includes('timer')) {
+        el.remove();
+      }
+    });
+    
+    Object.entries(answers).forEach(([taskId, answer]) => {
+      let input = body.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      if (!input) {
+        input = body.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
+      if (!input) {
+        input = body.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      }
+      
+      if (input) {
+        const isCorrect = isAnswerCorrect(taskId, answer);
+        const maxPoints = pointsDistribution[taskId] || 0;
+        let achievedPoints = isCorrect ? maxPoints : 0;
+        
+        if (taskId.startsWith('a3')) {
+          const match = taskId.match(/a3([a-d])/);
+          if (match) {
+            const subtask = match[1];
+            const subtaskKey = `3${subtask}`;
+            const subtaskCorrection = correctionsMap[subtaskKey];
+            if (isCorrect) {
+              achievedPoints = maxPoints;
+            }
+          }
+        } else {
+          const taskNum = taskId.match(/a(\d+)/)?.[1];
+          if (taskNum && correctionsMap[taskNum]) {
+            const correction = correctionsMap[taskNum];
+            if (correction.points !== undefined && correction.points !== null) {
+              achievedPoints = correction.points;
+            }
+          }
+        }
+        
+        const answerStr = String(answer || '').trim();
+        if (input.tagName === 'INPUT') {
+          const inputEl = input as HTMLInputElement;
+          if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
+            if (inputEl.value === answerStr || inputEl.id === taskId || inputEl.name === taskId) {
+              inputEl.checked = true;
+            }
+          } else {
+            inputEl.value = answerStr;
+          }
+        } else if (input.tagName === 'TEXTAREA') {
+          (input as HTMLTextAreaElement).value = answerStr;
+        } else if (input.tagName === 'SELECT') {
+          (input as unknown as HTMLSelectElement).value = answerStr;
+        } else {
+          input.textContent = answerStr;
+        }
+        
+        input.classList.add(isCorrect ? 'answer-correct' : 'answer-incorrect');
+        
+        if (!input.parentElement?.querySelector('.points-badge')) {
+          const container = iframeDoc.createElement('span');
+          container.style.display = 'inline-flex';
+          container.style.alignItems = 'center';
+          container.style.gap = '5px';
+          container.style.marginLeft = '5px';
+          
+          if (input.parentElement) {
+            const parent = input.parentElement;
+            parent.insertBefore(container, input);
+            container.appendChild(input);
+            
+            const pointsBadge = iframeDoc.createElement('span');
+            pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
+            const pointsText = maxPoints % 1 === 0 && achievedPoints % 1 === 0 
+              ? `${achievedPoints}/${maxPoints}` 
+              : `${achievedPoints.toFixed(2)}/${maxPoints}`;
+            pointsBadge.textContent = pointsText;
+            pointsBadge.style.whiteSpace = 'nowrap';
+            pointsBadge.style.marginLeft = '3px';
+            container.appendChild(pointsBadge);
+          }
+        }
+      }
+    });
+    
+    // Korrekturen werden NACH dem Aufräumen hinzugefügt (siehe Zeile ~4562)
+    
+    const iframeStyle = iframeDoc.createElement('style');
+    iframeStyle.textContent = `
+      html, body {
+        border: none !important;
+        outline: none !important;
+        background-color: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .answer-correct {
+        background-color: #c8e6c9 !important;
+        border: 2px solid #4caf50 !important;
+        color: #1b5e20 !important;
+      }
+      .answer-incorrect {
+        background-color: #ffcdd2 !important;
+        border: 2px solid #f44336 !important;
+        color: #b71c1c !important;
+      }
+      .points-badge {
+        display: inline-block;
+        margin-left: 5px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.85em;
+        font-weight: bold;
+      }
+      .points-correct {
+        background-color: #4caf50;
+        color: white;
+      }
+      .points-incorrect {
+        background-color: #f44336;
+        color: white;
+      }
+      input[type="text"], input:not([type]), textarea, input[type="number"] {
+        min-height: 40px !important;
+        height: auto !important;
+        padding: 8px 12px !important;
+        line-height: 1.6 !important;
+        overflow: visible !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        box-sizing: border-box !important;
+        vertical-align: top !important;
+      }
+      input[type="number"], input[id*="x"], input[id*="y"], input[name*="x"], input[name*="y"] {
+        min-height: 45px !important;
+        padding: 10px 12px !important;
+        font-size: 1em !important;
+      }
+      textarea {
+        resize: vertical !important;
+        min-height: 70px !important;
+        padding: 10px 12px !important;
+      }
+      input, textarea, select, label, .answer-container {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        margin-bottom: 10px !important;
+        margin-top: 5px !important;
+      }
+      div, section, article, p, form, fieldset {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      input, textarea {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+      }
+      * {
+        margin-top: 3px !important;
+        margin-bottom: 3px !important;
+      }
+    `;
+    if (!iframeDoc.head.querySelector('style[data-export-style]')) {
+      iframeStyle.setAttribute('data-export-style', 'true');
+      iframeDoc.head.appendChild(iframeStyle);
+    }
+    
+    const walker = iframeDoc.createTreeWalker(
+      body,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    let textNode;
+    while (textNode = walker.nextNode()) {
+      let text = textNode.textContent || '';
+      let updated = false;
+      
+      const parentText = textNode.parentElement?.textContent || '';
+      const fullContext = text + ' ' + parentText;
+      
+      if (text.includes('__') && text.includes('/') && 
+          (fullContext.includes('Punkten erreicht') || fullContext.includes('Punkte erreicht') || 
+           fullContext.includes('erreicht') && fullContext.includes('Punkt'))) {
+        text = text.replace(/__+\s*\/\s*__+/g, (match) => {
+          updated = true;
+          return `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
+        });
+      }
+      
+      if (fullContext.includes('Note') && (text.includes('____') || text.includes('__'))) {
+        text = text.replace(/____+/g, (match) => {
+          updated = true;
+          return gradeData.string;
+        });
+        text = text.replace(/Note\s*:\s*__+/g, (match) => {
+          updated = true;
+          return `Note: ${gradeData.string}`;
+        });
+        text = text.replace(/Note\s+__+/g, (match) => {
+          updated = true;
+          return match.replace(/__+/, gradeData.string);
+        });
+      }
+      
+      if (updated && textNode.textContent) {
+        textNode.textContent = text;
+      }
+    }
+    
+    const pointsNoteInputs = body.querySelectorAll('input[type="text"], input:not([type]), textarea');
+    pointsNoteInputs.forEach((input: Element) => {
+      const inputEl = input as HTMLInputElement | HTMLTextAreaElement;
+      
+      if (inputEl.value && inputEl.value.trim() && !inputEl.value.match(/^[_]+$/)) {
+        return;
+      }
+      
+      const parentText = inputEl.parentElement?.textContent || '';
+      const previousSibling = inputEl.previousElementSibling?.textContent || '';
+      const nextSibling = inputEl.nextElementSibling?.textContent || '';
+      const context = parentText + ' ' + previousSibling + ' ' + nextSibling;
+      
+      if (context.includes('Punkten erreicht') || context.includes('Punkte erreicht') || 
+          (context.includes('erreicht') && context.includes('Punkt'))) {
+        const value = inputEl.value || '';
+        const placeholder = inputEl.placeholder || '';
+        if ((value.includes('__') || placeholder.includes('__')) && context.includes('/')) {
+          inputEl.value = `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
+        }
+      }
+      
+      if (context.includes('Note')) {
+        const value = inputEl.value || '';
+        const placeholder = inputEl.placeholder || '';
+        if (value.includes('__') || placeholder.includes('__') || value === '' || value.match(/^[_]+$/)) {
+          inputEl.value = gradeData.string;
+        }
+      }
+    });
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const taskInputs = body.querySelectorAll('input, textarea, select');
+    let lastTaskElement: Element | null = null;
+    
+    if (taskInputs.length > 0) {
+      for (let i = taskInputs.length - 1; i >= 0; i--) {
+        const input = taskInputs[i];
+        const parentText = input.parentElement?.textContent || '';
+        if (!parentText.includes('Punkten erreicht') && !parentText.includes('Note:')) {
+          lastTaskElement = input;
+          break;
+        }
+      }
+    }
+    
+    if (!lastTaskElement) {
+      const allElements = Array.from(body.querySelectorAll('*'));
+      for (let i = allElements.length - 1; i >= 0; i--) {
+        const el = allElements[i];
+        const text = el.textContent || '';
+        if (text.includes('Note:') || text.includes('Punkten erreicht')) {
+          lastTaskElement = el;
+          break;
+        }
+      }
+    }
+    
+    if (lastTaskElement) {
+      let container = lastTaskElement.parentElement;
+      while (container && container !== body) {
+        let sibling = container.nextSibling;
+        while (sibling) {
+          const nextSibling = sibling.nextSibling;
+          if (sibling.parentNode) {
+            sibling.parentNode.removeChild(sibling);
+          }
+          sibling = nextSibling;
+        }
+        container = container.parentElement;
+      }
+      
+      let sibling = lastTaskElement.nextSibling;
+      while (sibling) {
+        const nextSibling = sibling.nextSibling;
+        if (sibling.parentNode) {
+          sibling.parentNode.removeChild(sibling);
+        }
+        sibling = nextSibling;
+      }
+    }
+    
+    body.style.height = 'auto';
+    body.style.overflow = 'visible';
+    
+    // Füge Korrekturen NACH dem Aufräumen hinzu, damit sie nicht entfernt werden
+    if (submission.corrections && submission.corrections.length > 0) {
+      const task3SubtaskCorrectionsFinal: Array<{taskNumber: string; manualPoints?: number}> = [];
+      let task3CommentFinal: string | null = null;
+      
+      submission.corrections.forEach((corr) => {
+        if (corr.taskNumber.match(/^3[a-d]$/)) {
+          task3SubtaskCorrectionsFinal.push({
+            taskNumber: corr.taskNumber,
+            manualPoints: corr.manualPoints
+          });
+          if (corr.comment && !task3CommentFinal) {
+            task3CommentFinal = corr.comment;
+          }
+        }
+      });
+      
+      // Füge Konstruktionspunkte für jede Teilaufgabe hinzu
+      task3SubtaskCorrectionsFinal.forEach((corr) => {
+        const taskNumber = corr.taskNumber;
+        const subtaskLetter = taskNumber[1];
+        const allInputs = Array.from(body.querySelectorAll('input, textarea, select'));
+        const taskInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith(`a3${subtaskLetter}`);
+        });
+        
+        if (taskInputs.length > 0 && (corr.manualPoints !== undefined && corr.manualPoints !== null)) {
+          taskInputs.sort((a, b) => {
+            const posA = Array.from(body.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(body.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = taskInputs[0];
+          
+          if (lastInput) {
+            const constructionDiv = iframeDoc.createElement('div');
+            constructionDiv.setAttribute('data-correction', 'construction-points');
+            constructionDiv.style.cssText = `
+              margin-top: 10px !important;
+              margin-bottom: 15px !important;
+              padding: 10px 15px !important;
+              background-color: #f5f5f5 !important;
+              border: 2px solid #333 !important;
+              border-radius: 5px !important;
+              font-size: 1em !important;
+              font-weight: bold !important;
+              display: block !important;
+              width: 100% !important;
+              box-sizing: border-box !important;
+              position: relative !important;
+              z-index: 9999 !important;
+            `;
+            constructionDiv.innerHTML = `<strong style="font-size: 1.1em;">Konstruktionspunkte:</strong> <span style="font-size: 1.2em; color: #1976d2;">${corr.manualPoints} / 2</span>`;
+            
+            if (lastInput.nextSibling) {
+              lastInput.parentElement?.insertBefore(constructionDiv, lastInput.nextSibling);
+            } else {
+              lastInput.parentElement?.appendChild(constructionDiv);
+            }
+          }
+        }
+      });
+      
+      // Füge Kommentar am Ende von Aufgabe 3 hinzu
+      if (task3CommentFinal) {
+        const allInputs = Array.from(body.querySelectorAll('input, textarea, select'));
+        const task3dInputs = allInputs.filter(input => {
+          const taskId = input.id || (input as HTMLInputElement).name || '';
+          return taskId.startsWith('a3d');
+        });
+        
+        if (task3dInputs.length > 0) {
+          task3dInputs.sort((a, b) => {
+            const posA = Array.from(body.querySelectorAll('*')).indexOf(a);
+            const posB = Array.from(body.querySelectorAll('*')).indexOf(b);
+            return posB - posA;
+          });
+          const lastInput = task3dInputs[0];
+          
+          if (lastInput) {
+            const commentDiv = iframeDoc.createElement('div');
+            commentDiv.setAttribute('data-correction', 'task3-comment');
+            commentDiv.style.cssText = `
+              margin-top: 20px !important;
+              margin-bottom: 20px !important;
+              padding: 15px 20px !important;
+              background-color: #c8e6c9 !important;
+              border: 3px solid #4caf50 !important;
+              border-left: 6px solid #4caf50 !important;
+              border-radius: 8px !important;
+              font-size: 1em !important;
+              line-height: 1.8 !important;
+              display: block !important;
+              width: 100% !important;
+              box-sizing: border-box !important;
+              position: relative !important;
+              z-index: 9999 !important;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+            `;
+            commentDiv.innerHTML = `
+              <div style="font-weight: bold; font-size: 1.2em; color: #2e7d32; margin-bottom: 10px; border-bottom: 2px solid #81c784; padding-bottom: 6px;">Aufgabe 3 - Kommentar</div>
+              <div style="color: #1b5e20; white-space: pre-wrap; font-size: 1.05em;">${task3CommentFinal}</div>
+            `;
+            
+            let insertAfter = lastInput as HTMLElement;
+            let nextSibling = lastInput.nextElementSibling;
+            while (nextSibling) {
+              const nextTaskId = (nextSibling as HTMLElement).id || (nextSibling as HTMLInputElement).name || '';
+              if (nextTaskId.startsWith('a3')) {
+                insertAfter = nextSibling as HTMLElement;
+                nextSibling = nextSibling.nextElementSibling;
+              } else {
+                break;
+              }
+            }
+            
+            if (insertAfter.nextSibling) {
+              insertAfter.parentElement?.insertBefore(commentDiv, insertAfter.nextSibling);
+            } else {
+              insertAfter.parentElement?.appendChild(commentDiv);
+            }
+          }
+        }
+      }
+    }
+    
+    // Warte, damit DOM aktualisiert wird
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const canvas = await html2canvas(body, {
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      width: body.scrollWidth,
+      height: body.scrollHeight,
+      removeContainer: false
+    });
+
+    const margin = 15;
+    const safetyMargin = 20;
+    const imgWidth = pageWidth - 2 * margin;
+    const scale_pdf = imgWidth / canvas.width;
+    const imgHeight = canvas.height * scale_pdf;
+    const usablePageHeight = pageHeight - 2 * margin - safetyMargin;
+
+    if (imgHeight <= usablePageHeight) {
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+    } else {
+      let sourceY = 0;
+      let pageNum = 0;
+      while (sourceY < canvas.height) {
+        if (pageNum > 0) {
+          pdf.addPage();
+        }
+        const remainingHeight = canvas.height - sourceY;
+        const maxClipHeight = Math.floor(usablePageHeight / scale_pdf);
+        const clipHeight = Math.min(remainingHeight, maxClipHeight);
+        const displayHeight = clipHeight * scale_pdf;
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = clipHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.drawImage(canvas, 0, sourceY, canvas.width, clipHeight, 0, 0, canvas.width, clipHeight);
+          const tempImgData = tempCanvas.toDataURL('image/png');
+          pdf.addImage(tempImgData, 'PNG', margin, margin, imgWidth, displayHeight);
+        }
+        sourceY += clipHeight;
+        pageNum++;
+      }
+    }
+
+    // Entferne temporären iframe
+    document.body.removeChild(iframe);
+
+    const pdfBlob = pdf.output('blob');
+    const fileName_pdf = `${submission.student.name.replace(/[^a-z0-9]/gi, '_')}_${fileName.replace('.html', '') || 'abgabe'}.pdf`;
+    
+    return {
+      blob: pdfBlob,
+      fileName: fileName_pdf
+    };
+  };
+
+  // Exportiere alle Abgaben als HTML-Dateien mit Farbmarkierungen und Musterlösungen
+  const exportToHTML = async () => {
+    try {
+      setExportingHTML(true);
       
       const loginCode = localStorage.getItem('loginCode') || '';
       const fileName = kaFilePath.split('/').pop() || kaFilePath;
@@ -1501,18 +2638,34 @@ Vera Christ`);
       
       const htmlText = await htmlResponse.text();
       
-      // Richtige Antworten und Punkteverteilung
+      // Richtige Antworten für die automatische Bewertung
       const correctAnswers: Record<string, any> = {
-        a1a: 'Mittelsenkrechte', a1b: 'Winkelhalbierende', a1c: 'Achsenspiegelung',
-        a1d: 'Punktspiegelung', a1e: 'Verschiebung', a1f: 'Drehung',
-        a1g: 'Kongruenzabbildung', a1h: 'Doppelspiegelung',
-        a2a: 'b', a2b: 'a', a2c: 'a',
-        'a3a_x': -6, 'a3a_y': -4, 'a3b_x': -3, 'a3b_y': -7, 'a3c_x': -4, 'a3c_y': -2,
-        'a3d_x': -4, 'a3d_y': -6, 'a3e_x': -7, 'a3e_y': -3, 'a3f_x': -2, 'a3f_y': -4,
-        'a3g_x': 2, 'a3g_y': 7, 'a3h_x': 5, 'a3h_y': 10, 'a3i_x': 4, 'a3i_y': 5,
-        'a3j_x': 10, 'a3j_y': -6, 'a3k_x': 7, 'a3k_y': -9, 'a3l_x': 8, 'a3l_y': -4
+        a1a: 'Mittelsenkrechte',
+        a1b: 'Winkelhalbierende',
+        a1c: 'Achsenspiegelung',
+        a1d: 'Punktspiegelung',
+        a1e: 'Verschiebung',
+        a1f: 'Drehung',
+        a1g: 'Kongruenzabbildung',
+        a1h: 'Doppelspiegelung',
+        a2a: 'b',
+        a2b: 'a',
+        a2c: 'a',
+        'a3a_x': -6, 'a3a_y': -4,
+        'a3b_x': -3, 'a3b_y': -7,
+        'a3c_x': -4, 'a3c_y': -2,
+        'a3d_x': -4, 'a3d_y': -6,
+        'a3e_x': -7, 'a3e_y': -3,
+        'a3f_x': -2, 'a3f_y': -4,
+        'a3g_x': 2, 'a3g_y': 7,
+        'a3h_x': 5, 'a3h_y': 10,
+        'a3i_x': 4, 'a3i_y': 5,
+        'a3j_x': 10, 'a3j_y': -6,
+        'a3k_x': 7, 'a3k_y': -9,
+        'a3l_x': 8, 'a3l_y': -4
       };
 
+      // Punkteverteilung
       const pointsDistribution: Record<string, number> = {
         a1a: 1, a1b: 1, a1c: 1, a1d: 1, a1e: 1, a1f: 1, a1g: 1, a1h: 1,
         a2a: 1, a2b: 1, a2c: 1,
@@ -1522,43 +2675,782 @@ Vera Christ`);
         'a3j_x': 0.25, 'a3j_y': 0.25, 'a3k_x': 0.25, 'a3k_y': 0.25, 'a3l_x': 0.25, 'a3l_y': 0.25
       };
 
+      // Prüft ob eine Antwort richtig ist
       const isAnswerCorrect = (taskId: string, studentAnswer: any): boolean => {
         const correctAnswer = correctAnswers[taskId];
         if (correctAnswer === undefined) return false;
+        
         const studentValue = String(studentAnswer || '').trim();
         const correctValue = String(correctAnswer).trim();
+        
+        // Für Koordinaten: numerischer Vergleich
         if (taskId.includes('_x') || taskId.includes('_y')) {
           const studentNum = parseFloat(studentValue);
           const correctNum = parseFloat(correctValue);
           return !isNaN(studentNum) && !isNaN(correctNum) && studentNum === correctNum;
         }
+        
+        // Für Text/Multiple Choice: Groß-/Kleinschreibung ignorieren
         return studentValue.toLowerCase() === correctValue.toLowerCase();
       };
 
+      // Erstelle ZIP-Datei
+      const zip = new JSZip();
+      
+      // Erstelle Musterlösung
+      const solutionParser = new DOMParser();
+      const solutionDoc = solutionParser.parseFromString(htmlText, 'text/html');
+      solutionDoc.body.innerHTML = solutionDoc.body.innerHTML.replace(/Frau Christ/g, 'Musterlösung');
+      
+      // Entferne "Viel Glück" und "Viel Erfolg" Text
+      solutionDoc.body.innerHTML = solutionDoc.body.innerHTML.replace(/Viel Glück/gi, '');
+      solutionDoc.body.innerHTML = solutionDoc.body.innerHTML.replace(/Viel Erfolg/gi, '');
+      
+      // Entferne alle Buttons und Submit-Buttons
+      const solutionSubmitButtons = solutionDoc.querySelectorAll('button[type="submit"], input[type="submit"]');
+      solutionSubmitButtons.forEach(btn => btn.remove());
+      const solutionAllButtons = solutionDoc.querySelectorAll('button');
+      solutionAllButtons.forEach(btn => btn.remove());
+      const solutionTimerElements = solutionDoc.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
+      solutionTimerElements.forEach(el => el.remove());
+      
+      // Füge CSS für Musterlösung hinzu
+      const solutionStyle = solutionDoc.createElement('style');
+      solutionStyle.textContent = `
+        html, body {
+          border: none !important;
+          outline: none !important;
+          background-color: transparent !important;
+          margin-top: 2% !important;
+          margin-left: 2% !important;
+          margin-right: 0 !important;
+          margin-bottom: 0 !important;
+          padding: 0 !important;
+        }
+        .answer-correct {
+          background-color: #c8e6c9 !important;
+          border: 2px solid #4caf50 !important;
+          color: #1b5e20 !important;
+        }
+        input[type="text"], input:not([type]), textarea, input[type="number"] {
+          min-height: 40px !important;
+          height: auto !important;
+          padding: 8px 12px !important;
+          line-height: 1.6 !important;
+        }
+      `;
+      solutionDoc.head.appendChild(solutionStyle);
+      
+      // Fülle Musterlösung ein
+      Object.entries(correctAnswers).forEach(([taskId, correctAnswer]) => {
+        let input = solutionDoc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+        if (!input) {
+          input = solutionDoc.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+        }
+        if (!input) {
+          input = solutionDoc.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+        }
+        
+        if (input) {
+          const answerStr = String(correctAnswer || '').trim();
+          
+          if (input.tagName === 'INPUT') {
+            const inputEl = input as HTMLInputElement;
+            if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
+              if (inputEl.value === answerStr || inputEl.id === taskId || inputEl.name === taskId) {
+                inputEl.checked = true;
+              }
+            } else {
+              inputEl.value = answerStr;
+            }
+          } else if (input.tagName === 'TEXTAREA') {
+            (input as HTMLTextAreaElement).value = answerStr;
+          } else if (input.tagName === 'SELECT') {
+            (input as unknown as HTMLSelectElement).value = answerStr;
+          }
+          
+          input.classList.add('answer-correct');
+        }
+      });
+      
+      // Entferne alles nach Aufgabe 3 (für Musterlösung)
+      const solutionAllTask3Inputs = solutionDoc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+      if (solutionAllTask3Inputs.length > 0) {
+        const solutionLastTask3Input = solutionAllTask3Inputs[solutionAllTask3Inputs.length - 1] as HTMLElement;
+        
+        // Finde das übergeordnete Container-Element, das alle Aufgabe-3 Inputs enthält
+        let solutionTask3Container: HTMLElement | null = solutionLastTask3Input;
+        while (solutionTask3Container && solutionTask3Container !== solutionDoc.body) {
+          const tagName = solutionTask3Container.tagName.toLowerCase();
+          if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
+            const allInputsInContainer = solutionTask3Container.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+            if (allInputsInContainer.length === solutionAllTask3Inputs.length) {
+              // Dieses Element enthält alle Aufgabe-3 Inputs
+              // Entferne alle nachfolgenden Geschwister dieses Containers
+              if (solutionTask3Container.parentElement) {
+                let current: Node | null = solutionTask3Container.nextSibling;
+                while (current && solutionTask3Container.parentElement) {
+                  const next = current.nextSibling;
+                  solutionTask3Container.parentElement.removeChild(current);
+                  current = next;
+                }
+              }
+              break;
+            }
+          }
+          solutionTask3Container = solutionTask3Container.parentElement;
+        }
+      }
+      
+      // FINALE BEREINIGUNG für Musterlösung: Entferne ALLES nach Aufgabe 3
+      const solutionFinalAllTask3Inputs = solutionDoc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+      if (solutionFinalAllTask3Inputs.length > 0) {
+        const solutionFinalLastTask3Input = solutionFinalAllTask3Inputs[solutionFinalAllTask3Inputs.length - 1] as HTMLElement;
+        
+        let solutionFinalTask3Container: HTMLElement | null = solutionFinalLastTask3Input;
+        while (solutionFinalTask3Container && solutionFinalTask3Container !== solutionDoc.body) {
+          const tagName = solutionFinalTask3Container.tagName.toLowerCase();
+          if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
+            const allInputsInContainer = solutionFinalTask3Container.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+            if (allInputsInContainer.length === solutionFinalAllTask3Inputs.length) {
+              if (solutionFinalTask3Container.parentElement) {
+                let current: Node | null = solutionFinalTask3Container.nextSibling;
+                while (current && solutionFinalTask3Container.parentElement) {
+                  const next = current.nextSibling;
+                  solutionFinalTask3Container.parentElement.removeChild(current);
+                  current = next;
+                }
+              }
+              break;
+            }
+          }
+          solutionFinalTask3Container = solutionFinalTask3Container.parentElement;
+        }
+      }
+      
+      // Zusätzlich: Entferne alle Body-Kinder, die nach dem Container kommen (Musterlösung)
+      const solutionBodyChildren = Array.from(solutionDoc.body.children);
+      const solutionAllTask3InputsForBody = solutionDoc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+      if (solutionAllTask3InputsForBody.length > 0) {
+        const solutionLastTask3InputForBody = solutionAllTask3InputsForBody[solutionAllTask3InputsForBody.length - 1] as HTMLElement;
+        let solutionFoundTask3 = false;
+        for (const child of solutionBodyChildren) {
+          if (child.contains(solutionLastTask3InputForBody)) {
+            solutionFoundTask3 = true;
+          } else if (solutionFoundTask3) {
+            child.remove();
+          }
+        }
+      }
+      
+      zip.file(`00_Musterloesung_${fileName.replace('.html', '') || 'abgabe'}.html`, solutionDoc.documentElement.outerHTML);
+      
+      // Sortiere Submissions nach Schülernamen
       const sortedSubmissions = [...submissions].sort((a, b) => 
         a.student.name.localeCompare(b.student.name)
       );
 
-      // Erstelle für jeden Schüler ein separates PDF
-      for (let i = 0; i < sortedSubmissions.length; i++) {
-        await createSingleStudentPDF(
-          sortedSubmissions[i],
-          htmlText,
-          correctAnswers,
-          pointsDistribution,
-          isAnswerCorrect,
-          fileName
-        );
+      // Für jede Abgabe: Erstelle HTML mit Schülername, Antworten und Farbmarkierungen
+      for (const submission of sortedSubmissions) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        const studentName = submission.student.name;
+        
+        // Ersetze "Frau Christ" durch Schülername
+        doc.body.innerHTML = doc.body.innerHTML.replace(/Frau Christ/g, studentName);
+        
+        // Sammle Kommentar für Aufgabe 3 (falls vorhanden)
+        let task3CommentForReplacement = '';
+        if (submission.corrections) {
+          const task3Corrections = submission.corrections.filter(corr => corr.taskNumber.match(/^3[a-d]$/));
+          // Nimm den letzten Kommentar (gehe rückwärts durch die Liste)
+          for (let i = task3Corrections.length - 1; i >= 0; i--) {
+            const comment = task3Corrections[i].comment;
+            if (comment && comment.trim()) {
+              task3CommentForReplacement = comment.trim();
+              break;
+            }
+          }
+        }
+        
+        // Ersetze Texte durch TreeWalker (funktioniert besser als innerHTML.replace)
+        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+        const textNodes: Text[] = [];
+        let node: Node | null;
+        while (node = walker.nextNode()) {
+          textNodes.push(node as Text);
+        }
+        
+        textNodes.forEach(textNode => {
+          let text = textNode.textContent || '';
+          const originalText = text;
+          
+          // Ersetze "Name: ____" durch "Name: [Schülername]"
+          text = text.replace(/Name:\s*_+/gi, `Name: ${studentName}`);
+          
+          // Ersetze "⚠️ Zeichne alles schön ordentlich in dein großes Koordinatensystem!" durch Kommentar
+          if (task3CommentForReplacement) {
+            text = text.replace(/⚠️\s*Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
+            text = text.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
+            text = text.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem/gi, task3CommentForReplacement);
+          }
+          
+          // Entferne "Viel Glück" und "Viel Erfolg"
+          text = text.replace(/Viel Glück/gi, '');
+          text = text.replace(/Viel Erfolg/gi, '');
+          
+          if (text !== originalText) {
+            textNode.textContent = text;
+          }
+        });
+        
+        // Zusätzlich: Ersetze auch in Input-Feldern (value-Attribute)
+        const allInputs = doc.querySelectorAll('input, textarea');
+        allInputs.forEach((input: Element) => {
+          const inputEl = input as HTMLInputElement | HTMLTextAreaElement;
+          if (inputEl.value) {
+            let value = inputEl.value;
+            
+            // Ersetze "Name: ____" in Input-Werten
+            value = value.replace(/Name:\s*_+/gi, `Name: ${studentName}`);
+            
+            // Ersetze "⚠️ Zeichne alles schön ordentlich..." in Input-Werten
+            if (task3CommentForReplacement) {
+              value = value.replace(/⚠️\s*Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
+              value = value.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem!/gi, task3CommentForReplacement);
+              value = value.replace(/Zeichne alles schön ordentlich in dein großes Koordinatensystem/gi, task3CommentForReplacement);
+            }
+            
+            inputEl.value = value;
+          }
+        });
+        
+        // Entferne alle Buttons und Submit-Buttons
+        const submitButtons = doc.querySelectorAll('button[type="submit"], input[type="submit"]');
+        submitButtons.forEach(btn => btn.remove());
+        const allButtons = doc.querySelectorAll('button');
+        allButtons.forEach(btn => btn.remove());
+        const timerElements = doc.querySelectorAll('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="time"], [class*="time"]');
+        timerElements.forEach(el => el.remove());
+        
+        // Erstelle Map für manuelle Korrekturen
+        const correctionsMap: Record<string, { points?: number; constructionPoints?: number; comment?: string }> = {};
+        if (submission.corrections) {
+          submission.corrections.forEach((corr) => {
+            if (corr.taskNumber.match(/^3[a-d]$/)) {
+              correctionsMap[corr.taskNumber] = { 
+                constructionPoints: corr.manualPoints,
+                comment: corr.comment
+              };
+            } else {
+              correctionsMap[corr.taskNumber] = { 
+                points: corr.manualPoints,
+                comment: corr.comment
+              };
+            }
+          });
+        }
+        
+        // Füge Header mit Punkten und Note hinzu
+        const totalAchieved = submission.totalPoints;
+        const maxTotalPoints = 25;
+        const gradeData = calculateGrade(totalAchieved, maxTotalPoints);
+        
+        const headerContainer = doc.createElement('div');
+        headerContainer.style.cssText = 'margin-bottom: 20px; padding: 0;';
+        const combinedHeader = doc.createElement('div');
+        combinedHeader.style.cssText = `
+          background-color: transparent;
+          border: 3px solid #1976d2;
+          color: #1976d2;
+          padding: 15px 20px;
+          border-radius: 5px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 15px;
+        `;
+        const leftSection = doc.createElement('div');
+        leftSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px;';
+        const nameDiv = doc.createElement('div');
+        nameDiv.style.cssText = 'font-size: 1.1em; font-weight: bold;';
+        nameDiv.textContent = `Name: ${studentName}`;
+        const dateDiv = doc.createElement('div');
+        dateDiv.style.cssText = 'font-size: 0.85em; font-weight: normal; opacity: 0.95;';
+        dateDiv.textContent = `Abgabe vom ${new Date(submission.submittedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} um ${new Date(submission.submittedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+        leftSection.appendChild(nameDiv);
+        leftSection.appendChild(dateDiv);
+        const rightSection = doc.createElement('div');
+        rightSection.style.cssText = 'display: flex; gap: 30px; align-items: center;';
+        rightSection.innerHTML = `
+          <div style="text-align: center;">
+            <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Punkte</div>
+            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
+            <div style="font-size: 3em; font-weight: bold;">${gradeData.string}</div>
+          </div>
+        `;
+        combinedHeader.appendChild(leftSection);
+        combinedHeader.appendChild(rightSection);
+        headerContainer.appendChild(combinedHeader);
+        if (doc.body) {
+          doc.body.insertBefore(headerContainer, doc.body.firstChild);
+        }
+        
+        // Füge CSS hinzu
+        const style = doc.createElement('style');
+        style.textContent = `
+          html, body {
+            border: none !important;
+            outline: none !important;
+            background-color: transparent !important;
+            margin-top: 2% !important;
+            margin-left: 2% !important;
+            margin-right: 0 !important;
+            margin-bottom: 0 !important;
+            padding: 0 !important;
+          }
+          .answer-correct {
+            background-color: #c8e6c9 !important;
+            border: 2px solid #4caf50 !important;
+            color: #1b5e20 !important;
+          }
+          .answer-incorrect {
+            background-color: #ffcdd2 !important;
+            border: 2px solid #f44336 !important;
+            color: #b71c1c !important;
+          }
+          .points-badge {
+            display: inline-block;
+            margin-left: 5px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: bold;
+          }
+          .points-correct {
+            background-color: #4caf50;
+            color: white;
+          }
+          .points-incorrect {
+            background-color: #f44336;
+            color: white;
+          }
+          input[type="text"], input:not([type]), textarea, input[type="number"] {
+            min-height: 40px !important;
+            height: auto !important;
+            padding: 8px 12px !important;
+            line-height: 1.6 !important;
+          }
+        `;
+        doc.head.appendChild(style);
+        
+        // Fülle Antworten ein und markiere sie
+        const answers = parseAnswers(submission.answers);
+        
+        // Durchlaufe alle Antworten und füge sie ein
+        Object.entries(answers).forEach(([taskId, answer]) => {
+          // Versuche verschiedene Selektoren
+          let input = doc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          if (!input) {
+            input = doc.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          }
+          if (!input) {
+            input = doc.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          }
+          // Versuche auch mit escaped ID (für IDs mit Sonderzeichen)
+          if (!input && taskId.includes('_')) {
+            const escapedId = taskId.replace(/_/g, '\\_');
+            input = doc.querySelector(`#${escapedId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          }
+          
+          if (input) {
+            const answerValue = String(answer || '').trim();
+            
+            const isCorrect = isAnswerCorrect(taskId, answer);
+            const maxPoints = pointsDistribution[taskId] || 0;
+            let achievedPoints = isCorrect ? maxPoints : 0;
+            
+            // Berücksichtige manuelle Korrekturen
+            if (taskId.startsWith('a3')) {
+              const match = taskId.match(/a3([a-d])/);
+              if (match) {
+                const subtask = match[1];
+                const subtaskKey = `3${subtask}`;
+                const subtaskCorrection = correctionsMap[subtaskKey];
+                if (subtaskCorrection && subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null) {
+                  achievedPoints = Number(subtaskCorrection.constructionPoints) || 0;
+                }
+              }
+            } else {
+              const taskNum = taskId.match(/a(\d+)/)?.[1];
+              if (taskNum && correctionsMap[taskNum]) {
+                const correction = correctionsMap[taskNum];
+                if (correction.points !== undefined && correction.points !== null) {
+                  achievedPoints = Number(correction.points) || 0;
+                }
+              }
+            }
+            
+            // Stelle sicher, dass achievedPoints immer eine Zahl ist
+            achievedPoints = Number(achievedPoints) || 0;
+            
+            // Setze Antwort - WICHTIG: Schülerantworten müssen immer eingefügt werden
+            if (input.tagName === 'INPUT') {
+              const inputEl = input as HTMLInputElement;
+              if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
+                if (inputEl.value === answerValue || inputEl.id === taskId || inputEl.name === taskId) {
+                  inputEl.checked = true;
+                }
+              } else {
+                // Stelle sicher, dass die Schülerantwort eingefügt wird
+                inputEl.setAttribute('value', answerValue); // Setze auch das Attribut
+                inputEl.value = answerValue; // Setze den Wert
+                inputEl.setAttribute('readonly', 'readonly'); // Verhindere Bearbeitung
+                inputEl.removeAttribute('disabled'); // Stelle sicher, dass es nicht disabled ist
+              }
+            } else if (input.tagName === 'TEXTAREA') {
+              const textareaEl = input as HTMLTextAreaElement;
+              textareaEl.textContent = answerValue; // Setze auch textContent
+              textareaEl.value = answerValue; // Setze den Wert
+              textareaEl.setAttribute('readonly', 'readonly'); // Verhindere Bearbeitung
+              textareaEl.removeAttribute('disabled'); // Stelle sicher, dass es nicht disabled ist
+            } else if (input.tagName === 'SELECT') {
+              const selectEl = input as HTMLSelectElement;
+              selectEl.value = answerValue; // Setze den Wert
+              // Für Select: Setze auch selectedIndex falls möglich
+              for (let i = 0; i < selectEl.options.length; i++) {
+                if (selectEl.options[i].value === answerValue) {
+                  selectEl.selectedIndex = i;
+                  break;
+                }
+              }
+              selectEl.setAttribute('disabled', 'disabled'); // Verhindere Bearbeitung
+            }
+            
+            // Markiere als richtig oder falsch
+            if (achievedPoints > 0) {
+              input.classList.add('answer-correct');
+            } else if (maxPoints > 0) {
+              input.classList.add('answer-incorrect');
+            }
+            
+            // Füge Punkte-Badge hinzu
+            if (maxPoints > 0 && !input.parentElement?.querySelector('.points-badge')) {
+              const container = doc.createElement('span');
+              container.style.display = 'inline-flex';
+              container.style.alignItems = 'center';
+              container.style.gap = '5px';
+              container.style.marginLeft = '5px';
+              
+              if (input.parentElement) {
+                const parent = input.parentElement;
+                parent.insertBefore(container, input);
+                container.appendChild(input);
+                
+                const pointsBadge = doc.createElement('span');
+                pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
+                // Stelle sicher, dass achievedPoints eine Zahl ist, bevor toFixed() aufgerufen wird
+                const safeAchievedPoints = Number(achievedPoints) || 0;
+                const safeMaxPoints = Number(maxPoints) || 0;
+                const pointsText = (safeMaxPoints % 1 === 0 && safeAchievedPoints % 1 === 0)
+                  ? `${safeAchievedPoints}/${safeMaxPoints}` 
+                  : `${safeAchievedPoints.toFixed(2)}/${safeMaxPoints}`;
+                pointsBadge.textContent = pointsText;
+                container.appendChild(pointsBadge);
+              }
+            }
+          }
+        });
+        
+        // Stelle sicher, dass alle Input-Werte im HTML erhalten bleiben - MACHEN WIR ZWEIMAL
+        Object.entries(answers).forEach(([taskId, answer]) => {
+          let input = doc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          if (!input) {
+            input = doc.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          }
+          if (!input) {
+            input = doc.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          }
+          
+          if (input) {
+            const answerValue = String(answer || '').trim();
+            // Setze sowohl value-Attribut als auch den Wert nochmal
+            if (input.tagName === 'INPUT') {
+              const inputEl = input as HTMLInputElement;
+              if (inputEl.type !== 'radio' && inputEl.type !== 'checkbox') {
+                inputEl.setAttribute('value', answerValue);
+                inputEl.value = answerValue;
+              }
+            } else if (input.tagName === 'TEXTAREA') {
+              const textareaEl = input as HTMLTextAreaElement;
+              textareaEl.textContent = answerValue;
+              textareaEl.value = answerValue;
+            } else if (input.tagName === 'SELECT') {
+              const selectEl = input as HTMLSelectElement;
+              selectEl.value = answerValue;
+              selectEl.setAttribute('value', answerValue);
+            }
+          }
+        });
+        
+        // Füge Bewertungen bei Aufgabe 3 hinzu (Konstruktionspunkte und Kommentare)
+        if (submission.corrections) {
+          // Sammle alle Aufgabe-3-Korrekturen
+          const task3Corrections = submission.corrections.filter(corr => corr.taskNumber.match(/^3[a-d]$/));
+          
+          // Gruppiere nach Teilaufgabe (a, b, c, d)
+          const correctionsBySubtask: Record<string, typeof submission.corrections[0]> = {};
+          let overallComment = '';
+          
+          task3Corrections.forEach((corr) => {
+            const subtask = corr.taskNumber.replace('3', '');
+            correctionsBySubtask[subtask] = corr;
+            // Sammle Kommentare - der letzte Kommentar wird verwendet
+            if (corr.comment) {
+              overallComment = corr.comment;
+            }
+          });
+          
+          // Maximalpunkte für jede Teilaufgabe: Jede Teilaufgabe hat 2 Punkte
+          const maxPointsPerSubtask: Record<string, number> = {
+            'a': 2, 'b': 2, 'c': 2, 'd': 2
+          };
+          
+          // Füge Konstruktionspunkte direkt nach jeder Teilaufgabe hinzu (in neuer Zeile)
+          // WICHTIG: Gehe in umgekehrter Reihenfolge (d, c, b, a), damit die Positionierung nicht durcheinander kommt
+          ['d', 'c', 'b', 'a'].forEach((subtask) => {
+            const corr = correctionsBySubtask[subtask];
+            const maxPoints = maxPointsPerSubtask[subtask] || 2;
+            const achievedPoints = corr && corr.manualPoints !== undefined && corr.manualPoints !== null 
+              ? Number(corr.manualPoints) 
+              : 0;
+            
+            // Finde die Input-Felder für diese Teilaufgabe
+            const taskInputs = doc.querySelectorAll(`input[id^="a3${subtask}"], input[name^="a3${subtask}"]`);
+            
+            if (taskInputs.length > 0) {
+              // Finde das letzte Input-Feld dieser Teilaufgabe
+              const lastInput = taskInputs[taskInputs.length - 1] as HTMLElement;
+              
+              // Erstelle Konstruktionspunkte-Element in neuer Zeile
+              const constructionPointsDiv = doc.createElement('div');
+              constructionPointsDiv.style.cssText = `
+                display: block !important;
+                width: 100% !important;
+                margin-top: 8px !important;
+                margin-bottom: 12px !important;
+                padding: 0 !important;
+                background-color: transparent !important;
+                border: none !important;
+                font-size: 0.9em !important;
+                margin-left: 10% !important;
+                clear: both !important;
+              `;
+              constructionPointsDiv.innerHTML = `<strong>Konstruktion:</strong> ${achievedPoints.toFixed(2)} / ${maxPoints.toFixed(2)} Punkten`;
+              
+              // Finde den Container des letzten Inputs
+              let inputContainer = lastInput.closest('span[style*="inline-flex"]');
+              if (!inputContainer) {
+                inputContainer = lastInput.parentElement;
+              }
+              
+              // Füge direkt nach dem Container ein (neue Zeile)
+              if (inputContainer && inputContainer.parentElement) {
+                // Füge nach dem Container ein
+                inputContainer.parentElement.insertBefore(constructionPointsDiv, inputContainer.nextSibling);
+              } else if (lastInput.parentElement) {
+                // Fallback: Füge nach dem Input selbst ein
+                lastInput.parentElement.insertBefore(constructionPointsDiv, lastInput.nextSibling);
+              }
+            }
+          });
+          
+          // Entferne alle Elemente nach Aufgabe 3 (Buttons, etc.)
+          const allTask3Inputs = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+          if (allTask3Inputs.length > 0) {
+            const lastTask3Input = allTask3Inputs[allTask3Inputs.length - 1] as HTMLElement;
+            
+            // Finde das übergeordnete Element, das alle Aufgabe-3 Inputs enthält
+            let task3Container: HTMLElement | null = lastTask3Input;
+            while (task3Container && task3Container !== doc.body) {
+              const tagName = task3Container.tagName.toLowerCase();
+              if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
+                const allInputsInContainer = task3Container.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+                if (allInputsInContainer.length === allTask3Inputs.length) {
+                  // Entferne alle nachfolgenden Elemente (Buttons, etc.)
+                  let nextSibling = task3Container.nextSibling;
+                  while (nextSibling) {
+                    const toRemove = nextSibling;
+                    nextSibling = nextSibling.nextSibling;
+                    toRemove.remove();
+                  }
+                  break;
+                }
+              }
+              task3Container = task3Container.parentElement;
+            }
+          }
+          
+          // Füge Kommentar ganz am Ende der Aufgabe 3 hinzu (in neuer Zeile)
+          if (overallComment) {
+            // Finde alle Aufgabe-3 Input-Felder
+            const allTask3Inputs = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+            
+            if (allTask3Inputs.length > 0) {
+              // Finde das allerletzte Input-Feld von Aufgabe 3 (sollte 3d sein)
+              const lastTask3Input = allTask3Inputs[allTask3Inputs.length - 1] as HTMLElement;
+              
+              // Erstelle Kommentar-Element in einer Box (neue Zeile)
+              const commentDiv = doc.createElement('div');
+              commentDiv.style.cssText = `
+                display: block !important;
+                width: 100% !important;
+                margin-top: 16px !important;
+                margin-bottom: 8px !important;
+                padding: 12px 16px !important;
+                background-color: #f5f5f5 !important;
+                border: 2px solid #1976d2 !important;
+                border-radius: 4px !important;
+                font-size: 0.9em !important;
+                margin-left: 10% !important;
+                clear: both !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+              `;
+              commentDiv.innerHTML = `<strong>Kommentar:</strong> ${overallComment}`;
+              
+              // Finde das übergeordnete Block-Element des letzten Inputs
+              let insertAfter: HTMLElement | null = lastTask3Input;
+              
+              // Gehe hoch bis wir ein Block-Element finden, das alle Aufgabe-3 Inputs enthält
+              while (insertAfter && insertAfter !== doc.body) {
+                const tagName = insertAfter.tagName.toLowerCase();
+                if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
+                  // Prüfe ob dieses Element alle Aufgabe-3 Inputs enthält
+                  const allInputsInContainer = insertAfter.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+                  if (allInputsInContainer.length === allTask3Inputs.length) {
+                    // Dieses Element enthält alle Aufgabe-3 Inputs
+                    // Füge Kommentar am Ende ein
+                    insertAfter.appendChild(commentDiv);
+                    break;
+                  }
+                }
+                insertAfter = insertAfter.parentElement;
+              }
+              
+              // Fallback: Füge nach dem letzten Input-Container ein
+              if (!commentDiv.parentElement && lastTask3Input.parentElement) {
+                const parent = lastTask3Input.parentElement;
+                const inputContainer = lastTask3Input.closest('span[style*="inline-flex"]') || lastTask3Input.parentElement;
+                if (inputContainer && inputContainer.parentElement) {
+                  inputContainer.parentElement.insertBefore(commentDiv, inputContainer.nextSibling);
+                } else {
+                  parent.insertBefore(commentDiv, lastTask3Input.nextSibling);
+                }
+              }
+            }
+          }
+        }
+        
+        // FINALE BEREINIGUNG: Entferne ALLES nach Aufgabe 3 - EINFACHER ANSATZ
+        const finalAllTask3Inputs = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+        if (finalAllTask3Inputs.length > 0) {
+          const finalLastTask3Input = finalAllTask3Inputs[finalAllTask3Inputs.length - 1] as HTMLElement;
+          
+          // Finde das übergeordnete Container-Element
+          let task3Container: HTMLElement | null = finalLastTask3Input;
+          while (task3Container && task3Container !== doc.body) {
+            const tagName = task3Container.tagName.toLowerCase();
+            if (['div', 'p', 'form', 'section', 'article', 'fieldset', 'li'].includes(tagName)) {
+              const allInputsInContainer = task3Container.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+              if (allInputsInContainer.length === finalAllTask3Inputs.length) {
+                // Entferne alle nachfolgenden Geschwister
+                if (task3Container.parentElement) {
+                  let current: Node | null = task3Container.nextSibling;
+                  while (current) {
+                    const next = current.nextSibling;
+                    task3Container.parentElement.removeChild(current);
+                    current = next;
+                  }
+                }
+                break;
+              }
+            }
+            task3Container = task3Container.parentElement;
+          }
+        }
+        
+        // Zusätzlich: Entferne alle Body-Kinder, die nach dem Container kommen
+        const bodyChildren = Array.from(doc.body.children);
+        const allTask3InputsForBody = doc.querySelectorAll(`input[id^="a3"], input[name^="a3"]`);
+        if (allTask3InputsForBody.length > 0) {
+          const lastTask3InputForBody = allTask3InputsForBody[allTask3InputsForBody.length - 1] as HTMLElement;
+          let foundTask3 = false;
+          for (const child of bodyChildren) {
+            if (child.contains(lastTask3InputForBody)) {
+              foundTask3 = true;
+            } else if (foundTask3) {
+              child.remove();
+            }
+          }
+        }
+        
+        // Stelle sicher, dass alle Input-Werte im HTML erhalten bleiben
+        // Durchlaufe nochmal alle Inputs und setze die value-Attribute explizit
+        Object.entries(answers).forEach(([taskId, answer]) => {
+          let input = doc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          if (!input) {
+            input = doc.querySelector(`[name="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          }
+          if (!input) {
+            input = doc.querySelector(`[data-task-id="${taskId}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+          }
+          
+          if (input) {
+            const answerValue = String(answer || '').trim();
+            // Setze sowohl value-Attribut als auch den Wert
+            if (input.tagName === 'INPUT') {
+              const inputEl = input as HTMLInputElement;
+              if (inputEl.type !== 'radio' && inputEl.type !== 'checkbox') {
+                inputEl.setAttribute('value', answerValue);
+                inputEl.value = answerValue;
+              }
+            } else if (input.tagName === 'TEXTAREA') {
+              const textareaEl = input as HTMLTextAreaElement;
+              textareaEl.textContent = answerValue;
+              textareaEl.value = answerValue;
+            } else if (input.tagName === 'SELECT') {
+              const selectEl = input as HTMLSelectElement;
+              selectEl.value = answerValue;
+              selectEl.setAttribute('value', answerValue);
+            }
+          }
+        });
+        
+        // Konvertiere zurück zu HTML-String
+        const modifiedHtml = doc.documentElement.outerHTML;
+        const safeName = studentName.replace(/[^a-z0-9]/gi, '_');
+        zip.file(`${safeName}_${fileName.replace('.html', '') || 'abgabe'}.html`, modifiedHtml);
       }
+      
+      // Generiere ZIP und lade herunter
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipFileName = `Alle_Abgaben_HTML_${fileName.replace('.html', '') || 'statistik'}.zip`;
+      saveAs(zipBlob, zipFileName);
 
-      alert(`✅ ${sortedSubmissions.length} PDF-Dateien erfolgreich heruntergeladen!`);
+      alert(`✅ ${sortedSubmissions.length + 1} HTML-Dateien (inkl. Musterlösung) erfolgreich in ZIP-Datei gepackt!`);
     } catch (error) {
-      console.error('Fehler beim Exportieren:', error);
-      alert(`❌ Fehler beim Exportieren: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      console.error('Fehler beim HTML-Export:', error);
+      alert(`❌ Fehler beim HTML-Export: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     } finally {
-      setExportingIndividually(false);
+      setExportingHTML(false);
     }
   };
+
 
   const exportAllToWord = async () => {
     try {
@@ -1769,6 +3661,7 @@ Vera Christ`);
         
         if (group && group.students) {
           setLearningGroupStudents(group.students);
+          setLearningGroupId(group.id);
         }
       }
     } catch (error) {
@@ -1930,14 +3823,14 @@ Vera Christ`);
                   }
                 }}
               >
-                Fehlende Schüler anschreiben
+                Fehlende anschreiben
               </Button>
               <Button
                 size="small"
                 variant="outlined"
                 startIcon={<Print sx={{ fontSize: 16 }} />}
-                onClick={exportAllToPDF}
-                disabled={exporting}
+                onClick={exportToHTML}
+                disabled={exportingHTML}
                 sx={{ 
                   height: 28,
                   minWidth: 140,
@@ -1968,45 +3861,7 @@ Vera Christ`);
                   }
                 }}
               >
-                {exporting ? 'Exportiert...' : 'Alle ausdrucken'}
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<Print sx={{ fontSize: 16 }} />}
-                onClick={exportAllIndividually}
-                disabled={exportingIndividually}
-                sx={{ 
-                  height: 28,
-                  minWidth: 180,
-                  px: 1.5,
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  borderRadius: 1,
-                  whiteSpace: 'nowrap',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  color: '#fff',
-                  borderWidth: 1.5,
-                  transition: 'all 0.3s ease',
-                  '&:hover': { 
-                    borderColor: '#fff',
-                    bgcolor: 'rgba(255, 255, 255, 0.15)',
-                    transform: 'translateY(-1px)'
-                  },
-                  '&:active': {
-                    transform: 'translateY(0px)'
-                  },
-                  '&.Mui-disabled': {
-                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                    color: 'rgba(255, 255, 255, 0.4)'
-                  },
-                  '& .MuiButton-startIcon': {
-                    marginRight: 0.5,
-                    marginLeft: 0
-                  }
-                }}
-              >
-                {exportingIndividually ? 'Exportiert...' : 'Alle einzeln herunterladen'}
+                {exportingHTML ? 'Exportiert...' : 'HTML Download'}
               </Button>
             </>
           )}
@@ -2150,7 +4005,7 @@ Vera Christ`);
                       </Typography>
                     )}
                   </Box>
-                  <Box sx={{ p: 1, bgcolor: '#ffebee', borderRadius: 1 }}>
+                  <Box sx={{ p: 1, bgcolor: 'transparent', borderRadius: 1 }}>
                     <Typography variant="caption" sx={{ fontWeight: 600, color: '#c62828' }}>
                       Unteres: {lowerThird.length} ({lowerThirdPercentage.toFixed(1)}%)
                     </Typography>
@@ -2197,7 +4052,7 @@ Vera Christ`);
                     label={student.name}
                     size="small"
                     sx={{
-                      bgcolor: '#fff3e0',
+                      bgcolor: 'transparent',
                       color: '#f57c00',
                       fontWeight: 500,
                       fontSize: '0.75rem'
@@ -2373,9 +4228,77 @@ Vera Christ`);
                   </Button>
                 </CardContent>
               </Card>
-          </Box>
+            </Box>
         )}
       </DialogContent>
+
+      {/* Dialog für Kategorieauswahl */}
+      <Dialog open={openCategoryDialog} onClose={() => setOpenCategoryDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Noten freigeben - Kategorie auswählen
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+            Wählen Sie die Kategorie aus dem Notenschema aus, in die die HÜ-Noten eingetragen werden sollen:
+          </Typography>
+          
+          {availableCategories.length === 0 ? (
+            <Alert severity="info">
+              Keine Kategorien gefunden. Bitte erstellen Sie zuerst ein Notenschema für diese Lerngruppe.
+            </Alert>
+          ) : (
+            <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+              {gradingSchemas.map((schema) => {
+                const schemaCategories = availableCategories.filter(c => c.schemaId === schema.id);
+                if (schemaCategories.length === 0) return null;
+                
+                return (
+                  <Box key={schema.id} sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#1976d2' }}>
+                      {schema.name}
+                    </Typography>
+                    {schemaCategories.map((category) => (
+                      <Button
+                        key={`${category.schemaId}_${category.categoryName}`}
+                        fullWidth
+                        variant={selectedCategory?.schemaId === category.schemaId && selectedCategory?.categoryName === category.categoryName ? 'contained' : 'outlined'}
+                        onClick={() => setSelectedCategory(category)}
+                        sx={{
+                          mb: 0.5,
+                          justifyContent: 'flex-start',
+                          textTransform: 'none',
+                          bgcolor: selectedCategory?.schemaId === category.schemaId && selectedCategory?.categoryName === category.categoryName ? '#1976d2' : 'transparent',
+                          '&:hover': {
+                            bgcolor: selectedCategory?.schemaId === category.schemaId && selectedCategory?.categoryName === category.categoryName ? '#1565c0' : '#f5f5f5'
+                          }
+                        }}
+                      >
+                        {category.categoryName}
+                      </Button>
+                    ))}
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenCategoryDialog(false);
+            setSelectedCategory(null);
+          }}>
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleConfirmReleaseGrades}
+            variant="contained"
+            disabled={!selectedCategory || availableCategories.length === 0}
+            sx={{ bgcolor: '#1976d2' }}
+          >
+            Noten speichern und freigeben
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 };
