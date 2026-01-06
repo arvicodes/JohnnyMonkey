@@ -3093,85 +3093,22 @@ Vera Christ`);
           }
         }
         
+        // Entferne das "⚠️ Zeichne alles..." Element - Kommentar wird später am Ende hinzugefügt
         if (elementToReplace) {
-          if (task3CommentForReplacement) {
-            // Erstelle grüne Kommentar-Box
-            const commentBox = doc.createElement('div');
-            commentBox.style.cssText = `
-              margin-top: 16px;
-              margin-bottom: 16px;
-              padding: 12px 16px;
-              background-color: #c8e6c9;
-              border: 2px solid #4caf50;
-              border-left: 5px solid #4caf50;
-              border-radius: 6px;
-              font-size: 0.95em;
-              line-height: 1.6;
-              display: block;
-              width: 100%;
-            `;
-            
-            // Titel mit Icon
-            const titleDiv = doc.createElement('div');
-            titleDiv.style.cssText = 'font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px;';
-            titleDiv.textContent = '💬 Kommentar:';
-            
-            // Kommentar-Text
-            const commentDiv = doc.createElement('div');
-            commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
-            commentDiv.textContent = task3CommentForReplacement;
-            
-            commentBox.appendChild(titleDiv);
-            commentBox.appendChild(commentDiv);
-            
-            // Ersetze das Element (inklusive gelber Box)
-            if (elementToReplace.parentElement) {
-              elementToReplace.parentElement.replaceChild(commentBox, elementToReplace);
-            }
-          } else {
-            // Wenn kein Kommentar vorhanden, entferne das Element einfach
-            elementToReplace.remove();
-          }
-        } else if (task3CommentForReplacement) {
-          // Fallback: Suche nach Text-Nodes und ersetze sie
-          const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
-          let node: Node | null;
-          while (node = walker.nextNode()) {
-            const text = node.textContent || '';
-            if (text.includes('⚠️') && text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem') ||
-                text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem')) {
-              const parent = node.parentNode;
-              if (parent && parent instanceof Element) {
-                // Erstelle grüne Kommentar-Box
-                const commentBox = doc.createElement('div');
-                commentBox.style.cssText = `
-                  margin-top: 16px;
-                  margin-bottom: 16px;
-                  padding: 12px 16px;
-                  background-color: #c8e6c9;
-                  border: 2px solid #4caf50;
-                  border-left: 5px solid #4caf50;
-                  border-radius: 6px;
-                  font-size: 0.95em;
-                  line-height: 1.6;
-                  display: block;
-                  width: 100%;
-                `;
-                
-                const titleDiv = doc.createElement('div');
-                titleDiv.style.cssText = 'font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px;';
-                titleDiv.textContent = '💬 Kommentar:';
-                
-                const commentDiv = doc.createElement('div');
-                commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
-                commentDiv.textContent = task3CommentForReplacement;
-                
-                commentBox.appendChild(titleDiv);
-                commentBox.appendChild(commentDiv);
-                
-                parent.replaceChild(commentBox, node);
-                break;
-              }
+          elementToReplace.remove();
+        }
+        
+        // Entferne auch Text-Nodes mit diesem Text
+        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+        let node: Node | null;
+        while (node = walker.nextNode()) {
+          const text = node.textContent || '';
+          if (text.includes('⚠️') && text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem') ||
+              text.includes('Zeichne alles schön ordentlich in dein großes Koordinatensystem')) {
+            const parent = node.parentNode;
+            if (parent && parent instanceof Element) {
+              parent.removeChild(node);
+              break;
             }
           }
         }
@@ -3391,8 +3328,17 @@ Vera Christ`);
             if (input.tagName === 'INPUT') {
               const inputEl = input as HTMLInputElement;
               if (inputEl.type === 'radio' || inputEl.type === 'checkbox') {
-                if (inputEl.value === answerValue || inputEl.id === taskId || inputEl.name === taskId) {
-                  inputEl.checked = true;
+                // Für Checkboxen/Radiobuttons: Prüfe ob die Checkbox/Radio die richtige Antwort ist
+                if (inputEl.type === 'checkbox') {
+                  // Für Checkboxen: Checke, ob diese Checkbox markiert werden soll
+                  if (inputEl.id === taskId || inputEl.name === taskId || inputEl.value === answerValue) {
+                    inputEl.checked = true;
+                  }
+                } else {
+                  // Für Radiobuttons: Checke wie bisher
+                  if (inputEl.value === answerValue || inputEl.id === taskId || inputEl.name === taskId) {
+                    inputEl.checked = true;
+                  }
                 }
               } else {
                 // Stelle sicher, dass die Schülerantwort eingefügt wird
@@ -3428,7 +3374,11 @@ Vera Christ`);
             }
             
             // Füge Punkte-Badge hinzu
-            if (maxPoints > 0 && !input.parentElement?.querySelector('.points-badge')) {
+            // WICHTIG: Überspringe Aufgabe 3 Inputs - die werden später in blauen Kästen angezeigt
+            const isTask3Input = taskId.startsWith('a3');
+            // WICHTIG: Prüfe, ob dieses Input bereits ein Badge hat (nicht nur im Parent)
+            const hasExistingBadge = input.parentElement?.querySelector(`.points-badge[data-input-id="${taskId}"]`) !== null;
+            if (maxPoints > 0 && !hasExistingBadge && !isTask3Input) {
               const container = doc.createElement('span');
               container.style.display = 'inline-flex';
               container.style.alignItems = 'center';
@@ -3442,6 +3392,7 @@ Vera Christ`);
                 
                 const pointsBadge = doc.createElement('span');
                 pointsBadge.className = `points-badge ${achievedPoints > 0 ? 'points-correct' : 'points-incorrect'}`;
+                pointsBadge.setAttribute('data-input-id', taskId);
                 // Stelle sicher, dass achievedPoints eine Zahl ist, bevor toFixed() aufgerufen wird
                 const safeAchievedPoints = Number(achievedPoints) || 0;
                 const safeMaxPoints = Number(maxPoints) || 0;
@@ -3473,6 +3424,26 @@ Vera Christ`);
               if (inputEl.type !== 'radio' && inputEl.type !== 'checkbox') {
                 inputEl.setAttribute('value', answerValue);
                 inputEl.value = answerValue;
+                // Entferne number input arrows
+                if (inputEl.type === 'number') {
+                  inputEl.style.cssText += ' -moz-appearance: textfield !important;';
+                  // Entferne WebKit arrows
+                  const style = doc.createElement('style');
+                  style.textContent = `
+                    input[type="number"]::-webkit-inner-spin-button,
+                    input[type="number"]::-webkit-outer-spin-button {
+                      -webkit-appearance: none !important;
+                      margin: 0 !important;
+                    }
+                    input[type="number"] {
+                      -moz-appearance: textfield !important;
+                    }
+                  `;
+                  if (!doc.head.querySelector('style[data-hide-number-arrows]')) {
+                    style.setAttribute('data-hide-number-arrows', 'true');
+                    doc.head.appendChild(style);
+                  }
+                }
               }
             } else if (input.tagName === 'TEXTAREA') {
               const textareaEl = input as HTMLTextAreaElement;
@@ -3486,54 +3457,166 @@ Vera Christ`);
           }
         });
         
-        // Ersetze Input-Felder für Aufgabe 3 durch Text (Format: A₁(0.00/0.25))
-        const task3Inputs = doc.querySelectorAll('input[id^="a3"], input[name^="a3"]');
+        // Füge CSS hinzu um number input arrows zu entfernen
+        if (!doc.head.querySelector('style[data-hide-number-arrows]')) {
+          const style = doc.createElement('style');
+          style.setAttribute('data-hide-number-arrows', 'true');
+          style.textContent = `
+            input[type="number"]::-webkit-inner-spin-button,
+            input[type="number"]::-webkit-outer-spin-button {
+              -webkit-appearance: none !important;
+              margin: 0 !important;
+            }
+            input[type="number"] {
+              -moz-appearance: textfield !important;
+            }
+          `;
+          doc.head.appendChild(style);
+        }
         
-        task3Inputs.forEach((input) => {
+        // Gruppiere Input-Felder für Aufgabe 3 im Format A₁(Input | Input), B₁(...), etc.
+        // Struktur: a3a_x, a3a_y = A₁; a3b_x, a3b_y = B₁; a3c_x, a3c_y = C₁ (für Teilaufgabe a)
+        //           a3d_x, a3d_y = A₂; a3e_x, a3e_y = B₂; a3f_x, a3f_y = C₂ (für Teilaufgabe b)
+        //           etc.
+        const task3InputsMap: Record<string, {xInput?: HTMLInputElement; yInput?: HTMLInputElement; pointLabel: string; subtask: string}> = {};
+        
+        // Sammle alle Aufgabe-3-Inputs
+        const allTask3Inputs = doc.querySelectorAll('input[id^="a3"], input[name^="a3"]');
+        
+        allTask3Inputs.forEach((input) => {
           const inputEl = input as HTMLInputElement;
           const inputId = inputEl.id || inputEl.name || '';
-          // Verwende Wert aus Input (der bereits aus answers gesetzt wurde) oder aus answers
-          let answerValue = inputEl.value || '';
-          if (!answerValue && answers[inputId]) {
-            answerValue = String(answers[inputId] || '').trim();
-          }
           
-          if (answerValue.trim()) {
-            // Finde Punkt-Label (A₁, B₁, C₁, etc.)
-            let pointLabel = '';
-            const matchA = inputId.match(/a3([a-d])_?A(\d?)/i);
-            const matchB = inputId.match(/a3([a-d])_?B(\d?)/i);
-            const matchC = inputId.match(/a3([a-d])_?C(\d?)/i);
+          // Parse ID: a3a_x, a3a_y, etc.
+          const match = inputId.match(/a3([a-l])_([xy])/i);
+          if (match) {
+            const letter = match[1].toLowerCase();
+            const coord = match[2].toLowerCase();
             
-            if (matchA) {
-              const subtaskNum = matchA[1];
-              pointLabel = 'A' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
-            } else if (matchB) {
-              const subtaskNum = matchB[1];
-              pointLabel = 'B' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
-            } else if (matchC) {
-              const subtaskNum = matchC[1];
-              pointLabel = 'C' + (subtaskNum === 'a' ? '₁' : subtaskNum === 'b' ? '₂' : subtaskNum === 'c' ? '₃' : '₄');
+            // Mappe Buchstaben zu Punkten und Teilaufgaben
+            // a, b, c = A₁, B₁, C₁ (Teilaufgabe a)
+            // d, e, f = A₂, B₂, C₂ (Teilaufgabe b)
+            // g, h, i = A₃, B₃, C₃ (Teilaufgabe c)
+            // j, k, l = A₄, B₄, C₄ (Teilaufgabe d)
+            const pointMap: Record<string, {point: string; subtask: string}> = {
+              'a': {point: 'A₁', subtask: 'a'}, 'b': {point: 'B₁', subtask: 'a'}, 'c': {point: 'C₁', subtask: 'a'},
+              'd': {point: 'A₂', subtask: 'b'}, 'e': {point: 'B₂', subtask: 'b'}, 'f': {point: 'C₂', subtask: 'b'},
+              'g': {point: 'A₃', subtask: 'c'}, 'h': {point: 'B₃', subtask: 'c'}, 'i': {point: 'C₃', subtask: 'c'},
+              'j': {point: 'A₄', subtask: 'd'}, 'k': {point: 'B₄', subtask: 'd'}, 'l': {point: 'C₄', subtask: 'd'}
+            };
+            
+            const pointInfo = pointMap[letter];
+            if (pointInfo) {
+              const key = `a3${letter}`;
+              if (!task3InputsMap[key]) {
+                task3InputsMap[key] = {pointLabel: pointInfo.point, subtask: pointInfo.subtask};
+              }
+              if (coord === 'x') {
+                task3InputsMap[key].xInput = inputEl;
+              } else if (coord === 'y') {
+                task3InputsMap[key].yInput = inputEl;
+              }
             }
-            
-            // Formatierte Antwort: "A₁(0.00/0.25)"
-            const formattedAnswer = `${pointLabel}(${answerValue})`;
-            
-            // Ersetze Input durch span
-            const textSpan = doc.createElement('span');
-            textSpan.textContent = formattedAnswer;
-            textSpan.style.cssText = 'display: inline;';
-            
-            if (inputEl.parentElement) {
-              inputEl.parentElement.replaceChild(textSpan, inputEl);
-            }
-          } else {
-            // Wenn kein Wert, entferne Input einfach
-            inputEl.remove();
           }
         });
         
-        // Füge Bewertungen bei Aufgabe 3 hinzu (Konstruktionspunkte und Kommentare)
+        // Erstelle gruppierte Formatierung für jeden Punkt
+        Object.entries(task3InputsMap).forEach(([key, pointData]) => {
+          const {xInput, yInput, pointLabel} = pointData;
+          
+          if (xInput && yInput) {
+            // Stelle sicher, dass die Werte gesetzt sind
+            const xValue = answers[xInput.id] || xInput.value || '';
+            const yValue = answers[yInput.id] || yInput.value || '';
+            
+            // Setze die Werte explizit
+            xInput.value = String(xValue);
+            xInput.setAttribute('value', String(xValue));
+            yInput.value = String(yValue);
+            yInput.setAttribute('value', String(yValue));
+            
+            // Finde das Container-DIV, das beide Inputs enthält (das div mit display: flex)
+            // Die Struktur ist: <div style="display: flex; align-items: center; gap: 5px;">
+            //   <span>A₁(</span>
+            //   <input id="a3a_x">
+            //   <span>|</span>
+            //   <input id="a3a_y">
+            //   <span>)</span>
+            // </div>
+            let containerDiv: HTMLElement | null = null;
+            let current: HTMLElement | null = xInput.parentElement as HTMLElement;
+            
+            // Suche nach dem div-Container, der beide Inputs enthält
+            while (current && current !== doc.body) {
+              if (current.tagName === 'DIV' && 
+                  current.contains(xInput) && 
+                  current.contains(yInput) &&
+                  current.style.display === 'flex') {
+                containerDiv = current;
+                break;
+              }
+              current = current.parentElement as HTMLElement;
+            }
+            
+            if (containerDiv) {
+              // Erstelle neuen Container für gruppierte Anzeige
+              const newContainer = doc.createElement('span');
+              newContainer.style.cssText = 'display: inline-block; margin-right: 8px;';
+              
+              // Label
+              const labelSpan = doc.createElement('span');
+              labelSpan.textContent = `${pointLabel}( `;
+              labelSpan.style.cssText = 'display: inline;';
+              newContainer.appendChild(labelSpan);
+              
+              // Entferne Inputs aus dem alten Container
+              containerDiv.removeChild(xInput);
+              containerDiv.removeChild(yInput);
+              
+              // Entferne auch die Separator-Spans (| und ))
+              const spans = Array.from(containerDiv.querySelectorAll('span'));
+              spans.forEach(span => {
+                const text = span.textContent || '';
+                if (text === '|' || text === ')') {
+                  containerDiv!.removeChild(span);
+                }
+              });
+              
+              // Füge die Inputs in den neuen Container ein
+              xInput.setAttribute('readonly', 'readonly');
+              xInput.setAttribute('disabled', 'disabled');
+              xInput.style.cssText = 'min-height: 24px; padding: 4px 8px; font-size: 0.85em; display: inline-block; width: 60px; -moz-appearance: textfield !important;';
+              xInput.style.cssText += ' -webkit-appearance: none !important; margin: 0 !important;';
+              newContainer.appendChild(xInput);
+              
+              // Separator
+              const separatorSpan = doc.createElement('span');
+              separatorSpan.textContent = ' | ';
+              separatorSpan.style.cssText = 'display: inline; margin: 0 4px;';
+              newContainer.appendChild(separatorSpan);
+              
+              yInput.setAttribute('readonly', 'readonly');
+              yInput.setAttribute('disabled', 'disabled');
+              yInput.style.cssText = 'min-height: 24px; padding: 4px 8px; font-size: 0.85em; display: inline-block; width: 60px; -moz-appearance: textfield !important;';
+              yInput.style.cssText += ' -webkit-appearance: none !important; margin: 0 !important;';
+              newContainer.appendChild(yInput);
+              
+              // Closing
+              const closingSpan = doc.createElement('span');
+              closingSpan.textContent = ' )';
+              closingSpan.style.cssText = 'display: inline;';
+              newContainer.appendChild(closingSpan);
+              
+              // Ersetze das alte Container-DIV durch den neuen Container
+              if (containerDiv.parentElement) {
+                containerDiv.parentElement.insertBefore(newContainer, containerDiv);
+                containerDiv.remove();
+              }
+            }
+          }
+        });
+        
+        // Füge Bewertungen bei Aufgabe 3 hinzu (Koordinatenpunkte + Konstruktionspunkte und Kommentare)
         if (submission.corrections) {
           // Sammle alle Aufgabe-3-Korrekturen
           const task3Corrections = submission.corrections.filter(corr => corr.taskNumber.match(/^3[a-d]$/));
@@ -3551,39 +3634,78 @@ Vera Christ`);
             }
           });
           
-          // Maximalpunkte für jede Teilaufgabe: Jede Teilaufgabe hat 2 Punkte
-          const maxPointsPerSubtask: Record<string, number> = {
-            'a': 2, 'b': 2, 'c': 2, 'd': 2
+          // Mappe Teilaufgaben zu Koordinaten-IDs
+          const subtaskToCoordinates: Record<string, string[]> = {
+            'a': ['a3a_x', 'a3a_y', 'a3b_x', 'a3b_y', 'a3c_x', 'a3c_y'],
+            'b': ['a3d_x', 'a3d_y', 'a3e_x', 'a3e_y', 'a3f_x', 'a3f_y'],
+            'c': ['a3g_x', 'a3g_y', 'a3h_x', 'a3h_y', 'a3i_x', 'a3i_y'],
+            'd': ['a3j_x', 'a3j_y', 'a3k_x', 'a3k_y', 'a3l_x', 'a3l_y']
           };
           
-          // Füge Konstruktionspunkte direkt nach jeder Teilaufgabe hinzu (in neuer Zeile)
+          // Maximalpunkte: 1.5 Punkte für Koordinaten (6 × 0.25) + 2 Punkte für Konstruktion = 3.5 Punkte pro Teilaufgabe
+          const maxCoordinatePoints = 1.5;
+          const maxConstructionPoints = 2;
+          
+          // Füge Bewertungsbox direkt nach jeder Teilaufgabe hinzu (in neuer Zeile)
           // WICHTIG: Gehe in umgekehrter Reihenfolge (d, c, b, a), damit die Positionierung nicht durcheinander kommt
           ['d', 'c', 'b', 'a'].forEach((subtask) => {
             const corr = correctionsBySubtask[subtask];
-            const maxPoints = maxPointsPerSubtask[subtask] || 2;
-            const achievedPoints = corr && corr.manualPoints !== undefined && corr.manualPoints !== null 
+            
+            // Berechne erreichte Koordinatenpunkte für diese Teilaufgabe
+            const coordinateIds = subtaskToCoordinates[subtask] || [];
+            let achievedCoordinatePoints = 0;
+            coordinateIds.forEach((coordId) => {
+              const studentAnswer = answers[coordId];
+              if (studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '') {
+                if (isAnswerCorrect(coordId, studentAnswer)) {
+                  achievedCoordinatePoints += 0.25;
+                }
+              }
+            });
+            
+            // Hole Konstruktionspunkte aus Korrekturen
+            const achievedConstructionPoints = corr && corr.manualPoints !== undefined && corr.manualPoints !== null 
               ? Number(corr.manualPoints) 
               : 0;
             
-            // Finde die Text-Spans für diese Teilaufgabe (nachdem Inputs ersetzt wurden)
-            const taskSpans = Array.from(doc.querySelectorAll('span')).filter(span => {
-              const text = span.textContent || '';
-              // Suche nach Spans mit A₁, B₁, C₁ etc. für diese Teilaufgabe
-              const subtaskLabel = subtask === 'a' ? '₁' : subtask === 'b' ? '₂' : subtask === 'c' ? '₃' : '₄';
-              return text.includes('A' + subtaskLabel) || text.includes('B' + subtaskLabel) || text.includes('C' + subtaskLabel);
-            });
+            // Finde den input-group Container für diese Teilaufgabe
+            // Suche nach dem input-group, der die Koordinaten dieser Teilaufgabe enthält
+            const subtaskLabel = subtask === 'a' ? '₁' : subtask === 'b' ? '₂' : subtask === 'c' ? '₃' : '₄';
             
-            if (taskSpans.length > 0) {
-              // Finde das letzte Span dieser Teilaufgabe
-              const lastSpan = taskSpans[taskSpans.length - 1] as HTMLElement;
-              
-              // Erstelle Konstruktionspunkte-Element in neuer Zeile (hellblaue Box)
-              const constructionPointsDiv = doc.createElement('div');
-              constructionPointsDiv.style.cssText = `
+            // Finde alle input-group Container
+            const allInputGroups = Array.from(doc.querySelectorAll('.input-group.full-width'));
+            let targetInputGroup: HTMLElement | null = null;
+            
+            // Suche nach dem input-group, der die Koordinaten dieser Teilaufgabe enthält
+            for (const inputGroup of allInputGroups) {
+              const label = inputGroup.querySelector('label');
+              if (label) {
+                const labelText = label.textContent || '';
+                // Prüfe ob dieser input-group zu dieser Teilaufgabe gehört
+                if (subtask === 'a' && labelText.includes('a)') && labelText.includes('A₁')) {
+                  targetInputGroup = inputGroup as HTMLElement;
+                  break;
+                } else if (subtask === 'b' && labelText.includes('b)') && labelText.includes('A₂')) {
+                  targetInputGroup = inputGroup as HTMLElement;
+                  break;
+                } else if (subtask === 'c' && labelText.includes('c)') && labelText.includes('A₃')) {
+                  targetInputGroup = inputGroup as HTMLElement;
+                  break;
+                } else if (subtask === 'd' && labelText.includes('d)') && labelText.includes('A₄')) {
+                  targetInputGroup = inputGroup as HTMLElement;
+                  break;
+                }
+              }
+            }
+            
+            if (targetInputGroup) {
+              // Erstelle Bewertungsbox in neuer Zeile (blauer Kasten)
+              const pointsBoxDiv = doc.createElement('div');
+              pointsBoxDiv.style.cssText = `
                 display: block !important;
                 width: 100% !important;
-                margin-top: 8px !important;
-                margin-bottom: 12px !important;
+                margin-top: 12px !important;
+                margin-bottom: 16px !important;
                 padding: 8px 12px !important;
                 background-color: #e3f2fd !important;
                 border: 1px solid #90caf9 !important;
@@ -3591,72 +3713,79 @@ Vera Christ`);
                 font-size: 0.9em !important;
                 clear: both !important;
               `;
-              constructionPointsDiv.innerHTML = `<strong>Konstruktion:</strong> ${achievedPoints.toFixed(2)} / ${maxPoints.toFixed(2)} Punkten`;
               
-              // Finde den Container des letzten Spans
-              let spanContainer = lastSpan.parentElement;
+              // Format: "xx / 1.5 Punkten + xx / 2 Konstruktionspunkte"
+              const coordinatePointsText = achievedCoordinatePoints % 1 === 0 
+                ? `${achievedCoordinatePoints.toFixed(0)}` 
+                : `${achievedCoordinatePoints.toFixed(2)}`;
+              const constructionPointsText = achievedConstructionPoints % 1 === 0
+                ? `${achievedConstructionPoints.toFixed(0)}`
+                : `${achievedConstructionPoints.toFixed(2)}`;
               
-              // Füge direkt nach dem Container ein (neue Zeile)
-              if (spanContainer && spanContainer.parentElement) {
-                // Füge nach dem Container ein
-                spanContainer.parentElement.insertBefore(constructionPointsDiv, spanContainer.nextSibling);
-              } else if (lastSpan.parentElement) {
-                // Fallback: Füge nach dem Span selbst ein
-                lastSpan.parentElement.insertBefore(constructionPointsDiv, lastSpan.nextSibling);
+              pointsBoxDiv.innerHTML = `${coordinatePointsText} / ${maxCoordinatePoints.toFixed(1)} Punkten + ${constructionPointsText} / ${maxConstructionPoints.toFixed(0)} Konstruktionspunkten`;
+              
+              // Füge direkt nach dem input-group ein (neue Zeile)
+              if (targetInputGroup.parentElement) {
+                targetInputGroup.parentElement.insertBefore(pointsBoxDiv, targetInputGroup.nextSibling);
               }
             }
           });
           
-          // Finde das letzte Element von Aufgabe 3 (die letzte Konstruktionspunkte-Box für Teilaufgabe d)
-          const allConstructionBoxes = Array.from(doc.querySelectorAll('div')).filter(div => {
+          // Finde das letzte Element von Aufgabe 3 (die letzte Bewertungsbox für Teilaufgabe d)
+          const allPointsBoxes = Array.from(doc.querySelectorAll('div')).filter(div => {
             const text = div.textContent || '';
-            return text.includes('Konstruktion:') && text.includes('Punkten');
+            return text.includes('Punkten') && text.includes('Konstruktionspunkten');
           });
           
           let lastTask3Element: HTMLElement | null = null;
-          if (allConstructionBoxes.length > 0) {
-            lastTask3Element = allConstructionBoxes[allConstructionBoxes.length - 1] as HTMLElement;
+          if (allPointsBoxes.length > 0) {
+            lastTask3Element = allPointsBoxes[allPointsBoxes.length - 1] as HTMLElement;
           }
           
-          // Füge Kommentar ganz am Ende hinzu (falls vorhanden) - NACH den Konstruktionspunkten
-          let commentBox: HTMLElement | null = null;
-          if (task3CommentForReplacement) {
-            commentBox = doc.createElement('div');
-            commentBox.style.cssText = `
-              margin-top: 16px;
-              margin-bottom: 16px;
-              padding: 12px 16px;
-              background-color: #c8e6c9;
-              border: 2px solid #4caf50;
-              border-left: 5px solid #4caf50;
-              border-radius: 6px;
-              font-size: 0.95em;
-              line-height: 1.6;
-              display: block;
-              width: 100%;
-            `;
+          // Füge Kommentar ganz am Ende hinzu (falls vorhanden) - NACH allen Bewertungsboxen
+          // WICHTIG: Nur einmal hinzufügen, nicht doppelt!
+          if (task3CommentForReplacement && lastTask3Element) {
+            // Prüfe ob bereits ein Kommentar-Kasten existiert
+            const existingCommentBox = Array.from(doc.querySelectorAll('div')).find(div => {
+              const text = div.textContent || '';
+              return text.includes('💬 Kommentar:') || text.includes('Kommentar:');
+            });
             
-            const titleDiv = doc.createElement('div');
-            titleDiv.style.cssText = 'font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px;';
-            titleDiv.textContent = '💬 Kommentar:';
-            
+            if (!existingCommentBox) {
+              const commentBox = doc.createElement('div');
+              commentBox.style.cssText = `
+                margin-top: 16px;
+                margin-bottom: 16px;
+                padding: 12px 16px;
+                background-color: #c8e6c9;
+                border: 2px solid #4caf50;
+                border-left: 5px solid #4caf50;
+                border-radius: 6px;
+                font-size: 0.95em;
+                line-height: 1.6;
+                display: block;
+                width: 100%;
+              `;
+              
+              const titleDiv = doc.createElement('div');
+              titleDiv.style.cssText = 'font-weight: bold; font-size: 1.05em; color: #2e7d32; margin-bottom: 8px;';
+              titleDiv.textContent = '💬 Kommentar:';
+              
               const commentDiv = doc.createElement('div');
-            commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
-            commentDiv.textContent = task3CommentForReplacement;
-            
-            commentBox.appendChild(titleDiv);
-            commentBox.appendChild(commentDiv);
-            
-            if (lastTask3Element && lastTask3Element.parentElement) {
-              lastTask3Element.parentElement.insertBefore(commentBox, lastTask3Element.nextSibling);
-              lastTask3Element = commentBox;
-            } else {
-              doc.body.appendChild(commentBox);
-              lastTask3Element = commentBox;
+              commentDiv.style.cssText = 'color: #1b5e20; white-space: pre-wrap;';
+              commentDiv.textContent = task3CommentForReplacement;
+              
+              commentBox.appendChild(titleDiv);
+              commentBox.appendChild(commentDiv);
+              
+              if (lastTask3Element.parentElement) {
+                lastTask3Element.parentElement.insertBefore(commentBox, lastTask3Element.nextSibling);
+                lastTask3Element = commentBox;
+              }
             }
           }
           
-          // FINALE BEREINIGUNG: Entferne ALLES nach dem letzten Aufgabe-3-Element (Konstruktionspunkte oder Kommentar)
+          // FINALE BEREINIGUNG: Entferne ALLES nach dem letzten Aufgabe-3-Element (Bewertungsbox oder Kommentar)
           if (lastTask3Element) {
             // Finde das Container-Element, das das letzte Element enthält
             let container = lastTask3Element.parentElement;
