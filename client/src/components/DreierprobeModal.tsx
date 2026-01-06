@@ -578,7 +578,7 @@ Vera Christ`);
     rightSection.innerHTML = `
       <div style="text-align: center;">
         <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Punkte</div>
-        <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+        <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(2)} / ${maxTotalPoints}</div>
       </div>
       <div style="text-align: center;">
         <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
@@ -883,7 +883,7 @@ Vera Christ`);
         rightSection.innerHTML = `
           <div style="text-align: center;">
             <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Punkte</div>
-            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(2)} / ${maxTotalPoints}</div>
           </div>
           <div style="text-align: center;">
             <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Note</div>
@@ -1352,7 +1352,7 @@ Vera Christ`);
            fullContext.includes('erreicht') && fullContext.includes('Punkt'))) {
         text = text.replace(/__+\s*\/\s*__+/g, (match) => {
           updated = true;
-          return `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
+          return `${totalAchieved.toFixed(2)} / ${maxTotalPoints}`;
         });
       }
       
@@ -1395,7 +1395,7 @@ Vera Christ`);
         const value = inputEl.value || '';
         const placeholder = inputEl.placeholder || '';
         if ((value.includes('__') || placeholder.includes('__')) && context.includes('/')) {
-          inputEl.value = `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
+          inputEl.value = `${totalAchieved.toFixed(2)} / ${maxTotalPoints}`;
         }
       }
       
@@ -1800,7 +1800,7 @@ Vera Christ`);
     rightSection.innerHTML = `
       <div style="text-align: center;">
         <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Punkte</div>
-        <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+        <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(2)} / ${maxTotalPoints}</div>
       </div>
       <div style="text-align: center;">
         <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
@@ -2098,7 +2098,7 @@ Vera Christ`);
         rightSection.innerHTML = `
           <div style="text-align: center;">
             <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Punkte</div>
-            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(2)} / ${maxTotalPoints}</div>
           </div>
           <div style="text-align: center;">
             <div style="font-size: 0.75em; opacity: 0.9; margin-bottom: 2px;">Note</div>
@@ -2321,7 +2321,7 @@ Vera Christ`);
            fullContext.includes('erreicht') && fullContext.includes('Punkt'))) {
         text = text.replace(/__+\s*\/\s*__+/g, (match) => {
           updated = true;
-          return `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
+          return `${totalAchieved.toFixed(2)} / ${maxTotalPoints}`;
         });
       }
       
@@ -2363,7 +2363,7 @@ Vera Christ`);
         const value = inputEl.value || '';
         const placeholder = inputEl.placeholder || '';
         if ((value.includes('__') || placeholder.includes('__')) && context.includes('/')) {
-          inputEl.value = `${totalAchieved.toFixed(1)} / ${maxTotalPoints}`;
+          inputEl.value = `${totalAchieved.toFixed(2)} / ${maxTotalPoints}`;
         }
       }
       
@@ -3225,7 +3225,7 @@ Vera Christ`);
         rightSection.innerHTML = `
           <div style="text-align: center;">
             <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Punkte</div>
-            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(1)} / ${maxTotalPoints}</div>
+            <div style="font-size: 1.2em; font-weight: bold;">${totalAchieved.toFixed(2)} / ${maxTotalPoints}</div>
           </div>
           <div style="text-align: center;">
             <div style="font-size: 0.85em; opacity: 0.9; margin-bottom: 4px;">Note</div>
@@ -3502,7 +3502,7 @@ Vera Christ`);
           
           if (taskNumberDiv) {
             const points = taskPoints[taskNum];
-            const pointsText = `${points.achieved.toFixed(1)} / ${points.max} Punkte`;
+            const pointsText = `${points.achieved.toFixed(2)} / ${points.max} Punkte`;
             const pointsSpan = doc.createElement('span');
             pointsSpan.style.cssText = 'float: right; font-weight: bold; color: #1976d2; font-size: 0.95em; margin-left: 10px;';
             pointsSpan.textContent = pointsText;
@@ -3833,7 +3833,7 @@ Vera Christ`);
                 ? `${achievedConstructionPoints.toFixed(0)}`
                 : `${achievedConstructionPoints.toFixed(2)}`;
               
-              pointsBoxDiv.innerHTML = `${coordinatePointsText} / ${maxCoordinatePoints.toFixed(1)} Punkten + ${constructionPointsText} / ${maxConstructionPoints.toFixed(0)} Konstruktionspunkten`;
+              pointsBoxDiv.innerHTML = `${coordinatePointsText} / ${maxCoordinatePoints.toFixed(2)} Punkten + ${constructionPointsText} / ${maxConstructionPoints.toFixed(0)} Konstruktionspunkten`;
               
               // Füge direkt nach dem input-group ein (neue Zeile)
               if (targetInputGroup.parentElement) {
@@ -4075,7 +4075,7 @@ Vera Christ`);
                         children: [new Paragraph(sub.student.name)]
                       }),
                       new DocxTableCell({
-                        children: [new Paragraph(`${sub.totalPoints.toFixed(1)} / ${maxTotalPoints}`)]
+                        children: [new Paragraph(`${sub.totalPoints.toFixed(2)} / ${maxTotalPoints}`)]
                       }),
                       new DocxTableCell({
                         children: [new Paragraph(sub.gradeString)]

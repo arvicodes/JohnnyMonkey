@@ -1900,6 +1900,18 @@
             return { text: gradeText, number: grade, withTendency: gradeWithTendency };
         }
 
+        // Richtige Antworten für Aufgabe 1 (Lückentext)
+        const correctAnswersTask1 = {
+            a1a: 'Mittelsenkrechte',
+            a1b: 'Winkelhalbierende',
+            a1c: 'Achsenspiegelung', // Alternative: Geradenspiegelung
+            a1d: 'Punktspiegelung', // Alternative: Zentralspiegelung
+            a1e: 'Verschiebung', // Alternative: Translation
+            a1f: 'Drehung', // Alternative: Rotation
+            a1g: 'Kongruenzabbildung', // Alternative: Isometrie
+            a1h: 'Doppelspiegelung'
+        };
+
         // Richtige Antworten für Multiple Choice (Aufgabe 2)
         const correctAnswers = {
             a2a: 'b',  // Doppelspiegelung an sich schneidenden Geraden → Drehung
@@ -1932,14 +1944,15 @@
             let totalPoints = 0;
             let achievedPoints = 0;
             
-            // Aufgabe 1: Text-Inputs (Lückentext)
+            // Aufgabe 1: Text-Inputs (Lückentext) - Prüfe ob Antwort richtig ist
             ['a1a', 'a1b', 'a1c', 'a1d', 'a1e', 'a1f', 'a1g', 'a1h'].forEach(key => {
                 const input = document.getElementById(key);
                 if (input) {
                     totalPoints += 1;
-                    if (input.value && input.value.trim() !== '') {
-                        // Einfache Bewertung: wenn ausgefüllt, gibt es den Punkt
-                        // (Korrektur erfolgt durch Lehrer)
+                    const studentAnswer = (input.value || '').trim().toLowerCase();
+                    const correctAnswer = (correctAnswersTask1[key] || '').trim().toLowerCase();
+                    // Prüfe ob die Antwort richtig ist (Groß-/Kleinschreibung ignorieren)
+                    if (studentAnswer === correctAnswer) {
                         achievedPoints += 1;
                     }
                 }

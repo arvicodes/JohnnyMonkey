@@ -1906,7 +1906,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               {/* Info Row: Chips */}
               <Box display="flex" gap={0.5} flexWrap="wrap" alignItems="center">
                     <Chip
-                      label={`${selectedSubmission.totalPoints.toFixed(1)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(1)} auto)`}
+                      label={`${selectedSubmission.totalPoints.toFixed(2)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(2)} auto)`}
                       size="small"
                     sx={{ 
                         bgcolor: '#c8e6c9', 
@@ -2040,11 +2040,24 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     totalPoints += maxPoints;
                     
                     if (taskNum === '1') {
-                      // Aufgabe 1: Manuelle Korrektur
-                      const correction = corrections[taskId] || {};
-                      const points = correction.points || 0;
-                      manualPoints += points;
-                      achievedPoints += points;
+                      // Aufgabe 1: Manuelle Korrektur pro Input-Feld, aber zeige automatische Punkte wenn keine manuelle Korrektur vorhanden
+                      // Der Key sollte `${selectedSubmission.id}_${taskId}` sein (z.B. "submissionId_a1a")
+                      const correctionKey = selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId;
+                      const correction = corrections[correctionKey] || {};
+                      
+                      // Wenn manuelle Korrektur vorhanden, verwende diese, sonst automatische Punkte
+                      if (correction.points !== undefined && correction.points !== null) {
+                        // Manuelle Korrektur vorhanden
+                        const points = Number(correction.points) || 0;
+                        manualPoints += points;
+                        achievedPoints += points;
+                      } else {
+                        // Keine manuelle Korrektur: verwende automatische Punkte
+                        if (isCorrect === true) {
+                          autoPoints += maxPoints;
+                          achievedPoints += maxPoints;
+                        }
+                      }
                     } else if (taskNum === '2') {
                       // Aufgabe 2: Automatische Korrektur
                     if (isCorrect === true) {
@@ -2517,7 +2530,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                         // Aufgabe 1 und 2: Einzelne Antworten
                         taskAnswers.map(({ taskId, answer, isCorrect, points }) => {
                 const needsManualCorrection = tasksWithRechenweg.includes(taskNum);
-                const correction = corrections[taskNum] || {};
+                // Für Aufgabe 1: Verwende taskId (z.B. "a1a") statt taskNum ("1")
+                const correctionKey = taskNum === '1' 
+                  ? (selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId)
+                  : (selectedSubmission ? `${selectedSubmission.id}_${taskNum}` : taskNum);
+                const correction = corrections[correctionKey] || {};
                         
                         // Bestimme Hintergrundfarbe basierend auf Bewertung
                         let bgColor = '#f5f5f5';
@@ -2676,12 +2693,20 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                                         value = !isNaN(numValue) ? numValue : undefined;
                                       }
                                       
+                                    // Für Aufgabe 1: Verwende taskId (z.B. "a1a") statt taskNum ("1")
+                                    const correctionKey = taskNum === '1' 
+                                      ? (selectedSubmission ? `${selectedSubmission.id}_${taskId}` : taskId)
+                                      : (selectedSubmission ? `${selectedSubmission.id}_${taskNum}` : taskNum);
                                     setCorrections(prev => ({
                                       ...prev,
-                                      [taskNum]: { ...prev[taskNum], points: value }
+                                      [correctionKey]: { ...prev[correctionKey], points: value }
                                     }));
                                   }}
-                                  onBlur={() => saveCorrection(taskNum, correction.points, correction.comment)}
+                                  onBlur={() => {
+                                    // Für Aufgabe 1: Verwende taskId (z.B. "a1a") statt taskNum ("1")
+                                    const saveTaskNumber = taskNum === '1' ? taskId : taskNum;
+                                    saveCorrection(saveTaskNumber, correction.points, correction.comment);
+                                  }}
                                   inputProps={{ min: 0, max: 10, step: 0.5 }}
                                   size="small"
                                   sx={{ 
@@ -2761,7 +2786,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             <CardContent sx={{ p: 0.5, '&:last-child': { pb: 0.5 } }}>
                 <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap alignItems="center">
                   <Chip
-                    label={`${selectedSubmission.totalPoints.toFixed(1)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(1)} auto)`}
+                    label={`${selectedSubmission.totalPoints.toFixed(2)} von ${maxTotalPoints} (davon ${selectedSubmission.autoPoints.toFixed(2)} auto)`}
                     size="small"
                     sx={{ bgcolor: '#c8e6c9', color: '#2e7d32', fontWeight: 600, fontSize: '0.7rem', height: 24 }}
                   />
