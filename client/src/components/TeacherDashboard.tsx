@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import KACorrectionMode from './KACorrectionMode';
 import TeacherMessageBox from './TeacherMessageBox';
 import { FlashcardLearningModal } from './StudentDashboard';
+import { RIDDLES } from './riddles';
 import {
   Box,
   Typography,
@@ -693,6 +694,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [showKACorrectionMode, setShowKACorrectionMode] = useState(false);
   const [selectedKAFilePath, setSelectedKAFilePath] = useState<string>('');
   const [showTeacherMessageBox, setShowTeacherMessageBox] = useState(false);
+  const [showRiddleOverview, setShowRiddleOverview] = useState(false);
   
   // Nachricht an Schüler senden
   const [showSendMessageDialog, setShowSendMessageDialog] = useState(false);
@@ -5472,6 +5474,73 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     🎄
                   </Typography>
                 </IconButton>
+                {/* Rätseljahr 2026 Button */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => setShowRiddleOverview(true)}
+                    sx={{
+                      p: 0.5,
+                      minWidth: 32,
+                      width: 32,
+                      height: 32,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(102, 126, 234, 0.3)',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(102, 126, 234, 0.6)',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="Rätseljahr 2026 - Übersicht"
+                  >
+                    {/* Rotes Geschenk mit gelber Schleife */}
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        {/* Rote Geschenkbox mit Schatten */}
+                        <rect x="4" y="11" width="16" height="13" fill="#DC143C" rx="1.5" stroke="#8B0000" strokeWidth="2" />
+                        
+                        {/* Gelber vertikaler Streifen in der Mitte */}
+                        <rect x="11" y="11" width="2" height="13" fill="#FFD700" />
+                        
+                        {/* Gelbe Schleife oben */}
+                        {/* Vertikaler Teil der Schleife */}
+                        <rect x="11" y="2" width="2" height="10" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1" />
+                        
+                        {/* Horizontales Band */}
+                        <rect x="7" y="6" width="10" height="3" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1.5" />
+                        
+                        {/* Linke Schleife (nach außen gebogen) */}
+                        <ellipse cx="8.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                        {/* Rechte Schleife (nach außen gebogen) */}
+                        <ellipse cx="15.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                        
+                        {/* Linkes Schleifenende (diagonal geschnitten) */}
+                        <path d="M 6.5 7 L 6.5 10 L 6 10.5 L 6.5 11 L 7 10.5 L 7 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                        {/* Rechtes Schleifenende (diagonal geschnitten) */}
+                        <path d="M 17.5 7 L 17.5 10 L 18 10.5 L 17.5 11 L 17 10.5 L 17 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                      </svg>
+                    </Box>
+                  </IconButton>
+                </Box>
               </Box>
             </Box>
           </Box>
@@ -10289,6 +10358,148 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         teacherDeck={selectedFlashcardDeck}
         teacherId={userId}
       />
+
+      {/* Rätseljahr 2026 Übersicht Dialog */}
+      <Dialog
+        open={showRiddleOverview}
+        onClose={() => setShowRiddleOverview(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            maxHeight: '95vh',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: '#667eea',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          py: 0.75,
+          px: 1.5,
+          position: 'relative',
+          minHeight: 40
+        }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem', pr: 4 }}>
+            🎊 Rätseljahr 2026 - Übersicht ({RIDDLES.length} Rätsel)
+          </Typography>
+          <IconButton
+            onClick={() => setShowRiddleOverview(false)}
+            size="small"
+            sx={{ 
+              position: 'absolute',
+              right: 4,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'white',
+              p: 0.25,
+              minWidth: 20,
+              width: 20,
+              height: 20,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1.5, pb: 1, px: 2 }}>
+          <TableContainer sx={{ maxHeight: '80vh', overflowY: 'auto' }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: '#f5f5f5', py: 0.5, width: '4%' }}>#</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: '#f5f5f5', py: 0.5, width: '8%' }}>Typ</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: '#f5f5f5', py: 0.5, width: '20%' }}>Titel</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: '#f5f5f5', py: 0.5, width: '35%' }}>Frage</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: '#f5f5f5', py: 0.5, width: '20%' }}>Tipp</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: '#f5f5f5', py: 0.5, width: '8%' }}>Lösung</TableCell>
+                  <TableCell sx={{ fontWeight: 700, bgcolor: '#f5f5f5', py: 0.5, width: '5%' }}></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {RIDDLES.map((riddle) => (
+                  <TableRow key={riddle.id} hover>
+                    <TableCell sx={{ py: 0.5, fontWeight: 600 }}>#{riddle.id}</TableCell>
+                    <TableCell sx={{ py: 0.5 }}>
+                      <Chip 
+                        label={riddle.type} 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: riddle.type === 'number' ? '#e3f2fd' : 
+                                   riddle.type === 'math' ? '#fff3e0' :
+                                   riddle.type === 'logic' ? '#f3e5f5' : '#e8f5e9',
+                          fontSize: '0.65rem',
+                          height: 20
+                        }} 
+                      />
+                    </TableCell>
+                    <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>{riddle.title}</TableCell>
+                    <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.3 }}>
+                        {riddle.question.length > 80 ? `${riddle.question.substring(0, 80)}...` : riddle.question}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>
+                      <Typography variant="body2" sx={{ fontSize: '0.75rem', fontStyle: 'italic', color: '#856404' }}>
+                        {riddle.hint.length > 60 ? `${riddle.hint.substring(0, 60)}...` : riddle.hint}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ py: 0.5, fontWeight: 700, color: '#2e7d32', fontSize: '0.85rem' }}>
+                      {riddle.answer}
+                    </TableCell>
+                    <TableCell sx={{ py: 0.5 }}>
+                      <Tooltip 
+                        title={
+                          <Box sx={{ p: 0.5 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                              {riddle.title}
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
+                              <strong>Frage:</strong> {riddle.question}
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem', fontStyle: 'italic' }}>
+                              <strong>Tipp:</strong> {riddle.hint}
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem', fontWeight: 600 }}>
+                              <strong>Lösung:</strong> {riddle.answer}
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                              {riddle.explanation}
+                            </Typography>
+                          </Box>
+                        }
+                        arrow
+                        placement="left"
+                        componentsProps={{
+                          tooltip: {
+                            sx: {
+                              bgcolor: 'rgba(0, 0, 0, 0.9)',
+                              maxWidth: 400,
+                              fontSize: '0.75rem',
+                              p: 1
+                            }
+                          }
+                        }}
+                      >
+                        <IconButton size="small" sx={{ p: 0.5 }}>
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1, bgcolor: '#f5f5f5' }}>
+          <Button onClick={() => setShowRiddleOverview(false)} variant="contained" size="small">
+            Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

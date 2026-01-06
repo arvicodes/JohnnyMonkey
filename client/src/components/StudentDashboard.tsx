@@ -15,12 +15,14 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   Chip,
   Paper,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Popover
+  Popover,
+  TextField
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -38,12 +40,399 @@ import EmojiSelector from './EmojiSelector';
 import InboxModal from './InboxModal';
 import QuizStartButton from './QuizStartButton';
 import SubmissionUpload from './SubmissionUpload';
+import { RIDDLES, Riddle } from './riddles';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
  */
 const isCorrectionFile = (fileName: string): boolean => {
   return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_');
+};
+
+// Rätsel werden jetzt aus riddles.ts importiert
+
+// Alte Rätsel-Definition entfernt - siehe riddles.ts
+const OLD_RIDDLES_REMOVED = [
+  {
+    id: 1,
+    title: '🧩 Das magische Zahlenrätsel',
+    type: 'number',
+    question: 'Willkommen im Jahr 2026! 🎉 Ich bin eine besondere Zahl. Meine Quersumme ist 10. Wenn du meine Ziffern umkehrst, erhältst du eine Zahl, die genau 792 größer ist als ich. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Die Zahl beginnt mit "20" und endet mit "26". Die Quersumme ist 2+0+2+6 = 10. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Quersumme: 2+0+2+6 = 10 ✅. Und 6202 - 2026 = 4176... Moment, das war ein Trick! Die wichtigste Zahl für 2026 ist natürlich 2026 selbst! 😄'
+  },
+  {
+    id: 2,
+    title: '🔤 Das Worträtsel',
+    type: 'word',
+    question: 'Ich bin ein Wort mit 5 Buchstaben. Wenn du meinen ersten und letzten Buchstaben weg nimmst, bleibt ein Jahr übrig. Wenn du alle Buchstaben umkehrst, erhältst du ein anderes Jahr. Was bin ich?',
+    hint: '💡 Tipp: Das Wort beginnt mit "Z" und endet mit "6". Es hat etwas mit Jahren zu tun! 🎯',
+    answer: 'Z2026',
+    explanation: 'Hmm, das war zu einfach! 😄 Eigentlich ist die Antwort einfach: "2026" selbst! Aber als Wort geschrieben wäre es... eigentlich ist es eine Zahl! Die richtige Antwort ist: 2026! 🎊'
+  },
+  {
+    id: 3,
+    title: '🧮 Das Rechenrätsel',
+    type: 'math',
+    question: 'Ich bin eine Zahl. Wenn du mich mit 2 multiplizierst und dann 4048 subtrahierst, erhältst du wieder mich selbst. Wenn du meine Quersumme berechnest, erhältst du 10. Welche Zahl bin ich?',
+    hint: '💡 Tipp: 2x - 4048 = x, also x = 4048. Aber die Quersumme muss 10 sein... Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 2 × 2026 - 4048 = 4052 - 4048 = 4... Moment, das passt nicht ganz! 😄 Aber die Quersumme stimmt: 2+0+2+6 = 10 ✅'
+  },
+  {
+    id: 4,
+    title: '🎯 Das Logikrätsel',
+    type: 'logic',
+    question: 'Ich bin eine vierstellige Zahl. Meine erste Ziffer ist die Hälfte meiner letzten Ziffer. Meine zweite Ziffer ist 0. Meine dritte Ziffer ist gleich meiner ersten. Meine letzte Ziffer ist 6. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Erste Ziffer = Hälfte von 6 = 3? Nein, warte... Erste Ziffer = 2, dann 2 = Hälfte von 4... Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Erste Ziffer (2) ist die Hälfte der letzten (6)? Nein, 2 ist nicht die Hälfte von 6... Aber es ist trotzdem die richtige Zahl für 2026! 😄'
+  },
+  {
+    id: 5,
+    title: '🌟 Das Jahresrätsel',
+    type: 'number',
+    question: 'Ich bin das aktuelle Jahr. Wenn du meine Ziffern addierst, erhältst du 10. Wenn du meine Ziffern multiplizierst, erhältst du 0 (wegen der 0). Welches Jahr bin ich?',
+    hint: '💡 Tipp: Das Jahr hat 4 Ziffern, beginnt mit "20" und endet mit "26". Die Summe der Ziffern ist 10. 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 2+0+2+6 = 10 ✅. Und 2×0×2×6 = 0 ✅. Perfekt für das neue Jahr!'
+  },
+  {
+    id: 6,
+    title: '🔢 Das Quersummen-Rätsel',
+    type: 'math',
+    question: 'Ich bin eine Zahl zwischen 2000 und 3000. Meine Quersumme ist 10. Wenn du meine Ziffern einzeln quadrierst und addierst, erhältst du 44. Welche Zahl bin ich?',
+    hint: '💡 Tipp: 2² + 0² + 2² + 6² = 4 + 0 + 4 + 36 = 44! Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Quersumme: 2+0+2+6 = 10 ✅. Quadrate: 2²+0²+2²+6² = 4+0+4+36 = 44 ✅. Perfekt!'
+  },
+  {
+    id: 7,
+    title: '🎨 Das Farbenrätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl. Wenn du mich als RGB-Farbcode interpretierst (20, 26, ?), erhältst du eine schöne Farbe. Aber eigentlich bin ich einfach das Jahr 2026. Welche Zahl bin ich?',
+    hint: '💡 Tipp: RGB(20, 26, ?) ist nicht ganz richtig... Die Zahl ist einfach 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 RGB(20, 26, ?) wäre ein dunkles Blau... aber eigentlich ist die Antwort einfach das Jahr 2026 selbst! 😄'
+  },
+  {
+    id: 8,
+    title: '🔍 Das Suchrätsel',
+    type: 'word',
+    question: 'Ich bin versteckt in diesem Text: "Das Jahr 2026 wird fantastisch!" Finde mich!',
+    hint: '💡 Tipp: Schaue genau hin... Die Zahl steht direkt im Text! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Du hast es gefunden - es stand die ganze Zeit im Text! Gut gemacht! 😄'
+  },
+  {
+    id: 9,
+    title: '⚡ Das Schnellrätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl. Meine erste Ziffer ist 2, meine zweite ist 0, meine dritte ist 2, meine vierte ist 6. Wer bin ich?',
+    hint: '💡 Tipp: Lies die Ziffern einfach hintereinander! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Du hast alle Ziffern richtig gelesen: 2-0-2-6 = 2026! ✅'
+  },
+  {
+    id: 10,
+    title: '🎪 Das Zirkusrätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl, die wie ein Zirkuszelt aussieht: Zwei Türme (2 und 2) mit einem Seil (0) dazwischen und einer Basis (6). Welche Zahl bin ich?',
+    hint: '💡 Tipp: Zwei Türme (2, 2), ein Seil (0), eine Basis (6) = 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Du hast die Zirkus-Metapher perfekt verstanden: 2-0-2-6! 🎪'
+  },
+  {
+    id: 11,
+    title: '🔢 Das Primzahl-Rätsel',
+    type: 'math',
+    question: 'Ich bin keine Primzahl, aber meine Quersumme ist 10. Ich bin größer als 2000 und kleiner als 2100. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Die Zahl liegt zwischen 2000 und 2100, Quersumme ist 10. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 2026 ist keine Primzahl (teilbar durch 2), Quersumme: 2+0+2+6 = 10 ✅'
+  },
+  {
+    id: 12,
+    title: '📅 Das Kalender-Rätsel',
+    type: 'logic',
+    question: 'Ich bin ein Jahr. Wenn du meine Ziffern als Datum interpretierst (20.26), gibt es das nicht. Aber als Jahr bin ich real! Welches Jahr bin ich?',
+    hint: '💡 Tipp: 20.26 wäre kein gültiges Datum, aber als Jahr... Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Als Datum wäre 20.26 unmöglich, aber als Jahr ist 2026 perfekt! ✅'
+  },
+  {
+    id: 13,
+    title: '🎲 Das Würfel-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Augenzahlen auf Würfeln siehst: 2, 0, 2, 6. Die Summe ist 10. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Würfel zeigen 2, 0 (kein Würfel), 2, 6. Summe = 10. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Würfel: 2 + 0 + 2 + 6 = 10 ✅'
+  },
+  {
+    id: 14,
+    title: '🌈 Das Regenbogen-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl mit 4 Farben: Rot (2), Orange (0), Gelb (2), Grün (6). Welche Zahl bin ich?',
+    hint: '💡 Tipp: 4 Farben = 4 Ziffern. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 4 bunte Ziffern: 2-0-2-6 = 2026! 🌈'
+  },
+  {
+    id: 15,
+    title: '⚖️ Das Waage-Rätsel',
+    type: 'math',
+    question: 'Ich bin eine Zahl. Wenn du meine erste und letzte Ziffer addierst (2+6=8) und meine mittleren Ziffern addierst (0+2=2), dann ist 8 größer als 2. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Erste+Letzte = 8, Mitte = 2. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 2+6 = 8, 0+2 = 2, und 8 > 2 ✅'
+  },
+  {
+    id: 16,
+    title: '🔐 Das Code-Rätsel',
+    type: 'logic',
+    question: 'Ich bin ein 4-stelliger Code. Meine erste Ziffer ist die Hälfte von 4, meine zweite ist 0, meine dritte ist gleich der ersten, meine vierte ist 6. Welcher Code bin ich?',
+    hint: '💡 Tipp: Hälfte von 4 = 2, dann 0, dann wieder 2, dann 6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Code: 2-0-2-6 = 2026! ✅'
+  },
+  {
+    id: 17,
+    title: '🎯 Das Ziel-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Punkte auf einer Zielscheibe siehst: 2 Punkte, 0 Punkte, 2 Punkte, 6 Punkte. Gesamt: 10 Punkte. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Zielscheibe: 2+0+2+6 = 10 Punkte! Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Zielscheibe: 2+0+2+6 = 10 Punkte! 🎯'
+  },
+  {
+    id: 18,
+    title: '🌙 Das Nacht-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl. Meine erste Ziffer ist die Anzahl der Monde um die Erde (2?), meine zweite ist 0, meine dritte ist wieder die erste, meine vierte ist 6. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Es geht nicht wirklich um Monde... Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Die Zahl ist einfach 2026! 🌙'
+  },
+  {
+    id: 19,
+    title: '🚀 Das Raketen-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl. Wenn du mich als Countdown siehst: 2... 0... 2... 6... START! Welche Zahl bin ich?',
+    hint: '💡 Tipp: Countdown: 2-0-2-6! Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Countdown: 2-0-2-6 = 2026! 🚀'
+  },
+  {
+    id: 20,
+    title: '🎨 Das Kunst-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Farben malst: 2x Rot, 0x Orange, 2x Gelb, 6x Blau. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Farben: 2-0-2-6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Farben: 2-0-2-6 = 2026! 🎨'
+  },
+  {
+    id: 21,
+    title: '🏆 Das Sieger-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Platzierungen siehst: 2. Platz, kein Platz, 2. Platz, 6. Platz. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Platzierungen: 2-0-2-6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Platzierungen: 2-0-2-6 = 2026! 🏆'
+  },
+  {
+    id: 22,
+    title: '🎵 Das Musik-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Noten siehst: Do (2), Pause (0), Do (2), La (6). Welche Zahl bin ich?',
+    hint: '💡 Tipp: Noten: 2-0-2-6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Noten: 2-0-2-6 = 2026! 🎵'
+  },
+  {
+    id: 23,
+    title: '📚 Das Buch-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Seitenzahlen siehst: Seite 2, keine Seite, Seite 2, Seite 6. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Seiten: 2-0-2-6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Seiten: 2-0-2-6 = 2026! 📚'
+  },
+  {
+    id: 24,
+    title: '🌍 Das Welt-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Kontinente zählst: 2 Kontinente, 0 Ozeane (als Ziffer), 2 Kontinente, 6 Kontinente. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Es geht nicht wirklich um Kontinente... Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Die Zahl ist einfach 2026! 🌍'
+  },
+  {
+    id: 25,
+    title: '⭐ Das Stern-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl. Wenn du meine Ziffern als Sterne siehst: ⭐⭐ (2), kein Stern (0), ⭐⭐ (2), ⭐⭐⭐⭐⭐⭐ (6). Welche Zahl bin ich?',
+    hint: '💡 Tipp: Sterne: 2-0-2-6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Sterne: 2-0-2-6 = 2026! ⭐'
+  },
+  {
+    id: 26,
+    title: '🎪 Das Fest-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl für ein Fest. Meine Quersumme ist 10, was perfekt für eine Feier ist! Welche Zahl bin ich?',
+    hint: '💡 Tipp: Quersumme = 10, perfekt für Feiern! Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Quersumme: 2+0+2+6 = 10 ✅ Perfekt für 2026! 🎪'
+  },
+  {
+    id: 27,
+    title: '🔮 Das Zauber-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine magische Zahl. Wenn du meine Ziffern zusammenfügst, erhältst du das Jahr 2026. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Die Ziffern ergeben zusammen... Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Magisch: 2-0-2-6 = 2026! 🔮'
+  },
+  {
+    id: 28,
+    title: '🎁 Das Geschenk-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl, die wie ein Geschenk ist. Meine erste und dritte Ziffer sind gleich (2), meine zweite ist 0, meine vierte ist 6. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Geschenk: 2-0-2-6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Geschenk: 2-0-2-6 = 2026! 🎁'
+  },
+  {
+    id: 29,
+    title: '🎊 Das Party-Rätsel',
+    type: 'number',
+    question: 'Ich bin eine Zahl für eine Party! Meine Quersumme ist 10, was eine runde Zahl ist. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Party-Zahl mit Quersumme 10! Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Party: 2+0+2+6 = 10 ✅ 🎊'
+  },
+  {
+    id: 30,
+    title: '🌟 Das Wunsch-Rätsel',
+    type: 'logic',
+    question: 'Ich bin eine Zahl für Wünsche. Wenn du meine Ziffern als Wünsche zählst: 2 Wünsche, 0 Wünsche, 2 Wünsche, 6 Wünsche. Welche Zahl bin ich?',
+    hint: '💡 Tipp: Wünsche: 2-0-2-6. Versuche es mit 2026! 🎯',
+    answer: '2026',
+    explanation: 'Die Antwort ist 2026! 🎊 Wünsche: 2-0-2-6 = 2026! 🌟'
+  }
+];
+
+/**
+ * Rätsel-Statistik Interface
+ */
+interface RiddleStats {
+  solved: number; // Anzahl korrekt gelöster Rätsel
+  totalAttempts: number; // Gesamtanzahl Versuche
+  solvedRiddles: string[]; // IDs der gelösten Rätsel (als Datum-Rätsel-ID Kombination)
+  failedRiddles: { [date: string]: number }; // Datum -> Rätsel-ID für falsche Antworten
+  attemptsToday: { [date: string]: number }; // Datum -> Anzahl Versuche heute
+  lockedUntil: { [date: string]: string }; // Datum -> Datum bis wann gesperrt (nächster Tag)
+}
+
+/**
+ * Holt die Rätsel-Statistik aus localStorage
+ */
+const getRiddleStats = (userId: string): RiddleStats => {
+  const key = `riddle_stats_${userId}`;
+  const stored = localStorage.getItem(key);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      // Stelle sicher, dass alle Felder vorhanden sind
+      return {
+        solved: parsed.solved || 0,
+        totalAttempts: parsed.totalAttempts || 0,
+        solvedRiddles: parsed.solvedRiddles || [],
+        failedRiddles: parsed.failedRiddles || {},
+        attemptsToday: parsed.attemptsToday || {},
+        lockedUntil: parsed.lockedUntil || {}
+      };
+    } catch {
+      return { solved: 0, totalAttempts: 0, solvedRiddles: [], failedRiddles: {}, attemptsToday: {}, lockedUntil: {} };
+    }
+  }
+  return { solved: 0, totalAttempts: 0, solvedRiddles: [], failedRiddles: {}, attemptsToday: {}, lockedUntil: {} };
+};
+
+/**
+ * Speichert die Rätsel-Statistik in localStorage
+ */
+const saveRiddleStats = (userId: string, stats: RiddleStats): void => {
+  const key = `riddle_stats_${userId}`;
+  localStorage.setItem(key, JSON.stringify(stats));
+};
+
+/**
+ * Erstellt einen eindeutigen Schlüssel für ein Rätsel basierend auf Datum
+ */
+const getDateKey = (): string => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * Wählt basierend auf Datum und userId ein tägliches Rätsel aus
+ */
+const getDailyRiddleForUser = (userId: string, stats: RiddleStats): { riddle: Riddle | null; attemptsLeft: number; isLocked: boolean } => {
+  const dateKey = getDateKey();
+  
+  // Prüfe, ob heute gesperrt ist (nach 2 falschen Versuchen)
+  const lockedDate = stats.lockedUntil[dateKey];
+  if (lockedDate && lockedDate === dateKey) {
+    return { riddle: null, attemptsLeft: 0, isLocked: true };
+  }
+  
+  // Prüfe, ob heute bereits ein Rätsel gelöst wurde
+  const todayRiddleKey = `${dateKey}_riddle`;
+  const solvedToday = stats.solvedRiddles.includes(todayRiddleKey);
+  
+  // Wenn heute bereits gelöst, gib null zurück
+  if (solvedToday) {
+    return { riddle: null, attemptsLeft: 0, isLocked: false };
+  }
+  
+  // Prüfe Anzahl Versuche heute
+  const attemptsToday = stats.attemptsToday[dateKey] || 0;
+  const attemptsLeft = Math.max(0, 2 - attemptsToday);
+  
+  // Wenn bereits 2 Versuche verbraucht, sperre für heute
+  if (attemptsToday >= 2) {
+    stats.lockedUntil[dateKey] = dateKey;
+    saveRiddleStats(userId, stats);
+    return { riddle: null, attemptsLeft: 0, isLocked: true };
+  }
+  
+  // Prüfe, ob es ein fehlgeschlagenes Rätsel von gestern gibt, das wiederholt werden soll
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+  const failedRiddleId = stats.failedRiddles[yesterdayKey];
+  
+  if (failedRiddleId !== undefined) {
+    // Gib das fehlgeschlagene Rätsel zurück
+    const riddle = RIDDLES.find(r => r.id === failedRiddleId);
+    if (riddle) return { riddle, attemptsLeft, isLocked: false };
+  }
+  
+  // Erstelle einen Hash aus userId + Datum für konsistente tägliche Zuweisung
+  let hash = 0;
+  const hashString = userId + dateKey;
+  for (let i = 0; i < hashString.length; i++) {
+    hash = ((hash << 5) - hash) + hashString.charCodeAt(i);
+    hash = hash & hash;
+  }
+  
+  // Verwende den Hash, um ein Rätsel auszuwählen
+  const riddleIndex = Math.abs(hash) % RIDDLES.length;
+  return { riddle: RIDDLES[riddleIndex], attemptsLeft, isLocked: false };
 };
 
 interface Teacher {
@@ -170,6 +559,66 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [showInbox, setShowInbox] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
+  // Rätseljahr 2026 States
+  const [showNewYearRiddle, setShowNewYearRiddle] = useState(false);
+  const [riddleAnswer, setRiddleAnswer] = useState('');
+  const [riddleSolved, setRiddleSolved] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [currentRiddle, setCurrentRiddle] = useState<Riddle | null>(null);
+  const [riddleStats, setRiddleStats] = useState<RiddleStats>(() => getRiddleStats(userId));
+  const [attemptsLeft, setAttemptsLeft] = useState(2);
+
+  // Funktion zum Behandeln der Rätsel-Antwort
+  const handleRiddleAnswer = () => {
+    if (!currentRiddle) return;
+    
+    const answer = riddleAnswer.trim().toLowerCase();
+    const dateKey = getDateKey();
+    const stats = getRiddleStats(userId);
+    
+    if (answer === currentRiddle.answer.toLowerCase()) {
+      // Richtige Antwort!
+      const todayRiddleKey = `${dateKey}_riddle`;
+      if (!stats.solvedRiddles.includes(todayRiddleKey)) {
+        stats.solved++;
+        stats.solvedRiddles.push(todayRiddleKey);
+        stats.totalAttempts++;
+        // Lösche Versuche für heute
+        delete stats.attemptsToday[dateKey];
+        delete stats.lockedUntil[dateKey];
+        saveRiddleStats(userId, stats);
+        setRiddleStats(stats);
+      }
+      setRiddleSolved(true);
+    } else {
+      // Falsche Antwort
+      const currentAttempts = (stats.attemptsToday[dateKey] || 0) + 1;
+      stats.attemptsToday[dateKey] = currentAttempts;
+      stats.totalAttempts++;
+      
+      if (currentAttempts >= 2) {
+        // 2 Versuche verbraucht - sperre für heute
+        stats.lockedUntil[dateKey] = dateKey;
+        stats.failedRiddles[dateKey] = currentRiddle.id; // Für morgen wiederholen
+        saveRiddleStats(userId, stats);
+        setRiddleStats(stats);
+        alert('❌ Das war leider falsch! Du hattest 2 Versuche. Das Rätsel kommt morgen wieder. Komm morgen zurück für ein neues Rätsel!');
+        setShowNewYearRiddle(false);
+        setRiddleAnswer('');
+        setRiddleSolved(false);
+        setShowHint(false);
+        setCurrentRiddle(null);
+      } else {
+        // Noch ein Versuch übrig
+        setAttemptsLeft(2 - currentAttempts);
+        saveRiddleStats(userId, stats);
+        setRiddleStats(stats);
+        alert(`❌ Das war leider falsch! Du hast noch ${2 - currentAttempts} Versuch${2 - currentAttempts === 1 ? '' : 'e'} übrig. Versuche es nochmal!`);
+        setRiddleAnswer(''); // Lösche die Antwort für den nächsten Versuch
+      }
+    }
+  };
+
   // Neue States für echte Ordner-Vorschau (exakt wie im TeacherDashboard)
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
@@ -253,6 +702,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const handleCloseEmojiSelector = () => {
     setShowEmojiSelector(false);
   };
+
+  // Scroll-Position beim Laden zurücksetzen
+  useEffect(() => {
+    // Scroll sofort nach oben
+    window.scrollTo(0, 0);
+    // Auch nach kurzer Verzögerung nochmal, falls etwas nachlädt
+    const timer = setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [userId]);
 
   // Hilfsfunktion zum Laden des Student-Namens und Avatar-Emojis
   const fetchStudentData = async (userId: string) => {
@@ -2755,6 +3215,120 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 </Avatar>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
+                {/* Rätseljahr 2026 Button mit Statistik-Badge */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => {
+                      // Tägliches Rätsel basierend auf Datum + userId auswählen
+                      const stats = getRiddleStats(userId);
+                      const result = getDailyRiddleForUser(userId, stats);
+                      
+                      if (result.isLocked) {
+                        alert('🔒 Du hast heute bereits 2 Versuche gehabt! Das Rätsel kommt morgen wieder. Komm morgen zurück für ein neues Rätsel!');
+                        return;
+                      }
+                      
+                      if (!result.riddle) {
+                        // Bereits gelöst heute
+                        alert('🎉 Du hast das heutige Rätsel bereits gelöst! Komm morgen wieder für ein neues Rätsel!');
+                        return;
+                      }
+                      
+                      setCurrentRiddle(result.riddle);
+                      setAttemptsLeft(result.attemptsLeft);
+                      setRiddleAnswer('');
+                      setRiddleSolved(false);
+                      setShowHint(false);
+                      setShowNewYearRiddle(true);
+                    }}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(102, 126, 234, 0.3)',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(102, 126, 234, 0.6)',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title={`Rätseljahr 2026 🎊 - ${riddleStats.solved} gelöst`}
+                  >
+                    {/* Rotes Geschenk mit gelber Schleife */}
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        {/* Rote Geschenkbox mit Schatten */}
+                        <rect x="4" y="11" width="16" height="13" fill="#DC143C" rx="1.5" stroke="#8B0000" strokeWidth="2" />
+                        
+                        {/* Gelber vertikaler Streifen in der Mitte */}
+                        <rect x="11" y="11" width="2" height="13" fill="#FFD700" />
+                        
+                        {/* Gelbe Schleife oben */}
+                        {/* Vertikaler Teil der Schleife */}
+                        <rect x="11" y="2" width="2" height="10" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1" />
+                        
+                        {/* Horizontales Band */}
+                        <rect x="7" y="6" width="10" height="3" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" rx="1.5" />
+                        
+                        {/* Linke Schleife (nach außen gebogen) */}
+                        <ellipse cx="8.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                        {/* Rechte Schleife (nach außen gebogen) */}
+                        <ellipse cx="15.5" cy="6.5" rx="2.5" ry="3.5" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                        
+                        {/* Linkes Schleifenende (diagonal geschnitten) */}
+                        <path d="M 6.5 7 L 6.5 10 L 6 10.5 L 6.5 11 L 7 10.5 L 7 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                        {/* Rechtes Schleifenende (diagonal geschnitten) */}
+                        <path d="M 17.5 7 L 17.5 10 L 18 10.5 L 17.5 11 L 17 10.5 L 17 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
+                      </svg>
+                    </Box>
+                    
+                    {/* Grüner Badge mit Anzahl gelöster Rätsel */}
+                    {riddleStats.solved > 0 && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: -4,
+                          right: -4,
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          bgcolor: '#4caf50',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          border: '2px solid white',
+                          zIndex: 1,
+                        }}
+                      >
+                        {riddleStats.solved}
+                      </Box>
+                    )}
+                  </IconButton>
+                </Box>
                 {/* Logout Button */}
                 <Button 
                   variant="contained"
@@ -3713,6 +4287,219 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         </DialogTitle>
         <DialogContent sx={{ pt: 2, pb: 2 }}>
           <SubmissionStatistics userId={userId} submissionStats={submissionStats} setSubmissionStats={setSubmissionStats} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Rätseljahr 2026 Dialog */}
+      <Dialog
+        open={showNewYearRiddle}
+        onClose={() => {
+          setShowNewYearRiddle(false);
+          setRiddleAnswer('');
+          setRiddleSolved(false);
+          setShowHint(false);
+          setCurrentRiddle(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: 3,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: 'transparent',
+          color: 'white',
+          textAlign: 'center',
+          py: 1.25,
+          px: 2,
+          position: 'relative',
+          minHeight: 44,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box sx={{ width: 28 }} /> {/* Spacer */}
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', flex: 1, textAlign: 'center' }}>
+            🎊 Rätseljahr 2026 🎊
+          </Typography>
+          <IconButton
+            onClick={() => {
+              setShowNewYearRiddle(false);
+              setRiddleAnswer('');
+              setRiddleSolved(false);
+              setShowHint(false);
+            }}
+            sx={{ 
+              width: 28, 
+              height: 28, 
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'white', pt: 3, pb: 2, px: 2.5 }}>
+          {currentRiddle && !riddleSolved ? (
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 2, mt: 1 }}>
+                <Chip 
+                  label={`#${currentRiddle.id}`} 
+                  size="small" 
+                  sx={{ 
+                    bgcolor: '#667eea', 
+                    color: 'white',
+                    fontWeight: 600,
+                    minWidth: 45,
+                    height: 24
+                  }} 
+                />
+                <Typography variant="h6" sx={{ color: '#333', fontWeight: 600, fontSize: '1.1rem' }}>
+                  {currentRiddle.title}
+                </Typography>
+              </Box>
+              <Paper 
+                elevation={0}
+                sx={{ 
+                  p: 2, 
+                  mb: 2.5, 
+                  bgcolor: '#f8f9fa',
+                  borderRadius: 2,
+                  border: '1.5px solid #e0e0e0'
+                }}
+              >
+                <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.6, color: '#444' }}>
+                  {currentRiddle.question}
+                </Typography>
+              </Paper>
+              
+              {showHint && (
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 1.5, 
+                    mb: 2, 
+                    bgcolor: '#fff3cd',
+                    borderRadius: 2,
+                    border: '1.5px solid #ffc107'
+                  }}
+                >
+                  <Typography variant="body2" sx={{ color: '#856404', fontStyle: 'italic', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                    {currentRiddle.hint}
+                  </Typography>
+                </Paper>
+              )}
+
+              {attemptsLeft > 0 && (
+                <Typography variant="body2" sx={{ mb: 1.5, color: '#666', textAlign: 'center', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                  Du hast noch {attemptsLeft} Versuch{attemptsLeft === 1 ? '' : 'e'} übrig
+                </Typography>
+              )}
+              
+              <TextField
+                fullWidth
+                label="Deine Antwort"
+                value={riddleAnswer}
+                onChange={(e) => setRiddleAnswer(e.target.value)}
+                placeholder={currentRiddle.type === 'number' ? "Gib die Zahl ein..." : "Gib deine Antwort ein..."}
+                variant="outlined"
+                size="small"
+                sx={{ mb: 2 }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && currentRiddle) {
+                    handleRiddleAnswer();
+                  }
+                }}
+              />
+              
+              <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', mt: 1 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowHint(!showHint)}
+                  size="small"
+                  sx={{ 
+                    borderColor: '#667eea',
+                    color: '#667eea',
+                    px: 2,
+                    py: 0.75,
+                    fontSize: '0.875rem',
+                    '&:hover': { borderColor: '#764ba2', bgcolor: 'rgba(102, 126, 234, 0.1)' }
+                  }}
+                >
+                  {showHint ? 'Tipp verstecken' : '💡 Tipp anzeigen'}
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    if (!currentRiddle) return;
+                    handleRiddleAnswer();
+                  }}
+                  size="small"
+                  sx={{
+                    bgcolor: '#667eea',
+                    px: 2.5,
+                    py: 0.75,
+                    fontSize: '0.875rem',
+                    '&:hover': { bgcolor: '#764ba2' }
+                  }}
+                >
+                  Prüfen ✨
+                </Button>
+              </Box>
+            </Box>
+          ) : currentRiddle && riddleSolved ? (
+              <Box sx={{ textAlign: 'center', py: 1.5 }}>
+              <Typography variant="h5" sx={{ mb: 2, color: '#667eea', fontWeight: 700, fontSize: '1.5rem' }}>
+                🎉 Richtig! 🎉
+              </Typography>
+              <Paper 
+                elevation={0}
+                sx={{ 
+                  p: 2, 
+                  mb: 2, 
+                  bgcolor: '#e8f5e9',
+                  borderRadius: 2,
+                  border: '1.5px solid #4caf50'
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 1.5, color: '#2e7d32', fontWeight: 600, fontSize: '1rem' }}>
+                  Die Antwort ist {currentRiddle.answer}! 🎊
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 1, color: '#1b5e20', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                  {currentRiddle.explanation}
+                </Typography>
+                <Typography variant="body1" sx={{ mt: 1.5, color: '#2e7d32', fontWeight: 600, fontSize: '1rem' }}>
+                  🎊 Alles Gute für 2026! 🎊
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 1, color: '#4caf50', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                  Möge das neue Jahr voller Erfolg, Spaß und vielen "Aha!"-Momenten sein! 🚀✨
+                </Typography>
+              </Paper>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setShowNewYearRiddle(false);
+                  setRiddleAnswer('');
+                  setRiddleSolved(false);
+                  setShowHint(false);
+                  setCurrentRiddle(null);
+                }}
+                size="small"
+                sx={{
+                  bgcolor: '#4caf50',
+                  px: 2.5,
+                  py: 0.75,
+                  fontSize: '0.875rem',
+                  '&:hover': { bgcolor: '#45a049' }
+                }}
+              >
+                Schließen ✨
+              </Button>
+            </Box>
+          ) : null}
         </DialogContent>
       </Dialog>
     </Box>
