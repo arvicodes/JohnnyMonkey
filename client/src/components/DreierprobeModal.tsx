@@ -3166,7 +3166,21 @@ Vera Christ`);
                 constructionPoints: corr.manualPoints,
                 comment: corr.comment
               };
+            } else if (corr.taskNumber.match(/^1$/)) {
+              // Aufgabe 1: Punkte werden pro Input-Feld gespeichert, nicht pro Aufgabe
+              // Überspringe hier, wird später pro Input-Feld behandelt
             } else {
+              correctionsMap[corr.taskNumber] = { 
+                points: corr.manualPoints,
+                comment: corr.comment
+              };
+            }
+          });
+          
+          // Für Aufgabe 1: Sammle Punkte pro Input-Feld
+          // Die Korrekturen für Aufgabe 1 haben taskNumber wie "a1a", "a1b", etc.
+          submission.corrections.forEach((corr) => {
+            if (corr.taskNumber.match(/^a1[a-h]$/)) {
               correctionsMap[corr.taskNumber] = { 
                 points: corr.manualPoints,
                 comment: corr.comment
@@ -3335,8 +3349,12 @@ Vera Christ`);
                     inputEl.checked = true;
                   }
                 } else {
-                  // Für Radiobuttons: Checke wie bisher
-                  if (inputEl.value === answerValue || inputEl.id === taskId || inputEl.name === taskId) {
+                  // Für Radiobuttons: Prüfe ob dieser Radio-Button markiert werden soll
+                  // Bei Radio-Buttons: taskId ist z.B. "a2a", answerValue ist der Wert der Option (z.B. 'a', 'b', 'c', 'd')
+                  // inputEl.name ist z.B. "a2a", inputEl.value ist z.B. 'a', 'b', 'c', 'd'
+                  const shouldBeChecked = inputEl.name === taskId && inputEl.value === answerValue;
+                  
+                  if (shouldBeChecked) {
                     inputEl.checked = true;
                   }
                 }
@@ -3406,6 +3424,92 @@ Vera Christ`);
           }
         });
         
+        // Berechne Punkte für jede Aufgabe und füge sie oben rechts hinzu
+        const taskPoints: Record<string, {achieved: number; max: number}> = {
+          '1': {achieved: 0, max: 8},
+          '2': {achieved: 0, max: 3},
+          '3': {achieved: 0, max: 14}
+        };
+        
+        // Sammle alle Punkte pro Aufgabe
+        Object.entries(answers).forEach(([taskId, answer]) => {
+          const taskNum = taskId.match(/a(\d+)/)?.[1];
+          if (!taskNum) return;
+          
+          const isCorrect = isAnswerCorrect(taskId, answer);
+          const maxPoints = pointsDistribution[taskId] || 0;
+          let achievedPoints = isCorrect ? maxPoints : 0;
+          
+          // Berücksichtige manuelle Korrekturen
+          if (taskId.startsWith('a3')) {
+            // Für Aufgabe 3 werden die Punkte später separat berechnet
+            return;
+          } else if (taskNum === '1') {
+            // Aufgabe 1: Manuelle Korrekturen pro Input-Feld (z.B. correctionsMap['a1a'])
+            const correction = correctionsMap[taskId];
+            if (correction && correction.points !== undefined && correction.points !== null) {
+              achievedPoints = Number(correction.points) || 0;
+            }
+          } else if (taskNum === '2') {
+            // Aufgabe 2: Automatische Korrektur - Punkte werden bereits durch isCorrect berechnet
+            // Keine manuelle Korrektur nötig
+          }
+          
+          if (taskPoints[taskNum]) {
+            taskPoints[taskNum].achieved += achievedPoints;
+          }
+        });
+        
+        // Für Aufgabe 3: Berechne Koordinaten- und Konstruktionspunkte
+        if (submission.corrections) {
+          const task3Corrections = submission.corrections.filter(corr => corr.taskNumber.match(/^3[a-d]$/));
+          const subtaskToCoordinates: Record<string, string[]> = {
+            'a': ['a3a_x', 'a3a_y', 'a3b_x', 'a3b_y', 'a3c_x', 'a3c_y'],
+            'b': ['a3d_x', 'a3d_y', 'a3e_x', 'a3e_y', 'a3f_x', 'a3f_y'],
+            'c': ['a3g_x', 'a3g_y', 'a3h_x', 'a3h_y', 'a3i_x', 'a3i_y'],
+            'd': ['a3j_x', 'a3j_y', 'a3k_x', 'a3k_y', 'a3l_x', 'a3l_y']
+          };
+          
+          let task3Achieved = 0;
+          ['a', 'b', 'c', 'd'].forEach((subtask) => {
+            const corr = task3Corrections.find(c => c.taskNumber === `3${subtask}`);
+            const coordinateIds = subtaskToCoordinates[subtask] || [];
+            let coordinatePoints = 0;
+            coordinateIds.forEach((coordId) => {
+              const studentAnswer = answers[coordId];
+              if (studentAnswer !== undefined && studentAnswer !== null && studentAnswer !== '') {
+                if (isAnswerCorrect(coordId, studentAnswer)) {
+                  coordinatePoints += 0.25;
+                }
+              }
+            });
+            const constructionPoints = corr && corr.manualPoints !== undefined && corr.manualPoints !== null 
+              ? Number(corr.manualPoints) 
+              : 0;
+            task3Achieved += coordinatePoints + constructionPoints;
+          });
+          taskPoints['3'].achieved = task3Achieved;
+        }
+        
+        // Füge Punkte oben rechts bei jeder Aufgabe hinzu
+        ['1', '2', '3'].forEach((taskNum) => {
+          // Suche nach dem task-number Element, das "Aufgabe X" enthält
+          const allTaskNumbers = Array.from(doc.querySelectorAll('.task-number'));
+          const taskNumberDiv = allTaskNumbers.find(div => {
+            const text = div.textContent || '';
+            return text.includes(`Aufgabe ${taskNum}`);
+          }) as HTMLElement | undefined;
+          
+          if (taskNumberDiv) {
+            const points = taskPoints[taskNum];
+            const pointsText = `${points.achieved.toFixed(1)} / ${points.max} Punkte`;
+            const pointsSpan = doc.createElement('span');
+            pointsSpan.style.cssText = 'float: right; font-weight: bold; color: #1976d2; font-size: 0.95em; margin-left: 10px;';
+            pointsSpan.textContent = pointsText;
+            taskNumberDiv.appendChild(pointsSpan);
+          }
+        });
+        
         // Stelle sicher, dass alle Input-Werte im HTML erhalten bleiben - MACHEN WIR ZWEIMAL
         Object.entries(answers).forEach(([taskId, answer]) => {
           let input = doc.querySelector(`#${taskId}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
@@ -3457,7 +3561,7 @@ Vera Christ`);
           }
         });
         
-        // Füge CSS hinzu um number input arrows zu entfernen
+        // Füge CSS hinzu um number input arrows zu entfernen und Aufgabe 2 Formatierung
         if (!doc.head.querySelector('style[data-hide-number-arrows]')) {
           const style = doc.createElement('style');
           style.setAttribute('data-hide-number-arrows', 'true');
@@ -3469,6 +3573,13 @@ Vera Christ`);
             }
             input[type="number"] {
               -moz-appearance: textfield !important;
+            }
+            /* Aufgabe 2: Radio-Buttons weiter nach rechts */
+            .input-group.full-width > div[style*="margin-left: 20px"] {
+              margin-left: 60px !important;
+            }
+            .input-group.full-width input[type="radio"] {
+              margin-right: 8px !important;
             }
           `;
           doc.head.appendChild(style);
