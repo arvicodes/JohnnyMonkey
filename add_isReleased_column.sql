@@ -6,3 +6,4 @@ ALTER TABLE KASubmission ADD COLUMN isReleased BOOLEAN DEFAULT 0;
 
 
 
+

@@ -1179,10 +1179,12 @@ class FileSystemPathController {
      */
     static async serveStaticFile(req, res) {
         try {
-            const filePath = req.params[0]; // Get the wildcard parameter
+            let filePath = req.params[0]; // Get the wildcard parameter
             if (!filePath) {
                 return res.status(400).json({ error: 'File path is required' });
             }
+            // Decode URL-encoded path (e.g., %20 -> space)
+            filePath = decodeURIComponent(filePath);
             console.log('Serving static file:', filePath);
             // Construct the git-intern path
             const gitInternPath = `git-intern/${filePath}`;
@@ -1218,6 +1220,9 @@ class FileSystemPathController {
                     break;
                 case '.svg':
                     mimeType = 'image/svg+xml';
+                    break;
+                case '.webp':
+                    mimeType = 'image/webp';
                     break;
                 case '.ico':
                     mimeType = 'image/x-icon';

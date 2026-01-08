@@ -281,7 +281,8 @@ import {
   VolumeMute as VolumeMuteIcon,
   TableChart as TableChartIcon,
   PictureAsPdf as PictureAsPdfIcon,
-  Code as CodeIcon
+  Code as CodeIcon,
+  Games as GamesIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -695,6 +696,304 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [selectedKAFilePath, setSelectedKAFilePath] = useState<string>('');
   const [showTeacherMessageBox, setShowTeacherMessageBox] = useState(false);
   const [showRiddleOverview, setShowRiddleOverview] = useState(false);
+  const [showMinigame, setShowMinigame] = useState(false);
+  const [selectedMinigameDifficulty, setSelectedMinigameDifficulty] = useState<'easy' | 'hard'>('easy');
+  const [gameStarted, setGameStarted] = useState(false);
+  const [balloons, setBalloons] = useState<Array<{id: number; x: number; key: 'f' | 'j' | 'd' | 'k'; caught: boolean; spawnTime: number}>>([]);
+  const [score, setScore] = useState(0);
+  const [gameTime, setGameTime] = useState(60);
+  const [nextKey, setNextKey] = useState<'f' | 'j' | 'd' | 'k'>('f');
+  const [gameOver, setGameOver] = useState(false);
+  const [gameWon, setGameWon] = useState(false);
+  const [startTime, setStartTime] = useState(0);
+  const keysPressedRef = useRef<Set<string>>(new Set());
+  const [gamePaused, setGamePaused] = useState(false);
+  const gamePausedRef = useRef(false);
+  const [holdMessage, setHoldMessage] = useState('');
+  const [animationFrame, setAnimationFrame] = useState(0);
+
+  // Helper-Funktion für Datum
+  const getDateKey = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  // Minigame-Logik für Lehrer
+  useEffect(() => {
+    if (!gameStarted) return;
+
+    // Timer
+    const timer = setInterval(() => {
+      setGameTime((prev) => {
+        if (prev <= 1) {
+          // Spiel erfolgreich beendet - Gewonnen!
+          setGameStarted(false);
+          setGameWon(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Luftballons spawnen
+    const balloonInterval = setInterval(() => {
+      if (selectedMinigameDifficulty === 'easy') {
+        // Easy-Modus: Normale Logik - F und J Ballons
+        let balloonKey: 'f' | 'j' = Math.random() > 0.5 ? 'f' : 'j';
+        const newBalloon = {
+          id: Date.now() + Math.random(),
+          x: Math.random() * 80 + 10,
+          key: balloonKey,
+          caught: false,
+          spawnTime: Date.now()
+        };
+        setBalloons((prev) => {
+          const updated = [...prev, newBalloon];
+          const firstUncaught = updated.find(b => !b.caught);
+          if (firstUncaught) {
+            setNextKey(firstUncaught.key);
+          }
+          return updated;
+        });
+      } else {
+        // Hard-Modus: Ballons nur wenn F oder J gedrückt gehalten wird
+        const currentKeys = keysPressedRef.current;
+        const hasF = currentKeys.has('f');
+        const hasJ = currentKeys.has('j');
+        
+        if (!hasF && !hasJ) {
+          // Keine Taste gedrückt - keine Ballons
+          return;
+        }
+        
+        // Bestimme welche Ballons spawnen dürfen
+        let allowedKeys: ('f' | 'j' | 'd' | 'k')[] = [];
+        if (hasF) {
+          // F gedrückt: D, J, K Ballons
+          allowedKeys = ['d', 'j', 'k'];
+        }
+        if (hasJ) {
+          // J gedrückt: D, F, K Ballons
+          if (hasF) {
+            // Beide gedrückt: D, F, J, K (alle außer der gerade gedrückten wird ignoriert, aber wir nehmen alle)
+            allowedKeys = ['d', 'f', 'j', 'k'];
+          } else {
+            allowedKeys = ['d', 'f', 'k'];
+          }
+        }
+        
+        if (allowedKeys.length === 0) {
+          return;
+        }
+        
+        // Wähle zufälligen erlaubten Ballon
+        const randomIndex = Math.floor(Math.random() * allowedKeys.length);
+        const balloonKey = allowedKeys[randomIndex];
+        
+        const newBalloon = {
+          id: Date.now() + Math.random(),
+          x: Math.random() * 80 + 10,
+          key: balloonKey,
+          caught: false,
+          spawnTime: Date.now()
+        };
+        setBalloons((prev) => {
+          const updated = [...prev, newBalloon];
+          const firstUncaught = updated.find(b => !b.caught);
+          if (firstUncaught) {
+            setNextKey(firstUncaught.key);
+          }
+          return updated;
+        });
+      }
+    }, 800);
+
+    // Prüfe auf Game Over
+    const gameOverCheckInterval = setInterval(() => {
+      setBalloons((prev) => {
+        const now = Date.now();
+        const elapsedSeconds = (now - startTime) / 1000;
+        const baseSpeed = 12;
+        const speedMultiplier = 1 + (elapsedSeconds / 35) * 2;
+        const currentSpeed = baseSpeed / speedMultiplier;
+        
+        const updated = prev.map((balloon) => {
+          if (balloon.caught) return balloon;
+          const age = now - balloon.spawnTime;
+          const fallDistance = age / currentSpeed;
+          if (fallDistance >= 360 && !balloon.caught) {
+            setGameOver(true);
+            setGameStarted(false);
+            return balloon;
+          }
+          return balloon;
+        });
+        
+        return updated.filter((balloon) => {
+          if (balloon.caught) return false;
+          const age = Date.now() - balloon.spawnTime;
+          return age < 15000;
+        });
+      });
+    }, 100);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(balloonInterval);
+      clearInterval(gameOverCheckInterval);
+    };
+  }, [gameStarted, selectedMinigameDifficulty, startTime]);
+
+  // Animation-Frame
+  useEffect(() => {
+    if (!gameStarted) return;
+    const animate = () => {
+      setAnimationFrame((prev) => prev + 1);
+      requestAnimationFrame(animate);
+    };
+    const animationId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationId);
+  }, [gameStarted]);
+
+  // Keyboard-Event-Handler für Minigame
+  useEffect(() => {
+    if (!gameStarted || !showMinigame) return;
+
+    const validKeys = selectedMinigameDifficulty === 'hard' ? ['f', 'j', 'd', 'k'] : ['f', 'j'];
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'f' || key === 'j') {
+        e.preventDefault();
+        keysPressedRef.current.add(key);
+        
+        // Im Easy-Modus: Einmaliges Drücken fängt Ballons
+        if (selectedMinigameDifficulty === 'easy') {
+          setBalloons((prev) => {
+            return prev.map((balloon) => {
+              if (balloon.caught) return balloon;
+              
+              // F-Ballon mit F-Taste fangen (einmaliges Drücken)
+              if (balloon.key === 'f' && key === 'f') {
+                setScore((s) => s + 1);
+                return { ...balloon, caught: true };
+              }
+              // J-Ballon mit J-Taste fangen (einmaliges Drücken)
+              if (balloon.key === 'j' && key === 'j') {
+                setScore((s) => s + 1);
+                return { ...balloon, caught: true };
+              }
+              
+              return balloon;
+            });
+          });
+        } else {
+          // Hard-Modus: Taste gedrückt -> Meldung entfernen
+          setHoldMessage('');
+          setGamePaused(false);
+          gamePausedRef.current = false;
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'f' || key === 'j') {
+        e.preventDefault();
+        keysPressedRef.current.delete(key);
+        
+        // Im Hard-Modus: Wenn keine Taste mehr gedrückt, Meldung anzeigen
+        if (selectedMinigameDifficulty === 'hard') {
+          const currentKeys = keysPressedRef.current;
+          if (!currentKeys.has('f') && !currentKeys.has('j')) {
+            setGamePaused(true);
+            gamePausedRef.current = true;
+            setHoldMessage('Halte F oder J dauerhaft gedrückt');
+          }
+        }
+      }
+    };
+
+    // Im Hard-Modus: Prüfe kontinuierlich ob Ballons gefangen werden können
+    const checkInterval = selectedMinigameDifficulty === 'hard' ? setInterval(() => {
+      setBalloons((prev) => {
+        const currentKeys = keysPressedRef.current;
+        
+        const updated = prev.map((balloon) => {
+          if (balloon.caught) return balloon;
+          
+          // F-Ballon: F muss gedrückt sein
+          if (balloon.key === 'f' && currentKeys.has('f')) {
+            setScore((s) => s + 1);
+            return { ...balloon, caught: true };
+          }
+          
+          // J-Ballon: J muss gedrückt sein
+          if (balloon.key === 'j' && currentKeys.has('j')) {
+            setScore((s) => s + 1);
+            return { ...balloon, caught: true };
+          }
+          
+          // D-Ballon: F muss gedrückt sein
+          if (balloon.key === 'd' && currentKeys.has('f')) {
+            setScore((s) => s + 1);
+            return { ...balloon, caught: true };
+          }
+          
+          // K-Ballon: J muss gedrückt sein
+          if (balloon.key === 'k' && currentKeys.has('j')) {
+            setScore((s) => s + 1);
+            return { ...balloon, caught: true };
+          }
+          
+          return balloon;
+        });
+        
+        // Prüfe ob noch F oder J gedrückt ist
+        if (!currentKeys.has('f') && !currentKeys.has('j')) {
+          setHoldMessage('Halte F oder J dauerhaft gedrückt');
+          setGamePaused(true);
+          gamePausedRef.current = true;
+        } else {
+          setHoldMessage('');
+          setGamePaused(false);
+          gamePausedRef.current = false;
+        }
+        
+        const remainingBalloons = updated.filter(b => !b.caught);
+        if (remainingBalloons.length > 0) {
+          setNextKey(remainingBalloons[0].key);
+        }
+        
+        return updated;
+      });
+    }, 100) : null;
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    // Reset keys when effect runs
+    keysPressedRef.current.clear();
+    if (selectedMinigameDifficulty === 'hard') {
+      setHoldMessage('Halte F oder J dauerhaft gedrückt');
+      setGamePaused(true);
+      gamePausedRef.current = true;
+    } else {
+      setHoldMessage('');
+      setGamePaused(false);
+      gamePausedRef.current = false;
+    }
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      if (checkInterval) clearInterval(checkInterval);
+      keysPressedRef.current.clear();
+      setHoldMessage('');
+      setGamePaused(false);
+      gamePausedRef.current = false;
+    };
+  }, [gameStarted, showMinigame, selectedMinigameDifficulty]);
   
   // Nachricht an Schüler senden
   const [showSendMessageDialog, setShowSendMessageDialog] = useState(false);
@@ -716,6 +1015,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
   const [participationStats, setParticipationStats] = useState<any[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetConfirmationText, setResetConfirmationText] = useState('');
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [commentStudentId, setCommentStudentId] = useState<string | null>(null);
   const [commentStudentName, setCommentStudentName] = useState('');
@@ -3466,6 +3767,60 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setParticipationStats([]);
   };
 
+  // Reset all participations for the group
+  const handleResetAllParticipations = async () => {
+    if (!participationGroupId) return;
+    
+    if (resetConfirmationText !== 'ZURÜCKSETZEN') {
+      alert('Bitte geben Sie "ZURÜCKSETZEN" ein, um fortzufahren.');
+      return;
+    }
+
+    try {
+      const url = `/api/participation/reset-all-participations/${participationGroupId}`;
+      console.log('Reset request URL:', url);
+      console.log('Reset request groupId:', participationGroupId);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      console.log('Reset response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Reset response data:', data);
+        
+        // Refresh participations and stats
+        await loadParticipations(participationGroupId);
+        await handleStatisticsOpen();
+        
+        // Reset EPO grades state
+        if (participationGroupId) {
+          await loadEpoGrades(participationGroupId);
+        }
+        
+        setResetDialogOpen(false);
+        setResetConfirmationText('');
+        alert('Alle Bewertungen und Kommentare wurden erfolgreich zurückgesetzt.');
+      } else {
+        const errorText = await response.text();
+        console.error('Reset error response:', errorText);
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { error: errorText || 'Unbekannter Fehler' };
+        }
+        alert(`Fehler beim Zurücksetzen: ${error.error || error.message || 'Unbekannter Fehler'}`);
+      }
+    } catch (error: any) {
+      console.error('Fehler beim Zurücksetzen:', error);
+      alert(`Fehler beim Zurücksetzen der Bewertungen: ${error.message || 'Unbekannter Fehler'}`);
+    }
+  };
+
   // Export-Funktionen für Epochalstatistik
   const exportToCSV = () => {
     if (!participationStats.length || !participationGroupId) return;
@@ -5541,6 +5896,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     </Box>
                   </IconButton>
                 </Box>
+                {/* Minigame Test Button */}
+                <IconButton
+                  onClick={() => setShowMinigame(true)}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(255, 152, 0, 0.3)',
+                    background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(255, 152, 0, 0.3)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(255, 152, 0, 0.6)',
+                      boxShadow: '0 4px 12px rgba(255, 152, 0, 0.4)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Minigame Test"
+                >
+                  <GamesIcon sx={{ fontSize: 18 }} />
+                </IconButton>
               </Box>
             </Box>
           </Box>
@@ -9874,6 +10255,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               >
                 JSON
               </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon sx={{ fontSize: 12 }} />}
+                onClick={() => setResetDialogOpen(true)}
+                sx={{ 
+                  fontSize: '0.65rem', 
+                  py: 0.25, 
+                  px: 0.6,
+                  minWidth: 'auto',
+                  textTransform: 'none',
+                  height: '24px',
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    marginLeft: 0
+                  }
+                }}
+              >
+                Zurücksetzen
+              </Button>
             </Box>
             <IconButton 
               size="small" 
@@ -10500,8 +10902,375 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Minigame Test Modal für Lehrer */}
+      <Dialog
+        open={showMinigame}
+        onClose={() => {
+          if (!gameStarted || gameOver || gameWon) {
+            setShowMinigame(false);
+            setGameStarted(false);
+            setBalloons([]);
+            setScore(0);
+            setGameTime(60);
+            setGameOver(false);
+            setGameWon(false);
+            keysPressedRef.current.clear();
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
+            borderRadius: 3,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: 'transparent',
+          color: 'white',
+          textAlign: 'center',
+          py: 1.25,
+          px: 2,
+          position: 'relative',
+          minHeight: 44,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box sx={{ width: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', flex: 1, textAlign: 'center' }}>
+            🎮 Minigame Test
+          </Typography>
+          <IconButton
+            onClick={() => {
+              if (!gameOver && !gameStarted && !gameWon) {
+                setShowMinigame(false);
+                setGameStarted(false);
+                setBalloons([]);
+                setScore(0);
+                setGameTime(60);
+                setGameOver(false);
+                setGameWon(false);
+                keysPressedRef.current.clear();
+              }
+            }}
+            disabled={gameStarted && !gameOver && !gameWon}
+            sx={{ 
+              width: 28, 
+              height: 28, 
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ bgcolor: 'white', pt: 3, pb: 2, px: 2.5 }}>
+          <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.85rem', textAlign: 'center' }}>
+            Lehrer-Modus: Wähle den Schwierigkeitsgrad
+          </Typography>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Schwierigkeitsgrad</InputLabel>
+            <Select
+              value={selectedMinigameDifficulty}
+              onChange={(e) => setSelectedMinigameDifficulty(e.target.value as 'easy' | 'hard')}
+              label="Schwierigkeitsgrad"
+              disabled={gameStarted}
+            >
+              <MenuItem value="easy">Leicht (F/J)</MenuItem>
+              <MenuItem value="hard">Schwer (F/J/D/K)</MenuItem>
+            </Select>
+          </FormControl>
+          <Paper sx={{ p: 2, mb: 2, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+            <Typography variant="body2" sx={{ mb: 1, color: '#666', fontSize: '0.85rem', textAlign: 'left' }}>
+              {selectedMinigameDifficulty === 'easy' ? (
+                <>• Halte <strong>F</strong> oder <strong>J</strong> gedrückt, um die Luftballons zu fangen</>
+              ) : (
+                <>
+                  • Für <strong>F</strong> oder <strong>J</strong> Ballons: Halte <strong>F</strong> und <strong>J</strong> beide gedrückt!<br/>
+                  • Für <strong>D</strong> Ballons: Halte <strong>D</strong> gedrückt<br/>
+                  • Für <strong>K</strong> Ballons: Halte <strong>K</strong> gedrückt
+                </>
+              )}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1, color: '#666', fontSize: '0.85rem', textAlign: 'left' }}>
+              • Schaffe es 1 Minute lang, ohne dass ein Luftballon den Boden erreicht
+            </Typography>
+          </Paper>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setGameStarted(true);
+              setGameTime(60);
+              setScore(0);
+              setBalloons([]);
+              if (selectedMinigameDifficulty === 'hard') {
+                setNextKey('f');
+                setGamePaused(true);
+                gamePausedRef.current = true;
+                setHoldMessage('Halte F oder J dauerhaft gedrückt');
+              } else {
+                setNextKey(Math.random() > 0.5 ? 'f' : 'j');
+                setGamePaused(false);
+                gamePausedRef.current = false;
+                setHoldMessage('');
+              }
+              setGameOver(false);
+              setGameWon(false);
+              setStartTime(Date.now());
+              keysPressedRef.current.clear();
+            }}
+            size="small"
+            disabled={gameStarted}
+            sx={{
+              bgcolor: '#FF9800',
+              px: 3,
+              py: 1,
+              fontSize: '0.9rem',
+              '&:hover': { bgcolor: '#F57C00' }
+            }}
+          >
+            Spiel starten! 🚀
+          </Button>
+          {gameStarted && (
+            <>
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                  Zeit: <strong>{gameTime}s</strong>
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                  Punkte: <strong>{score}</strong>
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  position: 'relative',
+                  height: 400,
+                  background: `
+                    linear-gradient(180deg, 
+                      #87CEEB 0%, #5B9BD5 8%, #4682B4 15%, #20B2AA 25%,
+                      #32CD32 35%, #9ACD32 45%, #FFD700 55%, #FFA500 65%,
+                      #8B4513 75%, #654321 85%, #2F4F2F 95%, #1C1C1C 100%
+                    )
+                  `,
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  border: '3px solid #1976d2',
+                  mb: 2,
+                  boxShadow: 'inset 0 0 80px rgba(255,255,255,0.15), 0 4px 20px rgba(0,0,0,0.3)',
+                  '&::after': {
+                    content: '"🌲 🌳 🌴 🌿 🍃 🌲 🌳 🌴 🌿 🍃 🌲 🌳 🌴 🌿 🍃 🌲 🌳 🌴 🌿 🍃"',
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    fontSize: '2rem',
+                    textAlign: 'center',
+                    opacity: 0.7,
+                    pointerEvents: 'none',
+                    lineHeight: 1.2,
+                    background: 'linear-gradient(180deg, transparent 0%, rgba(46,125,50,0.3) 100%)',
+                    paddingTop: '0.5rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    width: '100%'
+                  }
+                }}
+              >
+                {/* Große Meldung für D/K Ballons */}
+                {holdMessage && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 1000,
+                      bgcolor: 'rgba(255, 152, 0, 0.95)',
+                      color: 'white',
+                      px: 4,
+                      py: 2,
+                      borderRadius: 3,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                      border: '4px solid white',
+                      animation: 'pulse 1s infinite',
+                      '@keyframes pulse': {
+                        '0%, 100%': { transform: 'translate(-50%, -50%) scale(1)' },
+                        '50%': { transform: 'translate(-50%, -50%) scale(1.05)' }
+                      },
+                    }}
+                  >
+                    <Typography
+                      variant="h4"
+                      sx={{
+                        fontWeight: 700,
+                        textAlign: 'center',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+                        fontSize: '2rem'
+                      }}
+                    >
+                      {holdMessage}
+                    </Typography>
+                  </Box>
+                )}
+                {balloons.map((balloon) => {
+                  const balloonAge = Date.now() - balloon.spawnTime;
+                  const elapsedSeconds = (Date.now() - startTime) / 1000;
+                  const baseSpeed = 12;
+                  const speedMultiplier = 1 + (elapsedSeconds / 35) * 2;
+                  const currentSpeed = baseSpeed / speedMultiplier;
+                  const fallDistance = Math.min(balloonAge / currentSpeed, 360);
+                  if (!balloon.caught && fallDistance < 360) {
+                    return (
+                      <Box
+                        key={balloon.id}
+                        sx={{
+                          position: 'absolute',
+                          left: `${balloon.x}%`,
+                          top: `${fallDistance}px`,
+                          zIndex: 10,
+                          width: 80,
+                          height: 80,
+                          marginLeft: '-40px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <Box sx={{ fontSize: '5rem', position: 'relative' }}>
+                          🎈
+                          <Typography sx={{
+                            fontSize: '2.2rem',
+                            fontWeight: 900,
+                            color: (balloon.key === 'f' || balloon.key === 'j') ? '#1565C0' : '#FF9800',
+                            position: 'absolute',
+                            top: '45%',
+                            left: '48%',
+                            transform: 'translate(-50%, -55%)',
+                            fontFamily: '"Courier New", "Roboto Mono", monospace'
+                          }}>
+                            {balloon.key.toUpperCase()}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  }
+                  return null;
+                })}
+              </Box>
+            </>
+          )}
+          {gameWon && (
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 2, 
+              mt: 1,
+              bgcolor: '#e8f5e9',
+              borderRadius: 2,
+              border: '2px solid #4caf50'
+            }}>
+              <Typography variant="h5" sx={{ mb: 1, color: '#4caf50', fontWeight: 700 }}>
+                🏆 GEWONNEN! 🎉
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                Punkte: <strong style={{ fontSize: '1rem', color: '#FF9800' }}>{score}</strong>
+              </Typography>
+            </Box>
+          )}
+          {gameOver && (
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 2, 
+              mt: 1,
+              bgcolor: '#ffebee',
+              borderRadius: 2,
+              border: '2px solid #d32f2f'
+            }}>
+              <Typography variant="h6" sx={{ mb: 0.5, color: '#d32f2f', fontWeight: 700 }}>
+                💥 Game Over! 💥
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#666', fontSize: '0.75rem' }}>
+                Punkte: {score}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        {gameStarted && (
+          <DialogActions sx={{ px: 2, py: 1, bgcolor: '#f5f5f5' }}>
+            <Button
+              onClick={() => {
+                setGameStarted(false);
+                setBalloons([]);
+                setScore(0);
+                setGameTime(60);
+                setGameOver(false);
+                keysPressedRef.current.clear();
+              }}
+              size="small"
+            >
+              Beenden
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog 
+        open={resetDialogOpen} 
+        onClose={() => {
+          setResetDialogOpen(false);
+          setResetConfirmationText('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          ⚠️ Alle Bewertungen zurücksetzen?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Diese Aktion setzt <strong>alle Bewertungen und Kommentare</strong> für die Gruppe "{participationGroupName}" zurück.
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2, fontWeight: 600, color: 'error.main' }}>
+            Diese Aktion kann nicht rückgängig gemacht werden!
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+            Geben Sie <strong>"ZURÜCKSETZEN"</strong> ein, um fortzufahren:
+          </Typography>
+          <TextField
+            fullWidth
+            autoFocus
+            value={resetConfirmationText}
+            onChange={(e) => setResetConfirmationText(e.target.value)}
+            placeholder="ZURÜCKSETZEN"
+            variant="outlined"
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setResetDialogOpen(false);
+              setResetConfirmationText('');
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleResetAllParticipations}
+            variant="contained"
+            color="error"
+            disabled={resetConfirmationText !== 'ZURÜCKSETZEN'}
+          >
+            Alles zurücksetzen
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
+
 
 export default TeacherDashboard; 

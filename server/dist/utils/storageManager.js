@@ -183,36 +183,47 @@ class StorageManager {
                 const relativePath = filePath.replace('git-intern/', '');
                 if (process.env.NODE_ENV === 'production') {
                     // Production: Use relative path from project root
+                    // Production: Look in server directory first, then project root
+                    const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
                     let jmReihenPath;
-                    if (process.env.NODE_ENV === 'production') {
-                        // Production: Look in server directory first, then project root
-                        const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
-                        const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
-                        if (fs_1.default.existsSync(serverPath)) {
-                            jmReihenPath = serverPath;
-                        }
-                        else if (fs_1.default.existsSync(projectPath)) {
-                            jmReihenPath = projectPath;
-                        }
-                        else {
-                            jmReihenPath = serverPath; // Default to server path
-                        }
+                    if (fs_1.default.existsSync(serverPath)) {
+                        jmReihenPath = serverPath;
+                    }
+                    else if (fs_1.default.existsSync(projectPath)) {
+                        jmReihenPath = projectPath;
                     }
                     else {
-                        // Development: Use absolute path from project root
-                        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                        jmReihenPath = path_1.default.join(projectRoot, 'J-M-Reihen');
+                        jmReihenPath = serverPath; // Default to server path
                     }
-                    fullPath = path_1.default.join(jmReihenPath, relativePath);
+                    // If relativePath already starts with J-M-Reihen, don't add it again
+                    if (relativePath.startsWith('J-M-Reihen/')) {
+                        const basePath = jmReihenPath.replace(/J-M-Reihen$/, '');
+                        fullPath = path_1.default.join(basePath, relativePath);
+                    }
+                    else {
+                        fullPath = path_1.default.join(jmReihenPath, relativePath);
+                    }
                 }
                 else {
                     // Development: Use absolute path from project root
                     const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                    fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                    // If relativePath already starts with J-M-Reihen, don't add it again
+                    if (relativePath.startsWith('J-M-Reihen/')) {
+                        fullPath = path_1.default.join(projectRoot, relativePath);
+                    }
+                    else {
+                        fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                    }
                 }
+                console.log('StorageManager.readFile - fullPath:', fullPath);
+                console.log('StorageManager.readFile - exists:', fs_1.default.existsSync(fullPath));
                 if (fs_1.default.existsSync(fullPath)) {
-                    return fs_1.default.readFileSync(fullPath);
+                    const content = fs_1.default.readFileSync(fullPath);
+                    console.log('StorageManager.readFile - file size:', content.length);
+                    return content;
                 }
+                console.log('StorageManager.readFile - file not found');
                 return null;
             }
             // Handle local paths

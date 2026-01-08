@@ -4,6 +4,53 @@ const express_1 = require("express");
 const client_1 = require("@prisma/client");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
+// Reset all participations (ratings and comments) for a group
+// MUST BE FIRST ROUTE to avoid any conflicts!
+router.post('/reset-all-participations/:groupId', async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        console.log('=== RESET ROUTE HIT ===');
+        console.log('Reset all participations request for group:', groupId);
+        // Prüfe ob die Lerngruppe existiert
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId }
+        });
+        if (!group) {
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        }
+        // Lösche alle Bewertungen und Kommentare für diese Gruppe
+        const result = await prisma.$transaction(async (tx) => {
+            // Setze alle Bewertungen auf 0 (neutral) und Kommentare auf null
+            const updateResult = await tx.participation.updateMany({
+                where: { groupId },
+                data: {
+                    value: 0,
+                    comment: null
+                }
+            });
+            // Lösche alle EPO-Noten für diese Gruppe
+            const deleteResult = await tx.participationPeriodGrade.deleteMany({
+                where: { groupId }
+            });
+            return { updated: updateResult.count, deleted: deleteResult.count };
+        });
+        console.log('Reset completed:', result);
+        res.json({
+            message: 'Alle Bewertungen und Kommentare wurden erfolgreich zurückgesetzt',
+            groupId,
+            updated: result.updated,
+            deleted: result.deleted
+        });
+    }
+    catch (error) {
+        console.error('Error resetting all participations:', error);
+        console.error('Error details:', error === null || error === void 0 ? void 0 : error.message, error === null || error === void 0 ? void 0 : error.stack);
+        res.status(500).json({
+            error: 'Fehler beim Zurücksetzen der Bewertungen',
+            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler'
+        });
+    }
+});
 // Hilfsfunktion zur automatischen Berechnung der EPO-Noten für eine Gruppe
 // Wird automatisch aufgerufen, wenn sich Teilnahmen ändern
 async function calculateEpoGradesForGroup(groupId) {
@@ -492,6 +539,12 @@ router.post('/:groupId/calculate-epo', async (req, res) => {
 router.post('/:groupId/:lessonIndex', async (req, res) => {
     try {
         const { groupId, lessonIndex } = req.params;
+        // EXPLICIT CHECK: Wenn lessonIndex "reset-all-participations" ist, ist dies ein Reset-Request
+        // Das sollte nicht passieren, aber als Fallback-Sicherheit
+        if (lessonIndex === 'reset-all-participations') {
+            console.error('ERROR: POST /:groupId/:lessonIndex matched reset-all-participations!');
+            return res.status(404).json({ error: 'Route nicht gefunden - verwenden Sie POST /reset-all-participations/:groupId' });
+        }
         const { studentId, value } = req.body;
         if (!studentId || value === undefined) {
             return res.status(400).json({ error: 'studentId und value sind erforderlich' });
