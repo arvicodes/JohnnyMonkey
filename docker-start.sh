@@ -81,6 +81,12 @@ else
         } else {
           console.log('ℹ️  period2Hours already exists');
         }
+        if (!colNames.includes('seatingOrder')) {
+          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN seatingOrder TEXT\`;
+          console.log('✅ Added seatingOrder');
+        } else {
+          console.log('ℹ️  seatingOrder already exists');
+        }
         // Prüfe Datenbank-Inhalt
         const userCount = await prisma.user.count();
         const groupCount = await prisma.learningGroup.count();

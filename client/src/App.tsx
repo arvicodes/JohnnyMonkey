@@ -120,31 +120,20 @@ function AppContent() {
 
   // Global keyboard shortcuts for companions
   useEffect(() => {
-    let keySequence = '';
-    let sequenceTimeout: NodeJS.Timeout;
-
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Only handle shortcuts when not typing in input fields
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
 
-      keySequence += e.key.toLowerCase();
-      
-      // Clear sequence after 1 second
-      clearTimeout(sequenceTimeout);
-      sequenceTimeout = setTimeout(() => {
-        keySequence = '';
-      }, 1000);
-
-      // Check for shortcuts
-      if (keySequence === 'jj') {
+      // Check for shortcuts - single key presses
+      // + key for Johnny (could be '=' on some keyboards, but we check for '+' and '=' with Shift)
+      if (e.key === '+' || (e.key === '=' && e.shiftKey)) {
         setJohnnyVisible(prev => !prev);
-        keySequence = '';
         e.preventDefault();
-      } else if (keySequence === 'ff') {
+      } else if (e.key === '#' || (e.key === '3' && e.shiftKey)) {
+        // # key for Elfe (could be '3' with Shift on some keyboards)
         setElfVisible(prev => !prev);
-        keySequence = '';
         e.preventDefault();
       }
     };
@@ -152,7 +141,6 @@ function AppContent() {
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => {
       document.removeEventListener('keydown', handleGlobalKeyDown);
-      clearTimeout(sequenceTimeout);
     };
   }, []);
 

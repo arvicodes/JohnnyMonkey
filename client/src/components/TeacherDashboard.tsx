@@ -711,6 +711,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const gamePausedRef = useRef(false);
   const [holdMessage, setHoldMessage] = useState('');
   const [animationFrame, setAnimationFrame] = useState(0);
+  const [requiredKey, setRequiredKey] = useState<'f' | 'j' | null>(null); // Welche Taste muss im Hard-Modus gedrückt werden
+  const pauseStartTimeRef = useRef<number>(0); // Wann wurde pausiert (für korrekte Fall-Distanz-Berechnung)
+  const totalPausedTimeRef = useRef<number>(0); // Gesamte pausierte Zeit
 
   // Helper-Funktion für Datum
   const getDateKey = () => {
@@ -737,6 +740,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
     // Luftballons spawnen
     const balloonInterval = setInterval(() => {
+      // Im Hard-Modus: Prüfe ob Spiel pausiert ist
+      if (selectedMinigameDifficulty === 'hard' && gamePausedRef.current) {
+        return; // Keine Ballons spawnen wenn pausiert
+      }
+      
       if (selectedMinigameDifficulty === 'easy') {
         // Easy-Modus: Normale Logik - F und J Ballons
         let balloonKey: 'f' | 'j' = Math.random() > 0.5 ? 'f' : 'j';
@@ -756,30 +764,39 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           return updated;
         });
       } else {
-        // Hard-Modus: Ballons nur wenn F oder J gedrückt gehalten wird
+        // Hard-Modus: Ballons nur wenn die erforderliche Taste (F oder J) gedrückt gehalten wird
         const currentKeys = keysPressedRef.current;
-        const hasF = currentKeys.has('f');
-        const hasJ = currentKeys.has('j');
+        const requiredKeyValue = requiredKey;
         
-        if (!hasF && !hasJ) {
-          // Keine Taste gedrückt - keine Ballons
+        if (!requiredKeyValue) {
+          // Noch keine erforderliche Taste gewählt - keine Ballons
+          console.log('🎮 Balloon Spawn: Keine requiredKey');
           return;
         }
         
-        // Bestimme welche Ballons spawnen dürfen
+        // Prüfe ob die erforderliche Taste gedrückt ist
+        if (!currentKeys.has(requiredKeyValue)) {
+          // Erforderliche Taste nicht gedrückt - keine Ballons
+          console.log('🎮 Balloon Spawn: Required key nicht gedrückt', { requiredKey: requiredKeyValue, currentKeys: Array.from(currentKeys), gamePaused: gamePausedRef.current });
+          return;
+        }
+        
+        // Prüfe ob Spiel pausiert ist
+        if (gamePausedRef.current) {
+          console.log('🎮 Balloon Spawn: Spiel pausiert');
+          return;
+        }
+        
+        console.log('🎮 Balloon Spawn: Versuche Ballon zu spawnen', { requiredKey: requiredKeyValue, currentKeys: Array.from(currentKeys) });
+        
+        // Bestimme welche Ballons spawnen dürfen basierend auf der gedrückten Taste
         let allowedKeys: ('f' | 'j' | 'd' | 'k')[] = [];
-        if (hasF) {
+        if (requiredKeyValue === 'f') {
           // F gedrückt: D, J, K Ballons
           allowedKeys = ['d', 'j', 'k'];
-        }
-        if (hasJ) {
+        } else if (requiredKeyValue === 'j') {
           // J gedrückt: D, F, K Ballons
-          if (hasF) {
-            // Beide gedrückt: D, F, J, K (alle außer der gerade gedrückten wird ignoriert, aber wir nehmen alle)
-            allowedKeys = ['d', 'f', 'j', 'k'];
-          } else {
-            allowedKeys = ['d', 'f', 'k'];
-          }
+          allowedKeys = ['d', 'f', 'k'];
         }
         
         if (allowedKeys.length === 0) {
@@ -817,11 +834,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const speedMultiplier = 1 + (elapsedSeconds / 35) * 2;
         const currentSpeed = baseSpeed / speedMultiplier;
         
+        // Im Hard-Modus: Berücksichtige Pause-Zeit
+        const isPaused = selectedMinigameDifficulty === 'hard' && gamePausedRef.current;
+        const effectiveAge = isPaused 
+          ? (pauseStartTimeRef.current > 0 ? pauseStartTimeRef.current - startTime : 0)
+          : (now - startTime) - totalPausedTimeRef.current;
+        
         const updated = prev.map((balloon) => {
           if (balloon.caught) return balloon;
-          const age = now - balloon.spawnTime;
-          const fallDistance = age / currentSpeed;
-          if (fallDistance >= 360 && !balloon.caught) {
+          
+          // Berechne Fall-Distanz - wenn pausiert, verwende die Zeit bis zur Pause
+          let balloonAge: number;
+          if (isPaused && selectedMinigameDifficulty === 'hard') {
+            // Im Hard-Modus: Wenn pausiert, verwende die Zeit bis zur Pause
+            const pauseTime = pauseStartTimeRef.current > 0 ? pauseStartTimeRef.current : balloon.spawnTime;
+            balloonAge = pauseTime - balloon.spawnTime;
+          } else {
+            // Normal: Alter des Ballons
+            balloonAge = now - balloon.spawnTime;
+          }
+          
+          const fallDistance = balloonAge / currentSpeed;
+          if (fallDistance >= 410 && !balloon.caught) {
             setGameOver(true);
             setGameStarted(false);
             return balloon;
@@ -842,7 +876,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       clearInterval(balloonInterval);
       clearInterval(gameOverCheckInterval);
     };
-  }, [gameStarted, selectedMinigameDifficulty, startTime]);
+  }, [gameStarted, selectedMinigameDifficulty, startTime, requiredKey, gamePaused]);
 
   // Animation-Frame
   useEffect(() => {
@@ -857,38 +891,88 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Keyboard-Event-Handler für Minigame
   useEffect(() => {
-    if (!gameStarted || !showMinigame) return;
+    if (!gameStarted || !showMinigame) {
+      console.log('🎮 Minigame: Handler nicht aktiv', { gameStarted, showMinigame });
+      return;
+    }
+
+    console.log('🎮 Minigame: Handler wird registriert', { gameStarted, showMinigame, selectedMinigameDifficulty, requiredKey });
 
     const validKeys = selectedMinigameDifficulty === 'hard' ? ['f', 'j', 'd', 'k'] : ['f', 'j'];
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (key === 'f' || key === 'j') {
+      
+      // Nur für F und J interessieren
+      if (key !== 'f' && key !== 'j') {
+        return;
+      }
+      
+      console.log('🎮 Minigame: KeyDown erkannt', { key, activeElement: document.activeElement?.tagName, activeElementType: document.activeElement?.getAttribute('type') });
+      
+      // Prüfe ob der Fokus in einem Input-Feld ist (nur wenn wirklich aktiv und editierbar)
+      const activeElement = document.activeElement;
+      const isInInput = activeElement && (
+        (activeElement.tagName === 'INPUT' && (activeElement as HTMLInputElement).type !== 'button' && (activeElement as HTMLInputElement).type !== 'submit') ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).isContentEditable === true
+      );
+      
+      if (isInInput) {
+        console.log('🎮 Minigame: In Input-Feld - ignoriere', { tagName: activeElement?.tagName, type: (activeElement as HTMLInputElement)?.type });
+        return;
+      }
+      
+      // Verhindere Default-Verhalten und Propagation
         e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      // Verhindere wiederholtes Auslösen bei gehaltener Taste
+      if (keysPressedRef.current.has(key)) {
+        console.log('🎮 Minigame: Taste bereits gedrückt - ignoriere wiederholtes Event', { key });
+        return; // Taste ist bereits gedrückt, ignoriere
+      }
+      
+      console.log('🎮 Minigame: Taste registriert', { key, difficulty: selectedMinigameDifficulty, requiredKey });
         keysPressedRef.current.add(key);
         
-        // Im Easy-Modus: Einmaliges Drücken fängt Ballons
+      // Im Easy-Modus: Einmaliges Drücken fängt nur den ersten passenden Ballon
         if (selectedMinigameDifficulty === 'easy') {
           setBalloons((prev) => {
-            return prev.map((balloon) => {
-              if (balloon.caught) return balloon;
-              
-              // F-Ballon mit F-Taste fangen (einmaliges Drücken)
-              if (balloon.key === 'f' && key === 'f') {
+          // Sortiere nach spawnTime, um den ältesten zuerst zu nehmen
+          const sortedUncaught = prev
+            .filter(b => !b.caught)
+            .sort((a, b) => a.spawnTime - b.spawnTime);
+          
+          // Finde den ersten passenden Ballon
+          const matchingBalloon = sortedUncaught.find((balloon) => {
+            if (key === 'f' && balloon.key === 'f') return true;
+            if (key === 'j' && balloon.key === 'j') return true;
+            return false;
+          });
+          
+          if (matchingBalloon) {
                 setScore((s) => s + 1);
-                return { ...balloon, caught: true };
-              }
-              // J-Ballon mit J-Taste fangen (einmaliges Drücken)
-              if (balloon.key === 'j' && key === 'j') {
-                setScore((s) => s + 1);
-                return { ...balloon, caught: true };
-              }
-              
-              return balloon;
-            });
+            return prev.map((balloon) => 
+              balloon.id === matchingBalloon.id 
+                ? { ...balloon, caught: true }
+                : balloon
+            );
+          }
+          
+          return prev;
           });
         } else {
-          // Hard-Modus: Taste gedrückt -> Meldung entfernen
+        // Hard-Modus: Prüfe ob die richtige Taste gedrückt wurde
+        if (requiredKey && key === requiredKey) {
+          // Richtige Taste gedrückt -> Spiel fortsetzen
+          if (gamePausedRef.current && pauseStartTimeRef.current > 0) {
+            // Addiere die Pause-Zeit zur Gesamt-Pause-Zeit
+            const pauseDuration = Date.now() - pauseStartTimeRef.current;
+            totalPausedTimeRef.current += pauseDuration;
+            pauseStartTimeRef.current = 0;
+          }
           setHoldMessage('');
           setGamePaused(false);
           gamePausedRef.current = false;
@@ -898,63 +982,123 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (key === 'f' || key === 'j') {
+      
+      // Nur für F und J interessieren
+      if (key !== 'f' && key !== 'j') {
+        return;
+      }
+      
+      // Prüfe ob der Fokus in einem Input-Feld ist (nur wenn wirklich aktiv und editierbar)
+      const activeElement = document.activeElement;
+      const isInInput = activeElement && (
+        (activeElement.tagName === 'INPUT' && (activeElement as HTMLInputElement).type !== 'button' && (activeElement as HTMLInputElement).type !== 'submit') ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).isContentEditable === true
+      );
+      
+      if (isInInput) {
+        return;
+      }
+      
+      // Verhindere Default-Verhalten und Propagation
         e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      // Entferne nur wenn wirklich gedrückt war
+      if (keysPressedRef.current.has(key)) {
         keysPressedRef.current.delete(key);
         
-        // Im Hard-Modus: Wenn keine Taste mehr gedrückt, Meldung anzeigen
-        if (selectedMinigameDifficulty === 'hard') {
-          const currentKeys = keysPressedRef.current;
-          if (!currentKeys.has('f') && !currentKeys.has('j')) {
+        // Im Hard-Modus: Wenn die erforderliche Taste losgelassen wird, pausieren
+        if (selectedMinigameDifficulty === 'hard' && requiredKey && key === requiredKey) {
             setGamePaused(true);
             gamePausedRef.current = true;
-            setHoldMessage('Halte F oder J dauerhaft gedrückt');
-          }
+          pauseStartTimeRef.current = Date.now(); // Speichere Pause-Startzeit
+          setHoldMessage(`Halte die ${requiredKey.toUpperCase()} Taste dauerhaft gedrückt`);
         }
       }
     };
 
     // Im Hard-Modus: Prüfe kontinuierlich ob Ballons gefangen werden können
+    // WICHTIG: Nur ein Ballon pro Check-Intervall!
     const checkInterval = selectedMinigameDifficulty === 'hard' ? setInterval(() => {
       setBalloons((prev) => {
         const currentKeys = keysPressedRef.current;
         
+        const uncaughtBalloons = prev.filter(b => !b.caught);
+        // Finde den ersten passenden Ballon (der älteste, der noch nicht gefangen ist)
+        // Sortiere nach spawnTime, um den ältesten zuerst zu nehmen
+        const sortedUncaught = prev
+          .filter(b => !b.caught)
+          .sort((a, b) => a.spawnTime - b.spawnTime);
+        
+        if (sortedUncaught.length === 0) {
+          // Keine Ballons vorhanden - keine Aktion nötig
+          return prev;
+        }
+        
+        console.log('🎮 Minigame: CheckInterval', { 
+          currentKeys: Array.from(currentKeys), 
+          balloonCount: uncaughtBalloons.length,
+          balloonKeys: uncaughtBalloons.map(b => b.key),
+          requiredKey,
+          gamePaused: gamePausedRef.current,
+          firstBallonKey: sortedUncaught[0]?.key
+        });
+        
+        let caughtOne = false;
         const updated = prev.map((balloon) => {
-          if (balloon.caught) return balloon;
+          if (balloon.caught || caughtOne) return balloon;
+          
+          // Prüfe ob dieser Ballon gefangen werden kann
+          let shouldCatch = false;
           
           // F-Ballon: F muss gedrückt sein
           if (balloon.key === 'f' && currentKeys.has('f')) {
-            setScore((s) => s + 1);
-            return { ...balloon, caught: true };
+            shouldCatch = true;
           }
-          
           // J-Ballon: J muss gedrückt sein
-          if (balloon.key === 'j' && currentKeys.has('j')) {
-            setScore((s) => s + 1);
-            return { ...balloon, caught: true };
+          else if (balloon.key === 'j' && currentKeys.has('j')) {
+            shouldCatch = true;
           }
-          
           // D-Ballon: F muss gedrückt sein
-          if (balloon.key === 'd' && currentKeys.has('f')) {
-            setScore((s) => s + 1);
-            return { ...balloon, caught: true };
+          else if (balloon.key === 'd' && currentKeys.has('f')) {
+            shouldCatch = true;
+          }
+          // K-Ballon: J muss gedrückt sein
+          else if (balloon.key === 'k' && currentKeys.has('j')) {
+            shouldCatch = true;
           }
           
-          // K-Ballon: J muss gedrückt sein
-          if (balloon.key === 'k' && currentKeys.has('j')) {
+          if (shouldCatch) {
+            // Nur den ersten passenden Ballon fangen
+            const isFirstMatching = sortedUncaught[0]?.id === balloon.id;
+            if (isFirstMatching) {
+              caughtOne = true;
+              console.log('🎮 Minigame: Ballon gefangen!', { balloonKey: balloon.key, currentKeys: Array.from(currentKeys) });
             setScore((s) => s + 1);
             return { ...balloon, caught: true };
+            }
           }
           
           return balloon;
         });
         
-        // Prüfe ob noch F oder J gedrückt ist
-        if (!currentKeys.has('f') && !currentKeys.has('j')) {
-          setHoldMessage('Halte F oder J dauerhaft gedrückt');
+        // Prüfe ob die erforderliche Taste noch gedrückt ist
+        if (requiredKey && !currentKeys.has(requiredKey)) {
+          if (!gamePausedRef.current) {
           setGamePaused(true);
           gamePausedRef.current = true;
-        } else {
+            pauseStartTimeRef.current = Date.now();
+            setHoldMessage(`Halte die ${requiredKey.toUpperCase()} Taste dauerhaft gedrückt`);
+          }
+        } else if (requiredKey && currentKeys.has(requiredKey)) {
+          if (gamePausedRef.current && pauseStartTimeRef.current > 0) {
+            // Addiere die Pause-Zeit zur Gesamt-Pause-Zeit
+            const pauseDuration = Date.now() - pauseStartTimeRef.current;
+            totalPausedTimeRef.current += pauseDuration;
+            pauseStartTimeRef.current = 0;
+          }
           setHoldMessage('');
           setGamePaused(false);
           gamePausedRef.current = false;
@@ -969,31 +1113,41 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       });
     }, 100) : null;
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    // Verwende capture: true, um Events früher abzufangen
+    // Und { passive: false } um preventDefault() zu ermöglichen
+    window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false });
+    window.addEventListener('keyup', handleKeyUp, { capture: true, passive: false });
+    
+    console.log('🎮 Minigame: Event-Listener registriert');
     
     // Reset keys when effect runs
     keysPressedRef.current.clear();
-    if (selectedMinigameDifficulty === 'hard') {
-      setHoldMessage('Halte F oder J dauerhaft gedrückt');
+    if (selectedMinigameDifficulty === 'hard' && requiredKey) {
+      setHoldMessage(`Halte die ${requiredKey.toUpperCase()} Taste dauerhaft gedrückt`);
       setGamePaused(true);
       gamePausedRef.current = true;
+      pauseStartTimeRef.current = Date.now();
+      totalPausedTimeRef.current = 0;
     } else {
       setHoldMessage('');
       setGamePaused(false);
       gamePausedRef.current = false;
+      pauseStartTimeRef.current = 0;
+      totalPausedTimeRef.current = 0;
     }
     
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      window.removeEventListener('keyup', handleKeyUp, { capture: true });
       if (checkInterval) clearInterval(checkInterval);
       keysPressedRef.current.clear();
       setHoldMessage('');
       setGamePaused(false);
       gamePausedRef.current = false;
+      pauseStartTimeRef.current = 0;
+      totalPausedTimeRef.current = 0;
     };
-  }, [gameStarted, showMinigame, selectedMinigameDifficulty]);
+  }, [gameStarted, showMinigame, selectedMinigameDifficulty, requiredKey]);
   
   // Nachricht an Schüler senden
   const [showSendMessageDialog, setShowSendMessageDialog] = useState(false);
@@ -1015,6 +1169,129 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
   const [participationStats, setParticipationStats] = useState<any[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
+  
+  // Sortiere participationStats nach Sitzordnung
+  const sortedParticipationStats = useMemo(() => {
+    if (!participationStats.length) return [];
+    
+    const getSeatingOrder = (fullName: string): number => {
+      if (!fullName) return 999;
+      const nameLower = fullName.toLowerCase().trim();
+      
+      // Mapping: vollständige Namen zu Sitzpositionen (von oben nach unten, links nach rechts)
+      // Top Row
+      if (nameLower.includes('robin') && nameLower.includes('maas')) return 1;
+      if (nameLower.includes('felix') && nameLower.includes('schmelzlin')) return 2;
+      
+      // Row 1
+      if (nameLower.includes('luise') && nameLower.includes('habach')) return 3;
+      if (nameLower.includes('louis') && nameLower.includes('gerharz')) return 4;
+      if (nameLower.includes('jonathan') && nameLower.includes('dillmann')) return 5;
+      if (nameLower.includes('jan') && nameLower.includes('wimmershoff')) return 6;
+      if ((nameLower.includes('miró') || nameLower.includes('miro')) && nameLower.includes('mohr')) return 7;
+      if (nameLower.includes('killian') && nameLower.includes('jahnke')) return 8;
+      
+      // Row 2
+      if (nameLower.includes('vincent') && nameLower.includes('schlag')) return 9;
+      if (nameLower.includes('marlene') && nameLower.includes('geis')) return 10;
+      if (nameLower.includes('adela') && (nameLower.includes('mureşan') || nameLower.includes('muresan'))) return 11;
+      if (nameLower.includes('jakob') && nameLower.includes('ackermann')) return 12;
+      if (nameLower.includes('nils') && (nameLower.includes('weiß') || nameLower.includes('weiss'))) return 13;
+      if (nameLower.includes('paul') && nameLower.includes('pfeifer')) return 14;
+      if (nameLower.includes('niklas') && nameLower.includes('schmitz')) return 15;
+      
+      // Row 3
+      if (nameLower.includes('julia') && nameLower.includes('reiners')) return 16;
+      if (nameLower.includes('jasmin') && nameLower.includes('farnung')) return 17;
+      if (nameLower.includes('lennas') && nameLower.includes('weinem')) return 18;
+      if (nameLower.includes('louisa') && nameLower.includes('plattes')) return 19;
+      if (nameLower.includes('andreas') && nameLower.includes('thielen')) return 20;
+      if (nameLower.includes('marlene') && nameLower.includes('krall')) return 21;
+      if (nameLower.includes('friederike') && nameLower.includes('bremser')) return 22; // Ixi = Friederike
+      if (nameLower.includes('dennis') && nameLower.includes('miller')) return 23;
+      
+      // Row 4
+      if (nameLower.includes('fabio') && nameLower.includes('urso')) return 24;
+      if (nameLower.includes('josefine') && nameLower.includes('baierl')) return 25;
+      if (nameLower.includes('jonas') && nameLower.includes('maxeiner')) return 26;
+      if (nameLower.includes('arthur') && nameLower.includes('potemkin')) return 27;
+      if (nameLower.includes('samuel') && nameLower.includes('may')) return 28;
+      if (nameLower.includes('hannah') && nameLower.includes('hagedorn')) return 29;
+      if (nameLower.includes('bruno') && nameLower.includes('scavio')) return 30;
+      if (nameLower.includes('freya') && nameLower.includes('zipper')) return 31;
+      
+      // Fallback: Versuche nur mit Vornamen (für Fälle, wo Nachname nicht passt)
+      const firstName = fullName.trim().split(/\s+/)[0].toLowerCase();
+      const seatingOrderByFirstName: { [key: string]: number } = {
+        'robin': 1,
+        'felix': 2,
+        'luise': 3,
+        'louis': 4,
+        'jonathan': 5,
+        'jan': 6,
+        'miró': 7,
+        'miro': 7,
+        'killian': 8,
+        'vincent': 9,
+        'adela': 11,
+        'jakob': 12,
+        'nils': 13,
+        'paul': 14,
+        'niklas': 15,
+        'julia': 16,
+        'jasmin': 17,
+        'lennas': 18,
+        'louisa': 19,
+        'andreas': 20,
+        'dennis': 23,
+        'fabio': 24,
+        'josefine': 25,
+        'jonas': 26,
+        'arthur': 27,
+        'samuel': 28,
+        'hannah': 29,
+        'bruno': 30,
+        'freya': 31,
+        'friederike': 22 // Ixi = Friederike
+      };
+      
+      // Spezielle Behandlung für Marlene (G. vs K.)
+      if (firstName === 'marlene') {
+        if (nameLower.includes('geis')) return 10;
+        if (nameLower.includes('krall')) return 21;
+      }
+      
+      return seatingOrderByFirstName[firstName] || 999; // Nicht gefundene Schüler ans Ende
+    };
+    
+    // Erstelle eine Kopie des Arrays und sortiere es
+    const sorted = [...participationStats].sort((a, b) => {
+      const nameA = a.student?.name || '';
+      const nameB = b.student?.name || '';
+      const orderA = getSeatingOrder(nameA);
+      const orderB = getSeatingOrder(nameB);
+      
+      // Wenn beide in der Sitzordnung sind, sortiere nach Position
+      if (orderA !== 999 && orderB !== 999) {
+        return orderA - orderB;
+      }
+      
+      // Wenn nur einer in der Sitzordnung ist, dieser kommt zuerst
+      if (orderA !== 999) return -1;
+      if (orderB !== 999) return 1;
+      
+      // Beide nicht in Sitzordnung: alphabetisch nach Nachname
+      const getLastName = (name: string) => {
+        const parts = name.trim().split(/\s+/);
+        return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+      };
+      const lastNameA = getLastName(nameA).toLowerCase();
+      const lastNameB = getLastName(nameB).toLowerCase();
+      return lastNameA.localeCompare(lastNameB, 'de');
+    });
+    
+    return sorted;
+  }, [participationStats]);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetConfirmationText, setResetConfirmationText] = useState('');
   const [commentModalOpen, setCommentModalOpen] = useState(false);
@@ -1025,6 +1302,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [periodConfig, setPeriodConfig] = useState<{period1Hours: number | null; period2Hours: number | null}>({period1Hours: null, period2Hours: null});
   const [epoGrades, setEpoGrades] = useState<any[]>([]);
   const [periodConfigModalOpen, setPeriodConfigModalOpen] = useState(false);
+  const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
+  const [dragOverDeskIndex, setDragOverDeskIndex] = useState<string | null>(null);
+  const [deskPositions, setDeskPositions] = useState<{[groupId: string]: Array<{deskId: number; gridRow: number; gridCol: number}>}>({});
+  const [draggedDeskId, setDraggedDeskId] = useState<number | null>(null);
+  const [dragOverGridCell, setDragOverGridCell] = useState<string | null>(null);
+  const [customSeatingOrder, setCustomSeatingOrder] = useState<{[groupId: string]: string[]}>({});
   const [tempPeriod1Hours, setTempPeriod1Hours] = useState<string>('');
   const [tempPeriod2Hours, setTempPeriod2Hours] = useState<string>('');
   const [lessonKeyword, setLessonKeyword] = useState<string>('');
@@ -1043,6 +1326,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }, 0);
     }
   }, [participationModalOpen]);
+
+  // Lade Sitzordnung, wenn sich die Gruppe ändert oder das Modal geöffnet wird
+  useEffect(() => {
+    if (participationGroupId && participationModalOpen) {
+      console.log('🔄 Lade Sitzordnung für Gruppe:', participationGroupId);
+      loadSeatingOrder(participationGroupId);
+    }
+  }, [participationGroupId, participationModalOpen]);
 
   // Aktualisiere lessonKeyword, wenn sich die Unterrichtsstunde ändert
   useEffect(() => {
@@ -3139,6 +3430,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     await loadEpoGrades(groupId);
     // Lade Stichworte für alle Stunden
     await loadLessonKeywords(groupId);
+    // Lade Sitzordnung
+    await loadSeatingOrder(groupId);
   };
   
   const loadPeriodConfig = async (groupId: string) => {
@@ -3152,6 +3445,97 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }
     } catch (error) {
       console.error('Fehler beim Laden der Zeitraum-Konfiguration:', error);
+    }
+  };
+
+  // Lade Sitzordnung für eine Gruppe
+  const loadSeatingOrder = async (groupId: string) => {
+    try {
+      console.log('📥 Lade Sitzordnung für Gruppe:', groupId);
+      const response = await fetch(`/api/participation/${groupId}/seating-order`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📥 Sitzordnung-Daten vom Server:', data);
+        console.log('📥 seatingOrder ist Array:', Array.isArray(data.seatingOrder));
+        console.log('📥 seatingOrder length:', data.seatingOrder?.length);
+        
+        if (data.seatingOrder && Array.isArray(data.seatingOrder) && data.seatingOrder.length > 0) {
+          console.log('✅ Setze Sitzordnung mit', data.seatingOrder.length, 'Schülern');
+          console.log('✅ Erste 5 IDs:', data.seatingOrder.slice(0, 5));
+          
+          setCustomSeatingOrder(prev => {
+            const updated = {
+              ...prev,
+              [groupId]: data.seatingOrder
+            };
+            console.log('✅ State aktualisiert für Gruppe:', groupId);
+            console.log('✅ Gespeicherte Gruppen:', Object.keys(updated));
+            return updated;
+          });
+          
+          // Lade auch Tisch-Positionen falls vorhanden
+          if (data.deskPositions && Array.isArray(data.deskPositions) && data.deskPositions.length > 0) {
+            console.log('✅ Setze Tisch-Positionen:', data.deskPositions.length);
+            setDeskPositions(prev => ({
+              ...prev,
+              [groupId]: data.deskPositions
+            }));
+          }
+        } else {
+          console.log('ℹ️ Keine gespeicherte Sitzordnung gefunden - verwende Standard-Sortierung');
+          // Lösche eventuell vorhandene alte Sitzordnung
+          setCustomSeatingOrder(prev => {
+            const updated = { ...prev };
+            delete updated[groupId];
+            return updated;
+          });
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Fehler beim Laden der Sitzordnung:', response.status, response.statusText);
+        console.error('❌ Error response:', errorText);
+      }
+    } catch (error) {
+      console.error('❌ Fehler beim Laden der Sitzordnung:', error);
+    }
+  };
+
+  // Speichere Sitzordnung für eine Gruppe
+  const saveSeatingOrder = async (groupId: string, seatingOrder: string[], deskPositions?: Array<{deskId: number; gridRow: number; gridCol: number}>) => {
+    try {
+      console.log('💾 Speichere Sitzordnung für Gruppe:', groupId, 'mit', seatingOrder.length, 'Schülern');
+      if (deskPositions) {
+        console.log('💾 Speichere auch', deskPositions.length, 'Tisch-Positionen');
+      }
+      const response = await fetch(`/api/participation/${groupId}/seating-order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          seatingOrder,
+          deskPositions: deskPositions || []
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Sitzordnung erfolgreich gespeichert:', data);
+        // Aktualisiere auch den lokalen State, um sicherzustellen, dass er synchron ist
+        setCustomSeatingOrder(prev => ({
+          ...prev,
+          [groupId]: seatingOrder
+        }));
+        if (deskPositions) {
+          setDeskPositions(prev => ({
+            ...prev,
+            [groupId]: deskPositions
+          }));
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Fehler beim Speichern der Sitzordnung:', response.status, response.statusText, errorText);
+      }
+    } catch (error) {
+      console.error('❌ Fehler beim Speichern der Sitzordnung:', error);
     }
   };
 
@@ -3512,9 +3896,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       };
     });
   };
-  const handleCommentRightClick = (e: React.MouseEvent, studentId: string, studentName: string) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Ref für Long-Press Timer
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressStudentRef = useRef<{ studentId: string; studentName: string } | null>(null);
+
+  // Gemeinsame Funktion zum Öffnen des Kommentar-Modals
+  const openCommentModal = (studentId: string, studentName: string) => {
     setCommentStudentId(studentId);
     setCommentStudentName(studentName);
     
@@ -3532,6 +3919,58 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     
     setCommentModalOpen(true);
   };
+
+  const handleCommentRightClick = (e: React.MouseEvent, studentId: string, studentName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openCommentModal(studentId, studentName);
+  };
+
+  // Touch-Handler für Long-Press
+  const handleTouchStart = (e: React.TouchEvent, studentId: string, studentName: string) => {
+    // Verhindere Scroll während Long-Press
+    e.stopPropagation();
+    
+    // Speichere Student-Info für Timer
+    longPressStudentRef.current = { studentId, studentName };
+    
+    // Setze Timer für Long-Press (500ms)
+    longPressTimerRef.current = setTimeout(() => {
+      if (longPressStudentRef.current) {
+        openCommentModal(longPressStudentRef.current.studentId, longPressStudentRef.current.studentName);
+        longPressStudentRef.current = null;
+      }
+    }, 500);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Stoppe Timer wenn Touch vor Ablauf beendet wird
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStudentRef.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Wenn Finger bewegt wird, stoppe Long-Press
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStudentRef.current = null;
+  };
+
+  // Cleanup: Timer beim Unmount aufräumen
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      longPressStudentRef.current = null;
+    };
+  }, []);
   
   const handleCommentSave = async () => {
     if (!participationGroupId || !commentStudentId) return;
@@ -3823,9 +4262,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Export-Funktionen für Epochalstatistik
   const exportToCSV = () => {
-    if (!participationStats.length || !participationGroupId) return;
+    if (!sortedParticipationStats.length || !participationGroupId) return;
     const headers = ['Schüler', 'Anzahl', 'Durchschnitt', 'Zeitraum 1', 'Zeitraum 2', 'Gesamtnote', 'Epo 1', 'Epo 2'];
-    const rows = participationStats.map((stat: any) => {
+    const rows = sortedParticipationStats.map((stat: any) => {
       const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
       const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
       return [
@@ -3850,10 +4289,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
 
   const exportToExcel = async () => {
-    if (!participationStats.length || !participationGroupId) return;
+    if (!sortedParticipationStats.length || !participationGroupId) return;
     // Excel-Export als CSV mit Tab-Trennung (kann in Excel geöffnet werden)
     const headers = ['Schüler', 'Anzahl', 'Durchschnitt', 'Zeitraum 1', 'Zeitraum 2', 'Gesamtnote', 'Epo 1', 'Epo 2'];
-    const rows = participationStats.map((stat: any) => {
+    const rows = sortedParticipationStats.map((stat: any) => {
       const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
       const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
       return [
@@ -3879,7 +4318,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
 
   const exportToPDF = async () => {
-    if (!participationStats.length || !participationGroupId) return;
+    if (!sortedParticipationStats.length || !participationGroupId) return;
     try {
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF();
@@ -3895,7 +4334,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         x += colWidths[i];
       });
       y += 7;
-      participationStats.forEach((stat: any) => {
+      sortedParticipationStats.forEach((stat: any) => {
         if (y > 280) {
           doc.addPage();
           y = 20;
@@ -3927,10 +4366,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
 
   const exportToWord = async () => {
-    if (!participationStats.length || !participationGroupId) return;
+    if (!sortedParticipationStats.length || !participationGroupId) return;
     try {
       const { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, WidthType } = await import('docx');
-      const rows = participationStats.map((stat: any) => {
+      const rows = sortedParticipationStats.map((stat: any) => {
         const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
         const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
         return new TableRow({
@@ -3988,11 +4427,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
 
   const exportToJSON = () => {
-    if (!participationStats.length || !participationGroupId) return;
+    if (!sortedParticipationStats.length || !participationGroupId) return;
     const data = {
       groupName: participationGroupName,
       exportDate: new Date().toISOString(),
-      stats: participationStats.map((stat: any) => {
+      stats: sortedParticipationStats.map((stat: any) => {
         const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
         const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
         return {
@@ -9925,43 +10364,597 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           
            {/* Schüler-Kacheln */}
           {/* Schüler-Kacheln */}
-          {participationGroupId && groups.find(g => g.id === participationGroupId)?.students && (
-            <Grid container spacing={0.75}>
-              {groups.find(g => g.id === participationGroupId)!.students.map((student) => {
+          {participationGroupId && groups.find(g => g.id === participationGroupId)?.students && (() => {
+            const students = groups.find(g => g.id === participationGroupId)!.students;
+            
+            // Sortiere Schüler nach Sitzordnung - exakt wie im Screenshot
+            const getSeatingOrder = (fullName: string): number => {
+              if (!fullName) return 999;
+              const nameLower = fullName.toLowerCase().trim();
+              
+              // Exakte Reihenfolge basierend auf Screenshot (von oben nach unten, links nach rechts)
+              // Reihe 1 (oben): 2 Schüler
+              if (nameLower.includes('robin') && nameLower.includes('maas')) return 1;
+              if (nameLower.includes('felix') && nameLower.includes('schmelzlin')) return 2;
+              
+              // Reihe 2: 6 Schüler
+              if (nameLower.includes('luise') && nameLower.includes('habach')) return 3;
+              if (nameLower.includes('louis') && nameLower.includes('gerharz')) return 4;
+              if (nameLower.includes('jonathan') && nameLower.includes('dillmann')) return 5;
+              if (nameLower.includes('jan') && nameLower.includes('wimmershoff')) return 6;
+              if ((nameLower.includes('miró') || nameLower.includes('miro')) && nameLower.includes('mohr')) return 7;
+              if ((nameLower.includes('killian') || nameLower.includes('kilian')) && nameLower.includes('jahnke')) return 8;
+              
+              // Reihe 3: 7 Schüler
+              if (nameLower.includes('vincent') && nameLower.includes('schlag')) return 9;
+              if (nameLower.includes('marlene') && nameLower.includes('geis')) return 10;
+              if (nameLower.includes('adela') && (nameLower.includes('mureşan') || nameLower.includes('muresan'))) return 11;
+              if (nameLower.includes('jakob') && nameLower.includes('ackermann')) return 12;
+              if (nameLower.includes('nils') && (nameLower.includes('weiß') || nameLower.includes('weiss'))) return 13;
+              if (nameLower.includes('paul') && nameLower.includes('pfeifer')) return 14;
+              if (nameLower.includes('niklas') && nameLower.includes('schmitz')) return 15;
+              
+              // Reihe 4: 8 Schüler
+              if (nameLower.includes('julia') && nameLower.includes('reiners')) return 16;
+              if (nameLower.includes('jasmin') && nameLower.includes('farnung')) return 17;
+              if (nameLower.includes('lennas') && nameLower.includes('weinem')) return 18;
+              if (nameLower.includes('louisa') && nameLower.includes('plattes')) return 19;
+              if (nameLower.includes('andreas') && nameLower.includes('thielen')) return 20;
+              if (nameLower.includes('marlene') && nameLower.includes('krall')) return 21;
+              if (nameLower.includes('friederike') && nameLower.includes('bremser')) return 22; // Ixi = Friederike
+              if (nameLower.includes('dennis') && nameLower.includes('miller')) return 23;
+              
+              // Reihe 5: 8 Schüler
+              if (nameLower.includes('fabio') && nameLower.includes('urso')) return 24;
+              if (nameLower.includes('josefine') && nameLower.includes('baierl')) return 25;
+              if (nameLower.includes('jonas') && nameLower.includes('maxeiner')) return 26;
+              if (nameLower.includes('arthur') && nameLower.includes('potemkin')) return 27;
+              if (nameLower.includes('samuel') && nameLower.includes('may')) return 28;
+              if (nameLower.includes('hannah') && nameLower.includes('hagedorn')) return 29;
+              if (nameLower.includes('bruno') && nameLower.includes('scavio')) return 30;
+              if (nameLower.includes('freya') && nameLower.includes('zipper')) return 31;
+              
+              // Fallback: Versuche nur mit Vornamen (für Robustheit)
+              const firstName = fullName.trim().split(/\s+/)[0].toLowerCase();
+              const seatingOrderByFirstName: { [key: string]: number } = {
+                'robin': 1,
+                'felix': 2,
+                'luise': 3,
+                'louis': 4,
+                'jonathan': 5,
+                'jan': 6,
+                'miró': 7,
+                'miro': 7,
+                'killian': 8,
+                'vincent': 9,
+                'adela': 11,
+                'jakob': 12,
+                'nils': 13,
+                'paul': 14,
+                'niklas': 15,
+                'julia': 16,
+                'jasmin': 17,
+                'lennas': 18,
+                'louisa': 19,
+                'andreas': 20,
+                'dennis': 23,
+                'fabio': 24,
+                'josefine': 25,
+                'jonas': 26,
+                'arthur': 27,
+                'samuel': 28,
+                'hannah': 29,
+                'bruno': 30,
+                'freya': 31,
+                'friederike': 22 // Ixi = Friederike
+              };
+              
+              // Spezielle Behandlung für Marlene (G. vs K.)
+              if (firstName === 'marlene') {
+                if (nameLower.includes('geis')) return 10;
+                if (nameLower.includes('krall')) return 21;
+              }
+              
+              return seatingOrderByFirstName[firstName] || 999;
+            };
+            
+            // Verwende benutzerdefinierte Sitzordnung falls vorhanden
+            const customOrder = customSeatingOrder[participationGroupId || ''];
+            let sortedStudents: typeof students;
+            
+            console.log('🔍 Sitzordnung-Check für Gruppe:', participationGroupId);
+            console.log('🔍 customOrder vorhanden:', !!customOrder);
+            console.log('🔍 customOrder length:', customOrder?.length);
+            console.log('🔍 students length:', students.length);
+            
+            // Wenn keine benutzerdefinierte Sitzordnung vorhanden ist, erstelle eine basierend auf Standard-Sortierung
+            if (!customOrder || customOrder.length === 0) {
+              console.log('📋 Erstelle Standard-Sitzordnung basierend auf getSeatingOrder');
+              // Sortiere Schüler nach Standard-Sitzordnung
+              const standardSorted = [...students].sort((a, b) => {
+                const orderA = getSeatingOrder(a.name);
+                const orderB = getSeatingOrder(b.name);
+                
+                if (orderA !== 999 && orderB !== 999) {
+                  return orderA - orderB;
+                }
+                
+                if (orderA !== 999) return -1;
+                if (orderB !== 999) return 1;
+                
+                // Beide nicht in Sitzordnung: alphabetisch nach Nachname
+                const getLastName = (name: string) => {
+                  const parts = name.trim().split(/\s+/);
+                  return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                };
+                const lastNameA = getLastName(a.name).toLowerCase();
+                const lastNameB = getLastName(b.name).toLowerCase();
+                return lastNameA.localeCompare(lastNameB, 'de');
+              });
+              
+              // Erstelle Standard-Reihenfolge aus sortierten Schülern
+              const standardOrder = standardSorted.map(s => s.id);
+              console.log('📋 Standard-Reihenfolge erstellt:', standardOrder.length, 'Schüler');
+              
+              // Setze diese als benutzerdefinierte Sitzordnung (wird beim ersten Speichern persistiert)
+              setCustomSeatingOrder(prev => ({
+                ...prev,
+                [participationGroupId || '']: standardOrder
+              }));
+              
+              sortedStudents = standardSorted;
+            } else if (customOrder && customOrder.length > 0) {
+              // Sortiere nach benutzerdefinierter Reihenfolge
+              const orderMap = new Map(customOrder.map((id, index) => [id, index]));
+              
+              // Stelle sicher, dass alle Schüler in der Reihenfolge sind
+              // Füge fehlende Schüler am Ende hinzu
+              const allStudentIds = new Set(students.map(s => s.id));
+              const orderedStudentIds = customOrder.filter(id => allStudentIds.has(id));
+              const missingStudentIds = students
+                .map(s => s.id)
+                .filter(id => !customOrder.includes(id));
+              
+              const finalOrder = [...orderedStudentIds, ...missingStudentIds];
+              
+              console.log('✅ Verwende benutzerdefinierte Reihenfolge');
+              console.log('✅ Ordered:', orderedStudentIds.length, 'Missing:', missingStudentIds.length);
+              
+              sortedStudents = [...students].sort((a, b) => {
+                const orderA = finalOrder.indexOf(a.id);
+                const orderB = finalOrder.indexOf(b.id);
+                // Wenn beide nicht gefunden, behalte ursprüngliche Reihenfolge
+                if (orderA === -1 && orderB === -1) return 0;
+                if (orderA === -1) return 1; // a kommt ans Ende
+                if (orderB === -1) return -1; // b kommt ans Ende
+                return orderA - orderB;
+              });
+            } else {
+              // Standard-Sortierung nach Sitzordnung
+              sortedStudents = [...students].sort((a, b) => {
+                const orderA = getSeatingOrder(a.name);
+                const orderB = getSeatingOrder(b.name);
+                
+                if (orderA !== 999 && orderB !== 999) {
+                  return orderA - orderB;
+                }
+                
+                if (orderA !== 999) return -1;
+                if (orderB !== 999) return 1;
+                
+                // Beide nicht in Sitzordnung: alphabetisch nach Nachname
+                const getLastName = (name: string) => {
+                  const parts = name.trim().split(/\s+/);
+                  return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+                };
+                const lastNameA = getLastName(a.name).toLowerCase();
+                const lastNameB = getLastName(b.name).toLowerCase();
+                return lastNameA.localeCompare(lastNameB, 'de');
+              });
+            }
+            
+            // Gruppiere Schüler in Zweiertische basierend auf der sortierten Reihenfolge
+            const groupIntoDesks = (students: typeof sortedStudents) => {
+              const desks: Array<Array<typeof sortedStudents[0]>> = [];
+              
+              // Teile die bereits sortierte Liste einfach in Zweiergruppen auf
+              for (let i = 0; i < students.length; i += 2) {
+                const desk = students.slice(i, i + 2);
+                desks.push(desk);
+              }
+              
+              return desks;
+            };
+            
+            const desks = groupIntoDesks(sortedStudents);
+            
+            // Grid-System: 4x5 Kacheln (4 Spalten, 5 Zeilen)
+            const gridCols = 4;
+            const gridRows = 5;
+            
+            // Initialisiere Tisch-Positionen falls noch nicht vorhanden
+            const currentDeskPositions = deskPositions[participationGroupId || ''] || [];
+            
+            // Standard-Grid-Positionen basierend auf Screenshot (mit Zeilenumbrüchen)
+            // Reihe 1: 1 Tisch (2 Schüler) - Positionen 0,0
+            // Reihe 2: 3 Tische (6 Schüler) - Positionen 1,0; 1,1; 1,2
+            // Reihe 3: 4 Tische (7 Schüler, letzter Tisch hat nur 1) - Positionen 2,0; 2,1; 2,2; 2,3
+            // Reihe 4: 4 Tische (8 Schüler) - Positionen 3,0; 3,1; 3,2; 3,3
+            // Reihe 5: 4 Tische (8 Schüler) - Positionen 4,0; 4,1; 4,2; 4,3
+            const getDefaultGridPosition = (deskIndex: number): { gridRow: number; gridCol: number } => {
+              // Basierend auf der Reihenfolge im Screenshot
+              if (deskIndex === 0) return { gridRow: 0, gridCol: 0 }; // Robin, Felix
+              
+              if (deskIndex >= 1 && deskIndex <= 3) {
+                // Reihe 2: Luise+Louis, Jonathan+Jan, Miró+Killian
+                return { gridRow: 1, gridCol: deskIndex - 1 };
+              }
+              
+              if (deskIndex >= 4 && deskIndex <= 7) {
+                // Reihe 3: Vincent+Marlene G., Adela+Jakob, Nils+Paul, Niklas (allein)
+                return { gridRow: 2, gridCol: deskIndex - 4 };
+              }
+              
+              if (deskIndex >= 8 && deskIndex <= 11) {
+                // Reihe 4: Julia+Jasmin, Lennas+Louisa, Andreas+Marlene K., Friederike+Dennis
+                return { gridRow: 3, gridCol: deskIndex - 8 };
+              }
+              
+              if (deskIndex >= 12 && deskIndex <= 15) {
+                // Reihe 5: Fabio+Josefine, Jonas+Arthur, Samuel+Hannah, Bruno+Freya
+                return { gridRow: 4, gridCol: deskIndex - 12 };
+              }
+              
+              // Fallback für weitere Tische
+              return {
+                gridRow: Math.floor(deskIndex / gridCols),
+                gridCol: deskIndex % gridCols
+              };
+            };
+            
+            // Verwende initialisierte Positionen oder berechne sie neu basierend auf Standard-Layout
+            const finalDeskPositions = currentDeskPositions.length > 0 
+              ? currentDeskPositions 
+              : desks.map((_, index) => ({
+                  deskId: index,
+                  ...getDefaultGridPosition(index)
+                }));
+            
+            // Initialisiere State falls noch nicht vorhanden
+            if (currentDeskPositions.length === 0 && desks.length > 0) {
+              setDeskPositions(prev => ({
+                ...prev,
+                [participationGroupId || '']: finalDeskPositions
+              }));
+            }
+            
+            // Erstelle Grid-Map: Welcher Tisch ist in welcher Zelle?
+            const gridMap: {[key: string]: number} = {};
+            finalDeskPositions.forEach(pos => {
+              const key = `${pos.gridRow}-${pos.gridCol}`;
+              gridMap[key] = pos.deskId;
+            });
+            
+            // Drag & Drop Handler für Schüler (innerhalb von Tischen)
+            const handleStudentDragStart = (e: React.DragEvent, studentId: string) => {
+              setDraggedStudentId(studentId);
+              e.dataTransfer.effectAllowed = 'move';
+            };
+
+            const handleStudentDragOver = (e: React.DragEvent, deskId: number) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.dataTransfer.dropEffect = 'move';
+              setDragOverDeskIndex(`${deskId}`);
+            };
+
+            const handleStudentDragLeave = () => {
+              setDragOverDeskIndex(null);
+            };
+
+            const handleStudentDrop = (e: React.DragEvent, targetDeskId: number | null, targetGridRow?: number, targetGridCol?: number) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!draggedStudentId || !participationGroupId) {
+                console.log('⚠️ Drop abgebrochen: draggedStudentId oder participationGroupId fehlt');
+                return;
+              }
+
+              console.log('🎯 Student Drop:', { draggedStudentId, targetDeskId, targetGridRow, targetGridCol });
+
+              // Erstelle neue Sitzordnung: Speichere die Reihenfolge der Schüler-IDs
+              const currentOrder = customSeatingOrder[participationGroupId] || sortedStudents.map(s => s.id);
+              
+              // Finde aktuelle Position des verschobenen Schülers
+              const currentIndex = currentOrder.indexOf(draggedStudentId);
+              if (currentIndex === -1) {
+                console.log('⚠️ Schüler nicht in aktueller Reihenfolge gefunden');
+                setDraggedStudentId(null);
+                setDragOverDeskIndex(null);
+                return;
+              }
+
+              let newOrder: string[];
+              let needsNewDesk = false;
+              let newDeskPosition: { gridRow: number; gridCol: number } | null = null;
+
+              if (targetDeskId !== null && targetDeskId !== undefined) {
+                // Fall 1: Schüler wird auf einen bestehenden Tisch gezogen
+                const targetDesk = desks[targetDeskId];
+                if (!targetDesk) {
+                  console.log('⚠️ Ziel-Tisch nicht gefunden');
+                  setDraggedStudentId(null);
+                  setDragOverDeskIndex(null);
+                  return;
+                }
+
+                const targetDeskStudentIds = targetDesk.map(s => s.id);
+                
+                // Prüfe ob Schüler bereits in diesem Tisch ist
+                if (targetDeskStudentIds.includes(draggedStudentId)) {
+                  console.log('ℹ️ Schüler ist bereits in diesem Tisch');
+                  setDraggedStudentId(null);
+                  setDragOverDeskIndex(null);
+                  return;
+                }
+
+                // Finde Position nach dem letzten Schüler im Ziel-Tisch
+                const lastStudentInTargetDesk = targetDeskStudentIds[targetDeskStudentIds.length - 1];
+                const targetIndex = currentOrder.indexOf(lastStudentInTargetDesk);
+                
+                // Erstelle neue Reihenfolge: Verschiebe Schüler direkt nach dem letzten Schüler im Ziel-Tisch
+                newOrder = [...currentOrder];
+                newOrder.splice(currentIndex, 1);
+                
+                if (targetIndex !== -1 && targetIndex < currentIndex) {
+                  // Ziel ist vor der aktuellen Position
+                  newOrder.splice(targetIndex + 1, 0, draggedStudentId);
+                } else if (targetIndex !== -1) {
+                  // Ziel ist nach der aktuellen Position
+                  const adjustedTargetIndex = targetIndex > currentIndex ? targetIndex - 1 : targetIndex;
+                  newOrder.splice(adjustedTargetIndex + 1, 0, draggedStudentId);
+                } else {
+                  // Ziel-Schüler nicht gefunden, füge ans Ende hinzu
+                  newOrder.push(draggedStudentId);
+                }
+              } else if (targetGridRow !== undefined && targetGridCol !== undefined) {
+                // Fall 2: Schüler wird in eine leere Grid-Zelle gezogen
+                const gridKey = `${targetGridRow}-${targetGridCol}`;
+                
+                // Prüfe ob diese Position bereits belegt ist
+                if (gridMap[gridKey] !== undefined) {
+                  // Position ist belegt, behandle wie Fall 1
+                  const existingDeskId = gridMap[gridKey];
+                  const targetDesk = desks[existingDeskId];
+                  if (targetDesk) {
+                    const targetDeskStudentIds = targetDesk.map(s => s.id);
+                    if (!targetDeskStudentIds.includes(draggedStudentId)) {
+                      const lastStudentInTargetDesk = targetDeskStudentIds[targetDeskStudentIds.length - 1];
+                      const targetIndex = currentOrder.indexOf(lastStudentInTargetDesk);
+                      newOrder = [...currentOrder];
+                      newOrder.splice(currentIndex, 1);
+                      if (targetIndex !== -1 && targetIndex < currentIndex) {
+                        newOrder.splice(targetIndex + 1, 0, draggedStudentId);
+                      } else if (targetIndex !== -1) {
+                        const adjustedTargetIndex = targetIndex > currentIndex ? targetIndex - 1 : targetIndex;
+                        newOrder.splice(adjustedTargetIndex + 1, 0, draggedStudentId);
+                      } else {
+                        newOrder.push(draggedStudentId);
+                      }
+                    } else {
+                      console.log('ℹ️ Schüler ist bereits in diesem Tisch');
+                      setDraggedStudentId(null);
+                      setDragOverDeskIndex(null);
+                      return;
+                    }
+                  } else {
+                    console.log('⚠️ Tisch nicht gefunden');
+                    setDraggedStudentId(null);
+                    setDragOverDeskIndex(null);
+                    return;
+                  }
+                } else {
+                  // Neue Position - füge Schüler ans Ende der Liste
+                  newOrder = [...currentOrder];
+                  newOrder.splice(currentIndex, 1);
+                  newOrder.push(draggedStudentId);
+                  
+                  // Markiere, dass ein neuer Tisch erstellt werden muss
+                  needsNewDesk = true;
+                  newDeskPosition = { gridRow: targetGridRow, gridCol: targetGridCol };
+                }
+              } else {
+                console.log('⚠️ Kein gültiges Ziel für Drop');
+                setDraggedStudentId(null);
+                setDragOverDeskIndex(null);
+                return;
+              }
+
+              console.log('✅ Neue Reihenfolge:', newOrder);
+
+              // Aktualisiere State
+              setCustomSeatingOrder(prev => ({
+                ...prev,
+                [participationGroupId]: newOrder
+              }));
+
+              // Erstelle neuen Tisch falls nötig
+              let updatedPositions = deskPositions[participationGroupId] || [];
+              if (needsNewDesk && newDeskPosition) {
+                const newDeskId = desks.length;
+                updatedPositions = [...updatedPositions, {
+                  deskId: newDeskId,
+                  gridRow: newDeskPosition.gridRow,
+                  gridCol: newDeskPosition.gridCol
+                }];
+                
+                setDeskPositions(prev => ({
+                  ...prev,
+                  [participationGroupId]: updatedPositions
+                }));
+                console.log('✅ Neuer Tisch erstellt an Position:', newDeskPosition);
+              }
+
+              // Speichere die neue Sitzordnung im Backend (mit aktuellen Tisch-Positionen)
+              saveSeatingOrder(participationGroupId, newOrder, updatedPositions);
+
+              setDraggedStudentId(null);
+              setDragOverDeskIndex(null);
+            };
+            
+            // Drag & Drop Handler für ganze Tische
+            const handleDeskDragStart = (e: React.DragEvent, deskId: number) => {
+              setDraggedDeskId(deskId);
+              e.dataTransfer.effectAllowed = 'move';
+              e.stopPropagation(); // Verhindere dass Schüler-Drag ausgelöst wird
+            };
+            
+            const handleGridCellDragOver = (e: React.DragEvent, gridKey: string) => {
+              // Erlaube sowohl Tisch-Drag als auch Schüler-Drag
+              if (draggedDeskId !== null || draggedStudentId !== null) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
+                if (draggedDeskId !== null) {
+                  setDragOverGridCell(gridKey);
+                }
+                if (draggedStudentId !== null) {
+                  // Schüler kann in jede Grid-Zelle gezogen werden
+                  setDragOverDeskIndex(null);
+                  // Setze auch dragOverGridCell für visuelles Feedback
+                  setDragOverGridCell(gridKey);
+                }
+              }
+            };
+            
+            const handleGridCellDragLeave = (e: React.DragEvent) => {
+              // Nur wenn wirklich die Zelle verlassen wird
+              if (draggedDeskId !== null && !draggedStudentId) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX;
+                const y = e.clientY;
+                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                  setDragOverGridCell(null);
+                }
+              } else if (draggedStudentId) {
+                // Für Schüler-Drag: nur wenn wirklich verlassen
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX;
+                const y = e.clientY;
+                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                  setDragOverGridCell(null);
+                }
+              }
+            };
+            
+            const handleGridCellDrop = (e: React.DragEvent, gridRow: number, gridCol: number) => {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              // Fall 1: Schüler wird in Grid-Zelle gezogen (Priorität für Schüler-Drop)
+              if (draggedStudentId !== null) {
+                if (!participationGroupId) {
+                  setDraggedStudentId(null);
+                  setDragOverDeskIndex(null);
+                  return;
+                }
+                console.log('🎯 Grid Cell Drop - Schüler:', { gridRow, gridCol, draggedStudentId });
+                handleStudentDrop(e, null, gridRow, gridCol);
+                return;
+              }
+              
+              // Fall 2: Tisch wird verschoben
+              if (draggedDeskId === null || !participationGroupId) return;
+              
+              const gridKey = `${gridRow}-${gridCol}`;
+              
+              // Prüfe ob Zelle bereits belegt ist
+              const existingDeskId = gridMap[gridKey];
+              const currentPositions = [...(deskPositions[participationGroupId] || [])];
+              const draggedPos = currentPositions.find(p => p.deskId === draggedDeskId);
+              
+              if (!draggedPos) return;
+              
+              if (existingDeskId !== undefined && existingDeskId !== draggedDeskId) {
+                // Tausche Positionen
+                const existingPos = currentPositions.find(p => p.deskId === existingDeskId);
+                if (existingPos) {
+                  const oldRow = draggedPos.gridRow;
+                  const oldCol = draggedPos.gridCol;
+                  draggedPos.gridRow = gridRow;
+                  draggedPos.gridCol = gridCol;
+                  existingPos.gridRow = oldRow;
+                  existingPos.gridCol = oldCol;
+                }
+              } else {
+                // Verschiebe Tisch zur neuen Position
+                draggedPos.gridRow = gridRow;
+                draggedPos.gridCol = gridCol;
+              }
+              
+              setDeskPositions(prev => ({
+                ...prev,
+                [participationGroupId]: currentPositions
+              }));
+              
+              // Beim Verschieben von Tischen: Speichere die aktualisierten Positionen
+              const currentOrder = customSeatingOrder[participationGroupId] || sortedStudents.map(s => s.id);
+              if (currentOrder.length > 0) {
+                saveSeatingOrder(participationGroupId, currentOrder, currentPositions);
+              }
+              
+              setDraggedDeskId(null);
+              setDragOverGridCell(null);
+            };
+
+            // Einheitliche Höhe für alle Boxen
+            const BOX_HEIGHT = '55px';
+            
+            // Helper-Funktion zum Rendern eines Schülers
+            const renderStudent = (student: typeof sortedStudents[0], deskId: number) => {
                 const value = getParticipationValue(student.id);
                 const getColor = () => {
-                  if (value === 2) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😄' }; // sehr gut - grün
-                  if (value === 1) return { bg: '#E3F2FD', border: '#2196F3', emoji: '😊' }; // gut - blau
-                  if (value === 0) return { bg: '#F5F5F5', border: '#9E9E9E', emoji: '😐' }; // neutral - grau
-                  if (value === -1) return { bg: '#FFF9C4', border: '#FFC107', emoji: '🙁' }; // schlecht - gelb
-                  if (value === -2) return { bg: '#FFEBEE', border: '#F44336', emoji: '😞' }; // sehr schlecht - rot
+                if (value === 2) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😄' };
+                if (value === 1) return { bg: '#E3F2FD', border: '#2196F3', emoji: '😊' };
+                if (value === 0) return { bg: '#F5F5F5', border: '#9E9E9E', emoji: '😐' };
+                if (value === -1) return { bg: '#FFF9C4', border: '#FFC107', emoji: '🙁' };
+                if (value === -2) return { bg: '#FFEBEE', border: '#F44336', emoji: '😞' };
                   return { bg: '#F5F5F5', border: '#9E9E9E', emoji: '😐' };
                 };
                 const colors = getColor();
                 const grade = calculateParticipationGrade(student.id);
                 
-                // Hole vorhandenen Kommentar der aktuellen Stunde
                 const groupData = participations[participationGroupId] || {};
                 const lessonData = groupData[currentLessonIndex] || {};
                 const studentData = lessonData[student.id];
                 const existingComment = (studentData && typeof studentData === 'object' && studentData.comment) ? String(studentData.comment) : '';
                 const hasComment = existingComment.trim().length > 0;
                 
-                return (
-                  <Grid item xs={4} sm={3} md={2} key={student.id}>
-                    {/* Zeige Tooltip nur wenn Kommentar vorhanden ist */}
-                    {hasComment ? (
-                      <Tooltip title={existingComment} arrow>
+              const studentCard = (
                         <Paper
+                  draggable
+                  onDragStart={(e) => handleStudentDragStart(e, student.id)}
+                  onDragEnd={() => {
+                    setDraggedStudentId(null);
+                    setDragOverDeskIndex(null);
+                  }}
                           elevation={0}
                           sx={{
-                            p: 0.75,
-                            cursor: 'pointer',
+                            p: 0.5,
+                    cursor: 'grab',
                             border: `1.5px solid ${colors.border}`,
                             bgcolor: colors.bg,
                             borderRadius: 1,
                             transition: 'all 0.2s',
                             position: 'relative',
+                    height: BOX_HEIGHT,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    '&:active': {
+                      cursor: 'grabbing',
+                      opacity: 0.7
+                    },
                             '&:hover': {
                               transform: 'translateY(-1px)',
                               boxShadow: 1
@@ -9978,136 +10971,263 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             handleParticipationClick(student.id, true, true);
                           }}
                           onContextMenu={(e) => handleCommentRightClick(e, student.id, student.name)}
+                  onTouchStart={(e) => handleTouchStart(e, student.id, student.name)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchMove}
                         >
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
-                            <Typography 
-                              variant="caption" 
-                              sx={{ 
-                                fontWeight: 500, 
-                                fontSize: '0.65rem',
-                                textAlign: 'center',
-                                wordBreak: 'break-word',
-                                lineHeight: 1.2
-                              }}
-                            >
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.05, justifyContent: 'center', height: '100%' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5rem', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.1 }}>
                               {student.name}
                             </Typography>
-                            <Typography 
-                              variant="body2" 
-                              sx={{ 
-                                fontSize: '1.3rem',
-                                lineHeight: 1
-                              }}
-                            >
+                    <Typography variant="body2" sx={{ fontSize: '1rem', lineHeight: 1 }}>
                               {colors.emoji}
                             </Typography>
                           </Box>
-                          {/* K-Badge wenn Kommentar vorhanden ist */}
-                          <Box
-                            sx={{
-                              position: 'absolute',
-                              top: 6,
-                              right: 6,
-                              width: 14,
-                              height: 14,
-                              borderRadius: '50%',
-                              bgcolor: '#FF9800',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.6rem',
-                              fontWeight: 600,
-                              color: 'white',
-                              zIndex: 1,
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-                            }}
-                          >
+                  {hasComment && (
+                    <Box sx={{ position: 'absolute', top: 6, right: 6, width: 14, height: 14, borderRadius: '50%', bgcolor: '#FF9800', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 600, color: 'white', zIndex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
                             K
                           </Box>
-                          {/* Links/Rechts-Trenner */}
-                          <Box 
-                            sx={{ 
-                              position: 'absolute',
-                              left: '50%',
-                              top: 0,
-                              bottom: 0,
-                              width: '1px',
-                              bgcolor: colors.border,
-                              opacity: 0.3
-                            }} 
-                          />
+                  )}
+                  <Box sx={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', bgcolor: colors.border, opacity: 0.3 }} />
                         </Paper>
+              );
+              
+              return hasComment ? (
+                <Tooltip key={student.id} title={existingComment} arrow>
+                  {studentCard}
                       </Tooltip>
                     ) : (
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          p: 0.75,
-                          cursor: 'pointer',
-                          border: `1.5px solid ${colors.border}`,
-                          bgcolor: colors.bg,
+                <Box key={student.id}>{studentCard}</Box>
+              );
+            };
+            
+            // Helper-Funktion zum Rendern einer leeren Box
+            const renderEmptyBox = (key: string, deskId?: number, gridRow?: number, gridCol?: number) => {
+              // Wenn die Box in einer leeren Grid-Zelle ist (kein deskId), leite das Drop an die Grid-Zelle weiter
+              const isInEmptyGridCell = deskId === undefined && gridRow !== undefined && gridCol !== undefined;
+              
+              return (
+                <Box
+                  key={key}
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    height: BOX_HEIGHT,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    border: '1px dashed #d4c4a8',
+                    borderRadius: 1,
+                    bgcolor: draggedStudentId ? '#e8f5e9' : '#fafafa',
+                    opacity: draggedStudentId ? 0.8 : 0.5,
+                    cursor: draggedStudentId ? 'copy' : 'default',
+                    transition: 'all 0.2s',
+                    pointerEvents: isInEmptyGridCell ? 'none' : 'auto', // Lass Grid-Zelle das Drop handhaben
+                    '&:hover': {
+                      opacity: 0.8,
+                      borderColor: '#9e9e9e',
+                      transform: 'translateY(-1px)'
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    if (draggedStudentId) {
+                      // Wenn in leerer Grid-Zelle, lass es durch (Grid-Zelle handhabt es)
+                      if (isInEmptyGridCell) {
+                        return; // Lass das Event zur Grid-Zelle durch
+                      }
+                      // Wenn in einem Tisch, handle es hier
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (deskId !== undefined) {
+                        handleStudentDragOver(e, deskId);
+                      }
+                    }
+                  }}
+                  onDrop={(e) => {
+                    // Wenn in leerer Grid-Zelle, lass es durch (Grid-Zelle handhabt es)
+                    if (isInEmptyGridCell) {
+                      return; // Lass das Event zur Grid-Zelle durch
+                    }
+                    // Wenn in einem Tisch, handle es hier
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (draggedStudentId) {
+                      console.log('🎯 Drop auf leere Box in Tisch:', { deskId, draggedStudentId });
+                      if (deskId !== undefined) {
+                        handleStudentDrop(e, deskId);
+                      }
+                    }
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: '#9e9e9e', fontSize: '0.6rem' }}>
+                    Leer
+                  </Typography>
+                </Box>
+              );
+            };
+            
+            return (
+              <Box sx={{ bgcolor: '#f5f0e8', p: 1.5, borderRadius: 1 }}>
+                <Box
+                            sx={{ 
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
+                    gridTemplateRows: `repeat(${gridRows}, 1fr)`,
+                    gap: 1,
+                    minHeight: '600px'
+                  }}
+                >
+                  {/* Render Grid-Zellen */}
+                  {Array.from({ length: gridRows * gridCols }, (_, index) => {
+                    const gridRow = Math.floor(index / gridCols);
+                    const gridCol = index % gridCols;
+                    const gridKey = `${gridRow}-${gridCol}`;
+                    const deskId = gridMap[gridKey];
+                    const desk = deskId !== undefined ? desks[deskId] : null;
+                    const isDragOver = dragOverGridCell === gridKey;
+                    const isDragged = draggedDeskId === deskId;
+                    
+                    return (
+                      <Box
+                        key={gridKey}
+                            sx={{ 
+                          minHeight: '80px',
+                          minWidth: '120px',
+                          border: desk ? '1px solid #d4c4a8' : (isDragOver || (draggedStudentId && !desk)) ? '2px dashed #4CAF50' : '1px dashed #d4c4a8',
                           borderRadius: 1,
+                          bgcolor: desk ? (isDragOver ? '#f0e6d6' : '#f5ede0') : (isDragOver || (draggedStudentId && !desk)) ? '#e8f5e9' : '#fafafa',
+                          p: 0.5,
                           transition: 'all 0.2s',
-                          position: 'relative',
-                          '&:hover': {
-                            transform: 'translateY(-1px)',
-                            boxShadow: 1
-                          }
+                          opacity: isDragged ? 0.5 : 1,
+                          display: 'flex',
+                          gap: 0.5
                         }}
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const clickX = e.clientX - rect.left;
-                          const isLeft = clickX < rect.width / 2;
-                          handleParticipationClick(student.id, isLeft, false);
-                        }}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          handleParticipationClick(student.id, true, true);
-                        }}
-                        onContextMenu={(e) => handleCommentRightClick(e, student.id, student.name)}
+                        onDragOver={(e) => handleGridCellDragOver(e, gridKey)}
+                        onDragLeave={handleGridCellDragLeave}
+                        onDrop={(e) => handleGridCellDrop(e, gridRow, gridCol)}
                       >
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
-                          <Typography 
-                            variant="caption" 
+                        {desk ? (
+                          <Box
                             sx={{ 
-                              fontWeight: 500, 
-                              fontSize: '0.65rem',
-                              textAlign: 'center',
-                              wordBreak: 'break-word',
-                              lineHeight: 1.2
+                              display: 'flex',
+                              gap: 0.5,
+                              width: '100%',
+                              cursor: 'grab',
+                              '&:active': { cursor: 'grabbing' }
+                            }}
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              handleDeskDragStart(e, deskId);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedDeskId(null);
+                              setDragOverGridCell(null);
+                            }}
+                            onDragOver={(e) => {
+                              if (draggedStudentId) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleStudentDragOver(e, deskId);
+                              }
+                            }}
+                            onDragLeave={(e) => {
+                              if (draggedStudentId) {
+                                handleStudentDragLeave();
+                              }
+                            }}
+                            onDrop={(e) => {
+                              if (draggedStudentId) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleStudentDrop(e, deskId);
+                              }
                             }}
                           >
-                            {student.name}
-                          </Typography>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              fontSize: '1.3rem',
-                              lineHeight: 1
-                            }}
-                          >
-                            {colors.emoji}
-                          </Typography>
+                            {desk.map((student) => (
+                              <Box key={student.id} sx={{ flex: 1, minWidth: 0, height: BOX_HEIGHT, display: 'flex', flexDirection: 'column' }}>
+                                {renderStudent(student, deskId)}
                         </Box>
-                        {/* Links/Rechts-Trenner */}
+                            ))}
+                            {/* Leere Schülerboxen hinzufügen, wenn Tisch nicht voll ist */}
+                            {Array.from({ length: 2 - desk.length }, (_, idx) => {
+                              const pos = finalDeskPositions.find(p => p.deskId === deskId);
+                              return renderEmptyBox(`empty-${deskId}-${idx}`, deskId, pos?.gridRow, pos?.gridCol);
+                            })}
+                          </Box>
+                        ) : (
+                          // Leere Kachel - kann als Drop-Zone verwendet werden
                         <Box 
+                          onDragOver={(e) => {
+                            // Priorität für Schüler-Drag
+                            if (draggedStudentId) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              e.dataTransfer.dropEffect = 'move';
+                              setDragOverDeskIndex(null);
+                              setDragOverGridCell(gridKey);
+                            } else if (draggedDeskId !== null) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              e.dataTransfer.dropEffect = 'move';
+                              setDragOverGridCell(gridKey);
+                            }
+                          }}
+                          onDragLeave={(e) => {
+                            // Nur wenn wirklich die Zelle verlassen wird (nicht nur in eine leere Box)
+                            if (draggedStudentId || draggedDeskId !== null) {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = e.clientX;
+                              const y = e.clientY;
+                              if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                                if (draggedStudentId) {
+                                  setDragOverDeskIndex(null);
+                                }
+                                if (draggedDeskId !== null) {
+                                  setDragOverGridCell(null);
+                                }
+                              }
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Priorität für Schüler-Drop
+                            if (draggedStudentId) {
+                              console.log('🎯 Drop in leere Zelle (Grid-Level):', { gridRow, gridCol, draggedStudentId });
+                              handleStudentDrop(e, null, gridRow, gridCol);
+                            } else if (draggedDeskId !== null) {
+                              handleGridCellDrop(e, gridRow, gridCol);
+                            }
+                          }}
                           sx={{ 
-                            position: 'absolute',
-                            left: '50%',
-                            top: 0,
-                            bottom: 0,
-                            width: '1px',
-                            bgcolor: colors.border,
-                            opacity: 0.3
-                          }} 
-                        />
-                      </Paper>
-                    )}
-                  </Grid>
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              flexDirection: 'row',
+                              gap: 0.5,
+                              alignItems: 'stretch',
+                              cursor: draggedStudentId ? 'copy' : (draggedDeskId !== null ? 'move' : 'default'),
+                              bgcolor: draggedStudentId ? '#e8f5e9' : (draggedDeskId !== null && dragOverGridCell === gridKey ? '#fff3e0' : 'transparent'),
+                              transition: 'background-color 0.2s',
+                              position: 'relative'
+                            }}
+                          >
+                            {/* Leere Schülerboxen in leeren Kacheln - nebeneinander */}
+                            {Array.from({ length: 2 }, (_, idx) => 
+                              renderEmptyBox(`empty-cell-${gridKey}-${idx}`, undefined, gridRow, gridCol)
+                            )}
+                          </Box>
+                        )}
+                      </Box>
                 );
               })}
-            </Grid>
-          )}
+                </Box>
+              </Box>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -10155,7 +11275,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 variant="outlined"
                 startIcon={<TableChartIcon sx={{ fontSize: 12 }} />}
                 onClick={exportToCSV}
-                disabled={!participationStats.length}
+                disabled={!sortedParticipationStats.length}
                 sx={{ 
                   fontSize: '0.65rem', 
                   py: 0.25, 
@@ -10176,7 +11296,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 variant="outlined"
                 startIcon={<TableChartIcon sx={{ fontSize: 12 }} />}
                 onClick={exportToExcel}
-                disabled={!participationStats.length}
+                disabled={!sortedParticipationStats.length}
                 sx={{ 
                   fontSize: '0.65rem', 
                   py: 0.25, 
@@ -10197,7 +11317,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 variant="outlined"
                 startIcon={<PictureAsPdfIcon sx={{ fontSize: 12 }} />}
                 onClick={exportToPDF}
-                disabled={!participationStats.length}
+                disabled={!sortedParticipationStats.length}
                 sx={{ 
                   fontSize: '0.65rem', 
                   py: 0.25, 
@@ -10218,7 +11338,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 variant="outlined"
                 startIcon={<DescriptionIcon sx={{ fontSize: 12 }} />}
                 onClick={exportToWord}
-                disabled={!participationStats.length}
+                disabled={!sortedParticipationStats.length}
                 sx={{ 
                   fontSize: '0.65rem', 
                   py: 0.25, 
@@ -10239,7 +11359,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 variant="outlined"
                 startIcon={<CodeIcon sx={{ fontSize: 12 }} />}
                 onClick={exportToJSON}
-                disabled={!participationStats.length}
+                disabled={!sortedParticipationStats.length}
                 sx={{ 
                   fontSize: '0.65rem', 
                   py: 0.25, 
@@ -10307,18 +11427,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Typography>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              {participationStats
-                .sort((a, b) => {
-                  // Sortiere nach Nachname (letztes Wort im Namen)
-                  const getLastName = (name: string) => {
-                    const parts = name.trim().split(/\s+/);
-                    return parts.length > 1 ? parts[parts.length - 1] : parts[0];
-                  };
-                  const lastNameA = getLastName(a.student.name).toLowerCase();
-                  const lastNameB = getLastName(b.student.name).toLowerCase();
-                  return lastNameA.localeCompare(lastNameB, 'de');
-                })
-                .map((stat: any, index: number) => {
+              {sortedParticipationStats.map((stat: any, index: number) => {
                   const getGradeColor = (grade: number | null) => {
                     if (!grade) return '#9E9E9E';
                     if (grade <= 1.5) return '#4CAF50';
@@ -10916,6 +12025,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             setGameOver(false);
             setGameWon(false);
             keysPressedRef.current.clear();
+            setHoldMessage('');
+            setGamePaused(false);
+            gamePausedRef.current = false;
+            setRequiredKey(null);
+            pauseStartTimeRef.current = 0;
+            totalPausedTimeRef.current = 0;
           }
         }}
         maxWidth="md"
@@ -10945,7 +12060,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Typography>
           <IconButton
             onClick={() => {
-              if (!gameOver && !gameStarted && !gameWon) {
+              if (!gameStarted || gameOver || gameWon) {
                 setShowMinigame(false);
                 setGameStarted(false);
                 setBalloons([]);
@@ -10954,6 +12069,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 setGameOver(false);
                 setGameWon(false);
                 keysPressedRef.current.clear();
+                setHoldMessage('');
+                setGamePaused(false);
+                gamePausedRef.current = false;
+                setRequiredKey(null);
+                pauseStartTimeRef.current = 0;
+                totalPausedTimeRef.current = 0;
               }
             }}
             disabled={gameStarted && !gameOver && !gameWon}
@@ -10967,87 +12088,234 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             <CloseIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ bgcolor: 'white', pt: 3, pb: 2, px: 2.5 }}>
-          <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.85rem', textAlign: 'center' }}>
-            Lehrer-Modus: Wähle den Schwierigkeitsgrad
-          </Typography>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Schwierigkeitsgrad</InputLabel>
-            <Select
-              value={selectedMinigameDifficulty}
-              onChange={(e) => setSelectedMinigameDifficulty(e.target.value as 'easy' | 'hard')}
-              label="Schwierigkeitsgrad"
-              disabled={gameStarted}
-            >
-              <MenuItem value="easy">Leicht (F/J)</MenuItem>
-              <MenuItem value="hard">Schwer (F/J/D/K)</MenuItem>
-            </Select>
-          </FormControl>
-          <Paper sx={{ p: 2, mb: 2, bgcolor: '#f8f9fa', borderRadius: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1, color: '#666', fontSize: '0.85rem', textAlign: 'left' }}>
-              {selectedMinigameDifficulty === 'easy' ? (
-                <>• Halte <strong>F</strong> oder <strong>J</strong> gedrückt, um die Luftballons zu fangen</>
-              ) : (
-                <>
-                  • Für <strong>F</strong> oder <strong>J</strong> Ballons: Halte <strong>F</strong> und <strong>J</strong> beide gedrückt!<br/>
-                  • Für <strong>D</strong> Ballons: Halte <strong>D</strong> gedrückt<br/>
-                  • Für <strong>K</strong> Ballons: Halte <strong>K</strong> gedrückt
-                </>
-              )}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1, color: '#666', fontSize: '0.85rem', textAlign: 'left' }}>
-              • Schaffe es 1 Minute lang, ohne dass ein Luftballon den Boden erreicht
-            </Typography>
-          </Paper>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setGameStarted(true);
-              setGameTime(60);
-              setScore(0);
-              setBalloons([]);
-              if (selectedMinigameDifficulty === 'hard') {
-                setNextKey('f');
-                setGamePaused(true);
-                gamePausedRef.current = true;
-                setHoldMessage('Halte F oder J dauerhaft gedrückt');
-              } else {
-                setNextKey(Math.random() > 0.5 ? 'f' : 'j');
-                setGamePaused(false);
-                gamePausedRef.current = false;
-                setHoldMessage('');
-              }
-              setGameOver(false);
-              setGameWon(false);
-              setStartTime(Date.now());
-              keysPressedRef.current.clear();
-            }}
-            size="small"
-            disabled={gameStarted}
-            sx={{
-              bgcolor: '#FF9800',
-              px: 3,
-              py: 1,
-              fontSize: '0.9rem',
-              '&:hover': { bgcolor: '#F57C00' }
-            }}
-          >
-            Spiel starten! 🚀
-          </Button>
-          {gameStarted && (
+        <DialogContent sx={{ 
+          bgcolor: '#fafafa', 
+          pt: 4, 
+          pb: 3, 
+          px: 3,
+          overflow: 'hidden'
+        }}>
+          {!gameStarted ? (
             <>
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-                  Zeit: <strong>{gameTime}s</strong>
+              {/* Header */}
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Typography variant="h5" sx={{ 
+                  fontWeight: 700, 
+                  color: '#333',
+                  mb: 0.5,
+                  fontSize: '1.5rem'
+                }}>
+                  🎮 Minigame Test
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-                  Punkte: <strong>{score}</strong>
+                  Lehrer-Modus: Wähle den Schwierigkeitsgrad
                 </Typography>
               </Box>
+
+              {/* Difficulty Selector */}
+              <Box sx={{ mb: 3 }}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel sx={{ fontWeight: 600 }}>Schwierigkeitsgrad</InputLabel>
+                  <Select
+                    value={selectedMinigameDifficulty}
+                    onChange={(e) => setSelectedMinigameDifficulty(e.target.value as 'easy' | 'hard')}
+                    label="Schwierigkeitsgrad"
+                    disabled={gameStarted}
+                    sx={{
+                      bgcolor: 'white',
+                      fontWeight: 600
+                    }}
+                  >
+                    <MenuItem value="easy">🟢 Leicht (F/J)</MenuItem>
+                    <MenuItem value="hard">🔴 Schwer (F/J/D/K)</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* Instructions Card */}
+                <Paper sx={{ 
+                  p: 2.5, 
+                  mb: 3, 
+                  bgcolor: 'white',
+                  borderRadius: 3,
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <Typography variant="subtitle2" sx={{ 
+                    mb: 1.5, 
+                    color: '#1976d2', 
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    📋 Spielregeln
+                  </Typography>
+                  {selectedMinigameDifficulty === 'easy' ? (
+                    <Box>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#555', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                        • Drücke <strong style={{ color: '#1976d2' }}>F</strong> oder <strong style={{ color: '#1976d2' }}>J</strong> kurz, um die Ballons zu fangen
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#555', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                        • Schaffe es 1 Minute lang, ohne dass ein Ballon den Boden erreicht
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#d32f2f', fontSize: '0.875rem', lineHeight: 1.7, fontWeight: 600 }}>
+                        • ⚠️ Wenn ein Ballon den Boden erreicht, ist das Spiel vorbei!
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#555', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                        • <strong style={{ color: '#FF9800' }}>Beim Start wird zufällig F oder J gewählt - diese Taste muss gedrückt gehalten werden</strong>
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#555', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                        • <strong>Wenn F gewählt wurde:</strong> Halte F gedrückt, dann erscheinen D, J, K Ballons
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#555', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                        • <strong>Wenn J gewählt wurde:</strong> Halte J gedrückt, dann erscheinen D, F, K Ballons
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#555', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                        • Drücke <strong style={{ color: '#1976d2' }}>F</strong> kurz für F-Ballons, <strong style={{ color: '#1976d2' }}>J</strong> kurz für J-Ballons
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#555', fontSize: '0.875rem', lineHeight: 1.7 }}>
+                        • Halte <strong style={{ color: '#1976d2' }}>F</strong> für D-Ballons, <strong style={{ color: '#1976d2' }}>J</strong> für K-Ballons
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: '#d32f2f', fontSize: '0.875rem', lineHeight: 1.7, fontWeight: 600 }}>
+                        • ⚠️ <strong>Wichtig:</strong> Wenn die Taste losgelassen wird, stoppen alle Ballons sofort ihre Bewegung!
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#d32f2f', fontSize: '0.875rem', lineHeight: 1.7, fontWeight: 600 }}>
+                        • ⚠️ Wenn ein Ballon den Boden erreicht, ist das Spiel vorbei!
+                      </Typography>
+                    </Box>
+                  )}
+                </Paper>
+
+                {/* Start Button */}
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={() => {
+                    setGameStarted(true);
+                    setGameTime(60);
+                    setScore(0);
+                    setBalloons([]);
+                    if (selectedMinigameDifficulty === 'hard') {
+                      // Zufällig F oder J wählen
+                      const randomKey = Math.random() > 0.5 ? 'f' : 'j';
+                      setRequiredKey(randomKey);
+                      setNextKey(randomKey);
+                      setGamePaused(true);
+                      gamePausedRef.current = true;
+                      pauseStartTimeRef.current = Date.now();
+                      totalPausedTimeRef.current = 0;
+                      setHoldMessage(`Halte die ${randomKey.toUpperCase()} Taste dauerhaft gedrückt`);
+                    } else {
+                      setRequiredKey(null);
+                      setNextKey(Math.random() > 0.5 ? 'f' : 'j');
+                      setGamePaused(false);
+                      gamePausedRef.current = false;
+                      setHoldMessage('');
+                      pauseStartTimeRef.current = 0;
+                      totalPausedTimeRef.current = 0;
+                    }
+                    setGameOver(false);
+                    setGameWon(false);
+                    setStartTime(Date.now());
+                    keysPressedRef.current.clear();
+                  }}
+                  disabled={gameStarted}
+                  sx={{
+                    bgcolor: '#FF9800',
+                    color: 'white',
+                    py: 1.5,
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    boxShadow: '0 4px 14px rgba(255, 152, 0, 0.4)',
+                    '&:hover': { 
+                      bgcolor: '#F57C00',
+                      boxShadow: '0 6px 20px rgba(255, 152, 0, 0.5)',
+                      transform: 'translateY(-2px)'
+                    },
+                    '&:disabled': {
+                      bgcolor: '#ccc',
+                      color: '#666'
+                    },
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🚀 Spiel starten!
+                </Button>
+              </Box>
+            </>
+          ) : null}
+          {gameStarted && (
+            <>
+              {/* Game Stats Bar */}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                mb: 2,
+                p: 1.5,
+                bgcolor: 'white',
+                borderRadius: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ 
+                    bgcolor: '#e3f2fd', 
+                    borderRadius: '50%', 
+                    width: 32, 
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, fontSize: '1rem' }}>
+                      ⏱️
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#999', fontSize: '0.7rem', display: 'block' }}>
+                      Zeit
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, lineHeight: 1 }}>
+                      {gameTime}s
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ 
+                    bgcolor: '#fff3e0', 
+                    borderRadius: '50%', 
+                    width: 32, 
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Typography variant="h6" sx={{ color: '#FF9800', fontWeight: 700, fontSize: '1rem' }}>
+                      🎯
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#999', fontSize: '0.7rem', display: 'block' }}>
+                      Punkte
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: '#FF9800', fontWeight: 700, lineHeight: 1 }}>
+                      {score}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Game Area */}
               <Box
                 sx={{
                   position: 'relative',
-                  height: 400,
+                  height: 450,
                   background: `
                     linear-gradient(180deg, 
                       #87CEEB 0%, #5B9BD5 8%, #4682B4 15%, #20B2AA 25%,
@@ -11055,11 +12323,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       #8B4513 75%, #654321 85%, #2F4F2F 95%, #1C1C1C 100%
                     )
                   `,
-                  borderRadius: 2,
+                  borderRadius: 3,
                   overflow: 'hidden',
-                  border: '3px solid #1976d2',
+                  border: '4px solid #1976d2',
                   mb: 2,
-                  boxShadow: 'inset 0 0 80px rgba(255,255,255,0.15), 0 4px 20px rgba(0,0,0,0.3)',
+                  boxShadow: 'inset 0 0 80px rgba(255,255,255,0.15), 0 8px 32px rgba(0,0,0,0.2)',
                   '&::after': {
                     content: '"🌲 🌳 🌴 🌿 🍃 🌲 🌳 🌴 🌿 🍃 🌲 🌳 🌴 🌿 🍃 🌲 🌳 🌴 🌿 🍃"',
                     position: 'absolute',
@@ -11079,8 +12347,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   }
                 }}
               >
-                {/* Große Meldung für D/K Ballons */}
-                {holdMessage && (
+                {/* Große Meldung für Hard-Modus */}
+                {holdMessage && selectedMinigameDifficulty === 'hard' && (
                   <Box
                     sx={{
                       position: 'absolute',
@@ -11088,27 +12356,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       left: '50%',
                       transform: 'translate(-50%, -50%)',
                       zIndex: 1000,
-                      bgcolor: 'rgba(255, 152, 0, 0.95)',
+                      bgcolor: 'rgba(255, 152, 0, 0.98)',
                       color: 'white',
-                      px: 4,
-                      py: 2,
-                      borderRadius: 3,
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                      border: '4px solid white',
-                      animation: 'pulse 1s infinite',
+                      px: 5,
+                      py: 3,
+                      borderRadius: 4,
+                      boxShadow: '0 12px 48px rgba(0,0,0,0.6), 0 0 0 6px rgba(255,255,255,0.3)',
+                      border: '5px solid white',
+                      animation: 'pulse 1.2s infinite',
                       '@keyframes pulse': {
-                        '0%, 100%': { transform: 'translate(-50%, -50%) scale(1)' },
-                        '50%': { transform: 'translate(-50%, -50%) scale(1.05)' }
+                        '0%, 100%': { 
+                          transform: 'translate(-50%, -50%) scale(1)',
+                          boxShadow: '0 12px 48px rgba(0,0,0,0.6), 0 0 0 6px rgba(255,255,255,0.3)'
+                        },
+                        '50%': { 
+                          transform: 'translate(-50%, -50%) scale(1.08)',
+                          boxShadow: '0 16px 64px rgba(0,0,0,0.7), 0 0 0 8px rgba(255,255,255,0.5)'
+                        }
                       },
+                      backdropFilter: 'blur(10px)'
                     }}
                   >
                     <Typography
-                      variant="h4"
+                      variant="h3"
                       sx={{
-                        fontWeight: 700,
+                        fontWeight: 900,
                         textAlign: 'center',
-                        textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
-                        fontSize: '2rem'
+                        textShadow: '3px 3px 8px rgba(0,0,0,0.4)',
+                        fontSize: '2.5rem',
+                        letterSpacing: '0.05em'
                       }}
                     >
                       {holdMessage}
@@ -11116,13 +12392,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   </Box>
                 )}
                 {balloons.map((balloon) => {
-                  const balloonAge = Date.now() - balloon.spawnTime;
+                  // Berechne Fall-Distanz - berücksichtige Pause im Hard-Modus
+                  let balloonAge: number;
+                  if (selectedMinigameDifficulty === 'hard' && gamePausedRef.current && pauseStartTimeRef.current > 0) {
+                    // Im Hard-Modus pausiert: Verwende die Zeit bis zur Pause
+                    balloonAge = pauseStartTimeRef.current - balloon.spawnTime;
+                  } else {
+                    // Normal: Alter des Ballons
+                    balloonAge = Date.now() - balloon.spawnTime;
+                  }
+                  
                   const elapsedSeconds = (Date.now() - startTime) / 1000;
                   const baseSpeed = 12;
                   const speedMultiplier = 1 + (elapsedSeconds / 35) * 2;
                   const currentSpeed = baseSpeed / speedMultiplier;
-                  const fallDistance = Math.min(balloonAge / currentSpeed, 360);
-                  if (!balloon.caught && fallDistance < 360) {
+                  const fallDistance = Math.min(balloonAge / currentSpeed, 410);
+                  if (!balloon.caught && fallDistance < 410) {
                     return (
                       <Box
                         key={balloon.id}
@@ -11165,34 +12450,52 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           {gameWon && (
             <Box sx={{ 
               textAlign: 'center', 
-              py: 2, 
-              mt: 1,
-              bgcolor: '#e8f5e9',
-              borderRadius: 2,
-              border: '2px solid #4caf50'
+              py: 3, 
+              px: 3,
+              mt: 2,
+              background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+              borderRadius: 3,
+              border: '3px solid #4caf50',
+              boxShadow: '0 8px 24px rgba(76, 175, 80, 0.3)'
             }}>
-              <Typography variant="h5" sx={{ mb: 1, color: '#4caf50', fontWeight: 700 }}>
+              <Typography variant="h4" sx={{ mb: 1.5, color: '#2e7d32', fontWeight: 900, fontSize: '2rem' }}>
                 🏆 GEWONNEN! 🎉
               </Typography>
-              <Typography variant="body2" sx={{ color: '#666' }}>
-                Punkte: <strong style={{ fontSize: '1rem', color: '#FF9800' }}>{score}</strong>
+              <Box sx={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+                bgcolor: 'white',
+                px: 3,
+                py: 1.5,
+                borderRadius: 2,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }}>
+                <Typography variant="body1" sx={{ color: '#555', fontSize: '1rem' }}>
+                  Punkte:
+                </Typography>
+                <Typography variant="h5" sx={{ color: '#FF9800', fontWeight: 700, fontSize: '1.5rem' }}>
+                  {score}
               </Typography>
+              </Box>
             </Box>
           )}
           {gameOver && (
             <Box sx={{ 
               textAlign: 'center', 
-              py: 2, 
-              mt: 1,
-              bgcolor: '#ffebee',
-              borderRadius: 2,
-              border: '2px solid #d32f2f'
+              py: 3, 
+              px: 3,
+              mt: 2,
+              background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)',
+              borderRadius: 3,
+              border: '3px solid #d32f2f',
+              boxShadow: '0 8px 24px rgba(211, 47, 47, 0.3)'
             }}>
-              <Typography variant="h6" sx={{ mb: 0.5, color: '#d32f2f', fontWeight: 700 }}>
+              <Typography variant="h4" sx={{ mb: 1, color: '#c62828', fontWeight: 900, fontSize: '2rem' }}>
                 💥 Game Over! 💥
               </Typography>
-              <Typography variant="caption" sx={{ color: '#666', fontSize: '0.75rem' }}>
-                Punkte: {score}
+              <Typography variant="body2" sx={{ color: '#666', fontSize: '0.9rem' }}>
+                Versuche es nochmal!
               </Typography>
             </Box>
           )}
