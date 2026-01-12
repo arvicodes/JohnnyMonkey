@@ -1307,13 +1307,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [deskPositions, setDeskPositions] = useState<{[groupId: string]: Array<{deskId: number; gridRow: number; gridCol: number}>}>({});
   const [draggedDeskId, setDraggedDeskId] = useState<number | null>(null);
   const [dragOverGridCell, setDragOverGridCell] = useState<string | null>(null);
-  const [customSeatingOrder, setCustomSeatingOrder] = useState<{[groupId: string]: string[]}>({});
+  // Genauer Drop-Target State: { deskId, slotIndex } oder { gridRow, gridCol, slotIndex }
+  const [dropTarget, setDropTarget] = useState<{
+    type: 'desk' | 'grid';
+    deskId?: number;
+    slotIndex: number;
+    gridRow?: number;
+    gridCol?: number;
+  } | null>(null);
+  const [customSeatingOrder, setCustomSeatingOrder] = useState<{[groupId: string]: Array<string | null>}>({});
   const [tempPeriod1Hours, setTempPeriod1Hours] = useState<string>('');
   const [tempPeriod2Hours, setTempPeriod2Hours] = useState<string>('');
   const [lessonKeyword, setLessonKeyword] = useState<string>('');
   const [lessonKeywordsMap, setLessonKeywordsMap] = useState<{[groupId: string]: {[lessonIndex: number]: string}}>({});
   const lessonKeywordInputRef = useRef<HTMLInputElement | null>(null);
   const navFocusRef = useRef<HTMLDivElement | null>(null);
+  const participationDebugShownRef = useRef<string>('');
   const [applyingLessonKeyword, setApplyingLessonKeyword] = useState<boolean>(false);
 
   // Fokussiere den Navigationscontainer beim Öffnen des Mitarbeits-Modals,
@@ -1324,6 +1333,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       setTimeout(() => {
         navFocusRef.current?.focus();
       }, 0);
+    } else {
+      // Reset Debug-Ref wenn Modal geschlossen wird
+      participationDebugShownRef.current = '';
     }
   }, [participationModalOpen]);
 
@@ -3501,7 +3513,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
 
   // Speichere Sitzordnung für eine Gruppe
-  const saveSeatingOrder = async (groupId: string, seatingOrder: string[], deskPositions?: Array<{deskId: number; gridRow: number; gridCol: number}>) => {
+  const saveSeatingOrder = async (groupId: string, seatingOrder: Array<string | null>, deskPositions?: Array<{deskId: number; gridRow: number; gridCol: number}>) => {
     try {
       console.log('💾 Speichere Sitzordnung für Gruppe:', groupId, 'mit', seatingOrder.length, 'Schülern');
       if (deskPositions) {
@@ -4205,7 +4217,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     setStatisticsModalOpen(false);
     setParticipationStats([]);
   };
-
+  
   // Reset all participations for the group
   const handleResetAllParticipations = async () => {
     if (!participationGroupId) return;
@@ -9745,7 +9757,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     </Box>
               <Box>
                 <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
-                  Epochalstatistik
+                  Eintragung Epochalnoten
                 </Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2 }}>
                   {participationGroupName}
@@ -9870,7 +9882,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 size="small"
                 variant="outlined"
                 startIcon={<BarChartIcon sx={{ fontSize: 12 }} />}
-                onClick={handleStatisticsOpen}
+                onClick={() => {
+                  console.log(`[STAT-DEBUG] 🖱️ BUTTON CLICK - Epochalstatistik Button wurde geklickt!`);
+                  handleStatisticsOpen();
+                }}
                 sx={{ 
                   fontSize: '0.65rem', 
                   py: 0.25, 
@@ -10510,7 +10525,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               // Stelle sicher, dass alle Schüler in der Reihenfolge sind
               // Füge fehlende Schüler am Ende hinzu
               const allStudentIds = new Set(students.map(s => s.id));
-              const orderedStudentIds = customOrder.filter(id => allStudentIds.has(id));
+              const orderedStudentIds = customOrder.filter((id): id is string => id !== null && allStudentIds.has(id));
               const missingStudentIds = students
                 .map(s => s.id)
                 .filter(id => !customOrder.includes(id));
@@ -10553,27 +10568,150 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               });
             }
             
-            // Gruppiere Schüler in Zweiertische basierend auf der sortierten Reihenfolge
-            const groupIntoDesks = (students: typeof sortedStudents) => {
-              const desks: Array<Array<typeof sortedStudents[0]>> = [];
-              
-              // Teile die bereits sortierte Liste einfach in Zweiergruppen auf
-              for (let i = 0; i < students.length; i += 2) {
-                const desk = students.slice(i, i + 2);
-                desks.push(desk);
-              }
-              
-              return desks;
-            };
-            
-            const desks = groupIntoDesks(sortedStudents);
-            
             // Grid-System: 4x5 Kacheln (4 Spalten, 5 Zeilen)
             const gridCols = 4;
             const gridRows = 5;
             
-            // Initialisiere Tisch-Positionen falls noch nicht vorhanden
+            // Erstelle Map: studentId → Student für schnellen Zugriff
+            const studentMap = new Map<string, typeof sortedStudents[0]>();
+            sortedStudents.forEach(s => studentMap.set(s.id, s));
+            
+            // NEUE LÖSUNG: Hole Slot-Zuordnung DIREKT als Array von 40 Elementen
+            // KRITISCH: null = leerer Slot, studentId = belegter Slot
+            const currentOrderRaw = customSeatingOrder[participationGroupId || ''] || [];
             const currentDeskPositions = deskPositions[participationGroupId || ''] || [];
+            
+            // Prüfe ob currentOrder ein Array von 40 Elementen ist (neue Format) oder eine Liste (altes Format)
+            const isSlotBasedOrder = Array.isArray(currentOrderRaw) && currentOrderRaw.length === 40;
+            
+            // Erstelle Slot-basierte Map: slotIndex (0-39) → studentId
+            const slotToStudentMap = new Map<number, string>();
+            
+            if (isSlotBasedOrder) {
+              // NEUE LÖSUNG: Direktes Slot-basiertes Array
+              currentOrderRaw.forEach((studentId, slotIndex) => {
+                if (studentId !== null && studentId !== undefined) {
+                  slotToStudentMap.set(slotIndex, studentId);
+                }
+              });
+              console.log(`✅ NEUE LÖSUNG: Slot-basierte Reihenfolge geladen (${slotToStudentMap.size} belegte Slots)`);
+            } else {
+              // ALTE LÖSUNG: Kompatibilität mit alter sequenzieller Liste
+              const currentOrder = Array.isArray(currentOrderRaw) ? currentOrderRaw : sortedStudents.map(s => s.id);
+              
+              if (currentDeskPositions.length > 0 && currentOrder.length > 0) {
+                const sortedDeskPositions = [...currentDeskPositions].sort((a, b) => {
+                  const posA = a.gridRow * gridCols + a.gridCol;
+                  const posB = b.gridRow * gridCols + b.gridCol;
+                  return posA - posB;
+                });
+                
+                const gridPosToDeskPos = new Map<string, typeof sortedDeskPositions[0]>();
+                sortedDeskPositions.forEach(deskPos => {
+                  const gridKey = `${deskPos.gridRow}-${deskPos.gridCol}`;
+                  gridPosToDeskPos.set(gridKey, deskPos);
+                });
+                
+                let orderIndex = 0;
+                for (let gridRow = 0; gridRow < gridRows; gridRow++) {
+                  for (let gridCol = 0; gridCol < gridCols; gridCol++) {
+                    const gridKey = `${gridRow}-${gridCol}`;
+                    const deskPos = gridPosToDeskPos.get(gridKey);
+                    
+                    if (deskPos) {
+                      const slot0Num = (gridRow * gridCols + gridCol) * 2;
+                      const slot1Num = slot0Num + 1;
+                      
+                      if (orderIndex < currentOrder.length && currentOrder[orderIndex] !== null) {
+                        slotToStudentMap.set(slot0Num, currentOrder[orderIndex]!);
+                        orderIndex++;
+                      }
+                      if (orderIndex < currentOrder.length && currentOrder[orderIndex] !== null) {
+                        slotToStudentMap.set(slot1Num, currentOrder[orderIndex]!);
+                        orderIndex++;
+                      }
+                    }
+                  }
+                }
+                
+                // DEBUG: Zeige Slot-Zuordnung
+                console.log(`\n🔍 SLOT-ZUORDNUNG ERSTELLT:`);
+                console.log(`   - Anzahl Desk-Positionen: ${sortedDeskPositions.length}`);
+                console.log(`   - Anzahl Schüler in Reihenfolge: ${currentOrder.length}`);
+                console.log(`   - Anzahl Slots zugeordnet: ${slotToStudentMap.size}`);
+                
+                // Zeige letzte 5 Slots
+                const lastSlots: string[] = [];
+                for (let slot = 35; slot < 40; slot++) {
+                  const studentId = slotToStudentMap.get(slot);
+                  if (studentId) {
+                    const studentName = studentMap.get(studentId)?.name || studentId;
+                    lastSlots.push(`Slot ${slot + 1}: ${studentName}`);
+                  } else {
+                    lastSlots.push(`Slot ${slot + 1}: <LEER>`);
+                  }
+                }
+                console.log(`   - Letzte 5 Slots: ${lastSlots.join(', ')}`);
+              } else {
+                // Fallback: Erstelle Slot-Zuordnung sequenziell (für initiales Setup)
+                currentOrder.forEach((studentId, index) => {
+                  if (index < 40 && studentId !== null) {
+                    slotToStudentMap.set(index, studentId);
+                  }
+                });
+              }
+            }
+            
+            // Erstelle Desk-Struktur DIREKT aus Slot-Positionen
+            // Erstelle Map: deskId → Array von Schülern (max 2)
+            const deskToStudentsMap = new Map<number, Array<typeof sortedStudents[0]>>();
+            
+            // Initialisiere alle Desks als leere Arrays
+            if (currentDeskPositions.length > 0) {
+              currentDeskPositions.forEach(pos => {
+                if (!deskToStudentsMap.has(pos.deskId)) {
+                  deskToStudentsMap.set(pos.deskId, []);
+                }
+              });
+            }
+            
+            // Fülle Desks basierend auf Slot-Zuordnung
+            slotToStudentMap.forEach((studentId, slotIndex) => {
+              // Berechne Grid-Position aus Slot-Index
+              const gridCellIndex = Math.floor(slotIndex / 2);
+              const gridRow = Math.floor(gridCellIndex / gridCols);
+              const gridCol = gridCellIndex % gridCols;
+              const slotInCell = slotIndex % 2;
+              
+              // Finde Desk für diese Grid-Position
+              const deskPos = currentDeskPositions.find(p => p.gridRow === gridRow && p.gridCol === gridCol);
+              if (deskPos && studentMap.has(studentId)) {
+                const desk = deskToStudentsMap.get(deskPos.deskId) || [];
+                desk[slotInCell] = studentMap.get(studentId)!;
+                deskToStudentsMap.set(deskPos.deskId, desk);
+              }
+            });
+            
+            // Konvertiere Desk-Map zu Array für Rendering
+            const desks: Array<Array<typeof sortedStudents[0]>> = [];
+            const maxDeskId = currentDeskPositions.length > 0 
+              ? Math.max(...currentDeskPositions.map(p => p.deskId), -1)
+              : -1;
+            
+            for (let i = 0; i <= maxDeskId; i++) {
+              desks[i] = deskToStudentsMap.get(i) || [];
+            }
+            
+            // Erstelle orderedStudents für Debugging (aus Slot-Zuordnung, sortiert nach Slot-Nummer)
+            const orderedStudents: Array<typeof sortedStudents[0]> = [];
+            for (let slot = 0; slot < 40; slot++) {
+              const studentId = slotToStudentMap.get(slot);
+              if (studentId && studentMap.has(studentId)) {
+                orderedStudents.push(studentMap.get(studentId)!);
+              }
+            }
+            
+            // Initialisiere Tisch-Positionen falls noch nicht vorhanden
             
             // Standard-Grid-Positionen basierend auf Screenshot (mit Zeilenumbrüchen)
             // Reihe 1: 1 Tisch (2 Schüler) - Positionen 0,0
@@ -10613,12 +10751,69 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             };
             
             // Verwende initialisierte Positionen oder berechne sie neu basierend auf Standard-Layout
-            const finalDeskPositions = currentDeskPositions.length > 0 
+            let finalDeskPositions = currentDeskPositions.length > 0 
               ? currentDeskPositions 
-              : desks.map((_, index) => ({
-                  deskId: index,
-                  ...getDefaultGridPosition(index)
-                }));
+              : (() => {
+                  // Erstelle Standard-Positionen für alle Slots
+                  const positions: Array<{deskId: number; gridRow: number; gridCol: number}> = [];
+                  for (let slot = 0; slot < 40 && slot < orderedStudents.length; slot++) {
+                    const gridCellIndex = Math.floor(slot / 2);
+                    const gridRow = Math.floor(gridCellIndex / gridCols);
+                    const gridCol = gridCellIndex % gridCols;
+                    const deskId = Math.floor(slot / 2);
+                    
+                    // Prüfe ob diese Position bereits existiert
+                    const existingPos = positions.find(p => p.gridRow === gridRow && p.gridCol === gridCol);
+                    if (!existingPos) {
+                      positions.push({ deskId, gridRow, gridCol });
+                    }
+                  }
+                  return positions;
+                })();
+            
+            // BEREINIGE DUPLIKATE: Entferne Tische mit doppelten Grid-Positionen
+            const positionMap = new Map<string, number>();
+            const cleanedPositions: Array<{deskId: number; gridRow: number; gridCol: number}> = [];
+            const duplicateDeskIds: number[] = [];
+            
+            finalDeskPositions.forEach(pos => {
+              const key = `${pos.gridRow}-${pos.gridCol}`;
+              if (positionMap.has(key)) {
+                // Duplikat gefunden - markiere zum Entfernen
+                duplicateDeskIds.push(pos.deskId);
+                console.warn(`⚠️ DUPLIKAT entfernt: Desk ${pos.deskId} an Position ${key} (bereits belegt von Desk ${positionMap.get(key)})`);
+              } else {
+                positionMap.set(key, pos.deskId);
+                cleanedPositions.push(pos);
+              }
+            });
+            
+            // Wenn Duplikate gefunden wurden, finde freie Positionen für sie
+            if (duplicateDeskIds.length > 0) {
+              duplicateDeskIds.forEach(deskId => {
+                // Finde nächste freie Position
+                for (let row = 0; row < gridRows; row++) {
+                  for (let col = 0; col < gridCols; col++) {
+                    const key = `${row}-${col}`;
+                    if (!positionMap.has(key)) {
+                      positionMap.set(key, deskId);
+                      cleanedPositions.push({ deskId, gridRow: row, gridCol: col });
+                      console.log(`✅ Desk ${deskId} verschoben zu Position ${key}`);
+                      return;
+                    }
+                  }
+                }
+              });
+              
+              // Aktualisiere finalDeskPositions
+              finalDeskPositions = cleanedPositions;
+              
+              // Speichere bereinigte Positionen
+              setDeskPositions(prev => ({
+                ...prev,
+                [participationGroupId || '']: finalDeskPositions
+              }));
+            }
             
             // Initialisiere State falls noch nicht vorhanden
             if (currentDeskPositions.length === 0 && desks.length > 0) {
@@ -10629,177 +10824,599 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             }
             
             // Erstelle Grid-Map: Welcher Tisch ist in welcher Zelle?
+            // Nach der Bereinigung sollten keine Duplikate mehr vorhanden sein
             const gridMap: {[key: string]: number} = {};
             finalDeskPositions.forEach(pos => {
               const key = `${pos.gridRow}-${pos.gridCol}`;
+              if (gridMap[key] !== undefined) {
+                console.error(`❌ FEHLER: Position ${key} wird immer noch mehrfach verwendet!`);
+              }
               gridMap[key] = pos.deskId;
             });
             
-            // Drag & Drop Handler für Schüler (innerhalb von Tischen)
-            const handleStudentDragStart = (e: React.DragEvent, studentId: string) => {
+            // Erstelle Map: deskId → Grid-Position für schnellen Zugriff
+            const deskToGridPosMap: {[deskId: number]: {row: number, col: number}} = {};
+            finalDeskPositions.forEach(pos => {
+              deskToGridPosMap[pos.deskId] = { row: pos.gridRow, col: pos.gridCol };
+            });
+            
+            // WICHTIG: Erstelle gridToDeskMap DIREKT aus finalDeskPositions UND slotToStudentMap
+            // Diese Map wird sowohl von der UI als auch von der Debug-Funktion verwendet
+            // WICHTIG: Verwende finalDeskPositions (bereinigt), nicht currentDeskPositions
+            const gridToDeskMap: {[key: string]: {deskId: number, desk: Array<typeof sortedStudents[0]>}} = {};
+            finalDeskPositions.forEach(pos => {
+              const gridKey = `${pos.gridRow}-${pos.gridCol}`;
+              const desk: Array<typeof sortedStudents[0]> = [];
+              
+              // Hole Schüler für diese Grid-Position aus slotToStudentMap
+              const slot0Num = (pos.gridRow * gridCols + pos.gridCol) * 2;
+              const slot1Num = slot0Num + 1;
+              
+              const student0Id = slotToStudentMap.get(slot0Num);
+              const student1Id = slotToStudentMap.get(slot1Num);
+              
+              if (student0Id && studentMap.has(student0Id)) {
+                desk[0] = studentMap.get(student0Id)!;
+              }
+              if (student1Id && studentMap.has(student1Id)) {
+                desk[1] = studentMap.get(student1Id)!;
+              }
+              
+              gridToDeskMap[gridKey] = {
+                deskId: pos.deskId,
+                desk: desk
+              };
+            });
+            
+            // DEBUG: Zeige welche Grid-Positionen Desk-Positionen haben
+            console.log(`\n🔍 GRID-zu-DESK-MAP ERSTELLT:`);
+            console.log(`   - Anzahl Desk-Positionen: ${finalDeskPositions.length}`);
+            console.log(`   - Anzahl Grid-Einträge in Map: ${Object.keys(gridToDeskMap).length}`);
+            Object.keys(gridToDeskMap).sort().forEach(gridKey => {
+              const { deskId, desk } = gridToDeskMap[gridKey];
+              const [row, col] = gridKey.split('-').map(Number);
+              const slot0 = desk[0] ? desk[0].name : '<LEER>';
+              const slot1 = desk[1] ? desk[1].name : '<LEER>';
+              console.log(`   Grid ${gridKey} (R${row+1}, C${col+1}): Desk ${deskId}, Slot0=${slot0}, Slot1=${slot1}`);
+            });
+            
+            // Funktion zur Berechnung der globalen Slot-Nummer (zeilenweise, beginnt bei 1)
+            // WICHTIG: Immer Grid-Position verwenden, nicht deskId!
+            const getGlobalSlotNumber = (slotIndex: number, gridRow: number, gridCol: number): number => {
+              // Zeilenweise Nummerierung: (row * gridCols + col) * 2 + slotIndex + 1
+              // Jede Grid-Zelle hat 2 Slots, nummeriert von oben links nach unten rechts
+              return (gridRow * gridCols + gridCol) * 2 + slotIndex + 1;
+            };
+            
+            // Debug: Zeige aktuelle Verteilung
+            const uniqueStudentIds = new Set(orderedStudents.map(s => s.id));
+            console.log(`\n📊 AKTUELLE SCHÜLER-VERTEILUNG:`);
+            console.log(`   - Anzahl Schüler: ${orderedStudents.length}`);
+            console.log(`   - Anzahl Tische: ${desks.length}`);
+            console.log(`   - Reihenfolge: ${orderedStudents.map(s => s.name).join(', ')}`);
+            console.log(`   - Duplikate geprüft: ${uniqueStudentIds.size === orderedStudents.length ? 'OK' : 'FEHLER!'}`);
+            
+            // Debug: Zeige Grid-zu-Desk-Zuordnung
+            console.log(`\n📋 GRID-zu-DESK-ZUORDNUNG:`);
+            Object.keys(gridToDeskMap).sort().forEach(gridKey => {
+              const { deskId, desk } = gridToDeskMap[gridKey];
+              const [row, col] = gridKey.split('-').map(Number);
+              const slot0 = desk[0] ? desk[0].name : '<LEER>';
+              const slot1 = desk[1] ? desk[1].name : '<LEER>';
+              const slot0Num = getGlobalSlotNumber(0, row, col);
+              const slot1Num = getGlobalSlotNumber(1, row, col);
+              console.log(`   Grid R${row+1}, C${col+1} (Desk ${deskId}): Slot ${slot0Num} = ${slot0}, Slot ${slot1Num} = ${slot1}`);
+            });
+            console.log(`\n`);
+            
+            // DEBUG-FUNKTION: Zeige aktuelle Slot-Verteilung im Modal "Epochal eintragen"
+            // WICHTIG: Diese Funktion muss EXAKT die gleiche Logik verwenden wie die UI-Render-Logik
+            const debugParticipationSlots = () => {
+              console.log('\n═══════════════════════════════════════════════════════════════════════════════════════');
+              console.log('EPOCHAL EINTRAGEN: Klasse 7a - GRID-AUFTEILUNG (4 Spalten × 5 Zeilen, 2 Slots pro Zelle)');
+              console.log('═══════════════════════════════════════════════════════════════════════════════════════\n');
+              
+              // Erstelle Grid-Tabelle basierend auf gridToDeskMap (GLEICHE LOGIK WIE UI)
+              const gridTable: Array<Array<{gridRow: number, gridCol: number, slot0: {number: number, student: string} | null, slot1: {number: number, student: string} | null}>> = [];
+              
+              // Initialisiere Grid-Tabelle mit leeren Slots
+              for (let row = 0; row < gridRows; row++) {
+                const rowData = [];
+                for (let col = 0; col < gridCols; col++) {
+                  const slot0Number = getGlobalSlotNumber(0, row, col);
+                  const slot1Number = getGlobalSlotNumber(1, row, col);
+                  rowData.push({
+                    gridRow: row + 1,
+                    gridCol: col + 1,
+                    slot0: null,
+                    slot1: null
+                  });
+                }
+                gridTable.push(rowData);
+              }
+              
+              // Fülle Grid-Tabelle mit Schülern basierend auf gridToDeskMap (GLEICHE LOGIK WIE UI)
+              Object.keys(gridToDeskMap).forEach(gridKey => {
+                const { deskId, desk } = gridToDeskMap[gridKey];
+                const [row, col] = gridKey.split('-').map(Number);
+                if (row < gridRows && col < gridCols) {
+                  const slot0Number = getGlobalSlotNumber(0, row, col);
+                  const slot1Number = getGlobalSlotNumber(1, row, col);
+                  gridTable[row][col] = {
+                    gridRow: row + 1,
+                    gridCol: col + 1,
+                    slot0: desk[0] ? { number: slot0Number, student: desk[0].name } : null,
+                    slot1: desk[1] ? { number: slot1Number, student: desk[1].name } : null
+                  };
+                }
+              });
+              
+              // Zeige Grid-Tabelle
+              console.log('GRID-ZELLE | SPALTE 1                    | SPALTE 2                    | SPALTE 3                    | SPALTE 4');
+              console.log('───────────┼─────────────────────────────┼─────────────────────────────┼─────────────────────────────┼─────────────────────────────');
+              
+              gridTable.forEach((row, rowIndex) => {
+                const rowNum = String(rowIndex + 1).padStart(2, ' ');
+                const cells = row.map(cell => {
+                  const slot0Str = cell.slot0 ? `Slot ${cell.slot0.number}: ${cell.slot0.student.substring(0, 20)}` : `Slot ${getGlobalSlotNumber(0, rowIndex, cell.gridCol - 1)}: <LEER>`;
+                  const slot1Str = cell.slot1 ? `Slot ${cell.slot1.number}: ${cell.slot1.student.substring(0, 20)}` : `Slot ${getGlobalSlotNumber(1, rowIndex, cell.gridCol - 1)}: <LEER>`;
+                  return `${slot0Str.padEnd(27)}\n${' '.repeat(12)}${slot1Str.padEnd(27)}`;
+                });
+                
+                console.log(`Reihe ${rowNum}   | ${cells[0]}`);
+                console.log(`           | ${cells[1]}`);
+                console.log(`           | ${cells[2]}`);
+                console.log(`           | ${cells[3]}`);
+                console.log('───────────┼─────────────────────────────┼─────────────────────────────┼─────────────────────────────┼─────────────────────────────');
+              });
+              
+              console.log('\n═══════════════════════════════════════════════════════════════════════════════════════');
+              console.log('DETAILLIERTE SLOT-LISTE (zeilenweise, beginnt bei 1):');
+              console.log('═══════════════════════════════════════════════════════════════════════════════════════\n');
+              
+              // Zeige detaillierte Slot-Liste basierend auf gridToDeskMap (GLEICHE LOGIK WIE UI)
+              // Sortiere nach Slot-Nummer für bessere Lesbarkeit
+              const slotList: Array<{slot: number, gridRow: number, gridCol: number, slotIndex: number, deskId: number, student: string | null}> = [];
+              
+              Object.keys(gridToDeskMap).forEach(gridKey => {
+                const { deskId, desk } = gridToDeskMap[gridKey];
+                const [row, col] = gridKey.split('-').map(Number);
+                desk.forEach((student, slotIndex) => {
+                  const slotNumber = getGlobalSlotNumber(slotIndex, row, col);
+                  slotList.push({
+                    slot: slotNumber,
+                    gridRow: row + 1,
+                    gridCol: col + 1,
+                    slotIndex,
+                    deskId,
+                    student: student ? student.name : null
+                  });
+                });
+                // Füge auch leere Slots hinzu
+                if (desk.length < 2) {
+                  const slotNumber = getGlobalSlotNumber(1, row, col);
+                  slotList.push({
+                    slot: slotNumber,
+                    gridRow: row + 1,
+                    gridCol: col + 1,
+                    slotIndex: 1,
+                    deskId,
+                    student: null
+                  });
+                }
+              });
+              
+              // Sortiere nach Slot-Nummer
+              slotList.sort((a, b) => a.slot - b.slot);
+              
+              // Zeige alle Slots
+              slotList.forEach(item => {
+                const studentStr = item.student || '<LEER>';
+                console.log(`Slot ${String(item.slot).padStart(3, ' ')} (Grid R${item.gridRow}, C${item.gridCol}, Slot ${item.slotIndex}, Desk ${item.deskId}): ${studentStr}`);
+              });
+              
+              console.log('\n═══════════════════════════════════════════════════════════════════════════════════════\n');
+            };
+            
+            // ROBUSTE Drag & Drop Handler für Schüler - NEU IMPLEMENTIERT
+            const handleStudentDragStart = (e: React.DragEvent, studentId: string, sourceDeskId?: number, sourceSlotIndex?: number) => {
               setDraggedStudentId(studentId);
               e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', studentId);
+              e.dataTransfer.setData('application/student-id', studentId);
+              e.dataTransfer.setData('drag-type', 'student');
+              // Debug: Speichere Quelle
+              if (sourceDeskId !== undefined && sourceSlotIndex !== undefined) {
+                e.dataTransfer.setData('source-desk-id', String(sourceDeskId));
+                e.dataTransfer.setData('source-slot-index', String(sourceSlotIndex));
+                // Finde Grid-Position der Quelle
+                const sourceGridPos = deskToGridPosMap[sourceDeskId];
+                if (sourceGridPos) {
+                  const globalSlot = getGlobalSlotNumber(sourceSlotIndex, sourceGridPos.row, sourceGridPos.col);
+                  const studentName = sortedStudents.find(s => s.id === studentId)?.name || studentId;
+                  console.log(`\n🔄 DRAG START: SuS ${studentName} wird von Slot ${globalSlot} (Grid R${sourceGridPos.row + 1}, C${sourceGridPos.col + 1}, Slot ${sourceSlotIndex}) gezogen\n`);
+                }
+              }
+              // Verhindere dass andere Drag-Events ausgelöst werden
+              e.stopPropagation();
             };
 
-            const handleStudentDragOver = (e: React.DragEvent, deskId: number) => {
+            // Universeller DragOver Handler für alle Drop-Zonen
+            const handleStudentDragOver = (e: React.DragEvent) => {
+              // Prüfe ob es ein Schüler-Drag ist
+              const isStudentDrag = e.dataTransfer.types.includes('text/plain') || 
+                                   e.dataTransfer.types.includes('application/student-id') ||
+                                   draggedStudentId !== null;
+              
+              if (isStudentDrag) {
               e.preventDefault();
               e.stopPropagation();
               e.dataTransfer.dropEffect = 'move';
-              setDragOverDeskIndex(`${deskId}`);
+              }
             };
 
-            const handleStudentDragLeave = () => {
-              setDragOverDeskIndex(null);
-            };
-
-            const handleStudentDrop = (e: React.DragEvent, targetDeskId: number | null, targetGridRow?: number, targetGridCol?: number) => {
+            // ROBUSTER Drop Handler - NEU IMPLEMENTIERT MIT VOLLSTÄNDIGEM DEBUGGING
+            const handleStudentDrop = (
+              e: React.DragEvent, 
+              targetSlotIndex: number,
+              targetDeskId: number | undefined,
+              targetGridRow: number | undefined, 
+              targetGridCol: number | undefined
+            ) => {
               e.preventDefault();
               e.stopPropagation();
-              if (!draggedStudentId || !participationGroupId) {
-                console.log('⚠️ Drop abgebrochen: draggedStudentId oder participationGroupId fehlt');
+              
+              console.log(`\n${'═'.repeat(100)}`);
+              console.log(`🔄 DRAG & DROP START - ROBUSTE IMPLEMENTIERUNG`);
+              console.log(`${'═'.repeat(100)}\n`);
+              
+              // Hole studentId
+              let studentId = draggedStudentId;
+              if (!studentId) {
+                studentId = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/student-id');
+              }
+              
+              if (!studentId || !participationGroupId) {
+                console.error('❌ FEHLER: Keine gültige studentId oder participationGroupId');
+                setDraggedStudentId(null);
+                setDropTarget(null);
                 return;
               }
 
-              console.log('🎯 Student Drop:', { draggedStudentId, targetDeskId, targetGridRow, targetGridCol });
-
-              // Erstelle neue Sitzordnung: Speichere die Reihenfolge der Schüler-IDs
+              // Hole aktuelle Reihenfolge (OHNE Duplikate)
               const currentOrder = customSeatingOrder[participationGroupId] || sortedStudents.map(s => s.id);
               
-              // Finde aktuelle Position des verschobenen Schülers
-              const currentIndex = currentOrder.indexOf(draggedStudentId);
-              if (currentIndex === -1) {
-                console.log('⚠️ Schüler nicht in aktueller Reihenfolge gefunden');
+              // Entferne Duplikate aus currentOrder (filtere auch nulls heraus)
+              const uniqueOrder: string[] = [];
+              const seenOrderIds = new Set<string>();
+              currentOrder.forEach(id => {
+                if (id !== null && !seenOrderIds.has(id)) {
+                  uniqueOrder.push(id);
+                  seenOrderIds.add(id);
+                }
+              });
+              
+              console.log(`📋 AKTUELLE REIHENFOLGE:`);
+              console.log(`   - Anzahl Schüler: ${uniqueOrder.length}`);
+              console.log(`   - Reihenfolge: ${uniqueOrder.map(id => studentMap.get(id)?.name || id).join(', ')}`);
+              
+              // Finde aktuelle Position des gezogenen Schülers
+              const sourceIndex = uniqueOrder.indexOf(studentId);
+              if (sourceIndex === -1) {
+                console.error(`❌ FEHLER: Schüler ${studentId} nicht in Reihenfolge gefunden!`);
+                console.log(`   Verfügbare IDs: ${uniqueOrder.slice(0, 5).join(', ')}...`);
                 setDraggedStudentId(null);
-                setDragOverDeskIndex(null);
+                setDropTarget(null);
                 return;
               }
 
-              let newOrder: string[];
-              let needsNewDesk = false;
-              let newDeskPosition: { gridRow: number; gridCol: number } | null = null;
-
-              if (targetDeskId !== null && targetDeskId !== undefined) {
-                // Fall 1: Schüler wird auf einen bestehenden Tisch gezogen
-                const targetDesk = desks[targetDeskId];
-                if (!targetDesk) {
-                  console.log('⚠️ Ziel-Tisch nicht gefunden');
+              // Bestimme Grid-Position des Ziels
+              let finalGridRow: number;
+              let finalGridCol: number;
+              
+              if (targetDeskId !== undefined) {
+                // Hole Grid-Position aus deskToGridPosMap
+                const gridPos = deskToGridPosMap[targetDeskId];
+                if (!gridPos) {
+                  console.error(`❌ FEHLER: Grid-Position für Desk ${targetDeskId} nicht gefunden!`);
                   setDraggedStudentId(null);
-                  setDragOverDeskIndex(null);
+                  setDropTarget(null);
                   return;
                 }
-
-                const targetDeskStudentIds = targetDesk.map(s => s.id);
-                
-                // Prüfe ob Schüler bereits in diesem Tisch ist
-                if (targetDeskStudentIds.includes(draggedStudentId)) {
-                  console.log('ℹ️ Schüler ist bereits in diesem Tisch');
-                  setDraggedStudentId(null);
-                  setDragOverDeskIndex(null);
-                  return;
-                }
-
-                // Finde Position nach dem letzten Schüler im Ziel-Tisch
-                const lastStudentInTargetDesk = targetDeskStudentIds[targetDeskStudentIds.length - 1];
-                const targetIndex = currentOrder.indexOf(lastStudentInTargetDesk);
-                
-                // Erstelle neue Reihenfolge: Verschiebe Schüler direkt nach dem letzten Schüler im Ziel-Tisch
-                newOrder = [...currentOrder];
-                newOrder.splice(currentIndex, 1);
-                
-                if (targetIndex !== -1 && targetIndex < currentIndex) {
-                  // Ziel ist vor der aktuellen Position
-                  newOrder.splice(targetIndex + 1, 0, draggedStudentId);
-                } else if (targetIndex !== -1) {
-                  // Ziel ist nach der aktuellen Position
-                  const adjustedTargetIndex = targetIndex > currentIndex ? targetIndex - 1 : targetIndex;
-                  newOrder.splice(adjustedTargetIndex + 1, 0, draggedStudentId);
-                } else {
-                  // Ziel-Schüler nicht gefunden, füge ans Ende hinzu
-                  newOrder.push(draggedStudentId);
-                }
+                finalGridRow = gridPos.row;
+                finalGridCol = gridPos.col;
+                console.log(`   - Ziel via Desk ${targetDeskId}: Grid R${finalGridRow + 1}, C${finalGridCol + 1}`);
               } else if (targetGridRow !== undefined && targetGridCol !== undefined) {
-                // Fall 2: Schüler wird in eine leere Grid-Zelle gezogen
-                const gridKey = `${targetGridRow}-${targetGridCol}`;
+                finalGridRow = targetGridRow;
+                finalGridCol = targetGridCol;
+                console.log(`   - Ziel via Grid: R${finalGridRow + 1}, C${finalGridCol + 1}`);
+              } else {
+                console.error('❌ FEHLER: Keine gültige Grid-Position');
+                setDraggedStudentId(null);
+                setDropTarget(null);
+                return;
+              }
+
+              // WICHTIG: Berechne Ziel-Position DIREKT aus Grid-Position (erlaubt Lücken!)
+              // Formel: (row * gridCols + col) * 2 + slotIndex
+              // Dies gibt uns die absolute Slot-Position (1-40), unabhängig von der aktuellen Reihenfolge
+              const targetGlobalSlot = getGlobalSlotNumber(targetSlotIndex, finalGridRow, finalGridCol);
+              const targetIndexInSlots = targetGlobalSlot - 1; // 0-basiert für Array-Index
+              
+              // Hole Quelle-Informationen für Debugging
+              const sourceDeskId = e.dataTransfer.getData('source-desk-id');
+              const sourceSlotIndex = e.dataTransfer.getData('source-slot-index');
+              let sourceGridPos = null;
+              let sourceGlobalSlot = -1;
+              
+              if (sourceDeskId && sourceSlotIndex) {
+                sourceGridPos = deskToGridPosMap[parseInt(sourceDeskId)];
+                if (sourceGridPos) {
+                  sourceGlobalSlot = getGlobalSlotNumber(parseInt(sourceSlotIndex), sourceGridPos.row, sourceGridPos.col);
+                }
+              }
+              
+              // Fallback: Berechne aus sourceIndex
+              if (sourceGlobalSlot === -1 && sourceIndex !== -1) {
+                const sourceDeskIndex = Math.floor(sourceIndex / 2);
+                const sourceSlotInDesk = sourceIndex % 2;
+                const sourceDeskPos = finalDeskPositions.find(p => p.deskId === sourceDeskIndex);
+                if (sourceDeskPos) {
+                  sourceGridPos = { row: sourceDeskPos.gridRow, col: sourceDeskPos.gridCol };
+                  sourceGlobalSlot = getGlobalSlotNumber(sourceSlotInDesk, sourceDeskPos.gridRow, sourceDeskPos.gridCol);
+                }
+              }
+              
+              // NEUE LOGIK: Slot-basierte Zuordnung (erlaubt Lücken!)
+              // KRITISCH: Slots bleiben LEER wenn ein Schüler entfernt wird - KEINE Komprimierung!
+              // Erstelle ein Array mit 40 Slots (kann null sein für leere Slots)
+              // WICHTIG: Prüfe ob currentOrder bereits ein 40-Element-Array ist (neues Format)
+              const isCurrentOrderSlotBased = Array.isArray(currentOrder) && currentOrder.length === 40;
+              
+              let slotBasedOrder: Array<string | null>;
+              
+              if (isCurrentOrderSlotBased) {
+                // NEUE LÖSUNG: Verwende currentOrder direkt - es ist bereits ein 40-Element-Array mit nulls für leere Slots
+                slotBasedOrder = [...currentOrder]; // Kopiere das Array
+                console.log(`✅ Verwende bestehende Slot-basierte Reihenfolge (40 Elemente)`);
+              } else {
+                // ALTE LÖSUNG: Erstelle Slot-basierte Reihenfolge aus uniqueOrder (kompakte Liste)
+                slotBasedOrder = new Array(40).fill(null);
                 
-                // Prüfe ob diese Position bereits belegt ist
-                if (gridMap[gridKey] !== undefined) {
-                  // Position ist belegt, behandle wie Fall 1
-                  const existingDeskId = gridMap[gridKey];
-                  const targetDesk = desks[existingDeskId];
-                  if (targetDesk) {
-                    const targetDeskStudentIds = targetDesk.map(s => s.id);
-                    if (!targetDeskStudentIds.includes(draggedStudentId)) {
-                      const lastStudentInTargetDesk = targetDeskStudentIds[targetDeskStudentIds.length - 1];
-                      const targetIndex = currentOrder.indexOf(lastStudentInTargetDesk);
-                      newOrder = [...currentOrder];
-                      newOrder.splice(currentIndex, 1);
-                      if (targetIndex !== -1 && targetIndex < currentIndex) {
-                        newOrder.splice(targetIndex + 1, 0, draggedStudentId);
-                      } else if (targetIndex !== -1) {
-                        const adjustedTargetIndex = targetIndex > currentIndex ? targetIndex - 1 : targetIndex;
-                        newOrder.splice(adjustedTargetIndex + 1, 0, draggedStudentId);
-                      } else {
-                        newOrder.push(draggedStudentId);
+                const sortedDeskPositionsForDrop = [...finalDeskPositions].sort((a, b) => {
+                  const posA = a.gridRow * gridCols + a.gridCol;
+                  const posB = b.gridRow * gridCols + b.gridCol;
+                  return posA - posB;
+                });
+                
+                let orderIndexForDrop = 0;
+                for (let gridRow = 0; gridRow < gridRows; gridRow++) {
+                  for (let gridCol = 0; gridCol < gridCols; gridCol++) {
+                    const deskPos = sortedDeskPositionsForDrop.find(p => p.gridRow === gridRow && p.gridCol === gridCol);
+                    if (deskPos) {
+                      const slot0Num = (gridRow * gridCols + gridCol) * 2;
+                      const slot1Num = slot0Num + 1;
+                      
+                      if (orderIndexForDrop < uniqueOrder.length) {
+                        slotBasedOrder[slot0Num] = uniqueOrder[orderIndexForDrop];
+                        orderIndexForDrop++;
                       }
-                    } else {
-                      console.log('ℹ️ Schüler ist bereits in diesem Tisch');
-                      setDraggedStudentId(null);
-                      setDragOverDeskIndex(null);
-                      return;
+                      if (orderIndexForDrop < uniqueOrder.length) {
+                        slotBasedOrder[slot1Num] = uniqueOrder[orderIndexForDrop];
+                        orderIndexForDrop++;
+                      }
                     }
-                  } else {
-                    console.log('⚠️ Tisch nicht gefunden');
-                    setDraggedStudentId(null);
-                    setDragOverDeskIndex(null);
-                    return;
                   }
-                } else {
-                  // Neue Position - füge Schüler ans Ende der Liste
-                  newOrder = [...currentOrder];
-                  newOrder.splice(currentIndex, 1);
-                  newOrder.push(draggedStudentId);
+                }
+                console.log(`✅ Erstelle Slot-basierte Reihenfolge aus kompakter Liste`);
+              }
+              
+              const draggedStudentName = studentMap.get(studentId)?.name || studentId;
+              
+              // WICHTIG: Prüfe ob Ziel-Slot bereits belegt ist - verwende slotBasedOrder direkt!
+              // slotBasedOrder ist bereits die korrekte sparse Slot-Zuordnung (40 Elemente mit nulls)
+              const targetStudentId = slotBasedOrder[targetIndexInSlots];
+              const targetStudentName = targetStudentId ? studentMap.get(targetStudentId)?.name || targetStudentId : null;
+              const isTargetOccupied = targetStudentId !== null && targetStudentId !== undefined && targetStudentId !== studentId;
+
+              // Debug-Ausgabe
+              console.log(`\n📤 QUELLE:`);
+              console.log(`   - Schüler: ${draggedStudentName} (ID: ${studentId})`);
+              console.log(`   - Position in Liste: ${sourceIndex}`);
+              console.log(`   - Feld: ${sourceGlobalSlot}`);
+              if (sourceGridPos) {
+                console.log(`   - Grid: R${sourceGridPos.row + 1}, C${sourceGridPos.col + 1}, Slot ${sourceSlotIndex || sourceIndex % 2}`);
+              }
+              
+              console.log(`\n📥 ZIEL:`);
+              console.log(`   - Feld: ${targetGlobalSlot}`);
+              console.log(`   - Slot-Index im Array: ${targetIndexInSlots}`);
+              console.log(`   - Grid: R${finalGridRow + 1}, C${finalGridCol + 1}, Slot ${targetSlotIndex}`);
+              if (isTargetOccupied) {
+                console.log(`   - Status: BELEGT (${targetStudentName})`);
+                console.log(`   - Aktion: TAUSCH`);
+              } else {
+                console.log(`   - Status: LEER`);
+                console.log(`   - Aktion: VERSCHIEBEN`);
+              }
+              console.log(`\n${'─'.repeat(100)}\n`);
+              
+              // Berechne Source-Slot-Index
+              const sourceSlotIndexInArray = sourceGlobalSlot > 0 ? sourceGlobalSlot - 1 : -1;
+              
+              // DEBUG: Zeige aktuelle Slot-Zuordnung vor dem Drop
+              console.log(`\n🔍 SLOT-BASIERTE ZUORDNUNG VOR DROP:`);
+              console.log(`   - Quelle (Slot ${sourceGlobalSlot}): ${slotBasedOrder[sourceSlotIndexInArray] || '<LEER>'}`);
+              console.log(`   - Ziel (Slot ${targetGlobalSlot}): ${slotBasedOrder[targetIndexInSlots] || '<LEER>'}`);
+              
+              // Entferne Schüler aus Quelle
+              if (sourceSlotIndexInArray >= 0 && sourceSlotIndexInArray < 40) {
+                slotBasedOrder[sourceSlotIndexInArray] = null;
+                console.log(`   ✅ Schüler aus Quelle (Slot ${sourceGlobalSlot}) entfernt`);
+              }
+              
+              // Füge Schüler am Ziel ein (oder tausche)
+              if (isTargetOccupied && targetStudentId) {
+                // TAUSCH: Setze Ziel-Schüler an Quelle
+                if (sourceSlotIndexInArray >= 0 && sourceSlotIndexInArray < 40) {
+                  slotBasedOrder[sourceSlotIndexInArray] = targetStudentId;
+                }
+                slotBasedOrder[targetIndexInSlots] = studentId;
+                
+                console.log(`✅ TAUSCH durchgeführt:`);
+                console.log(`   - ${draggedStudentName} (Feld ${sourceGlobalSlot}) ↔ ${targetStudentName} (Feld ${targetGlobalSlot})`);
+                console.log(`\n📋 ERGEBNIS: SuS ${draggedStudentName} aus Feld ${sourceGlobalSlot} in Feld ${targetGlobalSlot} verschoben (Tausch mit ${targetStudentName})`);
+              } else {
+                // VERSCHIEBEN: Setze Schüler am Ziel
+                slotBasedOrder[targetIndexInSlots] = studentId;
+                
+                console.log(`✅ VERSCHIEBUNG durchgeführt:`);
+                console.log(`   - ${draggedStudentName} von Feld ${sourceGlobalSlot} nach Feld ${targetGlobalSlot}`);
+                console.log(`   - Quelle (Slot ${sourceGlobalSlot}) ist jetzt: ${slotBasedOrder[sourceSlotIndexInArray] || '<LEER>'}`);
+                console.log(`   - Ziel (Slot ${targetGlobalSlot}) ist jetzt: ${slotBasedOrder[targetIndexInSlots] || '<LEER>'}`);
+                console.log(`\n📋 ERGEBNIS: SuS ${draggedStudentName} aus Feld ${sourceGlobalSlot} in Feld ${targetGlobalSlot} verschoben`);
+              }
+              
+              // DEBUG: Zeige Slot-Zuordnung nach dem Drop
+              console.log(`\n🔍 SLOT-BASIERTE ZUORDNUNG NACH DROP:`);
+              console.log(`   - Quelle (Slot ${sourceGlobalSlot}): ${slotBasedOrder[sourceSlotIndexInArray] || '<LEER>'}`);
+              console.log(`   - Ziel (Slot ${targetGlobalSlot}): ${slotBasedOrder[targetIndexInSlots] || '<LEER>'}`);
+              
+              // WICHTIG: Aktualisiere Desk-Positionen ZUERST, dann erstelle Reihenfolge daraus
+              const gridKey = `${finalGridRow}-${finalGridCol}`;
+              let updatedPositions = [...(deskPositions[participationGroupId] || finalDeskPositions)];
+              
+              // Erstelle aktualisierte gridMap aus updatedPositions
+              const updatedGridMap: {[key: string]: number} = {};
+              updatedPositions.forEach(pos => {
+                const key = `${pos.gridRow}-${pos.gridCol}`;
+                updatedGridMap[key] = pos.deskId;
+              });
+              
+              const existingDeskId = updatedGridMap[gridKey];
+              let needsNewDesk = existingDeskId === undefined;
+              
+              // Finde oder erstelle Desk für Ziel-Position
+              let targetDeskIdForOrder = existingDeskId;
+              
+              if (needsNewDesk) {
+                // Finde nächste freie Desk-ID
+                const usedDeskIds = new Set(updatedPositions.map(p => p.deskId));
+                let newDeskId = 0;
+                while (usedDeskIds.has(newDeskId)) {
+                  newDeskId++;
+                }
+                
+                const existingPosIndex = updatedPositions.findIndex(
+                  p => p.gridRow === finalGridRow && p.gridCol === finalGridCol
+                );
+                
+                if (existingPosIndex === -1) {
+                  updatedPositions.push({
+                    deskId: newDeskId,
+                    gridRow: finalGridRow,
+                    gridCol: finalGridCol
+                  });
                   
-                  // Markiere, dass ein neuer Tisch erstellt werden muss
-                  needsNewDesk = true;
-                  newDeskPosition = { gridRow: targetGridRow, gridCol: targetGridCol };
+                  targetDeskIdForOrder = newDeskId;
+                  
+                  // Aktualisiere auch updatedGridMap
+                  updatedGridMap[gridKey] = newDeskId;
+                  
+                  console.log(`✅ Neuer Desk ${newDeskId} an Position ${gridKey} erstellt`);
+                  console.log(`   🔍 updatedPositions Länge: ${updatedPositions.length}`);
+                  console.log(`   🔍 Position ${gridKey} in updatedPositions: ${updatedPositions.some(p => p.gridRow === finalGridRow && p.gridCol === finalGridCol) ? 'JA' : 'NEIN'}`);
                 }
               } else {
-                console.log('⚠️ Kein gültiges Ziel für Drop');
-                setDraggedStudentId(null);
-                setDragOverDeskIndex(null);
-                return;
+                console.log(`ℹ️ Desk ${existingDeskId} existiert bereits an Position ${gridKey}`);
               }
+              
+              // WICHTIG: Aktualisiere State SOFORT, damit updatedPositions korrekt ist
+              setDeskPositions(prev => ({
+                ...prev,
+                [participationGroupId]: updatedPositions
+              }));
+              
+              // WICHTIG: Erstelle Reihenfolge basierend auf Slot-Positionen UND Desk-Positionen
+              // Sortiere Desk-Positionen nach Grid-Position (zeilenweise)
+              const sortedDeskPositions = [...updatedPositions].sort((a, b) => {
+                const posA = a.gridRow * gridCols + a.gridCol;
+                const posB = b.gridRow * gridCols + b.gridCol;
+                return posA - posB;
+              });
+              
+              console.log(`\n🔍 DESK-POSITIONEN FÜR NEWORDER:`);
+              console.log(`   - Anzahl Desk-Positionen: ${sortedDeskPositions.length}`);
+              console.log(`   - Ziel-Position ${gridKey} vorhanden: ${sortedDeskPositions.some(p => p.gridRow === finalGridRow && p.gridCol === finalGridCol) ? 'JA' : 'NEIN'}`);
+              
+              // NEUE LÖSUNG: Speichere Slot-Zuordnung DIREKT als Array von 40 Elementen
+              // KRITISCH: null = leerer Slot, studentId = belegter Slot
+              // Dies stellt sicher, dass Slots leer bleiben können!
+              const newOrder: Array<string | null> = [];
+              
+              // Kopiere slotBasedOrder direkt - das ist die finale Slot-Zuordnung
+              for (let slot = 0; slot < 40; slot++) {
+                newOrder.push(slotBasedOrder[slot]);
+              }
+              
+              console.log(`   ✅ NEUE LÖSUNG: Slot-basierte Reihenfolge gespeichert (40 Slots)`);
+              console.log(`   🔍 Quelle (Slot ${sourceGlobalSlot}): ${newOrder[sourceSlotIndexInArray] || '<LEER>'}`);
+              console.log(`   🔍 Ziel (Slot ${targetGlobalSlot}): ${newOrder[targetIndexInSlots] || '<LEER>'}`);
+              console.log(`   🔍 Anzahl belegte Slots: ${newOrder.filter(s => s !== null).length}`);
+              console.log(`   🔍 Anzahl leere Slots: ${newOrder.filter(s => s === null).length}`);
+              
+              console.log(`   - Neue Reihenfolge aus slotBasedOrder: ${newOrder.length} Schüler`);
+              console.log(`   - Desk-Positionen: ${updatedPositions.length}`);
+              console.log(`   - Schüler in Slot ${targetGlobalSlot}: ${slotBasedOrder[targetIndexInSlots] !== null ? slotBasedOrder[targetIndexInSlots] : '<LEER>'}`);
+              console.log(`   - Leere Slots erlaubt: JA (z.B. Slot ${targetGlobalSlot} kann belegt sein, auch wenn davor Slots leer sind)`);
+              
+              // Prüfe auf Duplikate in neuer Reihenfolge
+              const newOrderSet = new Set(newOrder);
+              if (newOrder.length !== newOrderSet.size) {
+                console.error(`❌ FEHLER: Duplikate in neuer Reihenfolge gefunden!`);
+                console.log(`   - Erwartet: ${newOrder.length}, Eindeutig: ${newOrderSet.size}`);
+              } else {
+                console.log(`✅ Duplikate-Prüfung: OK (${newOrder.length} eindeutige Schüler)`);
+              }
+              
+              // Debug: Zeige welche Schüler in welchen Slots sind
+              console.log(`\n📋 SLOT-ZUORDNUNG (alle 40 Slots):`);
+              for (let slot = 0; slot < 40; slot++) {
+                const studentId = slotBasedOrder[slot];
+                if (studentId !== null) {
+                  const studentName = studentMap.get(studentId)?.name || studentId;
+                  const gridCellIndex = Math.floor(slot / 2);
+                  const gridRow = Math.floor(gridCellIndex / gridCols);
+                  const gridCol = gridCellIndex % gridCols;
+                  const slotInCell = slot % 2;
+                  const deskPos = updatedPositions.find(p => p.gridRow === gridRow && p.gridCol === gridCol);
+                  const deskInfo = deskPos ? `, Desk ${deskPos.deskId}` : ', Kein Desk';
+                  console.log(`   Slot ${slot + 1} (Grid R${gridRow+1}, C${gridCol+1}, Slot ${slotInCell}${deskInfo}): ${studentName}`);
+                }
+              }
+              
+              console.log(`\n${'═'.repeat(100)}\n`);
 
-              console.log('✅ Neue Reihenfolge:', newOrder);
-
-              // Aktualisiere State
+              // Aktualisiere State - speichere als Array von 40 Elementen (null für leere Slots)
               setCustomSeatingOrder(prev => ({
                 ...prev,
-                [participationGroupId]: newOrder
+                [participationGroupId]: newOrder as any // Array<string | null>
               }));
 
-              // Erstelle neuen Tisch falls nötig
-              let updatedPositions = deskPositions[participationGroupId] || [];
-              if (needsNewDesk && newDeskPosition) {
-                const newDeskId = desks.length;
-                updatedPositions = [...updatedPositions, {
-                  deskId: newDeskId,
-                  gridRow: newDeskPosition.gridRow,
-                  gridCol: newDeskPosition.gridCol
-                }];
-                
-                setDeskPositions(prev => ({
-                  ...prev,
-                  [participationGroupId]: updatedPositions
-                }));
-                console.log('✅ Neuer Tisch erstellt an Position:', newDeskPosition);
-              }
-
-              // Speichere die neue Sitzordnung im Backend (mit aktuellen Tisch-Positionen)
+              // Speichere die neue Sitzordnung im Backend
               saveSeatingOrder(participationGroupId, newOrder, updatedPositions);
 
+              // Reset alle Drag-States
               setDraggedStudentId(null);
+              setDropTarget(null);
               setDragOverDeskIndex(null);
+              setDragOverGridCell(null);
+              
+              // Zeige aktualisierte Verteilung nach kurzer Verzögerung
+              setTimeout(() => {
+                console.log('📊 AKTUALISIERTE SLOT-VERTEILUNG NACH DROP:');
+                debugParticipationSlots();
+              }, 200);
             };
             
             // Drag & Drop Handler für ganze Tische
@@ -10809,39 +11426,36 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               e.stopPropagation(); // Verhindere dass Schüler-Drag ausgelöst wird
             };
             
+            // Grid Cell Drag Handler - ROBUST NEU IMPLEMENTIERT
             const handleGridCellDragOver = (e: React.DragEvent, gridKey: string) => {
               // Erlaube sowohl Tisch-Drag als auch Schüler-Drag
-              if (draggedDeskId !== null || draggedStudentId !== null) {
+              const isStudentDrag = e.dataTransfer.types.includes('text/plain') || 
+                                   e.dataTransfer.types.includes('application/student-id') ||
+                                   draggedStudentId !== null;
+              
+              if (draggedDeskId !== null || isStudentDrag) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.dataTransfer.dropEffect = 'move';
                 if (draggedDeskId !== null) {
                   setDragOverGridCell(gridKey);
                 }
-                if (draggedStudentId !== null) {
-                  // Schüler kann in jede Grid-Zelle gezogen werden
-                  setDragOverDeskIndex(null);
-                  // Setze auch dragOverGridCell für visuelles Feedback
+                if (isStudentDrag) {
                   setDragOverGridCell(gridKey);
+                  setDragOverDeskIndex(null);
                 }
               }
             };
             
             const handleGridCellDragLeave = (e: React.DragEvent) => {
-              // Nur wenn wirklich die Zelle verlassen wird
-              if (draggedDeskId !== null && !draggedStudentId) {
+              // Nur zurücksetzen wenn wirklich die Zelle verlassen wird
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX;
                 const y = e.clientY;
                 if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                if (draggedDeskId !== null && !draggedStudentId) {
                   setDragOverGridCell(null);
-                }
               } else if (draggedStudentId) {
-                // Für Schüler-Drag: nur wenn wirklich verlassen
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX;
-                const y = e.clientY;
-                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
                   setDragOverGridCell(null);
                 }
               }
@@ -10851,15 +11465,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               e.preventDefault();
               e.stopPropagation();
               
-              // Fall 1: Schüler wird in Grid-Zelle gezogen (Priorität für Schüler-Drop)
-              if (draggedStudentId !== null) {
-                if (!participationGroupId) {
-                  setDraggedStudentId(null);
-                  setDragOverDeskIndex(null);
+              // Priorität für Schüler-Drop - verwende dropTarget wenn verfügbar
+              const isStudentDrag = draggedStudentId !== null || 
+                                   e.dataTransfer.types.includes('text/plain') ||
+                                   e.dataTransfer.types.includes('application/student-id');
+              
+              if (isStudentDrag && dropTarget && dropTarget.type === 'grid') {
+                handleStudentDrop(e, dropTarget.slotIndex, undefined, gridRow, gridCol);
                   return;
-                }
-                console.log('🎯 Grid Cell Drop - Schüler:', { gridRow, gridCol, draggedStudentId });
-                handleStudentDrop(e, null, gridRow, gridCol);
+              } else if (isStudentDrag) {
+                // Fallback: verwende Slot 0
+                handleStudentDrop(e, 0, undefined, gridRow, gridCol);
                 return;
               }
               
@@ -10867,8 +11483,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               if (draggedDeskId === null || !participationGroupId) return;
               
               const gridKey = `${gridRow}-${gridCol}`;
-              
-              // Prüfe ob Zelle bereits belegt ist
               const existingDeskId = gridMap[gridKey];
               const currentPositions = [...(deskPositions[participationGroupId] || [])];
               const draggedPos = currentPositions.find(p => p.deskId === draggedDeskId);
@@ -10897,7 +11511,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 [participationGroupId]: currentPositions
               }));
               
-              // Beim Verschieben von Tischen: Speichere die aktualisierten Positionen
               const currentOrder = customSeatingOrder[participationGroupId] || sortedStudents.map(s => s.id);
               if (currentOrder.length > 0) {
                 saveSeatingOrder(participationGroupId, currentOrder, currentPositions);
@@ -10910,8 +11523,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             // Einheitliche Höhe für alle Boxen
             const BOX_HEIGHT = '55px';
             
-            // Helper-Funktion zum Rendern eines Schülers
-            const renderStudent = (student: typeof sortedStudents[0], deskId: number) => {
+            // Helper-Funktion zum Rendern eines Schülers - MIT DROP-FUNKTIONALITÄT
+            const renderStudent = (student: typeof sortedStudents[0], deskId: number, slotIndex: number, gridRow: number, gridCol: number) => {
                 const value = getParticipationValue(student.id);
                 const getColor = () => {
                 if (value === 2) return { bg: '#E8F5E9', border: '#4CAF50', emoji: '😄' };
@@ -10930,34 +11543,84 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 const existingComment = (studentData && typeof studentData === 'object' && studentData.comment) ? String(studentData.comment) : '';
                 const hasComment = existingComment.trim().length > 0;
                 
+                // Prüfe ob diese Box das aktuelle Drop-Target ist
+                const isCurrentDropTarget = dropTarget !== null && 
+                                           dropTarget.type === 'desk' && 
+                                           dropTarget.deskId === deskId && 
+                                           dropTarget.slotIndex === slotIndex &&
+                                           draggedStudentId !== student.id;
+                
               const studentCard = (
                         <Paper
                   draggable
-                  onDragStart={(e) => handleStudentDragStart(e, student.id)}
-                  onDragEnd={() => {
-                    setDraggedStudentId(null);
-                    setDragOverDeskIndex(null);
+                  onDragStart={(e) => {
+                    handleStudentDragStart(e, student.id, deskId, slotIndex);
+                    setDropTarget(null);
                   }}
-                          elevation={0}
+                  onDragEnd={(e) => {
+                    // Reset nur wenn Drop nicht erfolgreich war
+                    if (draggedStudentId) {
+                    setDraggedStudentId(null);
+                      setDropTarget(null);
+                    setDragOverDeskIndex(null);
+                    setDragOverGridCell(null);
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    if (draggedStudentId && draggedStudentId !== student.id) {
+                      handleStudentDragOver(e);
+                      setDropTarget({ type: 'desk', deskId, slotIndex });
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                      if (dropTarget?.deskId === deskId && dropTarget?.slotIndex === slotIndex) {
+                        setDropTarget(null);
+                      }
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (draggedStudentId && draggedStudentId !== student.id) {
+                      const sourceDeskId = e.dataTransfer.getData('source-desk-id');
+                      const sourceSlotIndex = e.dataTransfer.getData('source-slot-index');
+                      const sourceGridPos = sourceDeskId ? deskToGridPosMap[parseInt(sourceDeskId)] : null;
+                      const sourceGlobalSlot = sourceGridPos ? getGlobalSlotNumber(parseInt(sourceSlotIndex || '0'), sourceGridPos.row, sourceGridPos.col) : -1;
+                      const targetGridPos = deskToGridPosMap[deskId];
+                      if (targetGridPos) {
+                        const targetGlobalSlot = getGlobalSlotNumber(slotIndex, targetGridPos.row, targetGridPos.col);
+                        const studentName = sortedStudents.find(s => s.id === draggedStudentId)?.name || draggedStudentId;
+                        console.log(`\n🔄 DRAG DROP (StudentBox): SuS ${studentName} von Slot ${sourceGlobalSlot} in Slot ${targetGlobalSlot} verschoben\n`);
+                        handleStudentDrop(e, slotIndex, deskId, targetGridPos.row, targetGridPos.col);
+                      }
+                    }
+                  }}
+                          elevation={2}
                           sx={{
-                            p: 0.5,
+                            p: 0.6,
                     cursor: 'grab',
-                            border: `1.5px solid ${colors.border}`,
-                            bgcolor: colors.bg,
-                            borderRadius: 1,
-                            transition: 'all 0.2s',
+                            border: isCurrentDropTarget ? '3px solid #4CAF50' : `2px solid ${colors.border}`,
+                            bgcolor: isCurrentDropTarget ? '#C8E6C9' : colors.bg,
+                            borderRadius: 1.2,
+                            transition: 'all 0.15s',
                             position: 'relative',
                     height: BOX_HEIGHT,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',
+                    margin: '2px',
+                    boxShadow: isCurrentDropTarget ? '0 0 0 3px rgba(76, 175, 80, 0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+                    transform: isCurrentDropTarget ? 'scale(1.05)' : 'scale(1)',
+                    zIndex: isCurrentDropTarget ? 10 : 1,
                     '&:active': {
                       cursor: 'grabbing',
                       opacity: 0.7
                     },
                             '&:hover': {
-                              transform: 'translateY(-1px)',
-                              boxShadow: 1
+                              transform: isCurrentDropTarget ? 'scale(1.05)' : 'translateY(-1px)',
+                              boxShadow: isCurrentDropTarget ? '0 0 0 3px rgba(76, 175, 80, 0.3)' : '0 3px 6px rgba(0,0,0,0.15)'
                             }
                           }}
                           onClick={(e) => {
@@ -10975,6 +11638,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   onTouchEnd={handleTouchEnd}
                   onTouchMove={handleTouchMove}
                         >
+                  {isCurrentDropTarget && (
+                    <Box sx={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      bgcolor: '#4CAF50',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      zIndex: 11
+                    }}>
+                      ✓
+                    </Box>
+                  )}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.05, justifyContent: 'center', height: '100%' }}>
                     <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5rem', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.1 }}>
                               {student.name}
@@ -10983,12 +11667,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               {colors.emoji}
                             </Typography>
                           </Box>
+                  {/* Globale Slot-Nummer */}
+                  <Box sx={{
+                    position: 'absolute',
+                    top: 2,
+                    left: 2,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(76, 175, 80, 0.9)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    zIndex: 2,
+                    border: '1px solid white'
+                  }}>
+                    {getGlobalSlotNumber(slotIndex, gridRow, gridCol)}
+                          </Box>
                   {hasComment && (
                     <Box sx={{ position: 'absolute', top: 6, right: 6, width: 14, height: 14, borderRadius: '50%', bgcolor: '#FF9800', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 600, color: 'white', zIndex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
                             K
                           </Box>
                   )}
-                  <Box sx={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', bgcolor: colors.border, opacity: 0.3 }} />
                         </Paper>
               );
               
@@ -11001,10 +11704,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               );
             };
             
-            // Helper-Funktion zum Rendern einer leeren Box
-            const renderEmptyBox = (key: string, deskId?: number, gridRow?: number, gridCol?: number) => {
-              // Wenn die Box in einer leeren Grid-Zelle ist (kein deskId), leite das Drop an die Grid-Zelle weiter
+            // Helper-Funktion zum Rendern einer leeren Box - MIT KLARER VISUELLER MARKIERUNG
+            const renderEmptyBox = (
+              key: string, 
+              slotIndex: number, 
+              deskId?: number, 
+              gridRow?: number, 
+              gridCol?: number
+            ) => {
               const isInEmptyGridCell = deskId === undefined && gridRow !== undefined && gridCol !== undefined;
+              
+              // Prüfe ob diese Box das aktuelle Drop-Target ist
+              const isCurrentDropTarget = dropTarget !== null && (
+                (deskId !== undefined && dropTarget.type === 'desk' && dropTarget.deskId === deskId && dropTarget.slotIndex === slotIndex) ||
+                (isInEmptyGridCell && dropTarget.type === 'grid' && dropTarget.gridRow === gridRow && dropTarget.gridCol === gridCol && dropTarget.slotIndex === slotIndex)
+              );
               
               return (
                 <Box
@@ -11017,56 +11731,118 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     flexDirection: 'column',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    border: '1px dashed #d4c4a8',
-                    borderRadius: 1,
-                    bgcolor: draggedStudentId ? '#e8f5e9' : '#fafafa',
-                    opacity: draggedStudentId ? 0.8 : 0.5,
+                    position: 'relative',
+                    border: isCurrentDropTarget ? '3px solid #4CAF50' : (draggedStudentId ? '2px dashed #4CAF50' : '2px dashed #FFB3B3'),
+                    borderRadius: 1.2,
+                    bgcolor: isCurrentDropTarget ? '#C8E6C9' : (draggedStudentId ? '#f0f0f0' : '#FFE8E8'),
+                    opacity: draggedStudentId ? (isCurrentDropTarget ? 1 : 0.7) : 0.8,
                     cursor: draggedStudentId ? 'copy' : 'default',
-                    transition: 'all 0.2s',
-                    pointerEvents: isInEmptyGridCell ? 'none' : 'auto', // Lass Grid-Zelle das Drop handhaben
+                    transition: 'all 0.15s',
+                    margin: '2px',
+                    boxShadow: isCurrentDropTarget ? '0 0 0 3px rgba(76, 175, 80, 0.3)' : '0 1px 3px rgba(255, 179, 179, 0.2)',
+                    transform: isCurrentDropTarget ? 'scale(1.05)' : 'scale(1)',
+                    zIndex: isCurrentDropTarget ? 10 : 1,
                     '&:hover': {
-                      opacity: 0.8,
-                      borderColor: '#9e9e9e',
-                      transform: 'translateY(-1px)'
+                      opacity: draggedStudentId ? 1 : 0.9,
+                      borderColor: draggedStudentId ? '#4CAF50' : '#FF9999',
+                      transform: draggedStudentId ? 'scale(1.02)' : 'translateY(-1px)',
+                      boxShadow: '0 2px 4px rgba(255, 179, 179, 0.3)'
                     }
                   }}
                   onDragOver={(e) => {
-                    if (draggedStudentId) {
-                      // Wenn in leerer Grid-Zelle, lass es durch (Grid-Zelle handhabt es)
-                      if (isInEmptyGridCell) {
-                        return; // Lass das Event zur Grid-Zelle durch
-                      }
-                      // Wenn in einem Tisch, handle es hier
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.dataTransfer.dropEffect = 'move';
+                    handleStudentDragOver(e);
+                    // Setze genaues Drop-Target
                       if (deskId !== undefined) {
-                        handleStudentDragOver(e, deskId);
-                      }
+                      setDropTarget({ type: 'desk', deskId, slotIndex });
+                    } else if (gridRow !== undefined && gridCol !== undefined) {
+                      setDropTarget({ type: 'grid', gridRow, gridCol, slotIndex });
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    // Nur zurücksetzen wenn wirklich verlassen
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                      setDropTarget(null);
                     }
                   }}
                   onDrop={(e) => {
-                    // Wenn in leerer Grid-Zelle, lass es durch (Grid-Zelle handhabt es)
-                    if (isInEmptyGridCell) {
-                      return; // Lass das Event zur Grid-Zelle durch
-                    }
-                    // Wenn in einem Tisch, handle es hier
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (draggedStudentId) {
-                      console.log('🎯 Drop auf leere Box in Tisch:', { deskId, draggedStudentId });
+                    const sourceDeskId = e.dataTransfer.getData('source-desk-id');
+                    const sourceSlotIndex = e.dataTransfer.getData('source-slot-index');
+                    const sourceGridPos = sourceDeskId ? deskToGridPosMap[parseInt(sourceDeskId)] : null;
+                    const sourceGlobalSlot = sourceGridPos ? getGlobalSlotNumber(parseInt(sourceSlotIndex || '0'), sourceGridPos.row, sourceGridPos.col) : -1;
+                    const studentName = sortedStudents.find(s => s.id === draggedStudentId)?.name || draggedStudentId;
+                    
                       if (deskId !== undefined) {
-                        handleStudentDrop(e, deskId);
+                      const targetGridPos = deskToGridPosMap[deskId];
+                      if (targetGridPos) {
+                        const targetGlobalSlot = getGlobalSlotNumber(slotIndex, targetGridPos.row, targetGridPos.col);
+                        console.log(`\n🔄 DRAG DROP (EmptyBox): SuS ${studentName} von Slot ${sourceGlobalSlot} in Slot ${targetGlobalSlot} verschoben\n`);
+                        handleStudentDrop(e, slotIndex, deskId, targetGridPos.row, targetGridPos.col);
                       }
+                    } else if (gridRow !== undefined && gridCol !== undefined) {
+                      const targetGlobalSlot = getGlobalSlotNumber(slotIndex, gridRow, gridCol);
+                      console.log(`\n🔄 DRAG DROP (EmptyBox): SuS ${studentName} von Slot ${sourceGlobalSlot} in Slot ${targetGlobalSlot} verschoben\n`);
+                      handleStudentDrop(e, slotIndex, undefined, gridRow, gridCol);
                     }
                   }}
                 >
-                  <Typography variant="caption" sx={{ color: '#9e9e9e', fontSize: '0.6rem' }}>
-                    Leer
+                  {isCurrentDropTarget && (
+                    <Box sx={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      bgcolor: '#4CAF50',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      zIndex: 11
+                    }}>
+                      ✓
+                    </Box>
+                  )}
+                  <Typography variant="caption" sx={{ color: isCurrentDropTarget ? '#2E7D32' : '#9e9e9e', fontSize: '0.6rem', fontWeight: isCurrentDropTarget ? 600 : 400 }}>
+                    {isCurrentDropTarget ? 'Hier ablegen' : 'Leer'}
                   </Typography>
+                  {/* Globale Slot-Nummer */}
+                  <Box sx={{
+                    position: 'absolute',
+                    top: 2,
+                    left: 2,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(76, 175, 80, 0.9)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    zIndex: 2,
+                    border: '1px solid white'
+                  }}>
+                    {getGlobalSlotNumber(slotIndex, gridRow!, gridCol!)}
+                  </Box>
                 </Box>
               );
             };
+            
+            // Zeige Debug-Ausgabe beim ersten Rendern (nur einmal beim Öffnen)
+            const currentDebugKey = `${participationGroupId}-${sortedStudents.length}`;
+            if (participationModalOpen && participationGroupId && sortedStudents.length > 0 && participationDebugShownRef.current !== currentDebugKey) {
+              console.log('📊 INITIALE SLOT-VERTEILUNG BEIM ÖFFNEN DES MODALS:');
+              debugParticipationSlots();
+              participationDebugShownRef.current = currentDebugKey;
+            }
             
             return (
               <Box sx={{ bgcolor: '#f5f0e8', p: 1.5, borderRadius: 1 }}>
@@ -11075,7 +11851,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     display: 'grid',
                     gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
                     gridTemplateRows: `repeat(${gridRows}, 1fr)`,
-                    gap: 1,
+                    gap: 1.5,
                     minHeight: '600px'
                   }}
                 >
@@ -11084,8 +11860,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     const gridRow = Math.floor(index / gridCols);
                     const gridCol = index % gridCols;
                     const gridKey = `${gridRow}-${gridCol}`;
-                    const deskId = gridMap[gridKey];
-                    const desk = deskId !== undefined ? desks[deskId] : null;
+                    
+                    // WICHTIG: Verwende gridToDeskMap für konsistente Zuordnung
+                    const deskInfo = gridToDeskMap[gridKey];
+                    const deskId = deskInfo?.deskId;
+                    const desk = deskInfo?.desk || null;
                     const isDragOver = dragOverGridCell === gridKey;
                     const isDragged = draggedDeskId === deskId;
                     
@@ -11095,14 +11874,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             sx={{ 
                           minHeight: '80px',
                           minWidth: '120px',
-                          border: desk ? '1px solid #d4c4a8' : (isDragOver || (draggedStudentId && !desk)) ? '2px dashed #4CAF50' : '1px dashed #d4c4a8',
-                          borderRadius: 1,
-                          bgcolor: desk ? (isDragOver ? '#f0e6d6' : '#f5ede0') : (isDragOver || (draggedStudentId && !desk)) ? '#e8f5e9' : '#fafafa',
-                          p: 0.5,
+                          border: desk ? '2px solid #8B6F47' : (isDragOver || (draggedStudentId && !desk)) ? '2px dashed #4CAF50' : '2px dashed #FFB3B3',
+                          borderRadius: 1.5,
+                          bgcolor: desk ? (isDragOver ? '#D4A574' : '#C9A882') : (isDragOver || (draggedStudentId && !desk)) ? '#e8f5e9' : '#FFE8E8',
+                          p: 0.8,
+                          m: 0.3,
                           transition: 'all 0.2s',
                           opacity: isDragged ? 0.5 : 1,
                           display: 'flex',
-                          gap: 0.5
+                          gap: 0.8,
+                          boxShadow: desk ? '0 2px 4px rgba(139, 111, 71, 0.2)' : '0 1px 2px rgba(255, 179, 179, 0.2)'
                         }}
                         onDragOver={(e) => handleGridCellDragOver(e, gridKey)}
                         onDragLeave={handleGridCellDragLeave}
@@ -11112,7 +11893,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           <Box
                             sx={{ 
                               display: 'flex',
-                              gap: 0.5,
+                              gap: 0.8,
                               width: '100%',
                               cursor: 'grab',
                               '&:active': { cursor: 'grabbing' }
@@ -11127,47 +11908,48 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               setDragOverGridCell(null);
                             }}
                             onDragOver={(e) => {
-                              if (draggedStudentId) {
+                              // Lass einzelne Boxen das Drag handhaben
+                              const hasStudentData = e.dataTransfer.types.includes('text/plain') || 
+                                                    e.dataTransfer.types.includes('application/student-id') ||
+                                                    draggedStudentId !== null;
+                              if (hasStudentData) {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                handleStudentDragOver(e, deskId);
-                              }
-                            }}
-                            onDragLeave={(e) => {
-                              if (draggedStudentId) {
-                                handleStudentDragLeave();
-                              }
-                            }}
-                            onDrop={(e) => {
-                              if (draggedStudentId) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleStudentDrop(e, deskId);
+                                e.dataTransfer.dropEffect = 'move';
                               }
                             }}
                           >
-                            {desk.map((student) => (
+                            {/* Render 2 Slots - entweder mit Schüler oder leer */}
+                            {Array.from({ length: 2 }, (_, slotIndex) => {
+                              const student = desk[slotIndex];
+                              if (student) {
+                                return (
                               <Box key={student.id} sx={{ flex: 1, minWidth: 0, height: BOX_HEIGHT, display: 'flex', flexDirection: 'column' }}>
-                                {renderStudent(student, deskId)}
+                                    {renderStudent(student, deskId, slotIndex, gridRow, gridCol)}
                         </Box>
-                            ))}
-                            {/* Leere Schülerboxen hinzufügen, wenn Tisch nicht voll ist */}
-                            {Array.from({ length: 2 - desk.length }, (_, idx) => {
-                              const pos = finalDeskPositions.find(p => p.deskId === deskId);
-                              return renderEmptyBox(`empty-${deskId}-${idx}`, deskId, pos?.gridRow, pos?.gridCol);
+                                );
+                              } else {
+                                // Verwende die aktuelle Grid-Position, nicht aus finalDeskPositions
+                                return renderEmptyBox(`empty-${deskId}-${slotIndex}`, slotIndex, deskId, gridRow, gridCol);
+                              }
                             })}
                           </Box>
                         ) : (
                           // Leere Kachel - kann als Drop-Zone verwendet werden
                         <Box 
                           onDragOver={(e) => {
-                            // Priorität für Schüler-Drag
-                            if (draggedStudentId) {
+                            // Lass einzelne Boxen das Drag handhaben
+                            const hasStudentData = e.dataTransfer.types.includes('text/plain') || 
+                                                  e.dataTransfer.types.includes('application/student-id') ||
+                                                  draggedStudentId !== null;
+                            
+                            if (hasStudentData) {
                               e.preventDefault();
                               e.stopPropagation();
                               e.dataTransfer.dropEffect = 'move';
-                              setDragOverDeskIndex(null);
                               setDragOverGridCell(gridKey);
+                              setDragOverDeskIndex(null);
+                              // dropTarget wird von den einzelnen Boxen gesetzt
                             } else if (draggedDeskId !== null) {
                               e.preventDefault();
                               e.stopPropagation();
@@ -11176,28 +11958,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }
                           }}
                           onDragLeave={(e) => {
-                            // Nur wenn wirklich die Zelle verlassen wird (nicht nur in eine leere Box)
-                            if (draggedStudentId || draggedDeskId !== null) {
                               const rect = e.currentTarget.getBoundingClientRect();
                               const x = e.clientX;
                               const y = e.clientY;
                               if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
                                 if (draggedStudentId) {
-                                  setDragOverDeskIndex(null);
+                                setDragOverGridCell(null);
                                 }
                                 if (draggedDeskId !== null) {
                                   setDragOverGridCell(null);
-                                }
                               }
                             }
                           }}
                           onDrop={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            // Priorität für Schüler-Drop
-                            if (draggedStudentId) {
-                              console.log('🎯 Drop in leere Zelle (Grid-Level):', { gridRow, gridCol, draggedStudentId });
-                              handleStudentDrop(e, null, gridRow, gridCol);
+                            
+                            const isStudentDrag = draggedStudentId !== null || 
+                                                 e.dataTransfer.types.includes('text/plain') ||
+                                                 e.dataTransfer.types.includes('application/student-id');
+                            
+                            if (isStudentDrag) {
+                              // Verwende dropTarget wenn verfügbar, sonst Slot 0
+                              const slotIndex = dropTarget?.type === 'grid' && dropTarget.gridRow === gridRow && dropTarget.gridCol === gridCol 
+                                ? dropTarget.slotIndex 
+                                : 0;
+                              handleStudentDrop(e, slotIndex, undefined, gridRow, gridCol);
                             } else if (draggedDeskId !== null) {
                               handleGridCellDrop(e, gridRow, gridCol);
                             }
@@ -11207,17 +11993,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               height: '100%',
                               display: 'flex',
                               flexDirection: 'row',
-                              gap: 0.5,
+                              gap: 0.8,
                               alignItems: 'stretch',
                               cursor: draggedStudentId ? 'copy' : (draggedDeskId !== null ? 'move' : 'default'),
                               bgcolor: draggedStudentId ? '#e8f5e9' : (draggedDeskId !== null && dragOverGridCell === gridKey ? '#fff3e0' : 'transparent'),
                               transition: 'background-color 0.2s',
-                              position: 'relative'
+                              position: 'relative',
+                              minHeight: '80px'
                             }}
                           >
                             {/* Leere Schülerboxen in leeren Kacheln - nebeneinander */}
-                            {Array.from({ length: 2 }, (_, idx) => 
-                              renderEmptyBox(`empty-cell-${gridKey}-${idx}`, undefined, gridRow, gridCol)
+                            {Array.from({ length: 2 }, (_, slotIndex) => 
+                              renderEmptyBox(`empty-cell-${gridKey}-${slotIndex}`, slotIndex, undefined, gridRow, gridCol)
                             )}
                           </Box>
                         )}
