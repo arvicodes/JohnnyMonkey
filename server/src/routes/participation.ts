@@ -527,7 +527,7 @@ router.get('/:groupId/seating-order', async (req: Request, res: Response) => {
     }
     
     // Parse JSON oder gib leeres Array zurück
-    let seatingOrder: string[] = [];
+    let seatingOrder: Array<string | null> = [];
     let deskPositions: any[] = [];
     if (group.seatingOrder) {
       try {
@@ -539,9 +539,12 @@ router.get('/:groupId/seating-order', async (req: Request, res: Response) => {
           seatingOrder = parsed.order;
           deskPositions = parsed.positions || [];
         }
+        const filledSlots = seatingOrder.filter(id => id !== null).length;
+        const emptySlots = seatingOrder.filter(id => id === null).length;
         console.log('✅ Parsed seating order, length:', seatingOrder.length);
+        console.log(`✅ Slot-Verteilung: ${filledSlots} belegt, ${emptySlots} leer`);
         console.log('✅ Parsed desk positions, length:', deskPositions.length);
-        console.log('✅ First 5 IDs:', seatingOrder.slice(0, 5));
+        console.log('✅ First 5 Slots:', seatingOrder.slice(0, 5).map(id => id || '<LEER>'));
       } catch (e) {
         console.error('❌ Error parsing seating order:', e);
         console.error('❌ Raw data:', group.seatingOrder);
@@ -553,7 +556,8 @@ router.get('/:groupId/seating-order', async (req: Request, res: Response) => {
     }
     
     
-    console.log('📥 Returning seating order with', seatingOrder.length, 'students');
+    const filledCount = seatingOrder.filter(id => id !== null).length;
+    console.log(`📥 Returning seating order: ${seatingOrder.length} Slots (${filledCount} belegt, ${seatingOrder.length - filledCount} leer)`);
     res.json({ 
       seatingOrder,
       deskPositions
@@ -590,11 +594,17 @@ router.put('/:groupId/seating-order', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'seatingOrder muss ein Array sein' });
     }
     
-    // Validiere, dass alle Elemente Strings sind
-    if (!seatingOrder.every(id => typeof id === 'string')) {
-      console.error('❌ Nicht alle Elemente sind Strings');
-      return res.status(400).json({ error: 'Alle Elemente in seatingOrder müssen Strings sein' });
+    // Validiere, dass alle Elemente Strings oder null sind (für leere Slots)
+    if (!seatingOrder.every(id => typeof id === 'string' || id === null)) {
+      console.error('❌ Nicht alle Elemente sind Strings oder null');
+      console.error('❌ Beispiel-Werte:', seatingOrder.slice(0, 10));
+      return res.status(400).json({ error: 'Alle Elemente in seatingOrder müssen Strings oder null sein' });
     }
+    
+    // Debug: Zeige Anzahl leerer Slots
+    const emptySlots = seatingOrder.filter(id => id === null).length;
+    const filledSlots = seatingOrder.filter(id => id !== null).length;
+    console.log(`💾 Slot-Verteilung: ${filledSlots} belegt, ${emptySlots} leer (von ${seatingOrder.length} Slots)`);
     
     // Erstelle ein Objekt mit beiden Informationen
     const seatingData = {
@@ -626,7 +636,7 @@ router.put('/:groupId/seating-order', async (req: Request, res: Response) => {
     }
     
     // Parse zurück für Response
-    let parsedSeatingOrder: string[] = [];
+    let parsedSeatingOrder: Array<string | null> = [];
     let parsedDeskPositions: any[] = [];
     if (group.seatingOrder) {
       try {
@@ -638,7 +648,9 @@ router.put('/:groupId/seating-order', async (req: Request, res: Response) => {
           parsedSeatingOrder = parsed.order;
           parsedDeskPositions = parsed.positions || [];
         }
-        console.log('✅ Parsed seating order length:', parsedSeatingOrder.length);
+        const filledSlots = parsedSeatingOrder.filter(id => id !== null).length;
+        const emptySlots = parsedSeatingOrder.filter(id => id === null).length;
+        console.log(`✅ Parsed seating order: ${parsedSeatingOrder.length} Slots (${filledSlots} belegt, ${emptySlots} leer)`);
         console.log('✅ Parsed desk positions length:', parsedDeskPositions.length);
       } catch (e) {
         console.error('❌ Error parsing seating order in response:', e);

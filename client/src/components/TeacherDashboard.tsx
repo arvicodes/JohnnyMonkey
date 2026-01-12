@@ -3471,9 +3471,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         console.log('📥 seatingOrder ist Array:', Array.isArray(data.seatingOrder));
         console.log('📥 seatingOrder length:', data.seatingOrder?.length);
         
-        if (data.seatingOrder && Array.isArray(data.seatingOrder) && data.seatingOrder.length > 0) {
-          console.log('✅ Setze Sitzordnung mit', data.seatingOrder.length, 'Schülern');
-          console.log('✅ Erste 5 IDs:', data.seatingOrder.slice(0, 5));
+        if (data.seatingOrder && Array.isArray(data.seatingOrder)) {
+          const filledSlots = data.seatingOrder.filter((id: string | null) => id !== null).length;
+          const emptySlots = data.seatingOrder.filter((id: string | null) => id === null).length;
+          console.log(`✅ Setze Sitzordnung: ${data.seatingOrder.length} Slots (${filledSlots} belegt, ${emptySlots} leer)`);
+          console.log('✅ Erste 5 Slots:', data.seatingOrder.slice(0, 5).map((id: string | null) => id || '<LEER>'));
           
           setCustomSeatingOrder(prev => {
             const updated = {
@@ -10480,10 +10482,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             console.log('🔍 Sitzordnung-Check für Gruppe:', participationGroupId);
             console.log('🔍 customOrder vorhanden:', !!customOrder);
             console.log('🔍 customOrder length:', customOrder?.length);
+            if (customOrder && Array.isArray(customOrder)) {
+              const filledSlots = customOrder.filter(id => id !== null).length;
+              const emptySlots = customOrder.filter(id => id === null).length;
+              console.log(`🔍 Slot-Verteilung: ${filledSlots} belegt, ${emptySlots} leer (von ${customOrder.length} Slots)`);
+            }
             console.log('🔍 students length:', students.length);
             
             // Wenn keine benutzerdefinierte Sitzordnung vorhanden ist, erstelle eine basierend auf Standard-Sortierung
-            if (!customOrder || customOrder.length === 0) {
+            // WICHTIG: Ein 40-Element-Array (auch mit vielen nulls) ist eine gültige Sortierung!
+            const hasValidOrder = customOrder && Array.isArray(customOrder) && (
+              customOrder.length === 40 || // Neues Format: 40-Element-Array
+              (customOrder.length > 0 && customOrder.length < 40) // Altes Format: kompakte Liste
+            );
+            
+            if (!hasValidOrder) {
               console.log('📋 Erstelle Standard-Sitzordnung basierend auf getSeatingOrder');
               // Sortiere Schüler nach Standard-Sitzordnung
               const standardSorted = [...students].sort((a, b) => {
@@ -10518,8 +10531,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               }));
               
               sortedStudents = standardSorted;
-            } else if (customOrder && customOrder.length > 0) {
+            } else if (customOrder && Array.isArray(customOrder) && customOrder.length > 0) {
               // Sortiere nach benutzerdefinierter Reihenfolge
+              // WICHTIG: Wenn es ein 40-Element-Array ist (neues Format), verwende es direkt
+              // Ansonsten behandle es als kompakte Liste (altes Format)
+              const isSlotBased = customOrder.length === 40;
+              
               const orderMap = new Map(customOrder.map((id, index) => [id, index]));
               
               // Stelle sicher, dass alle Schüler in der Reihenfolge sind
@@ -10531,6 +10548,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 .filter(id => !customOrder.includes(id));
               
               const finalOrder = [...orderedStudentIds, ...missingStudentIds];
+              
+              if (isSlotBased) {
+                console.log(`✅ Verwende gespeicherte Slot-basierte Reihenfolge (40 Slots, ${orderedStudentIds.length} belegt)`);
+              } else {
+                console.log('✅ Verwende benutzerdefinierte Reihenfolge (kompakte Liste)');
+              }
               
               console.log('✅ Verwende benutzerdefinierte Reihenfolge');
               console.log('✅ Ordered:', orderedStudentIds.length, 'Missing:', missingStudentIds.length);
