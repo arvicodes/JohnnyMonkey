@@ -11544,7 +11544,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             };
 
             // Einheitliche Höhe für alle Boxen
-            const BOX_HEIGHT = '55px';
+            const BOX_HEIGHT = '46px';
             
             // Helper-Funktion zum Rendern eines Schülers - MIT DROP-FUNKTIONALITÄT
             const renderStudent = (student: typeof sortedStudents[0], deskId: number, slotIndex: number, gridRow: number, gridCol: number) => {
@@ -11622,7 +11622,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   }}
                           elevation={2}
                           sx={{
-                            p: 0.6,
+                            p: 0.5,
                     cursor: 'grab',
                             border: isCurrentDropTarget ? '3px solid #4CAF50' : `2px solid ${colors.border}`,
                             bgcolor: isCurrentDropTarget ? '#C8E6C9' : colors.bg,
@@ -11686,7 +11686,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5rem', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.1 }}>
                               {student.name}
                             </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '1rem', lineHeight: 1 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1 }}>
                               {colors.emoji}
                             </Typography>
                           </Box>
@@ -11711,7 +11711,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     {getGlobalSlotNumber(slotIndex, gridRow, gridCol)}
                           </Box>
                   {hasComment && (
-                    <Box sx={{ position: 'absolute', top: 6, right: 6, width: 14, height: 14, borderRadius: '50%', bgcolor: '#FF9800', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 600, color: 'white', zIndex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+                    <Box sx={{ position: 'absolute', top: 4, right: 4, width: 12, height: 12, borderRadius: '50%', bgcolor: '#FF9800', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 600, color: 'white', zIndex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
                             K
                           </Box>
                   )}
@@ -11868,14 +11868,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             }
             
             return (
-              <Box sx={{ bgcolor: '#f5f0e8', p: 1.5, borderRadius: 1 }}>
+              <Box sx={{ bgcolor: '#f5f0e8', p: 1.2, borderRadius: 1 }}>
                 <Box
                             sx={{ 
                     display: 'grid',
                     gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
                     gridTemplateRows: `repeat(${gridRows}, 1fr)`,
-                    gap: 1.5,
-                    minHeight: '600px'
+                    gap: 0.1,
+                    minHeight: '500px'
                   }}
                 >
                   {/* Render Grid-Zellen */}
@@ -11895,17 +11895,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       <Box
                         key={gridKey}
                             sx={{ 
-                          minHeight: '80px',
+                          height: '72px',
+                          minHeight: '72px',
+                          maxHeight: '72px',
                           minWidth: '120px',
                           border: desk ? '2px solid #8B6F47' : (isDragOver || (draggedStudentId && !desk)) ? '2px dashed #4CAF50' : '2px dashed #FFB3B3',
-                          borderRadius: 1.5,
+                          borderRadius: 1.2,
                           bgcolor: desk ? (isDragOver ? '#D4A574' : '#C9A882') : (isDragOver || (draggedStudentId && !desk)) ? '#e8f5e9' : '#FFE8E8',
-                          p: 0.8,
-                          m: 0.3,
+                          p: 0.2,
+                          m: 0.2,
                           transition: 'all 0.2s',
                           opacity: isDragged ? 0.5 : 1,
                           display: 'flex',
-                          gap: 0.8,
+                          gap: 0.6,
+                          alignItems: 'center',
                           boxShadow: desk ? '0 2px 4px rgba(139, 111, 71, 0.2)' : '0 1px 2px rgba(255, 179, 179, 0.2)'
                         }}
                         onDragOver={(e) => handleGridCellDragOver(e, gridKey)}
@@ -11916,7 +11919,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           <Box
                             sx={{ 
                               display: 'flex',
-                              gap: 0.8,
+                              gap: 0.6,
                               width: '100%',
                               cursor: 'grab',
                               '&:active': { cursor: 'grabbing' }
@@ -12013,16 +12016,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                           }}
                           sx={{ 
                               width: '100%',
-                              height: '100%',
                               display: 'flex',
                               flexDirection: 'row',
-                              gap: 0.8,
-                              alignItems: 'stretch',
+                              gap: 0.6,
+                              alignItems: 'center',
                               cursor: draggedStudentId ? 'copy' : (draggedDeskId !== null ? 'move' : 'default'),
                               bgcolor: draggedStudentId ? '#e8f5e9' : (draggedDeskId !== null && dragOverGridCell === gridKey ? '#fff3e0' : 'transparent'),
                               transition: 'background-color 0.2s',
                               position: 'relative',
-                              minHeight: '80px'
+                              height: '72px',
+                              minHeight: '72px',
+                              maxHeight: '72px'
                             }}
                           >
                             {/* Leere Schülerboxen in leeren Kacheln - nebeneinander */}
