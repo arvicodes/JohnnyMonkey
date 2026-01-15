@@ -30,9 +30,18 @@ router.get('/', async (req: Request, res: Response) => {
 // Get all learning groups for a teacher
 router.get('/teacher/:id', async (req: Request, res: Response) => {
   try {
-    console.log('📚 Fetching groups for teacher:', req.params.id);
+    const teacherId = req.params.id;
+    console.log('📚 Fetching groups for teacher:', teacherId);
+    
+    if (!teacherId || teacherId.trim() === '') {
+      return res.status(400).json({ 
+        error: 'Invalid teacher ID',
+        message: 'Teacher ID ist erforderlich'
+      });
+    }
+    
     const groups = await prisma.learningGroup.findMany({
-      where: { teacherId: req.params.id },
+      where: { teacherId: teacherId },
       select: {
         id: true,
         name: true,
@@ -56,8 +65,11 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
       }
     });
     
+    console.log('📊 Found', groups.length, 'groups for teacher', teacherId);
+    
     // Lade statisticsOrder separat für jede Gruppe (mit Fehlerbehandlung)
-    const groupsWithStats = await Promise.all(groups.map(async (group) => {
+    // Verwende Promise.allSettled, damit ein Fehler bei einer Gruppe nicht alle anderen blockiert
+    const groupsWithStatsResults = await Promise.allSettled(groups.map(async (group) => {
       try {
         const fullGroup = await prisma.learningGroup.findUnique({
           where: { id: group.id },
@@ -67,9 +79,9 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
           ...group,
           statisticsOrder: fullGroup?.statisticsOrder || null
         };
-      } catch (e) {
+      } catch (e: any) {
         // Wenn statisticsOrder nicht gelesen werden kann, setze auf null
-        console.warn(`⚠️ Konnte statisticsOrder für Gruppe ${group.id} nicht lesen:`, e);
+        console.warn(`⚠️ Konnte statisticsOrder für Gruppe ${group.id} nicht lesen:`, e?.message || e);
         return {
           ...group,
           statisticsOrder: null
@@ -77,13 +89,32 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
       }
     }));
     
+    // Extrahiere erfolgreiche Ergebnisse, bei Fehlern verwende Fallback
+    const groupsWithStats = groupsWithStatsResults.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        // Fallback: Gruppe ohne statisticsOrder zurückgeben
+        console.warn(`⚠️ Fehler beim Laden von statisticsOrder für Gruppe ${groups[index].id}:`, result.reason);
+        return {
+          ...groups[index],
+          statisticsOrder: null
+        };
+      }
+    });
+    
     console.log('✅ Found', groupsWithStats.length, 'groups for teacher');
     res.json(groupsWithStats);
   } catch (error: any) {
     console.error('❌ Error fetching teacher groups:', error);
+    console.error('❌ Error details:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack?.substring(0, 500)
+    });
     res.status(500).json({ 
       error: 'Server error',
-      message: error?.message || 'Unbekannter Fehler'
+      message: error?.message || 'Unbekannter Fehler beim Laden der Gruppen'
     });
   }
 });
@@ -123,10 +154,14 @@ router.get('/student/:id', async (req: Request, res: Response) => {
     res.json(groups);
   } catch (error: any) {
     console.error('❌ Error fetching student groups:', error);
-    console.error('Error stack:', error?.stack);
+    console.error('❌ Error details:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack?.substring(0, 500)
+    });
     res.status(500).json({ 
       error: 'Server error',
-      message: error?.message || 'Unbekannter Fehler'
+      message: error?.message || 'Unbekannter Fehler beim Laden der Gruppen'
     });
   }
 });

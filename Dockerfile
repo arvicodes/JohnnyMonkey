@@ -19,8 +19,8 @@ COPY . .
 # Build server
 WORKDIR /app/server
 RUN npm ci
-# Generate Prisma client before building
-RUN npx prisma generate || echo "Prisma generate skipped"
+# Generate Prisma client before building - use explicit schema
+RUN npx prisma generate --schema=prisma/schema.prisma || echo "Prisma generate skipped"
 RUN npm run build
 
 # Build client

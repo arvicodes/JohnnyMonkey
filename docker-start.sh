@@ -7,10 +7,14 @@ set -e
 
 echo "🐵 Starting JohnnyMonkey in Docker container..."
 
-# Prisma Client generieren
+# Prisma Client generieren - IMMER neu generieren, um sicherzustellen, dass Schema aktuell ist
 cd /app/server
 echo "📦 Generating Prisma client..."
-npx prisma generate
+# Verwende explizit schema.prisma (enthält seatingOrder und statisticsOrder)
+npx prisma generate --schema=prisma/schema.prisma || {
+  echo "⚠️  Prisma generate failed, trying without explicit schema..."
+  npx prisma generate || echo "⚠️  Prisma generate failed completely"
+}
 
 # Datenbank initialisieren (falls nicht vorhanden)
 if [ ! -f "prisma/dev.db" ]; then
@@ -86,6 +90,12 @@ else
           console.log('✅ Added seatingOrder');
         } else {
           console.log('ℹ️  seatingOrder already exists');
+        }
+        if (!colNames.includes('statisticsOrder')) {
+          await prisma.\$executeRaw\`ALTER TABLE LearningGroup ADD COLUMN statisticsOrder TEXT\`;
+          console.log('✅ Added statisticsOrder');
+        } else {
+          console.log('ℹ️  statisticsOrder already exists');
         }
         // Prüfe Datenbank-Inhalt
         const userCount = await prisma.user.count();
