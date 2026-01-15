@@ -94,6 +94,7 @@ model LearningGroup {
   period1Hours         Int? // Anzahl Stunden für Zeitraum 1 (EPO 1)
   period2Hours         Int? // Anzahl Stunden für Zeitraum 2 (EPO 2)
   seatingOrder         String? // JSON-Array mit Schüler-IDs in benutzerdefinierter Reihenfolge
+  statisticsOrder      String? // JSON-Array mit Schüler-IDs in benutzerdefinierter Reihenfolge für Epochalstatistik
   gradingSchemas       GradingSchema[]
   assignments          GroupAssignment[]
   flashcardAssignments FlashcardAssignment[]

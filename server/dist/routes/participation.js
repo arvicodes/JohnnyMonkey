@@ -455,6 +455,273 @@ router.put('/:groupId/periods', async (req, res) => {
         });
     }
 });
+// Get or update seating order for a learning group
+// WICHTIG: Diese Routen müssen VOR der /:groupId Route kommen!
+router.get('/:groupId/seating-order', async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        console.log('📥 GET /:groupId/seating-order - groupId:', groupId);
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: {
+                seatingOrder: true
+            }
+        });
+        if (!group) {
+            console.error('❌ Group not found:', groupId);
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        }
+        console.log('📥 Group found, seatingOrder exists:', !!group.seatingOrder);
+        if (group.seatingOrder) {
+            console.log('📥 Raw seatingOrder from DB:', group.seatingOrder.substring(0, 100) + '...');
+        }
+        // Parse JSON oder gib leeres Array zurück
+        let seatingOrder = [];
+        let deskPositions = [];
+        if (group.seatingOrder) {
+            try {
+                const parsed = JSON.parse(group.seatingOrder);
+                // Unterstütze sowohl altes Format (nur Array) als auch neues Format (Objekt)
+                if (Array.isArray(parsed)) {
+                    seatingOrder = parsed;
+                }
+                else if (parsed.order) {
+                    seatingOrder = parsed.order;
+                    deskPositions = parsed.positions || [];
+                }
+                const filledSlots = seatingOrder.filter(id => id !== null).length;
+                const emptySlots = seatingOrder.filter(id => id === null).length;
+                console.log('✅ Parsed seating order, length:', seatingOrder.length);
+                console.log(`✅ Slot-Verteilung: ${filledSlots} belegt, ${emptySlots} leer`);
+                console.log('✅ Parsed desk positions, length:', deskPositions.length);
+                console.log('✅ First 5 Slots:', seatingOrder.slice(0, 5).map(id => id || '<LEER>'));
+            }
+            catch (e) {
+                console.error('❌ Error parsing seating order:', e);
+                console.error('❌ Raw data:', group.seatingOrder);
+                seatingOrder = [];
+                deskPositions = [];
+            }
+        }
+        else {
+            console.log('ℹ️ Keine seatingOrder in Datenbank gefunden');
+        }
+        const filledCount = seatingOrder.filter(id => id !== null).length;
+        console.log(`📥 Returning seating order: ${seatingOrder.length} Slots (${filledCount} belegt, ${seatingOrder.length - filledCount} leer)`);
+        res.json({
+            seatingOrder,
+            deskPositions
+        });
+    }
+    catch (error) {
+        console.error('❌ Error fetching seating order:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+router.put('/:groupId/seating-order', async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const { seatingOrder, deskPositions } = req.body;
+        console.log('💾 PUT /:groupId/seating-order - groupId:', groupId);
+        console.log('💾 seatingOrder length:', seatingOrder === null || seatingOrder === void 0 ? void 0 : seatingOrder.length);
+        console.log('💾 seatingOrder preview:', seatingOrder === null || seatingOrder === void 0 ? void 0 : seatingOrder.slice(0, 5));
+        console.log('💾 deskPositions:', deskPositions ? `${deskPositions.length} Positionen` : 'nicht vorhanden');
+        // Validiere, dass die Gruppe existiert
+        const existingGroup = await prisma.learningGroup.findUnique({
+            where: { id: groupId }
+        });
+        if (!existingGroup) {
+            console.error('❌ Group not found:', groupId);
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        }
+        // Validiere seatingOrder
+        if (!Array.isArray(seatingOrder)) {
+            console.error('❌ seatingOrder ist kein Array:', typeof seatingOrder);
+            return res.status(400).json({ error: 'seatingOrder muss ein Array sein' });
+        }
+        // Validiere, dass alle Elemente Strings oder null sind (für leere Slots)
+        if (!seatingOrder.every(id => typeof id === 'string' || id === null)) {
+            console.error('❌ Nicht alle Elemente sind Strings oder null');
+            console.error('❌ Beispiel-Werte:', seatingOrder.slice(0, 10));
+            return res.status(400).json({ error: 'Alle Elemente in seatingOrder müssen Strings oder null sein' });
+        }
+        // Debug: Zeige Anzahl leerer Slots
+        const emptySlots = seatingOrder.filter(id => id === null).length;
+        const filledSlots = seatingOrder.filter(id => id !== null).length;
+        console.log(`💾 Slot-Verteilung: ${filledSlots} belegt, ${emptySlots} leer (von ${seatingOrder.length} Slots)`);
+        // Erstelle ein Objekt mit beiden Informationen
+        const seatingData = {
+            order: seatingOrder,
+            positions: deskPositions || []
+        };
+        // Speichere als JSON-String
+        const seatingOrderJson = JSON.stringify(seatingData);
+        console.log('💾 Speichere JSON:', seatingOrderJson.substring(0, 150) + '...');
+        const group = await prisma.learningGroup.update({
+            where: { id: groupId },
+            data: {
+                seatingOrder: seatingOrderJson
+            }
+        });
+        // Verifiziere, dass es gespeichert wurde
+        const verifyGroup = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: { seatingOrder: true }
+        });
+        console.log('✅ Group updated successfully');
+        console.log('✅ Verifiziert - seatingOrder gespeichert:', (verifyGroup === null || verifyGroup === void 0 ? void 0 : verifyGroup.seatingOrder) ? 'JA' : 'NEIN');
+        if (verifyGroup === null || verifyGroup === void 0 ? void 0 : verifyGroup.seatingOrder) {
+            console.log('✅ Gespeicherte Daten:', verifyGroup.seatingOrder.substring(0, 150) + '...');
+        }
+        // Parse zurück für Response
+        let parsedSeatingOrder = [];
+        let parsedDeskPositions = [];
+        if (group.seatingOrder) {
+            try {
+                const parsed = JSON.parse(group.seatingOrder);
+                // Unterstütze sowohl altes Format (nur Array) als auch neues Format (Objekt)
+                if (Array.isArray(parsed)) {
+                    parsedSeatingOrder = parsed;
+                }
+                else if (parsed.order) {
+                    parsedSeatingOrder = parsed.order;
+                    parsedDeskPositions = parsed.positions || [];
+                }
+                const filledSlots = parsedSeatingOrder.filter(id => id !== null).length;
+                const emptySlots = parsedSeatingOrder.filter(id => id === null).length;
+                console.log(`✅ Parsed seating order: ${parsedSeatingOrder.length} Slots (${filledSlots} belegt, ${emptySlots} leer)`);
+                console.log('✅ Parsed desk positions length:', parsedDeskPositions.length);
+            }
+            catch (e) {
+                console.error('❌ Error parsing seating order in response:', e);
+            }
+        }
+        res.json({
+            seatingOrder: parsedSeatingOrder,
+            deskPositions: parsedDeskPositions
+        });
+    }
+    catch (error) {
+        console.error('❌ Error updating seating order:', error);
+        console.error('❌ Error stack:', error === null || error === void 0 ? void 0 : error.stack);
+        res.status(500).json({
+            error: 'Server error',
+            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler',
+            code: (error === null || error === void 0 ? void 0 : error.code) || 'UNKNOWN'
+        });
+    }
+});
+// Get statistics order for a learning group
+router.get('/:groupId/statistics-order', async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        console.log('[STAT-DRAG] 📥 GET /:groupId/statistics-order - groupId:', groupId);
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: {
+                statisticsOrder: true
+            }
+        });
+        if (!group) {
+            console.error('[STAT-DRAG] ❌ Group not found:', groupId);
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        }
+        console.log('[STAT-DRAG] 📥 Group found, statisticsOrder exists:', !!group.statisticsOrder);
+        // Parse JSON oder gib leeres Array zurück
+        let statisticsOrder = [];
+        if (group.statisticsOrder) {
+            try {
+                const parsed = JSON.parse(group.statisticsOrder);
+                if (Array.isArray(parsed)) {
+                    statisticsOrder = parsed;
+                }
+                console.log('[STAT-DRAG] ✅ Parsed statistics order, length:', statisticsOrder.length);
+                console.log('[STAT-DRAG] ✅ First 5 IDs:', statisticsOrder.slice(0, 5));
+            }
+            catch (e) {
+                console.error('[STAT-DRAG] ❌ Error parsing statistics order:', e);
+                statisticsOrder = [];
+            }
+        }
+        else {
+            console.log('[STAT-DRAG] ℹ️ Keine statisticsOrder in Datenbank gefunden');
+        }
+        console.log('[STAT-DRAG] 📥 Returning statistics order with', statisticsOrder.length, 'students');
+        res.json({ statisticsOrder });
+    }
+    catch (error) {
+        console.error('[STAT-DRAG] ❌ Error fetching statistics order:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+// Update statistics order for a learning group
+router.put('/:groupId/statistics-order', async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const { statisticsOrder } = req.body;
+        console.log('[STAT-DRAG] 💾 PUT /:groupId/statistics-order - groupId:', groupId);
+        console.log('[STAT-DRAG] 💾 statisticsOrder length:', statisticsOrder === null || statisticsOrder === void 0 ? void 0 : statisticsOrder.length);
+        console.log('[STAT-DRAG] 💾 statisticsOrder preview:', statisticsOrder === null || statisticsOrder === void 0 ? void 0 : statisticsOrder.slice(0, 5));
+        // Validiere, dass die Gruppe existiert
+        const existingGroup = await prisma.learningGroup.findUnique({
+            where: { id: groupId }
+        });
+        if (!existingGroup) {
+            console.error('[STAT-DRAG] ❌ Group not found:', groupId);
+            return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
+        }
+        // Validiere statisticsOrder
+        if (!Array.isArray(statisticsOrder)) {
+            console.error('[STAT-DRAG] ❌ statisticsOrder ist kein Array:', typeof statisticsOrder);
+            return res.status(400).json({ error: 'statisticsOrder muss ein Array sein' });
+        }
+        // Validiere, dass alle Elemente Strings sind
+        if (!statisticsOrder.every(id => typeof id === 'string')) {
+            console.error('[STAT-DRAG] ❌ Nicht alle Elemente sind Strings');
+            return res.status(400).json({ error: 'Alle Elemente in statisticsOrder müssen Strings sein' });
+        }
+        // Speichere als JSON-String
+        const statisticsOrderJson = JSON.stringify(statisticsOrder);
+        console.log('[STAT-DRAG] 💾 Speichere JSON:', statisticsOrderJson.substring(0, 150) + '...');
+        const group = await prisma.learningGroup.update({
+            where: { id: groupId },
+            data: {
+                statisticsOrder: statisticsOrderJson
+            }
+        });
+        // Verifiziere, dass es gespeichert wurde
+        const verifyGroup = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: { statisticsOrder: true }
+        });
+        console.log('[STAT-DRAG] ✅ Group updated successfully');
+        console.log('[STAT-DRAG] ✅ Verifiziert - statisticsOrder gespeichert:', (verifyGroup === null || verifyGroup === void 0 ? void 0 : verifyGroup.statisticsOrder) ? 'JA' : 'NEIN');
+        // Parse zurück für Response
+        let parsedStatisticsOrder = [];
+        if (group.statisticsOrder) {
+            try {
+                const parsed = JSON.parse(group.statisticsOrder);
+                if (Array.isArray(parsed)) {
+                    parsedStatisticsOrder = parsed;
+                }
+                console.log('[STAT-DRAG] ✅ Parsed statistics order length:', parsedStatisticsOrder.length);
+            }
+            catch (e) {
+                console.error('[STAT-DRAG] ❌ Error parsing statistics order in response:', e);
+            }
+        }
+        res.json({ statisticsOrder: parsedStatisticsOrder });
+    }
+    catch (error) {
+        console.error('[STAT-DRAG] ❌ Error updating statistics order:', error);
+        console.error('[STAT-DRAG] ❌ Error stack:', error === null || error === void 0 ? void 0 : error.stack);
+        res.status(500).json({
+            error: 'Server error',
+            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler',
+            code: (error === null || error === void 0 ? void 0 : error.code) || 'UNKNOWN'
+        });
+    }
+});
 // Get all participation records for a learning group
 router.get('/:groupId', async (req, res) => {
     try {
