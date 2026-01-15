@@ -40,6 +40,8 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
       });
     }
     
+    // Lade Gruppen OHNE seatingOrder und statisticsOrder im select
+    // (falls Prisma Client veraltet ist und diese Felder nicht kennt)
     const groups = await prisma.learningGroup.findMany({
       where: { teacherId: teacherId },
       select: {
@@ -50,8 +52,8 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
         teacherId: true,
         period1Hours: true,
         period2Hours: true,
-        seatingOrder: true,
-        // statisticsOrder temporär ausgeschlossen, da es Base64-Probleme gibt
+        // seatingOrder und statisticsOrder werden separat geladen (falls Prisma Client veraltet ist)
+        // seatingOrder: true,
         // statisticsOrder: true,
         students: {
           orderBy: { loginCode: 'asc' },
@@ -67,25 +69,49 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
     
     console.log('📊 Found', groups.length, 'groups for teacher', teacherId);
     
-    // Lade statisticsOrder separat für jede Gruppe (mit Fehlerbehandlung)
+    // Lade seatingOrder und statisticsOrder separat für jede Gruppe (mit Fehlerbehandlung)
     // Verwende Promise.allSettled, damit ein Fehler bei einer Gruppe nicht alle anderen blockiert
     const groupsWithStatsResults = await Promise.allSettled(groups.map(async (group) => {
       try {
+        // Versuche beide Felder auf einmal zu laden
         const fullGroup = await prisma.learningGroup.findUnique({
           where: { id: group.id },
-          select: { statisticsOrder: true }
+          select: { 
+            seatingOrder: true,
+            statisticsOrder: true
+          }
         });
         return {
           ...group,
+          seatingOrder: fullGroup?.seatingOrder || null,
           statisticsOrder: fullGroup?.statisticsOrder || null
         };
       } catch (e: any) {
-        // Wenn statisticsOrder nicht gelesen werden kann, setze auf null
-        console.warn(`⚠️ Konnte statisticsOrder für Gruppe ${group.id} nicht lesen:`, e?.message || e);
-        return {
-          ...group,
-          statisticsOrder: null
-        };
+        // Wenn die Felder nicht gelesen werden können (z.B. Prisma Client veraltet), setze auf null
+        console.warn(`⚠️ Konnte seatingOrder/statisticsOrder für Gruppe ${group.id} nicht lesen:`, e?.message || e);
+        // Versuche einzeln zu laden (Fallback)
+        try {
+          const seatingOrderGroup = await prisma.learningGroup.findUnique({
+            where: { id: group.id },
+            select: { seatingOrder: true }
+          });
+          const statisticsOrderGroup = await prisma.learningGroup.findUnique({
+            where: { id: group.id },
+            select: { statisticsOrder: true }
+          });
+          return {
+            ...group,
+            seatingOrder: seatingOrderGroup?.seatingOrder || null,
+            statisticsOrder: statisticsOrderGroup?.statisticsOrder || null
+          };
+        } catch (e2: any) {
+          // Wenn auch das fehlschlägt, setze beide auf null
+          return {
+            ...group,
+            seatingOrder: null,
+            statisticsOrder: null
+          };
+        }
       }
     }));
     
@@ -94,10 +120,11 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
       if (result.status === 'fulfilled') {
         return result.value;
       } else {
-        // Fallback: Gruppe ohne statisticsOrder zurückgeben
-        console.warn(`⚠️ Fehler beim Laden von statisticsOrder für Gruppe ${groups[index].id}:`, result.reason);
+        // Fallback: Gruppe ohne seatingOrder und statisticsOrder zurückgeben
+        console.warn(`⚠️ Fehler beim Laden von seatingOrder/statisticsOrder für Gruppe ${groups[index].id}:`, result.reason);
         return {
           ...groups[index],
+          seatingOrder: null,
           statisticsOrder: null
         };
       }

@@ -29,11 +29,31 @@ router.get('/', async (req, res) => {
 // WICHTIG: Spezifische Routen müssen VOR den allgemeinen Routen kommen!
 // Get all learning groups for a teacher
 router.get('/teacher/:id', async (req, res) => {
+    var _a;
     try {
-        console.log('📚 Fetching groups for teacher:', req.params.id);
+        const teacherId = req.params.id;
+        console.log('📚 Fetching groups for teacher:', teacherId);
+        if (!teacherId || teacherId.trim() === '') {
+            return res.status(400).json({
+                error: 'Invalid teacher ID',
+                message: 'Teacher ID ist erforderlich'
+            });
+        }
+        // Lade Gruppen OHNE seatingOrder und statisticsOrder im select
+        // (falls Prisma Client veraltet ist und diese Felder nicht kennt)
         const groups = await prisma.learningGroup.findMany({
-            where: { teacherId: req.params.id },
-            include: {
+            where: { teacherId: teacherId },
+            select: {
+                id: true,
+                name: true,
+                createdAt: true,
+                updatedAt: true,
+                teacherId: true,
+                period1Hours: true,
+                period2Hours: true,
+                // seatingOrder und statisticsOrder werden separat geladen (falls Prisma Client veraltet ist)
+                // seatingOrder: true,
+                // statisticsOrder: true,
                 students: {
                     orderBy: { loginCode: 'asc' },
                     select: {
@@ -45,20 +65,89 @@ router.get('/teacher/:id', async (req, res) => {
                 }
             }
         });
-        console.log('✅ Found', groups.length, 'groups for teacher');
-        res.json(groups);
+        console.log('📊 Found', groups.length, 'groups for teacher', teacherId);
+        // Lade seatingOrder und statisticsOrder separat für jede Gruppe (mit Fehlerbehandlung)
+        // Verwende Promise.allSettled, damit ein Fehler bei einer Gruppe nicht alle anderen blockiert
+        const groupsWithStatsResults = await Promise.allSettled(groups.map(async (group) => {
+            try {
+                // Versuche beide Felder auf einmal zu laden
+                const fullGroup = await prisma.learningGroup.findUnique({
+                    where: { id: group.id },
+                    select: {
+                        seatingOrder: true,
+                        statisticsOrder: true
+                    }
+                });
+                return {
+                    ...group,
+                    seatingOrder: (fullGroup === null || fullGroup === void 0 ? void 0 : fullGroup.seatingOrder) || null,
+                    statisticsOrder: (fullGroup === null || fullGroup === void 0 ? void 0 : fullGroup.statisticsOrder) || null
+                };
+            }
+            catch (e) {
+                // Wenn die Felder nicht gelesen werden können (z.B. Prisma Client veraltet), setze auf null
+                console.warn(`⚠️ Konnte seatingOrder/statisticsOrder für Gruppe ${group.id} nicht lesen:`, (e === null || e === void 0 ? void 0 : e.message) || e);
+                // Versuche einzeln zu laden (Fallback)
+                try {
+                    const seatingOrderGroup = await prisma.learningGroup.findUnique({
+                        where: { id: group.id },
+                        select: { seatingOrder: true }
+                    });
+                    const statisticsOrderGroup = await prisma.learningGroup.findUnique({
+                        where: { id: group.id },
+                        select: { statisticsOrder: true }
+                    });
+                    return {
+                        ...group,
+                        seatingOrder: (seatingOrderGroup === null || seatingOrderGroup === void 0 ? void 0 : seatingOrderGroup.seatingOrder) || null,
+                        statisticsOrder: (statisticsOrderGroup === null || statisticsOrderGroup === void 0 ? void 0 : statisticsOrderGroup.statisticsOrder) || null
+                    };
+                }
+                catch (e2) {
+                    // Wenn auch das fehlschlägt, setze beide auf null
+                    return {
+                        ...group,
+                        seatingOrder: null,
+                        statisticsOrder: null
+                    };
+                }
+            }
+        }));
+        // Extrahiere erfolgreiche Ergebnisse, bei Fehlern verwende Fallback
+        const groupsWithStats = groupsWithStatsResults.map((result, index) => {
+            if (result.status === 'fulfilled') {
+                return result.value;
+            }
+            else {
+                // Fallback: Gruppe ohne seatingOrder und statisticsOrder zurückgeben
+                console.warn(`⚠️ Fehler beim Laden von seatingOrder/statisticsOrder für Gruppe ${groups[index].id}:`, result.reason);
+                return {
+                    ...groups[index],
+                    seatingOrder: null,
+                    statisticsOrder: null
+                };
+            }
+        });
+        console.log('✅ Found', groupsWithStats.length, 'groups for teacher');
+        res.json(groupsWithStats);
     }
     catch (error) {
         console.error('❌ Error fetching teacher groups:', error);
+        console.error('❌ Error details:', {
+            message: error === null || error === void 0 ? void 0 : error.message,
+            code: error === null || error === void 0 ? void 0 : error.code,
+            stack: (_a = error === null || error === void 0 ? void 0 : error.stack) === null || _a === void 0 ? void 0 : _a.substring(0, 500)
+        });
         res.status(500).json({
             error: 'Server error',
-            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler'
+            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler beim Laden der Gruppen'
         });
     }
 });
 // Get all learning groups for a student
 // WICHTIG: Diese Route muss VOR der /:id Route kommen!
 router.get('/student/:id', async (req, res) => {
+    var _a;
     try {
         console.log('👤 Fetching groups for student:', req.params.id);
         const groups = await prisma.learningGroup.findMany({
@@ -92,10 +181,14 @@ router.get('/student/:id', async (req, res) => {
     }
     catch (error) {
         console.error('❌ Error fetching student groups:', error);
-        console.error('Error stack:', error === null || error === void 0 ? void 0 : error.stack);
+        console.error('❌ Error details:', {
+            message: error === null || error === void 0 ? void 0 : error.message,
+            code: error === null || error === void 0 ? void 0 : error.code,
+            stack: (_a = error === null || error === void 0 ? void 0 : error.stack) === null || _a === void 0 ? void 0 : _a.substring(0, 500)
+        });
         res.status(500).json({
             error: 'Server error',
-            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler'
+            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler beim Laden der Gruppen'
         });
     }
 });
