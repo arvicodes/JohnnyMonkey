@@ -23,8 +23,8 @@ try {
 
 // Login route
 router.post('/login', async (req: Request, res: Response) => {
-  const { loginCode } = req.body;
-  console.log('🔐 Login attempt with code:', loginCode);
+  let { loginCode } = req.body;
+  console.log('🔐 Login attempt with code (raw):', loginCode);
   console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
   console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
 
@@ -34,9 +34,15 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Login-Code ist erforderlich' });
     }
 
-    console.log('🔍 Searching for user with loginCode:', loginCode);
-    const user = await prisma.user.findUnique({
-      where: { loginCode: String(loginCode) },
+    // Trim whitespace und normalisiere
+    loginCode = String(loginCode).trim();
+    console.log('🔐 Login code (trimmed):', loginCode);
+    console.log('🔐 Login code length:', loginCode.length);
+
+    // Versuche zuerst exakte Übereinstimmung
+    console.log('🔍 Searching for user with loginCode (exact):', loginCode);
+    let user = await prisma.user.findUnique({
+      where: { loginCode: loginCode },
       include: {
         learningGroups: {
           select: {
@@ -47,8 +53,48 @@ router.post('/login', async (req: Request, res: Response) => {
       },
     });
 
+    // Falls nicht gefunden, versuche case-insensitive Suche
+    if (!user) {
+      console.log('⚠️ Exact match not found, trying case-insensitive search...');
+      // Suche alle Benutzer und vergleiche case-insensitive
+      const allUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          loginCode: true,
+          role: true
+        }
+      });
+      
+      const matchedUser = allUsers.find(u => 
+        u.loginCode && u.loginCode.toLowerCase() === loginCode.toLowerCase()
+      );
+      
+      if (matchedUser) {
+        console.log('✅ Found user with case-insensitive match:', matchedUser.loginCode, '->', matchedUser.name);
+        // Lade den vollständigen Benutzer mit learningGroups
+        user = await prisma.user.findUnique({
+          where: { id: matchedUser.id },
+          include: {
+            learningGroups: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+          },
+        });
+      }
+    }
+
     if (!user) {
       console.log('❌ Invalid login code:', loginCode);
+      // Debug: Zeige alle verfügbaren Login-Codes (nur erste 10)
+      const sampleUsers = await prisma.user.findMany({
+        select: { loginCode: true, name: true },
+        take: 10
+      });
+      console.log('📋 Sample login codes in database:', sampleUsers.map(u => `${u.loginCode} (${u.name})`));
       return res.status(401).json({ message: 'Ungültiger Login-Code' });
     }
 
