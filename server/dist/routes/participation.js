@@ -178,6 +178,7 @@ async function calculateEpoGradesForGroup(groupId) {
 // - Verwendet das erste verfügbare GradingSchema der Gruppe
 // - Legt/aktualisiert Kategorien "EPO 1" und "EPO 2" je Schüler mit weight 1.0
 async function integrateEpoGradesToSchema(groupId) {
+    var _a, _b;
     try {
         // Finde ein Schema für die Gruppe
         const schema = await prisma.gradingSchema.findFirst({
@@ -192,17 +193,40 @@ async function integrateEpoGradesToSchema(groupId) {
         const schemaId = schema.id;
         console.log(`Found grading schema ${schemaId} for group ${groupId}`);
         // Lade aktuelle EPO-Noten der Gruppe - nur freigegebene
-        const epoGrades = await prisma.participationPeriodGrade.findMany({
-            where: {
-                groupId,
-                isReleased: true // Nur freigegebene Noten ins Schema integrieren
-            },
-            select: {
-                studentId: true,
-                period: true,
-                grade: true
+        // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
+        let epoGrades;
+        try {
+            epoGrades = await prisma.participationPeriodGrade.findMany({
+                where: {
+                    groupId,
+                    isReleased: true // Nur freigegebene Noten ins Schema integrieren
+                },
+                select: {
+                    studentId: true,
+                    period: true,
+                    grade: true
+                }
+            });
+        }
+        catch (e) {
+            // Wenn isReleased nicht existiert (Prisma Client veraltet), lade alle Noten
+            if (((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('Unknown argument')) || ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('isReleased'))) {
+                console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), lade alle EPO-Noten');
+                epoGrades = await prisma.participationPeriodGrade.findMany({
+                    where: {
+                        groupId
+                    },
+                    select: {
+                        studentId: true,
+                        period: true,
+                        grade: true
+                    }
+                });
             }
-        });
+            else {
+                throw e;
+            }
+        }
         console.log(`Found ${epoGrades.length} released EPO grades for group ${groupId}`);
         if (epoGrades.length === 0) {
             console.log(`No released EPO grades to integrate for group ${groupId}`);
@@ -519,6 +543,7 @@ router.get('/:groupId/seating-order', async (req, res) => {
     }
 });
 router.put('/:groupId/seating-order', async (req, res) => {
+    var _a, _b;
     try {
         const { groupId } = req.params;
         const { seatingOrder, deskPositions } = req.body;
@@ -557,12 +582,37 @@ router.put('/:groupId/seating-order', async (req, res) => {
         // Speichere als JSON-String
         const seatingOrderJson = JSON.stringify(seatingData);
         console.log('💾 Speichere JSON:', seatingOrderJson.substring(0, 150) + '...');
-        const group = await prisma.learningGroup.update({
-            where: { id: groupId },
-            data: {
-                seatingOrder: seatingOrderJson
+        // Speichere seatingOrder - mit Fehlerbehandlung für veralteten Prisma Client
+        let group;
+        try {
+            group = await prisma.learningGroup.update({
+                where: { id: groupId },
+                data: {
+                    seatingOrder: seatingOrderJson
+                }
+            });
+        }
+        catch (e) {
+            // Wenn seatingOrder nicht existiert (Prisma Client veraltet), verwende SQL direkt
+            if (((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('Unknown field')) || ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('seatingOrder'))) {
+                console.warn('⚠️ seatingOrder Feld nicht verfügbar (Prisma Client veraltet), verwende SQL direkt');
+                await prisma.$executeRaw `
+          UPDATE LearningGroup 
+          SET seatingOrder = ${seatingOrderJson}
+          WHERE id = ${groupId}
+        `;
+                // Lade Gruppe neu für Response
+                group = await prisma.learningGroup.findUnique({
+                    where: { id: groupId }
+                });
+                if (!group) {
+                    throw new Error('Gruppe nicht gefunden nach Update');
+                }
             }
-        });
+            else {
+                throw e;
+            }
+        }
         // Verifiziere, dass es gespeichert wurde
         const verifyGroup = await prisma.learningGroup.findUnique({
             where: { id: groupId },
@@ -1063,26 +1113,57 @@ function calculateGradeFromAverage(average) {
 // Get EPO grades for a specific student
 // WICHTIG: Diese Route muss VOR der /:groupId/epo-grades Route kommen!
 router.get('/student/:studentId/epo-grades', async (req, res) => {
+    var _a, _b;
     try {
         const { studentId } = req.params;
-        const epoGrades = await prisma.participationPeriodGrade.findMany({
-            where: {
-                studentId,
-                isReleased: true // Nur freigegebene Noten für Schüler
-            },
-            include: {
-                group: {
-                    select: {
-                        id: true,
-                        name: true
+        // Lade EPO-Noten - nur freigegebene (falls isReleased Feld existiert)
+        let epoGrades;
+        try {
+            epoGrades = await prisma.participationPeriodGrade.findMany({
+                where: {
+                    studentId,
+                    isReleased: true // Nur freigegebene Noten für Schüler
+                },
+                include: {
+                    group: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
                     }
-                }
-            },
-            orderBy: [
-                { groupId: 'asc' },
-                { period: 'asc' }
-            ]
-        });
+                },
+                orderBy: [
+                    { groupId: 'asc' },
+                    { period: 'asc' }
+                ]
+            });
+        }
+        catch (e) {
+            // Wenn isReleased nicht existiert (Prisma Client veraltet), lade alle Noten
+            if (((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('Unknown argument')) || ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('isReleased'))) {
+                console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), lade alle EPO-Noten für Schüler');
+                epoGrades = await prisma.participationPeriodGrade.findMany({
+                    where: {
+                        studentId
+                    },
+                    include: {
+                        group: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    },
+                    orderBy: [
+                        { groupId: 'asc' },
+                        { period: 'asc' }
+                    ]
+                });
+            }
+            else {
+                throw e;
+            }
+        }
         res.json(epoGrades);
     }
     catch (error) {
@@ -1093,6 +1174,7 @@ router.get('/student/:studentId/epo-grades', async (req, res) => {
 // EPO-Note freigeben/sperren
 // WICHTIG: Diese Route muss VOR der /:groupId/epo-grades Route kommen!
 router.post('/:groupId/epo-grades/release', async (req, res) => {
+    var _a, _b;
     try {
         const { groupId } = req.params;
         const { period, isReleased } = req.body; // period: 1 oder 2, isReleased: boolean
@@ -1104,15 +1186,35 @@ router.post('/:groupId/epo-grades/release', async (req, res) => {
             return res.status(400).json({ error: 'isReleased muss ein Boolean sein.' });
         }
         // Aktualisiere alle EPO-Noten für diesen Zeitraum in dieser Gruppe
-        const result = await prisma.participationPeriodGrade.updateMany({
-            where: {
-                groupId,
-                period: period
-            },
-            data: {
-                isReleased: isReleased
+        // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
+        let result;
+        try {
+            result = await prisma.participationPeriodGrade.updateMany({
+                where: {
+                    groupId,
+                    period: period
+                },
+                data: {
+                    isReleased: isReleased
+                }
+            });
+        }
+        catch (e) {
+            // Wenn isReleased nicht existiert (Prisma Client veraltet), verwende SQL direkt
+            if (((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('Unknown argument')) || ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('isReleased'))) {
+                console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), verwende SQL direkt');
+                // Verwende $executeRaw als Fallback
+                const count = await prisma.$executeRaw `
+          UPDATE ParticipationPeriodGrade 
+          SET isReleased = ${isReleased ? 1 : 0}
+          WHERE groupId = ${groupId} AND period = ${period}
+        `;
+                result = { count: Number(count) };
             }
-        });
+            else {
+                throw e;
+            }
+        }
         console.log(`Updated ${result.count} EPO grades for period ${period}, isReleased: ${isReleased}`);
         // Wenn gesperrt: Entferne Noten aus dem Notenschema
         // Wenn freigegeben: Integriere Noten ins Notenschema

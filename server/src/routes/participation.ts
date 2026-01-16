@@ -213,17 +213,38 @@ async function integrateEpoGradesToSchema(groupId: string): Promise<void> {
     console.log(`Found grading schema ${schemaId} for group ${groupId}`);
 
     // Lade aktuelle EPO-Noten der Gruppe - nur freigegebene
-    const epoGrades = await prisma.participationPeriodGrade.findMany({
-      where: { 
-        groupId,
-        isReleased: true // Nur freigegebene Noten ins Schema integrieren
-      },
-      select: {
-        studentId: true,
-        period: true,
-        grade: true
+    // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
+    let epoGrades;
+    try {
+      epoGrades = await prisma.participationPeriodGrade.findMany({
+        where: { 
+          groupId,
+          isReleased: true // Nur freigegebene Noten ins Schema integrieren
+        },
+        select: {
+          studentId: true,
+          period: true,
+          grade: true
+        }
+      });
+    } catch (e: any) {
+      // Wenn isReleased nicht existiert (Prisma Client veraltet), lade alle Noten
+      if (e?.message?.includes('Unknown argument') || e?.message?.includes('isReleased')) {
+        console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), lade alle EPO-Noten');
+        epoGrades = await prisma.participationPeriodGrade.findMany({
+          where: { 
+            groupId
+          },
+          select: {
+            studentId: true,
+            period: true,
+            grade: true
+          }
+        });
+      } else {
+        throw e;
       }
-    });
+    }
     console.log(`Found ${epoGrades.length} released EPO grades for group ${groupId}`);
     if (epoGrades.length === 0) {
       console.log(`No released EPO grades to integrate for group ${groupId}`);
@@ -616,12 +637,35 @@ router.put('/:groupId/seating-order', async (req: Request, res: Response) => {
     const seatingOrderJson = JSON.stringify(seatingData);
     console.log('💾 Speichere JSON:', seatingOrderJson.substring(0, 150) + '...');
     
-    const group = await prisma.learningGroup.update({
-      where: { id: groupId },
-      data: {
-        seatingOrder: seatingOrderJson
+    // Speichere seatingOrder - mit Fehlerbehandlung für veralteten Prisma Client
+    let group;
+    try {
+      group = await prisma.learningGroup.update({
+        where: { id: groupId },
+        data: {
+          seatingOrder: seatingOrderJson
+        }
+      });
+    } catch (e: any) {
+      // Wenn seatingOrder nicht existiert (Prisma Client veraltet), verwende SQL direkt
+      if (e?.message?.includes('Unknown field') || e?.message?.includes('seatingOrder')) {
+        console.warn('⚠️ seatingOrder Feld nicht verfügbar (Prisma Client veraltet), verwende SQL direkt');
+        await prisma.$executeRaw`
+          UPDATE LearningGroup 
+          SET seatingOrder = ${seatingOrderJson}
+          WHERE id = ${groupId}
+        `;
+        // Lade Gruppe neu für Response
+        group = await prisma.learningGroup.findUnique({
+          where: { id: groupId }
+        });
+        if (!group) {
+          throw new Error('Gruppe nicht gefunden nach Update');
+        }
+      } else {
+        throw e;
       }
-    });
+    }
     
     // Verifiziere, dass es gespeichert wurde
     const verifyGroup = await prisma.learningGroup.findUnique({
@@ -1175,24 +1219,52 @@ router.get('/student/:studentId/epo-grades', async (req: Request, res: Response)
   try {
     const { studentId } = req.params;
     
-    const epoGrades = await prisma.participationPeriodGrade.findMany({
-      where: { 
-        studentId,
-        isReleased: true // Nur freigegebene Noten für Schüler
-      },
-      include: {
-        group: {
-          select: {
-            id: true,
-            name: true
+    // Lade EPO-Noten - nur freigegebene (falls isReleased Feld existiert)
+    let epoGrades;
+    try {
+      epoGrades = await prisma.participationPeriodGrade.findMany({
+        where: { 
+          studentId,
+          isReleased: true // Nur freigegebene Noten für Schüler
+        },
+        include: {
+          group: {
+            select: {
+              id: true,
+              name: true
+            }
           }
-        }
-      },
-      orderBy: [
-        { groupId: 'asc' },
-        { period: 'asc' }
-      ]
-    });
+        },
+        orderBy: [
+          { groupId: 'asc' },
+          { period: 'asc' }
+        ]
+      });
+    } catch (e: any) {
+      // Wenn isReleased nicht existiert (Prisma Client veraltet), lade alle Noten
+      if (e?.message?.includes('Unknown argument') || e?.message?.includes('isReleased')) {
+        console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), lade alle EPO-Noten für Schüler');
+        epoGrades = await prisma.participationPeriodGrade.findMany({
+          where: { 
+            studentId
+          },
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          },
+          orderBy: [
+            { groupId: 'asc' },
+            { period: 'asc' }
+          ]
+        });
+      } else {
+        throw e;
+      }
+    }
     
     res.json(epoGrades);
   } catch (error) {
@@ -1219,15 +1291,33 @@ router.post('/:groupId/epo-grades/release', async (req: Request, res: Response) 
     }
     
     // Aktualisiere alle EPO-Noten für diesen Zeitraum in dieser Gruppe
-    const result = await prisma.participationPeriodGrade.updateMany({
-      where: {
-        groupId,
-        period: period
-      },
-      data: {
-        isReleased: isReleased
+    // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
+    let result;
+    try {
+      result = await prisma.participationPeriodGrade.updateMany({
+        where: {
+          groupId,
+          period: period
+        },
+        data: {
+          isReleased: isReleased
+        }
+      });
+    } catch (e: any) {
+      // Wenn isReleased nicht existiert (Prisma Client veraltet), verwende SQL direkt
+      if (e?.message?.includes('Unknown argument') || e?.message?.includes('isReleased')) {
+        console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), verwende SQL direkt');
+        // Verwende $executeRaw als Fallback
+        const count = await prisma.$executeRaw`
+          UPDATE ParticipationPeriodGrade 
+          SET isReleased = ${isReleased ? 1 : 0}
+          WHERE groupId = ${groupId} AND period = ${period}
+        `;
+        result = { count: Number(count) };
+      } else {
+        throw e;
       }
-    });
+    }
     
     console.log(`Updated ${result.count} EPO grades for period ${period}, isReleased: ${isReleased}`);
     
