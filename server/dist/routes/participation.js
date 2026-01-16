@@ -482,15 +482,33 @@ router.put('/:groupId/periods', async (req, res) => {
 // Get or update seating order for a learning group
 // WICHTIG: Diese Routen müssen VOR der /:groupId Route kommen!
 router.get('/:groupId/seating-order', async (req, res) => {
+    var _a, _b;
     try {
         const { groupId } = req.params;
         console.log('📥 GET /:groupId/seating-order - groupId:', groupId);
-        const group = await prisma.learningGroup.findUnique({
-            where: { id: groupId },
-            select: {
-                seatingOrder: true
+        // Lade seatingOrder - mit Fehlerbehandlung für veralteten Prisma Client
+        let group;
+        try {
+            group = await prisma.learningGroup.findUnique({
+                where: { id: groupId },
+                select: {
+                    seatingOrder: true
+                }
+            });
+        }
+        catch (e) {
+            // Wenn seatingOrder nicht existiert (Prisma Client veraltet), verwende SQL direkt
+            if (((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('Unknown field')) || ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('seatingOrder'))) {
+                console.warn('⚠️ seatingOrder Feld nicht verfügbar (Prisma Client veraltet), verwende SQL direkt');
+                const result = await prisma.$queryRaw `
+          SELECT seatingOrder FROM LearningGroup WHERE id = ${groupId}
+        `;
+                group = result[0] || null;
             }
-        });
+            else {
+                throw e;
+            }
+        }
         if (!group) {
             console.error('❌ Group not found:', groupId);
             return res.status(404).json({ error: 'Lerngruppe nicht gefunden' });
@@ -1387,6 +1405,11 @@ router.put('/:groupId/:lessonIndex/keyword', async (req, res) => {
 router.get('/:groupId/keywords', async (req, res) => {
     try {
         const { groupId } = req.params;
+        // Defensive Prüfung: Stelle sicher, dass prisma verfügbar ist
+        if (!prisma || !prisma.lessonKeyword) {
+            console.error('❌ Prisma Client nicht verfügbar in getLessonKeywords');
+            return res.json({});
+        }
         const keywords = await prisma.lessonKeyword.findMany({
             where: { groupId },
             orderBy: {
