@@ -176,6 +176,12 @@ export const getGradeRelease = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Student ID und Schema ID erforderlich' });
     }
 
+    // Defensive Prüfung: Stelle sicher, dass prisma verfügbar ist
+    if (!prisma || !prisma.gradeRelease) {
+      console.error('❌ Prisma Client nicht verfügbar in getGradeRelease');
+      return res.json({ isReleased: false });
+    }
+
     const gradeRelease = await prisma.gradeRelease.findUnique({
       where: {
         studentId_schemaId: {
@@ -186,9 +192,11 @@ export const getGradeRelease = async (req: Request, res: Response) => {
     });
 
     res.json(gradeRelease || { isReleased: false });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching grade release:', error);
-    res.status(500).json({ error: 'Fehler beim Laden des Freigabestatus' });
+    console.error('Error details:', error?.message, error?.stack);
+    // Bei Fehlern einfach false zurückgeben statt 500 Fehler
+    res.json({ isReleased: false });
   }
 };
 
