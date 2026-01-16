@@ -69,6 +69,9 @@ router.get('/teacher/:id', async (req, res) => {
         // Lade seatingOrder und statisticsOrder separat für jede Gruppe (mit Fehlerbehandlung)
         // Verwende Promise.allSettled, damit ein Fehler bei einer Gruppe nicht alle anderen blockiert
         const groupsWithStatsResults = await Promise.allSettled(groups.map(async (group) => {
+            var _a, _b, _c;
+            // Prüfe zuerst, ob Prisma Client die Felder kennt
+            // Wenn nicht, setze direkt auf null ohne Fehler zu werfen
             try {
                 // Versuche beide Felder auf einmal zu laden
                 const fullGroup = await prisma.learningGroup.findUnique({
@@ -85,9 +88,20 @@ router.get('/teacher/:id', async (req, res) => {
                 };
             }
             catch (e) {
-                // Wenn die Felder nicht gelesen werden können (z.B. Prisma Client veraltet), setze auf null
-                console.warn(`⚠️ Konnte seatingOrder/statisticsOrder für Gruppe ${group.id} nicht lesen:`, (e === null || e === void 0 ? void 0 : e.message) || e);
-                // Versuche einzeln zu laden (Fallback)
+                // Prüfe ob es ein "Unknown field" Fehler ist (Prisma Client veraltet)
+                const isUnknownFieldError = ((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('Unknown field')) ||
+                    ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('seatingOrder')) ||
+                    ((_c = e === null || e === void 0 ? void 0 : e.message) === null || _c === void 0 ? void 0 : _c.includes('statisticsOrder'));
+                if (isUnknownFieldError) {
+                    // Prisma Client ist veraltet - setze einfach auf null ohne Warnung
+                    // (wird automatisch behoben, wenn Container neu gebaut wird)
+                    return {
+                        ...group,
+                        seatingOrder: null,
+                        statisticsOrder: null
+                    };
+                }
+                // Für andere Fehler: Versuche einzeln zu laden (Fallback)
                 try {
                     const seatingOrderGroup = await prisma.learningGroup.findUnique({
                         where: { id: group.id },

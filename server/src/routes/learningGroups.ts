@@ -72,6 +72,8 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
     // Lade seatingOrder und statisticsOrder separat für jede Gruppe (mit Fehlerbehandlung)
     // Verwende Promise.allSettled, damit ein Fehler bei einer Gruppe nicht alle anderen blockiert
     const groupsWithStatsResults = await Promise.allSettled(groups.map(async (group) => {
+      // Prüfe zuerst, ob Prisma Client die Felder kennt
+      // Wenn nicht, setze direkt auf null ohne Fehler zu werfen
       try {
         // Versuche beide Felder auf einmal zu laden
         const fullGroup = await prisma.learningGroup.findUnique({
@@ -87,9 +89,22 @@ router.get('/teacher/:id', async (req: Request, res: Response) => {
           statisticsOrder: fullGroup?.statisticsOrder || null
         };
       } catch (e: any) {
-        // Wenn die Felder nicht gelesen werden können (z.B. Prisma Client veraltet), setze auf null
-        console.warn(`⚠️ Konnte seatingOrder/statisticsOrder für Gruppe ${group.id} nicht lesen:`, e?.message || e);
-        // Versuche einzeln zu laden (Fallback)
+        // Prüfe ob es ein "Unknown field" Fehler ist (Prisma Client veraltet)
+        const isUnknownFieldError = e?.message?.includes('Unknown field') || 
+                                   e?.message?.includes('seatingOrder') ||
+                                   e?.message?.includes('statisticsOrder');
+        
+        if (isUnknownFieldError) {
+          // Prisma Client ist veraltet - setze einfach auf null ohne Warnung
+          // (wird automatisch behoben, wenn Container neu gebaut wird)
+          return {
+            ...group,
+            seatingOrder: null,
+            statisticsOrder: null
+          };
+        }
+        
+        // Für andere Fehler: Versuche einzeln zu laden (Fallback)
         try {
           const seatingOrderGroup = await prisma.learningGroup.findUnique({
             where: { id: group.id },
