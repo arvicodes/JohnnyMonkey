@@ -715,6 +715,7 @@ class KACorrectionController {
      * Prüfe Freigabestatus für eine Klassenarbeit (nur für Lehrer)
      */
     static async getReleaseStatus(req, res) {
+        var _a, _b;
         try {
             const { kaFilePath } = req.query;
             const loginCode = req.headers['x-login-code'];
@@ -734,16 +735,37 @@ class KACorrectionController {
             // Versuche auch mit verschiedenen Varianten zu suchen
             const uniquePaths = getPossiblePaths(kaFilePath);
             // Finde alle Submissions für diese KA
-            const submissions = await prisma.kASubmission.findMany({
-                where: {
-                    OR: uniquePaths.map(path => ({
-                        kaFilePath: path
-                    }))
-                },
-                select: {
-                    isReleased: true
+            // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
+            let submissions;
+            try {
+                submissions = await prisma.kASubmission.findMany({
+                    where: {
+                        OR: uniquePaths.map(path => ({
+                            kaFilePath: path
+                        }))
+                    },
+                    select: {
+                        isReleased: true
+                    }
+                });
+            }
+            catch (e) {
+                // Wenn isReleased nicht existiert (Prisma Client veraltet), lade alle Felder
+                if (((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('Unknown field')) || ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('isReleased'))) {
+                    console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), lade alle Submissions');
+                    const allSubmissions = await prisma.kASubmission.findMany({
+                        where: {
+                            OR: uniquePaths.map(path => ({
+                                kaFilePath: path
+                            }))
+                        }
+                    });
+                    submissions = allSubmissions.map(sub => ({ isReleased: sub.isReleased || false }));
                 }
-            });
+                else {
+                    throw e;
+                }
+            }
             if (submissions.length === 0) {
                 return res.json({ isReleased: false, count: 0 });
             }

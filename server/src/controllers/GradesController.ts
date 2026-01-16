@@ -176,20 +176,25 @@ export const getGradeRelease = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Student ID und Schema ID erforderlich' });
     }
 
-    // Defensive Prüfung: Stelle sicher, dass prisma verfügbar ist
-    if (!prisma || !prisma.gradeRelease) {
-      console.error('❌ Prisma Client nicht verfügbar in getGradeRelease');
-      return res.json({ isReleased: false });
-    }
-
-    const gradeRelease = await prisma.gradeRelease.findUnique({
+    // Versuche gradeRelease zu laden - mit Fehlerbehandlung
+    let gradeRelease;
+    try {
+      gradeRelease = await prisma.gradeRelease.findUnique({
       where: {
         studentId_schemaId: {
           studentId,
           schemaId
         }
       }
-    });
+      });
+    } catch (e: any) {
+      // Wenn gradeRelease nicht existiert oder prisma undefined ist
+      if (!prisma || e?.message?.includes('gradeRelease') || e?.message?.includes('Cannot read')) {
+        console.warn('⚠️ Prisma Client oder gradeRelease nicht verfügbar in getGradeRelease');
+        return res.json({ isReleased: false });
+      }
+      throw e;
+    }
 
     res.json(gradeRelease || { isReleased: false });
   } catch (error: any) {

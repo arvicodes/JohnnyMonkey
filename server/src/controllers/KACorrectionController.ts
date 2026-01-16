@@ -846,16 +846,35 @@ export class KACorrectionController {
       const uniquePaths = getPossiblePaths(kaFilePath);
       
       // Finde alle Submissions für diese KA
-      const submissions = await prisma.kASubmission.findMany({
-        where: {
-          OR: uniquePaths.map(path => ({
-            kaFilePath: path
-          }))
-        },
-        select: {
-          isReleased: true
+      // Prüfe zuerst, ob isReleased Feld existiert (Prisma Client könnte veraltet sein)
+      let submissions: Array<{ isReleased: boolean }>;
+      try {
+        submissions = await prisma.kASubmission.findMany({
+          where: {
+            OR: uniquePaths.map(path => ({
+              kaFilePath: path
+            }))
+          },
+          select: {
+            isReleased: true
+          }
+        });
+      } catch (e: any) {
+        // Wenn isReleased nicht existiert (Prisma Client veraltet), lade alle Felder
+        if (e?.message?.includes('Unknown field') || e?.message?.includes('isReleased')) {
+          console.warn('⚠️ isReleased Feld nicht verfügbar (Prisma Client veraltet), lade alle Submissions');
+          const allSubmissions = await prisma.kASubmission.findMany({
+            where: {
+              OR: uniquePaths.map(path => ({
+                kaFilePath: path
+              }))
+            }
+          });
+          submissions = allSubmissions.map(sub => ({ isReleased: sub.isReleased || false }));
+        } else {
+          throw e;
         }
-      });
+      }
 
       if (submissions.length === 0) {
         return res.json({ isReleased: false, count: 0 });

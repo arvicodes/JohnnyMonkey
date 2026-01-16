@@ -145,24 +145,32 @@ const toggleGradeRelease = async (req, res) => {
 exports.toggleGradeRelease = toggleGradeRelease;
 // Hole Freigabestatus für einen Schüler und Schema
 const getGradeRelease = async (req, res) => {
+    var _a, _b;
     try {
         const { studentId, schemaId } = req.params;
         if (!studentId || !schemaId) {
             return res.status(400).json({ error: 'Student ID und Schema ID erforderlich' });
         }
-        // Defensive Prüfung: Stelle sicher, dass prisma verfügbar ist
-        if (!prisma || !prisma.gradeRelease) {
-            console.error('❌ Prisma Client nicht verfügbar in getGradeRelease');
-            return res.json({ isReleased: false });
-        }
-        const gradeRelease = await prisma.gradeRelease.findUnique({
-            where: {
-                studentId_schemaId: {
-                    studentId,
-                    schemaId
+        // Versuche gradeRelease zu laden - mit Fehlerbehandlung
+        let gradeRelease;
+        try {
+            gradeRelease = await prisma.gradeRelease.findUnique({
+                where: {
+                    studentId_schemaId: {
+                        studentId,
+                        schemaId
+                    }
                 }
+            });
+        }
+        catch (e) {
+            // Wenn gradeRelease nicht existiert oder prisma undefined ist
+            if (!prisma || ((_a = e === null || e === void 0 ? void 0 : e.message) === null || _a === void 0 ? void 0 : _a.includes('gradeRelease')) || ((_b = e === null || e === void 0 ? void 0 : e.message) === null || _b === void 0 ? void 0 : _b.includes('Cannot read'))) {
+                console.warn('⚠️ Prisma Client oder gradeRelease nicht verfügbar in getGradeRelease');
+                return res.json({ isReleased: false });
             }
-        });
+            throw e;
+        }
         res.json(gradeRelease || { isReleased: false });
     }
     catch (error) {
