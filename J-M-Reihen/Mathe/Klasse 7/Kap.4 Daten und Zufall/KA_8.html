@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>gg</title>
+    <title>8</title>
     <script>
         // KRITISCH: Status-Check IM HEAD - wird SOFORT ausgeführt, bevor irgendetwas gerendert wird
         (function() {
             try {
-                const KA_KEY = 'KA_gg';
+                const KA_KEY = 'KA_8';
                 const isTeacher = localStorage.getItem('teacherId') !== null;
                 
                 // Wenn Lehrer, keine Sperre
@@ -737,7 +737,7 @@
         // Status-Check: Nur Debug-Log, keine Blockierung
         // Die echte Prüfung erfolgt in initializeTimer() mit Datenbank-Abfrage
         (function() {
-            const KA_KEY = 'KA_gg';
+            const KA_KEY = 'KA_8';
             const isTeacher = localStorage.getItem('teacherId') !== null;
             
             // Wenn Lehrer, keine Prüfung
@@ -769,7 +769,7 @@
     </script>
     <div class="header">
         <div class="header-top">
-            <div class="header-title">gg</div>
+            <div class="header-title">8</div>
             <div class="header-date" id="currentDate"></div>
         </div>
         <div class="header-divider"></div>
@@ -803,368 +803,369 @@
         </ul>
     </div>
 
-    <!-- Aufgabe 1: AFB 1 - Wissensabfrage Fachbegriffe als Fließtext -->
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+        
+
+    
+
+        <!-- Aufgabe 1: AFB 2 - Multiple Choice -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(8 Punkte - je 1 Punkt pro Lücke)</span></div>
+            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(5 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">5 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Kamele ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Ha
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        bb
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        aergaergaerg
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        eargeargerg
+                    </label>
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div><!-- Aufgabe 2: AFB 1 - Multiple Choice -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
             <div class="task-meta teacher-only">
                 <span class="afb-badge afb-1">AFB 1</span>
-                <div class="points">8 Punkte</div>
+                <div class="points">2 Punkte</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Ergänze</strong> den folgenden Text mit den passenden Fachbegriffen:</p>
-            
-            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px;">
-                <p>Die Gerade, die eine Strecke in zwei gleich lange Teile teilt und senkrecht auf ihr steht, heißt <input type="text" id="a1a" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;">. Die Gerade, die einen Winkel in zwei gleich große Winkel teilt, heißt <input type="text" id="a1b" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;">.</p>
-            
-                <p>Eine <input type="text" id="a1c" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;"> bildet jeden Punkt P auf einen Bildpunkt P' ab, wobei die Spiegelachse die Mittelsenkrechte der Strecke PP' ist. Bei einer <input type="text" id="a1d" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;"> wird jeder Punkt P an einem Punkt Z gespiegelt, sodass Z der Mittelpunkt der Strecke PP' ist.</p>
-            
-                <p>Eine <input type="text" id="a1e" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;"> verschiebt jeden Punkt P um einen festen Pfeil v zu einem Bildpunkt P'. Bei einer <input type="text" id="a1f" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;"> wird jeder Punkt P um einen festen Punkt Z um einen bestimmten Winkel gedreht.</p>
-                
-                <p>Eine <input type="text" id="a1g" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;"> ist eine Abbildung, die Längen, Winkel und Flächeninhalte erhält. Die Hintereinanderausführung von zwei Spiegelungen an zwei verschiedenen Geraden heißt <input type="text" id="a1h" placeholder="_____________" style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; min-width: 150px; font-size: 14px;">.</p>
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Kamele ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Kamele
+                    </label>
+                </div>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>Die Gerade, die eine Strecke in zwei gleich lange Teile teilt und senkrecht auf ihr steht, heißt <strong>Mittelsenkrechte</strong>. Die Gerade, die einen Winkel in zwei gleich große Winkel teilt, heißt <strong>Winkelhalbierende</strong>.</p>
-                <p>Eine <strong>Achsenspiegelung</strong> (oder: Geradenspiegelung) bildet jeden Punkt P auf einen Bildpunkt P' ab, wobei die Spiegelachse die Mittelsenkrechte der Strecke PP' ist. Bei einer <strong>Punktspiegelung</strong> (oder: Zentralspiegelung) wird jeder Punkt P an einem Punkt Z gespiegelt, sodass Z der Mittelpunkt der Strecke PP' ist.</p>
-                <p>Eine <strong>Verschiebung</strong> (oder: Translation) verschiebt jeden Punkt P um einen festen Pfeil v zu einem Bildpunkt P'. Bei einer <strong>Drehung</strong> (oder: Rotation) wird jeder Punkt P um einen festen Punkt Z um einen bestimmten Winkel gedreht.</p>
-                <p>Eine <strong>Kongruenzabbildung</strong> (oder: Isometrie) ist eine Abbildung, die Längen, Winkel und Flächeninhalte erhält. Die Hintereinanderausführung von zwei Spiegelungen an zwei verschiedenen Geraden heißt <strong>Doppelspiegelung</strong>.</p>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
             </div>
         </div>
     </div>
 
-    <!-- Aufgabe 2: AFB 2 - Wissensabfrage vertieft -->
+    <!-- Aufgabe 3: AFB 1 - Multiple Choice -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(3 Punkte - je 1 Punkt pro Frage)</span></div>
+            <div class="task-number">Aufgabe 3 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-2">AFB 2</span>
-                <div class="points">6 Punkte</div>
+                <span class="afb-badge afb-1">AFB 1</span>
+                <div class="points">2 Punkte</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an. Achte auf die Details - nicht alle Antworten sind offensichtlich falsch!</p>
-            
             <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">a) Ein Dreieck wird zuerst an der Geraden g gespiegelt, dann an der Geraden h. Die Geraden g und h schneiden sich im Punkt S. Welche Transformation kann diese Doppelspiegelung ersetzen?</label>
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Kamele ist korrekt?</label>
                 <div style="margin-left: 20px;">
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2a" value="a" style="margin-right: 8px;">
-                        Eine Verschiebung, da die Geraden sich schneiden.
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Kamele
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2a" value="b" style="margin-right: 8px;">
-                        Eine Drehung um den Schnittpunkt S, wobei der Drehwinkel doppelt so groß ist wie der Winkel zwischen g und h.
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Kamele
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2a" value="c" style="margin-right: 8px;">
-                        Eine Punktspiegelung am Schnittpunkt S, unabhängig vom Winkel zwischen den Geraden.
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Kamele
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2a" value="d" style="margin-right: 8px;">
-                        Eine weitere Doppelspiegelung, da sich die Geraden schneiden.
-                    </label>
-            </div>
-            </div>
-
-            <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">b) Bei einer Verschiebung um den Pfeil v = (5|-3) wird der Punkt A(2|7) auf den Punkt A' abgebildet. Welche Aussage über A' ist korrekt?</label>
-                <div style="margin-left: 20px;">
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2b" value="a" style="margin-right: 8px;">
-                        A' hat die Koordinaten (7|4), da man die Koordinaten des Pfeils zu den Koordinaten von A addiert.
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2b" value="b" style="margin-right: 8px;">
-                        A' hat die Koordinaten (-3|10), da man die Koordinaten des Pfeils von den Koordinaten von A subtrahiert.
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2b" value="c" style="margin-right: 8px;">
-                        A' hat die Koordinaten (10|4), da man beide Koordinaten des Pfeils zu beiden Koordinaten von A addiert.
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2b" value="d" style="margin-right: 8px;">
-                        A' kann nicht bestimmt werden, da der Pfeil keine Richtung angibt.
-                    </label>
-        </div>
-    </div>
-
-            <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">c) Welche der folgenden Aussagen über Kongruenzabbildungen ist <strong>falsch</strong>?</label>
-                <div style="margin-left: 20px;">
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2c" value="a" style="margin-right: 8px;">
-                        Alle Kongruenzabbildungen erhalten die Form von Figuren, aber nicht unbedingt deren Größe.
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2c" value="b" style="margin-right: 8px;">
-                        Bei einer Kongruenzabbildung bleiben alle Abstände zwischen Punkten gleich, daher auch alle Winkel und Flächeninhalte.
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2c" value="c" style="margin-right: 8px;">
-                        Eine Doppelspiegelung an zwei sich schneidenden Geraden ist immer eine Kongruenzabbildung, da sie durch eine Drehung ersetzt werden kann.
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a2c" value="d" style="margin-right: 8px;">
-                        Verschiebungen sind Kongruenzabbildungen, weil alle Punkte um denselben Pfeil verschoben werden und dadurch ihre Abstände zueinander gleich bleiben.
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Kamele
                     </label>
                 </div>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>a) <strong>Richtige Antwort: B</strong></p>
-                <p>Eine Doppelspiegelung an zwei sich schneidenden Geraden kann durch eine Drehung um den Schnittpunkt ersetzt werden. Der Drehwinkel ist doppelt so groß wie der Winkel zwischen den beiden Geraden.</p>
-                <p><em>Warum die anderen falsch sind:</em> A ist falsch, da sich schneidende Geraden keine Verschiebung erzeugen. C ist falsch, da eine Punktspiegelung nur bei einem Winkel von 90° entsteht. D ist falsch, da eine Doppelspiegelung durch eine einzelne Transformation ersetzt werden kann.</p>
-                
-                <p>b) <strong>Richtige Antwort: A</strong></p>
-                <p>Bei einer Verschiebung addiert man die Koordinaten des Pfeils zu den Koordinaten des Ausgangspunkts: A'(2+5|7+(-3)) = A'(7|4).</p>
-                <p><em>Warum die anderen falsch sind:</em> B subtrahiert statt zu addieren. C addiert falsch (10 statt 7). D ist grundsätzlich falsch, da ein Pfeil immer eine Richtung angibt.</p>
-                
-                <p>c) <strong>Richtige Antwort: A</strong></p>
-                <p>Diese Aussage ist falsch, da Kongruenzabbildungen sowohl die Form als auch die Größe von Figuren erhalten. Alle anderen Aussagen sind korrekt.</p>
-                <p><em>Warum die anderen richtig sind:</em> B beschreibt korrekt die Eigenschaften von Kongruenzabbildungen. C ist richtig, da Doppelspiegelungen Kongruenzabbildungen sind. D erklärt korrekt, warum Verschiebungen Kongruenzabbildungen sind.</p>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
             </div>
-            </div>
-            </div>
+        </div>
+    </div>
 
-    <!-- Aufgabe 3: AFB 2 - Transformationen -->
+    <!-- Aufgabe 4: AFB 1 - Multiple Choice -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 3 <span style="font-size: 11px; color: #666; font-weight: normal;">(14 Punkte - je 3.5 Punkte pro Teilaufgabe: 1.5 Koordinaten + 2 Konstruktion)</span></div>
+            <div class="task-number">Aufgabe 4 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-2">AFB 2</span>
-                <div class="points">8 Punkte</div>
+                <span class="afb-badge afb-1">AFB 1</span>
+                <div class="points">2 Punkte</div>
             </div>
         </div>
         <div class="task-content">
-            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
-                <strong>📋 Wichtiger Hinweis:</strong> Nimm dir ein großes Blatt und zeichne dort ein Koordinatensystem. Es soll mindestens von -10 bis +10 auf beiden Achsen gehen. So kannst du alle Aufgaben gut zeichnen.
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Kamele ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Kamele
+                    </label>
                 </div>
-            <p>Du hast ein Dreieck mit den Punkten A(-6|4), B(-3|7) und C(-4|2). Dieses Dreieck liegt links oben im Koordinatensystem.</p>
-            <p>Jetzt sollst du dieses Dreieck auf verschiedene Arten verschieben oder spiegeln. Zeichne das neue Dreieck in dein Koordinatensystem und schreibe die Koordinaten der neuen Punkte auf:</p>
-            
-            <div class="input-group full-width">
-                <label>a) <strong>Spiegle</strong> das Dreieck ABC an der x-Achse (das ist die waagerechte Linie). Wie heißen die neuen Punkte A₁, B₁ und C₁?</label>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 8px;">
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>A₁(</span>
-                        <input type="number" id="a3a_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3a_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>B₁(</span>
-                        <input type="number" id="a3b_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3b_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>C₁(</span>
-                        <input type="number" id="a3c_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3c_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-        </div>
-    </div>
-
-            <div class="input-group full-width">
-                <label>b) <strong>Spiegle</strong> das Dreieck A₁B₁C₁ jetzt an der Geraden y = x (das ist die Diagonale, die von links unten nach rechts oben geht). Wie heißen die neuen Punkte A₂, B₂ und C₂?</label>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 8px;">
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>A₂(</span>
-                        <input type="number" id="a3d_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3d_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-                </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>B₂(</span>
-                        <input type="number" id="a3e_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3e_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>C₂(</span>
-                        <input type="number" id="a3f_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3f_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-        </div>
-                </div>
-            </div>
-            
-            <div class="input-group full-width">
-                <label>c) <strong>Verschiebe</strong> das ursprüngliche Dreieck ABC. Jeder Punkt soll 8 Einheiten nach rechts und 3 Einheiten nach oben verschoben werden. Wie heißen die neuen Punkte A₃, B₃ und C₃?</label>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 8px;">
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>A₃(</span>
-                        <input type="number" id="a3g_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3g_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>B₃(</span>
-                        <input type="number" id="a3h_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3h_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>C₃(</span>
-                        <input type="number" id="a3i_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3i_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-            </div>
-            </div>
-
-            <div class="input-group full-width">
-                <label>d) <strong>Spiegle</strong> das ursprüngliche Dreieck ABC am Punkt Z(2|-1). Das bedeutet: Der Punkt Z ist genau in der Mitte zwischen dem ursprünglichen Punkt und dem gespiegelten Punkt. Wie heißen die neuen Punkte A₄, B₄ und C₄?</label>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 8px;">
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>A₄(</span>
-                        <input type="number" id="a3j_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3j_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-            </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>B₄(</span>
-                        <input type="number" id="a3k_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3k_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-        </div>
-                    <div style="display: flex; align-items: center; gap: 5px;">
-                        <span>C₄(</span>
-                        <input type="number" id="a3l_x" placeholder="x" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>|</span>
-                        <input type="number" id="a3l_y" placeholder="y" style="width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 3px;">
-                        <span>)</span>
-    </div>
-                </div>
-            </div>
-
-            <div class="rechenweg-required">
-                ⚠️ <strong>Zeichne alles schön ordentlich in dein großes Koordinatensystem!</strong>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>a) <strong>Spiegelung an der x-Achse:</strong></p>
-                <p>A₁(-6|-4), B₁(-3|-7), C₁(-4|-2)</p>
-                <p><em>So geht's: Bei der Spiegelung an der x-Achse bleibt die x-Koordinate gleich, aber die y-Koordinate bekommt das umgekehrte Vorzeichen (aus + wird -, aus - wird +).</em></p>
-                
-                <p>b) <strong>Spiegelung an der Geraden y = x:</strong></p>
-                <p>A₂(-4|-6), B₂(-7|-3), C₂(-2|-4)</p>
-                <p><em>So geht's: Bei der Spiegelung an y = x tauscht man einfach die x- und y-Koordinate. Aus (x|y) wird (y|x).</em></p>
-                
-                <p>c) <strong>Verschiebung um 8 nach rechts und 3 nach oben:</strong></p>
-                <p>A₃(2|7), B₃(5|10), C₃(4|5)</p>
-                <p><em>So geht's: Du addierst zu jeder x-Koordinate 8 und zu jeder y-Koordinate 3. Zum Beispiel: A(-6|4) wird zu A₃(-6+8|4+3) = A₃(2|7).</em></p>
-                
-                <p>d) <strong>Punktspiegelung am Punkt Z(2|-1):</strong></p>
-                <p>A₄(10|-6), B₄(7|-9), C₄(8|-4)</p>
-                <p><em>So geht's: Der Punkt Z ist genau in der Mitte zwischen dem ursprünglichen Punkt und dem gespiegelten Punkt. Du kannst es so rechnen: A₄ = 2·Z - A = 2·(2|-1) - (-6|4) = (4|-2) - (-6|4) = (10|-6).</em></p>
-                
-                <div style="margin: 20px 0; text-align: center;">
-                    <svg width="600" height="600" viewBox="0 0 20 20" style="border: 1px solid #ccc; background: #f9f9f9;">
-                        <!-- Koordinatenachsen -->
-                        <line x1="0" y1="10" x2="20" y2="10" stroke="#000" stroke-width="0.2" marker-end="url(#arrowX)"/>
-                        <line x1="10" y1="0" x2="10" y2="20" stroke="#000" stroke-width="0.2" marker-end="url(#arrowY)"/>
-                        <defs>
-                            <marker id="arrowX" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                                <polygon points="0 0, 10 3, 0 6" fill="#000"/>
-                            </marker>
-                            <marker id="arrowY" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                                <polygon points="0 0, 10 3, 0 6" fill="#000"/>
-                            </marker>
-                        </defs>
-                        <!-- Achsenbeschriftung -->
-                        <text x="19.3" y="9.7" font-size="0.6" fill="#000" font-weight="bold">x</text>
-                        <text x="10.2" y="0.7" font-size="0.6" fill="#000" font-weight="bold">y</text>
-                        <!-- Gitter -->
-                        <g stroke="#e0e0e0" stroke-width="0.05" opacity="0.5">
-                            <line x1="0" y1="0" x2="0" y2="20"/>
-                            <line x1="2" y1="0" x2="2" y2="20"/>
-                            <line x1="4" y1="0" x2="4" y2="20"/>
-                            <line x1="6" y1="0" x2="6" y2="20"/>
-                            <line x1="8" y1="0" x2="8" y2="20"/>
-                            <line x1="12" y1="0" x2="12" y2="20"/>
-                            <line x1="14" y1="0" x2="14" y2="20"/>
-                            <line x1="16" y1="0" x2="16" y2="20"/>
-                            <line x1="18" y1="0" x2="18" y2="20"/>
-                            <line x1="20" y1="0" x2="20" y2="20"/>
-                            <line x1="0" y1="0" x2="20" y2="0"/>
-                            <line x1="0" y1="2" x2="20" y2="2"/>
-                            <line x1="0" y1="4" x2="20" y2="4"/>
-                            <line x1="0" y1="6" x2="20" y2="6"/>
-                            <line x1="0" y1="8" x2="20" y2="8"/>
-                            <line x1="0" y1="12" x2="20" y2="12"/>
-                            <line x1="0" y1="14" x2="20" y2="14"/>
-                            <line x1="0" y1="16" x2="20" y2="16"/>
-                            <line x1="0" y1="18" x2="20" y2="18"/>
-                            <line x1="0" y1="20" x2="20" y2="20"/>
-                        </g>
-                        <!-- Erste Winkelhalbierende y=x -->
-                        <line x1="0" y1="0" x2="20" y2="20" stroke="#9c27b0" stroke-width="0.15" stroke-dasharray="0.3,0.3" opacity="0.7"/>
-                        <text x="18.5" y="18.5" font-size="0.5" fill="#9c27b0" font-weight="bold">y=x</text>
-                        <!-- Original-Dreieck ABC: A(-6|4)=(4,6), B(-3|7)=(7,3), C(-4|2)=(6,8) -->
-                        <polygon points="4,6 7,3 6,8" fill="none" stroke="#1976d2" stroke-width="0.2"/>
-                        <circle cx="4" cy="6" r="0.2" fill="#1976d2"/>
-                        <text x="4.3" y="5.7" font-size="0.5" fill="#1976d2" font-weight="bold">A(-6|4)</text>
-                        <circle cx="7" cy="3" r="0.2" fill="#1976d2"/>
-                        <text x="7.3" y="2.7" font-size="0.5" fill="#1976d2" font-weight="bold">B(-3|7)</text>
-                        <circle cx="6" cy="8" r="0.2" fill="#1976d2"/>
-                        <text x="6.3" y="7.7" font-size="0.5" fill="#1976d2" font-weight="bold">C(-4|2)</text>
-                        <!-- Gespiegelt an x-Achse: A₁(-6|-4)=(4,14), B₁(-3|-7)=(7,17), C₁(-4|-2)=(6,12) -->
-                        <polygon points="4,14 7,17 6,12" fill="none" stroke="#d32f2f" stroke-width="0.15" stroke-dasharray="0.2,0.2" opacity="0.8"/>
-                        <circle cx="4" cy="14" r="0.15" fill="#d32f2f"/>
-                        <text x="4.3" y="13.7" font-size="0.45" fill="#d32f2f" font-weight="bold">A₁</text>
-                        <circle cx="7" cy="17" r="0.15" fill="#d32f2f"/>
-                        <text x="7.3" y="16.7" font-size="0.45" fill="#d32f2f" font-weight="bold">B₁</text>
-                        <circle cx="6" cy="12" r="0.15" fill="#d32f2f"/>
-                        <text x="6.3" y="11.7" font-size="0.45" fill="#d32f2f" font-weight="bold">C₁</text>
-                        <!-- Gespiegelt an y=x: A₂(-4|-6)=(6,14), B₂(-7|-3)=(3,17), C₂(-2|-4)=(4,12) -->
-                        <polygon points="6,14 3,17 4,12" fill="none" stroke="#ff9800" stroke-width="0.15" stroke-dasharray="0.2,0.2" opacity="0.8"/>
-                        <circle cx="6" cy="14" r="0.15" fill="#ff9800"/>
-                        <text x="6.3" y="13.7" font-size="0.45" fill="#ff9800" font-weight="bold">A₂</text>
-                        <circle cx="3" cy="17" r="0.15" fill="#ff9800"/>
-                        <text x="3.3" y="16.7" font-size="0.45" fill="#ff9800" font-weight="bold">B₂</text>
-                        <circle cx="4" cy="12" r="0.15" fill="#ff9800"/>
-                        <text x="4.3" y="11.7" font-size="0.45" fill="#ff9800" font-weight="bold">C₂</text>
-                        <!-- Verschoben: A₃(2|7)=(18,3), B₃(5|10)=(15,0), C₃(4|5)=(16,5) -->
-                        <polygon points="18,3 15,0 16,5" fill="none" stroke="#4caf50" stroke-width="0.15" stroke-dasharray="0.2,0.2" opacity="0.8"/>
-                        <circle cx="18" cy="3" r="0.15" fill="#4caf50"/>
-                        <text x="18.3" y="2.7" font-size="0.45" fill="#4caf50" font-weight="bold">A₃</text>
-                        <circle cx="15" cy="0" r="0.15" fill="#4caf50"/>
-                        <text x="15.3" y="-0.3" font-size="0.45" fill="#4caf50" font-weight="bold">B₃</text>
-                        <circle cx="16" cy="5" r="0.15" fill="#4caf50"/>
-                        <text x="16.3" y="4.7" font-size="0.45" fill="#4caf50" font-weight="bold">C₃</text>
-                        <!-- Punktspiegelung an Z(2|-1)=(18,11): A₄(10|-6)=(20,16), B₄(7|-9)=(17,19), C₄(8|-4)=(18,14) -->
-                        <circle cx="18" cy="11" r="0.25" fill="#9c27b0"/>
-                        <text x="18.3" y="10.7" font-size="0.5" fill="#9c27b0" font-weight="bold">Z(2|-1)</text>
-                        <polygon points="20,16 17,19 18,14" fill="none" stroke="#9c27b0" stroke-width="0.15" stroke-dasharray="0.2,0.2" opacity="0.8"/>
-                        <circle cx="20" cy="16" r="0.15" fill="#9c27b0"/>
-                        <text x="19.7" y="15.7" font-size="0.45" fill="#9c27b0" font-weight="bold">A₄</text>
-                        <circle cx="17" cy="19" r="0.15" fill="#9c27b0"/>
-                        <text x="17.3" y="18.7" font-size="0.45" fill="#9c27b0" font-weight="bold">B₄</text>
-                        <circle cx="18" cy="14" r="0.15" fill="#9c27b0"/>
-                        <text x="18.3" y="13.7" font-size="0.45" fill="#9c27b0" font-weight="bold">C₄</text>
-                    </svg>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
             </div>
         </div>
     </div>
+
+    <!-- Aufgabe 5: AFB 1 - Multiple Choice -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 5 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-1">AFB 1</span>
+                <div class="points">2 Punkte</div>
             </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Kamele ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Kamele
+                    </label>
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 6: AFB 2 - Multiple Choice (schwerste Multiple-Choice-Frage) -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 6 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Kamele ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Kamele
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Kamele
+                    </label>
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 7: AFB 2 - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 7 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Kamele:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Kamele in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a7" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 8: AFB 2 - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 8 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Kamele:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Kamele in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a8" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 9: AFB 2 - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 9 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Kamele:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Kamele in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a9" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 10: AFB 2 - Textaufgabe (schwerste Frage) -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 10 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Kamele:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Kamele in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a10" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+         </div>
             
 
     <div class="submit-section">
@@ -1187,7 +1188,7 @@
 
     <script>
         // Eindeutiger Key für diese Hausaufgabenüberprüfung (HÜ)
-        const KA_KEY = 'KA_gg';
+        const KA_KEY = 'KA_8';
         const isTeacher = localStorage.getItem('teacherId') !== null;
         const studentId = localStorage.getItem('studentId') || 'unknown';
         

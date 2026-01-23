@@ -1171,6 +1171,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [availableFolders, setAvailableFolders] = useState<Array<{ path: string; name: string }>>([]);
   const [folderTree, setFolderTree] = useState<any>(null);
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(new Set());
+  const [contentCreationModalOpen, setContentCreationModalOpen] = useState(false);
+  const [contentTopic, setContentTopic] = useState('Affen');
+  const [contentMCQuestions, setContentMCQuestions] = useState(6);
+  const [contentTextQuestions, setContentTextQuestions] = useState(4);
+  const [contentGenerating, setContentGenerating] = useState(false);
+  const [createdExaminationFilePath, setCreatedExaminationFilePath] = useState<string>('');
+  const [createdExaminationType, setCreatedExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('');
+  
+  // Einzelfragen-Bearbeitung
+  const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
+  const [singleQuestionFilePath, setSingleQuestionFilePath] = useState<string>('');
+  const [examinationQuestions, setExaminationQuestions] = useState<any[]>([]);
+  const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+  const [savingQuestion, setSavingQuestion] = useState(false);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [participationGroupId, setParticipationGroupId] = useState<string | null>(null);
   const [participationGroupName, setParticipationGroupName] = useState('');
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
@@ -3140,6 +3155,53 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               color: isCorrectionFile(item.name) ? '#ff9800' : color
             }}>{item.name}</span>
             
+            {/* Icons für Bearbeitung von Prüfungsdateien */}
+            {item.type === 'file' && isCorrectionFile(item.name) && (
+              <Box sx={{ display: 'flex', gap: 0.3, ml: 0.5 }}>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditExamination(item);
+                  }}
+                  sx={{
+                    p: 0.3,
+                    minWidth: 20,
+                    width: 20,
+                    height: 20,
+                    color: '#1976d2',
+                    '&:hover': {
+                      bgcolor: '#e3f2fd',
+                      color: '#1565c0'
+                    }
+                  }}
+                  title="Alle Inhalte neu generieren"
+                >
+                  <EditIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditSingleQuestion(item);
+                  }}
+                  sx={{
+                    p: 0.3,
+                    minWidth: 20,
+                    width: 20,
+                    height: 20,
+                    color: '#2e7d32',
+                    '&:hover': {
+                      bgcolor: '#e8f5e9',
+                      color: '#1b5e20'
+                    }
+                  }}
+                  title="Einzelfragen bearbeiten"
+                >
+                  <QuizIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Box>
+            )}
 
             </Typography>
             
@@ -3537,6 +3599,169 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     );
   };
 
+  // Funktion zum Bearbeiten einer bestehenden Prüfung
+  const handleEditExamination = (item: any) => {
+    // Bestimme den Prüfungstyp aus dem Dateinamen
+    let examType: 'KA' | 'KU' | 'HU' | 'QZ' = 'KA';
+    if (item.name.startsWith('HU_') || item.name.startsWith('HÜ_')) {
+      examType = 'HU';
+    } else if (item.name.startsWith('KU_')) {
+      examType = 'KU';
+    } else if (item.name.startsWith('QZ_')) {
+      examType = 'QZ';
+    }
+    
+    // Setze die Datei-Pfade und öffne das Modal
+    setCreatedExaminationFilePath(item.path);
+    setCreatedExaminationType(examType);
+    setContentTopic('Affen');
+    setContentMCQuestions(6);
+    setContentTextQuestions(4);
+    setContentCreationModalOpen(true);
+  };
+  
+  // Funktion zum Öffnen des Einzelfragen-Modals
+  const handleEditSingleQuestion = async (item: any) => {
+    setSingleQuestionFilePath(item.path);
+    setExaminationQuestions([]);
+    setEditingQuestion(null);
+    setSingleQuestionModalOpen(true);
+    setLoadingQuestions(true);
+    
+    try {
+      const response = await fetch(`/api/file-system-paths/get-examination-questions?filePath=${encodeURIComponent(item.path)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setExaminationQuestions(data.questions || []);
+      } else {
+        showSnackbar('Fehler beim Laden der Fragen', 'error');
+      }
+    } catch (error) {
+      console.error('❌ Fehler beim Laden der Fragen:', error);
+      showSnackbar('Fehler beim Laden der Fragen', 'error');
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+  
+  // Funktion zum Speichern einer Frage
+  const handleSaveQuestion = async (question: any) => {
+    setSavingQuestion(true);
+    try {
+      const response = await fetch('/api/file-system-paths/update-single-question', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filePath: singleQuestionFilePath,
+          taskNumber: question.taskNumber,
+          questionText: question.questionText,
+          questionType: question.questionType,
+          options: question.options || [],
+          correctAnswer: question.correctAnswer || '',
+          explanation: question.explanation || ''
+        })
+      });
+
+      if (response.ok) {
+        showSnackbar('Frage erfolgreich gespeichert!', 'success');
+        setEditingQuestion(null);
+        // Lade Fragen neu
+        const reloadResponse = await fetch(`/api/file-system-paths/get-examination-questions?filePath=${encodeURIComponent(singleQuestionFilePath)}`);
+        if (reloadResponse.ok) {
+          const data = await reloadResponse.json();
+          setExaminationQuestions(data.questions || []);
+        }
+      } else {
+        const errorText = await response.text();
+        let errorMessage = 'Unbekannter Fehler';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || error.details || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        showSnackbar(`Fehler: ${errorMessage}`, 'error');
+      }
+    } catch (error) {
+      console.error('❌ Fehler beim Speichern der Frage:', error);
+      showSnackbar('Fehler beim Speichern der Frage', 'error');
+    } finally {
+      setSavingQuestion(false);
+    }
+  };
+  
+
+  // Funktion zum Generieren der Inhalte
+  const handleGenerateContent = async () => {
+    if (!contentTopic.trim() || !createdExaminationFilePath) {
+      showSnackbar('Bitte geben Sie ein Thema ein', 'error');
+      return;
+    }
+    
+    if (contentMCQuestions < 0 || contentTextQuestions < 0) {
+      showSnackbar('Die Anzahl der Fragen muss größer oder gleich 0 sein', 'error');
+      return;
+    }
+    
+    if (contentMCQuestions === 0 && contentTextQuestions === 0) {
+      showSnackbar('Bitte geben Sie mindestens eine Frage an', 'error');
+      return;
+    }
+
+    setContentGenerating(true);
+    try {
+      // Erstelle Prompt aus den Eingaben
+      const totalQuestions = contentMCQuestions + contentTextQuestions;
+      const prompt = `Erstelle mir eine Arbeit zum Thema ${contentTopic}, die ${totalQuestions} Fragen umfasst. Davon sollen ${contentMCQuestions} Fragen Multiple Choice mit 4 Ankreuzmöglichkeiten sein, wovon nur eine richtig ist. Alle Fragen sind unterschiedlich. Die letzte Frage ist die schwerste, die erste die einfachste. ${contentTextQuestions} Frage soll eine Textantwort beinhalten.`;
+      
+      const response = await fetch('/api/file-system-paths/generate-examination-content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filePath: createdExaminationFilePath,
+          prompt: prompt,
+          examType: createdExaminationType,
+          topic: contentTopic,
+          mcQuestions: contentMCQuestions,
+          textQuestions: contentTextQuestions
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showSnackbar('Inhalte erfolgreich generiert!', 'success');
+        setContentCreationModalOpen(false);
+        setContentTopic('Affen');
+        setContentMCQuestions(6);
+        setContentTextQuestions(4);
+        setCreatedExaminationFilePath('');
+        setCreatedExaminationType('');
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Fehler-Response:', response.status, errorText);
+        let errorMessage = 'Unbekannter Fehler';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || error.details || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        console.error('❌ Fehler-Details:', errorMessage);
+        showSnackbar(`Fehler: ${errorMessage}`, 'error');
+      }
+    } catch (error) {
+      console.error('❌ Fehler beim Generieren der Inhalte:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      showSnackbar(`Fehler beim Generieren der Inhalte: ${errorMessage}`, 'error');
+    } finally {
+      setContentGenerating(false);
+    }
+  };
+
   // Funktion zum Erstellen einer Prüfung
   const handleCreateExamination = async () => {
     if (!examinationType || !examinationFileName || !examinationFolderPath) {
@@ -3563,7 +3788,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const data = await response.json();
         showSnackbar(`Prüfung "${data.fileName}" erfolgreich erstellt!`, 'success');
         setCreateExaminationModalOpen(false);
-        // Reset form
+        
+        // Öffne Modal für Inhaltserstellung
+        console.log('✅ Prüfung erstellt, öffne Inhaltserstellung-Modal');
+        console.log('📁 FilePath:', data.filePath);
+        console.log('📝 ExamType:', examinationType);
+        
+        setCreatedExaminationFilePath(data.filePath);
+        setCreatedExaminationType(examinationType as 'KA' | 'KU' | 'HU' | 'QZ');
+        setContentTopic('Affen');
+        setContentMCQuestions(6);
+        setContentTextQuestions(4);
+        setContentCreationModalOpen(true);
+        
+        // Reset form (aber nicht die Datei-Pfade, die werden für die Inhaltserstellung benötigt)
         setExaminationType('');
         setExaminationFileName('');
         setExaminationTitle('');
@@ -13811,6 +14049,325 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             Erstellen
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Inhaltserstellung Modal */}
+      <Dialog
+        open={contentCreationModalOpen}
+        onClose={() => {
+          if (!contentGenerating) {
+            setContentCreationModalOpen(false);
+            setContentTopic('Affen');
+            setContentMCQuestions(6);
+            setContentTextQuestions(4);
+            setCreatedExaminationFilePath('');
+            setCreatedExaminationType('');
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, pt: 2, px: 2, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <EditIcon sx={{ color: colors.primary, fontSize: 28 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              Inhalte erstellen
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
+              Geben Sie die Details für die Prüfung ein. Die Aufgaben werden automatisch generiert.
+            </Typography>
+            
+            <TextField
+              fullWidth
+              label="Beschreibung des Themas"
+              value={contentTopic}
+              onChange={(e) => setContentTopic(e.target.value)}
+              variant="outlined"
+              placeholder="z.B. Stichproben und Häufigkeiten"
+              disabled={contentGenerating}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  (e.target as HTMLElement).blur();
+                }
+              }}
+            />
+            
+            <TextField
+              fullWidth
+              type="number"
+              label="Anzahl Multiple Choice Fragen"
+              value={contentMCQuestions}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                setContentMCQuestions(Math.max(0, value));
+              }}
+              variant="outlined"
+              inputProps={{ min: 0, step: 1 }}
+              disabled={contentGenerating}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  (e.target as HTMLElement).blur();
+                }
+              }}
+            />
+            
+            <TextField
+              fullWidth
+              type="number"
+              label="Anzahl der Textfragen"
+              value={contentTextQuestions}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                setContentTextQuestions(Math.max(0, value));
+              }}
+              variant="outlined"
+              inputProps={{ min: 0, step: 1 }}
+              disabled={contentGenerating}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  (e.target as HTMLElement).blur();
+                }
+              }}
+            />
+            
+            <Alert severity="info" sx={{ mt: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                <strong>Hinweis:</strong> Alle Fragen werden automatisch generiert und sind unterschiedlich. 
+                Die Antworten passen sinnvoll zur jeweiligen Frage.
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid #e0e0e0' }}>
+          <Button
+            onClick={() => {
+              setContentCreationModalOpen(false);
+              setContentTopic('Affen');
+              setContentMCQuestions(6);
+              setContentTextQuestions(4);
+              setCreatedExaminationFilePath('');
+              setCreatedExaminationType('');
+            }}
+            disabled={contentGenerating}
+          >
+            Überspringen
+          </Button>
+          <Button
+            onClick={handleGenerateContent}
+            variant="contained"
+            disabled={!contentTopic.trim() || contentGenerating}
+            sx={{ bgcolor: colors.primary }}
+          >
+            {contentGenerating ? (
+              <>
+                <CircularProgress size={16} sx={{ mr: 1, color: 'white' }} />
+                Generiere...
+              </>
+            ) : (
+              'Inhalte generieren'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Einzelfragen-Bearbeitung Modal */}
+      <Dialog
+        open={singleQuestionModalOpen}
+        onClose={() => {
+          if (!savingQuestion && !loadingQuestions) {
+            setSingleQuestionModalOpen(false);
+            setSingleQuestionFilePath('');
+            setExaminationQuestions([]);
+            setEditingQuestion(null);
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, pt: 2, px: 2, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <QuizIcon sx={{ color: '#2e7d32', fontSize: 28 }} />
+              <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                Fragen bearbeiten
+              </Typography>
+            </Box>
+            <Button
+              onClick={() => {
+                setSingleQuestionModalOpen(false);
+                setSingleQuestionFilePath('');
+                setExaminationQuestions([]);
+                setEditingQuestion(null);
+              }}
+              size="small"
+            >
+              Schließen
+            </Button>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2 }}>
+          {loadingQuestions ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : examinationQuestions.length === 0 ? (
+            <Alert severity="info">
+              Keine Fragen gefunden. Bitte generieren Sie zuerst Inhalte für diese Prüfung.
+            </Alert>
+          ) : editingQuestion ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 600 }}>
+                Aufgabe {editingQuestion.taskNumber} bearbeiten
+              </Typography>
+              
+              <TextField
+                fullWidth
+                label="Fragentext"
+                value={editingQuestion.questionText}
+                onChange={(e) => setEditingQuestion({ ...editingQuestion, questionText: e.target.value })}
+                multiline
+                rows={3}
+                variant="outlined"
+              />
+              
+              {editingQuestion.questionType === 'multiple-choice' && (
+                <>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mt: 1 }}>
+                    Antwortoptionen:
+                  </Typography>
+                  {editingQuestion.options.map((option: string, index: number) => (
+                    <TextField
+                      key={index}
+                      fullWidth
+                      label={`Option ${String.fromCharCode(65 + index)}`}
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...editingQuestion.options];
+                        newOptions[index] = e.target.value;
+                        setEditingQuestion({ ...editingQuestion, options: newOptions });
+                      }}
+                      variant="outlined"
+                      size="small"
+                    />
+                  ))}
+                  
+                  <FormControl fullWidth>
+                    <InputLabel>Richtige Antwort</InputLabel>
+                    <Select
+                      value={editingQuestion.correctAnswer || ''}
+                      onChange={(e) => setEditingQuestion({ ...editingQuestion, correctAnswer: e.target.value })}
+                      label="Richtige Antwort"
+                    >
+                      {editingQuestion.options.map((_: string, index: number) => (
+                        <MenuItem key={index} value={String.fromCharCode(65 + index)}>
+                          {String.fromCharCode(65 + index)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </>
+              )}
+              
+              <TextField
+                fullWidth
+                label="Erklärung / Musterlösung"
+                value={editingQuestion.explanation || ''}
+                onChange={(e) => setEditingQuestion({ ...editingQuestion, explanation: e.target.value })}
+                multiline
+                rows={4}
+                variant="outlined"
+              />
+              
+              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                <Button
+                  onClick={() => setEditingQuestion(null)}
+                  variant="outlined"
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  onClick={() => handleSaveQuestion(editingQuestion)}
+                  variant="contained"
+                  disabled={savingQuestion || !editingQuestion.questionText.trim()}
+                  sx={{ bgcolor: '#2e7d32' }}
+                >
+                  {savingQuestion ? (
+                    <>
+                      <CircularProgress size={16} sx={{ mr: 1, color: 'white' }} />
+                      Speichere...
+                    </>
+                  ) : (
+                    'Speichern'
+                  )}
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {examinationQuestions.map((question) => (
+                <Box
+                  key={question.taskNumber}
+                  sx={{
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    p: 2,
+                    bgcolor: '#fafafa'
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
+                      Aufgabe {question.taskNumber} - {question.questionType === 'multiple-choice' ? 'Multiple Choice' : 'Textantwort'}
+                    </Typography>
+                    <Button
+                      size="small"
+                      onClick={() => setEditingQuestion({ ...question })}
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                    >
+                      Bearbeiten
+                    </Button>
+                  </Box>
+                  <Typography variant="body2" sx={{ mb: 1, color: '#666' }}>
+                    {question.questionText}
+                  </Typography>
+                  {question.questionType === 'multiple-choice' && question.options.length > 0 && (
+                    <Box sx={{ ml: 2, mt: 1 }}>
+                      {question.options.map((option: string, index: number) => (
+                        <Typography key={index} variant="body2" sx={{ fontSize: '0.85rem', color: '#555' }}>
+                          {String.fromCharCode(65 + index)}: {option}
+                        </Typography>
+                      ))}
+                      {question.correctAnswer && (
+                        <Typography variant="body2" sx={{ mt: 1, fontWeight: 600, color: '#2e7d32' }}>
+                          Richtige Antwort: {question.correctAnswer}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
       </Dialog>
     </Box>
   );

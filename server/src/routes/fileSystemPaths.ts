@@ -79,4 +79,16 @@ router.get('/static/*', FileSystemPathController.serveStaticFile);
 // Prüfung erstellen (KA, KU, HU, QZ)
 router.post('/create-examination', FileSystemPathController.createExamination);
 
+// Prüfungsinhalte generieren
+router.post('/generate-examination-content', FileSystemPathController.generateExaminationContent);
+
+// Einzelfrage generieren
+router.post('/generate-single-question', FileSystemPathController.generateSingleQuestion);
+
+// Alle Fragen einer Prüfung abrufen
+router.get('/get-examination-questions', FileSystemPathController.getExaminationQuestions);
+
+// Einzelfrage aktualisieren
+router.post('/update-single-question', FileSystemPathController.updateSingleQuestion);
+
 export default router;
