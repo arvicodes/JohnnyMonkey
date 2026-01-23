@@ -1513,4 +1513,130 @@ export class FileSystemPathController {
       res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
     }
   }
+
+  /**
+   * Create a new examination file (KA, KU, HU, QZ)
+   */
+  static async createExamination(req: Request, res: Response) {
+    try {
+      const { examType, fileName, folderPath, learningGroupId, title } = req.body;
+
+      if (!examType || !fileName || !folderPath) {
+        return res.status(400).json({ error: 'examType, fileName und folderPath sind erforderlich' });
+      }
+
+      // Validiere Prüfungstyp
+      const validTypes = ['KA', 'KU', 'HU', 'QZ'];
+      if (!validTypes.includes(examType)) {
+        return res.status(400).json({ error: 'Ungültiger Prüfungstyp. Erlaubt: KA, KU, HU, QZ' });
+      }
+
+      // Stelle sicher, dass der Dateiname mit dem richtigen Präfix beginnt
+      const prefix = examType === 'KA' ? 'KA_' : examType === 'KU' ? 'KU_' : examType === 'HU' ? 'HU_' : 'QZ_';
+      const finalFileName = fileName.startsWith(prefix) ? fileName : `${prefix}${fileName}`;
+
+      // Konvertiere git-intern Pfad zu absolutem Pfad
+      let fullFolderPath: string;
+      if (folderPath.startsWith('git-intern/')) {
+        const relativePath = folderPath.replace('git-intern/', '');
+        if (process.env.NODE_ENV === 'production') {
+          const serverPath = path.join(process.cwd(), 'J-M-Reihen');
+          const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
+          const jmReihenPath = fs.existsSync(serverPath) ? serverPath : projectPath;
+          fullFolderPath = path.join(jmReihenPath, relativePath);
+        } else {
+          const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+          fullFolderPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+        }
+      } else {
+        fullFolderPath = path.resolve(folderPath);
+      }
+
+      const filePath = path.join(fullFolderPath, `${finalFileName}.html`);
+
+      console.log('📝 Erstelle Prüfungsdatei:', {
+        examType,
+        fileName: finalFileName,
+        folderPath,
+        fullFolderPath,
+        filePath
+      });
+
+      // Lade Template-Datei
+      let templatePath: string;
+      if (process.env.NODE_ENV === 'production') {
+        // Production: Versuche verschiedene Pfade
+        const serverPath = path.join(process.cwd(), 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+        const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+        templatePath = fs.existsSync(serverPath) ? serverPath : projectPath;
+      } else {
+        // Development: Verwende absoluten Pfad
+        templatePath = path.join(
+          '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey',
+          'J-M-Reihen',
+          'Mathe',
+          'Klasse 7',
+          'Kap.3 - Geometrische Abbildungen',
+          'HU_geometrische-abbildungen.html'
+        );
+      }
+
+      console.log('📄 Template-Pfad:', templatePath);
+      console.log('📄 Template existiert:', fs.existsSync(templatePath));
+
+      if (!fs.existsSync(templatePath)) {
+        return res.status(404).json({ 
+          error: 'Template-Datei nicht gefunden',
+          templatePath: templatePath,
+          cwd: process.cwd()
+        });
+      }
+
+      let templateContent = fs.readFileSync(templatePath, 'utf-8');
+
+      // Ersetze KA_KEY im Template
+      const kaKey = finalFileName.replace('.html', '');
+      templateContent = templateContent.replace(/const KA_KEY = ['"](.*?)['"]/g, `const KA_KEY = '${kaKey}'`);
+      templateContent = templateContent.replace(/KA_KEY = ['"](.*?)['"]/g, `KA_KEY = '${kaKey}'`);
+
+      // Ersetze Titel
+      const examTypeNames: Record<string, string> = {
+        'KA': 'Klassenarbeit',
+        'KU': 'Kursarbeit',
+        'HU': 'Hausaufgabenüberprüfung (HÜ)',
+        'QZ': 'Quiz'
+      };
+      const examTypeName = examTypeNames[examType] || 'Prüfung';
+      const finalTitle = title || `${examTypeName}: ${finalFileName.replace(prefix, '').replace(/-/g, ' ')}`;
+      
+      templateContent = templateContent.replace(
+        /<title>(.*?)<\/title>/,
+        `<title>${finalTitle}</title>`
+      );
+      templateContent = templateContent.replace(
+        /Hausaufgabenüberprüfung \(HÜ\): Geometrische Abbildungen/g,
+        finalTitle
+      );
+
+      // Stelle sicher, dass der Ordner existiert
+      if (!fs.existsSync(fullFolderPath)) {
+        fs.mkdirSync(fullFolderPath, { recursive: true });
+      }
+
+      // Schreibe die neue Datei
+      fs.writeFileSync(filePath, templateContent, 'utf-8');
+
+      console.log('✅ Prüfungsdatei erstellt:', filePath);
+
+      res.json({
+        success: true,
+        filePath,
+        fileName: `${finalFileName}.html`,
+        kaKey
+      });
+    } catch (error) {
+      console.error('Fehler beim Erstellen der Prüfungsdatei:', error);
+      res.status(500).json({ error: 'Fehler beim Erstellen der Prüfungsdatei' });
+    }
+  }
 }

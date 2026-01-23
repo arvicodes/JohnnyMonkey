@@ -76,4 +76,7 @@ router.get('/load-whiteboard', FileSystemPathController.loadWhiteboardFile);
 // Statische Dateien aus J-M-Reihen bedienen (CSS, JS, etc.)
 router.get('/static/*', FileSystemPathController.serveStaticFile);
 
+// Prüfung erstellen (KA, KU, HU, QZ)
+router.post('/create-examination', FileSystemPathController.createExamination);
+
 export default router;

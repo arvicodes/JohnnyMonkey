@@ -98,6 +98,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       return 'Klassenarbeit';
     } else if (fileName.startsWith('HÜ_') || fileName.startsWith('HU_')) {
       return 'Hausaufgabenüberprüfung';
+    } else if (fileName.startsWith('QZ_')) {
+      return 'Quiz';
     }
     return 'Klassenarbeit'; // Fallback
   };

@@ -301,7 +301,7 @@ import SubmissionViewer from './SubmissionViewer';
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
  */
 const isCorrectionFile = (fileName: string): boolean => {
-  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_');
+  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
 };
 
 interface TeacherDashboardProps {
@@ -1162,6 +1162,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Mitarbeitsbewertung States
   const [participationModalOpen, setParticipationModalOpen] = useState(false);
+  const [createExaminationModalOpen, setCreateExaminationModalOpen] = useState(false);
+  const [examinationType, setExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('');
+  const [examinationFileName, setExaminationFileName] = useState('');
+  const [examinationTitle, setExaminationTitle] = useState('');
+  const [examinationFolderPath, setExaminationFolderPath] = useState('');
+  const [examinationLearningGroupId, setExaminationLearningGroupId] = useState('');
+  const [availableFolders, setAvailableFolders] = useState<Array<{ path: string; name: string }>>([]);
+  const [folderTree, setFolderTree] = useState<any>(null);
+  const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(new Set());
   const [participationGroupId, setParticipationGroupId] = useState<string | null>(null);
   const [participationGroupName, setParticipationGroupName] = useState('');
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
@@ -3316,6 +3325,257 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       showSnackbar('Schüler erfolgreich entfernt', 'success');
     } catch (error) {
       showSnackbar('Fehler beim Entfernen des Schülers', 'error');
+    }
+  };
+
+  // Funktion zum Laden verfügbarer Ordner für Prüfungserstellung
+  const fetchAvailableFolders = async () => {
+    try {
+      const response = await fetch(`/api/file-system-paths/teacher/${userId}`);
+      if (response.ok) {
+        const paths = await response.json();
+        console.log('📁 Geladene Pfade:', paths);
+        
+        // Funktion zum Durchsuchen eines Pfades und Aufbauen der Baumstruktur
+        const scanPath = async (pathToScan: string) => {
+          try {
+            const readResponse = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(pathToScan)}&recursive=true`);
+            if (readResponse.ok) {
+              const content = await readResponse.json();
+              console.log(`📂 Inhalt von ${pathToScan}:`, content);
+              
+              // Filtere nur Ordner und baue Baumstruktur auf
+              const buildTree = (item: any): any | null => {
+                if (!item) return null;
+                
+                // Wenn item selbst ein Ordner ist
+                if (item.type === 'directory' && item.path && item.path.startsWith('git-intern/')) {
+                  const folderName = item.path === 'git-intern' 
+                    ? 'J-M-Reihen' 
+                    : item.path.replace('git-intern/', '').split('/').pop() || item.path;
+                  
+                  const children = item.children 
+                    ? item.children
+                        .filter((child: any) => child && child.type === 'directory' && child.path && child.path.startsWith('git-intern/'))
+                        .map((child: any) => buildTree(child))
+                        .filter((child: any) => child !== null)
+                        .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                    : [];
+                  
+                  return {
+                    path: item.path,
+                    name: folderName,
+                    children: children
+                  };
+                }
+                
+                return null;
+              };
+              
+              // Baue Baumstruktur auf
+              let tree = null;
+              
+              if (content.root) {
+                // Wenn root selbst ein Ordner ist
+                if (content.root.type === 'directory' && content.root.path && content.root.path.startsWith('git-intern/')) {
+                  tree = buildTree(content.root);
+                } else if (content.root.children && Array.isArray(content.root.children)) {
+                  // Wenn root.children vorhanden sind, erstelle einen virtuellen Root
+                  const childFolders = content.root.children
+                    .filter((item: any) => item && item.type === 'directory' && item.path && item.path.startsWith('git-intern/'))
+                    .map((item: any) => buildTree(item))
+                    .filter((item: any) => item !== null)
+                    .sort((a: any, b: any) => a.name.localeCompare(b.name));
+                  
+                  if (childFolders.length > 0) {
+                    tree = {
+                      path: 'git-intern',
+                      name: 'J-M-Reihen',
+                      children: childFolders
+                    };
+                  }
+                }
+                
+                console.log('🌳 Gebaute Baumstruktur:', tree);
+              } else if (content.items && Array.isArray(content.items)) {
+                // Fallback: Wenn kein root, aber items vorhanden sind
+                const childFolders = content.items
+                  .filter((item: any) => item && item.type === 'directory' && item.path && item.path.startsWith('git-intern/'))
+                  .map((item: any) => buildTree(item))
+                  .filter((item: any) => item !== null)
+                  .sort((a: any, b: any) => a.name.localeCompare(b.name));
+                
+                if (childFolders.length > 0) {
+                  tree = {
+                    path: 'git-intern',
+                    name: 'J-M-Reihen',
+                    children: childFolders
+                  };
+                }
+              }
+              
+              if (tree) {
+                // Alle Ordner standardmäßig geschlossen (leeres Set)
+                setExpandedFolderPaths(new Set<string>());
+                setFolderTree(tree);
+                console.log('✅ Ordnerstruktur geladen:', tree);
+              } else {
+                console.error('❌ Baumstruktur konnte nicht aufgebaut werden');
+                console.error('📂 Content:', content);
+                setFolderTree(null);
+              }
+            } else {
+              const errorText = await readResponse.text();
+              console.error(`Fehler beim Lesen von ${pathToScan}:`, readResponse.status, errorText);
+            }
+          } catch (error) {
+            console.error(`Fehler beim Scannen von ${pathToScan}:`, error);
+          }
+        };
+        
+        // Scanne alle git-intern Pfade
+        const gitInternPaths = paths.filter((p: any) => p.path && p.path.startsWith('git-intern/'));
+        
+        if (gitInternPaths.length > 0) {
+          for (const pathItem of gitInternPaths) {
+            await scanPath(pathItem.path);
+            break; // Nimm nur den ersten Pfad
+          }
+        } else {
+          // Falls keine git-intern Pfade vorhanden sind, versuche den Root-Pfad
+          console.log('⚠️ Keine git-intern Pfade gefunden, versuche Root-Pfad...');
+          await scanPath('git-intern');
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Fehler beim Laden der Pfade:', response.status, errorText);
+        setFolderTree(null);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Ordner:', error);
+      setFolderTree(null);
+    }
+  };
+
+  // Funktion zum Rendern der Ordner-Baumstruktur
+  const renderFolderTree = (node: any, level: number = 0) => {
+    if (!node) return null;
+    
+    const isExpanded = expandedFolderPaths.has(node.path);
+    const hasChildren = node.children && node.children.length > 0;
+    
+    return (
+      <Box key={node.path}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            py: 0.5,
+            pl: level * 2,
+            cursor: 'pointer',
+            borderRadius: 1,
+            '&:hover': {
+              bgcolor: 'rgba(0,0,0,0.04)',
+            },
+            ...(examinationFolderPath === node.path && {
+              bgcolor: '#e3f2fd',
+              borderLeft: '3px solid #1976d2'
+            })
+          }}
+          onClick={() => {
+            setExaminationFolderPath(node.path);
+            if (hasChildren) {
+              const newExpanded = new Set(expandedFolderPaths);
+              if (isExpanded) {
+                newExpanded.delete(node.path);
+              } else {
+                newExpanded.add(node.path);
+              }
+              setExpandedFolderPaths(newExpanded);
+            }
+          }}
+        >
+          {hasChildren && (
+            <Box sx={{ 
+              width: 16, 
+              height: 16, 
+              mr: 0.5, 
+              display: 'flex', 
+              alignItems: 'center',
+              color: '#666',
+              fontWeight: 'bold',
+              fontSize: '0.7rem'
+            }}>
+              {isExpanded ? '▼' : '▶'}
+            </Box>
+          )}
+          {!hasChildren && <Box sx={{ width: 16, mr: 0.5 }} />}
+          
+          <Box sx={{ mr: 0.5, fontSize: '0.9rem' }}>
+            📁
+          </Box>
+          
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '0.85rem',
+              color: examinationFolderPath === node.path ? '#1976d2' : '#333',
+              fontWeight: examinationFolderPath === node.path ? 600 : 'normal'
+            }}
+          >
+            {node.name}
+          </Typography>
+        </Box>
+
+        {/* Rekursive Anzeige der Kinder */}
+        {hasChildren && isExpanded && (
+          <Box>
+            {node.children.map((child: any) => renderFolderTree(child, level + 1))}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
+  // Funktion zum Erstellen einer Prüfung
+  const handleCreateExamination = async () => {
+    if (!examinationType || !examinationFileName || !examinationFolderPath) {
+      showSnackbar('Bitte füllen Sie alle Pflichtfelder aus', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/file-system-paths/create-examination', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          examType: examinationType,
+          fileName: examinationFileName,
+          folderPath: examinationFolderPath,
+          learningGroupId: examinationLearningGroupId || null,
+          title: examinationTitle || null
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showSnackbar(`Prüfung "${data.fileName}" erfolgreich erstellt!`, 'success');
+        setCreateExaminationModalOpen(false);
+        // Reset form
+        setExaminationType('');
+        setExaminationFileName('');
+        setExaminationTitle('');
+        setExaminationFolderPath('');
+        setExaminationLearningGroupId('');
+      } else {
+        const error = await response.json();
+        showSnackbar(`Fehler: ${error.error || 'Unbekannter Fehler'}`, 'error');
+      }
+    } catch (error) {
+      console.error('Fehler beim Erstellen der Prüfung:', error);
+      showSnackbar('Fehler beim Erstellen der Prüfung', 'error');
     }
   };
 
@@ -6233,6 +6493,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   title="Nachrichten"
                 >
                   <Mail sx={{ fontSize: 18 }} />
+                </IconButton>
+                <IconButton
+                  onClick={() => {
+                    setCreateExaminationModalOpen(true);
+                    fetchAvailableFolders();
+                  }}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    color: '#d32f2f',
+                    bgcolor: '#9e9e9e',
+                    borderRadius: 1.4,
+                    '&:hover': { bgcolor: '#757575' }
+                  }}
+                  title="Prüfung erstellen"
+                >
+                  <AssignmentIcon sx={{ fontSize: 18 }} />
                 </IconButton>
                 <Button 
                   variant="contained"
@@ -13382,6 +13661,154 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             disabled={resetConfirmationText !== 'ZURÜCKSETZEN'}
           >
             Alles zurücksetzen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Prüfung erstellen Modal */}
+      <Dialog
+        open={createExaminationModalOpen}
+        onClose={() => {
+          setCreateExaminationModalOpen(false);
+          setExaminationType('');
+          setExaminationFileName('');
+          setExaminationTitle('');
+          setExaminationFolderPath('');
+          setExaminationLearningGroupId('');
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, pt: 2, px: 2, borderBottom: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AssignmentIcon sx={{ color: colors.primary, fontSize: 28 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              Prüfung erstellen
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Prüfungstyp */}
+            <FormControl fullWidth required>
+              <InputLabel>Prüfungstyp</InputLabel>
+              <Select
+                value={examinationType}
+                onChange={(e) => setExaminationType(e.target.value as 'KA' | 'KU' | 'HU' | 'QZ')}
+                label="Prüfungstyp"
+              >
+                <MenuItem value="KA">Klassenarbeit (KA)</MenuItem>
+                <MenuItem value="KU">Kursarbeit (KU)</MenuItem>
+                <MenuItem value="HU">Hausaufgabenüberprüfung (HU)</MenuItem>
+                <MenuItem value="QZ">Quiz (QZ)</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Dateiname */}
+            <TextField
+              fullWidth
+              required
+              label="Dateiname (ohne Präfix und .html)"
+              value={examinationFileName}
+              onChange={(e) => setExaminationFileName(e.target.value)}
+              placeholder="z.B. daten-und-zufall"
+              helperText={`Der Dateiname wird automatisch mit ${examinationType ? examinationType + '_' : 'Präfix_'} ergänzt`}
+            />
+
+            {/* Titel (optional) */}
+            <TextField
+              fullWidth
+              label="Titel (optional)"
+              value={examinationTitle}
+              onChange={(e) => setExaminationTitle(e.target.value)}
+              placeholder="z.B. Daten und Zufall"
+              helperText="Wenn leer, wird der Dateiname verwendet"
+            />
+
+            {/* Lerngruppe (optional) */}
+            <FormControl fullWidth>
+              <InputLabel>Lerngruppe (optional)</InputLabel>
+              <Select
+                value={examinationLearningGroupId}
+                onChange={(e) => setExaminationLearningGroupId(e.target.value)}
+                label="Lerngruppe (optional)"
+              >
+                <MenuItem value="">Keine Auswahl</MenuItem>
+                {groups.map((group) => (
+                  <MenuItem key={group.id} value={group.id}>
+                    {group.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Ordner - Hierarchische Baumstruktur */}
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 600, color: '#666' }}>
+                Ordner auswählen <span style={{ color: '#d32f2f' }}>*</span>
+              </Typography>
+              <Box
+                sx={{
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 1,
+                  p: 1.5,
+                  maxHeight: 300,
+                  overflow: 'auto',
+                  bgcolor: '#fafafa'
+                }}
+              >
+                {folderTree ? (
+                  <Box>
+                    {renderFolderTree(folderTree)}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
+                    <CircularProgress size={24} sx={{ mb: 1 }} />
+                    <Typography variant="body2" sx={{ color: '#666', fontStyle: 'italic' }}>
+                      Lade Ordnerstruktur...
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              {examinationFolderPath && (
+                <Typography variant="caption" sx={{ mt: 1, display: 'block', color: '#1976d2' }}>
+                  Ausgewählt: {examinationFolderPath.replace('git-intern/', '')}
+                </Typography>
+              )}
+              {!folderTree && (
+                <Alert severity="info" sx={{ mt: 1 }}>
+                  Keine Ordner gefunden. Bitte erstellen Sie zuerst einen Ordner im Dateisystem-Manager.
+                </Alert>
+              )}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid #e0e0e0' }}>
+          <Button
+            onClick={() => {
+              setCreateExaminationModalOpen(false);
+              setExaminationType('');
+              setExaminationFileName('');
+              setExaminationTitle('');
+              setExaminationFolderPath('');
+              setExaminationLearningGroupId('');
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            onClick={handleCreateExamination}
+            variant="contained"
+            disabled={!examinationType || !examinationFileName || !examinationFolderPath}
+            sx={{ bgcolor: colors.primary }}
+          >
+            Erstellen
           </Button>
         </DialogActions>
       </Dialog>

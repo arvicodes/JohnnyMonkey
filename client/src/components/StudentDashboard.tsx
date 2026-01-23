@@ -47,7 +47,7 @@ import { RIDDLES, Riddle } from './riddles';
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
  */
 const isCorrectionFile = (fileName: string): boolean => {
-  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_');
+  return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
 };
 
 // Rätsel werden jetzt aus riddles.ts importiert
