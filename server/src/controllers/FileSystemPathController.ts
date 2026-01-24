@@ -1519,7 +1519,7 @@ export class FileSystemPathController {
    */
   static async createExamination(req: Request, res: Response) {
     try {
-      const { examType, fileName, folderPath, learningGroupId, title } = req.body;
+      const { examType, fileName, folderPath, learningGroupId, title, durationMinutes } = req.body;
 
       if (!examType || !fileName || !folderPath) {
         return res.status(400).json({ error: 'examType, fileName und folderPath sind erforderlich' });
@@ -1599,6 +1599,16 @@ export class FileSystemPathController {
       templateContent = templateContent.replace(/const KA_KEY = ['"](.*?)['"]/g, `const KA_KEY = '${kaKey}'`);
       templateContent = templateContent.replace(/KA_KEY = ['"](.*?)['"]/g, `KA_KEY = '${kaKey}'`);
 
+      const defaultDurations: Record<string, number> = {
+        KA: 60,
+        KU: 90,
+        HU: 15,
+        QZ: 5
+      };
+      const resolvedDurationMinutes = typeof durationMinutes === 'number' && durationMinutes > 0
+        ? durationMinutes
+        : (defaultDurations[examType] || 15);
+
       // Ersetze Titel
       const examTypeNames: Record<string, string> = {
         'KA': 'Klassenarbeit',
@@ -1616,6 +1626,30 @@ export class FileSystemPathController {
       templateContent = templateContent.replace(
         /Hausaufgabenüberprüfung \(HÜ\): Geometrische Abbildungen/g,
         finalTitle
+      );
+
+      // Entferne "Wichtiger Hinweis" Box
+      templateContent = templateContent.replace(/<div class="info-box">[\s\S]*?<\/div>\s*/g, '');
+
+      // Entferne Footer-Hinweise (Viel Erfolg / Punkte / Note)
+      templateContent = templateContent.replace(/<div class="footer-right">[\s\S]*?<\/div>/g, '');
+      templateContent = templateContent.replace(/<div class="footer-note">[\s\S]*?<\/div>/g, '');
+
+      // Punkte-/Notenanzeige absichern, falls Footer entfernt wurde
+      templateContent = templateContent.replace(
+        /const pointsDisplay = document\.getElementById\('pointsDisplay'\);\s*const noteText = document\.getElementById\('noteText'\);\s*const noteNumber = document\.getElementById\('noteNumber'\);\s*/g,
+        "const pointsDisplay = document.getElementById('pointsDisplay');\n            const noteText = document.getElementById('noteText');\n            const noteNumber = document.getElementById('noteNumber');\n            if (!pointsDisplay || !noteText || !noteNumber) {\n                return;\n            }\n"
+      );
+
+      // Setze Timer-Dauer
+      const timerLabel = `${resolvedDurationMinutes}:00`;
+      templateContent = templateContent.replace(
+        /<div class="timer-container" id="timer">\s*[\d:]+\s*<\/div>/,
+        `<div class="timer-container" id="timer">\n                ${timerLabel}\n            </div>`
+      );
+      templateContent = templateContent.replace(
+        /let timeLeft = \d+ \* 60;.*$/m,
+        `let timeLeft = ${resolvedDurationMinutes} * 60; // ${resolvedDurationMinutes} Minuten in Sekunden`
       );
 
       // Stelle sicher, dass der Ordner existiert
@@ -1974,7 +2008,7 @@ export class FileSystemPathController {
     totalMCQuestions: number = 1,
     previousQuestions: string[] = []
   ): Promise<string> {
-    const points = Math.floor(20 / totalTasks);
+    const points = 1;
     // AFB-Level basierend auf Schwierigkeit: einfachste = AFB 1, schwerste = AFB 2
     const afbLevel = difficulty === 'einfachste' ? 1 : (difficulty === 'schwerste' ? 2 : 1);
 
@@ -2030,7 +2064,7 @@ ${aiContent.optionsHTML}
     totalQuestions: number = 1,
     previousQuestions: string[] = []
   ): Promise<string> {
-    const points = Math.floor(20 / totalTasks);
+    const points = 1;
     // AFB-Level basierend auf Schwierigkeit: einfachste = AFB 1, schwerste = AFB 2
     const afbLevel = difficulty === 'einfachste' ? 1 : (difficulty === 'schwerste' ? 2 : 2);
 
@@ -2111,37 +2145,62 @@ ${aiContent.optionsHTML}
       return this.generateFallbackQuestion(topic, questionType, difficulty, optionsCount);
     }
 
-    try {
-      // Verwende OpenAI API
-      const OpenAI = require('openai');
-      const openai = new OpenAI({ apiKey: openaiApiKey });
-      
-      console.log('✅ OpenAI Client erstellt, starte API-Aufruf...');
-
-      const difficultyText = difficulty && typeof difficulty === 'string' 
-        ? (difficulty === 'einfachste' ? 'einfach' : (difficulty === 'schwerste' ? 'schwer' : 'mittel'))
-        : 'mittel';
-      
-      // Erstelle Kontext über bereits generierte Fragen
-      const previousQuestionsContext = previousQuestions.length > 0
-        ? `\n\nBEREITS GENERIERTE FRAGEN (diese müssen sich UNTERSCHEIDEN):\n${previousQuestions.map((q, idx) => `${idx + 1}. ${q}`).join('\n')}\n\nWICHTIG: Deine neue Frage muss sich von ALLEN oben genannten Fragen unterscheiden! Verwende einen ANDEREN Aspekt, ein ANDERES Beispiel oder eine ANDERE Formulierung!`
-        : '';
-      
-      // Erstelle einen spezifischen Aspekt-Index für diese Frage, um Variation zu gewährleisten
-      const aspectIndex = questionNumber % 7; // 7 verschiedene Aspekte
-      const aspectHints = [
-        'Fokussiere dich auf Definitionen und Grundbegriffe',
-        'Fokussiere dich auf praktische Anwendungen und Beispiele',
-        'Fokussiere dich auf Berechnungen und Formeln',
-        'Fokussiere dich auf Vergleiche und Unterschiede',
-        'Fokussiere dich auf konkrete Situationen und Szenarien',
-        'Fokussiere dich auf Zusammenhänge und Abhängigkeiten',
-        'Fokussiere dich auf spezifische Eigenschaften und Merkmale'
+    const looksLikePlaceholder = (text: string) => {
+      if (!text || typeof text !== 'string') {
+        return true;
+      }
+      const normalized = text.trim();
+      if (!normalized) {
+        return true;
+      }
+      if (normalized.includes('_')) {
+        return true;
+      }
+      const placeholderPatterns = [
+        /\bantwort\s*[a-f]\b/i,
+        /\boption\s*\d+\b/i,
+        /\boption\s*[a-f]\b/i,
+        /\bantwort\s*\d+\b/i,
+        /\bplaceholder\b/i
       ];
-      const aspectHint = aspectHints[aspectIndex];
-      
-      const prompt = questionType === 'multiple-choice'
-        ? `Erstelle eine ${difficultyText}e Multiple-Choice-Frage zum Thema "${topic}" für Schüler der 7. Klasse. 
+      return placeholderPatterns.some((pattern) => pattern.test(normalized));
+    };
+
+    const maxAttempts = 2;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        // Verwende OpenAI API
+        const OpenAI = require('openai');
+        const openai = new OpenAI({ apiKey: openaiApiKey });
+        
+        console.log(`✅ OpenAI Client erstellt, starte API-Aufruf (Versuch ${attempt}/${maxAttempts})...`);
+
+        const difficultyText = difficulty && typeof difficulty === 'string' 
+          ? (difficulty === 'einfachste' ? 'einfach' : (difficulty === 'schwerste' ? 'schwer' : 'mittel'))
+          : 'mittel';
+        
+        // Erstelle Kontext über bereits generierte Fragen
+        const previousQuestionsContext = previousQuestions.length > 0
+          ? `\n\nBEREITS GENERIERTE FRAGEN (diese müssen sich UNTERSCHEIDEN):\n${previousQuestions.map((q, idx) => `${idx + 1}. ${q}`).join('\n')}\n\nWICHTIG: Deine neue Frage muss sich von ALLEN oben genannten Fragen unterscheiden! Verwende einen ANDEREN Aspekt, ein ANDERES Beispiel oder eine ANDERE Formulierung!`
+          : '';
+        
+        // Erstelle einen spezifischen Aspekt-Index für diese Frage, um Variation zu gewährleisten
+        const aspectIndex = questionNumber % 7; // 7 verschiedene Aspekte
+        const aspectHints = [
+          'Fokussiere dich auf Definitionen und Grundbegriffe',
+          'Fokussiere dich auf praktische Anwendungen und Beispiele',
+          'Fokussiere dich auf Berechnungen und Formeln',
+          'Fokussiere dich auf Vergleiche und Unterschiede',
+          'Fokussiere dich auf konkrete Situationen und Szenarien',
+          'Fokussiere dich auf Zusammenhänge und Abhängigkeiten',
+          'Fokussiere dich auf spezifische Eigenschaften und Merkmale'
+        ];
+        const aspectHint = aspectHints[aspectIndex];
+        
+        const prompt = questionType === 'multiple-choice'
+          ? `Erstelle eine ${difficultyText}e Multiple-Choice-Frage zum Thema "${topic}" für Schüler der 7. Klasse. 
 
 KRITISCH WICHTIG: 
 - Dies ist Frage ${questionNumber} von ${totalQuestions} Fragen. 
@@ -2158,7 +2217,7 @@ Formatiere die Antwort als JSON mit folgenden Feldern:
 - "options": Array mit ${optionsCount} konkreten, realistischen Antwortoptionen (z.B. ["Die absolute Häufigkeit ist die Anzahl der Vorkommen eines Merkmals", "Die relative Häufigkeit wird immer als Dezimalzahl zwischen 0 und 1 angegeben", ...])
 - "correctAnswer": Buchstabe der richtigen Antwort (A, B, C, etc.)
 - "explanation": Kurze, verständliche Erklärung warum diese Antwort richtig ist`
-        : `Erstelle eine ${difficultyText}e Textaufgabe zum Thema "${topic}" für Schüler der 7. Klasse.
+          : `Erstelle eine ${difficultyText}e Textaufgabe zum Thema "${topic}" für Schüler der 7. Klasse.
 
 KRITISCH WICHTIG:
 - Dies ist Frage ${questionNumber} von ${totalQuestions} Fragen. 
@@ -2172,15 +2231,15 @@ Formatiere die Antwort als JSON mit folgenden Feldern:
 - "question": Die konkrete, präzise Aufgabenstellung
 - "explanation": Eine ausführliche, verständliche Musterlösung`;
 
-      console.log('📤 Sende Request an OpenAI...');
-      let completion;
-      try {
-        completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: `Du bist ein erfahrener Lehrer, der präzise und altersgerechte Prüfungsfragen erstellt. 
+        console.log('📤 Sende Request an OpenAI...');
+        let completion;
+        try {
+          completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: `Du bist ein erfahrener Lehrer, der präzise und altersgerechte Prüfungsfragen erstellt. 
 
 KRITISCH WICHTIG:
 - Jede Frage muss EINDEUTIG sein und sich von allen anderen unterscheiden
@@ -2191,99 +2250,117 @@ KRITISCH WICHTIG:
 - Antworte IMMER im JSON-Format
 - Stelle sicher, dass jede Frage verschiedene Aspekte des Themas abdeckt
 - Verwende konkrete Beispiele, Zahlen oder Situationen in den Fragen`
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-        response_format: { type: 'json_object' },
-        temperature: 0.95, // Sehr hohe Temperatur für maximale Variation
-        seed: Math.floor(Math.random() * 1000000) // Zufälliger Seed für jede Frage, um Variation zu gewährleisten
-      });
-        console.log('✅ OpenAI Response erhalten');
-      } catch (apiError: any) {
-        console.error('❌ OpenAI API Fehler:', {
-          message: apiError.message,
-          status: apiError.status,
-          code: apiError.code,
-          type: apiError.type
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+          response_format: { type: 'json_object' },
+          temperature: 0.95, // Sehr hohe Temperatur für maximale Variation
+          seed: Math.floor(Math.random() * 1000000) // Zufälliger Seed für jede Frage, um Variation zu gewährleisten
         });
-        throw new Error(`OpenAI API Fehler: ${apiError.message || 'Unbekannter Fehler'}`);
-      }
-
-      const rawContent = completion.choices[0].message.content || '{}';
-      console.log('📥 AI-Response erhalten:', rawContent.substring(0, 200) + '...');
-      
-      const content = JSON.parse(rawContent);
-      console.log('✅ JSON geparst:', {
-        hasQuestion: !!content.question,
-        hasOptions: !!content.options,
-        optionsCount: content.options?.length || 0,
-        hasCorrectAnswer: !!content.correctAnswer
-      });
-      
-      if (questionType === 'multiple-choice' && content.options) {
-        const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
-        
-        // Stelle sicher, dass wir nicht mehr Optionen haben als Labels
-        const actualOptions = Array.isArray(content.options) 
-          ? content.options.slice(0, Math.min(optionsCount, optionLabels.length))
-          : [];
-        
-        // Fülle auf, falls nicht genug Optionen vorhanden sind
-        while (actualOptions.length < optionsCount && actualOptions.length < optionLabels.length) {
-          actualOptions.push(`Option ${actualOptions.length + 1}`);
+          console.log('✅ OpenAI Response erhalten');
+        } catch (apiError: any) {
+          console.error('❌ OpenAI API Fehler:', {
+            message: apiError.message,
+            status: apiError.status,
+            code: apiError.code,
+            type: apiError.type
+          });
+          throw new Error(`OpenAI API Fehler: ${apiError.message || 'Unbekannter Fehler'}`);
         }
+
+        const rawContent = completion.choices[0].message.content || '{}';
+        console.log('📥 AI-Response erhalten:', rawContent.substring(0, 200) + '...');
         
-        const optionsHTML = actualOptions.map((option: any, index: number) => {
-          // Stelle sicher, dass der Index gültig ist
-          if (index >= optionLabels.length) {
-            console.error('❌ Index außerhalb des Bereichs:', index, 'max:', optionLabels.length);
-            throw new Error(`Zu viele Optionen: Index ${index} außerhalb des Bereichs`);
+        const content = JSON.parse(rawContent);
+        console.log('✅ JSON geparst:', {
+          hasQuestion: !!content.question,
+          hasOptions: !!content.options,
+          optionsCount: content.options?.length || 0,
+          hasCorrectAnswer: !!content.correctAnswer
+        });
+
+        if (looksLikePlaceholder(content.question)) {
+          throw new Error('AI-Antwort enthält Platzhalter im Fragetext');
+        }
+
+        if (questionType === 'multiple-choice') {
+          const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+          if (!Array.isArray(content.options) || content.options.length < optionsCount) {
+            throw new Error('AI-Antwort enthält zu wenige Antwortoptionen');
           }
-          
-          const optionLabel = optionLabels[index];
-          if (!optionLabel || typeof optionLabel !== 'string') {
-            console.error('❌ OptionLabel ist undefined oder kein String für Index:', index, 'optionLabel:', optionLabel);
-            throw new Error(`OptionLabel ist undefined oder kein String für Index ${index}`);
+
+          const actualOptions = content.options.slice(0, Math.min(optionsCount, optionLabels.length));
+          if (actualOptions.some((option: any) => looksLikePlaceholder(String(option)))) {
+            throw new Error('AI-Antwort enthält Platzhalter in den Antwortoptionen');
           }
-          
-          // Stelle sicher, dass die Option nicht leer ist
-          const optionText = option && typeof option === 'string' && option.trim() 
-            ? option.trim() 
-            : `Option ${optionLabel}`;
-          
-          // Stelle sicher, dass optionLabel ein String ist, bevor toLowerCase() aufgerufen wird
-          const optionValue = typeof optionLabel === 'string' ? optionLabel.toLowerCase() : 'a';
-          
-          return `                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+
+          const normalizedCorrectAnswer = typeof content.correctAnswer === 'string'
+            ? content.correctAnswer.trim().toUpperCase()
+            : '';
+
+          if (!optionLabels.includes(normalizedCorrectAnswer)) {
+            throw new Error('AI-Antwort enthält keine gültige richtige Antwort (A-F)');
+          }
+
+          const optionsHTML = actualOptions.map((option: any, index: number) => {
+            // Stelle sicher, dass der Index gültig ist
+            if (index >= optionLabels.length) {
+              console.error('❌ Index außerhalb des Bereichs:', index, 'max:', optionLabels.length);
+              throw new Error(`Zu viele Optionen: Index ${index} außerhalb des Bereichs`);
+            }
+            
+            const optionLabel = optionLabels[index];
+            if (!optionLabel || typeof optionLabel !== 'string') {
+              console.error('❌ OptionLabel ist undefined oder kein String für Index:', index, 'optionLabel:', optionLabel);
+              throw new Error(`OptionLabel ist undefined oder kein String für Index ${index}`);
+            }
+            
+            const optionText = typeof option === 'string' && option.trim()
+              ? option.trim()
+              : '';
+            
+            if (!optionText) {
+              throw new Error('AI-Antwort enthält leere Antwortoption');
+            }
+            
+            const optionValue = optionLabel.toLowerCase();
+            
+            return `                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a${questionNumber}" value="${optionValue}" style="margin-right: 8px;">
                         ${optionText}
                     </label>`;
-        }).join('\n');
+          }).join('\n');
+
+          return {
+            question: content.question,
+            optionsHTML,
+            correctAnswer: normalizedCorrectAnswer,
+            explanation: content.explanation || 'Bitte passen Sie diese Musterlösung an.'
+          };
+        }
 
         return {
-          question: content.question || `Frage zu ${topic}`,
-          optionsHTML,
-          correctAnswer: content.correctAnswer || 'A',
+          question: content.question,
           explanation: content.explanation || 'Bitte passen Sie diese Musterlösung an.'
         };
-      } else {
-        return {
-          question: content.question || `Beschreiben Sie die wichtigsten Konzepte zu ${topic}.`,
-          explanation: content.explanation || 'Bitte passen Sie diese Musterlösung an.'
-        };
+      } catch (error) {
+        console.error('❌ Fehler bei AI-Generierung:', error);
+        console.error('❌ Fehler-Details:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (attempt < maxAttempts) {
+          console.log('🔁 Erneuter Versuch der AI-Generierung...');
+          continue;
+        }
       }
-    } catch (error) {
-      console.error('❌ Fehler bei AI-Generierung:', error);
-      console.error('❌ Fehler-Details:', {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      // Versuche trotzdem Fallback zu verwenden
-      return this.generateFallbackQuestion(topic, questionType, difficulty, optionsCount);
     }
+
+    throw lastError || new Error('AI-Generierung fehlgeschlagen');
   }
 
   /**

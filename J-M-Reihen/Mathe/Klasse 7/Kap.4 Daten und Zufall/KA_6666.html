@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2222</title>
+    <title>66666</title>
     <script>
         // KRITISCH: Status-Check IM HEAD - wird SOFORT ausgeführt, bevor irgendetwas gerendert wird
         (function() {
             try {
-                const KA_KEY = 'QZ_2222';
+                const KA_KEY = 'KA_6666';
                 const isTeacher = localStorage.getItem('teacherId') !== null;
                 
                 // Wenn Lehrer, keine Sperre
@@ -737,7 +737,7 @@
         // Status-Check: Nur Debug-Log, keine Blockierung
         // Die echte Prüfung erfolgt in initializeTimer() mit Datenbank-Abfrage
         (function() {
-            const KA_KEY = 'QZ_2222';
+            const KA_KEY = 'KA_6666';
             const isTeacher = localStorage.getItem('teacherId') !== null;
             
             // Wenn Lehrer, keine Prüfung
@@ -769,7 +769,7 @@
     </script>
     <div class="header">
         <div class="header-top">
-            <div class="header-title">2222</div>
+            <div class="header-title">66666</div>
             <div class="header-date" id="currentDate"></div>
         </div>
         <div class="header-divider"></div>
@@ -805,124 +805,34 @@
 
     
 
-    
-
-    
-
     <!-- Aufgabe 1: AFB 1 - Multiple Choice (einfachste Frage) -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(5 Punkte)</span></div>
+            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
             <div class="task-meta teacher-only">
                 <span class="afb-badge afb-1">AFB 1</span>
-                <div class="points">5 Punkte</div>
+                <div class="points">2 Punkte</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an:</p>
-            
             <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">In einer Stichprobe werden 20 Murmeln gezählt: 7 rot, 5 blau, 8 grün. Was ist die absolute Häufigkeit der Farbe Blau?</label>
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Affen ist korrekt?</label>
                 <div style="margin-left: 20px;">
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="a" style="margin-right: 8px;">
-                        5
+                        Eine wichtige Eigenschaft von Affen
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="b" style="margin-right: 8px;">
-                        7
+                        Eine häufige Anwendung von Affen
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="c" style="margin-right: 8px;">
-                        8
+                        Ein grundlegendes Konzept zu Affen
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="d" style="margin-right: 8px;">
-                        20
-                    </label>
-                </div>
-            </div>
-
-            <div class="solution">
-                <h4>Musterlösung:</h4>
-                <p>Richtige Antwort: <strong>A</strong></p>
-                <p>Die absolute Häufigkeit ist die Anzahl der beobachteten Fälle. Blau wurde 5-mal gezählt.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Aufgabe 2: AFB 1 - Multiple Choice -->
-    <div class="task">
-        <div class="task-header">
-            <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(5 Punkte)</span></div>
-            <div class="task-meta teacher-only">
-                <span class="afb-badge afb-1">AFB 1</span>
-                <div class="points">5 Punkte</div>
-            </div>
-        </div>
-        <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an:</p>
-            
-            <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Bei 30 Würfen eines Würfels kommt die 6 neunmal vor. Wie groß ist die relative Häufigkeit der 6?</label>
-                <div style="margin-left: 20px;">
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
-                        0,3 (30 %)
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
-                        0,9 (90 %)
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
-                        3
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
-                        9
-                    </label>
-                </div>
-            </div>
-
-            <div class="solution">
-                <h4>Musterlösung:</h4>
-                <p>Richtige Antwort: <strong>A</strong></p>
-                <p>Relative Häufigkeit = 9 / 30 = 0,3 = 30 %.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Aufgabe 3: AFB 2 - Multiple Choice (schwerste Multiple-Choice-Frage) -->
-    <div class="task">
-        <div class="task-header">
-            <div class="task-number">Aufgabe 3 <span style="font-size: 11px; color: #666; font-weight: normal;">(5 Punkte)</span></div>
-            <div class="task-meta teacher-only">
-                <span class="afb-badge afb-2">AFB 2</span>
-                <div class="points">5 Punkte</div>
-            </div>
-        </div>
-        <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an:</p>
-            
-            <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Die Stichprobe enthält die Werte 3, 5, 7, 7 und 8. Wie groß ist der Mittelwert?</label>
-                <div style="margin-left: 20px;">
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
-                        5
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
-                        6
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
-                        7
-                    </label>
-                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
-                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
-                        8
+                        Ein Beispiel für Affen
                     </label>
                 </div>
             </div>
@@ -930,34 +840,315 @@
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p>Richtige Antwort: <strong>B</strong></p>
-                <p>Summe: 3 + 5 + 7 + 7 + 8 = 30. Mittelwert = 30 / 5 = 6.</p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
             </div>
         </div>
     </div>
 
-    <!-- Aufgabe 4: AFB 2 - Textaufgabe (schwerste Frage) -->
+    <!-- Aufgabe 2: AFB 1 - Multiple Choice -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 4 <span style="font-size: 11px; color: #666; font-weight: normal;">(5 Punkte)</span></div>
+            <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-2">AFB 2</span>
-                <div class="points">5 Punkte</div>
+                <span class="afb-badge afb-1">AFB 1</span>
+                <div class="points">2 Punkte</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Stichproben, Häufigkeiten und Mittelwert:</p>
-            
-            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
-                <p>Eine Stichprobe enthält die Punkte: 2, 3, 4, 4, 5, 5, 5, 6, 6, 7, 8, 8. Bestimme (a) die absolute Häufigkeit der 5, (b) die relative Häufigkeit der 5 und (c) den Mittelwert der Stichprobe.</p>
-            </div>
-
-            <div class="input-group full-width">
-                <textarea id="a4" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Affen ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Affen
+                    </label>
+                </div>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>Es gibt drei Fünfen, also ist die absolute Häufigkeit 3. Die relative Häufigkeit ist 3/12 = 0,25 = 25 %. Der Mittelwert ist (2+3+4+4+5+5+5+6+6+7+8+8) / 12 = 63/12 = 5,25.</p>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 3: AFB 1 - Multiple Choice -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 3 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-1">AFB 1</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Affen ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Affen
+                    </label>
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 4: AFB 1 - Multiple Choice -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 4 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-1">AFB 1</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Affen ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Affen
+                    </label>
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 5: AFB 1 - Multiple Choice -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 5 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-1">AFB 1</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Affen ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Affen
+                    </label>
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 6: AFB 2 - Multiple Choice (schwerste Multiple-Choice-Frage) -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 6 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Welche der folgenden Aussagen zu Affen ist korrekt?</label>
+                <div style="margin-left: 20px;">
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="a" style="margin-right: 8px;">
+                        Eine wichtige Eigenschaft von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="b" style="margin-right: 8px;">
+                        Eine häufige Anwendung von Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="c" style="margin-right: 8px;">
+                        Ein grundlegendes Konzept zu Affen
+                    </label>
+                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="d" style="margin-right: 8px;">
+                        Ein Beispiel für Affen
+                    </label>
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>B</strong></p>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 7: AFB 2 - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 7 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Affen:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Affen in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a7" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 8: AFB 2 - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 8 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Affen:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Affen in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a8" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 9: AFB 2 - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 9 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Affen:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Affen in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a9" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aufgabe 10: AFB 2 - Textaufgabe (schwerste Frage) -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 10 <span style="font-size: 11px; color: #666; font-weight: normal;">(2 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">2 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Affen:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>Beschreiben Sie die wichtigsten Konzepte zu Affen in ausführlicher Form.</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a10" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).</p>
             </div>
         </div>
     </div>
@@ -985,7 +1176,7 @@
 
     <script>
         // Eindeutiger Key für diese Hausaufgabenüberprüfung (HÜ)
-        const KA_KEY = 'QZ_2222';
+        const KA_KEY = 'KA_6666';
         const isTeacher = localStorage.getItem('teacherId') !== null;
         const studentId = localStorage.getItem('studentId') || 'unknown';
         

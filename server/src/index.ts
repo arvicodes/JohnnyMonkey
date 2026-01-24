@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import { PortManager } from './utils/portManager';
 import MonitoringService from './utils/monitoring';
@@ -29,6 +30,8 @@ import fileShareRoutes from './routes/fileShares';
 import participationRoutes from './routes/participation';
 import adventCalendarRoutes from './routes/adventCalendar';
 import path from 'path';
+
+dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();

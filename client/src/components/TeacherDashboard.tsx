@@ -50,6 +50,7 @@ import {
   TablePagination,
   Switch,
   FormControlLabel,
+  FormGroup,
   Checkbox,
   Radio,
   RadioGroup,
@@ -1163,21 +1164,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   // Mitarbeitsbewertung States
   const [participationModalOpen, setParticipationModalOpen] = useState(false);
   const [createExaminationModalOpen, setCreateExaminationModalOpen] = useState(false);
-  const [examinationType, setExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('');
+  const [examinationType, setExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('QZ');
   const [examinationFileName, setExaminationFileName] = useState('');
-  const [examinationTitle, setExaminationTitle] = useState('');
   const [examinationFolderPath, setExaminationFolderPath] = useState('');
   const [examinationLearningGroupId, setExaminationLearningGroupId] = useState('');
   const [availableFolders, setAvailableFolders] = useState<Array<{ path: string; name: string }>>([]);
   const [folderTree, setFolderTree] = useState<any>(null);
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(new Set());
-  const [contentCreationModalOpen, setContentCreationModalOpen] = useState(false);
-  const [contentTopic, setContentTopic] = useState('Affen');
-  const [contentMCQuestions, setContentMCQuestions] = useState(6);
-  const [contentTextQuestions, setContentTextQuestions] = useState(4);
-  const [contentGenerating, setContentGenerating] = useState(false);
-  const [createdExaminationFilePath, setCreatedExaminationFilePath] = useState<string>('');
-  const [createdExaminationType, setCreatedExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('');
+  const [examDurationMinutes, setExamDurationMinutes] = useState(5);
   
   // Einzelfragen-Bearbeitung
   const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
@@ -1193,6 +1187,38 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
   const [participationStats, setParticipationStats] = useState<any[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  const getDefaultExamDurationMinutes = (type: 'KA' | 'KU' | 'HU' | 'QZ' | '') => {
+    switch (type) {
+      case 'KU':
+        return 90;
+      case 'KA':
+        return 60;
+      case 'HU':
+        return 15;
+      case 'QZ':
+        return 5;
+      default:
+        return 15;
+    }
+  };
+
+  const getDefaultLearningGroupId = useCallback(() => {
+    const defaultGroup = groups.find((group) =>
+      group.name.toLowerCase().includes('klasse 7a')
+    );
+    return defaultGroup?.id || '';
+  }, [groups]);
+
+  useEffect(() => {
+    if (!createExaminationModalOpen) return;
+    if (!examinationLearningGroupId) {
+      const defaultGroupId = getDefaultLearningGroupId();
+      if (defaultGroupId) {
+        setExaminationLearningGroupId(defaultGroupId);
+      }
+    }
+  }, [createExaminationModalOpen, examinationLearningGroupId, getDefaultLearningGroupId]);
   
   // Sortiere participationStats nach Sitzordnung
   const sortedParticipationStats = useMemo(() => {
@@ -3477,8 +3503,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               }
               
               if (tree) {
-                // Alle Ordner standardmäßig geschlossen (leeres Set)
-                setExpandedFolderPaths(new Set<string>());
+                const defaultExpanded = new Set<string>();
+                const targets = new Set(['J-M-Reihen', 'Informatik', 'Mathe']);
+                let defaultFolderPath = '';
+                const collectExpanded = (node: any) => {
+                  if (!node) return;
+                  if (targets.has(node.name)) {
+                    defaultExpanded.add(node.path);
+                  }
+                  if (!defaultFolderPath && node.name === 'Klasse 7a') {
+                    defaultFolderPath = node.path;
+                  }
+                  if (node.children && Array.isArray(node.children)) {
+                    node.children.forEach((child: any) => collectExpanded(child));
+                  }
+                };
+                collectExpanded(tree);
+                setExpandedFolderPaths(defaultExpanded);
+                if (!examinationFolderPath && defaultFolderPath) {
+                  setExaminationFolderPath(defaultFolderPath);
+                }
                 setFolderTree(tree);
                 console.log('✅ Ordnerstruktur geladen:', tree);
               } else {
@@ -3601,23 +3645,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // Funktion zum Bearbeiten einer bestehenden Prüfung
   const handleEditExamination = (item: any) => {
-    // Bestimme den Prüfungstyp aus dem Dateinamen
-    let examType: 'KA' | 'KU' | 'HU' | 'QZ' = 'KA';
-    if (item.name.startsWith('HU_') || item.name.startsWith('HÜ_')) {
-      examType = 'HU';
-    } else if (item.name.startsWith('KU_')) {
-      examType = 'KU';
-    } else if (item.name.startsWith('QZ_')) {
-      examType = 'QZ';
-    }
-    
-    // Setze die Datei-Pfade und öffne das Modal
-    setCreatedExaminationFilePath(item.path);
-    setCreatedExaminationType(examType);
-    setContentTopic('Affen');
-    setContentMCQuestions(6);
-    setContentTextQuestions(4);
-    setContentCreationModalOpen(true);
+    handleEditSingleQuestion(item);
   };
   
   // Funktion zum Öffnen des Einzelfragen-Modals
@@ -3693,75 +3721,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   };
   
 
-  // Funktion zum Generieren der Inhalte
-  const handleGenerateContent = async () => {
-    if (!contentTopic.trim() || !createdExaminationFilePath) {
-      showSnackbar('Bitte geben Sie ein Thema ein', 'error');
-      return;
-    }
-    
-    if (contentMCQuestions < 0 || contentTextQuestions < 0) {
-      showSnackbar('Die Anzahl der Fragen muss größer oder gleich 0 sein', 'error');
-      return;
-    }
-    
-    if (contentMCQuestions === 0 && contentTextQuestions === 0) {
-      showSnackbar('Bitte geben Sie mindestens eine Frage an', 'error');
-      return;
-    }
-
-    setContentGenerating(true);
-    try {
-      // Erstelle Prompt aus den Eingaben
-      const totalQuestions = contentMCQuestions + contentTextQuestions;
-      const prompt = `Erstelle mir eine Arbeit zum Thema ${contentTopic}, die ${totalQuestions} Fragen umfasst. Davon sollen ${contentMCQuestions} Fragen Multiple Choice mit 4 Ankreuzmöglichkeiten sein, wovon nur eine richtig ist. Alle Fragen sind unterschiedlich. Die letzte Frage ist die schwerste, die erste die einfachste. ${contentTextQuestions} Frage soll eine Textantwort beinhalten.`;
-      
-      const response = await fetch('/api/file-system-paths/generate-examination-content', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filePath: createdExaminationFilePath,
-          prompt: prompt,
-          examType: createdExaminationType,
-          topic: contentTopic,
-          mcQuestions: contentMCQuestions,
-          textQuestions: contentTextQuestions
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        showSnackbar('Inhalte erfolgreich generiert!', 'success');
-        setContentCreationModalOpen(false);
-        setContentTopic('Affen');
-        setContentMCQuestions(6);
-        setContentTextQuestions(4);
-        setCreatedExaminationFilePath('');
-        setCreatedExaminationType('');
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Fehler-Response:', response.status, errorText);
-        let errorMessage = 'Unbekannter Fehler';
-        try {
-          const error = JSON.parse(errorText);
-          errorMessage = error.error || error.details || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        console.error('❌ Fehler-Details:', errorMessage);
-        showSnackbar(`Fehler: ${errorMessage}`, 'error');
-      }
-    } catch (error) {
-      console.error('❌ Fehler beim Generieren der Inhalte:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      showSnackbar(`Fehler beim Generieren der Inhalte: ${errorMessage}`, 'error');
-    } finally {
-      setContentGenerating(false);
-    }
-  };
-
   // Funktion zum Erstellen einer Prüfung
   const handleCreateExamination = async () => {
     if (!examinationType || !examinationFileName || !examinationFolderPath) {
@@ -3780,7 +3739,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           fileName: examinationFileName,
           folderPath: examinationFolderPath,
           learningGroupId: examinationLearningGroupId || null,
-          title: examinationTitle || null
+          title: examinationFileName || null,
+          durationMinutes: examDurationMinutes
         })
       });
 
@@ -3789,22 +3749,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         showSnackbar(`Prüfung "${data.fileName}" erfolgreich erstellt!`, 'success');
         setCreateExaminationModalOpen(false);
         
-        // Öffne Modal für Inhaltserstellung
-        console.log('✅ Prüfung erstellt, öffne Inhaltserstellung-Modal');
-        console.log('📁 FilePath:', data.filePath);
-        console.log('📝 ExamType:', examinationType);
-        
-        setCreatedExaminationFilePath(data.filePath);
-        setCreatedExaminationType(examinationType as 'KA' | 'KU' | 'HU' | 'QZ');
-        setContentTopic('Affen');
-        setContentMCQuestions(6);
-        setContentTextQuestions(4);
-        setContentCreationModalOpen(true);
-        
         // Reset form (aber nicht die Datei-Pfade, die werden für die Inhaltserstellung benötigt)
-        setExaminationType('');
+        setExaminationType('QZ');
         setExaminationFileName('');
-        setExaminationTitle('');
+        setExamDurationMinutes(5);
         setExaminationFolderPath('');
         setExaminationLearningGroupId('');
       } else {
@@ -13908,9 +13856,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         open={createExaminationModalOpen}
         onClose={() => {
           setCreateExaminationModalOpen(false);
-          setExaminationType('');
+          setExaminationType('QZ');
           setExaminationFileName('');
-          setExaminationTitle('');
+          setExamDurationMinutes(5);
           setExaminationFolderPath('');
           setExaminationLearningGroupId('');
         }}
@@ -13935,55 +13883,90 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Prüfungstyp */}
             <FormControl fullWidth required>
-              <InputLabel>Prüfungstyp</InputLabel>
-              <Select
-                value={examinationType}
-                onChange={(e) => setExaminationType(e.target.value as 'KA' | 'KU' | 'HU' | 'QZ')}
-                label="Prüfungstyp"
-              >
-                <MenuItem value="KA">Klassenarbeit (KA)</MenuItem>
-                <MenuItem value="KU">Kursarbeit (KU)</MenuItem>
-                <MenuItem value="HU">Hausaufgabenüberprüfung (HU)</MenuItem>
-                <MenuItem value="QZ">Quiz (QZ)</MenuItem>
-              </Select>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#666', mb: 0.5 }}>
+                Prüfungstyp
+              </Typography>
+              <FormGroup row sx={{ gap: 1 }}>
+                {[
+                  { value: 'KA', label: 'Klassenarbeit (KA)' },
+                  { value: 'KU', label: 'Kursarbeit (KU)' },
+                  { value: 'HU', label: 'Hausaufgabenüberprüfung (HU)' },
+                  { value: 'QZ', label: 'Quiz (QZ)' }
+                ].map((option) => (
+                  <FormControlLabel
+                    key={option.value}
+                    control={
+                      <Checkbox
+                        checked={examinationType === option.value}
+                        onChange={() => {
+                          const nextType = examinationType === option.value ? '' : (option.value as 'KA' | 'KU' | 'HU' | 'QZ');
+                          setExaminationType(nextType);
+                          setExamDurationMinutes(getDefaultExamDurationMinutes(nextType));
+                        }}
+                      />
+                    }
+                    label={option.label}
+                    sx={{ mr: 1 }}
+                  />
+                ))}
+              </FormGroup>
             </FormControl>
 
-            {/* Dateiname */}
+            {/* Dateiname / Titel */}
             <TextField
               fullWidth
               required
-              label="Dateiname (ohne Präfix und .html)"
+              label="Dateiname / Titel (ohne Präfix und .html)"
               value={examinationFileName}
               onChange={(e) => setExaminationFileName(e.target.value)}
               placeholder="z.B. daten-und-zufall"
               helperText={`Der Dateiname wird automatisch mit ${examinationType ? examinationType + '_' : 'Präfix_'} ergänzt`}
             />
 
-            {/* Titel (optional) */}
             <TextField
               fullWidth
-              label="Titel (optional)"
-              value={examinationTitle}
-              onChange={(e) => setExaminationTitle(e.target.value)}
-              placeholder="z.B. Daten und Zufall"
-              helperText="Wenn leer, wird der Dateiname verwendet"
+              type="number"
+              label="Zeit (Minuten)"
+              value={examDurationMinutes}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                setExamDurationMinutes(Math.max(1, value));
+              }}
+              inputProps={{ min: 1, step: 1 }}
+              helperText="Wird im Timer der Prüfung übernommen"
             />
 
             {/* Lerngruppe (optional) */}
             <FormControl fullWidth>
-              <InputLabel>Lerngruppe (optional)</InputLabel>
-              <Select
-                value={examinationLearningGroupId}
-                onChange={(e) => setExaminationLearningGroupId(e.target.value)}
-                label="Lerngruppe (optional)"
-              >
-                <MenuItem value="">Keine Auswahl</MenuItem>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#666', mb: 0.5 }}>
+                Lerngruppe (optional)
+              </Typography>
+              <FormGroup row sx={{ gap: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={examinationLearningGroupId === ''}
+                      onChange={() => setExaminationLearningGroupId('')}
+                    />
+                  }
+                  label="Keine Auswahl"
+                />
                 {groups.map((group) => (
-                  <MenuItem key={group.id} value={group.id}>
-                    {group.name}
-                  </MenuItem>
+                  <FormControlLabel
+                    key={group.id}
+                    control={
+                      <Checkbox
+                        checked={examinationLearningGroupId === group.id}
+                        onChange={() =>
+                          setExaminationLearningGroupId(examinationLearningGroupId === group.id ? '' : group.id)
+                        }
+                      />
+                    }
+                    label={group.name}
+                    sx={{ mr: 1 }}
+                  />
                 ))}
-              </Select>
+              </FormGroup>
             </FormControl>
 
             {/* Ordner - Hierarchische Baumstruktur */}
@@ -14033,7 +14016,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               setCreateExaminationModalOpen(false);
               setExaminationType('');
               setExaminationFileName('');
-              setExaminationTitle('');
+              setExamDurationMinutes(15);
               setExaminationFolderPath('');
               setExaminationLearningGroupId('');
             }}
@@ -14047,138 +14030,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             sx={{ bgcolor: colors.primary }}
           >
             Erstellen
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Inhaltserstellung Modal */}
-      <Dialog
-        open={contentCreationModalOpen}
-        onClose={() => {
-          if (!contentGenerating) {
-            setContentCreationModalOpen(false);
-            setContentTopic('Affen');
-            setContentMCQuestions(6);
-            setContentTextQuestions(4);
-            setCreatedExaminationFilePath('');
-            setCreatedExaminationType('');
-          }
-        }}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            maxHeight: '90vh'
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1, pt: 2, px: 2, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <EditIcon sx={{ color: colors.primary, fontSize: 28 }} />
-            <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
-              Inhalte erstellen
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
-              Geben Sie die Details für die Prüfung ein. Die Aufgaben werden automatisch generiert.
-            </Typography>
-            
-            <TextField
-              fullWidth
-              label="Beschreibung des Themas"
-              value={contentTopic}
-              onChange={(e) => setContentTopic(e.target.value)}
-              variant="outlined"
-              placeholder="z.B. Stichproben und Häufigkeiten"
-              disabled={contentGenerating}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  (e.target as HTMLElement).blur();
-                }
-              }}
-            />
-            
-            <TextField
-              fullWidth
-              type="number"
-              label="Anzahl Multiple Choice Fragen"
-              value={contentMCQuestions}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
-                setContentMCQuestions(Math.max(0, value));
-              }}
-              variant="outlined"
-              inputProps={{ min: 0, step: 1 }}
-              disabled={contentGenerating}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  (e.target as HTMLElement).blur();
-                }
-              }}
-            />
-            
-            <TextField
-              fullWidth
-              type="number"
-              label="Anzahl der Textfragen"
-              value={contentTextQuestions}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
-                setContentTextQuestions(Math.max(0, value));
-              }}
-              variant="outlined"
-              inputProps={{ min: 0, step: 1 }}
-              disabled={contentGenerating}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  (e.target as HTMLElement).blur();
-                }
-              }}
-            />
-            
-            <Alert severity="info" sx={{ mt: 1 }}>
-              <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                <strong>Hinweis:</strong> Alle Fragen werden automatisch generiert und sind unterschiedlich. 
-                Die Antworten passen sinnvoll zur jeweiligen Frage.
-              </Typography>
-            </Alert>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid #e0e0e0' }}>
-          <Button
-            onClick={() => {
-              setContentCreationModalOpen(false);
-              setContentTopic('Affen');
-              setContentMCQuestions(6);
-              setContentTextQuestions(4);
-              setCreatedExaminationFilePath('');
-              setCreatedExaminationType('');
-            }}
-            disabled={contentGenerating}
-          >
-            Überspringen
-          </Button>
-          <Button
-            onClick={handleGenerateContent}
-            variant="contained"
-            disabled={!contentTopic.trim() || contentGenerating}
-            sx={{ bgcolor: colors.primary }}
-          >
-            {contentGenerating ? (
-              <>
-                <CircularProgress size={16} sx={{ mr: 1, color: 'white' }} />
-                Generiere...
-              </>
-            ) : (
-              'Inhalte generieren'
-            )}
           </Button>
         </DialogActions>
       </Dialog>
