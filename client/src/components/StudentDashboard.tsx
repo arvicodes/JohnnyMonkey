@@ -931,6 +931,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
         
         // Für F und J: Einmaliges Drücken fängt nur den ersten passenden Ballon
+        let shouldIncrementScore = false;
         setBalloons((prev) => {
           // Sortiere nach spawnTime, um den ältesten zuerst zu nehmen
           const sortedUncaught = prev
@@ -946,7 +947,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           
           if (matchingBalloon) {
             // WICHTIG: Nur diesen EINEN Ballon markieren, alle anderen unverändert lassen
-            setScore((s) => s + 1);
+            shouldIncrementScore = true;
             return prev.map((balloon) => 
               balloon.id === matchingBalloon.id 
                 ? { ...balloon, caught: true }
@@ -956,6 +957,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           
           return prev;
         });
+        
+        // Score außerhalb des Callbacks aktualisieren, um Re-Render-Loops zu vermeiden
+        if (shouldIncrementScore) {
+          // Verwende setTimeout, um sicherzustellen, dass setScore nach setBalloons ausgeführt wird
+          setTimeout(() => {
+            setScore((s) => s + 1);
+          }, 0);
+        }
       }
     };
 

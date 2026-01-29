@@ -447,7 +447,7 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                   <Box display="flex" alignItems="center" gap={0.5} mb={1} flexWrap="wrap">
                     <Person sx={{ fontSize: 14, color: '#666' }} />
                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                      An: {selectedMessage.student.name}
+                      An: {selectedMessage.student.name.split(' ')[0]} {selectedMessage.student.name.split(' ').slice(-1)[0]}
                     </Typography>
                     {(() => {
                       const studentGroup = getStudentGroup(selectedMessage.studentId);

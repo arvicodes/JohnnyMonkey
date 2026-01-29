@@ -587,7 +587,7 @@ const SubmissionsGridPage: React.FC = () => {
                         fontSize: '0.85rem',
                         color: submission.missing ? '#d32f2f' : 'inherit'
                       }}>
-                        {submission.student.name}
+                        {submission.student.name.split(' ')[0]} {submission.student.name.split(' ').slice(-1)[0]}
                       </Typography>
                       <Typography variant="caption" sx={{ 
                         fontSize: '0.65rem',

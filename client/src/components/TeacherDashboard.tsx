@@ -467,6 +467,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const navigate = useNavigate();
   const subjectManagerRef = useRef<any>(null);
   const materialCreatorRef = useRef<any>(null);
+  const isAddingStudentsRef = useRef(false);
   
   // Debug: Log userId
   
@@ -497,6 +498,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     };
     fetchTeacherName();
   }, []);
+
+  // Format name to show only first name and last name (without middle names)
+  const formatStudentName = (fullName: string): string => {
+    if (!fullName || !fullName.trim()) return '';
+    const parts = fullName.trim().split(/\s+/).filter(p => p.length > 0);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0];
+    // Return first name + last name (skip middle names)
+    return `${parts[0]} ${parts[parts.length - 1]}`;
+  };
 
   // Extract initials from name (first letter of first name and last name, ignoring titles)
   const getInitials = (name: string): string => {
@@ -3380,31 +3391,56 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   const handleOpenAddStudents = async (groupId: string) => {
     setSelectedGroupId(groupId);
+    setSelectedStudents([]); // Reset selected students when opening dialog
     try {
       const response = await fetch(`/api/learning-groups/${groupId}/available-students`);
       if (!response.ok) throw new Error('Fehler beim Laden der verfügbaren Schüler');
       const data = await response.json();
+      // State-Updates in einem Batch durchführen, um Re-Render-Loops zu vermeiden
       setAvailableStudents(data);
-      setOpenAddStudentsDialog(true);
+      // Dialog erst nach dem State-Update öffnen
+      setTimeout(() => {
+        setOpenAddStudentsDialog(true);
+      }, 0);
     } catch (error) {
       showSnackbar('Fehler beim Laden der verfügbaren Schüler', 'error');
     }
   };
 
+  const handleCloseAddStudentsDialog = useCallback(() => {
+    if (isAddingStudentsRef.current) return; // Verhindere Schließen während des Hinzufügens
+    setOpenAddStudentsDialog(false);
+    setSelectedStudents([]);
+  }, []);
+
   const handleAddStudents = async () => {
+    if (isAddingStudentsRef.current) return; // Verhindere mehrfache Aufrufe
+    if (!selectedGroupId || selectedStudents.length === 0) {
+      showSnackbar('Bitte wählen Sie mindestens einen Schüler aus', 'error');
+      return;
+    }
+    
+    isAddingStudentsRef.current = true;
+    const studentIdsToAdd = [...selectedStudents]; // Kopie für async Operation
+    const groupIdToUse = selectedGroupId;
+    
+    // Dialog sofort schließen, um Re-Render-Loops zu vermeiden
+    setOpenAddStudentsDialog(false);
+    setSelectedStudents([]);
+    
     try {
-      const response = await fetch(`/api/learning-groups/${selectedGroupId}/students`, {
+      const response = await fetch(`/api/learning-groups/${groupIdToUse}/students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentIds: selectedStudents }),
+        body: JSON.stringify({ studentIds: studentIdsToAdd }),
       });
       if (!response.ok) throw new Error('Fehler beim Hinzufügen der Schüler');
       await fetchGroups();
-      setOpenAddStudentsDialog(false);
-      setSelectedStudents([]);
       showSnackbar('Schüler erfolgreich hinzugefügt', 'success');
     } catch (error) {
       showSnackbar('Fehler beim Hinzufügen der Schüler', 'error');
+    } finally {
+      isAddingStudentsRef.current = false;
     }
   };
 
@@ -4772,7 +4808,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
       const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
       return [
-        stat.student.name,
+        formatStudentName(stat.student.name),
         stat.count,
         stat.average.toFixed(2),
         stat.period1 ? `${stat.period1.count}× ${stat.period1.grade?.toFixed(1) || '-'}` : '-',
@@ -4800,7 +4836,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
       const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
       return [
-        stat.student.name,
+        formatStudentName(stat.student.name),
         stat.count,
         stat.average.toFixed(2),
         stat.period1 ? `${stat.period1.count}× ${stat.period1.grade?.toFixed(1) || '-'}` : '-',
@@ -4847,7 +4883,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
         x = 14;
         const row = [
-          stat.student.name.substring(0, 25),
+          formatStudentName(stat.student.name).substring(0, 25),
           stat.count.toString(),
           stat.average.toFixed(1),
           stat.period1 ? `${stat.period1.count}×` : '-',
@@ -4878,7 +4914,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
         return new TableRow({
           children: [
-            new TableCell({ children: [new Paragraph(stat.student.name)] }),
+            new TableCell({ children: [new Paragraph(formatStudentName(stat.student.name))] }),
             new TableCell({ children: [new Paragraph(stat.count.toString())] }),
             new TableCell({ children: [new Paragraph(stat.average.toFixed(2))] }),
             new TableCell({ children: [new Paragraph(stat.period1 ? `${stat.period1.count}× ${stat.period1.grade?.toFixed(1) || '-'}` : '-')] }),
@@ -4939,7 +4975,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         const epo1 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 1);
         const epo2 = epoGrades.find((g: any) => g.studentId === stat.student.id && g.period === 2);
         return {
-          student: stat.student.name,
+          student: formatStudentName(stat.student.name),
           count: stat.count,
           average: stat.average,
           period1: stat.period1 ? { count: stat.period1.count, grade: stat.period1.grade } : null,
@@ -7119,7 +7155,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                                       }}
                                       title={`Code: ${student.loginCode}`}
                                       >
-                                        {student.name}
+                                        {formatStudentName(student.name)}
                                       </Typography>
                                       
                                       {/* Overall Grade - Right */}
@@ -8851,25 +8887,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         </DialogActions>
       </Dialog>
       {/* Add Students Dialog */}
-      <Dialog open={openAddStudentsDialog} onClose={() => setOpenAddStudentsDialog(false)}>
+      <Dialog open={openAddStudentsDialog} onClose={handleCloseAddStudentsDialog}>
         <DialogTitle>Schüler hinzufügen</DialogTitle>
         <DialogContent>
           <List>
             {availableStudents.map((student) => (
               <ListItem key={student.id}>
                 <ListItemText 
-                  primary={student.name}
+                  primary={formatStudentName(student.name)}
                   secondary={`Login-Code: ${student.loginCode}`}
                 />
                 <ListItemSecondaryAction>
                   <Checkbox
                     edge="end"
                     onChange={(event) => {
-                      setSelectedStudents(
-                        event.target.checked
-                          ? [...selectedStudents, student.id]
-                          : selectedStudents.filter(id => id !== student.id)
-                      );
+                      setSelectedStudents((prev) => {
+                        if (event.target.checked) {
+                          return [...prev, student.id];
+                        } else {
+                          return prev.filter(id => id !== student.id);
+                        }
+                      });
                     }}
                     checked={selectedStudents.includes(student.id)}
                   />
@@ -8880,10 +8918,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         </DialogContent>
         <DialogActions>
           <Button 
-            onClick={() => setOpenAddStudentsDialog(false)}
+            onClick={handleCloseAddStudentsDialog}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                setOpenAddStudentsDialog(false);
+                handleCloseAddStudentsDialog();
               }
             }}
           >
@@ -11521,7 +11559,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     gridCol: col + 1,
                     slotIndex,
                     deskId,
-                    student: student ? student.name : null
+                    student: student ? formatStudentName(student.name) : null
                   });
                 });
                 // Füge auch leere Slots hinzu
@@ -12165,8 +12203,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             e.stopPropagation();
                             handleParticipationClick(student.id, true, true);
                           }}
-                          onContextMenu={(e) => handleCommentRightClick(e, student.id, student.name)}
-                  onTouchStart={(e) => handleTouchStart(e, student.id, student.name)}
+                          onContextMenu={(e) => handleCommentRightClick(e, student.id, formatStudentName(student.name))}
+                  onTouchStart={(e) => handleTouchStart(e, student.id, formatStudentName(student.name))}
                   onTouchEnd={handleTouchEnd}
                   onTouchMove={handleTouchMove}
                         >
@@ -12193,7 +12231,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   )}
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.05, justifyContent: 'center', height: '100%' }}>
                     <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5rem', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.1 }}>
-                              {student.name}
+                              {formatStudentName(student.name)}
                             </Typography>
                     <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1 }}>
                               {colors.emoji}
@@ -12781,7 +12819,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       }}
                     >
                       <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, flex: '0 0 auto', minWidth: '120px' }}>
-                        {stat.student.name}
+                        {formatStudentName(stat.student.name)}
                       </Typography>
                       
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flex: '1 1 auto', justifyContent: 'flex-end' }}>

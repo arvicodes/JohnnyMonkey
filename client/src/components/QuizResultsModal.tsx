@@ -172,7 +172,7 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
                 </Avatar>
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                    {student.name}
+                    {student.name.split(' ')[0]} {student.name.split(' ').slice(-1)[0]}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                     ID: {participation?.id?.slice(-6)}
