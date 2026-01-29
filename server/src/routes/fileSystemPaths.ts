@@ -91,4 +91,7 @@ router.get('/get-examination-questions', FileSystemPathController.getExamination
 // Einzelfrage aktualisieren
 router.post('/update-single-question', FileSystemPathController.updateSingleQuestion);
 
+// Titel einer Prüfung aktualisieren
+router.post('/update-examination-title', FileSystemPathController.updateExaminationTitle);
+
 export default router;

@@ -2454,6 +2454,20 @@ KRITISCH WICHTIG:
 
       const htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
 
+      // Extrahiere den Titel
+      let title = '';
+      // Versuche zuerst den header-title zu extrahieren
+      const headerTitleMatch = htmlContent.match(/<div class="header-title">([^<]+)<\/div>/);
+      if (headerTitleMatch) {
+        title = headerTitleMatch[1].trim();
+      } else {
+        // Fallback: Extrahiere aus dem <title> Tag
+        const titleMatch = htmlContent.match(/<title>([^<]+)<\/title>/);
+        if (titleMatch) {
+          title = titleMatch[1].trim();
+        }
+      }
+
       // Extrahiere alle Aufgaben
       const taskPattern = /<!-- Aufgabe (\d+):([^>]*)-->([\s\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)/g;
       const questions: any[] = [];
@@ -2526,6 +2540,7 @@ KRITISCH WICHTIG:
 
       res.json({
         success: true,
+        title: title,
         questions: questions.sort((a, b) => a.taskNumber - b.taskNumber)
       });
     } catch (error) {
@@ -2668,6 +2683,64 @@ ${optionsHTML}
       const errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ 
         error: 'Fehler beim Aktualisieren der Frage',
+        details: errorMessage
+      });
+    }
+  }
+
+  /**
+   * Aktualisiert den Titel einer Prüfung
+   */
+  static async updateExaminationTitle(req: Request, res: Response) {
+    try {
+      const { filePath, title } = req.body;
+
+      if (!filePath || !title) {
+        return res.status(400).json({ error: 'filePath und title sind erforderlich' });
+      }
+
+      // Lese die HTML-Datei
+      let fullFilePath: string;
+      if (filePath.startsWith('git-intern/')) {
+        const relativePath = filePath.replace('git-intern/', '');
+        if (process.env.NODE_ENV === 'production') {
+          const jmReihenPath = path.join(process.cwd(), 'J-M-Reihen');
+          fullFilePath = path.join(jmReihenPath, relativePath);
+        } else {
+          const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+          fullFilePath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+        }
+      } else {
+        fullFilePath = path.resolve(filePath);
+      }
+
+      if (!fs.existsSync(fullFilePath)) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      let htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
+
+      // Aktualisiere den Titel im <title> Tag
+      htmlContent = htmlContent.replace(/<title>([^<]+)<\/title>/, `<title>${title}</title>`);
+
+      // Aktualisiere den Titel im header-title
+      htmlContent = htmlContent.replace(/<div class="header-title">([^<]+)<\/div>/, `<div class="header-title">${title}</div>`);
+
+      // Schreibe die aktualisierte HTML-Datei
+      fs.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+
+      console.log('✅ Titel erfolgreich aktualisiert:', fullFilePath, 'Titel:', title);
+
+      res.json({
+        success: true,
+        message: 'Titel erfolgreich aktualisiert',
+        title
+      });
+    } catch (error) {
+      console.error('❌ Fehler beim Aktualisieren des Titels:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ 
+        error: 'Fehler beim Aktualisieren des Titels',
         details: errorMessage
       });
     }

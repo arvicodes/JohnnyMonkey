@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>q</title>
+    <title>EntryTicket-Stichproben</title>
     <script>
         // KRITISCH: Status-Check IM HEAD - wird SOFORT ausgeführt, bevor irgendetwas gerendert wird
         (function() {
             try {
-                const KA_KEY = 'KU_q';
+                const KA_KEY = 'QZ_EntryTicket-Stichproben';
                 const isTeacher = localStorage.getItem('teacherId') !== null;
                 
                 // Wenn Lehrer, keine Sperre
@@ -737,7 +737,7 @@
         // Status-Check: Nur Debug-Log, keine Blockierung
         // Die echte Prüfung erfolgt in initializeTimer() mit Datenbank-Abfrage
         (function() {
-            const KA_KEY = 'KU_q';
+            const KA_KEY = 'QZ_EntryTicket-Stichproben';
             const isTeacher = localStorage.getItem('teacherId') !== null;
             
             // Wenn Lehrer, keine Prüfung
@@ -769,7 +769,7 @@
     </script>
     <div class="header">
         <div class="header-top">
-            <div class="header-title">q</div>
+            <div class="header-title">EntryTicket-Stichproben</div>
             <div class="header-date" id="currentDate"></div>
         </div>
         <div class="header-divider"></div>
@@ -783,7 +783,7 @@
         </div>
         <div class="header-info">
             <div class="timer-container" id="timer">
-                15:00
+                5:00
             </div>
         </div>
         <div class="header-buttons">
@@ -793,200 +793,181 @@
         </div>
     </div>
 
-    <div class="info-box">
-        <strong>Wichtiger Hinweis:</strong>
-        <ul style="margin: 8px 0 0 20px; padding-left: 0;">
-            <li>Du hast 15 Minuten Zeit.</li>
-            <li>Beschrifte dein Arbeitsblatt mit deinem vollständigen Namen und gib es am Ende ab.</li>
-            <li>Fertige bei Aufgaben mit Konstruktionshinweis eine ordentliche, ausführliche Konstruktion auf deinem Arbeitsblatt an (mit Angabe der Aufgabennummer).</li>
-            <li>Verwende für Konstruktionen Zirkel und Lineal.</li>
-        </ul>
-    </div>
-
-    
-
-    <!-- Aufgabe 1: AFB 1 - Multiple Choice (einfachste Frage) -->
+    <!-- Aufgabe 1: Multiple Choice - Klasseneinteilung -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(4 Punkte)</span></div>
+            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(1 Punkt)</span></div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-1">AFB 1</span>
-                <div class="points">4 Punkte</div>
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">1 Punkt</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an:</p>
-            
             <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Frage zu Stichproben und Häufigkeiten:</label>
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Leon hat die Masse von 18 Hühnereiern bestimmt. Die Werte liegen zwischen 54g und 74g. Warum ist es sinnvoll, diese Werte in Klassen zusammenzufassen?</label>
                 <div style="margin-left: 20px;">
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="a" style="margin-right: 8px;">
-                        Antwort A
+                        Weil man dann weniger Zahlen aufschreiben muss.
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="b" style="margin-right: 8px;">
-                        Antwort B
+                        Weil man dann ein übersichtlicheres Diagramm erstellen kann und die Daten besser vergleichen kann.
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="c" style="margin-right: 8px;">
-                        Antwort C
+                        Weil man dann die genauen Werte nicht mehr braucht.
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a1" value="d" style="margin-right: 8px;">
-                        Antwort D
+                        Weil man dann mehr Eier wiegen kann.
                     </label>
                 </div>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>Richtige Antwort: <strong>B</strong></p>
-                <p><em>Bitte passen Sie diese Musterlösung an Ihre spezifischen Anforderungen an.</em></p>
+                <p><strong>Richtige Antwort: B</strong></p>
+                <p>Durch die Klasseneinteilung werden die Daten übersichtlicher dargestellt. Man kann ein Diagramm erstellen, das die Verteilung der Eier in verschiedenen Gewichtsklassen zeigt, und die Daten besser vergleichen und interpretieren.</p>
             </div>
         </div>
     </div>
 
-    <!-- Aufgabe 2: AFB 1 - Multiple Choice -->
+    <!-- Aufgabe 2: Multiple Choice - Absolute Häufigkeit bei Sportfest -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(4 Punkte)</span></div>
+            <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(1 Punkt)</span></div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-1">AFB 1</span>
-                <div class="points">4 Punkte</div>
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">1 Punkt</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an:</p>
-            
             <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Frage zu Stichproben und Häufigkeiten:</label>
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Beim Sportfest nehmen insgesamt 240 Personen teil. 30% davon sind Juniormitglieder (bis 18 Jahre). Wie viele Juniormitglieder nehmen teil?</label>
                 <div style="margin-left: 20px;">
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a2" value="a" style="margin-right: 8px;">
-                        Antwort A
+                        30 Personen
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a2" value="b" style="margin-right: 8px;">
-                        Antwort B
+                        72 Personen
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a2" value="c" style="margin-right: 8px;">
-                        Antwort C
+                        80 Personen
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a2" value="d" style="margin-right: 8px;">
-                        Antwort D
+                        240 Personen
                     </label>
                 </div>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>Richtige Antwort: <strong>B</strong></p>
-                <p><em>Bitte passen Sie diese Musterlösung an Ihre spezifischen Anforderungen an.</em></p>
+                <p><strong>Richtige Antwort: B</strong></p>
+                <p>30% von 240 = 0,30 × 240 = 72. Die absolute Häufigkeit der Juniormitglieder beträgt 72 Personen.</p>
             </div>
         </div>
     </div>
 
-    <!-- Aufgabe 3: AFB 1 - Multiple Choice -->
+    <!-- Aufgabe 3: Multiple Choice - Relative Häufigkeit bei Sportfest -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 3 <span style="font-size: 11px; color: #666; font-weight: normal;">(4 Punkte)</span></div>
+            <div class="task-number">Aufgabe 3 <span style="font-size: 11px; color: #666; font-weight: normal;">(1 Punkt)</span></div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-1">AFB 1</span>
-                <div class="points">4 Punkte</div>
+                <span class="afb-badge afb-2">AFB 2</span>
+                <div class="points">1 Punkt</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an:</p>
-            
             <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Frage zu Stichproben und Häufigkeiten:</label>
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Beim Sportfest nehmen 24 Seniormitglieder (über 65 Jahre) von insgesamt 240 Teilnehmern teil. Wie groß ist die relative Häufigkeit der Seniormitglieder in Prozent?</label>
                 <div style="margin-left: 20px;">
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a3" value="a" style="margin-right: 8px;">
-                        Antwort A
+                        10%
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a3" value="b" style="margin-right: 8px;">
-                        Antwort B
+                        24%
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a3" value="c" style="margin-right: 8px;">
-                        Antwort C
+                        12%
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a3" value="d" style="margin-right: 8px;">
-                        Antwort D
+                        15%
                     </label>
                 </div>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>Richtige Antwort: <strong>B</strong></p>
-                <p><em>Bitte passen Sie diese Musterlösung an Ihre spezifischen Anforderungen an.</em></p>
+                <p><strong>Richtige Antwort: A</strong></p>
+                <p>Relative Häufigkeit = 24/240 = 0,10 = 10%. Die relative Häufigkeit der Seniormitglieder beträgt 10%.</p>
             </div>
         </div>
     </div>
 
-    <!-- Aufgabe 4: AFB 2 - Multiple Choice (schwerste Multiple-Choice-Frage) -->
+    <!-- Aufgabe 4: Multiple Choice - Kreisdiagramm -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 4 <span style="font-size: 11px; color: #666; font-weight: normal;">(4 Punkte)</span></div>
+            <div class="task-number">Aufgabe 4 <span style="font-size: 11px; color: #666; font-weight: normal;">(1 Punkt)</span></div>
             <div class="task-meta teacher-only">
                 <span class="afb-badge afb-2">AFB 2</span>
-                <div class="points">4 Punkte</div>
+                <div class="points">1 Punkt</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Kreuze</strong> die richtige Antwort an:</p>
-            
             <div class="input-group full-width" style="margin-bottom: 20px;">
-                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Frage zu Stichproben und Häufigkeiten:</label>
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">Wie berechnet man den Mittelpunktswinkel für ein Kreisdiagramm, wenn man die relative Häufigkeit in Prozent kennt?</label>
                 <div style="margin-left: 20px;">
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a4" value="a" style="margin-right: 8px;">
-                        Antwort A
+                        Mittelpunktswinkel = Prozentwert × 3,6°
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a4" value="b" style="margin-right: 8px;">
-                        Antwort B
+                        Mittelpunktswinkel = Prozentwert × 360°
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a4" value="c" style="margin-right: 8px;">
-                        Antwort C
+                        Mittelpunktswinkel = Prozentwert ÷ 360°
                     </label>
                     <label style="display: block; margin-bottom: 8px; cursor: pointer;">
                         <input type="radio" name="a4" value="d" style="margin-right: 8px;">
-                        Antwort D
+                        Mittelpunktswinkel = Prozentwert + 360°
                     </label>
                 </div>
             </div>
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>Richtige Antwort: <strong>B</strong></p>
-                <p><em>Bitte passen Sie diese Musterlösung an Ihre spezifischen Anforderungen an.</em></p>
+                <p><strong>Richtige Antwort: A</strong></p>
+                <p>Da ein Vollkreis 360° hat und 100% entspricht, berechnet man den Mittelpunktswinkel für einen bestimmten Prozentsatz durch: Mittelpunktswinkel = Prozentwert × 3,6°. Beispiel: 30% entsprechen 30 × 3,6° = 108°.</p>
             </div>
         </div>
     </div>
 
-    <!-- Aufgabe 5: AFB 2 - Textaufgabe (schwerste Frage) -->
+    <!-- Aufgabe 5: Textaufgabe - Sportfest Berechnungen -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 5 <span style="font-size: 11px; color: #666; font-weight: normal;">(4 Punkte)</span></div>
+            <div class="task-number">Aufgabe 5 <span style="font-size: 11px; color: #666; font-weight: normal;">(1 Punkt)</span></div>
             <div class="task-meta teacher-only">
                 <span class="afb-badge afb-2">AFB 2</span>
-                <div class="points">4 Punkte</div>
+                <div class="points">1 Punkt</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Bearbeite</strong> die folgende Aufgabe zu Stichproben und Häufigkeiten:</p>
+            <p><strong>Bearbeite</strong> die folgende Aufgabe:</p>
             
             <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
-                <p>Beschreiben Sie die wichtigsten Konzepte zu Stichproben und Häufigkeiten in ausführlicher Form.</p>
+                <p>Beim Sportfest nehmen insgesamt 240 Personen teil. 30% sind Juniormitglieder (bis 18 Jahre), 24 Personen sind Seniormitglieder (über 65 Jahre), und die restlichen 144 Personen teilen sich zu gleichen Teilen auf Mitglieder (über 18 bis 45 Jahre) und Plusmitglieder (über 45 bis 65 Jahre) auf.</p>
+                <p><strong>Berechne die absolute und relative Häufigkeit für jede Altersgruppe und erkläre, warum die relative Häufigkeit besonders nützlich ist, wenn man die Ergebnisse mit anderen Sportfesten vergleichen möchte.</strong></p>
             </div>
 
             <div class="input-group full-width">
@@ -995,12 +976,24 @@
 
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p><em>Bitte passen Sie diese Musterlösung an Ihre spezifischen Anforderungen an.</em></p>
+                <p><strong>Absolute Häufigkeiten:</strong></p>
+                <ul>
+                    <li>Juniormitglieder: 30% von 240 = 0,30 × 240 = 72 Personen</li>
+                    <li>Seniormitglieder: 24 Personen</li>
+                    <li>Mitglieder: 144 ÷ 2 = 72 Personen</li>
+                    <li>Plusmitglieder: 144 ÷ 2 = 72 Personen</li>
+                </ul>
+                <p><strong>Relative Häufigkeiten:</strong></p>
+                <ul>
+                    <li>Juniormitglieder: 72/240 = 0,30 = 30%</li>
+                    <li>Seniormitglieder: 24/240 = 0,10 = 10%</li>
+                    <li>Mitglieder: 72/240 = 0,30 = 30%</li>
+                    <li>Plusmitglieder: 72/240 = 0,30 = 30%</li>
+                </ul>
+                <p><strong>Erklärung:</strong> Die relative Häufigkeit ist besonders nützlich für Vergleiche, weil sie unabhängig von der Gesamtzahl der Teilnehmer ist. Wenn ein anderes Sportfest z.B. 300 Teilnehmer hat, kann man die Prozentsätze direkt vergleichen, auch wenn die absoluten Zahlen unterschiedlich sind. So kann man erkennen, ob die Altersverteilung ähnlich ist, unabhängig davon, wie viele Personen insgesamt teilgenommen haben.</p>
             </div>
         </div>
     </div>
-
-         </div>
             
 
     <div class="submit-section">
@@ -1009,21 +1002,13 @@
 
     <div class="footer">
         <div class="footer-content">
-            <div class="footer-right">
-                <div class="footer-luck">Viel Erfolg!</div>
-                <div style="font-size: 40px; margin-top: 5px; line-height: 1;">🍀</div>
-            </div>
-        </div>
-        <div class="footer-note">
-            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">25</span> Punkten erreicht.</div>
-            <div class="footer-note-line"><strong>Note:</strong> <span id="noteText">___</span> / <span id="noteNumber">___</span></div>
             <div class="footer-points teacher-only" id="averageDisplay" style="margin-top: 10px; font-size: 13px; color: #666; display: none;">Notenschnitt: <span id="averageNote">-</span></div>
         </div>
     </div>
 
     <script>
         // Eindeutiger Key für diese Hausaufgabenüberprüfung (HÜ)
-        const KA_KEY = 'KU_q';
+        const KA_KEY = 'QZ_EntryTicket-Stichproben';
         const isTeacher = localStorage.getItem('teacherId') !== null;
         const studentId = localStorage.getItem('studentId') || 'unknown';
         
@@ -1199,7 +1184,7 @@
         }
         
         // Timer-Funktionalität
-        let timeLeft = 15 * 60; // 15 Minuten in Sekunden
+        let timeLeft = 5 * 60; // 5 Minuten in Sekunden
         let timerElement = null;
         let timerInterval = null;
         
@@ -1466,7 +1451,7 @@
                     <h2>😊</h2>
                     <h2>Abgabe erfolgreich!</h2>
                     <p>Vielen Dank für deine Abgabe!</p>
-                    <p>Einen schönen Rest der Mathestunde! 🍀</p>
+                    <p>Einen schönen Rest der Mathestunde!</p>
                 </div>
             `;
             document.body.appendChild(popup);
@@ -1660,13 +1645,11 @@
 
         // Punkteverteilung definieren
         const pointsDistribution = {
-            a1a: 1, a1b: 1, a1c: 1, a1d: 1, a1e: 1, a1f: 1, a1g: 1, a1h: 1,  // Aufgabe 1: 8 Punkte (je 1 Punkt pro Lücke)
-            a2a: 1, a2b: 1, a2c: 1,  // Aufgabe 2: 3 Punkte (je 1 Punkt pro Frage)
-            // Aufgabe 3: 14 Punkte - Koordinaten einzeln (je 0.25 Punkte pro Koordinate) + 2 Punkte Konstruktion pro Teilaufgabe = 3.5 Punkte pro Teilaufgabe × 4 = 14 Punkte
-            'a3a_x': 0.25, 'a3a_y': 0.25, 'a3b_x': 0.25, 'a3b_y': 0.25, 'a3c_x': 0.25, 'a3c_y': 0.25,  // a) A₁, B₁, C₁
-            'a3d_x': 0.25, 'a3d_y': 0.25, 'a3e_x': 0.25, 'a3e_y': 0.25, 'a3f_x': 0.25, 'a3f_y': 0.25,  // b) A₂, B₂, C₂
-            'a3g_x': 0.25, 'a3g_y': 0.25, 'a3h_x': 0.25, 'a3h_y': 0.25, 'a3i_x': 0.25, 'a3i_y': 0.25,  // c) A₃, B₃, C₃
-            'a3j_x': 0.25, 'a3j_y': 0.25, 'a3k_x': 0.25, 'a3k_y': 0.25, 'a3l_x': 0.25, 'a3l_y': 0.25   // d) A₄, B₄, C₄
+            a1: 1,  // Aufgabe 1: Multiple Choice (1 Punkt)
+            a2: 1,  // Aufgabe 2: Multiple Choice (1 Punkt)
+            a3: 1,  // Aufgabe 3: Multiple Choice (1 Punkt)
+            a4: 1,  // Aufgabe 4: Multiple Choice (1 Punkt)
+            a5: 1   // Aufgabe 5: Textfrage (1 Punkt - manuell korrigiert)
         };
 
         const rechenwegPoints = {
@@ -1736,114 +1719,38 @@
             return { text: gradeText, number: grade, withTendency: gradeWithTendency };
         }
 
-        // Richtige Antworten für Aufgabe 1 (Lückentext)
-        const correctAnswersTask1 = {
-            a1a: 'Mittelsenkrechte',
-            a1b: 'Winkelhalbierende',
-            a1c: 'Achsenspiegelung', // Alternative: Geradenspiegelung
-            a1d: 'Punktspiegelung', // Alternative: Zentralspiegelung
-            a1e: 'Verschiebung', // Alternative: Translation
-            a1f: 'Drehung', // Alternative: Rotation
-            a1g: 'Kongruenzabbildung', // Alternative: Isometrie
-            a1h: 'Doppelspiegelung'
-        };
-
-        // Richtige Antworten für Multiple Choice (Aufgabe 2)
+        // Richtige Antworten für Multiple Choice Fragen
         const correctAnswers = {
-            a2a: 'b',  // Doppelspiegelung an sich schneidenden Geraden → Drehung
-            a2b: 'a',  // Verschiebung: A'(7|4)
-            a2c: 'a'   // Falsche Aussage: Kongruenzabbildungen erhalten auch Größe
+            a1: 'b',  // Aufgabe 1: Klasseneinteilung - Antwort B
+            a2: 'b',  // Aufgabe 2: Absolute Häufigkeit - Antwort B (72 Personen)
+            a3: 'a',  // Aufgabe 3: Relative Häufigkeit - Antwort A (10%)
+            a4: 'a'   // Aufgabe 4: Kreisdiagramm - Antwort A (Prozentwert × 3,6°)
         };
-
-        // Richtige Koordinaten für Aufgabe 3
-        const correctCoordinates = {
-            // a) Spiegelung an x-Achse
-            'a3a_x': -6, 'a3a_y': -4,  // A₁(-6|-4)
-            'a3b_x': -3, 'a3b_y': -7,  // B₁(-3|-7)
-            'a3c_x': -4, 'a3c_y': -2,  // C₁(-4|-2)
-            // b) Spiegelung an y=x
-            'a3d_x': -4, 'a3d_y': -6,  // A₂(-4|-6)
-            'a3e_x': -7, 'a3e_y': -3,  // B₂(-7|-3)
-            'a3f_x': -2, 'a3f_y': -4,  // C₂(-2|-4)
-            // c) Verschiebung
-            'a3g_x': 2, 'a3g_y': 7,    // A₃(2|7)
-            'a3h_x': 5, 'a3h_y': 10,   // B₃(5|10)
-            'a3i_x': 4, 'a3i_y': 5,    // C₃(4|5)
-            // d) Punktspiegelung an Z(2|-1)
-            'a3j_x': 10, 'a3j_y': -6,  // A₄(10|-6)
-            'a3k_x': 7, 'a3k_y': -9,   // B₄(7|-9)
-            'a3l_x': 8, 'a3l_y': -4    // C₄(8|-4)
-        };
+        
+        // Aufgabe 5 (Textfrage) wird manuell korrigiert, daher keine automatische Bewertung
 
         // Funktion zur Berechnung der erreichten Punkte
         function calculatePoints() {
             let totalPoints = 0;
             let achievedPoints = 0;
             
-            // Aufgabe 1: Text-Inputs (Lückentext) - Prüfe ob Antwort richtig ist
-            ['a1a', 'a1b', 'a1c', 'a1d', 'a1e', 'a1f', 'a1g', 'a1h'].forEach(key => {
-                const input = document.getElementById(key);
-                if (input) {
-                    totalPoints += 1;
-                    const studentAnswer = (input.value || '').trim().toLowerCase();
-                    const correctAnswer = (correctAnswersTask1[key] || '').trim().toLowerCase();
-                    // Prüfe ob die Antwort richtig ist (Groß-/Kleinschreibung ignorieren)
-                    if (studentAnswer === correctAnswer) {
-                        achievedPoints += 1;
-                    }
-                }
-            });
-
-            // Aufgabe 2: Multiple Choice (Radio-Buttons)
-            ['a2a', 'a2b', 'a2c'].forEach(key => {
+            // Aufgabe 1-4: Multiple Choice Fragen (je 1 Punkt)
+            ['a1', 'a2', 'a3', 'a4'].forEach(key => {
                 const radio = document.querySelector(`input[name="${key}"]:checked`);
-                if (radio) {
-                    totalPoints += 1;
-                    if (radio.value === correctAnswers[key]) {
-                        achievedPoints += 1;
-                    }
-                } else {
-                    totalPoints += 1; // Frage existiert, auch wenn nicht beantwortet
+                totalPoints += 1; // Frage existiert immer
+                if (radio && radio.value === correctAnswers[key]) {
+                    achievedPoints += 1;
                 }
             });
 
-            // Aufgabe 3: Koordinaten (Number-Inputs)
-            // Pro Teilaufgabe: 6 Koordinaten × 0.25 = 1.5 Punkte (automatisch)
-            // Konstruktionspunkte (2 Punkte pro Teilaufgabe) werden nur im Korrekturmodus vergeben
-            Object.keys(correctCoordinates).forEach(key => {
-                const input = document.getElementById(key);
-                if (input) {
-                    totalPoints += 0.25;
-                    const value = input.value.trim();
-                    if (value !== '') {
-                        const numValue = parseFloat(value);
-                        if (!isNaN(numValue) && numValue === correctCoordinates[key]) {
-                            achievedPoints += 0.25;
-                        }
-                    }
-                }
-            });
-            
-            // Konstruktionspunkte hinzufügen (2 Punkte pro Teilaufgabe × 4 = 8 Punkte)
-            // Diese werden nur im Korrekturmodus vergeben, hier nur zu Gesamtpunkten hinzufügen
-            totalPoints += 8; // 4 Teilaufgaben × 2 Punkte Konstruktion
-            
-            // Rechenweg-Punkte hinzufügen (nur im Lehrer-Modus sichtbar)
-            Object.keys(rechenwegPoints).forEach(key => {
-                totalPoints += rechenwegPoints[key];
-                // Rechenweg wird auf Blatt gemacht, daher hier nicht automatisch vergeben
-            });
-            
-            // Begründungs-Punkte hinzufügen
-            Object.keys(begruendungPoints).forEach(key => {
-                const input = document.getElementById(key);
-                if (input) {
-                    totalPoints += begruendungPoints[key];
-                    if (input.value && input.value.trim() !== '') {
-                        achievedPoints += begruendungPoints[key];
-                    }
-                }
-            });
+            // Aufgabe 5: Textfrage (1 Punkt - wird manuell korrigiert)
+            // Textfrage wird nicht automatisch bewertet, aber zu Gesamtpunkten hinzugefügt
+            const textarea = document.getElementById('a5');
+            if (textarea) {
+                totalPoints += 1;
+                // Textfrage wird manuell korrigiert, daher hier keine automatische Punktevergabe
+                // Die Punkte werden im Korrekturmodus vergeben
+            }
             
             // Runde auf 2 Dezimalstellen für bessere Darstellung
             achievedPoints = Math.round(achievedPoints * 100) / 100;
@@ -1856,26 +1763,20 @@
         function updatePointsDisplay() {
             const points = calculatePoints();
             const pointsDisplay = document.getElementById('pointsDisplay');
-            const noteText = document.getElementById('noteText');
-            const noteNumber = document.getElementById('noteNumber');
-            
-            // Zeige Punkteanzeige nur an, wenn mindestens ein Feld ausgefüllt wurde
+            if (!pointsDisplay) {
+                return;
+            }
+// Zeige Punkteanzeige nur an, wenn mindestens ein Feld ausgefüllt wurde
             const hasInputs = Array.from(document.querySelectorAll('input[type="text"], textarea, input[type="number"]')).some(input => input.value && input.value.trim() !== '') ||
                               Array.from(document.querySelectorAll('input[type="radio"]')).some(radio => radio.checked);
             if (points.achieved > 0 || hasInputs) {
                 pointsDisplay.style.display = 'block';
                 document.getElementById('achievedPoints').textContent = points.achieved;
                 document.getElementById('totalPoints').textContent = points.total;
-                
-                const grade = calculateGrade(points.achieved, points.total);
-                noteText.textContent = grade.text;
-                noteNumber.textContent = grade.text ? grade.withTendency : '___';
             } else {
                 // Am Anfang: Platzhalter anzeigen
                 pointsDisplay.style.display = 'block';
                 document.getElementById('achievedPoints').textContent = '___';
-                noteText.textContent = '___';
-                noteNumber.textContent = '___';
             }
         }
 
@@ -1907,8 +1808,6 @@
                 pointsDisplay.style.display = 'block';
                 document.getElementById('achievedPoints').textContent = '___';
                 document.getElementById('totalPoints').textContent = points.total;
-                document.getElementById('noteText').textContent = '___';
-                document.getElementById('noteNumber').textContent = '___';
             }
         }
         
@@ -1922,47 +1821,13 @@
             
             // Sammle alle eingegebenen Antworten
             const answers = {
-                a1a: document.getElementById('a1a').value || '',
-                a1b: document.getElementById('a1b').value || '',
-                a1c: document.getElementById('a1c').value || '',
-                // Aufgabe 2: Multiple Choice
-                a2a: document.querySelector('input[name="a2a"]:checked')?.value || '',
-                a2b: document.querySelector('input[name="a2b"]:checked')?.value || '',
-                a2c: document.querySelector('input[name="a2c"]:checked')?.value || '',
-                // Aufgabe 3: Koordinaten einzeln
-                a3a_x: document.getElementById('a3a_x')?.value || '',
-                a3a_y: document.getElementById('a3a_y')?.value || '',
-                a3b_x: document.getElementById('a3b_x')?.value || '',
-                a3b_y: document.getElementById('a3b_y')?.value || '',
-                a3c_x: document.getElementById('a3c_x')?.value || '',
-                a3c_y: document.getElementById('a3c_y')?.value || '',
-                a3d_x: document.getElementById('a3d_x')?.value || '',
-                a3d_y: document.getElementById('a3d_y')?.value || '',
-                a3e_x: document.getElementById('a3e_x')?.value || '',
-                a3e_y: document.getElementById('a3e_y')?.value || '',
-                a3f_x: document.getElementById('a3f_x')?.value || '',
-                a3f_y: document.getElementById('a3f_y')?.value || '',
-                a3g_x: document.getElementById('a3g_x')?.value || '',
-                a3g_y: document.getElementById('a3g_y')?.value || '',
-                a3h_x: document.getElementById('a3h_x')?.value || '',
-                a3h_y: document.getElementById('a3h_y')?.value || '',
-                a3i_x: document.getElementById('a3i_x')?.value || '',
-                a3i_y: document.getElementById('a3i_y')?.value || '',
-                a3j_x: document.getElementById('a3j_x')?.value || '',
-                a3j_y: document.getElementById('a3j_y')?.value || '',
-                a3k_x: document.getElementById('a3k_x')?.value || '',
-                a3k_y: document.getElementById('a3k_y')?.value || '',
-                a3l_x: document.getElementById('a3l_x')?.value || '',
-                a3l_y: document.getElementById('a3l_y')?.value || '',
-                a7a: document.getElementById('a7a').value || '',
-                a7b: document.getElementById('a7b').value || '',
-                a7c: document.getElementById('a7c').value || '',
-                a8a: document.getElementById('a8a').value || '',
-                a8b: document.getElementById('a8b').value || '',
-                a8c: document.getElementById('a8c').value || '',
-                a9a: document.getElementById('a9a').value || '',
-                a9b: document.getElementById('a9b').value || '',
-                a9c: document.getElementById('a9c').value || ''
+                // Aufgabe 1-4: Multiple Choice
+                a1: document.querySelector('input[name="a1"]:checked')?.value || '',
+                a2: document.querySelector('input[name="a2"]:checked')?.value || '',
+                a3: document.querySelector('input[name="a3"]:checked')?.value || '',
+                a4: document.querySelector('input[name="a4"]:checked')?.value || '',
+                // Aufgabe 5: Textfrage
+                a5: document.getElementById('a5')?.value || ''
             };
 
             const today = new Date();
@@ -2379,9 +2244,6 @@
     </div>
 
     <div class="footer">
-        <div class="footer-note">
-            <div class="footer-points">Du hast ${points.achieved} von ${points.total} Punkten erreicht.</div>
-            <div class="footer-note-line"><strong>Note:</strong> ${grade.text} / ${grade.withTendency}</div>
         </div>
     </div>
 </body>
@@ -2478,12 +2340,10 @@
                             }
                         },
                         children: [
-                            // Header: Vor- und Nachname, Note (wie im PDF-Beispiel)
+                            // Header: Vor- und Nachname
                             new Paragraph({
                                 children: [
-                                    new TextRun({ text: 'Vor- und Nachname: ' }),
-                                    new TextRun({ text: '        ' }),
-                                    new TextRun({ text: 'Note: ' })
+                                    new TextRun({ text: 'Vor- und Nachname: ' })
                                 ],
                                 spacing: { after: 400 }
                             }),

@@ -946,7 +946,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             .filter(b => !b.caught)
             .sort((a, b) => a.spawnTime - b.spawnTime);
           
-          // Finde den ersten passenden Ballon
+          // Finde den ersten passenden Ballon - NUR EINEN!
           const matchingBalloon = sortedUncaught.find((balloon) => {
             if (key === 'f' && balloon.key === 'f') return true;
             if (key === 'j' && balloon.key === 'j') return true;
@@ -954,7 +954,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           });
           
           if (matchingBalloon) {
-                setScore((s) => s + 1);
+            // WICHTIG: Nur diesen EINEN Ballon markieren, alle anderen unverändert lassen
+            setScore((s) => s + 1);
             return prev.map((balloon) => 
               balloon.id === matchingBalloon.id 
                 ? { ...balloon, caught: true }
@@ -964,6 +965,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           
           return prev;
           });
+          // WICHTIG: Sofort returnen, damit kein weiterer Ballon gefangen wird
+          return;
         } else {
         // Hard-Modus: Prüfe ob die richtige Taste gedrückt wurde
         if (requiredKey && key === requiredKey) {
@@ -1172,13 +1175,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [folderTree, setFolderTree] = useState<any>(null);
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(new Set());
   const [examDurationMinutes, setExamDurationMinutes] = useState(5);
+  const examinationFileNameInputRef = useRef<HTMLInputElement>(null);
   
   // Einzelfragen-Bearbeitung
   const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
   const [singleQuestionFilePath, setSingleQuestionFilePath] = useState<string>('');
   const [examinationQuestions, setExaminationQuestions] = useState<any[]>([]);
+  const [examinationTitle, setExaminationTitle] = useState<string>('');
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
   const [savingQuestion, setSavingQuestion] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [participationGroupId, setParticipationGroupId] = useState<string | null>(null);
   const [participationGroupName, setParticipationGroupName] = useState('');
@@ -1844,6 +1850,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }
     }
   }, [groups]);
+
+  // AutoFocus auf Dateiname-Feld wenn Modal geöffnet wird
+  useEffect(() => {
+    if (createExaminationModalOpen) {
+      // Verzögerung, damit das Modal vollständig gerendert ist
+      const timer = setTimeout(() => {
+        if (examinationFileNameInputRef.current) {
+          examinationFileNameInputRef.current.focus();
+          examinationFileNameInputRef.current.select();
+        } else {
+          // Fallback: Suche das Input-Element direkt
+          const input = document.querySelector('input[type="text"][value=""]') as HTMLInputElement;
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [createExaminationModalOpen]);
 
   const fetchGroups = async () => {
     try {
@@ -3181,52 +3208,30 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               color: isCorrectionFile(item.name) ? '#ff9800' : color
             }}>{item.name}</span>
             
-            {/* Icons für Bearbeitung von Prüfungsdateien */}
+            {/* Icon für Bearbeitung von Prüfungsdateien */}
             {item.type === 'file' && isCorrectionFile(item.name) && (
-              <Box sx={{ display: 'flex', gap: 0.3, ml: 0.5 }}>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditExamination(item);
-                  }}
-                  sx={{
-                    p: 0.3,
-                    minWidth: 20,
-                    width: 20,
-                    height: 20,
-                    color: '#1976d2',
-                    '&:hover': {
-                      bgcolor: '#e3f2fd',
-                      color: '#1565c0'
-                    }
-                  }}
-                  title="Alle Inhalte neu generieren"
-                >
-                  <EditIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSingleQuestion(item);
-                  }}
-                  sx={{
-                    p: 0.3,
-                    minWidth: 20,
-                    width: 20,
-                    height: 20,
-                    color: '#2e7d32',
-                    '&:hover': {
-                      bgcolor: '#e8f5e9',
-                      color: '#1b5e20'
-                    }
-                  }}
-                  title="Einzelfragen bearbeiten"
-                >
-                  <QuizIcon sx={{ fontSize: 14 }} />
-                </IconButton>
-              </Box>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditSingleQuestion(item);
+                }}
+                sx={{
+                  p: 0.3,
+                  minWidth: 20,
+                  width: 20,
+                  height: 20,
+                  color: '#1976d2',
+                  ml: 0.5,
+                  '&:hover': {
+                    bgcolor: '#e3f2fd',
+                    color: '#1565c0'
+                  }
+                }}
+                title="Bearbeiten"
+              >
+                <EditIcon sx={{ fontSize: 14 }} />
+              </IconButton>
             )}
 
             </Typography>
@@ -3643,10 +3648,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     );
   };
 
-  // Funktion zum Bearbeiten einer bestehenden Prüfung
-  const handleEditExamination = (item: any) => {
-    handleEditSingleQuestion(item);
-  };
   
   // Funktion zum Öffnen des Einzelfragen-Modals
   const handleEditSingleQuestion = async (item: any) => {
@@ -3661,6 +3662,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       if (response.ok) {
         const data = await response.json();
         setExaminationQuestions(data.questions || []);
+        setExaminationTitle(data.title || '');
       } else {
         showSnackbar('Fehler beim Laden der Fragen', 'error');
       }
@@ -3700,6 +3702,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         if (reloadResponse.ok) {
           const data = await reloadResponse.json();
           setExaminationQuestions(data.questions || []);
+          setExaminationTitle(data.title || '');
         }
       } else {
         const errorText = await response.text();
@@ -3717,6 +3720,47 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       showSnackbar('Fehler beim Speichern der Frage', 'error');
     } finally {
       setSavingQuestion(false);
+    }
+  };
+
+  // Funktion zum Speichern des Titels
+  const handleSaveTitle = async () => {
+    if (!examinationTitle.trim()) {
+      showSnackbar('Bitte geben Sie einen Titel ein', 'error');
+      return;
+    }
+
+    setSavingTitle(true);
+    try {
+      const response = await fetch('/api/file-system-paths/update-examination-title', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filePath: singleQuestionFilePath,
+          title: examinationTitle.trim()
+        })
+      });
+
+      if (response.ok) {
+        showSnackbar('Titel erfolgreich gespeichert!', 'success');
+      } else {
+        const errorText = await response.text();
+        let errorMessage = 'Unbekannter Fehler';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || error.details || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        showSnackbar(`Fehler: ${errorMessage}`, 'error');
+      }
+    } catch (error) {
+      console.error('❌ Fehler beim Speichern des Titels:', error);
+      showSnackbar('Fehler beim Speichern des Titels', 'error');
+    } finally {
+      setSavingTitle(false);
     }
   };
   
@@ -13862,25 +13906,50 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           setExaminationFolderPath('');
           setExaminationLearningGroupId('');
         }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (examinationType && examinationFileName.trim() && examinationFolderPath) {
+              handleCreateExamination();
+            }
+          }
+        }}
         maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
-            maxHeight: '90vh'
+            borderRadius: 3,
+            maxHeight: '90vh',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
           }
         }}
       >
-        <DialogTitle sx={{ pb: 1, pt: 2, px: 2, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AssignmentIcon sx={{ color: colors.primary, fontSize: 28 }} />
-            <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+        <DialogTitle sx={{ 
+          pb: 1.5, 
+          pt: 2.5, 
+          px: 3, 
+          borderBottom: '2px solid #e3f2fd',
+          bgcolor: '#f5f9ff'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <AssignmentIcon sx={{ color: colors.primary, fontSize: 30 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#1976d2' }}>
               Prüfung erstellen
             </Typography>
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <DialogContent sx={{ p: 3 }}>
+          <Box 
+            component="form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (examinationType && examinationFileName.trim() && examinationFolderPath) {
+                handleCreateExamination();
+              }
+            }}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}
+          >
             {/* Prüfungstyp */}
             <FormControl fullWidth required>
               <Typography variant="body2" sx={{ fontWeight: 600, color: '#666', mb: 0.5 }}>
@@ -13916,9 +13985,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             <TextField
               fullWidth
               required
+              autoFocus
+              inputRef={examinationFileNameInputRef}
               label="Dateiname / Titel (ohne Präfix und .html)"
               value={examinationFileName}
               onChange={(e) => setExaminationFileName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (examinationType && examinationFileName.trim() && examinationFolderPath) {
+                    handleCreateExamination();
+                  }
+                }
+              }}
               placeholder="z.B. daten-und-zufall"
               helperText={`Der Dateiname wird automatisch mit ${examinationType ? examinationType + '_' : 'Präfix_'} ergänzt`}
             />
@@ -13931,6 +14011,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               onChange={(e) => {
                 const value = parseInt(e.target.value) || 0;
                 setExamDurationMinutes(Math.max(1, value));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (examinationType && examinationFileName.trim() && examinationFolderPath) {
+                    handleCreateExamination();
+                  }
+                }
               }}
               inputProps={{ min: 1, step: 1 }}
               helperText="Wird im Timer der Prüfung übernommen"
@@ -13971,17 +14060,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
             {/* Ordner - Hierarchische Baumstruktur */}
             <Box>
-              <Typography variant="body2" sx={{ mb: 1, fontWeight: 600, color: '#666' }}>
+              <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '0.95rem' }}>
                 Ordner auswählen <span style={{ color: '#d32f2f' }}>*</span>
               </Typography>
               <Box
                 sx={{
-                  border: '1px solid #e0e0e0',
-                  borderRadius: 1,
-                  p: 1.5,
+                  border: '2px solid #e3f2fd',
+                  borderRadius: 2,
+                  p: 2,
                   maxHeight: 300,
                   overflow: 'auto',
-                  bgcolor: '#fafafa'
+                  bgcolor: '#fafbff',
+                  '&:hover': {
+                    borderColor: '#90caf9'
+                  }
                 }}
               >
                 {folderTree ? (
@@ -14010,24 +14102,40 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid #e0e0e0' }}>
+        <DialogActions sx={{ 
+          px: 3, 
+          py: 2, 
+          borderTop: '2px solid #e3f2fd',
+          bgcolor: '#fafafa',
+          gap: 1
+        }}>
           <Button
             onClick={() => {
               setCreateExaminationModalOpen(false);
-              setExaminationType('');
+              setExaminationType('QZ');
               setExaminationFileName('');
-              setExamDurationMinutes(15);
+              setExamDurationMinutes(5);
               setExaminationFolderPath('');
               setExaminationLearningGroupId('');
+            }}
+            sx={{ 
+              color: '#666',
+              '&:hover': { bgcolor: '#f0f0f0' }
             }}
           >
             Abbrechen
           </Button>
           <Button
+            type="submit"
             onClick={handleCreateExamination}
             variant="contained"
             disabled={!examinationType || !examinationFileName || !examinationFolderPath}
-            sx={{ bgcolor: colors.primary }}
+            sx={{ 
+              bgcolor: colors.primary,
+              px: 3,
+              '&:hover': { bgcolor: '#1565c0' },
+              '&:disabled': { bgcolor: '#ccc' }
+            }}
           >
             Erstellen
           </Button>
@@ -14038,10 +14146,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       <Dialog
         open={singleQuestionModalOpen}
         onClose={() => {
-          if (!savingQuestion && !loadingQuestions) {
+          if (!savingQuestion && !loadingQuestions && !savingTitle) {
             setSingleQuestionModalOpen(false);
             setSingleQuestionFilePath('');
             setExaminationQuestions([]);
+            setExaminationTitle('');
             setEditingQuestion(null);
           }
         }}
@@ -14049,46 +14158,97 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
-            maxHeight: '90vh'
+            borderRadius: 3,
+            maxHeight: '90vh',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
           }
         }}
       >
-        <DialogTitle sx={{ pb: 1, pt: 2, px: 2, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <QuizIcon sx={{ color: '#2e7d32', fontSize: 28 }} />
-              <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                Fragen bearbeiten
-              </Typography>
-            </Box>
-            <Button
-              onClick={() => {
-                setSingleQuestionModalOpen(false);
-                setSingleQuestionFilePath('');
-                setExaminationQuestions([]);
-                setEditingQuestion(null);
-              }}
-              size="small"
-            >
-              Schließen
-            </Button>
+        <DialogTitle sx={{ 
+          pb: 1.5, 
+          pt: 2.5, 
+          px: 3, 
+          borderBottom: '2px solid #e3f2fd',
+          bgcolor: '#f5f9ff'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <EditIcon sx={{ color: colors.primary, fontSize: 30 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#1976d2' }}>
+              Fragen bearbeiten
+            </Typography>
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ p: 2 }}>
+        <DialogContent sx={{ p: 3 }}>
+          {!loadingQuestions && examinationQuestions.length > 0 && (
+            <Box sx={{ mb: 3, pb: 2, borderBottom: '2px solid #e3f2fd' }}>
+              <TextField
+                fullWidth
+                label="Titel / Dateiname"
+                value={examinationTitle}
+                onChange={(e) => setExaminationTitle(e.target.value)}
+                sx={{
+                  mb: 1,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2
+                  }
+                }}
+              />
+              <Button
+                onClick={handleSaveTitle}
+                variant="contained"
+                disabled={savingTitle || !examinationTitle.trim()}
+                size="small"
+                sx={{
+                  bgcolor: colors.primary,
+                  borderRadius: 2,
+                  '&:hover': {
+                    bgcolor: '#1565c0'
+                  },
+                  '&:disabled': {
+                    bgcolor: '#ccc'
+                  }
+                }}
+              >
+                {savingTitle ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1, color: 'white' }} />
+                    Speichere...
+                  </>
+                ) : (
+                  'Titel speichern'
+                )}
+              </Button>
+            </Box>
+          )}
           {loadingQuestions ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6 }}>
+              <CircularProgress sx={{ mb: 2 }} />
+              <Typography variant="body2" sx={{ color: '#666' }}>
+                Lade Fragen...
+              </Typography>
             </Box>
           ) : examinationQuestions.length === 0 ? (
-            <Alert severity="info">
-              Keine Fragen gefunden. Bitte generieren Sie zuerst Inhalte für diese Prüfung.
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              <Typography variant="body2">
+                Keine Fragen gefunden. Bitte generieren Sie zuerst Inhalte für diese Prüfung.
+              </Typography>
             </Alert>
           ) : editingQuestion ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 600 }}>
-                Aufgabe {editingQuestion.taskNumber} bearbeiten
-              </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              <Box sx={{ 
+                bgcolor: '#f5f9ff', 
+                p: 2, 
+                borderRadius: 2, 
+                border: '2px solid #e3f2fd',
+                mb: 1
+              }}>
+                <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600, color: '#1976d2' }}>
+                  Aufgabe {editingQuestion.taskNumber} bearbeiten
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#666', mt: 0.5 }}>
+                  {editingQuestion.questionType === 'multiple-choice' ? 'Multiple Choice' : 'Textantwort'}
+                </Typography>
+              </Box>
               
               <TextField
                 fullWidth
@@ -14098,11 +14258,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 multiline
                 rows={3}
                 variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2
+                  }
+                }}
               />
               
               {editingQuestion.questionType === 'multiple-choice' && (
-                <>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mt: 1 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#333', mt: 1 }}>
                     Antwortoptionen:
                   </Typography>
                   {editingQuestion.options.map((option: string, index: number) => (
@@ -14118,15 +14283,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       }}
                       variant="outlined"
                       size="small"
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2
+                        }
+                      }}
                     />
                   ))}
                   
-                  <FormControl fullWidth>
+                  <FormControl fullWidth sx={{ mt: 1 }}>
                     <InputLabel>Richtige Antwort</InputLabel>
                     <Select
                       value={editingQuestion.correctAnswer || ''}
                       onChange={(e) => setEditingQuestion({ ...editingQuestion, correctAnswer: e.target.value })}
                       label="Richtige Antwort"
+                      sx={{
+                        borderRadius: 2
+                      }}
                     >
                       {editingQuestion.options.map((_: string, index: number) => (
                         <MenuItem key={index} value={String.fromCharCode(65 + index)}>
@@ -14135,7 +14308,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       ))}
                     </Select>
                   </FormControl>
-                </>
+                </Box>
               )}
               
               <TextField
@@ -14146,12 +14319,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 multiline
                 rows={4}
                 variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2
+                  }
+                }}
               />
               
-              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+              <Box sx={{ display: 'flex', gap: 1.5, mt: 2, justifyContent: 'flex-end' }}>
                 <Button
                   onClick={() => setEditingQuestion(null)}
                   variant="outlined"
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    borderColor: '#ccc',
+                    color: '#666',
+                    '&:hover': {
+                      borderColor: '#999',
+                      bgcolor: '#f5f5f5'
+                    }
+                  }}
                 >
                   Abbrechen
                 </Button>
@@ -14159,7 +14347,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                   onClick={() => handleSaveQuestion(editingQuestion)}
                   variant="contained"
                   disabled={savingQuestion || !editingQuestion.questionText.trim()}
-                  sx={{ bgcolor: '#2e7d32' }}
+                  sx={{ 
+                    bgcolor: colors.primary,
+                    borderRadius: 2,
+                    px: 3,
+                    '&:hover': { 
+                      bgcolor: '#1565c0' 
+                    },
+                    '&:disabled': {
+                      bgcolor: '#ccc'
+                    }
+                  }}
                 >
                   {savingQuestion ? (
                     <>
@@ -14175,46 +14373,81 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {examinationQuestions.map((question) => (
-                <Box
+                <Card
                   key={question.taskNumber}
                   sx={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 1,
-                    p: 2,
-                    bgcolor: '#fafafa'
+                    border: '2px solid #e3f2fd',
+                    borderRadius: 2,
+                    bgcolor: '#fafbff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                      borderColor: '#90caf9'
+                    }
                   }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
-                      Aufgabe {question.taskNumber} - {question.questionType === 'multiple-choice' ? 'Multiple Choice' : 'Textantwort'}
-                    </Typography>
-                    <Button
-                      size="small"
-                      onClick={() => setEditingQuestion({ ...question })}
-                      variant="outlined"
-                      startIcon={<EditIcon />}
-                    >
-                      Bearbeiten
-                    </Button>
-                  </Box>
-                  <Typography variant="body2" sx={{ mb: 1, color: '#666' }}>
-                    {question.questionText}
-                  </Typography>
-                  {question.questionType === 'multiple-choice' && question.options.length > 0 && (
-                    <Box sx={{ ml: 2, mt: 1 }}>
-                      {question.options.map((option: string, index: number) => (
-                        <Typography key={index} variant="body2" sx={{ fontSize: '0.85rem', color: '#555' }}>
-                          {String.fromCharCode(65 + index)}: {option}
+                  <CardContent sx={{ p: 2.5 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 600, color: '#1976d2', mb: 0.5 }}>
+                          Aufgabe {question.taskNumber}
                         </Typography>
-                      ))}
-                      {question.correctAnswer && (
-                        <Typography variant="body2" sx={{ mt: 1, fontWeight: 600, color: '#2e7d32' }}>
-                          Richtige Antwort: {question.correctAnswer}
+                        <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                          {question.questionType === 'multiple-choice' ? 'Multiple Choice' : 'Textantwort'}
                         </Typography>
-                      )}
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => setEditingQuestion({ ...question })}
+                        sx={{
+                          bgcolor: colors.primary,
+                          color: 'white',
+                          p: 0.5,
+                          minWidth: 28,
+                          width: 28,
+                          height: 28,
+                          borderRadius: 1.5,
+                          '&:hover': {
+                            bgcolor: '#1565c0'
+                          }
+                        }}
+                        title="Bearbeiten"
+                      >
+                        <EditIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
                     </Box>
-                  )}
-                </Box>
+                    <Typography variant="body2" sx={{ mb: 2, color: '#333', lineHeight: 1.6 }}>
+                      {question.questionText}
+                    </Typography>
+                    {question.questionType === 'multiple-choice' && question.options.length > 0 && (
+                      <Box sx={{ 
+                        bgcolor: '#f5f5f5', 
+                        p: 2, 
+                        borderRadius: 2,
+                        border: '1px solid #e0e0e0'
+                      }}>
+                        {question.options.map((option: string, index: number) => (
+                          <Typography 
+                            key={index} 
+                            variant="body2" 
+                            sx={{ 
+                              fontSize: '0.9rem', 
+                              mb: 0.5,
+                              fontWeight: question.correctAnswer === String.fromCharCode(65 + index) ? 600 : 400,
+                              color: question.correctAnswer === String.fromCharCode(65 + index) ? '#2e7d32' : '#555'
+                            }}
+                          >
+                            <strong>{String.fromCharCode(65 + index)}:</strong> {option}
+                            {question.correctAnswer === String.fromCharCode(65 + index) && (
+                              <span style={{ marginLeft: 8, color: '#2e7d32' }}>✓</span>
+                            )}
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
               ))}
             </Box>
           )}

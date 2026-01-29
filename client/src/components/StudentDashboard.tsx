@@ -930,24 +930,31 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           setHoldMessage('');
         }
         
-        // Für F und J: Einmaliges Drücken fängt Ballons
+        // Für F und J: Einmaliges Drücken fängt nur den ersten passenden Ballon
         setBalloons((prev) => {
-          return prev.map((balloon) => {
-            if (balloon.caught) return balloon;
-            
-            // F-Ballon mit F-Taste fangen (einmaliges Drücken)
-            if (balloon.key === 'f' && key === 'f') {
-              setScore((s) => s + 1);
-              return { ...balloon, caught: true };
-            }
-            // J-Ballon mit J-Taste fangen (einmaliges Drücken)
-            if (balloon.key === 'j' && key === 'j') {
-              setScore((s) => s + 1);
-              return { ...balloon, caught: true };
-            }
-            
-            return balloon;
+          // Sortiere nach spawnTime, um den ältesten zuerst zu nehmen
+          const sortedUncaught = prev
+            .filter(b => !b.caught)
+            .sort((a, b) => a.spawnTime - b.spawnTime);
+          
+          // Finde den ersten passenden Ballon - NUR EINEN!
+          const matchingBalloon = sortedUncaught.find((balloon) => {
+            if (key === 'f' && balloon.key === 'f') return true;
+            if (key === 'j' && balloon.key === 'j') return true;
+            return false;
           });
+          
+          if (matchingBalloon) {
+            // WICHTIG: Nur diesen EINEN Ballon markieren, alle anderen unverändert lassen
+            setScore((s) => s + 1);
+            return prev.map((balloon) => 
+              balloon.id === matchingBalloon.id 
+                ? { ...balloon, caught: true }
+                : balloon
+            );
+          }
+          
+          return prev;
         });
       }
     };
