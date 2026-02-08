@@ -40,7 +40,6 @@ function AppContent() {
     e.preventDefault();
     setMessage(''); // Clear previous messages
     try {
-      console.log('🔐 Attempting login with code:', loginCode);
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -173,12 +172,13 @@ function AppContent() {
                   <div className="form-group">
                     <input
                       ref={loginInputRef}
-                      type="text"
+                      type="password"
                       value={loginCode}
                       onChange={(e) => setLoginCode(e.target.value)}
                       placeholder="Login-Code eingeben"
                       required
                       autoFocus
+                      autoComplete="off"
                     />
                   </div>
                   <button type="submit">Anmelden</button>

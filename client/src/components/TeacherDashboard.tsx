@@ -283,7 +283,10 @@ import {
   TableChart as TableChartIcon,
   PictureAsPdf as PictureAsPdfIcon,
   Code as CodeIcon,
-  Games as GamesIcon
+  Games as GamesIcon,
+  Computer as ComputerIcon,
+  Calculate as CalculateIcon,
+  Functions as FunctionsIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -320,6 +323,20 @@ interface LearningGroup {
   id: string;
   name: string;
   students: Student[];
+}
+
+/** Anzeigereihenfolge der Lerngruppen: 7a → 10c → Mathe LK 11 → GK 11 → GK 12 → rest */
+function sortLearningGroups(groups: LearningGroup[]): LearningGroup[] {
+  const order = (name: string): number => {
+    const n = name.toLowerCase();
+    if (n.includes('7a') || n === 'klasse 7a') return 0;
+    if (n.includes('10c') || n === 'klasse 10c') return 1;
+    if (n.includes('mathe lk 11')) return 2;
+    if (n.includes('gk 11') || n.includes('informatik gk 11')) return 3;
+    if (n.includes('gk 12') || n.includes('informatik gk 12')) return 4;
+    return 5;
+  };
+  return [...groups].sort((a, b) => order(a.name) - order(b.name));
 }
 
 interface Student {
@@ -571,8 +588,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const next: Record<string, boolean> = { ...prev };
       for (const g of groups) {
         if (next[g.id] === undefined) {
-          // Klasse 7a should be expanded by default
-          next[g.id] = g.name === 'Klasse 7a' ? true : false;
+          next[g.id] = false; // alle standardmäßig eingeklappt
         }
       }
       return next;
@@ -1911,7 +1927,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         showSnackbar('Server-Fehler: Ungültige Antwort', 'error');
         return;
       }
-      setGroups(groupsData);
+      setGroups(sortLearningGroups(groupsData));
       
       // Lade zugeordnete Ordner für alle Gruppen
       for (const group of groupsData) {
@@ -6947,7 +6963,42 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                 bgcolor: colors.cardBg
               }}>
                 <CardContent>
-                  {groups.map((group) => (
+                  {groups.map((group) => {
+                    const isInformatik = /informatik|gk\s*11|gk\s*12/i.test(group.name);
+                    const isInformatikGK12 = /gk\s*12|informatik\s*gk\s*12/i.test(group.name);
+                    const isMatheLK = /mathe\s*lk\s*11/i.test(group.name);
+                    const is7a = /7a|klasse\s*7a/i.test(group.name);
+                    const is10c = /10c|klasse\s*10c/i.test(group.name);
+                    const groupColor = isInformatik ? (isInformatikGK12 ? '#0097A7' : '#006064')  // GK 12 mehr Cyan
+                      : isMatheLK ? '#2E7D32'   // grünlich
+                      : is7a ? '#1565C0'        // bläulich
+                      : is10c ? '#E65100'       // orange
+                      : colors.primary;
+                    const rowIconColor = isInformatik ? (isInformatikGK12 ? '#1976D2' : '#9C27B0')  // GK 12 Icons blau
+                      : isMatheLK ? '#2E7D32'   // Mathe-Icons in Grün
+                      : is7a ? '#1565C0'        // 7a Zeilen-Icons bleiben blau
+                      : is10c ? '#E65100'
+                      : colors.primary;
+                    const boxBg = isInformatik ? (isInformatikGK12 ? 'rgba(0, 151, 167, 0.16)' : 'rgba(0, 96, 100, 0.14)')
+                      : isMatheLK ? 'rgba(46, 125, 50, 0.14)'
+                      : is7a ? 'rgba(21, 101, 192, 0.12)'
+                      : is10c ? 'rgba(230, 81, 0, 0.12)'
+                      : `${groupColor}10`;
+                    const boxHover = isInformatik ? (isInformatikGK12 ? 'rgba(0, 151, 167, 0.28)' : 'rgba(0, 96, 100, 0.25)')
+                      : isMatheLK ? 'rgba(46, 125, 50, 0.25)'
+                      : is7a ? 'rgba(21, 101, 192, 0.22)'
+                      : is10c ? 'rgba(230, 81, 0, 0.22)'
+                      : `${groupColor}20`;
+                    const boxBorder = (isInformatik || isMatheLK || is7a || is10c)
+                      ? `1px solid ${groupColor}50`
+                      : 'none';
+                    const hasCustomStyle = isInformatik || isMatheLK || is7a || is10c;
+                    const prefixIcon = isInformatik ? (isInformatikGK12 ? <CodeIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} /> : <ComputerIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />)
+                      : isMatheLK ? <FunctionsIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />
+                      : is7a ? <GamesIcon sx={{ fontSize: '1.35rem', color: '#FFC107' }} />
+                      : is10c ? <LessonIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />
+                      : null;
+                    return (
                     <Box key={group.id} sx={{ mb: 1.4 }}>
                       <Box sx={{ 
                         display: 'flex', 
@@ -6955,21 +7006,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         justifyContent: 'space-between',
                         mb: 0.8,
                         p: 1.0,
-                        bgcolor: `${colors.primary}10`,
+                        bgcolor: boxBg,
                         borderRadius: 1.4,
                         cursor: 'pointer',
+                        border: boxBorder,
                         '&:hover': {
-                          bgcolor: `${colors.primary}20`,
+                          bgcolor: boxHover,
                         }
                       }} onClick={() => toggleGroupExpanded(group.id)}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                          {prefixIcon}
                           <Typography variant="h6" sx={{ 
-                            color: colors.primary, 
-                            fontWeight: 'bold',
+                            color: groupColor, 
+                            fontWeight: isMatheLK ? 800 : 'bold',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            fontSize: '0.72rem'
+                            fontSize: isMatheLK ? '0.9rem' : '0.72rem'
                           }}>
                             {group.name}
                           </Typography>
@@ -6978,7 +7031,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             size="small" 
                             sx={{ 
                               ml: 1.0, 
-                              bgcolor: colors.primary,
+                              bgcolor: groupColor,
                               color: 'white',
                               fontWeight: 'bold',
                               fontSize: '0.6rem',
@@ -6991,12 +7044,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             aria-label={expandedGroups[group.id] === false ? 'Aufklappen' : 'Zuklappen'}
                             onClick={e => { e.stopPropagation(); toggleGroupExpanded(group.id); }}
                             size="small"
-                            sx={{ width: 24, height: 24, p: 0.25 }}
+                            sx={{ width: 28, height: 28, p: 0.25, color: hasCustomStyle ? rowIconColor : 'inherit' }}
                           >
                             {expandedGroups[group.id] === false ? (
-                              <ExpandMoreIcon />
+                              <ExpandMoreIcon sx={{ fontSize: 28 }} />
                             ) : (
-                              <ExpandLessIcon />
+                              <ExpandLessIcon sx={{ fontSize: 28 }} />
                             )}
                           </IconButton>
                           <IconButton
@@ -7004,11 +7057,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             onClick={e => { e.stopPropagation(); handleOpenWhiteboard(group.id); }}
                             size="small"
                             sx={{ 
-                              width: 24, 
-                              height: 24, 
+                              width: 28, 
+                              height: 28, 
                               p: 0, 
                               mr: 0.5, 
-                              color: colors.primary,
+                              color: hasCustomStyle ? rowIconColor : groupColor,
                               '& svg': {
                                 width: '100%',
                                 height: '100%'
@@ -7016,15 +7069,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }}
                             title="Whiteboard erstellen"
                           >
-                            <BrushIcon sx={{ fontSize: 24 }} />
+                            <BrushIcon sx={{ fontSize: 28 }} />
                           </IconButton>
                           <IconButton
                             aria-label="Epochal eintragen"
                             onClick={e => { e.stopPropagation(); handleParticipationOpen(group.id, group.name); }}
                             size="small"
                             sx={{ 
-                              width: 24, 
-                              height: 24, 
+                              width: 28, 
+                              height: 28, 
                               p: 0, 
                               mr: 0.5, 
                               color: '#FF6B35',
@@ -7035,18 +7088,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }}
                             title="Epochal eintragen"
                           >
-                            <HandRaiseIcon sx={{ fontSize: 24 }} />
+                            <HandRaiseIcon sx={{ fontSize: 28 }} />
                           </IconButton>
                           <IconButton
                             aria-label={expandedStudents[group.id] ? 'Schülerliste einklappen' : 'Schülerliste aufklappen'}
                             onClick={e => { e.stopPropagation(); toggleStudentsExpanded(group.id); }}
                             size="small"
                             sx={{ 
-                              width: 24, 
-                              height: 24, 
+                              width: 28, 
+                              height: 28, 
                               p: 0, 
                               mr: 0.5, 
-                              color: colors.accent1,
+                              color: hasCustomStyle ? rowIconColor : colors.accent1,
                               '& svg': {
                                 width: '100%',
                                 height: '100%'
@@ -7054,23 +7107,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                             }}
                             title="Schülerliste"
                           >
-                            <GroupIcon sx={{ fontSize: 24 }} />
+                            <GroupIcon sx={{ fontSize: 28 }} />
                           </IconButton>
                           <IconButton
                             aria-label="Mehr"
                             onClick={e => { e.stopPropagation(); handleMenuOpen(e, group.id); }}
                             size="small"
                             sx={{ 
-                              width: 24, 
-                              height: 24, 
+                              width: 28, 
+                              height: 28, 
                               p: 0,
+                              color: hasCustomStyle ? rowIconColor : undefined,
                               '& svg': {
                                 width: '100%',
                                 height: '100%'
                               }
                             }}
                           >
-                            <MoreVertIcon sx={{ fontSize: 24 }} />
+                            <MoreVertIcon sx={{ fontSize: 28 }} />
                           </IconButton>
                         </Box>
                       </Box>
@@ -7930,7 +7984,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                       
 
                     </Box>
-                  ))}
+                  );
+                  })}
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}
