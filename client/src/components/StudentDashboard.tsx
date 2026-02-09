@@ -1197,6 +1197,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     try {
       // Cache-Busting Parameter hinzufügen
       const timestamp = Date.now();
+      console.log(`📁 Lade zugeordnete Ordner für Gruppe ${groupId}...`);
       const response = await fetch(`/api/learning-groups/${groupId}/folders?t=${timestamp}`, {
         cache: 'no-cache',
         headers: {
@@ -1205,7 +1206,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       });
       if (response.ok) {
         const folders = await response.json();
+        console.log(`✅ Gefundene Ordner für Gruppe ${groupId}:`, folders);
         const folderPaths = folders.map((f: any) => f.path);
+        console.log(`📂 Ordner-Pfade:`, folderPaths);
         
         // Lösche alle alten Daten für diese Gruppe
         setAssignedFolders(prev => {
@@ -1232,8 +1235,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
         // Lade den Inhalt aller zugeordneten Ordner
         folderPaths.forEach((folderPath: string) => {
+          console.log(`📂 Lade Inhalt für Ordner: ${folderPath}`);
           fetchAssignedFolderContent(groupId, folderPath);
         });
+      } else {
+        console.error(`❌ Fehler beim Laden der Ordner für Gruppe ${groupId}:`, response.status, response.statusText);
       }
     } catch (error) {
       console.error('Fehler beim Laden der zugeordneten Ordner:', error);
@@ -1329,6 +1335,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
     const isLoading = loadingFolderContents[`${groupId}:${folderPath}`] || false;
     
+    console.log(`🎨 Rendere Ordner-Vorschau für ${folderPath}, Items:`, items.length);
+    
     // Filtere .wb-Dateien aus, damit Schüler nur PDF-Dateien sehen
     const filteredItems = filterWbFiles(items);
     
@@ -1364,9 +1372,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
-      // Prüfe, ob die Datei für diese Gruppe freigegeben ist
+      // Wenn der Ordner zugeordnet ist, werden ALLE Dateien und Unterordner angezeigt
+      // (nicht nur freigegebene Dateien)
+      // Die Freigabe-Logik wird nur für spezielle Dateien (K_, etc.) verwendet
+      
+      // Prüfe, ob die Datei für diese Gruppe freigegeben ist (für spezielle Dateien wie K_)
       const groupSharedFiles = sharedFiles[groupId] || [];
-      // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
       let isFileShared = groupSharedFiles.includes(item.path);
       
       // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
@@ -1380,15 +1391,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       }
       
-      // Wenn es eine Datei ist und NICHT freigegeben, verberge sie
-      if (item.type === 'file' && !isFileShared) {
+      // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
+      // Alle anderen Dateien werden angezeigt, wenn der Ordner zugeordnet ist
+      if (item.type === 'file' && item.name.startsWith('K_') && !isFileShared) {
         return null;
       }
 
-      // Wenn es ein Ordner ist und KEINE freigegebenen Dateien enthält, verberge ihn
-      if (item.type === 'directory' && !hasSharedFiles(item)) {
-        return null;
-      }
+      // Ordner werden IMMER angezeigt
+      // Dateien werden angezeigt (außer K_ Dateien, die explizit freigegeben werden müssen)
 
       // Quiz-Dateien werden für Schüler als "Quiz starten" Button angezeigt
       if (item.type === 'file' && item.name.startsWith('Quiz')) {
@@ -1399,8 +1409,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         );
       }
       
-      // Cards-Dateien werden weiterhin ausgeblendet
-      // K_ Dateien werden angezeigt, wenn sie explizit freigegeben wurden
+      // Cards-Dateien werden ausgeblendet
+      if (item.type === 'file' && (item.name.endsWith('.cards') || item.name.includes('Cards'))) {
+        return null;
+      }
       
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
@@ -1511,13 +1523,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       );
     };
     
-    // Prüfe, ob der Ordner überhaupt freigegebene Dateien enthält
-    const hasSomeSharedFiles = items.some(item => hasSharedFiles(item));
-    
-    // Wenn keine freigegebenen Dateien, zeige den Ordner nicht an
-    if (!isLoading && !hasSomeSharedFiles) {
-      return null;
-    }
+    // Zuordnete Ordner werden IMMER angezeigt, auch wenn sie noch keine freigegebenen Dateien enthalten
+    // (damit Schüler sehen, welche Ordner zugeordnet sind)
+    // Die Dateien darin müssen freigegeben werden, aber die Ordnerstruktur ist sichtbar
 
     return (
       <Box key={folderPath} sx={{ mb: 1.4 }}>
@@ -3502,6 +3510,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
     fetchLerngruppen();
   }, [userId]);
+
+  // Lade Ordner neu, wenn das Fenster wieder fokussiert wird (z. B. nachdem Lehrer Ordner hinzugefügt hat)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && lerngruppen.length > 0) {
+        console.log('🔄 Fenster wieder sichtbar - lade Ordner neu...');
+        lerngruppen.forEach(group => {
+          fetchAssignedFolders(group.id);
+        });
+      }
+    };
+
+    const handleFocus = () => {
+      if (lerngruppen.length > 0) {
+        console.log('🔄 Fenster fokussiert - lade Ordner neu...');
+        lerngruppen.forEach(group => {
+          fetchAssignedFolders(group.id);
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [lerngruppen]);
 
   if (loading) return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" sx={{ bgcolor: colors.background }}>

@@ -286,7 +286,8 @@ import {
   Games as GamesIcon,
   Computer as ComputerIcon,
   Calculate as CalculateIcon,
-  Functions as FunctionsIcon
+  Functions as FunctionsIcon,
+  EmojiEmotions as EmojiEmotionsIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -6971,22 +6972,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     const is10c = /10c|klasse\s*10c/i.test(group.name);
                     const groupColor = isInformatik ? (isInformatikGK12 ? '#0097A7' : '#006064')  // GK 12 mehr Cyan
                       : isMatheLK ? '#2E7D32'   // grünlich
-                      : is7a ? '#1565C0'        // bläulich
+                      : is7a ? '#F9A825'        // gelblich
                       : is10c ? '#E65100'       // orange
                       : colors.primary;
                     const rowIconColor = isInformatik ? (isInformatikGK12 ? '#1976D2' : '#9C27B0')  // GK 12 Icons blau
                       : isMatheLK ? '#2E7D32'   // Mathe-Icons in Grün
-                      : is7a ? '#1565C0'        // 7a Zeilen-Icons bleiben blau
+                      : is7a ? '#F9A825'        // 7a Zeilen-Icons gelblich
                       : is10c ? '#E65100'
                       : colors.primary;
                     const boxBg = isInformatik ? (isInformatikGK12 ? 'rgba(0, 151, 167, 0.16)' : 'rgba(0, 96, 100, 0.14)')
                       : isMatheLK ? 'rgba(46, 125, 50, 0.14)'
-                      : is7a ? 'rgba(21, 101, 192, 0.12)'
+                      : is7a ? 'rgba(249, 168, 37, 0.16)'
                       : is10c ? 'rgba(230, 81, 0, 0.12)'
                       : `${groupColor}10`;
                     const boxHover = isInformatik ? (isInformatikGK12 ? 'rgba(0, 151, 167, 0.28)' : 'rgba(0, 96, 100, 0.25)')
                       : isMatheLK ? 'rgba(46, 125, 50, 0.25)'
-                      : is7a ? 'rgba(21, 101, 192, 0.22)'
+                      : is7a ? 'rgba(249, 168, 37, 0.28)'
                       : is10c ? 'rgba(230, 81, 0, 0.22)'
                       : `${groupColor}20`;
                     const boxBorder = (isInformatik || isMatheLK || is7a || is10c)
@@ -6995,7 +6996,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     const hasCustomStyle = isInformatik || isMatheLK || is7a || is10c;
                     const prefixIcon = isInformatik ? (isInformatikGK12 ? <CodeIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} /> : <ComputerIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />)
                       : isMatheLK ? <FunctionsIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />
-                      : is7a ? <GamesIcon sx={{ fontSize: '1.35rem', color: '#FFC107' }} />
+                      : is7a ? <EmojiEmotionsIcon sx={{ fontSize: '1.35rem', color: '#FF9800' }} />
                       : is10c ? <LessonIcon sx={{ fontSize: '1.35rem', color: rowIconColor }} />
                       : null;
                     return (
