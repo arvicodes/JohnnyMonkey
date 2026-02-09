@@ -1372,12 +1372,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
-      // Wenn der Ordner zugeordnet ist, werden ALLE Dateien und Unterordner angezeigt
-      // (nicht nur freigegebene Dateien)
-      // Die Freigabe-Logik wird nur für spezielle Dateien (K_, etc.) verwendet
-      
-      // Prüfe, ob die Datei für diese Gruppe freigegeben ist (für spezielle Dateien wie K_)
+      // Prüfe, ob die Datei für diese Gruppe freigegeben ist
       const groupSharedFiles = sharedFiles[groupId] || [];
+      // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
       let isFileShared = groupSharedFiles.includes(item.path);
       
       // Spezielle Logik für PDF-Dateien: Wenn die entsprechende .wb Datei freigegeben ist,
@@ -1391,14 +1388,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       }
       
-      // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
-      // Alle anderen Dateien werden angezeigt, wenn der Ordner zugeordnet ist
-      if (item.type === 'file' && item.name.startsWith('K_') && !isFileShared) {
+      // Wenn es eine Datei ist und NICHT freigegeben, verberge sie
+      if (item.type === 'file' && !isFileShared) {
         return null;
       }
 
-      // Ordner werden IMMER angezeigt
-      // Dateien werden angezeigt (außer K_ Dateien, die explizit freigegeben werden müssen)
+      // Ordner werden angezeigt, wenn sie freigegebene Dateien enthalten oder wenn sie Unterordner mit freigegebenen Dateien haben
+      // Wenn ein Ordner keine freigegebenen Dateien enthält, wird er ausgeblendet
+      if (item.type === 'directory' && !hasSharedFiles(item)) {
+        return null;
+      }
 
       // Quiz-Dateien werden für Schüler als "Quiz starten" Button angezeigt
       if (item.type === 'file' && item.name.startsWith('Quiz')) {
