@@ -55,6 +55,51 @@ npm start
 
 ## 🚀 Production Deployment
 
+### Portainer.io Deployment
+
+#### Datenbank-Update in Portainer
+
+Wenn du die lokale Datenbank nach Portainer bringen möchtest:
+
+**Schritt 1: Lokale Datenbank als Backup speichern**
+```bash
+cd /Users/verachrist/Documents/MEINE_APP/JohnnyMonkey
+cp server/prisma/dev.db backup_latest.db
+git add backup_latest.db
+git commit -m "Update: Datenbank-Backup für Portainer"
+git push
+```
+
+**Schritt 2: Stack in Portainer aktualisieren**
+1. Portainer → **Stacks** → `johnnymonkey`
+2. **Editor** → **Pull and redeploy** (oder Git repository → **Pull latest changes**)
+3. Warten bis Build abgeschlossen ist
+
+**Schritt 3: Datenbank im Container ersetzen**
+1. Portainer → **Containers** → `johnnymonkey-app` → **Console**
+2. Im Container ausführen:
+   ```bash
+   # Prüfe ob neue backup_latest.db vorhanden ist
+   ls -lh /app/backup_latest.db
+   
+   # Alte Datenbank löschen
+   rm /app/server/prisma/dev.db
+   
+   # Neue Datenbank kopieren
+   cp /app/backup_latest.db /app/server/prisma/dev.db
+   
+   # Prüfen
+   ls -lh /app/server/prisma/dev.db
+   ```
+3. Container neu starten: **Containers** → `johnnymonkey-app` → **Restart**
+
+**Automatischer Import:** Das `docker-start.sh` Script importiert automatisch `backup_latest.db`, wenn:
+- `dev.db` nicht existiert, ODER
+- `backup_latest.db` neuer ist als `dev.db`, ODER
+- Umgebungsvariable `FORCE_DB_IMPORT=true` gesetzt ist
+
+**Hinweis:** Das Volume `johnnymonkey_database` kann nicht gelöscht werden, solange der Container läuft. Verwende die Console-Methode, um die Datenbank zu ersetzen.
+
 ### Render.com Deployment
 
 This project is configured for deployment on Render.com with automatic builds and deployments.
