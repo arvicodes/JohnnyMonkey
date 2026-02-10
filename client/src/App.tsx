@@ -143,6 +143,54 @@ function AppContent() {
     };
   }, []);
 
+  // Beim App-Start: Prüfe ob Benutzer bereits eingeloggt ist
+  useEffect(() => {
+    const checkExistingLogin = async () => {
+      const storedLoginCode = localStorage.getItem('loginCode');
+      const storedUserId = localStorage.getItem('studentId') || localStorage.getItem('teacherId');
+      const storedUserName = localStorage.getItem('userName');
+      
+      if (storedLoginCode && storedUserId && storedUserName) {
+        // Versuche automatisch einzuloggen mit gespeichertem Login-Code
+        try {
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ loginCode: storedLoginCode }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Auto-Login erfolgreich:', data.user.name);
+            setUser(data.user);
+            // Navigate to dashboard if on login page
+            if (window.location.pathname === '/') {
+              navigate('/dashboard');
+            }
+          } else {
+            // Login-Code ist ungültig, lösche gespeicherte Daten
+            console.log('⚠️ Auto-Login fehlgeschlagen, lösche gespeicherte Daten');
+            localStorage.removeItem('teacherId');
+            localStorage.removeItem('studentId');
+            localStorage.removeItem('loginCode');
+            localStorage.removeItem('userName');
+          }
+        } catch (error) {
+          console.error('❌ Auto-Login Fehler:', error);
+          // Bei Fehler: gespeicherte Daten löschen
+          localStorage.removeItem('teacherId');
+          localStorage.removeItem('studentId');
+          localStorage.removeItem('loginCode');
+          localStorage.removeItem('userName');
+        }
+      }
+    };
+    
+    checkExistingLogin();
+  }, []); // Nur einmal beim App-Start ausführen
+
   useEffect(() => {
     if (!user) {
       loginInputRef.current?.focus();

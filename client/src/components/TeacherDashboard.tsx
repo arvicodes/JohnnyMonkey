@@ -2380,6 +2380,62 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         width: 100%;
         box-sizing: border-box;
       `;
+    } else if (fileType === 'html') {
+      // Für HTML-Dateien: In iframe rendern für vollständige Darstellung
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = `
+        width: 100%;
+        min-height: 500px;
+        max-height: 70vh;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: white;
+      `;
+      iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups';
+      
+      content.appendChild(iframe);
+      content.style.cssText = `
+        padding: 0;
+        margin: 0;
+        border: none;
+        background: transparent;
+        max-height: none;
+        overflow: visible;
+        width: 100%;
+        box-sizing: border-box;
+      `;
+      
+      // HTML-Inhalt in iframe schreiben (nachdem iframe zum DOM hinzugefügt wurde)
+      setTimeout(() => {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            iframeDoc.open();
+            iframeDoc.write(htmlContent);
+            iframeDoc.close();
+          }
+        } catch (e) {
+          console.error('Fehler beim Laden des HTML-Inhalts in iframe:', e);
+          // Fallback: Zeige HTML direkt
+          content.removeChild(iframe);
+          content.innerHTML = htmlContent;
+          content.style.cssText = `
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 6px;
+            background: #fafafa;
+            max-height: 70vh;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: auto;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            display: block;
+          `;
+        }
+      }, 100);
     } else {
       // Für andere Dateitypen den normalen Inhalt und Rahmen anzeigen
       content.innerHTML = htmlContent;
@@ -2840,15 +2896,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
     
     if (fileExtension === 'html' || fileExtension === 'htm') {
-      // HTML-Dateien im neuen Tab öffnen
+      // HTML-Dateien im neuen Tab öffnen (mit Fallback für Tablets)
       try {
         const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
         if (response.ok) {
           const htmlContent = await response.text();
           const blob = new Blob([htmlContent], { type: 'text/html' });
           const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          // Versuche im neuen Tab zu öffnen
+          const newWindow = window.open(url, '_blank');
+          
+          // Prüfe ob window.open() erfolgreich war (nicht blockiert)
+          if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+            // Fallback: Zeige HTML in Modal (für Tablets, die Pop-ups blockieren)
+            showFilePreviewModal(item.name, htmlContent, item.path, 'html');
+            // URL sofort revoken, da wir sie nicht mehr brauchen
+            URL.revokeObjectURL(url);
+          } else {
+            // Erfolgreich geöffnet: URL nach längerer Zeit revoken (für Tablets)
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+          }
         }
       } catch (error) {
         console.error('Fehler beim Laden der HTML-Datei:', error);

@@ -1462,31 +1462,76 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       
       return (
         <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
-          <Typography variant="body2" sx={{ 
-            color: color,
-            fontSize: '0.75rem',
-            fontWeight: fontWeight,
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 0.5,
-            mb: 0.5,
-            cursor: item.type === 'file' ? 'pointer' : 'default',
-            textDecoration: 'none',
-            wordBreak: 'break-word',
-            maxWidth: '100%',
-            '&:hover': item.type === 'file' ? {
-              color: '#1976D2'
-            } : {}
-          }}
-          onClick={() => {
-            if (item.type === 'file') {
-              handleFileClick(item);
-            }
-          }}
-          >
-            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
-            {item.type === 'directory' ? (
-              level === 0 ? (
+          {item.type === 'file' ? (
+            // Dateien als klickbares Box-Element für bessere Touch-Unterstützung
+            <Box
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleFileClick(item);
+              }}
+              onTouchStart={(e) => {
+                // Visuelles Feedback für Touch
+                e.currentTarget.style.opacity = '0.7';
+              }}
+              onTouchEnd={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 0.5,
+                mb: 0.5,
+                cursor: 'pointer',
+                userSelect: 'none',
+                WebkitTapHighlightColor: 'rgba(25, 118, 210, 0.2)',
+                touchAction: 'manipulation',
+                padding: '4px 8px',
+                margin: '-4px -8px',
+                borderRadius: '4px',
+                transition: 'background-color 0.2s, opacity 0.2s',
+                '&:hover': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                },
+                '&:active': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                  opacity: 0.7,
+                },
+              }}
+            >
+              <span style={{ fontSize: isCorrectionFile(item.name) ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
+              <Typography variant="body2" sx={{ 
+                color: isCorrectionFile(item.name) ? '#ff9800' : color,
+                fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
+                fontWeight: isCorrectionFile(item.name) ? 700 : fontWeight,
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+                textDecoration: 'none',
+              }}>
+                {item.name}
+              </Typography>
+              {/* Check-Icon für H_ Dateien mit Abgabe */}
+              {item.name.startsWith('H_') && submissionStatuses[item.path] && (
+                <span style={{ marginLeft: '8px', color: '#4caf50', fontSize: '1.2em' }}>✓</span>
+              )}
+            </Box>
+          ) : (
+            // Ordner als Typography (nicht klickbar)
+            <Typography variant="body2" sx={{ 
+              color: color,
+              fontSize: '0.75rem',
+              fontWeight: fontWeight,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 0.5,
+              mb: 0.5,
+              cursor: 'default',
+              textDecoration: 'none',
+              wordBreak: 'break-word',
+              maxWidth: '100%',
+            }}>
+              {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+              {level === 0 ? (
                 <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
               ) : level === 1 ? (
                 <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
@@ -1496,19 +1541,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
               ) : (
                 <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
-              )
-            ) : null} {/* Kein Dreieck für Dateien */}
-            <span style={{ fontSize: isCorrectionFile(item.name) ? '1.3em' : '1em', marginRight: '4px' }}>{icon}</span>
-            <span style={{ 
-              fontWeight: isCorrectionFile(item.name) ? 700 : fontWeight,
-              fontSize: isCorrectionFile(item.name) ? '0.9rem' : '0.75rem',
-              color: isCorrectionFile(item.name) ? '#ff9800' : color
-            }}>{item.name}</span>
-            {/* Check-Icon für H_ Dateien mit Abgabe */}
-            {item.type === 'file' && item.name.startsWith('H_') && submissionStatuses[item.path] && (
-              <span style={{ marginLeft: '8px', color: '#4caf50', fontSize: '1.2em' }}>✓</span>
-            )}
-          </Typography>
+              )}
+              <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+              <span>{item.name}</span>
+            </Typography>
+          )}
           
       {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
       {item.type === 'directory' && item.children && item.children.length > 0 && (
@@ -1748,6 +1785,56 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         line-height: 1.6;
         color: #333;
       `;
+    } else if (fileType === 'html') {
+      // Für HTML-Dateien: In iframe rendern für vollständige Darstellung
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = `
+        width: 100%;
+        min-height: 500px;
+        max-height: 70vh;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: white;
+      `;
+      iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups';
+      
+      content.appendChild(iframe);
+      content.style.cssText = `
+        padding: 0;
+        margin: 0;
+        border: none;
+        background: transparent;
+        max-height: none;
+        overflow: visible;
+      `;
+      
+      // HTML-Inhalt in iframe schreiben (nachdem iframe zum DOM hinzugefügt wurde)
+      setTimeout(() => {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            iframeDoc.open();
+            iframeDoc.write(htmlContent);
+            iframeDoc.close();
+          }
+        } catch (e) {
+          console.error('Fehler beim Laden des HTML-Inhalts in iframe:', e);
+          // Fallback: Zeige HTML direkt
+          content.removeChild(iframe);
+          content.innerHTML = htmlContent;
+          content.style.cssText = `
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 8px;
+            background: #fafafa;
+            max-height: 70vh;
+            overflow: auto;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+          `;
+        }
+      }, 100);
     } else {
       // Für andere Dateitypen den normalen Inhalt und Rahmen anzeigen
       content.innerHTML = htmlContent;
@@ -2380,15 +2467,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       }
       
-      // HTML-Dateien im neuen Tab öffnen
+      // HTML-Dateien im neuen Tab öffnen (mit Fallback für Tablets)
       try {
         const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
         if (response.ok) {
           const htmlContent = await response.text();
           const blob = new Blob([htmlContent], { type: 'text/html' });
           const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          
+          // Versuche im neuen Tab zu öffnen
+          const newWindow = window.open(url, '_blank');
+          
+          // Prüfe ob window.open() erfolgreich war (nicht blockiert)
+          if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+            // Fallback: Zeige HTML in Modal (für Tablets, die Pop-ups blockieren)
+            showFilePreviewModal(item.name, htmlContent, item.path, 'html');
+            // URL sofort revoken, da wir sie nicht mehr brauchen
+            URL.revokeObjectURL(url);
+          } else {
+            // Erfolgreich geöffnet: URL nach längerer Zeit revoken (für Tablets)
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+          }
         }
       } catch (error) {
         console.error('Fehler beim Laden der HTML-Datei:', error);
