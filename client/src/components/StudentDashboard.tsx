@@ -509,6 +509,380 @@ interface StudentDashboardProps {
   onLogout: () => void;
 }
 
+// Konfetti-Wurf Game Component
+const ConfettiGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [particles, setParticles] = useState<Array<{id: number; x: number; y: number; color: string}>>([]);
+  const [gameActive, setGameActive] = useState(false);
+  const particleIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!open) {
+      setScore(0);
+      setTimeLeft(30);
+      setParticles([]);
+      setGameActive(false);
+      return;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!gameActive || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setGameActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [gameActive, timeLeft]);
+
+  useEffect(() => {
+    if (!gameActive) return;
+    const interval = setInterval(() => {
+      setParticles(prev => [
+        ...prev,
+        {
+          id: particleIdRef.current++,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          color: ['#FF1493', '#FF69B4', '#FFB6C1', '#FFD700', '#FF6347', '#FF4500'][Math.floor(Math.random() * 6)]
+        }
+      ]);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [gameActive]);
+
+  const handleParticleClick = (id: number) => {
+    setParticles(prev => prev.filter(p => p.id !== id));
+    setScore(prev => prev + 10);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎊 Konfetti-Wurf
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 400, position: 'relative', overflow: 'hidden' }}>
+        {!gameActive && timeLeft === 30 && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 2 }}>Klicke so schnell wie möglich auf die Konfetti-Partikel!</Typography>
+            <Button variant="contained" onClick={() => setGameActive(true)} sx={{ bgcolor: '#FF1493' }}>
+              Spiel starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h6">Punkte: {score}</Typography>
+              <Typography variant="h6">Zeit: {timeLeft}s</Typography>
+            </Box>
+            <Box sx={{ position: 'relative', width: '100%', height: 350, border: '2px dashed #FF1493', borderRadius: 2 }}>
+              {particles.map(p => (
+                <Box
+                  key={p.id}
+                  onClick={() => handleParticleClick(p.id)}
+                  sx={{
+                    position: 'absolute',
+                    left: `${p.x}%`,
+                    top: `${p.y}%`,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    bgcolor: p.color,
+                    cursor: 'pointer',
+                    animation: 'float 2s ease-in-out infinite',
+                    '@keyframes float': {
+                      '0%, 100%': { transform: 'translateY(0px)' },
+                      '50%': { transform: 'translateY(-10px)' }
+                    }
+                  }}
+                />
+              ))}
+            </Box>
+          </>
+        )}
+        {!gameActive && timeLeft === 0 && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 2 }}>Deine Punktzahl: {score}</Typography>
+            <Button variant="contained" onClick={() => { setScore(0); setTimeLeft(30); setParticles([]); setGameActive(true); }} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Masken-Memory Game Component
+const MaskMemoryModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const masks = ['🎭', '🤡', '👺', '🎪', '🎨', '🎯'];
+  const [cards, setCards] = useState<string[]>([]);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [matched, setMatched] = useState<number[]>([]);
+  const [moves, setMoves] = useState(0);
+
+  useEffect(() => {
+    if (open) {
+      const pairs = [...masks, ...masks].sort(() => Math.random() - 0.5);
+      setCards(pairs);
+      setFlipped([]);
+      setMatched([]);
+      setMoves(0);
+    }
+  }, [open]);
+
+  const handleCardClick = (index: number) => {
+    if (flipped.length === 2 || flipped.includes(index) || matched.includes(index)) return;
+    
+    const newFlipped = [...flipped, index];
+    setFlipped(newFlipped);
+    
+    if (newFlipped.length === 2) {
+      setMoves(prev => prev + 1);
+      if (cards[newFlipped[0]] === cards[newFlipped[1]]) {
+        setMatched(prev => [...prev, ...newFlipped]);
+        setFlipped([]);
+      } else {
+        setTimeout(() => setFlipped([]), 1000);
+      }
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎭 Masken-Memory
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2 }}>
+        <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
+          Züge: {moves} | Gefunden: {matched.length / 2} / {masks.length}
+        </Typography>
+        <Grid container spacing={1}>
+          {cards.map((card, index) => (
+            <Grid item xs={3} key={index}>
+              <Card
+                onClick={() => handleCardClick(index)}
+                sx={{
+                  aspectRatio: '1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  bgcolor: flipped.includes(index) || matched.includes(index) ? '#fff' : '#FF1493',
+                  fontSize: '2rem',
+                  transition: 'all 0.3s',
+                  '&:hover': { transform: 'scale(1.05)' }
+                }}
+              >
+                {flipped.includes(index) || matched.includes(index) ? card : '?'}
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+        {matched.length === cards.length && (
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="h5" sx={{ mb: 1 }}>🎉 Gewonnen!</Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>Du hast {moves} Züge gebraucht.</Typography>
+            <Button variant="contained" onClick={() => { setCards([...masks, ...masks].sort(() => Math.random() - 0.5)); setFlipped([]); setMatched([]); setMoves(0); }} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Narren-Quiz Game Component
+const FoolQuizModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const questions = [
+    { q: 'Was ist die beste Zeit für Karneval?', a: 'Immer!', options: ['Immer!', 'Nur im Februar', 'Nie', 'Am Wochenende'] },
+    { q: 'Wie viele Farben hat ein Regenbogen?', a: 'Alle!', options: ['Alle!', '7', '3', 'Unendlich'] },
+    { q: 'Was macht einen Narren aus?', a: 'Die gute Laune!', options: ['Die gute Laune!', 'Die Maske', 'Die Musik', 'Das Kostüm'] },
+    { q: 'Was ist das beste Karnevals-Gebäck?', a: 'Alles Süße!', options: ['Alles Süße!', 'Berliner', 'Krapfen', 'Kekse'] },
+  ];
+  const [currentQ, setCurrentQ] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setCurrentQ(0);
+      setScore(0);
+      setSelected(null);
+    }
+  }, [open]);
+
+  const handleAnswer = (answer: string) => {
+    setSelected(answer);
+    if (answer === questions[currentQ].a) {
+      setScore(prev => prev + 1);
+    }
+    setTimeout(() => {
+      if (currentQ < questions.length - 1) {
+        setCurrentQ(prev => prev + 1);
+        setSelected(null);
+      }
+    }, 1500);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🤡 Narren-Quiz
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2 }}>
+        {currentQ < questions.length ? (
+          <>
+            <Typography variant="h6" sx={{ mb: 2, textAlign: 'center' }}>
+              Frage {currentQ + 1} von {questions.length}
+            </Typography>
+            <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>
+              {questions[currentQ].q}
+            </Typography>
+            <Grid container spacing={2}>
+              {questions[currentQ].options.map((opt, idx) => (
+                <Grid item xs={6} key={idx}>
+                  <Button
+                    fullWidth
+                    variant={selected === opt ? (opt === questions[currentQ].a ? 'contained' : 'outlined') : 'outlined'}
+                    onClick={() => handleAnswer(opt)}
+                    disabled={selected !== null}
+                    sx={{
+                      py: 2,
+                      bgcolor: selected === opt && opt === questions[currentQ].a ? '#4caf50' : 
+                               selected === opt ? '#f44336' : 'transparent',
+                      color: selected === opt && opt === questions[currentQ].a ? 'white' : 
+                             selected === opt ? 'white' : '#FF1493',
+                      borderColor: '#FF1493',
+                      '&:hover': { bgcolor: selected === null ? '#FF1493' : undefined, color: 'white' }
+                    }}
+                  >
+                    {opt}
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+            {selected && (
+              <Typography variant="body1" sx={{ mt: 2, textAlign: 'center', fontWeight: 600 }}>
+                {selected === questions[currentQ].a ? '✅ Richtig!' : '❌ Falsch!'}
+              </Typography>
+            )}
+          </>
+        ) : (
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Quiz beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 2 }}>Deine Punktzahl: {score} / {questions.length}</Typography>
+            <Button variant="contained" onClick={() => { setCurrentQ(0); setScore(0); setSelected(null); }} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Karnevals-Würfel Game Component
+const CarnivalDiceModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [dice1, setDice1] = useState(1);
+  const [dice2, setDice2] = useState(1);
+  const [rolling, setRolling] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [wins, setWins] = useState(0);
+  const [rolls, setRolls] = useState(0);
+
+  useEffect(() => {
+    if (open) {
+      setDice1(1);
+      setDice2(1);
+      setRolling(false);
+      setTotal(0);
+      setWins(0);
+      setRolls(0);
+    }
+  }, [open]);
+
+  const rollDice = () => {
+    if (rolling) return;
+    setRolling(true);
+    let count = 0;
+    const interval = setInterval(() => {
+      setDice1(Math.floor(Math.random() * 6) + 1);
+      setDice2(Math.floor(Math.random() * 6) + 1);
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        setDice1(d1);
+        setDice2(d2);
+        const sum = d1 + d2;
+        setTotal(sum);
+        setRolls(prev => prev + 1);
+        if (sum >= 10) {
+          setWins(prev => prev + 1);
+        }
+        setRolling(false);
+      }
+    }, 100);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎲 Karnevals-Würfel
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center' }}>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          Würfle und gewinne bei einer Summe von 10 oder mehr! 🎁
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 3 }}>
+          <Box sx={{ fontSize: '4rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice1 - 1]}</Box>
+          <Box sx={{ fontSize: '4rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice2 - 1]}</Box>
+        </Box>
+        {total > 0 && (
+          <Typography variant="h5" sx={{ mb: 2 }}>
+            Summe: {total} {total >= 10 ? '🎉 Gewonnen!' : '😔 Leider nicht'}
+          </Typography>
+        )}
+        <Button
+          variant="contained"
+          onClick={rollDice}
+          disabled={rolling}
+          sx={{ bgcolor: '#FF1493', mb: 2, py: 1.5, fontSize: '1.1rem' }}
+        >
+          {rolling ? 'Würfle...' : '🎲 Würfeln!'}
+        </Button>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body1">Würfe: {rolls}</Typography>
+          <Typography variant="body1">Gewinne: {wins}</Typography>
+        </Box>
+        <Button variant="outlined" onClick={onClose} sx={{ mt: 2 }}>
+          Schließen
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
   const [lerngruppen, setLerngruppen] = useState<LearningGroup[]>([]);
@@ -601,6 +975,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     return playCount >= 3 ? 'hard' : 'easy';
   };
   const [showMinigame, setShowMinigame] = useState(false);
+  const [showCarnivalGames, setShowCarnivalGames] = useState(false);
+  const [showConfettiGame, setShowConfettiGame] = useState(false);
+  const [showMaskMemory, setShowMaskMemory] = useState(false);
+  const [showFoolQuiz, setShowFoolQuiz] = useState(false);
+  const [showCarnivalDice, setShowCarnivalDice] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [balloons, setBalloons] = useState<Array<{id: number; x: number; key: 'f' | 'j' | 'd' | 'k'; caught: boolean; spawnTime: number}>>([]);
   const [score, setScore] = useState(0);
@@ -3864,6 +4243,41 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Box>
                   )}
                 </Box>
+                {/* Karnevals-Minigame Button */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => setShowCarnivalGames(true)}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(255, 20, 147, 0.3)',
+                      background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(255, 20, 147, 0.3)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(255, 20, 147, 0.6)',
+                        boxShadow: '0 4px 12px rgba(255, 20, 147, 0.4)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="Karnevals-Minigames"
+                  >
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: '1.4rem',
+                        lineHeight: 1,
+                        display: 'inline-block'
+                      }}
+                    >
+                      🎭
+                    </Typography>
+                  </IconButton>
+                </Box>
                 {/* Logout Button */}
                 <Button 
                   variant="contained"
@@ -4453,25 +4867,47 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                                 >
                                                   {hasComment && (
                                                     <Box
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        // Zeige Kommentar in Alert für Tablets
+                                                        alert(`Kommentar:\n\n${tooltipTitle || participation.comment}`);
+                                                      }}
+                                                      onTouchStart={(e) => {
+                                                        e.stopPropagation();
+                                                        // Zeige Kommentar bei Touch
+                                                        alert(`Kommentar:\n\n${tooltipTitle || participation.comment}`);
+                                                      }}
                                                       sx={{
                                                         position: 'absolute',
-                                                        top: 1,
-                                                        right: 1,
-                                                        width: 10,
-                                                        height: 10,
+                                                        top: -2,
+                                                        right: -2,
+                                                        width: 18,
+                                                        height: 18,
                                                         borderRadius: '50%',
                                                         bgcolor: '#FF9800',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        fontSize: '0.5rem',
-                                                        fontWeight: 600,
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: 700,
                                                         color: 'white',
-                                                        zIndex: 1,
-                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                                        zIndex: 10,
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                                        cursor: 'pointer',
+                                                        userSelect: 'none',
+                                                        WebkitTapHighlightColor: 'rgba(255, 152, 0, 0.3)',
+                                                        touchAction: 'manipulation',
+                                                        transition: 'all 0.2s',
+                                                        '&:hover': {
+                                                          transform: 'scale(1.2)',
+                                                          bgcolor: '#F57C00'
+                                                        },
+                                                        '&:active': {
+                                                          transform: 'scale(1.1)'
+                                                        }
                                                       }}
                                                     >
-                                                      K
+                                                      💬
                                                     </Box>
                                                   )}
                                                 </Box>
@@ -4774,6 +5210,223 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         open={flashcardLearningOpen}
         onClose={() => setFlashcardLearningOpen(false)}
         studentId={userId}
+      />
+
+      {/* Karnevals-Minigames Modal */}
+      <Dialog
+        open={showCarnivalGames}
+        onClose={() => setShowCarnivalGames(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 50%, #FFB6C1 100%)',
+            borderRadius: 3,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: 'transparent',
+          color: 'white',
+          textAlign: 'center',
+          py: 1.5,
+          px: 2,
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box sx={{ width: 28 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.4rem', flex: 1, textAlign: 'center' }}>
+            🎭 Karnevals-Minigames 🎪
+          </Typography>
+          <IconButton
+            onClick={() => setShowCarnivalGames(false)}
+            size="small"
+            sx={{ 
+              color: 'white',
+              p: 0.5,
+              minWidth: 28,
+              width: 28,
+              height: 28,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 2, px: 3 }}>
+          <Grid container spacing={2}>
+            {/* Konfetti-Wurf */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowConfettiGame(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎊
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Konfetti-Wurf
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Klicke so schnell wie möglich auf die Konfetti-Partikel!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Masken-Memory */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowMaskMemory(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎭
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Masken-Memory
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Finde die passenden Masken-Paare!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Narren-Quiz */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowFoolQuiz(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🤡
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Narren-Quiz
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Beantworte lustige Karnevals-Fragen!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Karnevals-Würfel */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowCarnivalDice(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎲
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Karnevals-Würfel
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Würfle und gewinne tolle Preise!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 1.5, bgcolor: 'rgba(255, 255, 255, 0.1)' }}>
+          <Button 
+            onClick={() => setShowCarnivalGames(false)} 
+            variant="contained" 
+            size="small"
+            sx={{
+              bgcolor: 'white',
+              color: '#FF1493',
+              fontWeight: 600,
+              '&:hover': {
+                bgcolor: '#f5f5f5',
+              }
+            }}
+          >
+            Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Konfetti-Wurf Game */}
+      <ConfettiGameModal 
+        open={showConfettiGame} 
+        onClose={() => setShowConfettiGame(false)} 
+      />
+
+      {/* Masken-Memory Game */}
+      <MaskMemoryModal 
+        open={showMaskMemory} 
+        onClose={() => setShowMaskMemory(false)} 
+      />
+
+      {/* Narren-Quiz Game */}
+      <FoolQuizModal 
+        open={showFoolQuiz} 
+        onClose={() => setShowFoolQuiz(false)} 
+      />
+
+      {/* Karnevals-Würfel Game */}
+      <CarnivalDiceModal 
+        open={showCarnivalDice} 
+        onClose={() => setShowCarnivalDice(false)} 
       />
 
       {/* Submission Upload Modal für H__ Dateien */}

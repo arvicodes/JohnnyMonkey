@@ -21,5 +21,14 @@ router.get('/unread-count', MessageController.getUnreadCount);
 // Gesendete Nachrichten eines Lehrers
 router.get('/teacher', MessageController.getTeacherMessages);
 
+// Empfangene Nachrichten eines Lehrers (von Schülern)
+router.get('/teacher/received', MessageController.getTeacherReceivedMessages);
+
+// Nachricht löschen (Lehrer)
+router.delete('/:id', MessageController.deleteMessage);
+
+// Nachricht an Lehrer senden (Schüler)
+router.post('/send-to-teacher', MessageController.sendMessageToTeacher);
+
 export default router;
 

@@ -20,7 +20,8 @@ import {
   Select,
   MenuItem,
   InputAdornment,
-  Paper
+  Paper,
+  Button
 } from '@mui/material';
 import {
   Close,
@@ -31,7 +32,9 @@ import {
   ArrowBack,
   Search,
   Clear,
-  FilterList
+  FilterList,
+  Add,
+  Delete
 } from '@mui/icons-material';
 import { Tabs, Tab } from '@mui/material';
 
@@ -76,6 +79,13 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  
+  // Neue Nachricht states
+  const [newMessageGroupId, setNewMessageGroupId] = useState<string>('');
+  const [newMessageStudentId, setNewMessageStudentId] = useState<string>('');
+  const [newMessageSubject, setNewMessageSubject] = useState('');
+  const [newMessageContent, setNewMessageContent] = useState('');
+  const [sendingNewMessage, setSendingNewMessage] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -213,6 +223,88 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
   }, [sentMessages, searchQuery, selectedGroupId, dateFrom, dateTo, sortOrder, learningGroups]);
 
   const hasActiveFilters = selectedGroupId !== 'all' || dateFrom || dateTo || searchQuery;
+  
+  // Funktion zum Senden einer neuen Nachricht
+  const handleSendNewMessage = async () => {
+    if (!newMessageStudentId || !newMessageSubject || !newMessageContent) {
+      alert('Bitte füllen Sie alle Felder aus.');
+      return;
+    }
+    
+    setSendingNewMessage(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const response = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        },
+        body: JSON.stringify({
+          studentId: newMessageStudentId,
+          subject: newMessageSubject,
+          content: newMessageContent
+        })
+      });
+      
+      if (response.ok) {
+        // Erfolgreich gesendet
+        setNewMessageGroupId('');
+        setNewMessageStudentId('');
+        setNewMessageSubject('');
+        setNewMessageContent('');
+        setTab(0); // Wechsle zum "Gesendet" Tab
+        await loadSentMessages(); // Lade Nachrichten neu
+        alert('Nachricht erfolgreich gesendet!');
+      } else {
+        const errorData = await response.json();
+        alert(`Fehler beim Senden: ${errorData.error || 'Unbekannter Fehler'}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Senden der Nachricht:', error);
+      alert('Fehler beim Senden der Nachricht.');
+    } finally {
+      setSendingNewMessage(false);
+    }
+  };
+  
+  // Hole Schüler einer ausgewählten Lerngruppe
+  const selectedGroup = learningGroups.find(g => g.id === newMessageGroupId);
+  const availableStudents = selectedGroup?.students || [];
+  
+  // Funktion zum Löschen einer Nachricht
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!window.confirm('Möchten Sie diese Nachricht wirklich löschen?')) {
+      return;
+    }
+    
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        }
+      });
+      
+      if (response.ok) {
+        // Entferne Nachricht aus der Liste
+        setSentMessages(prev => prev.filter(msg => msg.id !== messageId));
+        // Wenn die gelöschte Nachricht gerade angezeigt wird, zurück zur Liste
+        if (selectedMessage?.id === messageId) {
+          setSelectedMessage(null);
+        }
+        alert('Nachricht erfolgreich gelöscht!');
+      } else {
+        const errorData = await response.json();
+        alert(`Fehler beim Löschen: ${errorData.error || 'Unbekannter Fehler'}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Löschen der Nachricht:', error);
+      alert('Fehler beim Löschen der Nachricht.');
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -247,8 +339,12 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
       </DialogTitle>
       
       <DialogContent sx={{ p: 0, minHeight: 400, maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs value={tab} onChange={(_, v) => {
+          setTab(v);
+          setSelectedMessage(null); // Reset selected message when switching tabs
+        }} sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tab label="Gesendet" icon={<Send sx={{ fontSize: 16 }} />} iconPosition="start" />
+          <Tab label="Neue Nachricht" icon={<Add sx={{ fontSize: 16 }} />} iconPosition="start" />
         </Tabs>
 
         {/* Filter-Bereich - Kompakt und schön */}
@@ -416,28 +512,166 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
 
         {/* Content-Bereich */}
         <Box sx={{ flex: 1, overflow: 'auto' }}>
-          {loading ? (
+          {tab === 1 ? (
+            // Neue Nachricht Tab
+            <Box sx={{ p: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, fontSize: '0.9rem' }}>
+                Neue Nachricht an Schüler senden
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* Lerngruppe auswählen */}
+                <FormControl fullWidth size="small">
+                  <InputLabel>Lerngruppe</InputLabel>
+                  <Select
+                    value={newMessageGroupId}
+                    label="Lerngruppe"
+                    onChange={(e) => {
+                      setNewMessageGroupId(e.target.value);
+                      setNewMessageStudentId(''); // Reset Schüler-Auswahl
+                    }}
+                    sx={{ fontSize: '0.85rem' }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: '0.85rem' }}>
+                      Bitte wählen...
+                    </MenuItem>
+                    {loadingGroups ? (
+                      <MenuItem value="loading" disabled sx={{ fontSize: '0.85rem' }}>
+                        Lade Gruppen...
+                      </MenuItem>
+                    ) : learningGroups.length > 0 ? (
+                      learningGroups.map(group => (
+                        <MenuItem key={group.id} value={group.id} sx={{ fontSize: '0.85rem' }}>
+                          {group.name}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem value="none" disabled sx={{ fontSize: '0.85rem' }}>
+                        Keine Gruppen gefunden
+                      </MenuItem>
+                    )}
+                  </Select>
+                </FormControl>
+                
+                {/* Schüler auswählen */}
+                <FormControl fullWidth size="small" disabled={!newMessageGroupId || availableStudents.length === 0}>
+                  <InputLabel>Schüler</InputLabel>
+                  <Select
+                    value={newMessageStudentId}
+                    label="Schüler"
+                    onChange={(e) => setNewMessageStudentId(e.target.value)}
+                    sx={{ fontSize: '0.85rem' }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: '0.85rem' }}>
+                      Bitte wählen...
+                    </MenuItem>
+                    {availableStudents.map(student => (
+                      <MenuItem key={student.id} value={student.id} sx={{ fontSize: '0.85rem' }}>
+                        {student.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                {/* Betreff */}
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Betreff"
+                  value={newMessageSubject}
+                  onChange={(e) => setNewMessageSubject(e.target.value)}
+                  sx={{ fontSize: '0.85rem' }}
+                  InputProps={{
+                    sx: { fontSize: '0.85rem' }
+                  }}
+                  InputLabelProps={{
+                    sx: { fontSize: '0.85rem' }
+                  }}
+                />
+                
+                {/* Inhalt */}
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={6}
+                  label="Nachricht"
+                  value={newMessageContent}
+                  onChange={(e) => setNewMessageContent(e.target.value)}
+                  sx={{ fontSize: '0.85rem' }}
+                  InputProps={{
+                    sx: { fontSize: '0.85rem' }
+                  }}
+                  InputLabelProps={{
+                    sx: { fontSize: '0.85rem' }
+                  }}
+                />
+                
+                {/* Senden Button */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setNewMessageGroupId('');
+                      setNewMessageStudentId('');
+                      setNewMessageSubject('');
+                      setNewMessageContent('');
+                    }}
+                    disabled={sendingNewMessage}
+                    sx={{ fontSize: '0.85rem' }}
+                  >
+                    Zurücksetzen
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleSendNewMessage}
+                    disabled={!newMessageStudentId || !newMessageSubject || !newMessageContent || sendingNewMessage}
+                    startIcon={<Send />}
+                    sx={{ fontSize: '0.85rem' }}
+                  >
+                    {sendingNewMessage ? 'Wird gesendet...' : 'Senden'}
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
+          ) : loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
               <Typography variant="body2" color="text.secondary">Lade Nachrichten...</Typography>
             </Box>
           ) : selectedMessage ? (
             <Box sx={{ p: 1.5 }}>
-              <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <IconButton
+                    onClick={() => setSelectedMessage(null)}
+                    sx={{ 
+                      p: 0,
+                      minWidth: 32,
+                      width: 32,
+                      height: 32,
+                      '& .MuiSvgIcon-root': { fontSize: 20 }
+                    }}
+                  >
+                    <ArrowBack sx={{ width: '100%', height: '100%' }} />
+                  </IconButton>
+                  <Typography variant="body2" sx={{ fontSize: '0.85rem', color: '#666' }}>
+                    Zurück
+                  </Typography>
+                </Box>
                 <IconButton
-                  onClick={() => setSelectedMessage(null)}
+                  onClick={() => handleDeleteMessage(selectedMessage.id)}
                   sx={{ 
                     p: 0,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    '& .MuiSvgIcon-root': { fontSize: 20 }
+                    minWidth: 20,
+                    width: 20,
+                    height: 20,
+                    color: '#d32f2f',
+                    '&:hover': { bgcolor: '#ffebee' },
+                    '& .MuiSvgIcon-root': { fontSize: 14 }
                   }}
+                  title="Nachricht löschen"
                 >
-                  <ArrowBack sx={{ width: '100%', height: '100%' }} />
+                  <Delete sx={{ width: '100%', height: '100%' }} />
                 </IconButton>
-                <Typography variant="body2" sx={{ fontSize: '0.85rem', color: '#666' }}>
-                  Zurück
-                </Typography>
               </Box>
               <Card variant="outlined" sx={{ border: '1px solid #e0e0e0', bgcolor: '#fff' }}>
                 <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -509,20 +743,20 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                       <ListItemButton
                         onClick={() => setSelectedMessage(message)}
                         sx={{
-                          py: 1,
-                          px: 1.5,
+                          py: 0.75,
+                          px: 1,
                           '&:hover': { bgcolor: '#f5f5f5' }
                         }}
                       >
                         <ListItemText
                           primary={
-                            <Box display="flex" alignItems="center" gap={0.75} mb={0.25} flexWrap="wrap">
+                            <Box display="flex" alignItems="center" gap={0.5} mb={0.1} flexWrap="wrap">
                               <Typography 
                                 variant="body2" 
                                 sx={{ 
                                   fontWeight: 600,
                                   color: '#1976d2',
-                                  fontSize: '0.85rem'
+                                  fontSize: '0.8rem'
                                 }}
                               >
                                 {message.subject}
@@ -532,18 +766,18 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                                   label={studentGroup.name}
                                   size="small"
                                   sx={{
-                                    height: 20,
-                                    fontSize: '0.7rem',
+                                    height: 18,
+                                    fontSize: '0.65rem',
                                     bgcolor: '#e3f2fd',
                                     color: '#1976d2',
-                                    '& .MuiChip-label': { px: 0.75 }
+                                    '& .MuiChip-label': { px: 0.5 }
                                   }}
                                 />
                               )}
                             </Box>
                           }
                           secondary={
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                               An: {message.student.name} • {new Date(message.createdAt).toLocaleString('de-DE', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -553,7 +787,27 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                               })}
                             </Typography>
                           }
+                          sx={{ my: 0 }}
                         />
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMessage(message.id);
+                          }}
+                          sx={{ 
+                            p: 0,
+                            minWidth: 20,
+                            width: 20,
+                            height: 20,
+                            color: '#d32f2f',
+                            '&:hover': { bgcolor: '#ffebee' },
+                            ml: 0.5,
+                            '& .MuiSvgIcon-root': { fontSize: 14 }
+                          }}
+                          title="Nachricht löschen"
+                        >
+                          <Delete sx={{ width: '100%', height: '100%' }} />
+                        </IconButton>
                       </ListItemButton>
                     </ListItem>
                     {index < filteredMessages.length - 1 && <Divider />}

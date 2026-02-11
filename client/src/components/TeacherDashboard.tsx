@@ -481,6 +481,1580 @@ const htmlToPlainText = (html: string): string => {
   // Extrahiere nur den Text-Inhalt
   return temp.textContent || temp.innerText || '';
 };
+
+// Konfetti-Wurf Game Component mit Modi
+const ConfettiGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [particles, setParticles] = useState<Array<{id: number; x: number; y: number; color: string; speed: number}>>([]);
+  const [gameActive, setGameActive] = useState(false);
+  const particleIdRef = useRef(0);
+
+  const gameConfig = {
+    easy: { time: 45, spawnRate: 800, particleSize: 25, points: 10, speed: 1 },
+    medium: { time: 30, spawnRate: 500, particleSize: 20, points: 15, speed: 2 },
+    hard: { time: 20, spawnRate: 300, particleSize: 15, points: 20, speed: 3 }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setMode(null);
+      setScore(0);
+      setTimeLeft(30);
+      setParticles([]);
+      setGameActive(false);
+      return;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!gameActive || timeLeft <= 0 || !mode) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setGameActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [gameActive, timeLeft, mode]);
+
+  useEffect(() => {
+    if (!gameActive || !mode) return;
+    const config = gameConfig[mode];
+    const interval = setInterval(() => {
+      setParticles(prev => [
+        ...prev,
+        {
+          id: particleIdRef.current++,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          color: ['#FF1493', '#FF69B4', '#FFB6C1', '#FFD700', '#FF6347', '#FF4500', '#00CED1', '#9370DB'][Math.floor(Math.random() * 8)],
+          speed: config.speed
+        }
+      ]);
+    }, config.spawnRate);
+    return () => clearInterval(interval);
+  }, [gameActive, mode]);
+
+  useEffect(() => {
+    if (!gameActive || !mode) return;
+    const config = gameConfig[mode];
+    const moveInterval = setInterval(() => {
+      setParticles(prev => prev.map(p => ({
+        ...p,
+        y: (p.y + p.speed) % 100,
+        x: p.x + (Math.random() - 0.5) * 0.5
+      })));
+    }, 50);
+    return () => clearInterval(moveInterval);
+  }, [gameActive, mode]);
+
+  const handleParticleClick = (id: number) => {
+    if (!mode) return;
+    const config = gameConfig[mode];
+    setParticles(prev => prev.filter(p => p.id !== id));
+    setScore(prev => prev + config.points);
+  };
+
+  const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
+    setMode(selectedMode);
+    setScore(0);
+    setTimeLeft(gameConfig[selectedMode].time);
+    setParticles([]);
+    setGameActive(true);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎊 Konfetti-Wurf
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 400, position: 'relative', overflow: 'hidden' }}>
+        {!mode && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>Wähle einen Schwierigkeitsgrad:</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
+                  <Typography variant="caption">45s, große Partikel</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
+                  <Typography variant="caption">30s, normale Partikel</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
+                  <Typography variant="caption">20s, schnelle Partikel</Typography>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+        {gameActive && mode && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h6">Punkte: {score}</Typography>
+              <Typography variant="h6">Zeit: {timeLeft}s</Typography>
+              <Typography variant="h6">Modus: {mode === 'easy' ? '🟢' : mode === 'medium' ? '🟡' : '🔴'}</Typography>
+            </Box>
+            <Box sx={{ position: 'relative', width: '100%', height: 350, border: '2px dashed #FF1493', borderRadius: 2, overflow: 'hidden' }}>
+              {particles.map(p => (
+                <Box
+                  key={p.id}
+                  onClick={() => handleParticleClick(p.id)}
+                  sx={{
+                    position: 'absolute',
+                    left: `${Math.max(0, Math.min(100, p.x))}%`,
+                    top: `${Math.max(0, Math.min(100, p.y))}%`,
+                    width: gameConfig[mode].particleSize,
+                    height: gameConfig[mode].particleSize,
+                    borderRadius: '50%',
+                    bgcolor: p.color,
+                    cursor: 'pointer',
+                    animation: 'float 2s ease-in-out infinite',
+                    '@keyframes float': {
+                      '0%, 100%': { transform: 'translateY(0px)' },
+                      '50%': { transform: 'translateY(-10px)' }
+                    }
+                  }}
+                />
+              ))}
+            </Box>
+          </>
+        )}
+        {!gameActive && timeLeft === 0 && mode && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 2 }}>Deine Punktzahl: {score}</Typography>
+            <Button variant="contained" onClick={() => startGame(mode)} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={() => { setMode(null); setScore(0); setTimeLeft(30); setParticles([]); }} sx={{ mr: 1 }}>
+              Modus wählen
+            </Button>
+            <Button variant="outlined" onClick={onClose}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Masken-Memory Game Component mit Modi
+const MaskMemoryModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const allMasks = ['🎭', '🤡', '👺', '🎪', '🎨', '🎯', '🎬', '🎤', '🎧', '🎮', '🎰', '🎲'];
+  const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
+  const [cards, setCards] = useState<string[]>([]);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [matched, setMatched] = useState<number[]>([]);
+  const [moves, setMoves] = useState(0);
+  const [timeLimit, setTimeLimit] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  const gameConfig = {
+    easy: { pairs: 4, timeLimit: 0, flipDelay: 1500 },
+    medium: { pairs: 6, timeLimit: 120, flipDelay: 1000 },
+    hard: { pairs: 8, timeLimit: 90, flipDelay: 800 }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setMode(null);
+      setCards([]);
+      setFlipped([]);
+      setMatched([]);
+      setMoves(0);
+      setTimeLeft(0);
+      return;
+    }
+  }, [open]);
+
+  const [gameActive, setGameActive] = useState(false);
+
+  useEffect(() => {
+    if (!mode || !gameActive || timeLimit === 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setGameActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [mode, gameActive, timeLimit]);
+
+  const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
+    const config = gameConfig[selectedMode];
+    const selectedMasks = allMasks.slice(0, config.pairs);
+    const pairs = [...selectedMasks, ...selectedMasks].sort(() => Math.random() - 0.5);
+    setMode(selectedMode);
+    setCards(pairs);
+    setFlipped([]);
+    setMatched([]);
+    setMoves(0);
+    setTimeLeft(config.timeLimit);
+    setTimeLimit(config.timeLimit);
+    setGameActive(true);
+  };
+
+  const handleCardClick = (index: number) => {
+    if (!gameActive || flipped.length === 2 || flipped.includes(index) || matched.includes(index)) return;
+    
+    const newFlipped = [...flipped, index];
+    setFlipped(newFlipped);
+    
+    if (newFlipped.length === 2) {
+      setMoves(prev => prev + 1);
+      const config = gameConfig[mode!];
+      if (cards[newFlipped[0]] === cards[newFlipped[1]]) {
+        setMatched(prev => [...prev, ...newFlipped]);
+        setFlipped([]);
+      } else {
+        setTimeout(() => setFlipped([]), config.flipDelay);
+      }
+    }
+  };
+
+  const totalPairs = mode ? gameConfig[mode].pairs : 0;
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎭 Masken-Memory
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2 }}>
+        {!mode && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>Wähle einen Schwierigkeitsgrad:</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
+                  <Typography variant="caption">4 Paare, kein Zeitlimit</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
+                  <Typography variant="caption">6 Paare, 2 Minuten</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
+                  <Typography variant="caption">8 Paare, 90 Sekunden</Typography>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+        {mode && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="body1">Züge: {moves}</Typography>
+              <Typography variant="body1">Gefunden: {matched.length / 2} / {totalPairs}</Typography>
+              {timeLimit > 0 && <Typography variant="body1">Zeit: {timeLeft}s</Typography>}
+            </Box>
+            <Grid container spacing={1}>
+              {cards.map((card, index) => (
+                <Grid item xs={cards.length <= 8 ? 3 : 2.4} key={index}>
+                  <Card
+                    onClick={() => handleCardClick(index)}
+                    sx={{
+                      aspectRatio: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: gameActive && !flipped.includes(index) && !matched.includes(index) ? 'pointer' : 'default',
+                      bgcolor: flipped.includes(index) || matched.includes(index) ? '#fff' : '#FF1493',
+                      fontSize: cards.length <= 8 ? '2rem' : '1.5rem',
+                      transition: 'all 0.3s',
+                      opacity: matched.includes(index) ? 0.6 : 1,
+                      '&:hover': { transform: gameActive && !flipped.includes(index) && !matched.includes(index) ? 'scale(1.05)' : 'none' }
+                    }}
+                  >
+                    {flipped.includes(index) || matched.includes(index) ? card : '?'}
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+            {(matched.length === cards.length || (timeLimit > 0 && timeLeft === 0 && gameActive)) && (
+              <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Typography variant="h5" sx={{ mb: 1 }}>
+                  {matched.length === cards.length ? '🎉 Gewonnen!' : '⏰ Zeit abgelaufen!'}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>Du hast {moves} Züge gebraucht.</Typography>
+                <Button variant="contained" onClick={() => startGame(mode)} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+                  Nochmal spielen
+                </Button>
+                <Button variant="outlined" onClick={() => { setMode(null); setCards([]); setFlipped([]); setMatched([]); setMoves(0); }} sx={{ mr: 1 }}>
+                  Modus wählen
+                </Button>
+                <Button variant="outlined" onClick={onClose}>
+                  Schließen
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Narren-Quiz Game Component mit Modi
+const FoolQuizModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const allQuestions = [
+    { q: 'Was ist die beste Zeit für Karneval?', a: 'Immer!', options: ['Immer!', 'Nur im Februar', 'Nie', 'Am Wochenende'] },
+    { q: 'Wie viele Farben hat ein Regenbogen?', a: 'Alle!', options: ['Alle!', '7', '3', 'Unendlich'] },
+    { q: 'Was macht einen Narren aus?', a: 'Die gute Laune!', options: ['Die gute Laune!', 'Die Maske', 'Die Musik', 'Das Kostüm'] },
+    { q: 'Was ist das beste Karnevals-Gebäck?', a: 'Alles Süße!', options: ['Alles Süße!', 'Berliner', 'Krapfen', 'Kekse'] },
+    { q: 'Welche Stadt ist berühmt für Karneval?', a: 'Köln!', options: ['Köln!', 'Berlin', 'München', 'Hamburg'] },
+    { q: 'Was wirft man traditionell beim Karneval?', a: 'Konfetti!', options: ['Konfetti!', 'Steine', 'Blumen', 'Bonbons'] },
+    { q: 'Wie heißt der Karnevalsdienstag?', a: 'Faschingsdienstag!', options: ['Faschingsdienstag!', 'Rosenmontag', 'Aschermittwoch', 'Fastnacht'] },
+    { q: 'Was trägt man beim Karneval?', a: 'Ein Kostüm!', options: ['Ein Kostüm!', 'Uniform', 'Anzug', 'Pyjama'] },
+    { q: 'Welches Tier ist ein Karnevalssymbol?', a: 'Der Narr!', options: ['Der Narr!', 'Der Löwe', 'Der Bär', 'Der Adler'] },
+    { q: 'Was macht man beim Karneval?', a: 'Feiern!', options: ['Feiern!', 'Schlafen', 'Lernen', 'Arbeiten'] },
+  ];
+  const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
+  const [questions, setQuestions] = useState<typeof allQuestions>([]);
+  const [currentQ, setCurrentQ] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+
+  const gameConfig = {
+    easy: { count: 4, timePerQuestion: 0 },
+    medium: { count: 6, timePerQuestion: 15 },
+    hard: { count: 8, timePerQuestion: 10 }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setMode(null);
+      setQuestions([]);
+      setCurrentQ(0);
+      setScore(0);
+      setSelected(null);
+      setTimeLeft(0);
+      setGameActive(false);
+      return;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!gameActive || !mode || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          handleTimeUp();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [gameActive, mode, timeLeft]);
+
+  const handleTimeUp = () => {
+    setSelected('TIME_UP');
+    setTimeout(() => {
+      if (currentQ < questions.length - 1) {
+        setCurrentQ(prev => prev + 1);
+        setSelected(null);
+        if (mode && gameConfig[mode].timePerQuestion > 0) {
+          setTimeLeft(gameConfig[mode].timePerQuestion);
+        }
+      } else {
+        setGameActive(false);
+      }
+    }, 1500);
+  };
+
+  const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
+    const config = gameConfig[selectedMode];
+    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5).slice(0, config.count);
+    setMode(selectedMode);
+    setQuestions(shuffled);
+    setCurrentQ(0);
+    setScore(0);
+    setSelected(null);
+    setTimeLeft(config.timePerQuestion);
+    setGameActive(true);
+  };
+
+  const handleAnswer = (answer: string) => {
+    if (selected !== null) return;
+    setSelected(answer);
+    if (answer === questions[currentQ].a) {
+      setScore(prev => prev + 1);
+    }
+    setTimeout(() => {
+      if (currentQ < questions.length - 1) {
+        setCurrentQ(prev => prev + 1);
+        setSelected(null);
+        if (mode && gameConfig[mode].timePerQuestion > 0) {
+          setTimeLeft(gameConfig[mode].timePerQuestion);
+        }
+      } else {
+        setGameActive(false);
+      }
+    }, 1500);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🤡 Narren-Quiz
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2 }}>
+        {!mode && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>Wähle einen Schwierigkeitsgrad:</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
+                  <Typography variant="caption">4 Fragen, kein Zeitlimit</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
+                  <Typography variant="caption">6 Fragen, 15s pro Frage</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
+                  <Typography variant="caption">8 Fragen, 10s pro Frage</Typography>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+        {mode && gameActive && currentQ < questions.length && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h6">Frage {currentQ + 1} / {questions.length}</Typography>
+              <Typography variant="h6">Punkte: {score}</Typography>
+              {gameConfig[mode].timePerQuestion > 0 && (
+                <Typography variant="h6" sx={{ color: timeLeft <= 5 ? '#f44336' : 'inherit' }}>
+                  Zeit: {timeLeft}s
+                </Typography>
+              )}
+            </Box>
+            <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>
+              {questions[currentQ].q}
+            </Typography>
+            <Grid container spacing={2}>
+              {questions[currentQ].options.map((opt, idx) => (
+                <Grid item xs={6} key={idx}>
+                  <Button
+                    fullWidth
+                    variant={selected === opt ? (opt === questions[currentQ].a ? 'contained' : 'outlined') : 'outlined'}
+                    onClick={() => handleAnswer(opt)}
+                    disabled={selected !== null}
+                    sx={{
+                      py: 2,
+                      bgcolor: selected === opt && opt === questions[currentQ].a ? '#4caf50' : 
+                               selected === opt ? '#f44336' : 'transparent',
+                      color: selected === opt && opt === questions[currentQ].a ? 'white' : 
+                             selected === opt ? 'white' : '#FF1493',
+                      borderColor: '#FF1493',
+                      '&:hover': { bgcolor: selected === null ? '#FF1493' : undefined, color: 'white' }
+                    }}
+                  >
+                    {opt}
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+            {selected && (
+              <Typography variant="body1" sx={{ mt: 2, textAlign: 'center', fontWeight: 600 }}>
+                {selected === 'TIME_UP' ? '⏰ Zeit abgelaufen!' : selected === questions[currentQ].a ? '✅ Richtig!' : '❌ Falsch!'}
+              </Typography>
+            )}
+          </>
+        )}
+        {mode && !gameActive && (
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Quiz beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 2 }}>Deine Punktzahl: {score} / {questions.length}</Typography>
+            <Button variant="contained" onClick={() => startGame(mode)} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={() => { setMode(null); setQuestions([]); setCurrentQ(0); setScore(0); setSelected(null); }} sx={{ mr: 1 }}>
+              Modus wählen
+            </Button>
+            <Button variant="outlined" onClick={onClose}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Karnevals-Würfel Game Component mit Modi
+const CarnivalDiceModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
+  const [dice1, setDice1] = useState(1);
+  const [dice2, setDice2] = useState(1);
+  const [dice3, setDice3] = useState(1);
+  const [rolling, setRolling] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [wins, setWins] = useState(0);
+  const [rolls, setRolls] = useState(0);
+  const [maxRolls, setMaxRolls] = useState(0);
+  const [rollsLeft, setRollsLeft] = useState(0);
+
+  const gameConfig = {
+    easy: { winThreshold: 8, diceCount: 2, maxRolls: 10 },
+    medium: { winThreshold: 10, diceCount: 2, maxRolls: 8 },
+    hard: { winThreshold: 12, diceCount: 3, maxRolls: 6 }
+  };
+
+  useEffect(() => {
+    if (open) {
+      setMode(null);
+      setDice1(1);
+      setDice2(1);
+      setDice3(1);
+      setRolling(false);
+      setTotal(0);
+      setWins(0);
+      setRolls(0);
+      setMaxRolls(0);
+      setRollsLeft(0);
+    }
+  }, [open]);
+
+  const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
+    const config = gameConfig[selectedMode];
+    setMode(selectedMode);
+    setDice1(1);
+    setDice2(1);
+    setDice3(1);
+    setRolling(false);
+    setTotal(0);
+    setWins(0);
+    setRolls(0);
+    setMaxRolls(config.maxRolls);
+    setRollsLeft(config.maxRolls);
+  };
+
+  const rollDice = () => {
+    if (rolling || !mode || rollsLeft <= 0) return;
+    setRolling(true);
+    let count = 0;
+    const interval = setInterval(() => {
+      setDice1(Math.floor(Math.random() * 6) + 1);
+      setDice2(Math.floor(Math.random() * 6) + 1);
+      if (gameConfig[mode].diceCount === 3) {
+        setDice3(Math.floor(Math.random() * 6) + 1);
+      }
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        const d3 = gameConfig[mode].diceCount === 3 ? Math.floor(Math.random() * 6) + 1 : 0;
+        setDice1(d1);
+        setDice2(d2);
+        if (gameConfig[mode].diceCount === 3) {
+          setDice3(d3);
+        }
+        const sum = d1 + d2 + d3;
+        setTotal(sum);
+        setRolls(prev => prev + 1);
+        setRollsLeft(prev => prev - 1);
+        if (sum >= gameConfig[mode].winThreshold) {
+          setWins(prev => prev + 1);
+        }
+        setRolling(false);
+      }
+    }, 100);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎲 Karnevals-Würfel
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center' }}>
+        {!mode && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>Wähle einen Schwierigkeitsgrad:</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
+                  <Typography variant="caption">2 Würfel, Summe ≥8, 10 Würfe</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
+                  <Typography variant="caption">2 Würfel, Summe ≥10, 8 Würfe</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
+                  <Typography variant="caption">3 Würfel, Summe ≥12, 6 Würfe</Typography>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+        {mode && (
+          <>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Würfle und gewinne bei einer Summe von {gameConfig[mode].winThreshold} oder mehr! 🎁
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ fontSize: '4rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice1 - 1]}</Box>
+              <Box sx={{ fontSize: '4rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice2 - 1]}</Box>
+              {gameConfig[mode].diceCount === 3 && (
+                <Box sx={{ fontSize: '4rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice3 - 1]}</Box>
+              )}
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body1">Würfe übrig: {rollsLeft} / {maxRolls}</Typography>
+              <Typography variant="body1">Gewinne: {wins}</Typography>
+            </Box>
+            {total > 0 && (
+              <Typography variant="h5" sx={{ mb: 2 }}>
+                Summe: {total} {total >= gameConfig[mode].winThreshold ? '🎉 Gewonnen!' : '😔 Leider nicht'}
+              </Typography>
+            )}
+            <Button
+              variant="contained"
+              onClick={rollDice}
+              disabled={rolling || rollsLeft <= 0}
+              sx={{ bgcolor: '#FF1493', mb: 2, py: 1.5, fontSize: '1.1rem' }}
+            >
+              {rolling ? 'Würfle...' : rollsLeft <= 0 ? 'Keine Würfe mehr!' : '🎲 Würfeln!'}
+            </Button>
+            {rollsLeft === 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>Du hast {wins} von {maxRolls} Würfen gewonnen!</Typography>
+                <Button variant="contained" onClick={() => startGame(mode)} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+                  Nochmal spielen
+                </Button>
+                <Button variant="outlined" onClick={() => { setMode(null); setRolls(0); setWins(0); setTotal(0); }} sx={{ mr: 1 }}>
+                  Modus wählen
+                </Button>
+                <Button variant="outlined" onClick={onClose}>
+                  Schließen
+                </Button>
+              </Box>
+            )}
+            {rollsLeft > 0 && (
+              <Button variant="outlined" onClick={onClose} sx={{ mt: 2 }}>
+                Schließen
+              </Button>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Karnevals-Lied-Raten Game Component
+const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const songs = [
+    { title: 'Viva Colonia', hint: 'Kölner Karnevalshymne', emoji: '🍺' },
+    { title: 'Ein Hoch auf uns', hint: 'Party-Klassiker', emoji: '🎉' },
+    { title: 'Atemlos', hint: 'Deutscher Pop-Hit', emoji: '💃' },
+    { title: '99 Luftballons', hint: '80er Jahre Hit', emoji: '🎈' },
+    { title: 'Ein Kommen und Gehen', hint: 'Karnevals-Klassiker', emoji: '🎪' },
+    { title: 'Marmor, Stein und Eisen bricht', hint: 'Oldie', emoji: '💎' },
+  ];
+  const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
+  const [currentSong, setCurrentSong] = useState(0);
+  const [score, setScore] = useState(0);
+  const [guess, setGuess] = useState('');
+  const [showHint, setShowHint] = useState(false);
+  const [gameActive, setGameActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  const gameConfig = {
+    easy: { songs: 3, timePerSong: 0, showEmoji: true },
+    medium: { songs: 4, timePerSong: 30, showEmoji: true },
+    hard: { songs: 5, timePerSong: 20, showEmoji: false }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setMode(null);
+      setCurrentSong(0);
+      setScore(0);
+      setGuess('');
+      setShowHint(false);
+      setGameActive(false);
+      setTimeLeft(0);
+      return;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!gameActive || !mode || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          handleSkip();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [gameActive, mode, timeLeft]);
+
+  const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
+    const config = gameConfig[selectedMode];
+    const shuffled = [...songs].sort(() => Math.random() - 0.5).slice(0, config.songs);
+    setMode(selectedMode);
+    setCurrentSong(0);
+    setScore(0);
+    setGuess('');
+    setShowHint(false);
+    setTimeLeft(config.timePerSong);
+    setGameActive(true);
+  };
+
+  const handleGuess = () => {
+    if (!mode || !gameActive) return;
+    const config = gameConfig[mode];
+    const song = songs[currentSong];
+    if (guess.toLowerCase().includes(song.title.toLowerCase()) || song.title.toLowerCase().includes(guess.toLowerCase())) {
+      setScore(prev => prev + 1);
+      setTimeout(() => nextSong(), 1500);
+    }
+  };
+
+  const handleSkip = () => {
+    nextSong();
+  };
+
+  const nextSong = () => {
+    const config = gameConfig[mode!];
+    if (currentSong < config.songs - 1) {
+      setCurrentSong(prev => prev + 1);
+      setGuess('');
+      setShowHint(false);
+      setTimeLeft(config.timePerSong);
+    } else {
+      setGameActive(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎵 Karnevals-Lied-Raten
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center' }}>
+        {!mode && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>Wähle einen Schwierigkeitsgrad:</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
+                  <Typography variant="caption">3 Lieder, mit Emoji</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
+                  <Typography variant="caption">4 Lieder, 30s pro Lied</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
+                  <Typography variant="caption">5 Lieder, 20s, kein Emoji</Typography>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+        {mode && gameActive && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h6">Lied {currentSong + 1} / {gameConfig[mode].songs}</Typography>
+              <Typography variant="h6">Punkte: {score}</Typography>
+              {gameConfig[mode].timePerSong > 0 && (
+                <Typography variant="h6">Zeit: {timeLeft}s</Typography>
+              )}
+            </Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>
+              {gameConfig[mode].showEmoji ? songs[currentSong].emoji : '🎵'}
+            </Typography>
+            {showHint && (
+              <Typography variant="body1" sx={{ mb: 2, fontStyle: 'italic' }}>
+                Tipp: {songs[currentSong].hint}
+              </Typography>
+            )}
+            <TextField
+              fullWidth
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleGuess()}
+              placeholder="Liedtitel eingeben..."
+              sx={{ mb: 2 }}
+            />
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+              <Button variant="contained" onClick={handleGuess} sx={{ bgcolor: '#FF1493' }}>
+                Raten
+              </Button>
+              <Button variant="outlined" onClick={() => setShowHint(true)} disabled={showHint}>
+                Tipp
+              </Button>
+              <Button variant="outlined" onClick={handleSkip}>
+                Überspringen
+              </Button>
+            </Box>
+          </>
+        )}
+        {mode && !gameActive && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 2 }}>Deine Punktzahl: {score} / {gameConfig[mode].songs}</Typography>
+            <Button variant="contained" onClick={() => startGame(mode)} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={() => { setMode(null); setCurrentSong(0); setScore(0); }} sx={{ mr: 1 }}>
+              Modus wählen
+            </Button>
+            <Button variant="outlined" onClick={onClose}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Kostüm-Designer Game Component
+const CostumeDesignerModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const parts = {
+    head: ['🎩', '👑', '🎭', '🤡', '👺', '🎪'],
+    body: ['👔', '👗', '🦸', '🧙', '🦇', '🎨'],
+    accessory: ['🎪', '🎯', '🎲', '🎊', '🎈', '🎁']
+  };
+  const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
+  const [selected, setSelected] = useState<{head: string; body: string; accessory: string}>({head: '', body: '', accessory: ''});
+  const [target, setTarget] = useState<{head: string; body: string; accessory: string}>({head: '', body: '', accessory: ''});
+  const [score, setScore] = useState(0);
+  const [round, setRound] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  const gameConfig = {
+    easy: { rounds: 3, timePerRound: 0 },
+    medium: { rounds: 4, timePerRound: 45 },
+    hard: { rounds: 5, timePerRound: 30 }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setMode(null);
+      setSelected({head: '', body: '', accessory: ''});
+      setTarget({head: '', body: '', accessory: ''});
+      setScore(0);
+      setRound(0);
+      setGameActive(false);
+      setTimeLeft(0);
+      return;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!gameActive || !mode || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          checkDesign();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [gameActive, mode, timeLeft]);
+
+  const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
+    const config = gameConfig[selectedMode];
+    setMode(selectedMode);
+    setRound(0);
+    setScore(0);
+    setGameActive(true);
+    newRound();
+  };
+
+  const newRound = () => {
+    const config = gameConfig[mode!];
+    const newTarget = {
+      head: parts.head[Math.floor(Math.random() * parts.head.length)],
+      body: parts.body[Math.floor(Math.random() * parts.body.length)],
+      accessory: parts.accessory[Math.floor(Math.random() * parts.accessory.length)]
+    };
+    setTarget(newTarget);
+    setSelected({head: '', body: '', accessory: ''});
+    setTimeLeft(config.timePerRound);
+  };
+
+  const checkDesign = () => {
+    let matches = 0;
+    if (selected.head === target.head) matches++;
+    if (selected.body === target.body) matches++;
+    if (selected.accessory === target.accessory) matches++;
+    setScore(prev => prev + matches);
+    setTimeout(() => {
+      const config = gameConfig[mode!];
+      if (round < config.rounds - 1) {
+        setRound(prev => prev + 1);
+        newRound();
+      } else {
+        setGameActive(false);
+      }
+    }, 2000);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
+        🎨 Kostüm-Designer
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2 }}>
+        {!mode && (
+          <Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>Wähle einen Schwierigkeitsgrad:</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
+                  <Typography variant="caption">3 Runden, kein Zeitlimit</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
+                  <Typography variant="caption">4 Runden, 45s pro Runde</Typography>
+                </Card>
+              </Grid>
+              <Grid item xs={4}>
+                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
+                  <Typography variant="caption">5 Runden, 30s pro Runde</Typography>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        )}
+        {mode && gameActive && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Typography variant="h6">Runde {round + 1} / {gameConfig[mode].rounds}</Typography>
+              <Typography variant="h6">Punkte: {score}</Typography>
+              {gameConfig[mode].timePerRound > 0 && (
+                <Typography variant="h6">Zeit: {timeLeft}s</Typography>
+              )}
+            </Box>
+            <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Ziel-Kostüm:</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, fontSize: '3rem' }}>
+                <Box>{target.head}</Box>
+                <Box>{target.body}</Box>
+                <Box>{target.accessory}</Box>
+              </Box>
+            </Box>
+            <Typography variant="h6" sx={{ mb: 2 }}>Dein Design:</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Typography variant="body2" sx={{ mb: 1 }}>Kopf:</Typography>
+                <Grid container spacing={1}>
+                  {parts.head.map((p, i) => (
+                    <Grid item xs={4} key={i}>
+                      <Card
+                        sx={{
+                          cursor: 'pointer',
+                          p: 1,
+                          textAlign: 'center',
+                          bgcolor: selected.head === p ? '#FF1493' : 'white',
+                          color: selected.head === p ? 'white' : 'black',
+                          '&:hover': { transform: 'scale(1.1)' }
+                        }}
+                        onClick={() => setSelected(prev => ({...prev, head: p}))}
+                      >
+                        <Typography variant="h5">{p}</Typography>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography variant="body2" sx={{ mb: 1 }}>Körper:</Typography>
+                <Grid container spacing={1}>
+                  {parts.body.map((p, i) => (
+                    <Grid item xs={4} key={i}>
+                      <Card
+                        sx={{
+                          cursor: 'pointer',
+                          p: 1,
+                          textAlign: 'center',
+                          bgcolor: selected.body === p ? '#FF1493' : 'white',
+                          color: selected.body === p ? 'white' : 'black',
+                          '&:hover': { transform: 'scale(1.1)' }
+                        }}
+                        onClick={() => setSelected(prev => ({...prev, body: p}))}
+                      >
+                        <Typography variant="h5">{p}</Typography>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography variant="body2" sx={{ mb: 1 }}>Accessoire:</Typography>
+                <Grid container spacing={1}>
+                  {parts.accessory.map((p, i) => (
+                    <Grid item xs={4} key={i}>
+                      <Card
+                        sx={{
+                          cursor: 'pointer',
+                          p: 1,
+                          textAlign: 'center',
+                          bgcolor: selected.accessory === p ? '#FF1493' : 'white',
+                          color: selected.accessory === p ? 'white' : 'black',
+                          '&:hover': { transform: 'scale(1.1)' }
+                        }}
+                        onClick={() => setSelected(prev => ({...prev, accessory: p}))}
+                      >
+                        <Typography variant="h5">{p}</Typography>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Grid>
+            </Grid>
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Button variant="contained" onClick={checkDesign} disabled={!selected.head || !selected.body || !selected.accessory} sx={{ bgcolor: '#FF1493' }}>
+                Design prüfen
+              </Button>
+            </Box>
+          </>
+        )}
+        {mode && !gameActive && (
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 2 }}>Deine Punktzahl: {score} / {gameConfig[mode].rounds * 3}</Typography>
+            <Button variant="contained" onClick={() => startGame(mode)} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={() => { setMode(null); setRound(0); setScore(0); }} sx={{ mr: 1 }}>
+              Modus wählen
+            </Button>
+            <Button variant="outlined" onClick={onClose}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Gruppen-Konfetti-Challenge (für ganze Klasse)
+const GroupConfettiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [gameActive, setGameActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [particles, setParticles] = useState<Array<{id: number; x: number; y: number; color: string}>>([]);
+  const [totalClicks, setTotalClicks] = useState(0);
+  const particleIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!open) {
+      setGameActive(false);
+      setTimeLeft(60);
+      setParticles([]);
+      setTotalClicks(0);
+      return;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!gameActive || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setGameActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [gameActive, timeLeft]);
+
+  useEffect(() => {
+    if (!gameActive) return;
+    const interval = setInterval(() => {
+      setParticles(prev => [
+        ...prev,
+        {
+          id: particleIdRef.current++,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          color: ['#FF1493', '#FF69B4', '#FFB6C1', '#FFD700', '#FF6347', '#FF4500'][Math.floor(Math.random() * 6)]
+        }
+      ]);
+    }, 300);
+    return () => clearInterval(interval);
+  }, [gameActive]);
+
+  const handleParticleClick = (id: number) => {
+    setParticles(prev => prev.filter(p => p.id !== id));
+    setTotalClicks(prev => prev + 1);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎊 Gruppen-Konfetti-Challenge
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
+        {!gameActive && timeLeft === 60 && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Challenge!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>Alle zusammen klicken auf die Konfetti-Partikel!</Typography>
+            <Button variant="contained" onClick={() => setGameActive(true)} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Spiel starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 3 }}>
+              <Typography variant="h4">⏰ Zeit: {timeLeft}s</Typography>
+              <Typography variant="h4">👆 Klicks: {totalClicks}</Typography>
+            </Box>
+            <Box sx={{ position: 'relative', width: '100%', height: 400, border: '3px solid #FF1493', borderRadius: 2, overflow: 'hidden', bgcolor: '#f5f5f5' }}>
+              {particles.map(p => (
+                <Box
+                  key={p.id}
+                  onClick={() => handleParticleClick(p.id)}
+                  sx={{
+                    position: 'absolute',
+                    left: `${p.x}%`,
+                    top: `${p.y}%`,
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    bgcolor: p.color,
+                    cursor: 'pointer',
+                    fontSize: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: 'float 2s ease-in-out infinite',
+                    '@keyframes float': {
+                      '0%, 100%': { transform: 'translateY(0px)' },
+                      '50%': { transform: 'translateY(-15px)' }
+                    }
+                  }}
+                >
+                  🎊
+                </Box>
+              ))}
+            </Box>
+          </>
+        )}
+        {!gameActive && timeLeft === 0 && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Challenge beendet!</Typography>
+            <Typography variant="h4" sx={{ mb: 2 }}>Gesamt-Klicks: {totalClicks}</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              {totalClicks >= 200 ? '🏆 Fantastisch! Super Teamarbeit!' :
+               totalClicks >= 100 ? '🎉 Sehr gut! Tolle Zusammenarbeit!' :
+               totalClicks >= 50 ? '👍 Gut gemacht!' : '💪 Weiter so!'}
+            </Typography>
+            <Button variant="contained" onClick={() => { setTimeLeft(60); setParticles([]); setTotalClicks(0); setGameActive(true); }} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Gruppen-Memory-Rennen (für ganze Klasse)
+const GroupMemoryModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const masks = ['🎭', '🤡', '👺', '🎪', '🎨', '🎯', '🎬', '🎤'];
+  const [cards, setCards] = useState<string[]>([]);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [matched, setMatched] = useState<number[]>([]);
+  const [gameActive, setGameActive] = useState(false);
+  const [startTime, setStartTime] = useState(0);
+  const [endTime, setEndTime] = useState(0);
+
+  useEffect(() => {
+    if (open) {
+      const pairs = [...masks.slice(0, 6), ...masks.slice(0, 6)].sort(() => Math.random() - 0.5);
+      setCards(pairs);
+      setFlipped([]);
+      setMatched([]);
+      setGameActive(false);
+      setStartTime(0);
+      setEndTime(0);
+    }
+  }, [open]);
+
+  const startGame = () => {
+    const pairs = [...masks.slice(0, 6), ...masks.slice(0, 6)].sort(() => Math.random() - 0.5);
+    setCards(pairs);
+    setFlipped([]);
+    setMatched([]);
+    setGameActive(true);
+    setStartTime(Date.now());
+  };
+
+  const handleCardClick = (index: number) => {
+    if (!gameActive || flipped.length === 2 || flipped.includes(index) || matched.includes(index)) return;
+    
+    const newFlipped = [...flipped, index];
+    setFlipped(newFlipped);
+    
+    if (newFlipped.length === 2) {
+      if (cards[newFlipped[0]] === cards[newFlipped[1]]) {
+        setMatched(prev => [...prev, ...newFlipped]);
+        setFlipped([]);
+        if (matched.length + 2 === cards.length) {
+          setEndTime(Date.now());
+          setGameActive(false);
+        }
+      } else {
+        setTimeout(() => setFlipped([]), 1500);
+      }
+    }
+  };
+
+  const timeTaken = endTime > 0 ? Math.round((endTime - startTime) / 1000) : 0;
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎭 Gruppen-Memory-Rennen
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2 }}>
+        {!gameActive && matched.length === 0 && (
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Memory!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>Findet zusammen alle Paare so schnell wie möglich!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Spiel starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 3 }}>
+              <Typography variant="h5">Gefunden: {matched.length / 2} / 6</Typography>
+              <Typography variant="h5">⏰ {startTime > 0 ? Math.round((Date.now() - startTime) / 1000) : 0}s</Typography>
+            </Box>
+            <Grid container spacing={1}>
+              {cards.map((card, index) => (
+                <Grid item xs={3} key={index}>
+                  <Card
+                    onClick={() => handleCardClick(index)}
+                    sx={{
+                      aspectRatio: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: gameActive && !flipped.includes(index) && !matched.includes(index) ? 'pointer' : 'default',
+                      bgcolor: flipped.includes(index) || matched.includes(index) ? '#fff' : '#FF1493',
+                      fontSize: '2.5rem',
+                      transition: 'all 0.3s',
+                      opacity: matched.includes(index) ? 0.6 : 1,
+                      '&:hover': { transform: gameActive && !flipped.includes(index) && !matched.includes(index) ? 'scale(1.1)' : 'none' }
+                    }}
+                  >
+                    {flipped.includes(index) || matched.includes(index) ? card : '?'}
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        )}
+        {!gameActive && matched.length === cards.length && (
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Geschafft!</Typography>
+            <Typography variant="h4" sx={{ mb: 2 }}>Zeit: {timeTaken} Sekunden</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              {timeTaken <= 30 ? '🏆 Blitzschnell! Fantastisch!' :
+               timeTaken <= 60 ? '🎉 Sehr schnell! Super!' :
+               timeTaken <= 90 ? '👍 Gut gemacht!' : '💪 Weiter so!'}
+            </Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Gruppen-Quiz-Battle (für ganze Klasse)
+const GroupQuizModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const questions = [
+    { q: 'Was ist die beste Zeit für Karneval?', a: 'Immer!' },
+    { q: 'Welche Stadt ist berühmt für Karneval?', a: 'Köln' },
+    { q: 'Was wirft man beim Karneval?', a: 'Konfetti' },
+    { q: 'Wie heißt der Karnevalsdienstag?', a: 'Faschingsdienstag' },
+    { q: 'Was trägt man beim Karneval?', a: 'Kostüm' },
+  ];
+  const [currentQ, setCurrentQ] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [gameActive, setGameActive] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setCurrentQ(0);
+      setShowAnswer(false);
+      setGameActive(false);
+    }
+  }, [open]);
+
+  const startGame = () => {
+    setCurrentQ(0);
+    setShowAnswer(false);
+    setGameActive(true);
+  };
+
+  const nextQuestion = () => {
+    if (currentQ < questions.length - 1) {
+      setCurrentQ(prev => prev + 1);
+      setShowAnswer(false);
+    } else {
+      setGameActive(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🤡 Gruppen-Quiz-Battle
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 400 }}>
+        {!gameActive && currentQ === 0 && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Quiz!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>Beantwortet zusammen die Fragen!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Quiz starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Frage {currentQ + 1} von {questions.length}
+            </Typography>
+            <Typography variant="h3" sx={{ mb: 4, minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {questions[currentQ].q}
+            </Typography>
+            {!showAnswer && (
+              <Button variant="contained" onClick={() => setShowAnswer(true)} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+                Antwort zeigen
+              </Button>
+            )}
+            {showAnswer && (
+              <Box>
+                <Typography variant="h2" sx={{ mb: 3, color: '#4caf50' }}>
+                  ✅ {questions[currentQ].a}
+                </Typography>
+                <Button variant="contained" onClick={nextQuestion} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+                  {currentQ < questions.length - 1 ? 'Nächste Frage' : 'Beenden'}
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
+        {!gameActive && currentQ === questions.length && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Quiz beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Ihr habt alle {questions.length} Fragen gemeistert!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Gruppen-Würfel-Challenge (für ganze Klasse)
+const GroupDiceModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [dice1, setDice1] = useState(1);
+  const [dice2, setDice2] = useState(1);
+  const [dice3, setDice3] = useState(1);
+  const [rolling, setRolling] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [rolls, setRolls] = useState(0);
+  const [wins, setWins] = useState(0);
+  const [target, setTarget] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setDice1(1);
+      setDice2(1);
+      setDice3(1);
+      setRolling(false);
+      setTotal(0);
+      setRolls(0);
+      setWins(0);
+      setTarget(0);
+      setGameActive(false);
+    }
+  }, [open]);
+
+  const startGame = () => {
+    setTarget(Math.floor(Math.random() * 10) + 15); // Ziel zwischen 15-24
+    setRolls(0);
+    setWins(0);
+    setTotal(0);
+    setGameActive(true);
+  };
+
+  const rollDice = () => {
+    if (rolling || !gameActive) return;
+    setRolling(true);
+    let count = 0;
+    const interval = setInterval(() => {
+      setDice1(Math.floor(Math.random() * 6) + 1);
+      setDice2(Math.floor(Math.random() * 6) + 1);
+      setDice3(Math.floor(Math.random() * 6) + 1);
+      count++;
+      if (count > 10) {
+        clearInterval(interval);
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        const d3 = Math.floor(Math.random() * 6) + 1;
+        setDice1(d1);
+        setDice2(d2);
+        setDice3(d3);
+        const sum = d1 + d2 + d3;
+        setTotal(sum);
+        setRolls(prev => prev + 1);
+        if (sum >= target) {
+          setWins(prev => prev + 1);
+          if (wins + 1 >= 3) {
+            setGameActive(false);
+          }
+        }
+        setRolling(false);
+      }
+    }, 100);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎲 Gruppen-Würfel-Challenge
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 400 }}>
+        {!gameActive && target === 0 && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Challenge!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>Würfelt zusammen und erreicht das Ziel!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Challenge starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Typography variant="h4" sx={{ mb: 2 }}>
+              🎯 Ziel: {target} oder mehr
+            </Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Gewinne: {wins} / 3
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
+              <Box sx={{ fontSize: '5rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice1 - 1]}</Box>
+              <Box sx={{ fontSize: '5rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice2 - 1]}</Box>
+              <Box sx={{ fontSize: '5rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice3 - 1]}</Box>
+            </Box>
+            {total > 0 && (
+              <Typography variant="h3" sx={{ mb: 3 }}>
+                Summe: {total} {total >= target ? '🎉 Gewonnen!' : '😔 Noch nicht'}
+              </Typography>
+            )}
+            <Button
+              variant="contained"
+              onClick={rollDice}
+              disabled={rolling || wins >= 3}
+              sx={{ bgcolor: '#FF1493', mb: 2, py: 1.5, px: 4, fontSize: '1.2rem' }}
+            >
+              {rolling ? 'Würfle...' : wins >= 3 ? 'Challenge geschafft!' : '🎲 Würfeln!'}
+            </Button>
+            <Typography variant="body1">Würfe: {rolls}</Typography>
+          </>
+        )}
+        {!gameActive && wins >= 3 && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Challenge geschafft!</Typography>
+            <Typography variant="h4" sx={{ mb: 2 }}>Ihr habt 3 Mal das Ziel erreicht!</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Gesamt-Würfe: {rolls}</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
   const subjectManagerRef = useRef<any>(null);
@@ -725,6 +2299,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [selectedKAFilePath, setSelectedKAFilePath] = useState<string>('');
   const [showTeacherMessageBox, setShowTeacherMessageBox] = useState(false);
   const [showRiddleOverview, setShowRiddleOverview] = useState(false);
+  const [showCarnivalGames, setShowCarnivalGames] = useState(false);
+  const [showConfettiGame, setShowConfettiGame] = useState(false);
+  const [showMaskMemory, setShowMaskMemory] = useState(false);
+  const [showFoolQuiz, setShowFoolQuiz] = useState(false);
+  const [showCarnivalDice, setShowCarnivalDice] = useState(false);
+  const [showSongGuess, setShowSongGuess] = useState(false);
+  const [showCostumeDesigner, setShowCostumeDesigner] = useState(false);
+  const [showGroupConfetti, setShowGroupConfetti] = useState(false);
+  const [showGroupMemory, setShowGroupMemory] = useState(false);
+  const [showGroupQuiz, setShowGroupQuiz] = useState(false);
+  const [showGroupDice, setShowGroupDice] = useState(false);
   const [showMinigame, setShowMinigame] = useState(false);
   const [selectedMinigameDifficulty, setSelectedMinigameDifficulty] = useState<'easy' | 'hard'>('easy');
   const [gameStarted, setGameStarted] = useState(false);
@@ -1582,7 +3167,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       'Reingerufen',
       'Häufig Reingerufen',
       'Häufig gestört',
-      'Nicht konzentriert gearbeitet'
+      'Nicht konzentriert gearbeitet',
+      'Fehlende HA',
+      'Fehlendes Material',
+      'HA probiert aber zu wenig'
     ],
     gelb: [
       'Unaufmerksam',
@@ -1596,10 +3184,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       'Aufgaben nicht gewissenhaft bearbeitet'
     ],
     grau: [
-      'Fehlende HA',
-      'Fehlendes Material',
-      'HA unvollständig',
-      'HA probiert aber zu wenig'
+      'HA unvollständig'
     ],
     blau: [
       'Ruhig gearbeitet',
@@ -4332,10 +5917,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           const errorData = await response.json();
           console.error('Error response:', errorData);
           // Extrahiere die Fehlermeldung aus verschiedenen möglichen Feldern
-          if (errorData.error) {
-            errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
-          } else if (errorData.message) {
+          // Bevorzuge 'message' für detaillierte Fehler, sonst 'error'
+          if (errorData.message) {
             errorMessage = typeof errorData.message === 'string' ? errorData.message : JSON.stringify(errorData.message);
+          } else if (errorData.error) {
+            errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
           } else {
             errorMessage = JSON.stringify(errorData);
           }
@@ -6977,6 +8563,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                         <path d="M 17.5 7 L 17.5 10 L 18 10.5 L 17.5 11 L 17 10.5 L 17 7 Z" fill="#FFD700" stroke="#B8860B" strokeWidth="1.5" />
                       </svg>
                     </Box>
+                  </IconButton>
+                </Box>
+                {/* Karnevals-Minigame Button */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => setShowCarnivalGames(true)}
+                    sx={{
+                      p: 0.5,
+                      minWidth: 32,
+                      width: 32,
+                      height: 32,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(255, 20, 147, 0.3)',
+                      background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(255, 20, 147, 0.3)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(255, 20, 147, 0.6)',
+                        boxShadow: '0 4px 12px rgba(255, 20, 147, 0.4)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="Karnevals-Minigames"
+                  >
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: '1.2rem',
+                        lineHeight: 1,
+                        display: 'inline-block'
+                      }}
+                    >
+                      🎭
+                    </Typography>
                   </IconButton>
                 </Box>
                 {/* Minigame Test Button */}
@@ -13295,29 +14918,322 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary', mb: 1, display: 'block' }}>
               Schnellauswahl:
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              {Object.entries(commentShortcuts).map(([color, shortcuts]) => (
-                <Box key={color} sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {shortcuts.map((shortcut: string) => (
-                    <Chip
-                      key={shortcut}
-                      label={shortcut}
-                      size="small"
-                      onClick={() => {
-                        const current = commentText.trim();
-                        const newText = current ? `${current}, ${shortcut}` : shortcut;
-                        setCommentText(newText);
-                        commentInputRef.current?.focus();
-                      }}
-                      sx={{ 
-                        fontSize: '0.65rem',
-                        height: '24px',
-                        cursor: 'pointer'
-                      }}
-                    />
-                  ))}
+            
+            {/* Materialien/Heft */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.primary', fontWeight: 600, mb: 0.5, display: 'block' }}>
+                Materialien/Heft:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                {/* Negative Materialien */}
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#d32f2f', fontWeight: 600, mb: 0.5, display: 'block' }}>
+                    Negativ:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {['Fehlende HA', 'Fehlendes Material', 'Heft nicht ordentlich geführt'].map((shortcut: string) => {
+                      const hasFehlend = shortcut.toLowerCase().includes('fehlend');
+                      const parts = shortcut.split(/(fehlend[^,]*)/i);
+                      return (
+                        <Chip
+                          key={shortcut}
+                          label={
+                            hasFehlend ? (
+                              <span>
+                                {parts[0]}
+                                <strong>{parts[1]}</strong>
+                                {parts[2]}
+                              </span>
+                            ) : shortcut
+                          }
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#ffebee',
+                            color: '#c62828',
+                            border: '1px solid #ef9a9a',
+                            '&:hover': {
+                              backgroundColor: '#ffcdd2',
+                              borderColor: '#e57373'
+                            },
+                            '& .MuiChip-label': {
+                              display: 'flex',
+                              alignItems: 'center'
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
                 </Box>
-              ))}
+                
+                {/* Neutrale Materialien */}
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#616161', fontWeight: 600, mb: 0.5, display: 'block' }}>
+                    Neutral:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {['HA unvollständig', 'HA probiert aber zu wenig'].map((shortcut: string) => (
+                      <Chip
+                        key={shortcut}
+                        label={shortcut}
+                        size="small"
+                        onClick={() => {
+                          const current = commentText.trim();
+                          const newText = current ? `${current}, ${shortcut}` : shortcut;
+                          setCommentText(newText);
+                          commentInputRef.current?.focus();
+                        }}
+                        sx={{ 
+                          fontSize: '0.65rem',
+                          height: '24px',
+                          cursor: 'pointer',
+                          backgroundColor: '#f5f5f5',
+                          color: '#424242',
+                          border: '1px solid #bdbdbd',
+                          '&:hover': {
+                            backgroundColor: '#eeeeee',
+                            borderColor: '#9e9e9e'
+                          }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+            
+            {/* Trennlinie */}
+            <Box sx={{ borderTop: '1px solid #e0e0e0', my: 1.5 }} />
+            
+            {/* Verhalten */}
+            <Box>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.primary', fontWeight: 600, mb: 0.5, display: 'block' }}>
+                Verhalten:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                {/* Negative Verhalten */}
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#d32f2f', fontWeight: 600, mb: 0.5, display: 'block' }}>
+                    Negativ:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {/* Unaufmerksamkeit/Konzentration */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {['Sehr unaufmerksam', 'Unaufmerksam', 'Verträumt', 'Abgelenkt', 'Nicht konzentriert gearbeitet'].map((shortcut: string) => (
+                        <Chip
+                          key={shortcut}
+                          label={shortcut}
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#ffebee',
+                            color: '#c62828',
+                            border: '1px solid #ef9a9a',
+                            '&:hover': {
+                              backgroundColor: '#ffcdd2',
+                              borderColor: '#e57373'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    {/* Unruhe/Störungen */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {['Sehr unruhig', 'Dauernd aufgestanden', 'Reingerufen', 'Häufig Reingerufen', 'Häufig gestört'].map((shortcut: string) => (
+                        <Chip
+                          key={shortcut}
+                          label={shortcut}
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#ffebee',
+                            color: '#c62828',
+                            border: '1px solid #ef9a9a',
+                            '&:hover': {
+                              backgroundColor: '#ffcdd2',
+                              borderColor: '#e57373'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    {/* Gespräche/Störungen */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {['Sehr viele geschwätzt', 'Häufig geschwätzt', 'Abgelenkt durch Nachbarn', 'Nachbarn abgelenkt'].map((shortcut: string) => (
+                        <Chip
+                          key={shortcut}
+                          label={shortcut}
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#ffebee',
+                            color: '#c62828',
+                            border: '1px solid #ef9a9a',
+                            '&:hover': {
+                              backgroundColor: '#ffcdd2',
+                              borderColor: '#e57373'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    {/* Aufgaben/Arbeit */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {['Früher eingepackt', 'Aufgaben nicht gewissenhaft bearbeitet'].map((shortcut: string) => (
+                        <Chip
+                          key={shortcut}
+                          label={shortcut}
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#ffebee',
+                            color: '#c62828',
+                            border: '1px solid #ef9a9a',
+                            '&:hover': {
+                              backgroundColor: '#ffcdd2',
+                              borderColor: '#e57373'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                </Box>
+                
+                {/* Positive Verhalten */}
+                <Box sx={{ flex: 1, minWidth: '200px' }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#2e7d32', fontWeight: 600, mb: 0.5, display: 'block' }}>
+                    Positiv:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {/* Arbeit/Konzentration */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {['Ruhig gearbeitet', 'Sorgfältig gearbeitet', 'Fleißig gearbeitet', 'Sehr konzentriert', 'Bis zum Ende fleißig'].map((shortcut: string) => (
+                        <Chip
+                          key={shortcut}
+                          label={shortcut}
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#e8f5e9',
+                            color: '#1b5e20',
+                            border: '1px solid #81c784',
+                            '&:hover': {
+                              backgroundColor: '#c8e6c9',
+                              borderColor: '#66bb6a'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    {/* Beiträge/Meldungen */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {['Gute Fragen gestellt', 'Engagiert mitgedacht', 'Produktive Beiträge', 'Gewinnbringende Meldungen', 'Kreative Antworten'].map((shortcut: string) => (
+                        <Chip
+                          key={shortcut}
+                          label={shortcut}
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#e8f5e9',
+                            color: '#1b5e20',
+                            border: '1px solid #81c784',
+                            '&:hover': {
+                              backgroundColor: '#c8e6c9',
+                              borderColor: '#66bb6a'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    {/* Präsentation */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {['Toll präsentiert'].map((shortcut: string) => (
+                        <Chip
+                          key={shortcut}
+                          label={shortcut}
+                          size="small"
+                          onClick={() => {
+                            const current = commentText.trim();
+                            const newText = current ? `${current}, ${shortcut}` : shortcut;
+                            setCommentText(newText);
+                            commentInputRef.current?.focus();
+                          }}
+                          sx={{ 
+                            fontSize: '0.65rem',
+                            height: '24px',
+                            cursor: 'pointer',
+                            backgroundColor: '#e8f5e9',
+                            color: '#1b5e20',
+                            border: '1px solid #81c784',
+                            '&:hover': {
+                              backgroundColor: '#c8e6c9',
+                              borderColor: '#66bb6a'
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
             </Box>
           </Box>
         </DialogContent>
@@ -13496,6 +15412,464 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Karnevals-Minigames Modal */}
+      <Dialog
+        open={showCarnivalGames}
+        onClose={() => setShowCarnivalGames(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 50%, #FFB6C1 100%)',
+            borderRadius: 3,
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: 'transparent',
+          color: 'white',
+          textAlign: 'center',
+          py: 1.5,
+          px: 2,
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Box sx={{ width: 28 }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.4rem', flex: 1, textAlign: 'center' }}>
+            🎭 Karnevals-Minigames 🎪
+          </Typography>
+          <IconButton
+            onClick={() => setShowCarnivalGames(false)}
+            size="small"
+            sx={{ 
+              color: 'white',
+              p: 0.5,
+              minWidth: 28,
+              width: 28,
+              height: 28,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 2, px: 3 }}>
+          <Grid container spacing={2}>
+            {/* Konfetti-Wurf */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowConfettiGame(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎊
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Konfetti-Wurf
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Klicke so schnell wie möglich auf die Konfetti-Partikel!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Masken-Memory */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowMaskMemory(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎭
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Masken-Memory
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Finde die passenden Masken-Paare!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Narren-Quiz */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowFoolQuiz(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🤡
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Narren-Quiz
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Beantworte lustige Karnevals-Fragen!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Karnevals-Würfel */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowCarnivalDice(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎲
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Karnevals-Würfel
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Würfle und gewinne tolle Preise!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Karnevals-Lied-Raten */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowSongGuess(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎵
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Karnevals-Lied-Raten
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Rate die Karnevals-Lieder!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Kostüm-Designer */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 255, 255, 0.95)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowCostumeDesigner(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎨
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Kostüm-Designer
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Designe das perfekte Kostüm!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Trennlinie für Gruppenspiele */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.3)' }}>
+                <Typography variant="h6" sx={{ color: 'white', px: 2 }}>
+                  👥 Gruppenspiele (für die ganze Klasse)
+                </Typography>
+              </Divider>
+            </Grid>
+
+            {/* Gruppen-Konfetti-Challenge */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 215, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '2px solid #FFD700',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowGroupConfetti(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎊
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Gruppen-Konfetti
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Alle zusammen klicken!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Gruppen-Memory-Rennen */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 215, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '2px solid #FFD700',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowGroupMemory(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎭
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Gruppen-Memory
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Findet zusammen alle Paare!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Gruppen-Quiz-Battle */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 215, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '2px solid #FFD700',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowGroupQuiz(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🤡
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Gruppen-Quiz
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Beantwortet zusammen die Fragen!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Gruppen-Würfel-Challenge */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 215, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '2px solid #FFD700',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowGroupDice(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎲
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Gruppen-Würfel
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Würfelt zusammen zum Ziel!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 1.5, bgcolor: 'rgba(255, 255, 255, 0.1)' }}>
+          <Button 
+            onClick={() => setShowCarnivalGames(false)} 
+            variant="contained" 
+            size="small"
+            sx={{
+              bgcolor: 'white',
+              color: '#FF1493',
+              fontWeight: 600,
+              '&:hover': {
+                bgcolor: '#f5f5f5',
+              }
+            }}
+          >
+            Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Konfetti-Wurf Game */}
+      <ConfettiGameModal 
+        open={showConfettiGame} 
+        onClose={() => setShowConfettiGame(false)} 
+      />
+
+      {/* Masken-Memory Game */}
+      <MaskMemoryModal 
+        open={showMaskMemory} 
+        onClose={() => setShowMaskMemory(false)} 
+      />
+
+      {/* Narren-Quiz Game */}
+      <FoolQuizModal 
+        open={showFoolQuiz} 
+        onClose={() => setShowFoolQuiz(false)} 
+      />
+
+      {/* Karnevals-Würfel Game */}
+      <CarnivalDiceModal 
+        open={showCarnivalDice} 
+        onClose={() => setShowCarnivalDice(false)} 
+      />
+
+      {/* Karnevals-Lied-Raten Game */}
+      <SongGuessModal 
+        open={showSongGuess} 
+        onClose={() => setShowSongGuess(false)} 
+      />
+
+      {/* Kostüm-Designer Game */}
+      <CostumeDesignerModal 
+        open={showCostumeDesigner} 
+        onClose={() => setShowCostumeDesigner(false)} 
+      />
+
+      {/* Gruppen-Konfetti-Challenge */}
+      <GroupConfettiModal 
+        open={showGroupConfetti} 
+        onClose={() => setShowGroupConfetti(false)} 
+      />
+
+      {/* Gruppen-Memory-Rennen */}
+      <GroupMemoryModal 
+        open={showGroupMemory} 
+        onClose={() => setShowGroupMemory(false)} 
+      />
+
+      {/* Gruppen-Quiz-Battle */}
+      <GroupQuizModal 
+        open={showGroupQuiz} 
+        onClose={() => setShowGroupQuiz(false)} 
+      />
+
+      {/* Gruppen-Würfel-Challenge */}
+      <GroupDiceModal 
+        open={showGroupDice} 
+        onClose={() => setShowGroupDice(false)} 
+      />
 
       {/* Minigame Test Modal für Lehrer */}
       <Dialog

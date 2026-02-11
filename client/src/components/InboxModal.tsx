@@ -17,14 +17,23 @@ import {
   Chip,
   Badge,
   IconButton,
-  Paper
+  Paper,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Close,
   Mail,
   MailOutline,
   Person,
-  ArrowBack
+  ArrowBack,
+  Send,
+  Add
 } from '@mui/icons-material';
 
 interface Message {
@@ -45,18 +54,101 @@ interface InboxModalProps {
   onClose: () => void;
 }
 
+interface LearningGroup {
+  id: string;
+  name: string;
+  teacher: {
+    id: string;
+    name: string;
+  };
+}
+
 const InboxModal: React.FC<InboxModalProps> = ({ open, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [tab, setTab] = useState(0);
+  const [learningGroups, setLearningGroups] = useState<LearningGroup[]>([]);
+  
+  // Neue Nachricht states
+  const [newMessageTeacherId, setNewMessageTeacherId] = useState<string>('');
+  const [newMessageSubject, setNewMessageSubject] = useState('');
+  const [newMessageContent, setNewMessageContent] = useState('');
+  const [sendingNewMessage, setSendingNewMessage] = useState(false);
 
   useEffect(() => {
     if (open) {
       loadMessages();
       loadUnreadCount();
+      loadLearningGroups();
     }
   }, [open]);
+  
+  const loadLearningGroups = async () => {
+    try {
+      const userId = localStorage.getItem('studentId') || localStorage.getItem('userId') || '';
+      if (!userId) return;
+      
+      const response = await fetch(`/api/learning-groups/student/${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLearningGroups(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Lerngruppen:', error);
+    }
+  };
+  
+  // Funktion zum Senden einer neuen Nachricht an Lehrer
+  const handleSendNewMessage = async () => {
+    if (!newMessageTeacherId || !newMessageSubject || !newMessageContent) {
+      alert('Bitte füllen Sie alle Felder aus.');
+      return;
+    }
+    
+    setSendingNewMessage(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode') || '';
+      const response = await fetch('/api/messages/send-to-teacher', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        },
+        body: JSON.stringify({
+          teacherId: newMessageTeacherId,
+          subject: newMessageSubject,
+          content: newMessageContent
+        })
+      });
+      
+      if (response.ok) {
+        // Erfolgreich gesendet
+        setNewMessageTeacherId('');
+        setNewMessageSubject('');
+        setNewMessageContent('');
+        setTab(0); // Wechsle zum "Posteingang" Tab
+        alert('Nachricht erfolgreich gesendet!');
+      } else {
+        const errorData = await response.json();
+        alert(`Fehler beim Senden: ${errorData.error || 'Unbekannter Fehler'}`);
+      }
+    } catch (error) {
+      console.error('Fehler beim Senden der Nachricht:', error);
+      alert('Fehler beim Senden der Nachricht.');
+    } finally {
+      setSendingNewMessage(false);
+    }
+  };
+  
+  // Eindeutige Lehrer aus Lerngruppen extrahieren
+  const uniqueTeachers = learningGroups.reduce((acc, group) => {
+    if (group.teacher && !acc.find(t => t.id === group.teacher.id)) {
+      acc.push(group.teacher);
+    }
+    return acc;
+  }, [] as Array<{ id: string; name: string }>);
 
   const loadMessages = async () => {
     try {
@@ -178,13 +270,108 @@ const InboxModal: React.FC<InboxModalProps> = ({ open, onClose }) => {
         </IconButton>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 0, minHeight: 300, maxHeight: '70vh', overflow: 'auto' }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px" py={2}>
+      <DialogContent sx={{ p: 0, minHeight: 300, maxHeight: '70vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Tabs value={tab} onChange={(_, v) => {
+          setTab(v);
+          setSelectedMessage(null); // Reset selected message when switching tabs
+        }} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tab label="Posteingang" icon={<Mail sx={{ fontSize: 16 }} />} iconPosition="start" />
+          <Tab label="Neue Nachricht" icon={<Add sx={{ fontSize: 16 }} />} iconPosition="start" />
+        </Tabs>
+        
+        {tab === 1 ? (
+          // Neue Nachricht Tab
+          <Box sx={{ p: 2, flex: 1, overflow: 'auto' }}>
+            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, fontSize: '0.9rem' }}>
+              Nachricht an Lehrer senden
+            </Typography>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Lehrer auswählen */}
+              <FormControl fullWidth size="small">
+                <InputLabel>Lehrer</InputLabel>
+                <Select
+                  value={newMessageTeacherId}
+                  label="Lehrer"
+                  onChange={(e) => setNewMessageTeacherId(e.target.value)}
+                  sx={{ fontSize: '0.85rem' }}
+                >
+                  <MenuItem value="" sx={{ fontSize: '0.85rem' }}>
+                    Bitte wählen...
+                  </MenuItem>
+                  {uniqueTeachers.map(teacher => (
+                    <MenuItem key={teacher.id} value={teacher.id} sx={{ fontSize: '0.85rem' }}>
+                      {teacher.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              {/* Betreff */}
+              <TextField
+                fullWidth
+                size="small"
+                label="Betreff"
+                value={newMessageSubject}
+                onChange={(e) => setNewMessageSubject(e.target.value)}
+                sx={{ fontSize: '0.85rem' }}
+                InputProps={{
+                  sx: { fontSize: '0.85rem' }
+                }}
+                InputLabelProps={{
+                  sx: { fontSize: '0.85rem' }
+                }}
+              />
+              
+              {/* Inhalt */}
+              <TextField
+                fullWidth
+                multiline
+                rows={6}
+                label="Nachricht"
+                value={newMessageContent}
+                onChange={(e) => setNewMessageContent(e.target.value)}
+                sx={{ fontSize: '0.85rem' }}
+                InputProps={{
+                  sx: { fontSize: '0.85rem' }
+                }}
+                InputLabelProps={{
+                  sx: { fontSize: '0.85rem' }
+                }}
+              />
+              
+              {/* Senden Button */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setNewMessageTeacherId('');
+                    setNewMessageSubject('');
+                    setNewMessageContent('');
+                  }}
+                  disabled={sendingNewMessage}
+                  sx={{ fontSize: '0.85rem' }}
+                >
+                  Zurücksetzen
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleSendNewMessage}
+                  disabled={!newMessageTeacherId || !newMessageSubject || !newMessageContent || sendingNewMessage}
+                  startIcon={<Send />}
+                  sx={{ fontSize: '0.85rem' }}
+                >
+                  {sendingNewMessage ? 'Wird gesendet...' : 'Senden'}
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        ) : loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px" py={2} sx={{ flex: 1 }}>
             <Typography variant="body2">Lade Nachrichten...</Typography>
           </Box>
         ) : selectedMessage ? (
-          <Box sx={{ p: 1 }}>
+          <Box sx={{ p: 1, flex: 1, overflow: 'auto' }}>
             <Box sx={{ mb: 1 }}>
               <IconButton
                 onClick={() => setSelectedMessage(null)}
@@ -241,14 +428,15 @@ const InboxModal: React.FC<InboxModalProps> = ({ open, onClose }) => {
             </Card>
           </Box>
         ) : messages.length === 0 ? (
-          <Box sx={{ p: 2, textAlign: 'center' }}>
+          <Box sx={{ p: 2, textAlign: 'center', flex: 1 }}>
             <MailOutline sx={{ fontSize: 48, color: '#ccc', mb: 1 }} />
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
               Keine Nachrichten
             </Typography>
           </Box>
         ) : (
-          <List sx={{ p: 0 }}>
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            <List sx={{ p: 0 }}>
             {messages.map((message, index) => (
               <React.Fragment key={message.id}>
                 <ListItem disablePadding>
@@ -305,6 +493,7 @@ const InboxModal: React.FC<InboxModalProps> = ({ open, onClose }) => {
               </React.Fragment>
             ))}
           </List>
+          </Box>
         )}
       </DialogContent>
     </Dialog>

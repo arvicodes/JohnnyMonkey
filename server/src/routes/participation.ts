@@ -292,9 +292,11 @@ async function integrateEpoGradesToSchema(groupId: string): Promise<void> {
       }
     }
     console.log(`Integration complete: ${createdCount} created, ${updatedCount} updated`);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error integrating EPO grades into grading schema for group:', groupId, error);
-    // Nicht werfen, um Benutzerinteraktionen nicht zu blockieren
+    console.error('Integration error details:', error?.message, error?.stack);
+    // Werfe den Fehler weiter, damit er im aufrufenden Code behandelt werden kann
+    throw new Error(`Fehler beim Integrieren der EPO-Noten ins Notenschema: ${error?.message || 'Unbekannter Fehler'}`);
   }
 }
 
@@ -1345,9 +1347,11 @@ router.post('/:groupId/epo-grades/release', async (req: Request, res: Response) 
         console.log(`Integrating EPO grades for period ${period} into schema for group ${groupId}`);
         await integrateEpoGradesToSchema(groupId);
         console.log(`EPO grades integrated into schema for period ${period}`);
-      } catch (integrationError) {
+      } catch (integrationError: any) {
         console.error('Error integrating EPO grades:', integrationError);
-        // Weiter machen, auch wenn Integration fehlschlägt
+        console.error('Integration error details:', integrationError?.message, integrationError?.stack);
+        // Werfe den Fehler weiter, damit der Client informiert wird
+        throw new Error(`Fehler beim Integrieren der Noten ins Schema: ${integrationError?.message || 'Unbekannter Fehler'}`);
       }
     } else {
       // Entferne gesperrte Noten aus dem Notenschema
@@ -1411,9 +1415,10 @@ router.post('/:groupId/epo-grades/release', async (req: Request, res: Response) 
   } catch (error: any) {
     console.error('Error releasing EPO grades:', error);
     console.error('Error details:', error?.message, error?.stack);
+    const errorMessage = error?.message || 'Unbekannter Fehler';
     res.status(500).json({ 
-      error: 'Server error',
-      message: error?.message || 'Unbekannter Fehler'
+      error: 'Fehler beim Freigeben der Noten',
+      message: errorMessage
     });
   }
 });
