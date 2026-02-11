@@ -1,0 +1,38 @@
+Mathe 10c
+==================================================
+
+Name                              Login-Code
+-------------------------------- ---------------
+Aaron Schroeder                    SchAar09
+Adriana Gruenewald                 GruAdr09
+Amelie Heimes                      HeiAme09
+Anna-Sophia Spadi                  SpaAnn10
+Anne Berres                        BerAnn10
+Benedikt Roth                      RotBen10
+Charlotte Doll                     DolCha09
+Claudia Oellermann                 OelCla09
+David Preygermann                  PreDav09
+Felix Reinhardt                    ReiFel09
+Finley Wandtke                     WanFin09
+Hanna Ruess Mejias                 RueHan10
+Jonah May                          MayJon10
+Julia Zimmermann                   ZimJul09
+Karoline Bremser                   BreKar09
+Magdalena Kaschny                  KasMag10
+Marie Fedrowitz                    FedMar10
+Mateo Abas                         AbaMat10
+Melanie Mosgold                    MosMel10
+Merle Weinem                       WeiMer10
+Moritz Paulik                      PauMor10
+Nika Monschauer                    MonNik10
+Noah Theis                         TheNoa09
+Ole Hofmann                        HofOle10
+Paul Jung                          JunPau10
+Paul Volk                          VolPau09
+Philipp Weinand                    WeiPhi10
+Romeh Wollweber                    WolRom10
+Sarina Schulz                      SchSar10
+Sophie Schaaf                      SchSop10
+Tim Brockmann                      BroTim09
+
+Gesamt: 31 Schüler

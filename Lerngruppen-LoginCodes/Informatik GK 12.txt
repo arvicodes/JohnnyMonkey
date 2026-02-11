@@ -1,0 +1,30 @@
+Informatik GK 12
+==================================================
+
+Name                              Login-Code
+-------------------------------- ---------------
+Aaron Herrenkind                   HerAar07
+Alex Koch                          KocAle07
+Benjamin Clos                      CloBen07
+Duy Anh Trân                       AnhDuy07
+Erich König                        KönEri07
+Helge Nebendahl                    NebHel07
+Jakob Weyerhäuser                  WeyJak07
+Jana Schiffer                      SchJan07
+Janic Schaaf                       SchJan071
+Jasper Wagner                      WagJas07
+Julian Weitz                       WeiJul07
+Julius Schöning                    SchJul07
+Justus Damm                        DamJus07
+Laureen Budka                      BudLau07
+Louis Scheerer                     SchLou07
+Lukas Wetzlar                      WetLuk07
+Martin Bindewald                   BinMar07
+Nikita Kling                       KliNik07
+Paul Ulrich                        UlrPau07
+Sophie Schaaf                      SchSop07
+Stipe Drmic                        DrmSti07
+Tom Kup                            KupTom07
+Wiebke Schmidt                     SchWie07
+
+Gesamt: 23 Schüler

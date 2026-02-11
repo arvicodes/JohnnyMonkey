@@ -1,0 +1,38 @@
+Klasse 7a
+==================================================
+
+Name                              Login-Code
+-------------------------------- ---------------
+Adela Mureşan                      MurAde13
+Andreas Thielen                    ThiAnd13
+Arthur Potemkin                    PotArt13
+Bruno Scavio                       ScaBru13
+Dennis Miller                      MilDen13
+Fabio Urso                         UrsFab13
+Felix Schmelzlin                   SchFel13
+Freya Zipper                       ZipFre13
+Friederike Bremser                 BreFri13
+Hannah Hagedorn                    HagHan13
+Jakob Ackermann                    AckJak13
+Jan Wimmershoff                    WimJan13
+Jasmin Farnung                     FarJas13
+Jonas Maxeiner                     MaxJon13
+Jonathan Dillmann                  DilJon13
+Josefine Baierl                    BaiJos13
+Julia Reiners                      ReiJul13
+Kilian Jahnke                      JahKil13
+Lennas Weinem                      WeiLen13
+Louis Gerharz                      GerLou13
+Louisa Plattes                     PlaLou13
+Luise Habach                       HabLui13
+Marlene Geis                       GeiMar13
+Marlene Krall                      KraMar13
+Miró Mohr                          MohMir13
+Niklas Schmitz                     SchNik13
+Nils Weiß                          WeiNil13
+Paul Pfeifer                       PfePau13
+Robin Maas                         MaaRob13
+Samuel May                         MaySam13
+Vincent Schlag                     SchVin13
+
+Gesamt: 31 Schüler

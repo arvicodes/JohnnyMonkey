@@ -1,0 +1,30 @@
+Informatik GK 11
+==================================================
+
+Name                              Login-Code
+-------------------------------- ---------------
+Anton Böhm                         BoehAnt11
+David Grenz                        GreDav11
+Emilian Florian Bischoff           BisEmi09
+Gentatsu Long                      LonGen11
+Harald Korn                        KorHar08
+Henrik Aron Schmidt                SchHen11
+Jannis Breidert                    BreJan09
+Jasmin Mosgold                     MosJas11
+Julia Beil                         BeiJul11
+Julian Stammer                     StaJul11
+Lena Marie Friesenhahn             FriLen11
+Leon Gartlib                       GarLeo11
+Linus Samuel Wilke                 WilLin11
+Marie Günter                       GuenMar11
+Milo Singhof                       SinMil09
+Oskar Jäckel                       JaecOsk08
+Paul Jonas Köhler                  KoehPau09
+Paul Wöll                          WoelPau11
+Pia Sasse                          SasPia11
+Silas Martin Lindner               LinSil11
+Sonea Malou Franz                  FraSon11
+Thorben Emanuel Weinhold           WeiTho09
+Yannis Luca Birro                  BirYan11
+
+Gesamt: 23 Schüler
