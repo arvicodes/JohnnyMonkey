@@ -9,8 +9,11 @@ router.post('/send', MessageController.sendMessage);
 // Mehrere Nachrichten senden (Lehrer)
 router.post('/send-bulk', MessageController.sendBulkMessages);
 
-// Nachrichten abrufen (Schüler)
+// Empfangene Nachrichten abrufen (Schüler)
 router.get('/student', MessageController.getStudentMessages);
+
+// Gesendete Nachrichten abrufen (Schüler)
+router.get('/student/sent', MessageController.getStudentSentMessages);
 
 // Nachricht als gelesen markieren (Schüler)
 router.put('/:id/read', MessageController.markAsRead);

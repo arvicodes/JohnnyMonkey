@@ -1179,15 +1179,15 @@ const CarnivalDiceModal: React.FC<{ open: boolean; onClose: () => void }> = ({ o
   );
 };
 
-// Karnevals-Lied-Raten Game Component
+// Karnevals-Lied-Raten Game Component mit Musik
 const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const songs = [
-    { title: 'Viva Colonia', hint: 'Kölner Karnevalshymne', emoji: '🍺' },
-    { title: 'Ein Hoch auf uns', hint: 'Party-Klassiker', emoji: '🎉' },
-    { title: 'Atemlos', hint: 'Deutscher Pop-Hit', emoji: '💃' },
-    { title: '99 Luftballons', hint: '80er Jahre Hit', emoji: '🎈' },
-    { title: 'Ein Kommen und Gehen', hint: 'Karnevals-Klassiker', emoji: '🎪' },
-    { title: 'Marmor, Stein und Eisen bricht', hint: 'Oldie', emoji: '💎' },
+    { title: 'Viva Colonia', hint: 'Kölner Karnevalshymne', emoji: '🍺', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+    { title: 'Ein Hoch auf uns', hint: 'Party-Klassiker', emoji: '🎉', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+    { title: 'Atemlos', hint: 'Deutscher Pop-Hit', emoji: '💃', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
+    { title: '99 Luftballons', hint: '80er Jahre Hit', emoji: '🎈', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
+    { title: 'Ein Kommen und Gehen', hint: 'Karnevals-Klassiker', emoji: '🎪', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' },
+    { title: 'Marmor, Stein und Eisen bricht', hint: 'Oldie', emoji: '💎', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3' },
   ];
   const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
   const [currentSong, setCurrentSong] = useState(0);
@@ -1196,11 +1196,14 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
   const [showHint, setShowHint] = useState(false);
   const [gameActive, setGameActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const gameConfig = {
-    easy: { songs: 3, timePerSong: 0, showEmoji: true },
-    medium: { songs: 4, timePerSong: 30, showEmoji: true },
-    hard: { songs: 5, timePerSong: 20, showEmoji: false }
+    easy: { songs: 3, playDuration: 10, showEmoji: true },
+    medium: { songs: 4, playDuration: 8, showEmoji: true },
+    hard: { songs: 5, playDuration: 5, showEmoji: false }
   };
 
   useEffect(() => {
@@ -1212,23 +1215,26 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
       setShowHint(false);
       setGameActive(false);
       setTimeLeft(0);
+      setIsPlaying(false);
+      setPlaybackTime(0);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
       return;
     }
   }, [open]);
 
   useEffect(() => {
-    if (!gameActive || !mode || timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          handleSkip();
-          return 0;
+    if (isPlaying && audioRef.current) {
+      const timer = setInterval(() => {
+        if (audioRef.current) {
+          setPlaybackTime(audioRef.current.currentTime);
         }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [gameActive, mode, timeLeft]);
+      }, 100);
+      return () => clearInterval(timer);
+    }
+  }, [isPlaying]);
 
   const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
     const config = gameConfig[selectedMode];
@@ -1238,21 +1244,53 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
     setScore(0);
     setGuess('');
     setShowHint(false);
-    setTimeLeft(config.timePerSong);
     setGameActive(true);
+    playCurrentSong();
+  };
+
+  const playCurrentSong = () => {
+    if (!mode) return;
+    const config = gameConfig[mode];
+    const song = songs[currentSong];
+    
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    
+    const audio = new Audio(song.audioUrl);
+    audioRef.current = audio;
+    setIsPlaying(true);
+    setPlaybackTime(0);
+    
+    audio.play().catch(() => {
+      // Fallback wenn Audio nicht geladen werden kann
+      setIsPlaying(false);
+    });
+    
+    setTimeout(() => {
+      audio.pause();
+      setIsPlaying(false);
+    }, config.playDuration * 1000);
   };
 
   const handleGuess = () => {
     if (!mode || !gameActive) return;
-    const config = gameConfig[mode];
     const song = songs[currentSong];
     if (guess.toLowerCase().includes(song.title.toLowerCase()) || song.title.toLowerCase().includes(guess.toLowerCase())) {
       setScore(prev => prev + 1);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
       setTimeout(() => nextSong(), 1500);
     }
   };
 
   const handleSkip = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
     nextSong();
   };
 
@@ -1262,9 +1300,13 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
       setCurrentSong(prev => prev + 1);
       setGuess('');
       setShowHint(false);
-      setTimeLeft(config.timePerSong);
+      setTimeout(() => playCurrentSong(), 500);
     } else {
       setGameActive(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
     }
   };
 
@@ -1281,19 +1323,19 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
               <Grid item xs={4}>
                 <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
                   <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
-                  <Typography variant="caption">3 Lieder, mit Emoji</Typography>
+                  <Typography variant="caption">3 Lieder, 10s pro Lied</Typography>
                 </Card>
               </Grid>
               <Grid item xs={4}>
                 <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
                   <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
-                  <Typography variant="caption">4 Lieder, 30s pro Lied</Typography>
+                  <Typography variant="caption">4 Lieder, 8s pro Lied</Typography>
                 </Card>
               </Grid>
               <Grid item xs={4}>
                 <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
                   <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
-                  <Typography variant="caption">5 Lieder, 20s, kein Emoji</Typography>
+                  <Typography variant="caption">5 Lieder, 5s pro Lied</Typography>
                 </Card>
               </Grid>
             </Grid>
@@ -1304,13 +1346,25 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
               <Typography variant="h6">Lied {currentSong + 1} / {gameConfig[mode].songs}</Typography>
               <Typography variant="h6">Punkte: {score}</Typography>
-              {gameConfig[mode].timePerSong > 0 && (
-                <Typography variant="h6">Zeit: {timeLeft}s</Typography>
-              )}
             </Box>
-            <Typography variant="h3" sx={{ mb: 2 }}>
-              {gameConfig[mode].showEmoji ? songs[currentSong].emoji : '🎵'}
-            </Typography>
+            {isPlaying && (
+              <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                <Typography variant="h4" sx={{ mb: 1 }}>🎵 Musik läuft...</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  {gameConfig[mode].playDuration - Math.floor(playbackTime)}s verbleibend
+                </Typography>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={(playbackTime / gameConfig[mode].playDuration) * 100} 
+                  sx={{ height: 8, borderRadius: 1 }}
+                />
+              </Box>
+            )}
+            {!isPlaying && (
+              <Typography variant="h3" sx={{ mb: 2 }}>
+                {gameConfig[mode].showEmoji ? songs[currentSong].emoji : '🎵'}
+              </Typography>
+            )}
             {showHint && (
               <Typography variant="body1" sx={{ mb: 2, fontStyle: 'italic' }}>
                 Tipp: {songs[currentSong].hint}
@@ -1323,15 +1377,16 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
               onKeyPress={(e) => e.key === 'Enter' && handleGuess()}
               placeholder="Liedtitel eingeben..."
               sx={{ mb: 2 }}
+              disabled={isPlaying}
             />
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-              <Button variant="contained" onClick={handleGuess} sx={{ bgcolor: '#FF1493' }}>
+              <Button variant="contained" onClick={handleGuess} sx={{ bgcolor: '#FF1493' }} disabled={isPlaying}>
                 Raten
               </Button>
-              <Button variant="outlined" onClick={() => setShowHint(true)} disabled={showHint}>
+              <Button variant="outlined" onClick={() => setShowHint(true)} disabled={showHint || isPlaying}>
                 Tipp
               </Button>
-              <Button variant="outlined" onClick={handleSkip}>
+              <Button variant="outlined" onClick={handleSkip} disabled={isPlaying}>
                 Überspringen
               </Button>
             </Box>
@@ -1357,227 +1412,139 @@ const SongGuessModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
   );
 };
 
-// Kostüm-Designer Game Component
-const CostumeDesignerModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
-  const parts = {
-    head: ['🎩', '👑', '🎭', '🤡', '👺', '🎪'],
-    body: ['👔', '👗', '🦸', '🧙', '🦇', '🎨'],
-    accessory: ['🎪', '🎯', '🎲', '🎊', '🎈', '🎁']
-  };
-  const [mode, setMode] = useState<'easy' | 'medium' | 'hard' | null>(null);
-  const [selected, setSelected] = useState<{head: string; body: string; accessory: string}>({head: '', body: '', accessory: ''});
-  const [target, setTarget] = useState<{head: string; body: string; accessory: string}>({head: '', body: '', accessory: ''});
-  const [score, setScore] = useState(0);
-  const [round, setRound] = useState(0);
+// Musik-Stopp-Spiel (für ganze Klasse) - Musik spielt, stoppt, Karte erscheint
+const GroupConfettiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const actionCards = [
+    { emoji: '🎭', task: 'Macht eine Maske nach!' },
+    { emoji: '🤡', task: 'Macht einen Clown-Gesicht!' },
+    { emoji: '👏', task: 'Klatscht zusammen!' },
+    { emoji: '🦶', task: 'Stampft mit den Füßen!' },
+    { emoji: '🎉', task: 'Ruft "Hurra!"!' },
+    { emoji: '🎊', task: 'Macht eine Welle!' },
+    { emoji: '🎪', task: 'Macht einen Zirkus-Trick!' },
+    { emoji: '🎨', task: 'Malt in der Luft!' },
+    { emoji: '🎯', task: 'Zeigt auf ein Ziel!' },
+    { emoji: '🎲', task: 'Würfelt in der Luft!' },
+  ];
   const [gameActive, setGameActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-
-  const gameConfig = {
-    easy: { rounds: 3, timePerRound: 0 },
-    medium: { rounds: 4, timePerRound: 45 },
-    hard: { rounds: 5, timePerRound: 30 }
-  };
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentCard, setCurrentCard] = useState<typeof actionCards[0] | null>(null);
+  const [round, setRound] = useState(0);
+  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!open) {
-      setMode(null);
-      setSelected({head: '', body: '', accessory: ''});
-      setTarget({head: '', body: '', accessory: ''});
-      setScore(0);
-      setRound(0);
       setGameActive(false);
-      setTimeLeft(0);
+      setIsPlaying(false);
+      setCurrentCard(null);
+      setRound(0);
+      if (audioRef) {
+        audioRef.pause();
+        setAudioRef(null);
+      }
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
       return;
     }
   }, [open]);
 
-  useEffect(() => {
-    if (!gameActive || !mode || timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          checkDesign();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [gameActive, mode, timeLeft]);
-
-  const startGame = (selectedMode: 'easy' | 'medium' | 'hard') => {
-    const config = gameConfig[selectedMode];
-    setMode(selectedMode);
-    setRound(0);
-    setScore(0);
+  const startGame = () => {
     setGameActive(true);
-    newRound();
+    setRound(0);
+    playMusic();
   };
 
-  const newRound = () => {
-    const config = gameConfig[mode!];
-    const newTarget = {
-      head: parts.head[Math.floor(Math.random() * parts.head.length)],
-      body: parts.body[Math.floor(Math.random() * parts.body.length)],
-      accessory: parts.accessory[Math.floor(Math.random() * parts.accessory.length)]
-    };
-    setTarget(newTarget);
-    setSelected({head: '', body: '', accessory: ''});
-    setTimeLeft(config.timePerRound);
+  const playMusic = () => {
+    setIsPlaying(true);
+    setCurrentCard(null);
+    const audio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+    audio.loop = true;
+    audio.play().catch(() => {
+      // Fallback wenn Audio nicht geladen werden kann
+      setIsPlaying(false);
+    });
+    setAudioRef(audio);
+    
+    // Stoppt nach zufälliger Zeit (3-8 Sekunden)
+    const stopTime = Math.random() * 5000 + 3000;
+    timerRef.current = setTimeout(() => {
+      audio.pause();
+      setIsPlaying(false);
+      const card = actionCards[Math.floor(Math.random() * actionCards.length)];
+      setCurrentCard(card);
+      setRound(prev => prev + 1);
+    }, stopTime);
   };
 
-  const checkDesign = () => {
-    let matches = 0;
-    if (selected.head === target.head) matches++;
-    if (selected.body === target.body) matches++;
-    if (selected.accessory === target.accessory) matches++;
-    setScore(prev => prev + matches);
-    setTimeout(() => {
-      const config = gameConfig[mode!];
-      if (round < config.rounds - 1) {
-        setRound(prev => prev + 1);
-        newRound();
-      } else {
-        setGameActive(false);
-      }
-    }, 2000);
+  const nextRound = () => {
+    if (round >= 10) {
+      setGameActive(false);
+      return;
+    }
+    setTimeout(() => playMusic(), 2000);
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center' }}>
-        🎨 Kostüm-Designer
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎵 Musik-Stopp-Spiel
       </DialogTitle>
-      <DialogContent sx={{ pt: 3, pb: 2 }}>
-        {!mode && (
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
+        {!gameActive && (
           <Box>
-            <Typography variant="h5" sx={{ mb: 3 }}>Wähle einen Schwierigkeitsgrad:</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={4}>
-                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('easy')}>
-                  <Typography variant="h6" sx={{ mb: 1 }}>🟢 Einfach</Typography>
-                  <Typography variant="caption">3 Runden, kein Zeitlimit</Typography>
-                </Card>
-              </Grid>
-              <Grid item xs={4}>
-                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('medium')}>
-                  <Typography variant="h6" sx={{ mb: 1 }}>🟡 Mittel</Typography>
-                  <Typography variant="caption">4 Runden, 45s pro Runde</Typography>
-                </Card>
-              </Grid>
-              <Grid item xs={4}>
-                <Card sx={{ cursor: 'pointer', p: 2, '&:hover': { transform: 'scale(1.05)' } }} onClick={() => startGame('hard')}>
-                  <Typography variant="h6" sx={{ mb: 1 }}>🔴 Schwer</Typography>
-                  <Typography variant="caption">5 Runden, 30s pro Runde</Typography>
-                </Card>
-              </Grid>
-            </Grid>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Musik-Stopp-Spiel!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Musik spielt, stoppt zufällig, dann kommt eine Karte mit einer Aufgabe!
+            </Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Spiel starten!
+            </Button>
           </Box>
         )}
-        {mode && gameActive && (
+        {gameActive && (
           <>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-              <Typography variant="h6">Runde {round + 1} / {gameConfig[mode].rounds}</Typography>
-              <Typography variant="h6">Punkte: {score}</Typography>
-              {gameConfig[mode].timePerRound > 0 && (
-                <Typography variant="h6">Zeit: {timeLeft}s</Typography>
-              )}
-            </Box>
-            <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Ziel-Kostüm:</Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, fontSize: '3rem' }}>
-                <Box>{target.head}</Box>
-                <Box>{target.body}</Box>
-                <Box>{target.accessory}</Box>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Runde {round} / 10
+            </Typography>
+            {isPlaying && (
+              <Box sx={{ my: 4 }}>
+                <Typography variant="h2" sx={{ mb: 2, fontSize: '4rem' }}>🎵</Typography>
+                <Typography variant="h4" sx={{ mb: 2 }}>Musik läuft...</Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>Wartet auf den Stopp!</Typography>
+                <CircularProgress size={60} />
               </Box>
-            </Box>
-            <Typography variant="h6" sx={{ mb: 2 }}>Dein Design:</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={4}>
-                <Typography variant="body2" sx={{ mb: 1 }}>Kopf:</Typography>
-                <Grid container spacing={1}>
-                  {parts.head.map((p, i) => (
-                    <Grid item xs={4} key={i}>
-                      <Card
-                        sx={{
-                          cursor: 'pointer',
-                          p: 1,
-                          textAlign: 'center',
-                          bgcolor: selected.head === p ? '#FF1493' : 'white',
-                          color: selected.head === p ? 'white' : 'black',
-                          '&:hover': { transform: 'scale(1.1)' }
-                        }}
-                        onClick={() => setSelected(prev => ({...prev, head: p}))}
-                      >
-                        <Typography variant="h5">{p}</Typography>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="body2" sx={{ mb: 1 }}>Körper:</Typography>
-                <Grid container spacing={1}>
-                  {parts.body.map((p, i) => (
-                    <Grid item xs={4} key={i}>
-                      <Card
-                        sx={{
-                          cursor: 'pointer',
-                          p: 1,
-                          textAlign: 'center',
-                          bgcolor: selected.body === p ? '#FF1493' : 'white',
-                          color: selected.body === p ? 'white' : 'black',
-                          '&:hover': { transform: 'scale(1.1)' }
-                        }}
-                        onClick={() => setSelected(prev => ({...prev, body: p}))}
-                      >
-                        <Typography variant="h5">{p}</Typography>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Grid>
-              <Grid item xs={4}>
-                <Typography variant="body2" sx={{ mb: 1 }}>Accessoire:</Typography>
-                <Grid container spacing={1}>
-                  {parts.accessory.map((p, i) => (
-                    <Grid item xs={4} key={i}>
-                      <Card
-                        sx={{
-                          cursor: 'pointer',
-                          p: 1,
-                          textAlign: 'center',
-                          bgcolor: selected.accessory === p ? '#FF1493' : 'white',
-                          color: selected.accessory === p ? 'white' : 'black',
-                          '&:hover': { transform: 'scale(1.1)' }
-                        }}
-                        onClick={() => setSelected(prev => ({...prev, accessory: p}))}
-                      >
-                        <Typography variant="h5">{p}</Typography>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Grid>
-            </Grid>
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
-              <Button variant="contained" onClick={checkDesign} disabled={!selected.head || !selected.body || !selected.accessory} sx={{ bgcolor: '#FF1493' }}>
-                Design prüfen
-              </Button>
-            </Box>
+            )}
+            {currentCard && !isPlaying && (
+              <Box sx={{ my: 4, p: 4, bgcolor: '#f5f5f5', borderRadius: 3, border: '3px solid #FF1493' }}>
+                <Typography variant="h1" sx={{ mb: 3, fontSize: '10rem' }}>
+                  {currentCard.emoji}
+                </Typography>
+                <Typography variant="h3" sx={{ mb: 3, fontWeight: 700, color: '#FF1493' }}>
+                  {currentCard.task}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={nextRound}
+                  size="small"
+                  sx={{ bgcolor: '#FF1493', fontSize: '0.7rem', py: 0.5, px: 1.5, minWidth: 'auto' }}
+                >
+                  Weiter
+                </Button>
+              </Box>
+            )}
           </>
         )}
-        {mode && !gameActive && (
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
-            <Typography variant="h5" sx={{ mb: 2 }}>Deine Punktzahl: {score} / {gameConfig[mode].rounds * 3}</Typography>
-            <Button variant="contained" onClick={() => startGame(mode)} sx={{ bgcolor: '#FF1493', mr: 1 }}>
+        {!gameActive && round >= 10 && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Ihr habt alle 10 Runden geschafft!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
               Nochmal spielen
             </Button>
-            <Button variant="outlined" onClick={() => { setMode(null); setRound(0); setScore(0); }} sx={{ mr: 1 }}>
-              Modus wählen
-            </Button>
-            <Button variant="outlined" onClick={onClose}>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
               Schließen
             </Button>
           </Box>
@@ -1587,20 +1554,713 @@ const CostumeDesignerModal: React.FC<{ open: boolean; onClose: () => void }> = (
   );
 };
 
-// Gruppen-Konfetti-Challenge (für ganze Klasse)
-const GroupConfettiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+// Simon sagt - Gruppenspiel (für ganze Klasse)
+const GroupMemoryModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const actions = [
+    { emoji: '👏', name: 'Klatscht' },
+    { emoji: '🦶', name: 'Stampft' },
+    { emoji: '🎉', name: 'Ruft "Hurra!"' },
+    { emoji: '🤡', name: 'Macht Clown-Gesicht' },
+    { emoji: '🎭', name: 'Macht Maske' },
+    { emoji: '🕺', name: 'Tanzt' },
+  ];
+  type ActionType = typeof actions[0];
   const [gameActive, setGameActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [particles, setParticles] = useState<Array<{id: number; x: number; y: number; color: string}>>([]);
-  const [totalClicks, setTotalClicks] = useState(0);
-  const particleIdRef = useRef(0);
+  const [sequence, setSequence] = useState<ActionType[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [showingSequence, setShowingSequence] = useState(false);
+  const [round, setRound] = useState(0);
 
   useEffect(() => {
     if (!open) {
       setGameActive(false);
+      setSequence([]);
+      setCurrentStep(0);
+      setShowingSequence(false);
+      setRound(0);
+      return;
+    }
+  }, [open]);
+
+  const startGame = () => {
+    setGameActive(true);
+    setRound(0);
+    setSequence([]);
+    nextRound();
+  };
+
+  const nextRound = () => {
+    const newAction = actions[Math.floor(Math.random() * actions.length)];
+    setSequence(prev => [...prev, newAction]);
+    setCurrentStep(0);
+    setShowingSequence(true);
+  };
+
+  useEffect(() => {
+    if (!showingSequence || !gameActive) return;
+    const timer = setTimeout(() => {
+      if (currentStep < sequence.length - 1) {
+        setCurrentStep(prev => prev + 1);
+      } else {
+        setTimeout(() => {
+          setShowingSequence(false);
+          setRound(prev => prev + 1);
+        }, 1000);
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [currentStep, showingSequence, sequence.length, gameActive]);
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎭 Simon sagt
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
+        {!gameActive && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Simon sagt!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Wiederholt die Sequenz von Aktionen!
+            </Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Spiel starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Runde {round} - Folge {sequence.length} Aktionen
+            </Typography>
+            {showingSequence && currentStep < sequence.length && sequence[currentStep] && (
+              <Box sx={{ my: 4, p: 4, bgcolor: '#f5f5f5', borderRadius: 3, border: '3px solid #FF1493' }}>
+                <Typography variant="h1" sx={{ mb: 2, fontSize: '6rem' }}>
+                  {sequence[currentStep].emoji}
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 700, color: '#FF1493' }}>
+                  Simon sagt: {sequence[currentStep].name}!
+                </Typography>
+              </Box>
+            )}
+            {!showingSequence && sequence.length > 0 && (
+              <Box sx={{ my: 4 }}>
+                <Typography variant="h4" sx={{ mb: 3 }}>Jetzt seid ihr dran!</Typography>
+                <Typography variant="h6" sx={{ mb: 3 }}>
+                  Wiederholt die Sequenz: {sequence.map(s => s.emoji).join(' → ')}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={nextRound}
+                  sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}
+                >
+                  Nächste Runde
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
+        {round >= 5 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Super gemacht!</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Ihr habt {round} Runden geschafft!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Stille Post mit Karten - Gruppenspiel (für ganze Klasse)
+const GroupQuizModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const cards = [
+    { emoji: '🎭', word: 'Maske' },
+    { emoji: '🤡', word: 'Clown' },
+    { emoji: '🎪', word: 'Zirkus' },
+    { emoji: '🎊', word: 'Konfetti' },
+    { emoji: '🎨', word: 'Farbe' },
+    { emoji: '🎯', word: 'Ziel' },
+  ];
+  const [gameActive, setGameActive] = useState(false);
+  const [currentCard, setCurrentCard] = useState<typeof cards[0] | null>(null);
+  const [round, setRound] = useState(0);
+  const [showCard, setShowCard] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setGameActive(false);
+      setCurrentCard(null);
+      setRound(0);
+      setShowCard(false);
+      return;
+    }
+  }, [open]);
+
+  const startGame = () => {
+    setGameActive(true);
+    setRound(0);
+    nextCard();
+  };
+
+  const nextCard = () => {
+    if (round >= 6) {
+      setGameActive(false);
+      return;
+    }
+    const card = cards[Math.floor(Math.random() * cards.length)];
+    setCurrentCard(card);
+    setShowCard(true);
+    setRound(prev => prev + 1);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🤡 Stille Post mit Karten
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
+        {!gameActive && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Stille Post!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Eine Person sieht die Karte und flüstert das Wort weiter!
+            </Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Spiel starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && showCard && currentCard && (
+          <>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Runde {round} / 6
+            </Typography>
+            <Box sx={{ my: 4, p: 4, bgcolor: '#f5f5f5', borderRadius: 3, border: '3px solid #FF1493' }}>
+              <Typography variant="h1" sx={{ mb: 3, fontSize: '6rem' }}>
+                {currentCard.emoji}
+              </Typography>
+              <Typography variant="h3" sx={{ fontWeight: 700, color: '#FF1493', mb: 2 }}>
+                {currentCard.word}
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                Flüstere dieses Wort der nächsten Person zu!
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setShowCard(false);
+                  setTimeout(() => {
+                    if (round < 6) {
+                      nextCard();
+                    } else {
+                      setGameActive(false);
+                    }
+                  }, 2000);
+                }}
+                sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}
+              >
+                Weiter
+              </Button>
+            </Box>
+          </>
+        )}
+        {gameActive && !showCard && (
+          <Box sx={{ my: 4 }}>
+            <Typography variant="h4" sx={{ mb: 2 }}>Warte...</Typography>
+            <Typography variant="h6">Die nächste Person bereitet sich vor...</Typography>
+          </Box>
+        )}
+        {!gameActive && round >= 6 && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Ihr habt alle 6 Runden geschafft!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Bewegungs-Challenge - Gruppenspiel (für ganze Klasse)
+const GroupDiceModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const challenges = [
+    { emoji: '🕺', task: 'Tanzt alle zusammen!' },
+    { emoji: '👯', task: 'Macht alle eine Synchron-Bewegung!' },
+    { emoji: '🤸', task: 'Macht alle einen Handstand (oder versucht es)!' },
+    { emoji: '💃', task: 'Tanzt alle wie ein Clown!' },
+    { emoji: '🎪', task: 'Macht alle eine Zirkus-Pose!' },
+    { emoji: '🎭', task: 'Spielt alle eine Szene nach!' },
+  ];
+  const [gameActive, setGameActive] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentChallenge, setCurrentChallenge] = useState<typeof challenges[0] | null>(null);
+  const [round, setRound] = useState(0);
+  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setGameActive(false);
+      setIsPlaying(false);
+      setCurrentChallenge(null);
+      setRound(0);
+      if (audioRef) {
+        audioRef.pause();
+        setAudioRef(null);
+      }
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+  }, [open]);
+
+  const startGame = () => {
+    setGameActive(true);
+    setRound(0);
+    playMusic();
+  };
+
+  const playMusic = () => {
+    setIsPlaying(true);
+    setCurrentChallenge(null);
+    const audio = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3');
+    audio.loop = true;
+    audio.play().catch(() => {
+      setIsPlaying(false);
+    });
+    setAudioRef(audio);
+    
+    const stopTime = Math.random() * 4000 + 4000;
+    timerRef.current = setTimeout(() => {
+      audio.pause();
+      setIsPlaying(false);
+      const challenge = challenges[Math.floor(Math.random() * challenges.length)];
+      setCurrentChallenge(challenge);
+      setRound(prev => prev + 1);
+    }, stopTime);
+  };
+
+  const nextRound = () => {
+    if (round >= 8) {
+      setGameActive(false);
+      return;
+    }
+    setTimeout(() => playMusic(), 2000);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎲 Bewegungs-Challenge
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
+        {!gameActive && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Bewegungs-Challenge!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Musik spielt, stoppt, dann kommt eine Bewegungsaufgabe!
+            </Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Challenge starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Runde {round} / 8
+            </Typography>
+            {isPlaying && (
+              <Box sx={{ my: 4 }}>
+                <Typography variant="h2" sx={{ mb: 2, fontSize: '4rem' }}>🎵</Typography>
+                <Typography variant="h4" sx={{ mb: 2 }}>Musik läuft...</Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>Bewegt euch zur Musik!</Typography>
+                <CircularProgress size={60} />
+              </Box>
+            )}
+            {currentChallenge && !isPlaying && (
+              <Box sx={{ my: 4, p: 4, bgcolor: '#f5f5f5', borderRadius: 3, border: '3px solid #FF1493' }}>
+                <Typography variant="h1" sx={{ mb: 3, fontSize: '6rem' }}>
+                  {currentChallenge.emoji}
+                </Typography>
+                <Typography variant="h3" sx={{ mb: 3, fontWeight: 700, color: '#FF1493' }}>
+                  {currentChallenge.task}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={nextRound}
+                  sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}
+                >
+                  Weiter
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
+        {!gameActive && round >= 8 && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Challenge beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Ihr habt alle 8 Runden geschafft!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Karnevalsumzug - Gruppenspiel (für ganze Klasse)
+const CarnivalParadeModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const paradeFloats = [
+    { emoji: '🎪', name: 'Zirkus-Wagen', action: 'Macht Zirkus-Gesten!' },
+    { emoji: '🤡', name: 'Clown-Wagen', action: 'Macht Clown-Gesichter!' },
+    { emoji: '🎭', name: 'Theater-Wagen', action: 'Spielt eine Szene!' },
+    { emoji: '🎨', name: 'Kunst-Wagen', action: 'Malt in der Luft!' },
+    { emoji: '🎺', name: 'Musik-Wagen', action: 'Spielt Luft-Instrumente!' },
+    { emoji: '👑', name: 'Königs-Wagen', action: 'Winkt wie Könige!' },
+    { emoji: '🦁', name: 'Tier-Wagen', action: 'Macht Tiergeräusche!' },
+    { emoji: '🎈', name: 'Ballon-Wagen', action: 'Springt wie Ballons!' },
+  ];
+  const [gameActive, setGameActive] = useState(false);
+  const [currentFloat, setCurrentFloat] = useState(0);
+  const [isMoving, setIsMoving] = useState(false);
+  const [showAction, setShowAction] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setGameActive(false);
+      setCurrentFloat(0);
+      setIsMoving(false);
+      setShowAction(false);
+      return;
+    }
+  }, [open]);
+
+  const startGame = () => {
+    setGameActive(true);
+    setCurrentFloat(0);
+    setIsMoving(true);
+    setShowAction(false);
+    nextFloat();
+  };
+
+  const nextFloat = () => {
+    if (currentFloat >= paradeFloats.length) {
+      setGameActive(false);
+      return;
+    }
+    setIsMoving(true);
+    setShowAction(false);
+    setTimeout(() => {
+      setIsMoving(false);
+      setShowAction(true);
+    }, 2000);
+  };
+
+  const continueParade = () => {
+    setCurrentFloat(prev => prev + 1);
+    if (currentFloat + 1 < paradeFloats.length) {
+      nextFloat();
+    } else {
+      setGameActive(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎪 Karnevalsumzug
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
+        {!gameActive && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Karnevalsumzug!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Spielt einen Karnevalsumzug nach! Verschiedene Wagen kommen vorbei!
+            </Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Umzug starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              Wagen {currentFloat + 1} / {paradeFloats.length}
+            </Typography>
+            {isMoving && (
+              <Box sx={{ my: 4 }}>
+                <Typography variant="h1" sx={{ mb: 2, fontSize: '8rem', animation: 'moveRight 2s linear' }}>
+                  {currentFloat < paradeFloats.length ? paradeFloats[currentFloat].emoji : '🎉'}
+                </Typography>
+                <Typography variant="h4" sx={{ mb: 2 }}>
+                  {currentFloat < paradeFloats.length ? paradeFloats[currentFloat].name : 'Ende'}
+                </Typography>
+                <Typography variant="h6">Der Wagen kommt...</Typography>
+                <style>{`
+                  @keyframes moveRight {
+                    0% { transform: translateX(-100px); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateX(100px); opacity: 0; }
+                  }
+                `}</style>
+              </Box>
+            )}
+            {showAction && currentFloat < paradeFloats.length && (
+              <Box sx={{ my: 4, p: 4, bgcolor: '#f5f5f5', borderRadius: 3, border: '3px solid #FF1493' }}>
+                <Typography variant="h1" sx={{ mb: 3, fontSize: '10rem' }}>
+                  {paradeFloats[currentFloat].emoji}
+                </Typography>
+                <Typography variant="h3" sx={{ mb: 3, fontWeight: 700, color: '#FF1493' }}>
+                  {paradeFloats[currentFloat].action}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={continueParade}
+                  size="small"
+                  sx={{ bgcolor: '#FF1493', fontSize: '0.7rem', py: 0.5, px: 1.5, minWidth: 'auto' }}
+                >
+                  Weiter
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
+        {!gameActive && currentFloat >= paradeFloats.length && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Umzug beendet!</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Der Karnevalsumzug ist vorbei!</Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Luftschlangen-Rhythmus-Spiel - Gruppenspiel (für ganze Klasse)
+const StreamerGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const colorActions = [
+    { color: '#FF1493', emoji: '👏', action: 'Klatscht zusammen!' },
+    { color: '#FFD700', emoji: '🦶', action: 'Stampft mit den Füßen!' },
+    { color: '#00CED1', emoji: '👋', action: 'Winkt in die Luft!' },
+    { color: '#FF6347', emoji: '🎉', action: 'Ruft "Hurra!"!' },
+    { color: '#9370DB', emoji: '🎊', action: 'Macht eine Welle!' },
+    { color: '#FF69B4', emoji: '🤡', action: 'Macht einen Clown-Gesicht!' },
+  ];
+
+  const [gameActive, setGameActive] = useState(false);
+  const [round, setRound] = useState(0);
+  const [currentAction, setCurrentAction] = useState<typeof colorActions[0] | null>(null);
+  const [showAction, setShowAction] = useState(false);
+  const [score, setScore] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const actionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setGameActive(false);
+      setRound(0);
+      setCurrentAction(null);
+      setShowAction(false);
+      setScore(0);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (actionTimerRef.current) {
+        clearTimeout(actionTimerRef.current);
+        actionTimerRef.current = null;
+      }
+      return;
+    }
+  }, [open]);
+
+  const startGame = () => {
+    setGameActive(true);
+    setRound(0);
+    setScore(0);
+    nextAction();
+  };
+
+  const nextAction = () => {
+    if (round >= 15) {
+      setGameActive(false);
+      return;
+    }
+
+    // Warte kurz, dann zeige die nächste Aktion
+    timerRef.current = setTimeout(() => {
+      const randomAction = colorActions[Math.floor(Math.random() * colorActions.length)];
+      setCurrentAction(randomAction);
+      setShowAction(true);
+      setRound(prev => prev + 1);
+
+      // Zeige die Aktion für 3-5 Sekunden
+      const showDuration = 3000 + Math.random() * 2000;
+      actionTimerRef.current = setTimeout(() => {
+        setShowAction(false);
+        // Kurze Pause, dann nächste Aktion
+        timerRef.current = setTimeout(() => {
+          nextAction();
+        }, 1000);
+      }, showDuration);
+    }, 1500);
+  };
+
+  const handleActionDone = () => {
+    if (!showAction || !currentAction) return;
+    setScore(prev => prev + 1);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
+        🎊 Luftschlangen-Rhythmus
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
+        {!gameActive && round === 0 && (
+          <Box>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Luftschlangen-Rhythmus!</Typography>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Luftschlangen erscheinen in verschiedenen Farben.
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 3, color: '#666' }}>
+              Jede Farbe steht für eine Aktion, die die ganze Klasse zusammen machen soll!
+            </Typography>
+            <Box sx={{ mb: 4, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+              {colorActions.map((ca, idx) => (
+                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 1 }}>
+                  <Box sx={{ width: 40, height: 8, bgcolor: ca.color, borderRadius: 1 }} />
+                  <Typography variant="body1">{ca.emoji} {ca.action}</Typography>
+                </Box>
+              ))}
+            </Box>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
+              Spiel starten!
+            </Button>
+          </Box>
+        )}
+        {gameActive && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 3 }}>
+              <Typography variant="h5">Runde: {round} / 15</Typography>
+              <Typography variant="h5">Punkte: {score}</Typography>
+            </Box>
+            {!showAction && (
+              <Box sx={{ my: 8 }}>
+                <Typography variant="h3" sx={{ mb: 2 }}>🎵</Typography>
+                <Typography variant="h5">Bereit für die nächste Aktion...</Typography>
+              </Box>
+            )}
+            {showAction && currentAction && (
+              <Box sx={{ my: 4 }}>
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: 120,
+                    bgcolor: currentAction.color,
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 3,
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                    animation: 'pulse 1s ease-in-out infinite',
+                    '@keyframes pulse': {
+                      '0%, 100%': { transform: 'scale(1)' },
+                      '50%': { transform: 'scale(1.05)' }
+                    }
+                  }}
+                >
+                  <Typography variant="h1" sx={{ fontSize: '8rem', color: 'white', textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
+                    🎊
+                  </Typography>
+                </Box>
+                <Typography variant="h1" sx={{ mb: 2, fontSize: '6rem' }}>
+                  {currentAction.emoji}
+                </Typography>
+                <Typography variant="h3" sx={{ mb: 4, fontWeight: 700, color: '#FF1493' }}>
+                  {currentAction.action}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleActionDone}
+                  size="small"
+                  sx={{
+                    bgcolor: '#FF1493',
+                    fontSize: '0.7rem',
+                    py: 0.5,
+                    px: 1.5,
+                    minWidth: 'auto'
+                  }}
+                >
+                  Weiter
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
+        {!gameActive && round >= 15 && (
+          <Box>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h4" sx={{ mb: 2 }}>Punkte: {score} / {round}</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>
+              {score >= round * 0.8 ? '🏆 Fantastisch! Perfekt synchron!' :
+               score >= round * 0.6 ? '🎉 Sehr gut! Tolle Zusammenarbeit!' :
+               score >= round * 0.4 ? '👍 Gut gemacht!' : '💪 Weiter so!'}
+            </Typography>
+            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+              Nochmal spielen
+            </Button>
+            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
+              Schließen
+            </Button>
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Luftballon-Spiel - Gruppenspiel (für ganze Klasse)
+const BalloonGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [gameActive, setGameActive] = useState(false);
+  const [balloons, setBalloons] = useState<Array<{id: number; x: number; y: number; color: string; speed: number}>>([]);
+  const [popped, setPopped] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const balloonIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!open) {
+      setGameActive(false);
+      setBalloons([]);
+      setPopped(0);
       setTimeLeft(60);
-      setParticles([]);
-      setTotalClicks(0);
       return;
     }
   }, [open]);
@@ -1622,34 +2282,49 @@ const GroupConfettiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
   useEffect(() => {
     if (!gameActive) return;
     const interval = setInterval(() => {
-      setParticles(prev => [
+      setBalloons(prev => [
         ...prev,
         {
-          id: particleIdRef.current++,
+          id: balloonIdRef.current++,
           x: Math.random() * 100,
-          y: Math.random() * 100,
-          color: ['#FF1493', '#FF69B4', '#FFB6C1', '#FFD700', '#FF6347', '#FF4500'][Math.floor(Math.random() * 6)]
+          y: 100,
+          color: ['#FF1493', '#FF69B4', '#FFD700', '#FF6347', '#00CED1', '#9370DB', '#FF4500'][Math.floor(Math.random() * 7)],
+          speed: Math.random() * 1 + 0.5
         }
       ]);
-    }, 300);
+    }, 1500);
     return () => clearInterval(interval);
   }, [gameActive]);
 
-  const handleParticleClick = (id: number) => {
-    setParticles(prev => prev.filter(p => p.id !== id));
-    setTotalClicks(prev => prev + 1);
+  useEffect(() => {
+    if (!gameActive) return;
+    const moveInterval = setInterval(() => {
+      setBalloons(prev => prev.map(b => ({
+        ...b,
+        y: b.y - b.speed,
+        x: b.x + (Math.random() - 0.5) * 0.3
+      })).filter(b => b.y > -10));
+    }, 50);
+    return () => clearInterval(moveInterval);
+  }, [gameActive]);
+
+  const handleBalloonClick = (id: number) => {
+    setBalloons(prev => prev.filter(b => b.id !== id));
+    setPopped(prev => prev + 1);
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
-        🎊 Gruppen-Konfetti-Challenge
+        🎈 Luftballon-Pop
       </DialogTitle>
       <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 500 }}>
         {!gameActive && timeLeft === 60 && (
           <Box>
-            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Challenge!</Typography>
-            <Typography variant="h6" sx={{ mb: 3 }}>Alle zusammen klicken auf die Konfetti-Partikel!</Typography>
+            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Luftballon-Pop!</Typography>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Popst so viele Luftballons wie möglich, bevor sie oben verschwinden!
+            </Typography>
             <Button variant="contained" onClick={() => setGameActive(true)} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
               Spiel starten!
             </Button>
@@ -1659,34 +2334,29 @@ const GroupConfettiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
           <>
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 3 }}>
               <Typography variant="h4">⏰ Zeit: {timeLeft}s</Typography>
-              <Typography variant="h4">👆 Klicks: {totalClicks}</Typography>
+              <Typography variant="h4">💥 Gepoppt: {popped}</Typography>
             </Box>
-            <Box sx={{ position: 'relative', width: '100%', height: 400, border: '3px solid #FF1493', borderRadius: 2, overflow: 'hidden', bgcolor: '#f5f5f5' }}>
-              {particles.map(p => (
+            <Box sx={{ position: 'relative', width: '100%', height: 400, border: '3px solid #FF1493', borderRadius: 2, overflow: 'hidden', bgcolor: '#e3f2fd' }}>
+              {balloons.map(b => (
                 <Box
-                  key={p.id}
-                  onClick={() => handleParticleClick(p.id)}
+                  key={b.id}
+                  onClick={() => handleBalloonClick(b.id)}
                   sx={{
                     position: 'absolute',
-                    left: `${p.x}%`,
-                    top: `${p.y}%`,
-                    width: 30,
-                    height: 30,
-                    borderRadius: '50%',
-                    bgcolor: p.color,
+                    left: `${Math.max(0, Math.min(100, b.x))}%`,
+                    top: `${Math.max(0, Math.min(100, b.y))}%`,
+                    width: 50,
+                    height: 60,
                     cursor: 'pointer',
-                    fontSize: '1.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    animation: 'float 2s ease-in-out infinite',
-                    '@keyframes float': {
-                      '0%, 100%': { transform: 'translateY(0px)' },
-                      '50%': { transform: 'translateY(-15px)' }
-                    }
+                    transition: 'all 0.1s',
+                    '&:hover': { transform: 'scale(1.1)' }
                   }}
                 >
-                  🎊
+                  <svg width="50" height="60" viewBox="0 0 50 60">
+                    <ellipse cx="25" cy="35" rx="20" ry="25" fill={b.color} stroke="#fff" strokeWidth="2" />
+                    <path d="M 25 10 L 25 35" stroke="#333" strokeWidth="2" />
+                    <circle cx="25" cy="35" r="3" fill="rgba(255,255,255,0.5)" />
+                  </svg>
                 </Box>
               ))}
             </Box>
@@ -1694,355 +2364,14 @@ const GroupConfettiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
         )}
         {!gameActive && timeLeft === 0 && (
           <Box>
-            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Challenge beendet!</Typography>
-            <Typography variant="h4" sx={{ mb: 2 }}>Gesamt-Klicks: {totalClicks}</Typography>
+            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Spiel beendet!</Typography>
+            <Typography variant="h4" sx={{ mb: 2 }}>Gepoppte Ballons: {popped}</Typography>
             <Typography variant="h5" sx={{ mb: 3 }}>
-              {totalClicks >= 200 ? '🏆 Fantastisch! Super Teamarbeit!' :
-               totalClicks >= 100 ? '🎉 Sehr gut! Tolle Zusammenarbeit!' :
-               totalClicks >= 50 ? '👍 Gut gemacht!' : '💪 Weiter so!'}
+              {popped >= 40 ? '🏆 Fantastisch! So viele Ballons!' :
+               popped >= 25 ? '🎉 Sehr gut! Tolle Ballon-Popper!' :
+               popped >= 15 ? '👍 Gut gemacht!' : '💪 Weiter so!'}
             </Typography>
-            <Button variant="contained" onClick={() => { setTimeLeft(60); setParticles([]); setTotalClicks(0); setGameActive(true); }} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
-              Nochmal spielen
-            </Button>
-            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
-              Schließen
-            </Button>
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// Gruppen-Memory-Rennen (für ganze Klasse)
-const GroupMemoryModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
-  const masks = ['🎭', '🤡', '👺', '🎪', '🎨', '🎯', '🎬', '🎤'];
-  const [cards, setCards] = useState<string[]>([]);
-  const [flipped, setFlipped] = useState<number[]>([]);
-  const [matched, setMatched] = useState<number[]>([]);
-  const [gameActive, setGameActive] = useState(false);
-  const [startTime, setStartTime] = useState(0);
-  const [endTime, setEndTime] = useState(0);
-
-  useEffect(() => {
-    if (open) {
-      const pairs = [...masks.slice(0, 6), ...masks.slice(0, 6)].sort(() => Math.random() - 0.5);
-      setCards(pairs);
-      setFlipped([]);
-      setMatched([]);
-      setGameActive(false);
-      setStartTime(0);
-      setEndTime(0);
-    }
-  }, [open]);
-
-  const startGame = () => {
-    const pairs = [...masks.slice(0, 6), ...masks.slice(0, 6)].sort(() => Math.random() - 0.5);
-    setCards(pairs);
-    setFlipped([]);
-    setMatched([]);
-    setGameActive(true);
-    setStartTime(Date.now());
-  };
-
-  const handleCardClick = (index: number) => {
-    if (!gameActive || flipped.length === 2 || flipped.includes(index) || matched.includes(index)) return;
-    
-    const newFlipped = [...flipped, index];
-    setFlipped(newFlipped);
-    
-    if (newFlipped.length === 2) {
-      if (cards[newFlipped[0]] === cards[newFlipped[1]]) {
-        setMatched(prev => [...prev, ...newFlipped]);
-        setFlipped([]);
-        if (matched.length + 2 === cards.length) {
-          setEndTime(Date.now());
-          setGameActive(false);
-        }
-      } else {
-        setTimeout(() => setFlipped([]), 1500);
-      }
-    }
-  };
-
-  const timeTaken = endTime > 0 ? Math.round((endTime - startTime) / 1000) : 0;
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
-        🎭 Gruppen-Memory-Rennen
-      </DialogTitle>
-      <DialogContent sx={{ pt: 3, pb: 2 }}>
-        {!gameActive && matched.length === 0 && (
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Memory!</Typography>
-            <Typography variant="h6" sx={{ mb: 3 }}>Findet zusammen alle Paare so schnell wie möglich!</Typography>
-            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
-              Spiel starten!
-            </Button>
-          </Box>
-        )}
-        {gameActive && (
-          <>
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 3 }}>
-              <Typography variant="h5">Gefunden: {matched.length / 2} / 6</Typography>
-              <Typography variant="h5">⏰ {startTime > 0 ? Math.round((Date.now() - startTime) / 1000) : 0}s</Typography>
-            </Box>
-            <Grid container spacing={1}>
-              {cards.map((card, index) => (
-                <Grid item xs={3} key={index}>
-                  <Card
-                    onClick={() => handleCardClick(index)}
-                    sx={{
-                      aspectRatio: '1',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: gameActive && !flipped.includes(index) && !matched.includes(index) ? 'pointer' : 'default',
-                      bgcolor: flipped.includes(index) || matched.includes(index) ? '#fff' : '#FF1493',
-                      fontSize: '2.5rem',
-                      transition: 'all 0.3s',
-                      opacity: matched.includes(index) ? 0.6 : 1,
-                      '&:hover': { transform: gameActive && !flipped.includes(index) && !matched.includes(index) ? 'scale(1.1)' : 'none' }
-                    }}
-                  >
-                    {flipped.includes(index) || matched.includes(index) ? card : '?'}
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </>
-        )}
-        {!gameActive && matched.length === cards.length && (
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Geschafft!</Typography>
-            <Typography variant="h4" sx={{ mb: 2 }}>Zeit: {timeTaken} Sekunden</Typography>
-            <Typography variant="h5" sx={{ mb: 3 }}>
-              {timeTaken <= 30 ? '🏆 Blitzschnell! Fantastisch!' :
-               timeTaken <= 60 ? '🎉 Sehr schnell! Super!' :
-               timeTaken <= 90 ? '👍 Gut gemacht!' : '💪 Weiter so!'}
-            </Typography>
-            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
-              Nochmal spielen
-            </Button>
-            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
-              Schließen
-            </Button>
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// Gruppen-Quiz-Battle (für ganze Klasse)
-const GroupQuizModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
-  const questions = [
-    { q: 'Was ist die beste Zeit für Karneval?', a: 'Immer!' },
-    { q: 'Welche Stadt ist berühmt für Karneval?', a: 'Köln' },
-    { q: 'Was wirft man beim Karneval?', a: 'Konfetti' },
-    { q: 'Wie heißt der Karnevalsdienstag?', a: 'Faschingsdienstag' },
-    { q: 'Was trägt man beim Karneval?', a: 'Kostüm' },
-  ];
-  const [currentQ, setCurrentQ] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [gameActive, setGameActive] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setCurrentQ(0);
-      setShowAnswer(false);
-      setGameActive(false);
-    }
-  }, [open]);
-
-  const startGame = () => {
-    setCurrentQ(0);
-    setShowAnswer(false);
-    setGameActive(true);
-  };
-
-  const nextQuestion = () => {
-    if (currentQ < questions.length - 1) {
-      setCurrentQ(prev => prev + 1);
-      setShowAnswer(false);
-    } else {
-      setGameActive(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
-        🤡 Gruppen-Quiz-Battle
-      </DialogTitle>
-      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 400 }}>
-        {!gameActive && currentQ === 0 && (
-          <Box>
-            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Quiz!</Typography>
-            <Typography variant="h6" sx={{ mb: 3 }}>Beantwortet zusammen die Fragen!</Typography>
-            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
-              Quiz starten!
-            </Button>
-          </Box>
-        )}
-        {gameActive && (
-          <>
-            <Typography variant="h5" sx={{ mb: 3 }}>
-              Frage {currentQ + 1} von {questions.length}
-            </Typography>
-            <Typography variant="h3" sx={{ mb: 4, minHeight: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {questions[currentQ].q}
-            </Typography>
-            {!showAnswer && (
-              <Button variant="contained" onClick={() => setShowAnswer(true)} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
-                Antwort zeigen
-              </Button>
-            )}
-            {showAnswer && (
-              <Box>
-                <Typography variant="h2" sx={{ mb: 3, color: '#4caf50' }}>
-                  ✅ {questions[currentQ].a}
-                </Typography>
-                <Button variant="contained" onClick={nextQuestion} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
-                  {currentQ < questions.length - 1 ? 'Nächste Frage' : 'Beenden'}
-                </Button>
-              </Box>
-            )}
-          </>
-        )}
-        {!gameActive && currentQ === questions.length && (
-          <Box>
-            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Quiz beendet!</Typography>
-            <Typography variant="h5" sx={{ mb: 3 }}>Ihr habt alle {questions.length} Fragen gemeistert!</Typography>
-            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
-              Nochmal spielen
-            </Button>
-            <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
-              Schließen
-            </Button>
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// Gruppen-Würfel-Challenge (für ganze Klasse)
-const GroupDiceModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
-  const [dice1, setDice1] = useState(1);
-  const [dice2, setDice2] = useState(1);
-  const [dice3, setDice3] = useState(1);
-  const [rolling, setRolling] = useState(false);
-  const [total, setTotal] = useState(0);
-  const [rolls, setRolls] = useState(0);
-  const [wins, setWins] = useState(0);
-  const [target, setTarget] = useState(0);
-  const [gameActive, setGameActive] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setDice1(1);
-      setDice2(1);
-      setDice3(1);
-      setRolling(false);
-      setTotal(0);
-      setRolls(0);
-      setWins(0);
-      setTarget(0);
-      setGameActive(false);
-    }
-  }, [open]);
-
-  const startGame = () => {
-    setTarget(Math.floor(Math.random() * 10) + 15); // Ziel zwischen 15-24
-    setRolls(0);
-    setWins(0);
-    setTotal(0);
-    setGameActive(true);
-  };
-
-  const rollDice = () => {
-    if (rolling || !gameActive) return;
-    setRolling(true);
-    let count = 0;
-    const interval = setInterval(() => {
-      setDice1(Math.floor(Math.random() * 6) + 1);
-      setDice2(Math.floor(Math.random() * 6) + 1);
-      setDice3(Math.floor(Math.random() * 6) + 1);
-      count++;
-      if (count > 10) {
-        clearInterval(interval);
-        const d1 = Math.floor(Math.random() * 6) + 1;
-        const d2 = Math.floor(Math.random() * 6) + 1;
-        const d3 = Math.floor(Math.random() * 6) + 1;
-        setDice1(d1);
-        setDice2(d2);
-        setDice3(d3);
-        const sum = d1 + d2 + d3;
-        setTotal(sum);
-        setRolls(prev => prev + 1);
-        if (sum >= target) {
-          setWins(prev => prev + 1);
-          if (wins + 1 >= 3) {
-            setGameActive(false);
-          }
-        }
-        setRolling(false);
-      }
-    }, 100);
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ bgcolor: '#FF1493', color: 'white', textAlign: 'center', fontSize: '1.5rem' }}>
-        🎲 Gruppen-Würfel-Challenge
-      </DialogTitle>
-      <DialogContent sx={{ pt: 3, pb: 2, textAlign: 'center', minHeight: 400 }}>
-        {!gameActive && target === 0 && (
-          <Box>
-            <Typography variant="h4" sx={{ mb: 2 }}>🎉 Klassen-Challenge!</Typography>
-            <Typography variant="h6" sx={{ mb: 3 }}>Würfelt zusammen und erreicht das Ziel!</Typography>
-            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
-              Challenge starten!
-            </Button>
-          </Box>
-        )}
-        {gameActive && (
-          <>
-            <Typography variant="h4" sx={{ mb: 2 }}>
-              🎯 Ziel: {target} oder mehr
-            </Typography>
-            <Typography variant="h5" sx={{ mb: 3 }}>
-              Gewinne: {wins} / 3
-            </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
-              <Box sx={{ fontSize: '5rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice1 - 1]}</Box>
-              <Box sx={{ fontSize: '5rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice2 - 1]}</Box>
-              <Box sx={{ fontSize: '5rem' }}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][dice3 - 1]}</Box>
-            </Box>
-            {total > 0 && (
-              <Typography variant="h3" sx={{ mb: 3 }}>
-                Summe: {total} {total >= target ? '🎉 Gewonnen!' : '😔 Noch nicht'}
-              </Typography>
-            )}
-            <Button
-              variant="contained"
-              onClick={rollDice}
-              disabled={rolling || wins >= 3}
-              sx={{ bgcolor: '#FF1493', mb: 2, py: 1.5, px: 4, fontSize: '1.2rem' }}
-            >
-              {rolling ? 'Würfle...' : wins >= 3 ? 'Challenge geschafft!' : '🎲 Würfeln!'}
-            </Button>
-            <Typography variant="body1">Würfe: {rolls}</Typography>
-          </>
-        )}
-        {!gameActive && wins >= 3 && (
-          <Box>
-            <Typography variant="h3" sx={{ mb: 2 }}>🎉 Challenge geschafft!</Typography>
-            <Typography variant="h4" sx={{ mb: 2 }}>Ihr habt 3 Mal das Ziel erreicht!</Typography>
-            <Typography variant="h5" sx={{ mb: 3 }}>Gesamt-Würfe: {rolls}</Typography>
-            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
+            <Button variant="contained" onClick={() => { setTimeLeft(60); setBalloons([]); setPopped(0); setGameActive(true); }} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
               Nochmal spielen
             </Button>
             <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
@@ -2305,11 +2634,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
   const [showCarnivalDice, setShowCarnivalDice] = useState(false);
   const [showSongGuess, setShowSongGuess] = useState(false);
-  const [showCostumeDesigner, setShowCostumeDesigner] = useState(false);
   const [showGroupConfetti, setShowGroupConfetti] = useState(false);
   const [showGroupMemory, setShowGroupMemory] = useState(false);
   const [showGroupQuiz, setShowGroupQuiz] = useState(false);
   const [showGroupDice, setShowGroupDice] = useState(false);
+  const [showCarnivalParade, setShowCarnivalParade] = useState(false);
+  const [showStreamerGame, setShowStreamerGame] = useState(false);
+  const [showBalloonGame, setShowBalloonGame] = useState(false);
   const [showMinigame, setShowMinigame] = useState(false);
   const [selectedMinigameDifficulty, setSelectedMinigameDifficulty] = useState<'easy' | 'hard'>('easy');
   const [gameStarted, setGameStarted] = useState(false);
@@ -15618,38 +15949,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               </Card>
             </Grid>
 
-            {/* Kostüm-Designer */}
-            <Grid item xs={12} sm={6}>
-              <Card
-                sx={{
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  bgcolor: 'rgba(255, 255, 255, 0.95)',
-                  borderRadius: 2,
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
-                  }
-                }}
-                onClick={() => {
-                  setShowCarnivalGames(false);
-                  setTimeout(() => setShowCostumeDesigner(true), 300);
-                }}
-              >
-                <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
-                    🎨
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
-                    Kostüm-Designer
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-                    Designe das perfekte Kostüm!
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
             {/* Trennlinie für Gruppenspiele */}
             <Grid item xs={12}>
               <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.3)' }}>
@@ -15659,7 +15958,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               </Divider>
             </Grid>
 
-            {/* Gruppen-Konfetti-Challenge */}
+            {/* Musik-Stopp-Spiel */}
             <Grid item xs={12} sm={6}>
               <Card
                 sx={{
@@ -15680,19 +15979,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               >
                 <CardContent sx={{ textAlign: 'center', p: 2 }}>
                   <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
-                    🎊
+                    🎵
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
-                    Gruppen-Konfetti
+                    Musik-Stopp-Spiel
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-                    Alle zusammen klicken!
+                    Musik spielt, stoppt, Karte erscheint!
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
 
-            {/* Gruppen-Memory-Rennen */}
+            {/* Simon sagt */}
             <Grid item xs={12} sm={6}>
               <Card
                 sx={{
@@ -15716,16 +16015,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     🎭
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
-                    Gruppen-Memory
+                    Simon sagt
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-                    Findet zusammen alle Paare!
+                    Wiederholt die Sequenz von Aktionen!
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
 
-            {/* Gruppen-Quiz-Battle */}
+            {/* Stille Post */}
             <Grid item xs={12} sm={6}>
               <Card
                 sx={{
@@ -15749,16 +16048,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     🤡
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
-                    Gruppen-Quiz
+                    Stille Post
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-                    Beantwortet zusammen die Fragen!
+                    Flüstert das Wort weiter!
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
 
-            {/* Gruppen-Würfel-Challenge */}
+            {/* Bewegungs-Challenge */}
             <Grid item xs={12} sm={6}>
               <Card
                 sx={{
@@ -15782,10 +16081,109 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                     🎲
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
-                    Gruppen-Würfel
+                    Bewegungs-Challenge
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
-                    Würfelt zusammen zum Ziel!
+                    Musik stoppt, Bewegungsaufgabe!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Karnevalsumzug */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 215, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '2px solid #FFD700',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowCarnivalParade(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎪
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Karnevalsumzug
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Spielt einen Umzug nach!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Luftschlangen-Spiel */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 215, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '2px solid #FFD700',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowStreamerGame(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎊
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Luftschlangen-Rhythmus
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Macht zusammen Aktionen zu den Luftschlangen!
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Luftballon-Spiel */}
+            <Grid item xs={12} sm={6}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  bgcolor: 'rgba(255, 215, 0, 0.95)',
+                  borderRadius: 2,
+                  border: '2px solid #FFD700',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                  }
+                }}
+                onClick={() => {
+                  setShowCarnivalGames(false);
+                  setTimeout(() => setShowBalloonGame(true), 300);
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 2 }}>
+                  <Typography variant="h3" sx={{ mb: 1, fontSize: '3rem' }}>
+                    🎈
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#FF1493' }}>
+                    Luftballon-Pop
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.85rem' }}>
+                    Popst die Ballons!
                   </Typography>
                 </CardContent>
               </Card>
@@ -15841,12 +16239,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         onClose={() => setShowSongGuess(false)} 
       />
 
-      {/* Kostüm-Designer Game */}
-      <CostumeDesignerModal 
-        open={showCostumeDesigner} 
-        onClose={() => setShowCostumeDesigner(false)} 
-      />
-
       {/* Gruppen-Konfetti-Challenge */}
       <GroupConfettiModal 
         open={showGroupConfetti} 
@@ -15869,6 +16261,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       <GroupDiceModal 
         open={showGroupDice} 
         onClose={() => setShowGroupDice(false)} 
+      />
+
+      {/* Karnevalsumzug */}
+      <CarnivalParadeModal 
+        open={showCarnivalParade} 
+        onClose={() => setShowCarnivalParade(false)} 
+      />
+
+      {/* Luftschlangen-Spiel */}
+      <StreamerGameModal 
+        open={showStreamerGame} 
+        onClose={() => setShowStreamerGame(false)} 
+      />
+
+      {/* Luftballon-Spiel */}
+      <BalloonGameModal 
+        open={showBalloonGame} 
+        onClose={() => setShowBalloonGame(false)} 
       />
 
       {/* Minigame Test Modal für Lehrer */}

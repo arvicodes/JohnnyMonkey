@@ -147,7 +147,9 @@ export class MessageController {
   }
 
   /**
-   * Alle Nachrichten für einen Schüler abrufen
+   * Alle empfangenen Nachrichten für einen Schüler abrufen (vom Lehrer gesendet)
+   * Da beide Nachrichtentypen die gleiche Struktur haben, geben wir alle zurück
+   * und unterscheiden im Frontend basierend auf dem Kontext
    */
   static async getStudentMessages(req: Request, res: Response) {
     try {
@@ -166,8 +168,11 @@ export class MessageController {
         return res.status(403).json({ error: 'Nur Schüler können ihre Nachrichten abrufen' });
       }
 
+      // Alle Nachrichten, bei denen der Schüler beteiligt ist
       const messages = await prisma.message.findMany({
-        where: { studentId: user.id },
+        where: { 
+          studentId: user.id
+        },
         include: {
           teacher: {
             select: {
@@ -185,6 +190,54 @@ export class MessageController {
     } catch (error) {
       console.error('Error getting messages:', error);
       res.status(500).json({ error: 'Fehler beim Abrufen der Nachrichten' });
+    }
+  }
+
+  /**
+   * Alle gesendeten Nachrichten eines Schülers abrufen (an Lehrer gesendet)
+   * Da die Struktur gleich ist, geben wir alle Nachrichten zurück, bei denen der Schüler beteiligt ist
+   * Die Unterscheidung erfolgt im Frontend basierend auf dem Kontext
+   */
+  static async getStudentSentMessages(req: Request, res: Response) {
+    try {
+      const loginCode = req.headers['x-login-code'] as string;
+
+      if (!loginCode) {
+        return res.status(401).json({ error: 'Nicht angemeldet' });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { loginCode },
+        select: { id: true, role: true }
+      });
+
+      if (!user || user.role !== 'STUDENT') {
+        return res.status(403).json({ error: 'Nur Schüler können ihre gesendeten Nachrichten abrufen' });
+      }
+
+      // Alle Nachrichten, bei denen der Schüler beteiligt ist
+      // Im Frontend werden wir diese als "gesendet" markieren
+      const messages = await prisma.message.findMany({
+        where: { 
+          studentId: user.id
+        },
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.json({ messages });
+    } catch (error) {
+      console.error('Error getting student sent messages:', error);
+      res.status(500).json({ error: 'Fehler beim Abrufen der gesendeten Nachrichten' });
     }
   }
 

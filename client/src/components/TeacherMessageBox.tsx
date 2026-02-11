@@ -67,9 +67,11 @@ interface TeacherMessageBoxProps {
 
 const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, userId: propUserId }) => {
   const [sentMessages, setSentMessages] = useState<Message[]>([]);
+  const [receivedMessages, setReceivedMessages] = useState<Message[]>([]);
   const [learningGroups, setLearningGroups] = useState<LearningGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingReceived, setLoadingReceived] = useState(false);
   const [tab, setTab] = useState(0);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   
@@ -91,8 +93,34 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
     if (open) {
       loadSentMessages();
       loadLearningGroups();
+      if (tab === 0) {
+        loadReceivedMessages();
+      }
     }
-  }, [open]);
+  }, [open, tab]);
+  
+  const loadReceivedMessages = async () => {
+    try {
+      setLoadingReceived(true);
+      const loginCode = localStorage.getItem('loginCode') || '';
+      
+      const response = await fetch('/api/messages/teacher/received', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setReceivedMessages(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der empfangenen Nachrichten:', error);
+    } finally {
+      setLoadingReceived(false);
+    }
+  };
 
   const loadSentMessages = async () => {
     try {
@@ -253,7 +281,7 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
         setNewMessageStudentId('');
         setNewMessageSubject('');
         setNewMessageContent('');
-        setTab(0); // Wechsle zum "Gesendet" Tab
+        setTab(1); // Wechsle zum "Gesendet" Tab
         await loadSentMessages(); // Lade Nachrichten neu
         alert('Nachricht erfolgreich gesendet!');
       } else {
@@ -339,16 +367,46 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
       </DialogTitle>
       
       <DialogContent sx={{ p: 0, minHeight: 400, maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <Tabs value={tab} onChange={(_, v) => {
-          setTab(v);
-          setSelectedMessage(null); // Reset selected message when switching tabs
-        }} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs 
+          value={tab} 
+          onChange={(_, v) => {
+            setTab(v);
+            setSelectedMessage(null); // Reset selected message when switching tabs
+            if (v === 0) {
+              loadReceivedMessages(); // Lade empfangene Nachrichten beim Wechsel zum Posteingang
+            }
+          }} 
+          sx={{ 
+            borderBottom: 1, 
+            borderColor: 'divider',
+            minHeight: 36,
+            '& .MuiTab-root': {
+              minHeight: 36,
+              padding: '6px 12px',
+              fontSize: '0.75rem',
+              textTransform: 'none',
+              fontWeight: 500,
+              '& .MuiSvgIcon-root': {
+                fontSize: 14,
+                marginRight: 0.5
+              }
+            },
+            '& .MuiTab-root:nth-of-type(1)': {
+              minWidth: 'auto',
+              maxWidth: 'none',
+              flex: '0 0 auto',
+              padding: '6px 8px',
+              width: 'auto'
+            }
+          }}
+        >
+          <Tab label="Posteingang" icon={<Mail />} iconPosition="start" />
           <Tab label="Gesendet" icon={<Send sx={{ fontSize: 16 }} />} iconPosition="start" />
           <Tab label="Neue Nachricht" icon={<Add sx={{ fontSize: 16 }} />} iconPosition="start" />
         </Tabs>
 
-        {/* Filter-Bereich - Kompakt und schön */}
-        {!selectedMessage && (
+        {/* Filter-Bereich - Kompakt und schön - nur für Gesendet Tab */}
+        {!selectedMessage && tab === 1 && (
           <Paper elevation={0} sx={{ 
             pt: 2,
             px: 1.5,
@@ -512,7 +570,123 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
 
         {/* Content-Bereich */}
         <Box sx={{ flex: 1, overflow: 'auto' }}>
-          {tab === 1 ? (
+          {tab === 0 ? (
+            // Posteingang Tab
+            <Box sx={{ flex: 1, overflow: 'auto' }}>
+              {loadingReceived ? (
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px" py={2}>
+                  <Typography variant="body2">Lade empfangene Nachrichten...</Typography>
+                </Box>
+              ) : selectedMessage ? (
+                <Box sx={{ p: 1, flex: 1, overflow: 'auto' }}>
+                  <Box sx={{ mb: 1 }}>
+                    <IconButton
+                      onClick={() => setSelectedMessage(null)}
+                      sx={{ 
+                        p: 0,
+                        minWidth: 32,
+                        width: 32,
+                        height: 32,
+                        '& .MuiSvgIcon-root': { fontSize: 20 }
+                      }}
+                    >
+                      <ArrowBack sx={{ width: '100%', height: '100%' }} />
+                    </IconButton>
+                  </Box>
+                  <Card variant="outlined" sx={{ border: '1px solid #e0e0e0', bgcolor: '#fff' }}>
+                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.9rem', mb: 1 }}>
+                        {selectedMessage.subject}
+                      </Typography>
+                      <Box display="flex" alignItems="center" gap={0.5} mb={1} flexWrap="wrap">
+                        <Person sx={{ fontSize: 14, color: '#666' }} />
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                          Von: {selectedMessage.student.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto', fontSize: '0.7rem' }}>
+                          {new Date(selectedMessage.createdAt).toLocaleString('de-DE', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Typography>
+                      </Box>
+                      <Divider sx={{ mb: 1, my: 0.5 }} />
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: 1.6,
+                          fontSize: '0.85rem',
+                          color: '#333'
+                        }}
+                      >
+                        {selectedMessage.content}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              ) : receivedMessages.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <MailOutline sx={{ fontSize: 48, color: '#ccc', mb: 1 }} />
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                    Noch keine Nachrichten empfangen
+                  </Typography>
+                </Box>
+              ) : (
+                <List sx={{ p: 0 }}>
+                  {receivedMessages.map((message, index) => (
+                    <React.Fragment key={message.id}>
+                      <ListItem disablePadding>
+                        <ListItemButton
+                          onClick={() => setSelectedMessage(message)}
+                          sx={{
+                            py: 0.75,
+                            px: 1,
+                            '&:hover': { bgcolor: '#f5f5f5' }
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 0.75 }}>
+                            <Mail sx={{ color: '#1976d2', fontSize: 18 }} />
+                          </Box>
+                          <ListItemText
+                            primary={
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  color: '#1976d2',
+                                  fontSize: '0.8rem',
+                                  display: 'block',
+                                  mb: 0.25
+                                }}
+                              >
+                                {message.subject}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                Von: {message.student.name} • {new Date(message.createdAt).toLocaleString('de-DE', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </Typography>
+                            }
+                            sx={{ my: 0 }}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                      {index < receivedMessages.length - 1 && <Divider sx={{ my: 0 }} />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
+            </Box>
+          ) : tab === 2 ? (
             // Neue Nachricht Tab
             <Box sx={{ p: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, fontSize: '0.9rem' }}>
@@ -633,11 +807,11 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                 </Box>
               </Box>
             </Box>
-          ) : loading ? (
+          ) : tab === 1 && loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
               <Typography variant="body2" color="text.secondary">Lade Nachrichten...</Typography>
             </Box>
-          ) : selectedMessage ? (
+          ) : tab === 1 && selectedMessage ? (
             <Box sx={{ p: 1.5 }}>
               <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -724,7 +898,7 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                 </CardContent>
               </Card>
             </Box>
-          ) : filteredMessages.length === 0 ? (
+          ) : tab === 1 && filteredMessages.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center' }}>
               <MailOutline sx={{ fontSize: 48, color: '#ccc', mb: 1 }} />
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
@@ -733,7 +907,7 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                   : 'Keine Nachrichten gefunden'}
               </Typography>
             </Box>
-          ) : (
+          ) : tab === 1 ? (
             <List sx={{ p: 0 }}>
               {filteredMessages.map((message, index) => {
                 const studentGroup = getStudentGroup(message.studentId);
@@ -815,7 +989,7 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
                 );
               })}
             </List>
-          )}
+          ) : null}
         </Box>
       </DialogContent>
     </Dialog>

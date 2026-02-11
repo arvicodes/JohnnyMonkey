@@ -1073,6 +1073,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [participationLoading, setParticipationLoading] = useState(false);
   const [participationExpanded, setParticipationExpanded] = useState(false);
   const [epoGrades, setEpoGrades] = useState<any[]>([]);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [selectedComment, setSelectedComment] = useState<string>('');
 
   // Hilfe-Popover State
   const [helpAnchorEl, setHelpAnchorEl] = useState<HTMLElement | null>(null);
@@ -3365,7 +3367,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         }
       }
       
-      // Für EPO-Noten: Nur anzeigen, wenn freigegeben
+      // Für EPO-Noten: IMMER anzeigen, auch wenn nicht freigegeben
+      // Wenn nicht freigegeben oder nicht gesetzt, wird grade undefined bleiben (wird dann grau angezeigt)
       if (isEpo) {
         const epoKey = node.name.toLowerCase().trim();
         // Prüfe verschiedene Varianten des EPO-Namens
@@ -3377,8 +3380,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         const isReleased = epoKeyVariants.some(variant => 
           releasedEpoGrades.has(variant.toLowerCase().trim())
         );
+        // Wenn nicht freigegeben, setze grade auf undefined (wird grau angezeigt)
+        // Aber der Knoten wird trotzdem angezeigt
         if (!isReleased) {
-          grade = undefined; // Nicht freigegeben, also nicht anzeigen
+          grade = undefined; // Nicht freigegeben, wird grau angezeigt
         }
       }
       
@@ -3389,8 +3394,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       const hasEpoButNoneReleased = containsEpo(node) && !hasAnyReleasedEpo(node);
       
       // Markiere Knoten, die nur nicht freigegebene EPO-Noten enthalten
-      // ABER: Nur wenn es KEINE übergeordnete Kategorie ist (die soll immer angezeigt werden)
-      const onlyUnreleasedEpo = containsOnlyEpo(node) && containsOnlyUnreleasedEpo(node) && !hasEpoButNoneReleased;
+      // ABER: EPO-Knoten werden IMMER angezeigt (auch wenn nicht freigegeben), daher false
+      const onlyUnreleasedEpo = false; // EPO-Knoten werden immer angezeigt, auch wenn nicht freigegeben
       
       return {
         ...node,
@@ -3614,7 +3619,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         {hasChildren && (
           <Box sx={{ mt: 0.3 }}>
             {node.children
-              .filter((child: any) => !child.onlyUnreleasedEpo) // Filtere nicht freigegebene EPO-Kategorien
               .map((child: any) => renderGradeNode(child, schema, level + 1))}
           </Box>
         )}
@@ -4760,10 +4764,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                             color: 'text.secondary'
                                           }}>
                                             {(() => {
-                                              const sortedParticipations = [...groupData.participations].sort((a, b) => a.lessonIndex - b.lessonIndex);
-                                              const totalLessons = sortedParticipations.length;
-                                              const period1Count = groupData.period1Hours ? Math.min(groupData.period1Hours, totalLessons) : 0;
-                                              const period2Count = groupData.period2Hours ? Math.min(groupData.period2Hours, totalLessons - period1Count) : 0;
+                                              // Berechne Gesamtzahl der Stunden
+                                              const maxLessonIndex = Math.max(
+                                                ...groupData.participations.map(p => p.lessonIndex),
+                                                -1
+                                              );
+                                              const totalLessonsFromParticipations = maxLessonIndex + 1;
+                                              
+                                              // Verwende period1Hours + period2Hours falls gesetzt, sonst die maximale lessonIndex + 1
+                                              const period1Count = groupData.period1Hours || 0;
+                                              const period2Count = groupData.period2Hours || 0;
+                                              const totalLessons = period1Count + period2Count > 0 
+                                                ? period1Count + period2Count 
+                                                : totalLessonsFromParticipations;
                                               
                                               return (
                                                 <>
@@ -4808,9 +4821,68 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                           position: 'relative',
                                           width: '100%'
                                         }}>
-                                          {groupData.participations
-                                            .sort((a, b) => a.lessonIndex - b.lessonIndex)
-                                            .map((participation, index) => {
+                                          {(() => {
+                                            // Erstelle Map für schnellen Zugriff auf Bewertungen
+                                            const participationMap = new Map<number, typeof groupData.participations[0]>();
+                                            groupData.participations.forEach(p => {
+                                              participationMap.set(p.lessonIndex, p);
+                                            });
+                                            
+                                            // Berechne Gesamtzahl der Stunden
+                                            const maxLessonIndex = Math.max(
+                                              ...groupData.participations.map(p => p.lessonIndex),
+                                              -1
+                                            );
+                                            const period1Count = groupData.period1Hours || 0;
+                                            const period2Count = groupData.period2Hours || 0;
+                                            const totalLessons = period1Count + period2Count > 0 
+                                              ? period1Count + period2Count 
+                                              : Math.max(maxLessonIndex + 1, 0);
+                                            
+                                            // Erstelle Array für alle Stunden von 0 bis totalLessons-1
+                                            const allLessons = Array.from({ length: totalLessons }, (_, i) => i);
+                                            
+                                            return allLessons.map((lessonIndex) => {
+                                              const participation = participationMap.get(lessonIndex);
+                                              
+                                              // Bestimme Period basierend auf lessonIndex
+                                              const participationPeriod = period1Count > 0 && lessonIndex < period1Count ? 1 :
+                                                                         period2Count > 0 && lessonIndex >= period1Count ? 2 : 0;
+                                              const periodBorderColor = participationPeriod === 1 ? '#1976D2' : 
+                                                                        participationPeriod === 2 ? '#F57C00' : 'transparent';
+                                              const isPeriodStart = participationPeriod > 0 && (lessonIndex === 0 || 
+                                                (participationPeriod === 1 && lessonIndex === 0) ||
+                                                (participationPeriod === 2 && lessonIndex === period1Count));
+                                              const isPeriodEnd = participationPeriod > 0 && (
+                                                (participationPeriod === 1 && lessonIndex === period1Count - 1) ||
+                                                (participationPeriod === 2 && lessonIndex === totalLessons - 1)
+                                              );
+                                              
+                                              // Wenn keine Bewertung vorhanden, zeige grauen Balken
+                                              if (!participation) {
+                                                const width = `${Math.max(0.5, 100 / totalLessons)}%`;
+                                                
+                                                return (
+                                                  <Box
+                                                    key={lessonIndex}
+                                                    sx={{
+                                                      flex: `0 0 ${width}`,
+                                                      width: width,
+                                                      minWidth: '1px',
+                                                      height: '8px', // Sehr niedrig für nicht gesetzte Stunden
+                                                      bgcolor: '#E0E0E0', // Grau für nicht gesetzte Stunden
+                                                      borderRadius: '1px 1px 0 0',
+                                                      opacity: 0.5,
+                                                      transition: 'all 0.2s',
+                                                      position: 'relative',
+                                                      borderLeft: isPeriodStart ? `1px solid ${periodBorderColor}` : 'none',
+                                                      borderRight: isPeriodEnd ? `1px solid ${periodBorderColor}` : 'none',
+                                                      borderTop: periodBorderColor !== 'transparent' ? `1px solid ${periodBorderColor}` : 'none'
+                                                    }}
+                                                  />
+                                                );
+                                              }
+                                              
                                               // Normalisiere Wert zu Höhe (0-32px) - kompakter
                                               // Grün (2 = sehr gut) höher als Blau (1 = gut)
                                               // -2 -> 6px, -1 -> 10px, 0 -> 14px, 2 (grün/sehr gut) -> 28px, 1 (blau/gut) -> 20px
@@ -4820,7 +4892,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                                              participation.value === -1 ? 10 :  // Gelb (schlecht)
                                                              6; // Rot (sehr schlecht)
                                               // Balkenbreite: Maximal 2px pro Balken, damit alles passt
-                                              const width = `${Math.max(0.5, 100 / groupData.participations.length)}%`;
+                                              const width = `${Math.max(0.5, 100 / totalLessons)}%`;
                                               
                                               const hasComment = participation.comment && participation.comment.trim().length > 0;
                                               
@@ -4828,18 +4900,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                               const tooltipTitle = participation.comment 
                                                 ? participation.comment.replace(/\s*\[K:.*?\]\s*/g, ' ').replace(/\s+/g, ' ').trim()
                                                 : '';
-                                              
-                                              // Bestimme Period-Farbe für Rahmen
-                                              const participationPeriod = (participation as any).period || 0;
-                                              const periodBorderColor = participationPeriod === 1 ? '#1976D2' : 
-                                                                        participationPeriod === 2 ? '#F57C00' : 'transparent';
-                                              
-                                              // Prüfe ob dies der Start eines Zeitraums ist
-                                              const prevParticipation = index > 0 ? groupData.participations[index - 1] : null;
-                                              const prevPeriod = prevParticipation ? ((prevParticipation as any).period || 0) : 0;
-                                              const isPeriodStart = participationPeriod > 0 && (index === 0 || prevPeriod !== participationPeriod);
-                                              const isPeriodEnd = participationPeriod > 0 && (index === groupData.participations.length - 1 || 
-                                                (index < groupData.participations.length - 1 && ((groupData.participations[index + 1] as any).period || 0) !== participationPeriod));
                                               
                                               const barBox = (
                                                 <Box
@@ -4869,13 +4929,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                                     <Box
                                                       onClick={(e) => {
                                                         e.stopPropagation();
-                                                        // Zeige Kommentar in Alert für Tablets
-                                                        alert(`Kommentar:\n\n${tooltipTitle || participation.comment}`);
+                                                        setSelectedComment(tooltipTitle || participation.comment || '');
+                                                        setCommentModalOpen(true);
                                                       }}
                                                       onTouchStart={(e) => {
                                                         e.stopPropagation();
-                                                        // Zeige Kommentar bei Touch
-                                                        alert(`Kommentar:\n\n${tooltipTitle || participation.comment}`);
+                                                        setSelectedComment(tooltipTitle || participation.comment || '');
+                                                        setCommentModalOpen(true);
                                                       }}
                                                       sx={{
                                                         position: 'absolute',
@@ -4928,7 +4988,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                               }
                                               
                                               return barBox;
-                                            })}
+                                            });
+                                          })()}
                                         </Box>
                                       </Box>
                                     )}
@@ -5211,6 +5272,78 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         onClose={() => setFlashcardLearningOpen(false)}
         studentId={userId}
       />
+      
+      {/* Kommentar-Modal */}
+      <Dialog
+        open={commentModalOpen}
+        onClose={() => setCommentModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            animation: commentModalOpen ? 'fadeInScale 0.3s ease-out' : 'none',
+            '@keyframes fadeInScale': {
+              '0%': {
+                opacity: 0,
+                transform: 'scale(0.9) translateY(-20px)'
+              },
+              '100%': {
+                opacity: 1,
+                transform: 'scale(1) translateY(0)'
+              }
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: '#FF9800',
+          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          py: 1.5,
+          px: 2
+        }}>
+          <Box sx={{ fontSize: 24 }}>💬</Box>
+          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1rem' }}>
+            Kommentar
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2.5, pt: 2.5 }}>
+          <Typography 
+            variant="body1" 
+            sx={{ 
+              whiteSpace: 'pre-wrap',
+              lineHeight: 1.7,
+              fontSize: '0.95rem',
+              color: '#333',
+              minHeight: '60px'
+            }}
+          >
+            {selectedComment || 'Kein Kommentar vorhanden'}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 1.5, pt: 1 }}>
+          <Button
+            onClick={() => setCommentModalOpen(false)}
+            variant="contained"
+            sx={{
+              bgcolor: '#FF9800',
+              color: '#fff',
+              '&:hover': {
+                bgcolor: '#F57C00'
+              },
+              textTransform: 'none',
+              fontWeight: 500,
+              px: 3
+            }}
+          >
+            Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Karnevals-Minigames Modal */}
       <Dialog
