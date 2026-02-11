@@ -189,7 +189,7 @@ function AppContent() {
     };
     
     checkExistingLogin();
-  }, []); // Nur einmal beim App-Start ausführen
+  }, [navigate]); // Nur einmal beim App-Start ausführen
 
   useEffect(() => {
     if (!user) {

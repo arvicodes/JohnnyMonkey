@@ -1796,7 +1796,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         border-radius: 8px;
         background: white;
       `;
-      iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups';
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
       
       content.appendChild(iframe);
       content.style.cssText = `

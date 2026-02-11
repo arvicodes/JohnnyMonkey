@@ -454,7 +454,7 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
         border-radius: 8px;
         background: white;
       `;
-      iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups';
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups');
       
       content.appendChild(iframe);
       content.style.cssText = `
@@ -529,17 +529,18 @@ const FileSystemPathManager: React.FC<FileSystemPathManagerProps> = ({ teacherId
         border: 1px solid #e0e0e0;
         padding: 15px;
         border-radius: 6px;
-      background: #fafafa;
-      max-height: 600px;
-      width: 100%;
-      box-sizing: border-box;
-      overflow: auto;
-      font-size: 14px;
-      line-height: 1.6;
-      color: #333;
-      margin: 0;
-      display: block;
-    `;
+        background: #fafafa;
+        max-height: 600px;
+        width: 100%;
+        box-sizing: border-box;
+        overflow: auto;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        display: block;
+      `;
+    }
     
     modalContent.appendChild(closeButton);
     modalContent.appendChild(title);
