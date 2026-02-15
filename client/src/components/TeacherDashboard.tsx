@@ -2637,6 +2637,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     children: any[];
     groupId: string;
   } | null>(null);
+  const [voraussetzungenGlossarOpen, setVoraussetzungenGlossarOpen] = useState(false);
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -5053,7 +5054,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     abAnleitung?: string;
   }> = {
     '02 Sicherheitsziele': {
-      voraussetzungen: `**Transpositionsverschlüsselung** bekannt, **Skytale** als Beispiel`,
+      voraussetzungen: `**Transpositionsverschlüsselung** bekannt, **Skytale** als Beispiel
+Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschlüsselung**) bekannt oder wird thematisiert`,
       materialliste: `**Zettel**`,
       anweisungen: `• Ich schreibe etwas auf einen **Zettel**, falte ihn und schreibe den **Namen** einer weiterentfernt sitzenden Schülerin oder Schülers darauf.
 • Ich bitte eine Schülerin oder einen Schüler, den Zettel an den Adressaten **weiterzuleiten**.
@@ -5072,6 +5074,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     'Skytale': {
       erklärung: 'Antikes Verschlüsselungsverfahren: Nachricht wird um einen Stab gewickelt geschrieben, ohne Stab wirkt der Text unleserlich.',
       beispiel: 'Nur wer den gleichen Stabdurchmesser hat, kann die Nachricht entziffern.'
+    },
+    'Substitutionsverschlüsselung': {
+      erklärung: 'Verschlüsselung durch Ersetzen von Zeichen (jedes Zeichen wird durch ein anderes ersetzt).',
+      beispiel: 'Caesar-Verschlüsselung: Jeder Buchstabe wird durch einen fest versetzten Buchstaben im Alphabet ersetzt.'
+    },
+    'Verfahrensarten': {
+      erklärung: 'Zwei grundlegende Arten: Transposition (Zeichen werden umgestellt) vs. Substitution (Zeichen werden ersetzt).',
+      beispiel: 'Skytale = Transposition; Caesar = Substitution.'
     },
     'Kryptologie': {
       erklärung: 'Wissenschaft von der Verschlüsselung (Kryptographie) und dem Entschlüsseln (Kryptoanalyse).',
@@ -15294,7 +15304,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       {/* Modal: Unterrichtsstunde – Anweisungen, Folien, AB. X-Button: immer klein, ganz rechts, Icon überdeckt Button. */}
       <Dialog
         open={lessonModalOpen}
-        onClose={() => { setLessonModalOpen(false); setLessonModalData(null); }}
+        onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); }}
         maxWidth="md"
         fullWidth
         PaperProps={{ sx: { borderRadius: 2 } }}
@@ -15307,7 +15317,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               </Typography>
               <IconButton
                 size="small"
-                onClick={() => { setLessonModalOpen(false); setLessonModalData(null); }}
+                onClick={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); }}
                 sx={{
                   position: 'absolute',
                   right: 4,
@@ -15335,7 +15345,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
                 return (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {/* Voraussetzungen – blaue Box (ohne Überschrift), Abstand nach oben */}
+                    {/* Voraussetzungen – blaue Box inkl. Fachbegriffe mit Erklärung und Beispiel */}
                     {instructions?.voraussetzungen && (
                       <Box sx={{ pt: 1.5 }}>
                         <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, border: '1px solid #90caf9', borderBottom: 'none' }}>
@@ -15346,6 +15356,45 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
                               </Box>
                             ))}
                           </Box>
+                          {(() => {
+                            const terms = [...instructions.voraussetzungen.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1]).filter((t, i, a) => a.indexOf(t) === i);
+                            const withGlossar = terms.filter(t => FACHBEGRIFFE_GLOSSAR[t]);
+                            if (withGlossar.length === 0) return null;
+                            return (
+                              <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #90caf9' }}>
+                                <Box
+                                  onClick={() => setVoraussetzungenGlossarOpen(v => !v)}
+                                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
+                                >
+                                  {voraussetzungenGlossarOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#1565c0' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#1565c0' }} />}
+                                  <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>
+                                    Fachbegriffe (Erklärungen & Beispiele)
+                                  </Typography>
+                                </Box>
+                                <Collapse in={voraussetzungenGlossarOpen}>
+                                  <Box sx={{ mt: 1 }}>
+                                    {withGlossar.map(term => {
+                                      const g = FACHBEGRIFFE_GLOSSAR[term];
+                                      if (!g) return null;
+                                      return (
+                                        <Box key={term} sx={{ mb: 1.25 }}>
+                                          <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>{term}</Typography>
+                                          <Box sx={{ mt: 0.5, pl: 1, borderLeft: '3px solid #90caf9' }}>
+                                            <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block', mb: 0.25 }}>
+                                              <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Erklärung:</Box> {g.erklärung}
+                                            </Typography>
+                                            <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block' }}>
+                                              <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Beispiel:</Box> {g.beispiel}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      );
+                                    })}
+                                  </Box>
+                                </Collapse>
+                              </Box>
+                            );
+                          })()}
                         </Box>
                       </Box>
                     )}
