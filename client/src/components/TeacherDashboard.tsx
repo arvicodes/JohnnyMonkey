@@ -2629,6 +2629,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [showTeacherMessageBox, setShowTeacherMessageBox] = useState(false);
   const [showRiddleOverview, setShowRiddleOverview] = useState(false);
   const [showCarnivalGames, setShowCarnivalGames] = useState(false);
+  // Modal für Unterrichtsstunde (Anweisungen, Folien, AB)
+  const [lessonModalOpen, setLessonModalOpen] = useState(false);
+  const [lessonModalData, setLessonModalData] = useState<{
+    lessonName: string;
+    lessonPath: string;
+    children: any[];
+    groupId: string;
+  } | null>(null);
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -5036,6 +5044,114 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       return true;
     });
   };
+
+  // Lehrerhinweise pro Unterrichtsstunde (Stundenordner-Name als Key)
+  const LESSON_INSTRUCTIONS: Record<string, {
+    voraussetzungen?: string;
+    materialliste?: string;
+    anweisungen: string;
+    abAnleitung?: string;
+  }> = {
+    '02 Sicherheitsziele': {
+      voraussetzungen: `**Transpositionsverschlüsselung** bekannt, **Skytale** als Beispiel`,
+      materialliste: `**Zettel**`,
+      anweisungen: `• Ich schreibe etwas auf einen **Zettel**, falte ihn und schreibe den **Namen** einer weiterentfernt sitzenden Schülerin oder Schülers darauf.
+• Ich bitte eine Schülerin oder einen Schüler, den Zettel an den Adressaten **weiterzuleiten**.
+• Je nach Lerngruppe wird beobachtet und besprochen, was passiert ist und/oder besprochen, **was alles hätte passieren können**. Es lassen sich damit schnell die **Angriffsszenarien** und die entsprechenden **Ziele** der **Kryptologie** herausarbeiten.`,
+      abAnleitung: `• Wir brauchen **fünf** **Gruppen**, die sich mit den Fällen A bis E befassen. Bearbeitet damit Aufgabe 1.
+• Besprechung Aufgabe 1 und Folien dazu zeigen.
+• Danach die restlichen beiden Aufgaben bearbeiten und mit Folien besprechen.`
+    }
+  };
+
+  const FACHBEGRIFFE_GLOSSAR: Record<string, { erklärung: string; beispiel: string }> = {
+    'Transpositionsverschlüsselung': {
+      erklärung: 'Verschlüsselung durch Umstellung (Vertauschen) der Zeichenpositionen.',
+      beispiel: 'Skytale: Nachricht wird spiralförmig auf einen Stab geschrieben und quer abgelesen.'
+    },
+    'Skytale': {
+      erklärung: 'Antikes Verschlüsselungsverfahren: Nachricht wird um einen Stab gewickelt geschrieben, ohne Stab wirkt der Text unleserlich.',
+      beispiel: 'Nur wer den gleichen Stabdurchmesser hat, kann die Nachricht entziffern.'
+    },
+    'Kryptologie': {
+      erklärung: 'Wissenschaft von der Verschlüsselung (Kryptographie) und dem Entschlüsseln (Kryptoanalyse).',
+      beispiel: 'Sicherheitsziele wie Vertraulichkeit und Integrität werden durch kryptologische Verfahren angestrebt.'
+    },
+    'Angriffsszenarien': {
+      erklärung: 'Mögliche Angriffe auf eine Nachricht oder ein System (z. B. Abfangen, Verändern, Unterdrücken).',
+      beispiel: 'Zettel wird abgefangen und gelesen → Verletzung der Vertraulichkeit.'
+    },
+    'Ziele': {
+      erklärung: 'Sicherheitsziele der Kryptologie: Vertraulichkeit, Integrität, Verfügbarkeit, Verbindlichkeit.',
+      beispiel: 'Vertraulichkeit: Nur der Adressat soll die Nachricht lesen können.'
+    },
+    'Sicherheitsziele der Informatik': {
+      erklärung: 'Ziele zum Schutz von Daten und Systemen: Vertraulichkeit, Integrität, Verfügbarkeit.',
+      beispiel: 'Vertraulichkeit = nur Berechtigte lesen; Integrität = unverändert; Verfügbarkeit = erreichbar.'
+    }
+  };
+
+  const renderBoldText = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (!part.startsWith('**') || !part.endsWith('**')) return <span key={i}>{part}</span>;
+      const term = part.slice(2, -2);
+      const glossar = FACHBEGRIFFE_GLOSSAR[term];
+      if (!glossar) {
+        if (term === 'fünf') return <strong key={i} style={{ color: '#2e7d32' }}>{term}</strong>;
+        if (term === 'Gruppen') return <strong key={i} style={{ color: '#e65100' }}>{term}</strong>;
+        return <strong key={i}>{term}</strong>;
+      }
+      return (
+        <Tooltip
+          key={i}
+          title={
+            <Box component="span" sx={{ display: 'block', maxWidth: 320, fontSize: '1rem' }}>
+              <Box component="span" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>Erklärung:</Box>
+              {glossar.erklärung}
+              <Box component="span" sx={{ fontWeight: 600, display: 'block', mt: 1, mb: 0.5 }}>Beispiel:</Box>
+              {glossar.beispiel}
+            </Box>
+          }
+          placement="top"
+          arrow
+        >
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, cursor: 'help', borderBottom: '1px dotted currentColor' }}>
+            <strong>{term}</strong>
+            <InfoIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+          </Box>
+        </Tooltip>
+      );
+    });
+  };
+
+  /** Gruppiert Dateien nach Basisname (ohne Endung). Eine Zeile pro Dokument, Buttons PDF/DOC pro Version. Freigabe nur für PDF. */
+  const groupFilesByBaseName = (files: any[]): { baseName: string; versions: { ext: string; file: any }[] }[] => {
+    const map = new Map<string, { ext: string; file: any }[]>();
+    for (const file of files) {
+      const name = file.name || '';
+      const baseName = name.replace(/\.[^.]+$/, '') || name;
+      const ext = (name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
+      if (!map.has(baseName)) map.set(baseName, []);
+      map.get(baseName)!.push({ ext, file });
+    }
+    return Array.from(map.entries()).map(([baseName, versions]) => ({ baseName, versions }));
+  };
+
+  const getPdfFromGroup = (versions: { ext: string; file: any }[]) =>
+    versions.find(v => v.ext === 'pdf')?.file || null;
+
+  /** Wandelt eine Item-Liste (Ordner + Dateien) in Anzeige-Items um: Ordner unverändert, Dateien nach Basisname gruppiert. */
+  const itemsToDisplayItems = (items: any[]): any[] => {
+    const dirs = items.filter((i: any) => i.type === 'directory');
+    const files = items.filter((i: any) => i.type === 'file');
+    const groups = groupFilesByBaseName(files);
+    return [
+      ...dirs,
+      ...groups.map((g: any) => ({ type: 'fileGroup', baseName: g.baseName, versions: g.versions }))
+    ];
+  };
+
   // Neue Funktion zum Rendern der echten Ordner-Vorschau
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
@@ -5045,8 +5161,61 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // Die ursprünglichen Daten bleiben unverändert für Schüler
     const filteredItems = filterPdfFiles(items);
     
+    // Sortierung: PDF immer zuerst, danach Rest
+    const sortVersionsPdfFirst = (versions: { ext: string; file: any }[]) =>
+      [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+
+    // Zeile für eine Dateigruppe (ein Name, mehrere Formate): Icons + nur PDF-Freigabe
+    const renderFileGroupRow = (group: { baseName: string; versions: { ext: string; file: any }[] }, level: number) => {
+      const pdfFile = getPdfFromGroup(group.versions);
+      const sortedVersions = sortVersionsPdfFirst(group.versions);
+      const getExtIcon = (ext: string) => {
+        if (ext === 'pdf') return <PictureAsPdfIcon sx={{ fontSize: 18 }} />;
+        if (['doc', 'docx'].includes(ext.toLowerCase())) return <DescriptionIcon sx={{ fontSize: 18 }} />;
+        return <DescriptionIcon sx={{ fontSize: 18 }} />;
+      };
+      const iconBtnSx = {
+        p: 0.5,
+        borderRadius: 1,
+        color: 'primary.main',
+        '&:hover': { bgcolor: 'action.hover' },
+      };
+      return (
+        <Box key={`group-${group.baseName}-${level}`} sx={{ mb: 0.7 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
+            {pdfFile && (
+              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }} title={fileShares[`${pdfFile.path}:${groupId}`] ? 'Für Schüler freigegeben' : 'Nur PDF freigeben'}>
+                <input
+                  type="checkbox"
+                  checked={!!fileShares[`${pdfFile.path}:${groupId}`]}
+                  onChange={() => toggleFileShare(pdfFile.path, groupId)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#4caf50' }}
+                />
+              </Box>
+            )}
+            <Typography variant="body2" sx={{ color: '#03a9f4', fontSize: '0.75rem', flexShrink: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              📄 {group.baseName}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+              {sortedVersions.map(({ ext, file }) => (
+                <Tooltip key={file.path} title={`${ext.toUpperCase()} öffnen`}>
+                  <IconButton size="small" onClick={() => handleFileClick(file)} sx={iconBtnSx}>
+                    {getExtIcon(ext)}
+                  </IconButton>
+                </Tooltip>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      );
+    };
+
     // Rekursive Funktion zum Rendern aller Ebenen
     const renderItemRecursively = (item: any, level: number = 0) => {
+      if (item.type === 'fileGroup') {
+        return renderFileGroupRow(item, level);
+      }
       // Filtere temporäre Dateien, die mit ~$ starten
       if (item.type === 'file' && item.name.startsWith('~$')) {
         return null;
@@ -5183,19 +5352,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
               alignItems: 'flex-start',
               gap: 0.5,
               mb: 0.5,
-              cursor: item.type === 'file' ? 'pointer' : 'default',
+              cursor: (item.type === 'file' || item.type === 'directory') ? 'pointer' : 'default',
               textDecoration: 'none',
               wordBreak: 'break-word',
               maxWidth: '100%',
               flex: 1,
-              '&:hover': item.type === 'file' ? {
+              '&:hover': (item.type === 'file' || item.type === 'directory') ? {
                 color: '#1976D2'
               } : {}
             }}
             onClick={() => {
               if (item.type === 'file') {
-  
                 handleFileClick(item);
+              } else if (item.type === 'directory' && item.children && item.children.length > 0) {
+                setLessonModalData({
+                  lessonName: item.name,
+                  lessonPath: item.path || `${folderPath}/${item.name}`,
+                  children: item.children || [],
+                  groupId
+                });
+                setLessonModalOpen(true);
               }
             }}
             >
@@ -5317,7 +5493,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
           {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
           {item.type === 'directory' && item.children && item.children.length > 0 && (
             <Box sx={{ ml: 2, mb: 0.7 }}>
-              {filterPdfFiles(item.children).map((child: any, childIndex: number) => 
+              {itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any, childIndex: number) => 
                 renderItemRecursively(child, level + 1)
               )}
             </Box>
@@ -5365,7 +5541,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
             </Typography>
           ) : (
             <Box>
-              {filteredItems.map((item, index) => renderItemRecursively(item, 0))}
+              {itemsToDisplayItems(filteredItems).map((item, index) => renderItemRecursively(item, 0))}
             </Box>
           )}
         </Box>
@@ -15114,6 +15290,218 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
         onClose={() => setShowTeacherMessageBox(false)}
         userId={userId}
       />
+
+      {/* Modal: Unterrichtsstunde – Anweisungen, Folien, AB. X-Button: immer klein, ganz rechts, Icon überdeckt Button. */}
+      <Dialog
+        open={lessonModalOpen}
+        onClose={() => { setLessonModalOpen(false); setLessonModalData(null); }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
+        {lessonModalData && (
+          <>
+            <DialogTitle sx={{ borderBottom: '1px solid #e0e0e0', pb: 1.5, pr: 5, position: 'relative' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {lessonModalData.lessonName}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => { setLessonModalOpen(false); setLessonModalData(null); }}
+                sx={{
+                  position: 'absolute',
+                  right: 4,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  p: 0.25,
+                  minWidth: 28,
+                  width: 28,
+                  height: 28,
+                  '&:hover': { bgcolor: 'action.hover' },
+                }}
+              >
+                <CloseIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 2 }}>
+              {(() => {
+                const lessonName = lessonModalData.lessonName;
+                const instructions = LESSON_INSTRUCTIONS[lessonName]
+                  ?? Object.entries(LESSON_INSTRUCTIONS).find(([key]) => lessonName.includes(key) || key.includes(lessonName))?.[1];
+                const allFiles = (lessonModalData.children || []).filter((c: any) => c.type === 'file' && !(c.name && c.name.startsWith('~$')));
+                const isABByName = (name: string) => /^AB_|Sicherheitsziele/i.test((name || '').replace(/\.[^.]+$/, ''));
+                const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
+                const abFiles = allFiles.filter((f: any) => !/\.(pdf|pptx?|odp)$/i.test(f.name || '') || isABByName(f.name));
+
+                return (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {/* Voraussetzungen – blaue Box (ohne Überschrift), Abstand nach oben */}
+                    {instructions?.voraussetzungen && (
+                      <Box sx={{ pt: 1.5 }}>
+                        <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, border: '1px solid #90caf9', borderBottom: 'none' }}>
+                          <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+                            {instructions.voraussetzungen.split('\n').filter(Boolean).map((line, i) => (
+                              <Box component="li" key={i} sx={{ mb: 0.75 }}>
+                                {renderBoldText(line.replace(/^•\s*/, ''))}
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Material – roter Kasten, bei Zettel kleines Zettel-Bild (kein Icon) */}
+                    {instructions?.materialliste && (
+                      <Box>
+                        <Box sx={{ bgcolor: '#ffebee', borderRadius: 0, p: 1.5, border: '1px solid #ef9a9a', borderBottom: 'none' }}>
+                          <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none', color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+                            {instructions.materialliste.split('\n').filter(Boolean).map((line, i) => (
+                              <Box component="li" key={i} sx={{ mb: 0.75, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box component="span" sx={{ flexShrink: 0, lineHeight: 0 }} title="Zettel">
+                                  <svg width="22" height="28" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" strokeWidth="0.8"/>
+                                    <line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" strokeWidth="0.6"/>
+                                    <line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" strokeWidth="0.6"/>
+                                    <line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" strokeWidth="0.6"/>
+                                  </svg>
+                                </Box>
+                                {renderBoldText(line.replace(/^•\s*/, ''))}
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Lehrer-Anweisungen (ohne Überschrift), AB nur unten */}
+                    {instructions?.anweisungen && (
+                      <Box>
+                        <Box sx={{ bgcolor: '#f1f8e9', borderRadius: 0, p: 2, border: '1px solid #c5e1a5', borderBottom: 'none' }}>
+                          <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.85 }}>
+                            {instructions.anweisungen.split('\n').filter(Boolean).map((line, i) => (
+                              <Box component="li" key={i} sx={{ mb: 1.25 }}>
+                                {renderBoldText(line.replace(/^•\s*/, ''))}
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Folien */}
+                    {folienFiles.length > 0 && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, pt: 1 }}>
+                          Folien
+                        </Typography>
+                        <List dense sx={{ bgcolor: '#f5f5f5', borderRadius: 0, py: 0, border: '1px solid #e3f2fd', borderTop: 'none' }}>
+                          {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
+                            const pdfFile = getPdfFromGroup(versions);
+                            const isPdfShared = pdfFile ? !!fileShares[`${pdfFile.path}:${lessonModalData.groupId}`] : false;
+                            const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                            return (
+                              <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
+                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                  <DescriptionIcon fontSize="small" sx={{ color: '#1976d2' }} />
+                                </ListItemIcon>
+                                <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: '0.9rem' }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                  {sortedVersions.map(({ ext, file }) => (
+                                    <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
+                                      <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#1976d2', '&:hover': { bgcolor: 'action.hover' } }}>
+                                        {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
+                                      </IconButton>
+                                    </Tooltip>
+                                  ))}
+                                  {pdfFile && (
+                                    <FormControlLabel
+                                      control={
+                                        <Checkbox
+                                          size="small"
+                                          checked={isPdfShared}
+                                          onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                          sx={{ py: 0 }}
+                                        />
+                                      }
+                                      label={<Typography variant="caption">Freigeben (PDF)</Typography>}
+                                    />
+                                  )}
+                                </Box>
+                              </ListItem>
+                            );
+                          })}
+                        </List>
+                      </Box>
+                    )}
+
+                    {/* Arbeitsblatt (AB) – nur unten (AB_Sicherheitsziele etc. nicht im blauen Folien-Bereich) */}
+                    {(instructions?.abAnleitung || abFiles.length > 0) && (
+                      <Box>
+                        {instructions?.abAnleitung && (
+                          <Box sx={{ bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, border: '1px solid #ffe082', borderBottom: abFiles.length > 0 ? 'none' : undefined }}>
+                            <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+                              {instructions.abAnleitung.split('\n').filter(Boolean).map((line, i) => (
+                                <Box component="li" key={i} sx={{ mb: 0.75 }}>
+                                  {renderBoldText(line.replace(/^•\s*/, ''))}
+                                </Box>
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                        {abFiles.length > 0 && (
+                          <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
+                            {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
+                              const pdfFile = getPdfFromGroup(versions);
+                              const isPdfShared = pdfFile ? !!fileShares[`${pdfFile.path}:${lessonModalData.groupId}`] : false;
+                              const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                              return (
+                                <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
+                                  <ListItemIcon sx={{ minWidth: 28 }}>
+                                    <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
+                                  </ListItemIcon>
+                                  <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: '0.9rem' }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                    {sortedVersions.map(({ ext, file }) => (
+                                      <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
+                                        <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#f57c00', '&:hover': { bgcolor: 'action.hover' } }}>
+                                          {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
+                                        </IconButton>
+                                      </Tooltip>
+                                    ))}
+                                    {pdfFile && (
+                                      <FormControlLabel
+                                        control={
+                                          <Checkbox
+                                            size="small"
+                                            checked={isPdfShared}
+                                            onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                            sx={{ py: 0 }}
+                                          />
+                                        }
+                                        label={<Typography variant="caption">Freigeben (PDF)</Typography>}
+                                      />
+                                    )}
+                                  </Box>
+                                </ListItem>
+                              );
+                            })}
+                          </List>
+                        )}
+                      </Box>
+                    )}
+
+                    {!instructions && folienFiles.length === 0 && abFiles.length === 0 && (
+                      <Typography variant="body2" color="text.secondary">
+                        Keine Anweisungen oder Dateien für diese Stunde hinterlegt.
+                      </Typography>
+                    )}
+                  </Box>
+                );
+              })()}
+            </DialogContent>
+          </>
+        )}
+      </Dialog>
 
       {/* Dialog zum Senden von Nachrichten an Schüler */}
       <Dialog 
