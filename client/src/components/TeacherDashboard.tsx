@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import KACorrectionMode from './KACorrectionMode';
 import TeacherMessageBox from './TeacherMessageBox';
-import { FlashcardLearningModal } from './StudentDashboard';
+import { FlashcardLearningModal, LessonSharedInputBox } from './StudentDashboard';
 import { RIDDLES } from './riddles';
 import {
   Box,
@@ -287,7 +287,8 @@ import {
   Computer as ComputerIcon,
   Calculate as CalculateIcon,
   Functions as FunctionsIcon,
-  EmojiEmotions as EmojiEmotionsIcon
+  EmojiEmotions as EmojiEmotionsIcon,
+  OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -2638,6 +2639,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     groupId: string;
   } | null>(null);
   const [voraussetzungenGlossarOpen, setVoraussetzungenGlossarOpen] = useState(false);
+  const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -3116,6 +3118,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
 
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
+  // Freigabe „Gemeinsame Eingabe“ pro Gruppe: [groupId] = Liste der freigegebenen lessonPath
+  const [lessonSharedInputSharePaths, setLessonSharedInputSharePaths] = useState<{[groupId: string]: string[]}>({});
 
   // Mitarbeitsbewertung States
   const [participationModalOpen, setParticipationModalOpen] = useState(false);
@@ -3377,6 +3381,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       }
     }
   }, [currentLessonIndex, participationGroupId, lessonKeywordsMap, participations]);
+
+  // Beim Öffnen des Unterrichts-Modals Freigabe-Stand für die Gruppe laden (Dateien + gemeinsame Eingabe)
+  useEffect(() => {
+    if (lessonModalOpen && lessonModalData?.groupId) {
+      const gid = lessonModalData.groupId;
+      fetchFileSharesForGroup(gid);
+      fetch(`/api/learning-groups/${gid}/lesson-shared-input-shares`)
+        .then(res => res.ok ? res.json() : [])
+        .then((paths: string[]) => setLessonSharedInputSharePaths(prev => ({ ...prev, [gid]: paths })))
+        .catch(() => {});
+    }
+  }, [lessonModalOpen, lessonModalData?.groupId]);
 
   // Fokussiere das Betreff-Feld beim Öffnen des Nachrichten-Dialogs
   useEffect(() => {
@@ -4985,15 +5001,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // Öffne Whiteboard in neuem Tab
     window.open(`/whiteboard?groupId=${groupId}`, '_blank');
   };
-  // File Share Functions
+  // File Share Functions – einheitlicher Key aus normalisiertem Pfad (Forward-Slash) + groupId
+  const fileShareKey = (path: string, groupId: string) => `${(path || '').replace(/\\/g, '/').trim()}:${groupId}`;
   const fetchFileSharesForGroup = async (groupId: string) => {
     try {
       const response = await fetch(`/api/file-shares/group/${groupId}`);
       if (response.ok) {
         const data = await response.json();
         const shareMap: {[key: string]: boolean} = {};
-        data.filePaths.forEach((filePath: string) => {
-          shareMap[`${filePath}:${groupId}`] = true;
+        (data.filePaths || []).forEach((filePath: string) => {
+          shareMap[fileShareKey(filePath, groupId)] = true;
         });
         setFileShares(prev => ({ ...prev, ...shareMap }));
       }
@@ -5002,24 +5019,61 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     }
   };
   const toggleFileShare = async (filePath: string, groupId: string) => {
+    if (!filePath?.trim() || !groupId?.trim()) {
+      showSnackbar('Dateipfad oder Gruppe fehlt', 'error');
+      return;
+    }
+    const normalizedPath = filePath.replace(/\\/g, '/').trim();
+    const key = fileShareKey(normalizedPath, groupId);
+    const wasShared = !!fileShares[key];
+    // Optimistisches Update: Checkbox sofort umschalten
+    setFileShares(prev => ({ ...prev, [key]: !wasShared }));
     try {
       const response = await fetch('/api/file-shares/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filePath, groupId })
+        body: JSON.stringify({ filePath: normalizedPath, groupId })
       });
-      
+      const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        const data = await response.json();
-        const key = `${filePath}:${groupId}`;
         setFileShares(prev => ({ ...prev, [key]: data.shared }));
-        showSnackbar(data.message, 'success');
+        showSnackbar(data.message || (data.shared ? 'Datei freigegeben' : 'Freigabe entfernt'), 'success');
       } else {
-        showSnackbar('Fehler beim Ändern der Datei-Freigabe', 'error');
+        setFileShares(prev => ({ ...prev, [key]: wasShared }));
+        const msg = data.error || data.message || `Fehler (${response.status})`;
+        showSnackbar(msg, 'error');
       }
     } catch (error) {
+      setFileShares(prev => ({ ...prev, [key]: wasShared }));
       console.error('Error toggling file share:', error);
-      showSnackbar('Fehler beim Ändern der Datei-Freigabe', 'error');
+      showSnackbar('Fehler beim Ändern der Datei-Freigabe (Netzwerk?)', 'error');
+    }
+  };
+
+  const toggleLessonSharedInputShare = async (groupId: string, lessonPath: string) => {
+    if (!groupId?.trim() || !lessonPath?.trim()) return;
+    const paths = lessonSharedInputSharePaths[groupId] || [];
+    const wasShared = paths.includes(lessonPath);
+    setLessonSharedInputSharePaths(prev => ({
+      ...prev,
+      [groupId]: wasShared ? paths.filter(p => p !== lessonPath) : [...paths, lessonPath]
+    }));
+    try {
+      const res = await fetch(`/api/learning-groups/${groupId}/lesson-shared-input-share/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonPath })
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showSnackbar(data.shared ? 'Gemeinsame Eingabe für SuS freigegeben' : 'Freigabe entfernt', 'success');
+      } else {
+        setLessonSharedInputSharePaths(prev => ({ ...prev, [groupId]: paths }));
+        showSnackbar('Fehler beim Umschalten', 'error');
+      }
+    } catch {
+      setLessonSharedInputSharePaths(prev => ({ ...prev, [groupId]: paths }));
+      showSnackbar('Fehler (Netzwerk?)', 'error');
     }
   };
 
@@ -5052,7 +5106,77 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     materialliste?: string;
     anweisungen: string;
     abAnleitung?: string;
+    geheimtexte?: string;
   }> = {
+    '01': {
+      materialliste: `**Die 10 Lederbänder** mit den Geheimtexten, **die Kiste mit den Stöcken**, **Papierstreifen**.`,
+      anweisungen: `• Die zwei **Skytale**-Folien zeigen.
+• Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
+• **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
+• **Kiste mit Stöcken** öffnen, können benutzt werden.
+• Wer herausgefunden hat, was die Nachricht besagt, trägt sie hier ein.
+• Sortiert die entstandene Übersicht in Flinga gemeinsam.
+• Jetzt darf jeder einmal ausprobieren, eine eigene Nachricht zu **transpositionieren**: **A3-Papierstreifen** austeilen.
+• Denkt euch eine weitere Verschlüsselungsmethode aus, die das Prinzip der **Transposition** verwendet (**Gartenzaunmethode** … kurz anreißen: https://www.lehrerfortbildung-bw.de/u_matna-tech/imp/gym/bp2016/fb1/4_i4_iud/1_hintergrund/2_verlauf/03_skytale/)`,
+      abAnleitung: `• [Arbeitsblatt-Anleitung für Stunde 01 – bitte ergänzen]`,
+      geheimtexte: `Nachrichten Klartexte
+Skytale Verschlüsselung der Spartaner 25
+Die Lederbänder konnten unauffällig als Gürtel getragen werden. 20
+Der Durchmesser ist der Schlüssel 14
+General Lysander vereitelte einen persischen Angriff mit Hilfe der Skytale 35
+Entschlüssele den Geheimtext 35
+Wie gelangt der Schlüssel zum Empfänger? 20
+Griechisch für Stock 14
+Verschlüssele den Klartext 25
+Die Zeichen des Klartextes werden umsortiert 20
+Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so geheim ausgetauscht. 25`
+    },
+    '01 Einstieg': {
+      materialliste: `**Die 10 Lederbänder** mit den Geheimtexten, **die Kiste mit den Stöcken**, **Papierstreifen**.`,
+      anweisungen: `• Die zwei **Skytale**-Folien zeigen.
+• Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
+• **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
+• **Kiste mit Stöcken** öffnen, können benutzt werden.
+• Wer herausgefunden hat, was die Nachricht besagt, trägt sie hier ein.
+• Sortiert die entstandene Übersicht in Flinga gemeinsam.
+• Jetzt darf jeder einmal ausprobieren, eine eigene Nachricht zu **transpositionieren**: **A3-Papierstreifen** austeilen.
+• Denkt euch eine weitere Verschlüsselungsmethode aus, die das Prinzip der **Transposition** verwendet (**Gartenzaunmethode** … kurz anreißen: https://www.lehrerfortbildung-bw.de/u_matna-tech/imp/gym/bp2016/fb1/4_i4_iud/1_hintergrund/2_verlauf/03_skytale/)`,
+      abAnleitung: `• [Arbeitsblatt-Anleitung für Stunde 01 – bitte ergänzen]`,
+      geheimtexte: `Nachrichten Klartexte
+Skytale Verschlüsselung der Spartaner 25
+Die Lederbänder konnten unauffällig als Gürtel getragen werden. 20
+Der Durchmesser ist der Schlüssel 14
+General Lysander vereitelte einen persischen Angriff mit Hilfe der Skytale 35
+Entschlüssele den Geheimtext 35
+Wie gelangt der Schlüssel zum Empfänger? 20
+Griechisch für Stock 14
+Verschlüssele den Klartext 25
+Die Zeichen des Klartextes werden umsortiert 20
+Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so geheim ausgetauscht. 25`
+    },
+    '01 Skytale': {
+      materialliste: `**Die 10 Lederbänder** mit den Geheimtexten, **die Kiste mit den Stöcken**, **Papierstreifen**.`,
+      anweisungen: `• Die zwei **Skytale**-Folien zeigen.
+• Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
+• **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
+• **Kiste mit Stöcken** öffnen, können benutzt werden.
+• Wer herausgefunden hat, was die Nachricht besagt, trägt sie hier ein.
+• Sortiert die entstandene Übersicht in Flinga gemeinsam.
+• Jetzt darf jeder einmal ausprobieren, eine eigene Nachricht zu **transpositionieren**: **A3-Papierstreifen** austeilen.
+• Denkt euch eine weitere Verschlüsselungsmethode aus, die das Prinzip der **Transposition** verwendet (**Gartenzaunmethode** … kurz anreißen: https://www.lehrerfortbildung-bw.de/u_matna-tech/imp/gym/bp2016/fb1/4_i4_iud/1_hintergrund/2_verlauf/03_skytale/)`,
+      abAnleitung: `• [Arbeitsblatt-Anleitung für Stunde 01 – bitte ergänzen]`,
+      geheimtexte: `Nachrichten Klartexte
+Skytale Verschlüsselung der Spartaner 25
+Die Lederbänder konnten unauffällig als Gürtel getragen werden. 20
+Der Durchmesser ist der Schlüssel 14
+General Lysander vereitelte einen persischen Angriff mit Hilfe der Skytale 35
+Entschlüssele den Geheimtext 35
+Wie gelangt der Schlüssel zum Empfänger? 20
+Griechisch für Stock 14
+Verschlüssele den Klartext 25
+Die Zeichen des Klartextes werden umsortiert 20
+Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so geheim ausgetauscht. 25`
+    },
     '02 Sicherheitsziele': {
       voraussetzungen: `**Transpositionsverschlüsselung** bekannt, **Skytale** als Beispiel
 Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschlüsselung**) bekannt oder wird thematisiert`,
@@ -5101,16 +5225,41 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
-  const renderBoldText = (text: string) => {
+  const urlRegex = /(https?:\/\/[^\s)]+)/g;
+  const renderPartWithLinks = (part: string, keyPrefix: string) => {
+    const segments = part.split(urlRegex);
+    return segments.map((seg, j) => {
+      if (seg.startsWith('http://') || seg.startsWith('https://')) {
+        const url = seg.trim();
+        const short = url.length > 45 ? url.slice(0, 42) + '…' : url;
+        return (
+          <a
+            key={`${keyPrefix}-${j}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: '0.75rem', wordBreak: 'break-all', color: '#1565c0', textDecoration: 'none', borderBottom: '1px solid #90caf9' }}
+          >
+            {short}
+          </a>
+        );
+      }
+      return <span key={`${keyPrefix}-${j}`}>{seg}</span>;
+    });
+  };
+  const renderBoldText = (text: string, boldColor?: string) => {
+    const strongStyle = boldColor ? { color: boldColor } : undefined;
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) => {
-      if (!part.startsWith('**') || !part.endsWith('**')) return <span key={i}>{part}</span>;
+      if (!part.startsWith('**') || !part.endsWith('**')) {
+        return <span key={i}>{renderPartWithLinks(part, `p${i}`)}</span>;
+      }
       const term = part.slice(2, -2);
       const glossar = FACHBEGRIFFE_GLOSSAR[term];
       if (!glossar) {
-        if (term === 'fünf') return <strong key={i} style={{ color: '#2e7d32' }}>{term}</strong>;
-        if (term === 'Gruppen') return <strong key={i} style={{ color: '#e65100' }}>{term}</strong>;
-        return <strong key={i}>{term}</strong>;
+        if (term === 'fünf') return <strong key={i} style={{ color: boldColor ?? '#2e7d32' }}>{term}</strong>;
+        if (term === 'Gruppen') return <strong key={i} style={{ color: boldColor ?? '#e65100' }}>{term}</strong>;
+        return <strong key={i} style={strongStyle}>{term}</strong>;
       }
       return (
         <Tooltip
@@ -5126,8 +5275,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           placement="top"
           arrow
         >
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, cursor: 'help', borderBottom: '1px dotted currentColor' }}>
-            <strong>{term}</strong>
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, cursor: 'help', borderBottom: '1px dotted currentColor', ...(boldColor && { color: boldColor }) }}>
+            <strong style={strongStyle}>{term}</strong>
             <InfoIcon sx={{ fontSize: 14, opacity: 0.8 }} />
           </Box>
         </Tooltip>
@@ -5194,10 +5343,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <Box key={`group-${group.baseName}-${level}`} sx={{ mb: 0.7 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
             {pdfFile && (
-              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }} title={fileShares[`${pdfFile.path}:${groupId}`] ? 'Für Schüler freigegeben' : 'Nur PDF freigeben'}>
+              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }} title={fileShares[fileShareKey(pdfFile.path, groupId)] ? 'Für Schüler freigegeben' : 'Nur PDF freigeben'}>
                 <input
                   type="checkbox"
-                  checked={!!fileShares[`${pdfFile.path}:${groupId}`]}
+                  checked={!!fileShares[fileShareKey(pdfFile.path, groupId)]}
                   onChange={() => toggleFileShare(pdfFile.path, groupId)}
                   onClick={(e) => e.stopPropagation()}
                   style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#4caf50' }}
@@ -5334,11 +5483,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     e.stopPropagation();
                     toggleFileShare(item.path, groupId);
                   }}
-                  title={fileShares[`${item.path}:${groupId}`] ? 'Für Schüler freigegeben (klicken zum Deaktivieren)' : 'Nicht für Schüler sichtbar (klicken zum Freigeben)'}
+                  title={fileShares[fileShareKey(item.path, groupId)] ? 'Für Schüler freigegeben (klicken zum Deaktivieren)' : 'Nicht für Schüler sichtbar (klicken zum Freigeben)'}
                 >
                   <input
                     type="checkbox"
-                    checked={!!fileShares[`${item.path}:${groupId}`]}
+                    checked={!!fileShares[fileShareKey(item.path, groupId)]}
                     onChange={(e) => {
                       e.stopPropagation();
                       toggleFileShare(item.path, groupId);
@@ -5374,7 +5523,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             onClick={() => {
               if (item.type === 'file') {
                 handleFileClick(item);
-              } else if (item.type === 'directory' && item.children && item.children.length > 0) {
+              } else if (item.type === 'directory') {
                 setLessonModalData({
                   lessonName: item.name,
                   lessonPath: item.path || `${folderPath}/${item.name}`,
@@ -15311,8 +15460,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       >
         {lessonModalData && (
           <>
-            <DialogTitle sx={{ borderBottom: '1px solid #e0e0e0', pb: 1.5, pr: 5, position: 'relative' }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <DialogTitle component="div" sx={{ borderBottom: '1px solid #e0e0e0', pb: 1.5, pr: 5, position: 'relative' }}>
+              <Typography variant="h6" component="span" sx={{ fontWeight: 600 }}>
                 {lessonModalData.lessonName}
               </Typography>
               <IconButton
@@ -15345,76 +15494,80 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
                 return (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {/* Voraussetzungen – blaue Box inkl. Fachbegriffe mit Erklärung und Beispiel */}
-                    {instructions?.voraussetzungen && (
-                      <Box sx={{ pt: 1.5 }}>
-                        <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, border: '1px solid #90caf9', borderBottom: 'none' }}>
-                          <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
-                            {instructions.voraussetzungen.split('\n').filter(Boolean).map((line, i) => (
-                              <Box component="li" key={i} sx={{ mb: 0.75 }}>
-                                {renderBoldText(line.replace(/^•\s*/, ''))}
-                              </Box>
-                            ))}
-                          </Box>
-                          {(() => {
-                            const terms = [...instructions.voraussetzungen.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1]).filter((t, i, a) => a.indexOf(t) === i);
-                            const withGlossar = terms.filter(t => FACHBEGRIFFE_GLOSSAR[t]);
-                            if (withGlossar.length === 0) return null;
-                            return (
-                              <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #90caf9' }}>
-                                <Box
-                                  onClick={() => setVoraussetzungenGlossarOpen(v => !v)}
-                                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
-                                >
-                                  {voraussetzungenGlossarOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#1565c0' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#1565c0' }} />}
-                                  <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>
-                                    Fachbegriffe (Erklärungen & Beispiele)
-                                  </Typography>
+                    {/* Voraussetzungen – blaue Box immer da, Inhalt nur bei echten Voraussetzungen (nicht bei "Keine fachlichen Voraussetzungen.") */}
+                    <Box sx={{ pt: 1.5 }}>
+                      <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, border: '1px solid #90caf9', borderBottom: 'none' }}>
+                        {instructions?.voraussetzungen?.trim() && instructions.voraussetzungen.trim() !== 'Keine fachlichen Voraussetzungen.' && (
+                          <>
+                            <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+                              {instructions.voraussetzungen.split('\n').filter(Boolean).map((line, i) => (
+                                <Box component="li" key={i} sx={{ mb: 0.75 }}>
+                                  {renderBoldText(line.replace(/^•\s*/, ''))}
                                 </Box>
-                                <Collapse in={voraussetzungenGlossarOpen}>
-                                  <Box sx={{ mt: 1 }}>
-                                    {withGlossar.map(term => {
-                                      const g = FACHBEGRIFFE_GLOSSAR[term];
-                                      if (!g) return null;
-                                      return (
-                                        <Box key={term} sx={{ mb: 1.25 }}>
-                                          <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>{term}</Typography>
-                                          <Box sx={{ mt: 0.5, pl: 1, borderLeft: '3px solid #90caf9' }}>
-                                            <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block', mb: 0.25 }}>
-                                              <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Erklärung:</Box> {g.erklärung}
-                                            </Typography>
-                                            <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block' }}>
-                                              <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Beispiel:</Box> {g.beispiel}
-                                            </Typography>
-                                          </Box>
-                                        </Box>
-                                      );
-                                    })}
+                              ))}
+                            </Box>
+                            {(() => {
+                              const terms = [...instructions.voraussetzungen.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1]).filter((t, i, a) => a.indexOf(t) === i);
+                              const withGlossar = terms.filter(t => FACHBEGRIFFE_GLOSSAR[t]);
+                              if (withGlossar.length === 0) return null;
+                              return (
+                                <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #90caf9' }}>
+                                  <Box
+                                    onClick={() => setVoraussetzungenGlossarOpen(v => !v)}
+                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
+                                  >
+                                    {voraussetzungenGlossarOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#1565c0' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#1565c0' }} />}
+                                    <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>
+                                      Fachbegriffe (Erklärungen & Beispiele)
+                                    </Typography>
                                   </Box>
-                                </Collapse>
-                              </Box>
-                            );
-                          })()}
-                        </Box>
+                                  <Collapse in={voraussetzungenGlossarOpen}>
+                                    <Box sx={{ mt: 1 }}>
+                                      {withGlossar.map(term => {
+                                        const g = FACHBEGRIFFE_GLOSSAR[term];
+                                        if (!g) return null;
+                                        return (
+                                          <Box key={term} sx={{ mb: 1.25 }}>
+                                            <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>{term}</Typography>
+                                            <Box sx={{ mt: 0.5, pl: 1, borderLeft: '3px solid #90caf9' }}>
+                                              <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block', mb: 0.25 }}>
+                                                <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Erklärung:</Box> {g.erklärung}
+                                              </Typography>
+                                              <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block' }}>
+                                                <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Beispiel:</Box> {g.beispiel}
+                                              </Typography>
+                                            </Box>
+                                          </Box>
+                                        );
+                                      })}
+                                    </Box>
+                                  </Collapse>
+                                </Box>
+                              );
+                            })()}
+                          </>
+                        )}
                       </Box>
-                    )}
+                    </Box>
 
-                    {/* Material – roter Kasten, bei Zettel kleines Zettel-Bild (kein Icon) */}
+                    {/* Material – roter Kasten; Zettel-SVG nur bei Zeilen, die "Zettel" enthalten */}
                     {instructions?.materialliste && (
                       <Box>
                         <Box sx={{ bgcolor: '#ffebee', borderRadius: 0, p: 1.5, border: '1px solid #ef9a9a', borderBottom: 'none' }}>
                           <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none', color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
                             {instructions.materialliste.split('\n').filter(Boolean).map((line, i) => (
                               <Box component="li" key={i} sx={{ mb: 0.75, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Box component="span" sx={{ flexShrink: 0, lineHeight: 0 }} title="Zettel">
-                                  <svg width="22" height="28" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" strokeWidth="0.8"/>
-                                    <line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" strokeWidth="0.6"/>
-                                    <line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" strokeWidth="0.6"/>
-                                    <line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" strokeWidth="0.6"/>
-                                  </svg>
-                                </Box>
-                                {renderBoldText(line.replace(/^•\s*/, ''))}
+                                {/Zettel/i.test(line) && (
+                                  <Box component="span" sx={{ flexShrink: 0, lineHeight: 0 }} title="Zettel">
+                                    <svg width="22" height="28" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" strokeWidth="0.8"/>
+                                      <line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" strokeWidth="0.6"/>
+                                      <line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" strokeWidth="0.6"/>
+                                      <line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" strokeWidth="0.6"/>
+                                    </svg>
+                                  </Box>
+                                )}
+                                {renderBoldText(line.replace(/^•\s*/, ''), '#ed6c02')}
                               </Box>
                             ))}
                           </Box>
@@ -15422,18 +15575,72 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     )}
 
-                    {/* Lehrer-Anweisungen (ohne Überschrift), AB nur unten */}
+                    {/* Lehrer-Anweisungen (ohne Überschrift), AB nur unten – Materialbegriffe (**) orange */}
                     {instructions?.anweisungen && (
                       <Box>
                         <Box sx={{ bgcolor: '#f1f8e9', borderRadius: 0, p: 2, border: '1px solid #c5e1a5', borderBottom: 'none' }}>
                           <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.85 }}>
                             {instructions.anweisungen.split('\n').filter(Boolean).map((line, i) => (
                               <Box component="li" key={i} sx={{ mb: 1.25 }}>
-                                {renderBoldText(line.replace(/^•\s*/, ''))}
+                                {renderBoldText(line.replace(/^•\s*/, ''), '#ed6c02')}
                               </Box>
                             ))}
                           </Box>
                         </Box>
+                      </Box>
+                    )}
+
+                    {/* Die Nachrichten: Klartexte – ausklappbar (Inhalt optional) */}
+                    {instructions && 'geheimtexte' in instructions && (
+                      <Box sx={{ pt: 0 }}>
+                        <Box sx={{ bgcolor: '#fafafa', borderRadius: 0, border: '1px solid #e0e0e0', borderBottom: 'none' }}>
+                          <Box
+                            onClick={() => setGeheimtexteOpen(v => !v)}
+                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', p: 1.5, '&:hover': { bgcolor: '#f5f5f5' } }}
+                          >
+                            {geheimtexteOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#616161' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#616161' }} />}
+                            <Typography component="span" sx={{ fontWeight: 700, color: '#424242', fontSize: '1.05rem' }}>
+                              Die Nachrichten: Klartexte
+                            </Typography>
+                          </Box>
+                          <Collapse in={geheimtexteOpen}>
+                            <Box sx={{ px: 1.5, pb: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.95rem', color: '#333' }}>
+                              {instructions.geheimtexte?.trim() || ''}
+                            </Box>
+                          </Collapse>
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Gemeinsame Übersicht – Leinwand + Freigabe + Präsentieren */}
+                    {lessonModalData && (
+                      <Box sx={{ pt: 0.75, pb: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 0.5 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32' }}>
+                            Gemeinsame Übersicht
+                          </Typography>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={(lessonSharedInputSharePaths[lessonModalData.groupId] || []).includes(lessonModalData.lessonPath)}
+                                onChange={() => toggleLessonSharedInputShare(lessonModalData.groupId, lessonModalData.lessonPath)}
+                                sx={{ py: 0, color: '#2e7d32', '&.Mui-checked': { color: '#2e7d32' } }}
+                              />
+                            }
+                            label={<Typography variant="caption" sx={{ color: '#333' }}>Freigeben</Typography>}
+                          />
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<OpenInNewIcon />}
+                            onClick={() => window.open(`/shared-overview?groupId=${encodeURIComponent(lessonModalData.groupId)}&lessonPath=${encodeURIComponent(lessonModalData.lessonPath)}`, '_blank')}
+                            sx={{ ml: 0.5, color: '#2e7d32', borderColor: '#2e7d32', '&:hover': { borderColor: '#1b5e20', bgcolor: 'rgba(46, 125, 50, 0.08)' } }}
+                          >
+                            Präsentieren
+                          </Button>
+                        </Box>
+                        <LessonSharedInputBox groupId={lessonModalData.groupId} lessonPath={lessonModalData.lessonPath} />
                       </Box>
                     )}
 
@@ -15446,7 +15653,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         <List dense sx={{ bgcolor: '#f5f5f5', borderRadius: 0, py: 0, border: '1px solid #e3f2fd', borderTop: 'none' }}>
                           {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
                             const pdfFile = getPdfFromGroup(versions);
-                            const isPdfShared = pdfFile ? !!fileShares[`${pdfFile.path}:${lessonModalData.groupId}`] : false;
+                            const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
                             const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
                             return (
                               <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
@@ -15483,25 +15690,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     )}
 
-                    {/* Arbeitsblatt (AB) – nur unten (AB_Sicherheitsziele etc. nicht im blauen Folien-Bereich) */}
-                    {(instructions?.abAnleitung || abFiles.length > 0) && (
+                    {/* Arbeitsblatt (AB) – Kasten nur anzeigen, wenn AB-Dateien existieren; sonst leer lassen */}
+                    {abFiles.length > 0 && (
                       <Box>
                         {instructions?.abAnleitung && (
-                          <Box sx={{ bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, border: '1px solid #ffe082', borderBottom: abFiles.length > 0 ? 'none' : undefined }}>
+                          <Box sx={{ bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, border: '1px solid #ffe082', borderBottom: 'none' }}>
                             <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
                               {instructions.abAnleitung.split('\n').filter(Boolean).map((line, i) => (
                                 <Box component="li" key={i} sx={{ mb: 0.75 }}>
-                                  {renderBoldText(line.replace(/^•\s*/, ''))}
+                                  {renderBoldText(line.replace(/^•\s*/, ''), '#ed6c02')}
                                 </Box>
                               ))}
                             </Box>
                           </Box>
                         )}
-                        {abFiles.length > 0 && (
-                          <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
+                        <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
                             {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
                               const pdfFile = getPdfFromGroup(versions);
-                              const isPdfShared = pdfFile ? !!fileShares[`${pdfFile.path}:${lessonModalData.groupId}`] : false;
+                              const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
                               const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
                               return (
                                 <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
@@ -15534,8 +15740,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </ListItem>
                               );
                             })}
-                          </List>
-                        )}
+                        </List>
                       </Box>
                     )}
 

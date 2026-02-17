@@ -101,8 +101,32 @@ model LearningGroup {
   participations       Participation[]
   epoGrades            ParticipationPeriodGrade[]
   lessonKeywords       LessonKeyword[]
+  lessonSharedInputs   LessonSharedInput[]
+  lessonSharedInputShares LessonSharedInputShare[]
   teacher              User                       @relation("TeacherGroups", fields: [teacherId], references: [id])
   students             User[]                     @relation("StudentGroups")
+}
+
+model LessonSharedInput {
+  id         String        @id @default(uuid())
+  groupId    String
+  lessonPath String
+  content    String        @default("")
+  updatedAt  DateTime      @updatedAt
+  group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@unique([groupId, lessonPath])
+  @@index([groupId])
+}
+
+model LessonSharedInputShare {
+  id         String        @id @default(uuid())
+  groupId    String
+  lessonPath String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@unique([groupId, lessonPath])
+  @@index([groupId])
 }
 
 model Subject {

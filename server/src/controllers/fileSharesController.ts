@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const normalizeFilePath = (p: string) => (p || '').replace(/\\/g, '/').trim();
+
 // Toggle file share for a learning group
 export const toggleFileShare = async (req: Request, res: Response) => {
   try {
@@ -12,11 +14,13 @@ export const toggleFileShare = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Dateipfad und Gruppen-ID sind erforderlich' });
     }
 
+    const normalizedPath = normalizeFilePath(filePath);
+
     // Check if the share already exists
     const existingShare = await prisma.fileShare.findUnique({
       where: {
         filePath_groupId: {
-          filePath,
+          filePath: normalizedPath,
           groupId
         }
       }
@@ -34,15 +38,16 @@ export const toggleFileShare = async (req: Request, res: Response) => {
       // Create new share
       const newShare = await prisma.fileShare.create({
         data: {
-          filePath,
+          filePath: normalizedPath,
           groupId
         }
       });
       return res.json({ shared: true, message: 'Datei freigegeben', share: newShare });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error toggling file share:', error);
-    res.status(500).json({ error: 'Serverfehler beim Ändern der Datei-Freigabe' });
+    const message = error?.message || error?.code || 'Serverfehler beim Ändern der Datei-Freigabe';
+    res.status(500).json({ error: message });
   }
 };
 
@@ -61,7 +66,7 @@ export const getSharedFilesForGroup = async (req: Request, res: Response) => {
       }
     });
 
-    const filePaths = shares.map(share => share.filePath);
+    const filePaths = shares.map(share => normalizeFilePath(share.filePath));
     
     res.json({ groupId, filePaths, shares });
   } catch (error) {

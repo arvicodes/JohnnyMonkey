@@ -263,6 +263,84 @@ router.get('/:groupId/assignments', async (req: Request, res: Response) => {
   }
 });
 
+// Gemeinsames Eingabefeld pro Gruppe + Stunde (für SuS sichtbar, Lehrkraft kann anzeigen)
+router.get('/:groupId/lesson-shared-input', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const lessonPath = typeof req.query.lessonPath === 'string' ? req.query.lessonPath : '';
+    if (!groupId || !lessonPath) {
+      return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
+    }
+    const row = await prisma.lessonSharedInput.findUnique({
+      where: { groupId_lessonPath: { groupId, lessonPath } }
+    });
+    return res.json({ content: row?.content ?? '', updatedAt: row?.updatedAt ?? null });
+  } catch (error: any) {
+    console.error('Error fetching lesson shared input:', error);
+    res.status(500).json({ error: error?.message || 'Serverfehler' });
+  }
+});
+
+router.put('/:groupId/lesson-shared-input', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const { lessonPath, content } = req.body;
+    if (!groupId || lessonPath == null || lessonPath === '') {
+      return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
+    }
+    const updated = await prisma.lessonSharedInput.upsert({
+      where: { groupId_lessonPath: { groupId, lessonPath: String(lessonPath) } },
+      create: { groupId, lessonPath: String(lessonPath), content: String(content ?? '') },
+      update: { content: String(content ?? ''), updatedAt: new Date() }
+    });
+    return res.json({ content: updated.content, updatedAt: updated.updatedAt });
+  } catch (error: any) {
+    console.error('Error updating lesson shared input:', error);
+    res.status(500).json({ error: error?.message || 'Serverfehler' });
+  }
+});
+
+// Freigabe für gemeinsames Eingabefeld (Toggle)
+router.post('/:groupId/lesson-shared-input-share/toggle', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const { lessonPath } = req.body;
+    if (!groupId || !lessonPath) {
+      return res.status(400).json({ error: 'groupId und lessonPath sind erforderlich' });
+    }
+    const existing = await prisma.lessonSharedInputShare.findUnique({
+      where: { groupId_lessonPath: { groupId, lessonPath: String(lessonPath) } }
+    });
+    if (existing) {
+      await prisma.lessonSharedInputShare.delete({ where: { id: existing.id } });
+      return res.json({ shared: false });
+    } else {
+      await prisma.lessonSharedInputShare.create({
+        data: { groupId, lessonPath: String(lessonPath) }
+      });
+      return res.json({ shared: true });
+    }
+  } catch (error: any) {
+    console.error('Error toggling lesson shared input share:', error);
+    res.status(500).json({ error: error?.message || 'Serverfehler' });
+  }
+});
+
+// Get all shared lesson paths for a group
+router.get('/:groupId/lesson-shared-input-shares', async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const shares = await prisma.lessonSharedInputShare.findMany({
+      where: { groupId },
+      select: { lessonPath: true }
+    });
+    return res.json(shares.map(s => s.lessonPath));
+  } catch (error: any) {
+    console.error('Error fetching lesson shared input shares:', error);
+    res.status(500).json({ error: error?.message || 'Serverfehler' });
+  }
+});
+
 // Get a single learning group by ID (MUST BE LAST among GET routes with :id)
 router.get('/:id', async (req: Request, res: Response) => {
   try {

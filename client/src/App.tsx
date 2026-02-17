@@ -15,6 +15,7 @@ import JohnnyDemoPage from './pages/JohnnyDemoPage';
 import FlashcardStudyPage from './pages/FlashcardStudyPage';
 import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
 import AdventCalendarPage from './pages/AdventCalendarPage';
+import SharedOverviewPage from './pages/SharedOverviewPage';
 
 import { Snackbar, Alert } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -254,6 +255,7 @@ function AppContent() {
         <Route path="/flashcard-study" element={<FlashcardStudyPage />} />
         <Route path="/johnny" element={<JohnnyNavigationPage />} />
         <Route path="/advent-calendar" element={<AdventCalendarPage />} />
+        <Route path="/shared-overview" element={<SharedOverviewPage />} />
 
       </Routes>
       

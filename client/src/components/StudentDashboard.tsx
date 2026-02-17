@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -21,8 +21,12 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Collapse,
   Popover,
-  TextField
+  TextField,
+  Select,
+  MenuItem,
+  FormControl
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -34,8 +38,24 @@ import {
   ExpandLess as ExpandLessIcon,
   RecordVoiceOver as ParticipationIcon,
   HelpOutline as HelpIcon,
-  Games as GamesIcon
+  Games as GamesIcon,
+  DragIndicator as DragIndicatorIcon,
+  Add as AddIcon,
+  Palette as PaletteIcon,
+  FormatBold as FormatBoldIcon,
+  FormatItalic as FormatItalicIcon,
+  FormatUnderlined as FormatUnderlinedIcon,
+  Link as LinkIcon
 } from '@mui/icons-material';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  useDraggable,
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
 import InboxModal from './InboxModal';
@@ -48,6 +68,506 @@ import { RIDDLES, Riddle } from './riddles';
  */
 const isCorrectionFile = (fileName: string): boolean => {
   return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
+};
+
+export type SharedInputItem = {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  fontSize?: 'small' | 'normal' | 'large';
+};
+export type SharedInputConnection = { fromId: string; toId: string };
+const CANVAS_PADDING = 12;
+const defaultPosition = (index: number) => ({ x: CANVAS_PADDING + (index % 3) * 100, y: CANVAS_PADDING + Math.floor(index / 3) * 52 });
+
+export const SHARED_INPUT_CARD_COLORS = [
+  '#ffffff', '#fff9c4', '#c8e6c9', '#bbdefb', '#f8bbd0', '#e1bee7', '#ffccbc', '#d7ccc8'
+];
+
+const FONT_SIZES = { small: '0.7rem', normal: '0.8rem', large: '1rem' } as const;
+
+function parseItem(x: any, i: number): SharedInputItem {
+  const base = x && typeof x.id === 'string' && typeof x.text === 'string'
+    ? { id: x.id, text: x.text, x: typeof x.x === 'number' ? x.x : defaultPosition(i).x, y: typeof x.y === 'number' ? x.y : defaultPosition(i).y }
+    : { id: `m-${i}`, text: String(x?.text ?? ''), ...defaultPosition(i) };
+  return {
+    ...base,
+    color: typeof x?.color === 'string' ? x.color : undefined,
+    bold: !!x?.bold,
+    italic: !!x?.italic,
+    underline: !!x?.underline,
+    fontSize: x?.fontSize === 'small' || x?.fontSize === 'normal' || x?.fontSize === 'large' ? x.fontSize : undefined,
+  };
+}
+
+export function parseSharedContent(raw: string): { items: SharedInputItem[]; connections: SharedInputConnection[] } {
+  if (!raw?.trim()) return { items: [], connections: [] };
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const items = parsed.map((x: any, i: number) => parseItem(x, i)).filter((x: SharedInputItem) => x.text.trim() !== '');
+      return { items, connections: [] };
+    }
+    if (parsed && Array.isArray(parsed.items)) {
+      const items = parsed.items.map((x: any, i: number) => parseItem(x, i)).filter((x: SharedInputItem) => x.text.trim() !== '');
+      const connections: SharedInputConnection[] = Array.isArray(parsed.connections)
+        ? parsed.connections.filter((c: any) => c && typeof c.fromId === 'string' && typeof c.toId === 'string')
+        : [];
+      return { items, connections };
+    }
+  } catch {
+    const lines = raw.split(/\n/).filter(Boolean);
+    const items = lines.map((line, i) => ({ ...parseItem({ text: line.trim() }, i), text: line.trim() }));
+    return { items, connections: [] };
+  }
+  return { items: [], connections: [] };
+}
+
+const CARD_CENTER_OFFSET_X = 110;
+const CARD_CENTER_OFFSET_Y = 25;
+
+const DraggableCanvasCard: React.FC<{
+  item: SharedInputItem;
+  otherItems: SharedInputItem[];
+  onTextChange: (id: string, text: string) => void;
+  onColorChange: (id: string, color: string) => void;
+  onFormatChange: (id: string, format: Partial<Pick<SharedInputItem, 'bold' | 'italic' | 'underline' | 'fontSize'>>) => void;
+  onConnect: (fromId: string, toId: string) => void;
+}> = ({ item, otherItems, onTextChange, onColorChange, onFormatChange, onConnect }) => {
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [selectOpen, setSelectOpen] = useState(false);
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id });
+  const style = transform ? { transform: CSS.Translate.toString(transform), zIndex: isDragging ? 1000 : 1 } : { zIndex: isDragging ? 1000 : 1 };
+  const bg = item.color || '#fff';
+  const fontSize = FONT_SIZES[item.fontSize || 'normal'];
+  const targets = otherItems.filter((o) => o.id !== item.id);
+  return (
+    <Box
+      ref={setNodeRef}
+      style={{ position: 'absolute', left: item.x, top: item.y, minWidth: 100, maxWidth: 220, ...style }}
+      sx={{
+        boxShadow: isDragging ? 4 : 1,
+        borderRadius: 2,
+        border: '1px solid #81c784',
+        bgcolor: bg,
+        p: 0.75,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        touchAction: 'none',
+        opacity: isDragging ? 0.95 : 1,
+        '&:hover': { boxShadow: 2 },
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 2,
+          right: 2,
+          zIndex: 10,
+          pointerEvents: 'auto',
+        }}
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+      >
+        <Tooltip title="Einstellungen">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (menuAnchor) {
+                setMenuAnchor(null);
+              } else {
+                setMenuAnchor(e.currentTarget);
+              }
+            }}
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            sx={{ p: 0.2, minWidth: 20, width: 20, height: 20, color: '#666', pointerEvents: 'auto', zIndex: 11 }}
+            aria-label="Einstellungen"
+          >
+            <EditIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+      <TextField
+        size="small"
+        value={item.text}
+        onChange={(e) => onTextChange(item.id, e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        placeholder="Text …"
+        fullWidth
+        multiline
+        minRows={1}
+        maxRows={10}
+        variant="standard"
+        InputProps={{
+          disableUnderline: true,
+          sx: {
+            fontSize,
+            fontWeight: item.bold ? 700 : 400,
+            fontStyle: item.italic ? 'italic' : 'normal',
+            textDecoration: item.underline ? 'underline' : 'none',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          },
+        }}
+        sx={{ minWidth: 80, pr: 1.5 }}
+      />
+      <Popover
+        open={!!menuAnchor}
+        anchorEl={menuAnchor}
+        onClose={() => { if (!selectOpen) setMenuAnchor(null); }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        disableRestoreFocus
+        sx={{ zIndex: 2000 }}
+      >
+        <Box sx={{ p: 1.5, minWidth: 200 }} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+          {/* Schriftformatierung */}
+          <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>Schriftformatierung</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1.5, flexWrap: 'wrap' }}>
+            <Tooltip title="Fett">
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { bold: !item.bold }); }} sx={{ p: 0.5, color: item.bold ? '#1976d2' : '#666', border: item.bold ? '1px solid #1976d2' : '1px solid #ddd', minWidth: 32, width: 32, height: 32 }}>
+                <FormatBoldIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Kursiv">
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { italic: !item.italic }); }} sx={{ p: 0.5, color: item.italic ? '#1976d2' : '#666', border: item.italic ? '1px solid #1976d2' : '1px solid #ddd', minWidth: 32, width: 32, height: 32 }}>
+                <FormatItalicIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Unterstrichen">
+              <IconButton size="small" onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { underline: !item.underline }); }} sx={{ p: 0.5, color: item.underline ? '#1976d2' : '#666', border: item.underline ? '1px solid #1976d2' : '1px solid #ddd', minWidth: 32, width: 32, height: 32 }}>
+                <FormatUnderlinedIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <FormControl size="small" sx={{ minWidth: 90, '& .MuiInputBase-root': { fontSize: '0.8rem', height: 32 } }}>
+              <Select
+                value={item.fontSize || 'normal'}
+                open={selectOpen}
+                onOpen={() => setSelectOpen(true)}
+                onClose={() => setSelectOpen(false)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  const value = e.target.value as 'small' | 'normal' | 'large';
+                  onFormatChange(item.id, { fontSize: value });
+                  setSelectOpen(false);
+                }}
+                variant="outlined"
+                sx={{ fontSize: '0.8rem', height: 32 }}
+                onClick={(e) => { e.stopPropagation(); setSelectOpen(true); }}
+                MenuProps={{
+                  onClick: (e) => e.stopPropagation(),
+                  onPointerDown: (e) => e.stopPropagation(),
+                  disableAutoFocusItem: true,
+                  disableScrollLock: true,
+                }}
+              >
+                <MenuItem value="small" sx={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { fontSize: 'small' }); setSelectOpen(false); }}>Klein</MenuItem>
+                <MenuItem value="normal" sx={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { fontSize: 'normal' }); setSelectOpen(false); }}>Normal</MenuItem>
+                <MenuItem value="large" sx={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { fontSize: 'large' }); setSelectOpen(false); }}>Groß</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          
+          {/* Farbe */}
+          <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>Farbe</Typography>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1.5 }}>
+            {SHARED_INPUT_CARD_COLORS.map((c) => (
+              <Box key={c} onClick={(e) => { e.stopPropagation(); onColorChange(item.id, c); }} sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: c, border: c === '#ffffff' ? '1px solid #ccc' : 'none', cursor: 'pointer', '&:hover': { opacity: 0.9, transform: 'scale(1.15)' } }} />
+            ))}
+          </Box>
+          
+          {/* Verbinden */}
+          <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>Verbinden mit</Typography>
+          <Box sx={{ maxHeight: 120, overflow: 'auto' }}>
+            {targets.length === 0 ? (
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>Kein anderer Kasten.</Typography>
+            ) : (
+              targets.map((t) => (
+                <Box key={t.id} onClick={(e) => { e.stopPropagation(); onConnect(item.id, t.id); setMenuAnchor(null); }} sx={{ py: 0.4, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }, borderRadius: 0.5, px: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }} noWrap>{t.text || '(leer)'}</Typography>
+                </Box>
+              ))
+            )}
+          </Box>
+        </Box>
+      </Popover>
+    </Box>
+  );
+};
+
+/** Gemeinsame Leinwand: Einträge hinzufügen (+), frei auf der Fläche ziehen. fullScreen = für Präsentations-Tab (füllt Fenster). */
+export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: string; fullScreen?: boolean }> = ({ groupId, lessonPath, fullScreen }) => {
+  const [items, setItems] = useState<SharedInputItem[]>([]);
+  const [connections, setConnections] = useState<SharedInputConnection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newText, setNewText] = useState('');
+  const [emptyAddHint, setEmptyAddHint] = useState(false);
+  const newTextRef = useRef('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const saveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => { newTextRef.current = newText; }, [newText]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/learning-groups/${groupId}/lesson-shared-input?lessonPath=${encodeURIComponent(lessonPath)}`)
+      .then((res) => res.ok ? res.json() : { content: '' })
+      .then((data) => {
+        if (!cancelled) {
+          const { items: parsedItems, connections: parsedConnections } = parseSharedContent(data.content ?? '');
+          setItems(parsedItems);
+          setConnections(parsedConnections);
+        }
+      })
+      .catch(() => { if (!cancelled) { setItems([]); setConnections([]); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [groupId, lessonPath]);
+
+  const save = useCallback((payloadItems: SharedInputItem[], payloadConnections: SharedInputConnection[]) => {
+    fetch(`/api/learning-groups/${groupId}/lesson-shared-input`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lessonPath, content: JSON.stringify({ items: payloadItems, connections: payloadConnections }) })
+    }).catch(() => {});
+  }, [groupId, lessonPath]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (saveRef.current) clearTimeout(saveRef.current);
+    saveRef.current = setTimeout(() => save(items, connections), 600);
+    return () => { if (saveRef.current) clearTimeout(saveRef.current); };
+  }, [items, connections, loading, save]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, delta } = event;
+    if (!delta) return;
+    setItems((prev) =>
+      prev.map((p) =>
+        p.id === active.id
+          ? { ...p, x: Math.max(0, p.x + delta.x), y: Math.max(0, p.y + delta.y) }
+          : p
+      )
+    );
+  };
+
+  const updateItem = (id: string, text: string) => {
+    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, text } : p)));
+  };
+
+  const updateItemColor = (id: string, color: string) => {
+    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, color } : p)));
+  };
+
+  const updateItemFormat = (id: string, format: Partial<Pick<SharedInputItem, 'bold' | 'italic' | 'fontSize'>>) => {
+    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...format } : p)));
+  };
+
+  const addConnection = (fromId: string, toId: string) => {
+    const key = [fromId, toId].sort().join('-');
+    setConnections((prev) => {
+      const exists = prev.some((c) => [c.fromId, c.toId].sort().join('-') === key);
+      if (exists) return prev;
+      return [...prev, { fromId, toId }];
+    });
+  };
+
+  const removeConnection = (fromId: string, toId: string) => {
+    setConnections((prev) => prev.filter((c) => !(c.fromId === fromId && c.toId === toId) && !(c.fromId === toId && c.toId === fromId)));
+  };
+
+  const addItem = useCallback(() => {
+    const t = newTextRef.current.trim();
+    if (!t) {
+      setEmptyAddHint(true);
+      setTimeout(() => setEmptyAddHint(false), 2500);
+      inputRef.current?.focus();
+      return;
+    }
+    setItems((prev) => {
+      const pos = defaultPosition(prev.length);
+      return [...prev, { id: `n-${Date.now()}-${Math.random().toString(36).slice(2)}`, text: t, x: pos.x, y: pos.y }];
+    });
+    setNewText('');
+  }, []);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  return (
+    <Box
+      sx={{
+        mt: fullScreen ? 0 : 0.75,
+        mb: fullScreen ? 0 : 1,
+        p: 1,
+        bgcolor: '#e8f5e9',
+        borderRadius: fullScreen ? 0 : 1,
+        border: '1px solid #a5d6a7',
+        ...(fullScreen && { height: '100vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }),
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: '#2e7d32', mb: 0.5, fontSize: '0.7rem' }}>
+        Gemeinsame Leinwand (Einträge ziehen zum Verschieben)
+      </Typography>
+      <Box
+        ref={containerRef}
+        sx={{
+          position: 'relative',
+          minHeight: fullScreen ? 'calc(100vh - 120px)' : 240,
+          ...(fullScreen && { flex: 1, minHeight: 0 }),
+          borderRadius: 1.5,
+          bgcolor: '#f1f8e9',
+          border: '1px dashed #81c784',
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(129,199,132,0.35) 1px, transparent 0)',
+          backgroundSize: '20px 20px',
+          overflow: 'auto',
+        }}
+      >
+        {loading ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: fullScreen ? '100%' : 220, color: '#2e7d32' }}>
+            <CircularProgress size={28} sx={{ color: '#2e7d32', mr: 1 }} />
+            <Typography variant="body2">Laden …</Typography>
+          </Box>
+        ) : (
+          <>
+            <svg style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} aria-hidden="true">
+              <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#666" /></marker></defs>
+              {connections.map((conn) => {
+                const from = items.find((i) => i.id === conn.fromId);
+                const to = items.find((i) => i.id === conn.toId);
+                if (!from || !to) return null;
+                const x1 = from.x + CARD_CENTER_OFFSET_X;
+                const y1 = from.y + CARD_CENTER_OFFSET_Y;
+                const x2 = to.x + CARD_CENTER_OFFSET_X;
+                const y2 = to.y + CARD_CENTER_OFFSET_Y;
+                return <line key={`${conn.fromId}-${conn.toId}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#666" strokeWidth="2" strokeDasharray="4 2" />;
+              })}
+            </svg>
+            <Box sx={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
+              {connections.map((conn) => {
+                const from = items.find((i) => i.id === conn.fromId);
+                const to = items.find((i) => i.id === conn.toId);
+                if (!from || !to) return null;
+                const x1 = from.x + CARD_CENTER_OFFSET_X;
+                const y1 = from.y + CARD_CENTER_OFFSET_Y;
+                const x2 = to.x + CARD_CENTER_OFFSET_X;
+                const y2 = to.y + CARD_CENTER_OFFSET_Y;
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
+                return (
+                  <Tooltip key={`${conn.fromId}-${conn.toId}`} title="Klicken zum Entfernen">
+                    <Box
+                      component="span"
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeConnection(conn.fromId, conn.toId); }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      sx={{
+                        position: 'absolute',
+                        left: Math.min(x1, x2) - 8,
+                        top: Math.min(y1, y2) - 8,
+                        width: Math.abs(x2 - x1) + 16,
+                        height: Math.abs(y2 - y1) + 16,
+                        cursor: 'pointer',
+                        pointerEvents: 'auto',
+                        zIndex: 1,
+                      }}
+                    />
+                  </Tooltip>
+                );
+              })}
+            </Box>
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+              {items.map((item) => (
+                <DraggableCanvasCard
+                  key={item.id}
+                  item={item}
+                  otherItems={items}
+                  onTextChange={updateItem}
+                  onColorChange={updateItemColor}
+                  onFormatChange={updateItemFormat}
+                  onConnect={addConnection}
+                />
+              ))}
+            </DndContext>
+          </>
+        )}
+      </Box>
+      <Box
+        sx={{ display: 'flex', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}
+        role="group"
+        aria-label="Neuen Eintrag hinzufügen"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <TextField
+          inputRef={inputRef}
+          size="small"
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addItem(); } }}
+          placeholder="Neuer Eintrag …"
+          fullWidth
+          disabled={loading}
+          sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.8rem', bgcolor: '#fff' } }}
+        />
+        <Box
+          component="button"
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            addItem();
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          disabled={loading}
+          sx={{
+            flexShrink: 0,
+            minWidth: 44,
+            height: 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'none',
+            borderRadius: 1,
+            bgcolor: '#2e7d32',
+            color: '#fff',
+            cursor: loading ? 'default' : 'pointer',
+            opacity: loading ? 0.7 : 1,
+            '&:hover': loading ? {} : { bgcolor: '#1b5e20' },
+          }}
+          aria-label="Eintrag hinzufügen"
+        >
+          <AddIcon sx={{ fontSize: 22 }} />
+        </Box>
+      </Box>
+      {emptyAddHint && (
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#ed6c02' }}>
+          Bitte zuerst Text eingeben, dann auf + klicken.
+        </Typography>
+      )}
+    </Box>
+  );
 };
 
 // Rätsel werden jetzt aus riddles.ts importiert
@@ -934,6 +1454,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [showInbox, setShowInbox] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
+  // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
+  const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
+
+  // Dialog: Gemeinsames Eingabefeld beim Klick auf Stunde (z. B. 01 / 01 Einstieg / 01 Skytale)
+
+  /** Stunde mit gemeinsamem Eingabefeld (Skytale): Ordner 01, 01 Einstieg oder 01 Skytale */
+  const isSharedInputLesson = (name: string) =>
+    name === '01' || name === '01 Einstieg' || name === '01 Skytale' || (name.includes('01') && name.toLowerCase().includes('skytale'));
+
   // Rätseljahr 2026 States
   const [showNewYearRiddle, setShowNewYearRiddle] = useState(false);
   const [riddleAnswer, setRiddleAnswer] = useState('');
@@ -1059,6 +1588,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [sharedFiles, setSharedFiles] = useState<{[groupId: string]: string[]}>({});
+  const [sharedInputSharePaths, setSharedInputSharePaths] = useState<{[groupId: string]: string[]}>({});
 
   // Mitarbeitsbewertung States
   const [participationData, setParticipationData] = useState<{[groupId: string]: {
@@ -1573,6 +2103,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   };
 
+  const fetchLessonSharedInputSharesForGroup = async (groupId: string) => {
+    try {
+      const res = await fetch(`/api/learning-groups/${groupId}/lesson-shared-input-shares`);
+      if (res.ok) {
+        const paths = await res.json();
+        setSharedInputSharePaths(prev => ({ ...prev, [groupId]: paths || [] }));
+      }
+    } catch {
+      setSharedInputSharePaths(prev => ({ ...prev, [groupId]: [] }));
+    }
+  };
+
   // Neue Funktion zum Laden der zugeordneten Ordner (exakt wie im TeacherDashboard)
   const fetchAssignedFolders = async (groupId: string) => {
     try {
@@ -1661,8 +2203,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           [`${groupId}:${folderPath}`]: items
         }));
 
-        // Lade die geteilten Dateien für diese Gruppe
+        // Lade die geteilten Dateien und Freigabe „Gemeinsame Eingabe“ für diese Gruppe
         fetchSharedFilesForGroup(groupId);
+        fetchLessonSharedInputSharesForGroup(groupId);
       }
     } catch (error) {
       console.error('Fehler beim Laden des Ordnerinhalts:', error);
@@ -1897,36 +2440,78 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               )}
             </Box>
           ) : (
-            // Ordner als Typography (nicht klickbar)
-            <Typography variant="body2" sx={{ 
-              color: color,
-              fontSize: '0.75rem',
-              fontWeight: fontWeight,
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 0.5,
-              mb: 0.5,
-              cursor: 'default',
-              textDecoration: 'none',
-              wordBreak: 'break-word',
-              maxWidth: '100%',
-            }}>
-              {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
-              {level === 0 ? (
-                <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
-              ) : level === 1 ? (
-                <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
-              ) : level === 2 ? (
-                <span style={{ color: '#2e7d32' }}>▼</span> // Grün für Level 2
-              ) : level === 3 ? (
-                <span style={{ color: '#666' }}>▼</span> // Grau für Level 3
-              ) : (
-                <span style={{ color: '#666' }}>▼</span> // Grau für weitere Ebenen
-              )}
-              <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
-              <span>{item.name}</span>
-            </Typography>
+            // Ordner: bei Stunde 01/01 Einstieg/01 Skytale und freigegeben → wie normaler Ordner, Leinwand darunter
+            (isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path)) ? (
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+                {level === 2 ? <span style={{ color: '#2e7d32' }}>▼</span> : level === 3 ? <span style={{ color: '#666' }}>▼</span> : <span style={{ color: level === 0 ? '#9c27b0' : level === 1 ? '#1976d2' : '#666' }}>▼</span>}
+                <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+                <Typography component="span" variant="body2" sx={{ color: color, fontSize: '0.75rem', fontWeight: fontWeight, wordBreak: 'break-word' }}>
+                  {item.name}
+                </Typography>
+              </Box>
+            ) : (
+              <Typography variant="body2" sx={{ 
+                color: color,
+                fontSize: '0.75rem',
+                fontWeight: fontWeight,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 0.5,
+                mb: 0.5,
+                cursor: 'default',
+                textDecoration: 'none',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+              }}>
+                {level === 0 ? (
+                  <span style={{ color: '#9c27b0' }}>▼</span>
+                ) : level === 1 ? (
+                  <span style={{ color: '#1976d2' }}>▼</span>
+                ) : level === 2 ? (
+                  <span style={{ color: '#2e7d32' }}>▼</span>
+                ) : level === 3 ? (
+                  <span style={{ color: '#666' }}>▼</span>
+                ) : (
+                  <span style={{ color: '#666' }}>▼</span>
+                )}
+                <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+                <span>{item.name}</span>
+              </Typography>
+            )
           )}
+
+      {/* Gemeinsame Leinwand nur wenn von Lehrkraft freigegeben – aufklappbar */}
+      {item.type === 'directory' && isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) && (() => {
+        const sharedKey = `${groupId}-${item.path}`;
+        const isExpanded = expandedSharedInputKeys[sharedKey] !== false;
+        return (
+          <Box sx={{ mt: 0.5, mb: 0.5 }}>
+            <Box
+              onClick={() => setExpandedSharedInputKeys((prev) => ({ ...prev, [sharedKey]: !isExpanded }))}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                cursor: 'pointer',
+                py: 0.5,
+                px: 0.5,
+                borderRadius: 1,
+                bgcolor: '#e8f5e9',
+                border: '1px solid #a5d6a7',
+                '&:hover': { bgcolor: '#c8e6c9' },
+              }}
+            >
+              {isExpanded ? <ExpandLessIcon sx={{ fontSize: 20, color: '#2e7d32' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#2e7d32' }} />}
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '0.75rem' }}>
+                Gemeinsame Leinwand
+              </Typography>
+            </Box>
+            <Collapse in={isExpanded}>
+              <LessonSharedInputBox groupId={groupId} lessonPath={item.path} />
+            </Collapse>
+          </Box>
+        );
+      })()}
           
       {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
       {item.type === 'directory' && item.children && item.children.length > 0 && (
