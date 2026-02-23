@@ -24,6 +24,7 @@ import {
   Collapse,
   Popover,
   TextField,
+  InputAdornment,
   Select,
   MenuItem,
   FormControl
@@ -45,7 +46,8 @@ import {
   FormatBold as FormatBoldIcon,
   FormatItalic as FormatItalicIcon,
   FormatUnderlined as FormatUnderlinedIcon,
-  Link as LinkIcon
+  Link as LinkIcon,
+  OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -70,6 +72,7 @@ const isCorrectionFile = (fileName: string): boolean => {
   return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
 };
 
+export type TextFormatRange = { start: number; end: number; type: 'material' | 'term' | 'instruction' };
 export type SharedInputItem = {
   id: string;
   text: string;
@@ -79,7 +82,8 @@ export type SharedInputItem = {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
-  fontSize?: 'small' | 'normal' | 'large';
+  fontSize?: 'xs' | 'small' | 'normal' | 'medium' | 'large' | 'xl';
+  formattedRanges?: TextFormatRange[];
 };
 export type SharedInputConnection = { fromId: string; toId: string };
 const CANVAS_PADDING = 12;
@@ -89,19 +93,45 @@ export const SHARED_INPUT_CARD_COLORS = [
   '#ffffff', '#fff9c4', '#c8e6c9', '#bbdefb', '#f8bbd0', '#e1bee7', '#ffccbc', '#d7ccc8'
 ];
 
-const FONT_SIZES = { small: '0.7rem', normal: '0.8rem', large: '1rem' } as const;
+const FONT_SIZE_OPTIONS: { value: SharedInputItem['fontSize']; label: string; rem: string }[] = [
+  { value: 'xs', label: 'Sehr klein', rem: '0.65rem' },
+  { value: 'small', label: 'Klein', rem: '0.75rem' },
+  { value: 'normal', label: 'Normal', rem: '0.85rem' },
+  { value: 'medium', label: 'Mittel', rem: '0.95rem' },
+  { value: 'large', label: 'Groß', rem: '1.1rem' },
+  { value: 'xl', label: 'Sehr groß', rem: '1.25rem' },
+];
+const FONT_SIZES: Record<NonNullable<SharedInputItem['fontSize']>, string> = Object.fromEntries(
+  FONT_SIZE_OPTIONS.map((o) => [o.value, o.rem])
+) as Record<NonNullable<SharedInputItem['fontSize']>, string>;
+
+function normalizeSpacesBeforePunctuation(s: string): string {
+  return s
+    .replace(/[\s\u00A0]+([,.])/g, '$1')  // kein Leerzeichen/Zeilenumbruch/non-breaking space vor Komma oder Punkt
+    .replace(/,([\s\u00A0]+)/g, ', ')     // nach Komma: Whitespace → ein Leerzeichen
+    .replace(/\.([\s\u00A0]+)/g, '. ')    // Punkt gefolgt von Whitespace → Punkt + ein Leerzeichen
+    .replace(/\.([\s\u00A0]*)$/g, '.');   // am Ende: Punkt ohne Whitespace dahinter
+}
 
 function parseItem(x: any, i: number): SharedInputItem {
+  const rawText = x && typeof x.text === 'string' ? x.text : String(x?.text ?? '');
+  const text = normalizeSpacesBeforePunctuation(rawText);
   const base = x && typeof x.id === 'string' && typeof x.text === 'string'
-    ? { id: x.id, text: x.text, x: typeof x.x === 'number' ? x.x : defaultPosition(i).x, y: typeof x.y === 'number' ? x.y : defaultPosition(i).y }
-    : { id: `m-${i}`, text: String(x?.text ?? ''), ...defaultPosition(i) };
+    ? { id: x.id, text, x: typeof x.x === 'number' ? x.x : defaultPosition(i).x, y: typeof x.y === 'number' ? x.y : defaultPosition(i).y }
+    : { id: `m-${i}`, text, ...defaultPosition(i) };
+  const formattedRanges: TextFormatRange[] = Array.isArray(x?.formattedRanges)
+    ? x.formattedRanges
+        .filter((r: any) => r && typeof r.start === 'number' && typeof r.end === 'number' && (r.type === 'material' || r.type === 'term' || r.type === 'instruction'))
+        .map((r: any) => ({ start: r.start, end: r.end, type: r.type }))
+    : [];
   return {
     ...base,
     color: typeof x?.color === 'string' ? x.color : undefined,
     bold: !!x?.bold,
     italic: !!x?.italic,
     underline: !!x?.underline,
-    fontSize: x?.fontSize === 'small' || x?.fontSize === 'normal' || x?.fontSize === 'large' ? x.fontSize : undefined,
+    fontSize: FONT_SIZE_OPTIONS.some((o) => o.value === x?.fontSize) ? x.fontSize : undefined,
+    formattedRanges: formattedRanges.length > 0 ? formattedRanges : undefined,
   };
 }
 
@@ -131,21 +161,107 @@ export function parseSharedContent(raw: string): { items: SharedInputItem[]; con
 const CARD_CENTER_OFFSET_X = 110;
 const CARD_CENTER_OFFSET_Y = 25;
 
+function renderFormattedTextAsHTML(text: string, ranges?: TextFormatRange[]): string {
+  if (!ranges || ranges.length === 0) return text.replace(/\n/g, '<br>');
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  let html = '';
+  let lastIndex = 0;
+  sorted.forEach((range) => {
+    if (range.start > lastIndex) {
+      html += escapeHtml(text.slice(lastIndex, range.start)).replace(/\n/g, '<br>');
+    }
+    const rangeText = escapeHtml(text.slice(range.start, range.end)).replace(/\n/g, '<br>');
+    if (range.type === 'material') {
+      html += `<span style="color: #ed6c02">${rangeText}</span>`;
+    } else if (range.type === 'term') {
+      html += `<span style="color: #1565c0">${rangeText}</span>`;
+    } else if (range.type === 'instruction') {
+      html += `<span style="font-style: italic">&bdquo;${rangeText}&ldquo;</span>`;
+    }
+    lastIndex = range.end;
+  });
+  if (lastIndex < text.length) {
+    html += escapeHtml(text.slice(lastIndex)).replace(/\n/g, '<br>');
+  }
+  return html;
+}
+
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 const DraggableCanvasCard: React.FC<{
   item: SharedInputItem;
   otherItems: SharedInputItem[];
   onTextChange: (id: string, text: string) => void;
   onColorChange: (id: string, color: string) => void;
   onFormatChange: (id: string, format: Partial<Pick<SharedInputItem, 'bold' | 'italic' | 'underline' | 'fontSize'>>) => void;
+  onFormatRangeChange: (id: string, ranges: TextFormatRange[]) => void;
   onConnect: (fromId: string, toId: string) => void;
-}> = ({ item, otherItems, onTextChange, onColorChange, onFormatChange, onConnect }) => {
+}> = ({ item, otherItems, onTextChange, onColorChange, onFormatChange, onFormatRangeChange, onConnect }) => {
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
-  const [selectOpen, setSelectOpen] = useState(false);
+  const contentEditableRef = useRef<HTMLDivElement>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id });
   const style = transform ? { transform: CSS.Translate.toString(transform), zIndex: isDragging ? 1000 : 1 } : { zIndex: isDragging ? 1000 : 1 };
   const bg = item.color || '#fff';
   const fontSize = FONT_SIZES[item.fontSize || 'normal'];
   const targets = otherItems.filter((o) => o.id !== item.id);
+
+  const extractPlainText = (element: HTMLElement): string => {
+    return element.innerText || element.textContent || '';
+  };
+
+  const applyFormatToSelection = (type: 'material' | 'term' | 'instruction') => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !contentEditableRef.current) return;
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return;
+    const container = contentEditableRef.current;
+    const containerText = extractPlainText(container);
+    const startOffset = getTextOffset(container, range.startContainer, range.startOffset);
+    const endOffset = getTextOffset(container, range.endContainer, range.endOffset);
+    if (startOffset === endOffset) return;
+    const newRanges = [...(item.formattedRanges || [])];
+    const newRange: TextFormatRange = { start: startOffset, end: endOffset, type };
+    newRanges.push(newRange);
+    onFormatRangeChange(item.id, newRanges);
+    setMenuAnchor(null);
+    setTimeout(() => {
+      if (contentEditableRef.current) {
+        contentEditableRef.current.innerHTML = renderFormattedTextAsHTML(containerText, newRanges);
+      }
+    }, 0);
+  };
+
+  const getTextOffset = (container: HTMLElement, node: Node, offset: number): number => {
+    let textOffset = 0;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+    let currentNode: Node | null = null;
+    while ((currentNode = walker.nextNode())) {
+      if (currentNode === node && currentNode.nodeType === Node.TEXT_NODE) {
+        return textOffset + offset;
+      }
+      if (currentNode.nodeType === Node.TEXT_NODE) {
+        textOffset += currentNode.textContent?.length || 0;
+      }
+    }
+    const plainText = extractPlainText(container);
+    const range = document.createRange();
+    range.setStart(container, 0);
+    range.setEnd(node, offset);
+    return range.toString().length;
+  };
+
+  useEffect(() => {
+    if (contentEditableRef.current) {
+      const html = renderFormattedTextAsHTML(item.text, item.formattedRanges);
+      if (contentEditableRef.current.innerHTML !== html) {
+        contentEditableRef.current.innerHTML = html;
+      }
+    }
+  }, [item.text, item.formattedRanges]);
   return (
     <Box
       ref={setNodeRef}
@@ -199,36 +315,39 @@ const DraggableCanvasCard: React.FC<{
           </IconButton>
         </Tooltip>
       </Box>
-      <TextField
-        size="small"
-        value={item.text}
-        onChange={(e) => onTextChange(item.id, e.target.value)}
+      <Box
+        ref={contentEditableRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={(e) => {
+          const plainText = extractPlainText(e.currentTarget);
+          const normalized = normalizeSpacesBeforePunctuation(plainText);
+          onTextChange(item.id, normalized);
+        }}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
-        placeholder="Text …"
-        fullWidth
-        multiline
-        minRows={1}
-        maxRows={10}
-        variant="standard"
-        InputProps={{
-          disableUnderline: true,
-          sx: {
-            fontSize,
-            fontWeight: item.bold ? 700 : 400,
-            fontStyle: item.italic ? 'italic' : 'normal',
-            textDecoration: item.underline ? 'underline' : 'none',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
+        sx={{
+          minWidth: 80,
+          pr: 1.5,
+          fontSize,
+          fontWeight: item.bold ? 700 : 400,
+          fontStyle: item.italic ? 'italic' : 'normal',
+          textDecoration: item.underline ? 'underline' : 'none',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          outline: 'none',
+          minHeight: '1.5em',
+          '&:empty:before': {
+            content: '"Text …"',
+            color: 'rgba(0, 0, 0, 0.6)',
           },
         }}
-        sx={{ minWidth: 80, pr: 1.5 }}
       />
       <Popover
         open={!!menuAnchor}
         anchorEl={menuAnchor}
-        onClose={() => { if (!selectOpen) setMenuAnchor(null); }}
+        onClose={() => setMenuAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         onClick={(e) => e.stopPropagation()}
@@ -259,28 +378,22 @@ const DraggableCanvasCard: React.FC<{
             <FormControl size="small" sx={{ minWidth: 90, '& .MuiInputBase-root': { fontSize: '0.8rem', height: 32 } }}>
               <Select
                 value={item.fontSize || 'normal'}
-                open={selectOpen}
-                onOpen={() => setSelectOpen(true)}
-                onClose={() => setSelectOpen(false)}
                 onChange={(e) => {
                   e.stopPropagation();
-                  const value = e.target.value as 'small' | 'normal' | 'large';
-                  onFormatChange(item.id, { fontSize: value });
-                  setSelectOpen(false);
+                  onFormatChange(item.id, { fontSize: e.target.value as SharedInputItem['fontSize'] });
                 }}
                 variant="outlined"
                 sx={{ fontSize: '0.8rem', height: 32 }}
-                onClick={(e) => { e.stopPropagation(); setSelectOpen(true); }}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
                 MenuProps={{
-                  onClick: (e) => e.stopPropagation(),
-                  onPointerDown: (e) => e.stopPropagation(),
-                  disableAutoFocusItem: true,
                   disableScrollLock: true,
+                  sx: { zIndex: 2500 },
                 }}
               >
-                <MenuItem value="small" sx={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { fontSize: 'small' }); setSelectOpen(false); }}>Klein</MenuItem>
-                <MenuItem value="normal" sx={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { fontSize: 'normal' }); setSelectOpen(false); }}>Normal</MenuItem>
-                <MenuItem value="large" sx={{ fontSize: '0.8rem' }} onClick={(e) => { e.stopPropagation(); onFormatChange(item.id, { fontSize: 'large' }); setSelectOpen(false); }}>Groß</MenuItem>
+                {FONT_SIZE_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value} sx={{ fontSize: '0.8rem' }}>{opt.label}</MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Box>
@@ -295,7 +408,7 @@ const DraggableCanvasCard: React.FC<{
           
           {/* Verbinden */}
           <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>Verbinden mit</Typography>
-          <Box sx={{ maxHeight: 120, overflow: 'auto' }}>
+          <Box sx={{ maxHeight: 120, overflow: 'auto', mb: 1.5 }}>
             {targets.length === 0 ? (
               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>Kein anderer Kasten.</Typography>
             ) : (
@@ -305,6 +418,54 @@ const DraggableCanvasCard: React.FC<{
                 </Box>
               ))
             )}
+          </Box>
+          
+          {/* Textformatierung */}
+          <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>Textformatierung</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={(e) => { e.stopPropagation(); applyFormatToSelection('material'); }}
+              sx={{ 
+                fontSize: '0.75rem', 
+                textTransform: 'none',
+                color: '#ed6c02',
+                borderColor: '#ed6c02',
+                '&:hover': { borderColor: '#ed6c02', bgcolor: 'rgba(237, 108, 2, 0.1)' }
+              }}
+            >
+              Als Material markieren
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={(e) => { e.stopPropagation(); applyFormatToSelection('term'); }}
+              sx={{ 
+                fontSize: '0.75rem', 
+                textTransform: 'none',
+                color: '#1976d2',
+                borderColor: '#1976d2',
+                '&:hover': { borderColor: '#1976d2', bgcolor: 'rgba(25, 118, 210, 0.1)' }
+              }}
+            >
+              Als Fachbegriff markieren
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={(e) => { e.stopPropagation(); applyFormatToSelection('instruction'); }}
+              sx={{ 
+                fontSize: '0.75rem', 
+                textTransform: 'none',
+                fontStyle: 'italic',
+                color: '#666',
+                borderColor: '#999',
+                '&:hover': { borderColor: '#999', bgcolor: 'rgba(0, 0, 0, 0.05)' }
+              }}
+            >
+              Als direkte Anweisung markieren
+            </Button>
           </Box>
         </Box>
       </Popover>
@@ -370,15 +531,24 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
   };
 
   const updateItem = (id: string, text: string) => {
-    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, text } : p)));
+    const normalized = normalizeSpacesBeforePunctuation(text);
+    setItems((prev) => prev.map((p) => {
+      if (p.id !== id) return p;
+      const validRanges = p.formattedRanges?.filter((r) => r.start >= 0 && r.end <= normalized.length && r.start < r.end) || [];
+      return { ...p, text: normalized, formattedRanges: validRanges.length > 0 ? validRanges : undefined };
+    }));
   };
 
   const updateItemColor = (id: string, color: string) => {
     setItems((prev) => prev.map((p) => (p.id === id ? { ...p, color } : p)));
   };
 
-  const updateItemFormat = (id: string, format: Partial<Pick<SharedInputItem, 'bold' | 'italic' | 'fontSize'>>) => {
+  const updateItemFormat = (id: string, format: Partial<Pick<SharedInputItem, 'bold' | 'italic' | 'underline' | 'fontSize'>>) => {
     setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...format } : p)));
+  };
+
+  const updateItemFormatRanges = (id: string, ranges: TextFormatRange[]) => {
+    setItems((prev) => prev.map((p) => (p.id === id ? { ...p, formattedRanges: ranges.length > 0 ? ranges : undefined } : p)));
   };
 
   const addConnection = (fromId: string, toId: string) => {
@@ -395,13 +565,14 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
   };
 
   const addItem = useCallback(() => {
-    const t = newTextRef.current.trim();
-    if (!t) {
+    const raw = newTextRef.current.trim();
+    if (!raw) {
       setEmptyAddHint(true);
       setTimeout(() => setEmptyAddHint(false), 2500);
       inputRef.current?.focus();
       return;
     }
+    const t = normalizeSpacesBeforePunctuation(raw);
     setItems((prev) => {
       const pos = defaultPosition(prev.length);
       return [...prev, { id: `n-${Date.now()}-${Math.random().toString(36).slice(2)}`, text: t, x: pos.x, y: pos.y }];
@@ -414,6 +585,7 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
   return (
     <Box
       sx={{
+        position: 'relative',
         mt: fullScreen ? 0 : 0.75,
         mb: fullScreen ? 0 : 1,
         p: 1,
@@ -425,7 +597,34 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: '#2e7d32', mb: 0.5, fontSize: '0.7rem' }}>
+      {!fullScreen && (
+        <Tooltip title="Vergrößern (in neuem Tab)">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              window.open(`/shared-overview?groupId=${encodeURIComponent(groupId)}&lessonPath=${encodeURIComponent(lessonPath)}`, '_blank');
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            sx={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              p: 0,
+              minWidth: 28,
+              width: 28,
+              height: 28,
+              color: '#2e7d32',
+              '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.12)' },
+            }}
+            aria-label="Vergrößern in neuem Tab"
+          >
+            <OpenInNewIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+      <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem', mb: 0.5, pr: 5 }}>
         Gemeinsame Leinwand (Einträge ziehen zum Verschieben)
       </Typography>
       <Box
@@ -503,6 +702,7 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
                   onTextChange={updateItem}
                   onColorChange={updateItemColor}
                   onFormatChange={updateItemFormat}
+                  onFormatRangeChange={updateItemFormatRanges}
                   onConnect={addConnection}
                 />
               ))}
@@ -510,57 +710,59 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
           </>
         )}
       </Box>
-      <Box
-        sx={{ display: 'flex', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}
-        role="group"
-        aria-label="Neuen Eintrag hinzufügen"
+      <TextField
+        inputRef={inputRef}
+        size="small"
+        value={newText}
+        onChange={(e) => setNewText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addItem(); } }}
+        placeholder="Neuer Eintrag …"
+        fullWidth
+        disabled={loading}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
-      >
-        <TextField
-          inputRef={inputRef}
-          size="small"
-          value={newText}
-          onChange={(e) => setNewText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addItem(); } }}
-          placeholder="Neuer Eintrag …"
-          fullWidth
-          disabled={loading}
-          sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.8rem', bgcolor: '#fff' } }}
-        />
-        <Box
-          component="button"
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            addItem();
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          disabled={loading}
-          sx={{
-            flexShrink: 0,
-            minWidth: 44,
-            height: 40,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: 'none',
-            borderRadius: 1,
-            bgcolor: '#2e7d32',
-            color: '#fff',
-            cursor: loading ? 'default' : 'pointer',
-            opacity: loading ? 0.7 : 1,
-            '&:hover': loading ? {} : { bgcolor: '#1b5e20' },
-          }}
-          aria-label="Eintrag hinzufügen"
-        >
-          <AddIcon sx={{ fontSize: 22 }} />
-        </Box>
-      </Box>
+        sx={{
+          mt: 0.75,
+          '& .MuiOutlinedInput-root': {
+            fontSize: '0.8rem',
+            bgcolor: '#fff',
+            pr: 0,
+          },
+        }}
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  addItem();
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+                disabled={loading}
+                sx={{
+                  p: 0.5,
+                  minWidth: 32,
+                  width: 32,
+                  height: 32,
+                  color: '#fff',
+                  bgcolor: '#2e7d32',
+                  borderRadius: '0 4px 4px 0',
+                  '&:hover': { bgcolor: '#1b5e20' },
+                  '&.Mui-disabled': { bgcolor: '#81c784', opacity: 0.7 },
+                }}
+                aria-label="Eintrag hinzufügen"
+              >
+                <AddIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+      />
       {emptyAddHint && (
         <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#ed6c02' }}>
           Bitte zuerst Text eingeben, dann auf + klicken.
@@ -2485,24 +2687,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         const sharedKey = `${groupId}-${item.path}`;
         const isExpanded = expandedSharedInputKeys[sharedKey] !== false;
         return (
-          <Box sx={{ mt: 0.5, mb: 0.5 }}>
+          <Box sx={{ mt: 0.5, mb: 0.5, ml: 1.5 }}>
             <Box
               onClick={() => setExpandedSharedInputKeys((prev) => ({ ...prev, [sharedKey]: !isExpanded }))}
               sx={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: 0.5,
+                gap: 0.35,
                 cursor: 'pointer',
-                py: 0.5,
+                py: 0.25,
                 px: 0.5,
-                borderRadius: 1,
+                borderRadius: 0.75,
                 bgcolor: '#e8f5e9',
                 border: '1px solid #a5d6a7',
                 '&:hover': { bgcolor: '#c8e6c9' },
               }}
             >
-              {isExpanded ? <ExpandLessIcon sx={{ fontSize: 20, color: '#2e7d32' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#2e7d32' }} />}
-              <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '0.75rem' }}>
+              {isExpanded ? <ExpandLessIcon sx={{ fontSize: 16, color: '#2e7d32' }} /> : <ExpandMoreIcon sx={{ fontSize: 16, color: '#2e7d32' }} />}
+              <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem' }}>
                 Gemeinsame Leinwand
               </Typography>
             </Box>

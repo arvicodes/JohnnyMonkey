@@ -2640,6 +2640,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   } | null>(null);
   const [voraussetzungenGlossarOpen, setVoraussetzungenGlossarOpen] = useState(false);
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
+  // Bearbeitbare Stunden-Texte: pro Stunde (lessonName) Overrides für die farbigen Boxen
+  type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
+  const [editedLessonInstructions, setEditedLessonInstructions] = useState<Record<string, Partial<Record<LessonBoxField, string>>>>({});
+  const [lessonBoxEdit, setLessonBoxEdit] = useState<{ lessonName: string; section: LessonBoxField; draft: string; originalDraft: string } | null>(null);
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -5109,7 +5113,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     geheimtexte?: string;
   }> = {
     '01': {
-      materialliste: `**Die 10 Lederbänder** mit den Geheimtexten, **die Kiste mit den Stöcken**, **Papierstreifen**.`,
+      materialliste: `Die 10 Lederbänder mit den Geheimtexten, die Kiste mit den Stöcken, Papierstreifen.`,
       anweisungen: `• Die zwei **Skytale**-Folien zeigen.
 • Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
 • **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
@@ -5132,7 +5136,7 @@ Die Zeichen des Klartextes werden umsortiert 20
 Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so geheim ausgetauscht. 25`
     },
     '01 Einstieg': {
-      materialliste: `**Die 10 Lederbänder** mit den Geheimtexten, **die Kiste mit den Stöcken**, **Papierstreifen**.`,
+      materialliste: `Die 10 Lederbänder mit den Geheimtexten, die Kiste mit den Stöcken, Papierstreifen.`,
       anweisungen: `• Die zwei **Skytale**-Folien zeigen.
 • Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
 • **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
@@ -5155,7 +5159,7 @@ Die Zeichen des Klartextes werden umsortiert 20
 Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so geheim ausgetauscht. 25`
     },
     '01 Skytale': {
-      materialliste: `**Die 10 Lederbänder** mit den Geheimtexten, **die Kiste mit den Stöcken**, **Papierstreifen**.`,
+      materialliste: `Die 10 Lederbänder mit den Geheimtexten, die Kiste mit den Stöcken, Papierstreifen.`,
       anweisungen: `• Die zwei **Skytale**-Folien zeigen.
 • Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
 • **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
@@ -5180,7 +5184,7 @@ Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so
     '02 Sicherheitsziele': {
       voraussetzungen: `**Transpositionsverschlüsselung** bekannt, **Skytale** als Beispiel
 Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschlüsselung**) bekannt oder wird thematisiert`,
-      materialliste: `**Zettel**`,
+      materialliste: `Zettel`,
       anweisungen: `• Ich schreibe etwas auf einen **Zettel**, falte ihn und schreibe den **Namen** einer weiterentfernt sitzenden Schülerin oder Schülers darauf.
 • Ich bitte eine Schülerin oder einen Schüler, den Zettel an den Adressaten **weiterzuleiten**.
 • Je nach Lerngruppe wird beobachtet und besprochen, was passiert ist und/oder besprochen, **was alles hätte passieren können**. Es lassen sich damit schnell die **Angriffsszenarien** und die entsprechenden **Ziele** der **Kryptologie** herausarbeiten.`,
@@ -5247,41 +5251,254 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       return <span key={`${keyPrefix}-${j}`}>{seg}</span>;
     });
   };
-  const renderBoldText = (text: string, boldColor?: string) => {
-    const strongStyle = boldColor ? { color: boldColor } : undefined;
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) => {
-      if (!part.startsWith('**') || !part.endsWith('**')) {
-        return <span key={i}>{renderPartWithLinks(part, `p${i}`)}</span>;
-      }
-      const term = part.slice(2, -2);
-      const glossar = FACHBEGRIFFE_GLOSSAR[term];
-      if (!glossar) {
-        if (term === 'fünf') return <strong key={i} style={{ color: boldColor ?? '#2e7d32' }}>{term}</strong>;
-        if (term === 'Gruppen') return <strong key={i} style={{ color: boldColor ?? '#e65100' }}>{term}</strong>;
-        return <strong key={i} style={strongStyle}>{term}</strong>;
-      }
+  // Direkte Anweisungen: Anführungszeichen, kursiv, Operator fett – ohne Platzhalter, nur Segmentliste bauen
+  const INSTRUCTION_OPERATORS = [
+    'Wer herausgefunden hat',
+    'Je nach Lerngruppe',
+    'Findet heraus',
+    'Jetzt darf',
+    'Denkt euch',
+    'Ich schreibe',
+    'Ich bitte',
+    'Wir brauchen',
+    'Sortiert',
+    'Bearbeitet',
+    'Besprechung',
+    'Danach'
+  ];
+
+  // Hilfsfunktion: Konvertiert Plaintext mit Zeilenumbrüchen zu HTML für den RichTextEditor
+  const plainTextToHtml = (text: string): string => {
+    if (!text || text.trim() === '') return '';
+    // Wenn bereits HTML, zurückgeben
+    if (/<[a-z][\s\S]*>/i.test(text)) return text;
+    // Konvertiere Zeilenumbrüche zu <br/> und escapen HTML
+    // Wichtig: Erhalte auch führende/abschließende Whitespace
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br/>');
+  };
+
+  // Hilfsfunktion: Rendert HTML-Inhalt oder Plaintext mit renderBoldText
+  const renderTextContent = (text: string, boldColor?: string, lineHeight: number = 1.75, asList: boolean = false) => {
+    if (!text) return null;
+    // Prüfe ob Text HTML enthält (einfache Heuristik: HTML-Tags)
+    const hasHtml = /<[a-z][\s\S]*>/i.test(text);
+    if (hasHtml) {
+      return <Box component="div" dangerouslySetInnerHTML={{ __html: text }} sx={{ fontSize: '1.15rem', lineHeight, color: '#333', '& p': { margin: '0.5em 0' }, '& ul, & ol': { margin: '0.5em 0', paddingLeft: '1.5em' }, '& li': { margin: '0.25em 0', lineHeight }, '& br': { display: 'block', content: '""', marginBottom: '0.5em' } }} />;
+    }
+    // Plaintext: Wenn als Liste, zeige als Liste mit renderBoldText pro Zeile
+    if (asList) {
       return (
-        <Tooltip
-          key={i}
-          title={
-            <Box component="span" sx={{ display: 'block', maxWidth: 320, fontSize: '1rem' }}>
-              <Box component="span" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>Erklärung:</Box>
-              {glossar.erklärung}
-              <Box component="span" sx={{ fontWeight: 600, display: 'block', mt: 1, mb: 0.5 }}>Beispiel:</Box>
-              {glossar.beispiel}
+        <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight }}>
+          {text.split('\n').filter(Boolean).map((line, i) => (
+            <Box component="li" key={i} sx={{ mb: 0.75 }}>
+              {renderBoldText(line.replace(/^•\s*/, ''), boldColor)}
             </Box>
-          }
-          placement="top"
-          arrow
-        >
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, cursor: 'help', borderBottom: '1px dotted currentColor', ...(boldColor && { color: boldColor }) }}>
-            <strong style={strongStyle}>{term}</strong>
-            <InfoIcon sx={{ fontSize: 14, opacity: 0.8 }} />
-          </Box>
-        </Tooltip>
+          ))}
+        </Box>
       );
+    }
+    // Plaintext: Zeige mit Zeilenumbrüchen
+    return (
+      <Box component="div" sx={{ whiteSpace: 'pre-wrap', fontSize: '1.15rem', lineHeight, color: '#333' }}>
+        {text.split('\n').map((line, i, arr) => (
+          <React.Fragment key={i}>
+            {renderBoldText(line, boldColor)}
+            {i < arr.length - 1 && <br />}
+          </React.Fragment>
+        ))}
+      </Box>
+    );
+  };
+
+  const renderBoldText = (text: string, boldColor?: string) => {
+    type Seg = { type: 'instruction'; operator: string; rest: string; punct: string } | { type: 'bold'; content: string } | { type: 'normal'; content: string };
+    const segments: Seg[] = [];
+    let pos = 0;
+
+    while (pos < text.length) {
+      // Nächstes Vorkommen: Anweisung oder **term**
+      let nextInstruction: { index: number; operator: string; rest: string; punct: string; end: number } | null = null;
+      for (const op of INSTRUCTION_OPERATORS) {
+        const idx = text.toLowerCase().indexOf(op.toLowerCase(), pos);
+        if (idx === -1) continue;
+        const afterOp = text.slice(idx + op.length);
+        const m = afterOp.match(/^([^.,:]*?)([,.:]|$)/);
+        const rest = m ? m[1] : afterOp;
+        const punct = m && m[2] ? m[2] : '';
+        const end = idx + op.length + rest.length + punct.length;
+        if (!nextInstruction || idx < nextInstruction.index) {
+          nextInstruction = { index: idx, operator: text.slice(idx, idx + op.length), rest, punct, end };
+        }
+      }
+      const boldMatch = text.slice(pos).match(/\*\*([^*]+)\*\*/);
+      const boldIndex = boldMatch ? pos + boldMatch.index! : text.length;
+
+      if (nextInstruction && nextInstruction.index < boldIndex) {
+        if (nextInstruction.index > pos) {
+          segments.push({ type: 'normal', content: text.slice(pos, nextInstruction.index) });
+        }
+        segments.push({
+          type: 'instruction',
+          operator: nextInstruction.operator,
+          rest: nextInstruction.rest,
+          punct: nextInstruction.punct
+        });
+        pos = nextInstruction.end;
+        continue;
+      }
+      if (boldMatch) {
+        if (boldIndex > pos) {
+          segments.push({ type: 'normal', content: text.slice(pos, boldIndex) });
+        }
+        segments.push({ type: 'bold', content: boldMatch[1] });
+        pos = boldIndex + boldMatch[0].length;
+        continue;
+      }
+      segments.push({ type: 'normal', content: text.slice(pos) });
+      break;
+    }
+
+    return segments.map((seg, i) => {
+      // Direkte Rede (operationalisieren): Anweisungsoperator bold, Rede in Anführungszeichen und kursiv
+      if (seg.type === 'instruction') {
+        return (
+          <span key={i} style={{ fontStyle: 'italic' }}>
+            &bdquo;<strong>{seg.operator}</strong>{seg.rest}&ldquo;{seg.punct}
+          </span>
+        );
+      }
+      if (seg.type === 'bold') {
+        const term = seg.content;
+        const glossar = FACHBEGRIFFE_GLOSSAR[term];
+        if (!glossar) {
+          if (term === 'fünf') return <strong key={i} style={{ color: boldColor ?? '#2e7d32' }}>{term}</strong>;
+          if (term === 'Gruppen') return <strong key={i} style={{ color: boldColor ?? '#e65100' }}>{term}</strong>;
+          // Material: orange, nicht bold, mit Icon
+          if (boldColor === '#ed6c02') {
+            return (
+              <Box key={i} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, color: '#ed6c02' }}>
+                <AssignmentIcon sx={{ fontSize: 16, flexShrink: 0 }} />
+                <span>{term}</span>
+              </Box>
+            );
+          }
+          // Sonstige Begriffe (nur Farbe, nicht bold)
+          return <span key={i} style={{ color: '#1565c0' }}>{term}</span>;
+        }
+        // Fachbegriffe: blau, nicht bold (mit Tooltip)
+        return (
+          <Tooltip
+            key={i}
+            title={
+              <Box component="span" sx={{ display: 'block', maxWidth: 320, fontSize: '1rem' }}>
+                <Box component="span" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>Erklärung:</Box>
+                {glossar.erklärung}
+                <Box component="span" sx={{ fontWeight: 600, display: 'block', mt: 1, mb: 0.5 }}>Beispiel:</Box>
+                {glossar.beispiel}
+              </Box>
+            }
+            placement="top"
+            arrow
+          >
+            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, cursor: 'help', borderBottom: '1px dotted currentColor', color: '#1565c0', fontWeight: 400 }}>
+              <span>{term}</span>
+              <InfoIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+            </Box>
+          </Tooltip>
+        );
+      }
+      return <span key={i}>{renderPartWithLinks(seg.content, `normal-${i}`)}</span>;
     });
+  };
+
+  // Materialliste: Leerzeichen vor Komma/Punkt entfernen, nur Materialbegriffe orange + Icon
+  const normalizeMaterialListText = (s: string) =>
+    s
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.])/g, '$1')
+      .trim();
+
+  const MATERIAL_TERMS: { pattern: RegExp; label: string; icon: 'lederband' | 'stoebe' | 'papier' | 'zettel' }[] = [
+    { pattern: /10 Lederbänder/gi, label: '10 Lederbänder', icon: 'lederband' },
+    { pattern: /Stöcken?/gi, label: 'Stöcken', icon: 'stoebe' },
+    { pattern: /Papierstreifen/gi, label: 'Papierstreifen', icon: 'papier' },
+    { pattern: /Zettel/gi, label: 'Zettel', icon: 'zettel' }
+  ];
+
+  const renderMaterialListContent = (raw: string) => {
+    const text = normalizeMaterialListText(raw);
+    const parts: Array<{ type: 'text' | 'material'; content: string; icon?: 'lederband' | 'stoebe' | 'papier' | 'zettel' }> = [];
+    let remaining = text;
+    let key = 0;
+    while (remaining.length > 0) {
+      let best: { index: number; length: number; label: string; icon: 'lederband' | 'stoebe' | 'papier' | 'zettel' } | null = null;
+      for (const { pattern, label, icon } of MATERIAL_TERMS) {
+        pattern.lastIndex = 0;
+        const m = pattern.exec(remaining);
+        if (m && (best === null || m.index < best.index)) {
+          best = { index: m.index, length: m[0].length, label: m[0], icon };
+        }
+      }
+      if (!best) {
+        parts.push({ type: 'text', content: remaining });
+        break;
+      }
+      if (best.index > 0) {
+        parts.push({ type: 'text', content: remaining.slice(0, best.index) });
+      }
+      parts.push({ type: 'material', content: best.label, icon: best.icon });
+      remaining = remaining.slice(best.index + best.length);
+    }
+    const iconSx = { flexShrink: 0, lineHeight: 0, display: 'inline-flex', alignItems: 'center', mr: 0.5, verticalAlign: 'middle' };
+    return (
+      <Box component="span" sx={{ display: 'inline', color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+        {parts.map((p, i) => {
+          if (p.type === 'text') return <span key={i}>{p.content}</span>;
+          const IconComp = p.icon === 'zettel' ? (
+            <Box component="span" sx={iconSx} title={p.content}>
+              <svg width="20" height="24" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" strokeWidth="0.8"/>
+                <line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" strokeWidth="0.6"/>
+                <line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" strokeWidth="0.6"/>
+                <line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" strokeWidth="0.6"/>
+              </svg>
+            </Box>
+          ) : p.icon === 'lederband' ? (
+            <Box component="span" sx={iconSx} title={p.content}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 12h16M4 12v6l8-3 8 3v-6M4 12l8-3 8 3" stroke="#ed6c02" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+              </svg>
+            </Box>
+          ) : p.icon === 'stoebe' ? (
+            <Box component="span" sx={iconSx} title={p.content}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="2" width="4" height="20" rx="1" fill="#8d6e63" stroke="#5d4e37" strokeWidth="0.8"/>
+                <rect x="4" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" strokeWidth="0.8"/>
+                <rect x="16" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" strokeWidth="0.8"/>
+              </svg>
+            </Box>
+          ) : (
+            <Box component="span" sx={iconSx} title={p.content}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="5" width="18" height="14" rx="0.5" fill="#fffef7" stroke="#ed6c02" strokeWidth="0.8"/>
+                <line x1="6" y1="10" x2="18" y2="10" stroke="#e0d0b0" strokeWidth="0.6"/>
+                <line x1="6" y1="14" x2="15" y2="14" stroke="#e0d0b0" strokeWidth="0.6"/>
+              </svg>
+            </Box>
+          );
+          return (
+            <Box component="span" key={i} sx={{ color: '#ed6c02', fontWeight: 400, display: 'inline-flex', alignItems: 'center' }}>
+              {IconComp}
+              <span>{p.content}</span>
+            </Box>
+          );
+        })}
+      </Box>
+    );
   };
 
   /** Gruppiert Dateien nach Basisname (ohne Endung). Eine Zeile pro Dokument, Buttons PDF/DOC pro Version. Freigabe nur für PDF. */
@@ -15453,7 +15670,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       {/* Modal: Unterrichtsstunde – Anweisungen, Folien, AB. X-Button: immer klein, ganz rechts, Icon überdeckt Button. */}
       <Dialog
         open={lessonModalOpen}
-        onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); }}
+        onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); }}
         maxWidth="md"
         fullWidth
         PaperProps={{ sx: { borderRadius: 2 } }}
@@ -15466,7 +15683,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               </Typography>
               <IconButton
                 size="small"
-                onClick={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); }}
+                onClick={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); }}
                 sx={{
                   position: 'absolute',
                   right: 4,
@@ -15485,9 +15702,42 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             <DialogContent sx={{ pt: 2 }}>
               {(() => {
                 const lessonName = lessonModalData.lessonName;
-                const instructions = LESSON_INSTRUCTIONS[lessonName]
+                const baseInstructions = LESSON_INSTRUCTIONS[lessonName]
                   ?? Object.entries(LESSON_INSTRUCTIONS).find(([key]) => lessonName.includes(key) || key.includes(lessonName))?.[1];
+                const instructions = { ...baseInstructions, ...(editedLessonInstructions[lessonName] || {}) } as typeof baseInstructions;
                 const allFiles = (lessonModalData.children || []).filter((c: any) => c.type === 'file' && !(c.name && c.name.startsWith('~$')));
+                const isEditing = (section: LessonBoxField) => lessonBoxEdit?.lessonName === lessonName && lessonBoxEdit?.section === section;
+                const startEdit = (section: LessonBoxField) => {
+                  // Hole den aktuellen Text (aus edited oder base)
+                  const currentText = (instructions as any)?.[section] ?? '';
+                  // Wenn Plaintext, konvertiere zu HTML für den RichTextEditor
+                  let htmlText = plainTextToHtml(currentText);
+                  // Falls leer, setze leeren String (nicht undefined)
+                  if (!htmlText) htmlText = '';
+                  // Setze den Wert und merke uns den Originalzustand für Rückgängig
+                  setLessonBoxEdit({ lessonName, section, draft: htmlText, originalDraft: htmlText });
+                };
+                const saveEdit = () => {
+                  if (!lessonBoxEdit) return;
+                  const { lessonName: ln, section, draft, originalDraft } = lessonBoxEdit;
+                  // Nicht speichern, wenn der Editor Inhalt verloren hat: leerer Draft obwohl Original Inhalt hatte
+                  if (!draft?.trim() && originalDraft?.trim()) {
+                    setLessonBoxEdit(null);
+                    return;
+                  }
+                  // Wenn nichts geändert wurde, nur schließen – keine Überschreibung mit evtl. normalisiertem HTML
+                  if (draft === originalDraft) {
+                    setLessonBoxEdit(null);
+                    return;
+                  }
+                  setEditedLessonInstructions(prev => ({ ...prev, [ln]: { ...prev[ln], [section]: draft } }));
+                  setLessonBoxEdit(null);
+                };
+                const undoEdit = () => {
+                  if (!lessonBoxEdit) return;
+                  // Stellt den Zustand beim Öffnen der Bearbeitung wieder her
+                  setLessonBoxEdit(prev => prev ? { ...prev, draft: prev.originalDraft } : null);
+                };
                 const isABByName = (name: string) => /^AB_|Sicherheitsziele/i.test((name || '').replace(/\.[^.]+$/, ''));
                 const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
                 const abFiles = allFiles.filter((f: any) => !/\.(pdf|pptx?|odp)$/i.test(f.name || '') || isABByName(f.name));
@@ -15496,16 +15746,35 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {/* Voraussetzungen – blaue Box immer da, Inhalt nur bei echten Voraussetzungen (nicht bei "Keine fachlichen Voraussetzungen.") */}
                     <Box sx={{ pt: 1.5 }}>
-                      <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, border: '1px solid #90caf9', borderBottom: 'none' }}>
-                        {instructions?.voraussetzungen?.trim() && instructions.voraussetzungen.trim() !== 'Keine fachlichen Voraussetzungen.' && (
+                      <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, pr: 5, border: '1px solid #90caf9', borderBottom: 'none' }}>
+                        <Tooltip title="Text bearbeiten">
+                          <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        {isEditing('voraussetzungen') ? (
                           <>
-                            <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
-                              {instructions.voraussetzungen.split('\n').filter(Boolean).map((line, i) => (
-                                <Box component="li" key={i} sx={{ mb: 0.75 }}>
-                                  {renderBoldText(line.replace(/^•\s*/, ''))}
-                                </Box>
-                              ))}
+                            <RichTextEditor
+                              key={`edit-voraussetzungen-${lessonName}`}
+                              value={lessonBoxEdit?.draft ?? ''}
+                              onChange={value => setLessonBoxEdit(prev => {
+                                if (!prev) return null;
+                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
+                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                return { ...prev, draft: value };
+                              })}
+                              placeholder="Voraussetzungen eingeben..."
+                              rows={4}
+                              compact={true}
+                            />
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                              <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                              <Button size="small" onClick={saveEdit} sx={{ color: '#1565c0' }}>Fertig</Button>
                             </Box>
+                          </>
+                        ) : instructions?.voraussetzungen?.trim() && instructions.voraussetzungen.trim() !== 'Keine fachlichen Voraussetzungen.' ? (
+                          <>
+                            {renderTextContent(instructions.voraussetzungen, undefined, 1.75, true)}
                             {(() => {
                               const terms = [...instructions.voraussetzungen.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1]).filter((t, i, a) => a.indexOf(t) === i);
                               const withGlossar = terms.filter(t => FACHBEGRIFFE_GLOSSAR[t]);
@@ -15546,31 +15815,48 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               );
                             })()}
                           </>
-                        )}
+                        ) : null}
                       </Box>
                     </Box>
 
-                    {/* Material – roter Kasten; Zettel-SVG nur bei Zeilen, die "Zettel" enthalten */}
-                    {instructions?.materialliste && (
+                    {/* Material – orangefarbener Kasten; Begriffe orange, nicht bold, mit passendem Icon */}
+                    {(instructions?.materialliste || isEditing('materialliste')) && (
                       <Box>
-                        <Box sx={{ bgcolor: '#ffebee', borderRadius: 0, p: 1.5, border: '1px solid #ef9a9a', borderBottom: 'none' }}>
-                          <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none', color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
-                            {instructions.materialliste.split('\n').filter(Boolean).map((line, i) => (
-                              <Box component="li" key={i} sx={{ mb: 0.75, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {/Zettel/i.test(line) && (
-                                  <Box component="span" sx={{ flexShrink: 0, lineHeight: 0 }} title="Zettel">
-                                    <svg width="22" height="28" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                      <rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" strokeWidth="0.8"/>
-                                      <line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" strokeWidth="0.6"/>
-                                      <line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" strokeWidth="0.6"/>
-                                      <line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" strokeWidth="0.6"/>
-                                    </svg>
-                                  </Box>
-                                )}
-                                {renderBoldText(line.replace(/^•\s*/, ''), '#ed6c02')}
+                        <Box sx={{ position: 'relative', bgcolor: '#fff3e0', borderRadius: 0, p: 1.5, pr: 5, border: '1px solid #ffb74d', borderBottom: 'none' }}>
+                          <Tooltip title="Text bearbeiten">
+                            <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#ed6c02', '&:hover': { bgcolor: 'rgba(237, 108, 2, 0.08)' } }}>
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          {isEditing('materialliste') ? (
+                            <>
+                              <RichTextEditor
+                                key={`edit-materialliste-${lessonName}`}
+                                value={lessonBoxEdit?.draft ?? ''}
+                                onChange={value => setLessonBoxEdit(prev => {
+                                if (!prev) return null;
+                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
+                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                return { ...prev, draft: value };
+                              })}
+                                placeholder="Materialliste eingeben..."
+                                rows={3}
+                                compact={true}
+                              />
+                              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                <Button size="small" onClick={saveEdit} sx={{ color: '#ed6c02' }}>Fertig</Button>
                               </Box>
-                            ))}
-                          </Box>
+                            </>
+                          ) : (
+                            <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+                              {/^<[a-z][\s\S]*>/i.test(instructions!.materialliste!) ? (
+                                renderTextContent(instructions!.materialliste!)
+                              ) : (
+                                renderMaterialListContent(instructions!.materialliste!)
+                              )}
+                            </Box>
+                          )}
                         </Box>
                       </Box>
                     )}
@@ -15578,39 +15864,88 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     {/* Lehrer-Anweisungen (ohne Überschrift), AB nur unten – Materialbegriffe (**) orange */}
                     {instructions?.anweisungen && (
                       <Box>
-                        <Box sx={{ bgcolor: '#f1f8e9', borderRadius: 0, p: 2, border: '1px solid #c5e1a5', borderBottom: 'none' }}>
-                          <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.85 }}>
-                            {instructions.anweisungen.split('\n').filter(Boolean).map((line, i) => (
-                              <Box component="li" key={i} sx={{ mb: 1.25 }}>
-                                {renderBoldText(line.replace(/^•\s*/, ''), '#ed6c02')}
+                        <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', borderRadius: 0, p: 2, pr: 5, border: '1px solid #c5e1a5', borderBottom: 'none' }}>
+                          <Tooltip title="Text bearbeiten">
+                            <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          {isEditing('anweisungen') ? (
+                            <>
+                              <RichTextEditor
+                                key={`edit-anweisungen-${lessonName}`}
+                                value={lessonBoxEdit?.draft ?? ''}
+                                onChange={value => setLessonBoxEdit(prev => {
+                                if (!prev) return null;
+                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
+                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                return { ...prev, draft: value };
+                              })}
+                                placeholder="Lehrer-Anweisungen eingeben..."
+                                rows={6}
+                                compact={true}
+                              />
+                              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                <Button size="small" onClick={saveEdit} sx={{ color: '#2e7d32' }}>Fertig</Button>
                               </Box>
-                            ))}
-                          </Box>
+                            </>
+                          ) : (
+                            renderTextContent(instructions.anweisungen, '#ed6c02', 1.85, true)
+                          )}
                         </Box>
                       </Box>
                     )}
 
                     {/* Die Nachrichten: Klartexte – ausklappbar (Inhalt optional) */}
-                    {instructions && 'geheimtexte' in instructions && (
+                    {(instructions && 'geheimtexte' in instructions) || isEditing('geheimtexte') ? (
                       <Box sx={{ pt: 0 }}>
-                        <Box sx={{ bgcolor: '#fafafa', borderRadius: 0, border: '1px solid #e0e0e0', borderBottom: 'none' }}>
-                          <Box
-                            onClick={() => setGeheimtexteOpen(v => !v)}
-                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', p: 1.5, '&:hover': { bgcolor: '#f5f5f5' } }}
-                          >
-                            {geheimtexteOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#616161' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#616161' }} />}
-                            <Typography component="span" sx={{ fontWeight: 700, color: '#424242', fontSize: '1.05rem' }}>
-                              Die Nachrichten: Klartexte
-                            </Typography>
-                          </Box>
-                          <Collapse in={geheimtexteOpen}>
-                            <Box sx={{ px: 1.5, pb: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.95rem', color: '#333' }}>
-                              {instructions.geheimtexte?.trim() || ''}
+                        <Box sx={{ position: 'relative', bgcolor: '#fafafa', borderRadius: 0, border: '1px solid #e0e0e0', borderBottom: 'none', pr: 5 }}>
+                          <Tooltip title="Text bearbeiten">
+                            <IconButton size="small" onClick={() => startEdit('geheimtexte')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#616161', '&:hover': { bgcolor: 'rgba(97, 97, 97, 0.08)' } }}>
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          {isEditing('geheimtexte') ? (
+                            <Box sx={{ p: 1.5 }}>
+                              <RichTextEditor
+                                key={`edit-geheimtexte-${lessonName}`}
+                                value={lessonBoxEdit?.draft ?? ''}
+                                onChange={value => setLessonBoxEdit(prev => {
+                                if (!prev) return null;
+                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
+                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                return { ...prev, draft: value };
+                              })}
+                                placeholder="Klartexte eingeben..."
+                                rows={6}
+                                compact={true}
+                              />
+                              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                <Button size="small" onClick={saveEdit} sx={{ color: '#616161' }}>Fertig</Button>
+                              </Box>
                             </Box>
-                          </Collapse>
+                          ) : (
+                            <>
+                              <Box onClick={() => setGeheimtexteOpen(v => !v)} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', p: 1.5, '&:hover': { bgcolor: '#f5f5f5' } }}>
+                                {geheimtexteOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#616161' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#616161' }} />}
+                                <Typography component="span" sx={{ fontWeight: 700, color: '#424242', fontSize: '1.05rem' }}>Die Nachrichten: Klartexte</Typography>
+                              </Box>
+                              <Collapse in={geheimtexteOpen}>
+                                {/^<[a-z][\s\S]*>/i.test((instructions as any)?.geheimtexte || '') ? (
+                                  <Box sx={{ px: 1.5, pb: 1.5, fontSize: '0.95rem', color: '#333' }} dangerouslySetInnerHTML={{ __html: (instructions as any)?.geheimtexte || '' }} />
+                                ) : (
+                                  <Box sx={{ px: 1.5, pb: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.95rem', color: '#333' }}>
+                                    {(instructions as any)?.geheimtexte?.trim() || ''}
+                                  </Box>
+                                )}
+                              </Collapse>
+                            </>
+                          )}
                         </Box>
                       </Box>
-                    )}
+                    ) : null}
 
                     {/* Gemeinsame Übersicht – Leinwand + Freigabe + Präsentieren */}
                     {lessonModalData && (
@@ -15693,15 +16028,35 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     {/* Arbeitsblatt (AB) – Kasten nur anzeigen, wenn AB-Dateien existieren; sonst leer lassen */}
                     {abFiles.length > 0 && (
                       <Box>
-                        {instructions?.abAnleitung && (
-                          <Box sx={{ bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, border: '1px solid #ffe082', borderBottom: 'none' }}>
-                            <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
-                              {instructions.abAnleitung.split('\n').filter(Boolean).map((line, i) => (
-                                <Box component="li" key={i} sx={{ mb: 0.75 }}>
-                                  {renderBoldText(line.replace(/^•\s*/, ''), '#ed6c02')}
+                        {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
+                          <Box sx={{ position: 'relative', bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, pr: 5, border: '1px solid #ffe082', borderBottom: 'none' }}>
+                            <Tooltip title="Text bearbeiten">
+                              <IconButton size="small" onClick={() => startEdit('abAnleitung')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f57c00', '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.08)' } }}>
+                                <EditIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                            {isEditing('abAnleitung') ? (
+                              <>
+                                <RichTextEditor
+                                  key={`edit-abAnleitung-${lessonName}`}
+                                  value={lessonBoxEdit?.draft ?? ''}
+                                  onChange={value => setLessonBoxEdit(prev => {
+                                    if (!prev) return null;
+                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                    return { ...prev, draft: value };
+                                  })}
+                                  placeholder="Arbeitsblatt-Anleitung eingeben..."
+                                  rows={4}
+                                  compact={true}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                  <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                  <Button size="small" onClick={saveEdit} sx={{ color: '#f57c00' }}>Fertig</Button>
                                 </Box>
-                              ))}
-                            </Box>
+                              </>
+                            ) : instructions?.abAnleitung ? (
+                              renderTextContent(instructions.abAnleitung, '#ed6c02', 1.75, true)
+                            ) : null}
                           </Box>
                         )}
                         <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
