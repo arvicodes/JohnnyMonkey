@@ -693,6 +693,21 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   // OLD RESIZE FUNCTION REMOVED - Using inline approach now
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      try {
+        const inList = editorRef.current && (document.queryCommandState('insertUnorderedList') || document.queryCommandState('insertOrderedList'));
+        if (!inList) {
+          e.preventDefault();
+          document.execCommand('insertLineBreak', false, undefined);
+          handleInput();
+        }
+      } catch (_) {
+        e.preventDefault();
+        document.execCommand('insertHTML', false, '<br>');
+        handleInput();
+      }
+      return;
+    }
     if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       applyStyle('bold');

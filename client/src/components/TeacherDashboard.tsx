@@ -2640,10 +2640,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   } | null>(null);
   const [voraussetzungenGlossarOpen, setVoraussetzungenGlossarOpen] = useState(false);
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
-  // Bearbeitbare Stunden-Texte: pro Stunde (lessonName) Overrides für die farbigen Boxen
+  // Bearbeitbare Stunden-Texte: pro Stunde (lessonPath) Overrides für die farbigen Boxen – werden persistent gespeichert
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
   const [editedLessonInstructions, setEditedLessonInstructions] = useState<Record<string, Partial<Record<LessonBoxField, string>>>>({});
-  const [lessonBoxEdit, setLessonBoxEdit] = useState<{ lessonName: string; section: LessonBoxField; draft: string; originalDraft: string } | null>(null);
+  const [lessonBoxEdit, setLessonBoxEdit] = useState<{ lessonName: string; lessonPath: string; section: LessonBoxField; draft: string; originalDraft: string } | null>(null);
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -3722,6 +3722,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   
       fetchFlashcardDecks();
     }
+  }, [userId]);
+
+  // Gespeicherte Unterrichts-Anweisungen (Stift-Bearbeitungen) laden
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/lesson-instructions/teacher/${userId}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled && data && typeof data === 'object') setEditedLessonInstructions(data);
+      } catch (_) {}
+    })();
+    return () => { cancelled = true; };
   }, [userId]);
 
   // Lade Assignments nachdem Decks geladen wurden
@@ -5509,15 +5524,33 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     );
   };
 
-  // Inline-SVGs für Editor-HTML (Material-Icons wie auf der Seite)
-  const MATERIAL_ICONS_HTML: Record<'lederband' | 'stoebe' | 'papier' | 'zettel', string> = {
-    zettel: '<svg width="20" height="24" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" stroke-width="0.8"/><line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" stroke-width="0.6"/><line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" stroke-width="0.6"/><line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" stroke-width="0.6"/></svg>',
-    lederband: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><path d="M4 12h16M4 12v6l8-3 8 3v-6M4 12l8-3 8 3" stroke="#ed6c02" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>',
-    stoebe: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><rect x="10" y="2" width="4" height="20" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/><rect x="4" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/><rect x="16" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/></svg>',
-    papier: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><rect x="3" y="5" width="18" height="14" rx="0.5" fill="#fffef7" stroke="#ed6c02" stroke-width="0.8"/><line x1="6" y1="10" x2="18" y2="10" stroke="#e0d0b0" stroke-width="0.6"/><line x1="6" y1="14" x2="15" y2="14" stroke="#e0d0b0" stroke-width="0.6"/></svg>'
+  // Icons als <img> mit Data-URI (contentEditable entfernt Inline-SVG oft; img bleibt erhalten)
+  const svgToImgDataUri = (svg: string, w: number, h: number, style = 'vertical-align:middle;margin-right:2px'): string => {
+    try {
+      const base64 = btoa(unescape(encodeURIComponent(svg.trim())));
+      const uri = `data:image/svg+xml;base64,${base64}`;
+      return `<img src="${uri}" width="${w}" height="${h}" alt="" style="${style}" data-editor-icon="1" />`;
+    } catch {
+      return '';
+    }
   };
-  const ASSIGNMENT_ICON_HTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px;flex-shrink:0"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="#ed6c02"/></svg>';
-  const INFO_ICON_HTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-left:1px;opacity:0.8"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#1565c0"/></svg>';
+  const MATERIAL_ICONS_SVG: Record<'lederband' | 'stoebe' | 'papier' | 'zettel', string> = {
+    zettel: '<svg width="20" height="24" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" stroke-width="0.8"/><line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" stroke-width="0.6"/><line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" stroke-width="0.6"/><line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" stroke-width="0.6"/></svg>',
+    lederband: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12h16M4 12v6l8-3 8 3v-6M4 12l8-3 8 3" stroke="#ed6c02" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>',
+    stoebe: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="2" width="4" height="20" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/><rect x="4" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/><rect x="16" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/></svg>',
+    papier: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="0.5" fill="#fffef7" stroke="#ed6c02" stroke-width="0.8"/><line x1="6" y1="10" x2="18" y2="10" stroke="#e0d0b0" stroke-width="0.6"/><line x1="6" y1="14" x2="15" y2="14" stroke="#e0d0b0" stroke-width="0.6"/></svg>'
+  };
+  const ASSIGNMENT_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="#ed6c02"/></svg>';
+  const INFO_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#1565c0"/></svg>';
+  const MATERIAL_ICONS_HTML = (() => {
+    const r: Record<'lederband' | 'stoebe' | 'papier' | 'zettel', string> = {} as any;
+    (['zettel', 'lederband', 'stoebe', 'papier'] as const).forEach(k => {
+      r[k] = svgToImgDataUri(MATERIAL_ICONS_SVG[k], k === 'zettel' ? 20 : 20, k === 'zettel' ? 24 : 20);
+    });
+    return r;
+  })();
+  const ASSIGNMENT_ICON_HTML = svgToImgDataUri(ASSIGNMENT_ICON_SVG, 16, 16);
+  const INFO_ICON_HTML = svgToImgDataUri(INFO_ICON_SVG, 14, 14, 'vertical-align:middle;margin-left:1px;opacity:0.8');
 
   /** Konvertiert Anzeige-Text zu Editor-HTML mit gleicher Formatierung wie auf der Seite: Farben, Icons, Glossar-Tooltips. */
   function plainTextToEditorHtml(text: string, section: 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte'): string {
@@ -15833,15 +15866,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             <DialogContent sx={{ pt: 2 }}>
               {(() => {
                 const lessonName = lessonModalData.lessonName;
+                const lessonPath = lessonModalData.lessonPath;
                 const baseInstructions = LESSON_INSTRUCTIONS[lessonName]
                   ?? Object.entries(LESSON_INSTRUCTIONS).find(([key]) => lessonName.includes(key) || key.includes(lessonName))?.[1];
-                const instructions = { ...baseInstructions, ...(editedLessonInstructions[lessonName] || {}) } as typeof baseInstructions;
+                const instructions = { ...baseInstructions, ...(editedLessonInstructions[lessonPath] || {}) } as typeof baseInstructions;
                 const allFiles = (lessonModalData.children || []).filter((c: any) => c.type === 'file' && !(c.name && c.name.startsWith('~$')));
-                const isEditing = (section: LessonBoxField) => lessonBoxEdit?.lessonName === lessonName && lessonBoxEdit?.section === section;
+                const isEditing = (section: LessonBoxField) => lessonBoxEdit?.lessonPath === lessonPath && lessonBoxEdit?.section === section;
                 const startEdit = (section: LessonBoxField) => {
                   const currentText = (instructions as any)?.[section] ?? '';
                   const htmlText = plainTextToEditorHtml(currentText, section);
-                  setLessonBoxEdit({ lessonName, section, draft: htmlText, originalDraft: htmlText });
+                  setLessonBoxEdit({ lessonName, lessonPath, section, draft: htmlText, originalDraft: htmlText });
                 };
                 const sanitizeSavedHtml = (html: string): string => {
                   if (!html || typeof html !== 'string') return html;
@@ -15849,11 +15883,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     .replace(/\s*contenteditable\s*=\s*["']?(?:true|false)["']?/gi, '')
                     .replace(/\s*data-[a-z-]+\s*=\s*["'][^"']*["']/gi, '');
                 };
-                const saveEdit = (e?: React.MouseEvent) => {
+                const saveEdit = async (e?: React.MouseEvent) => {
                   e?.preventDefault();
                   e?.stopPropagation();
                   if (!lessonBoxEdit) return;
-                  const { lessonName: ln, section, draft, originalDraft } = lessonBoxEdit;
+                  const { lessonPath: lp, section, draft, originalDraft } = lessonBoxEdit;
                   if (!draft?.trim() && originalDraft?.trim()) {
                     setLessonBoxEdit(null);
                     return;
@@ -15863,8 +15897,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     setLessonBoxEdit(null);
                     return;
                   }
-                  setEditedLessonInstructions(prev => ({ ...prev, [ln]: { ...prev[ln], [section]: sanitized } }));
+                  const nextOverrides = { ...(editedLessonInstructions[lp] || {}), [section]: sanitized };
+                  setEditedLessonInstructions(prev => ({ ...prev, [lp]: nextOverrides }));
                   setLessonBoxEdit(null);
+                  try {
+                    await fetch('/api/lesson-instructions', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ teacherId: userId, lessonPath: lp, content: nextOverrides })
+                    });
+                  } catch (_) {
+                    showSnackbar('Änderungen konnten nicht gespeichert werden.', 'error');
+                  }
                 };
                 const undoEdit = () => {
                   if (!lessonBoxEdit) return;

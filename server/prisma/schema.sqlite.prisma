@@ -39,6 +39,7 @@ model User {
   sentMessages              Message[]                   @relation("TeacherMessages")
   receivedMessages          Message[]                   @relation("StudentMessages")
   gradeReleases             GradeRelease[]
+  teacherLessonInstructions TeacherLessonInstruction[]
 }
 
 model GradingSchema {
@@ -128,6 +129,17 @@ model LessonSharedInputShare {
   group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   @@unique([groupId, lessonPath])
   @@index([groupId])
+}
+
+model TeacherLessonInstruction {
+  id         String   @id @default(uuid())
+  teacherId String
+  lessonPath String
+  content    String   @default("{}")
+  updatedAt  DateTime @updatedAt
+  teacher    User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  @@unique([teacherId, lessonPath])
+  @@index([teacherId])
 }
 
 model Subject {

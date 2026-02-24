@@ -29,6 +29,7 @@ import submissionRoutes from './routes/submissions';
 import fileShareRoutes from './routes/fileShares';
 import participationRoutes from './routes/participation';
 import adventCalendarRoutes from './routes/adventCalendar';
+import lessonInstructionsRoutes from './routes/lessonInstructions';
 import path from 'path';
 
 dotenv.config();
@@ -80,6 +81,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/file-shares', fileShareRoutes);
 app.use('/api/participation', participationRoutes);
 app.use('/api/advent-calendar', adventCalendarRoutes);
+app.use('/api/lesson-instructions', lessonInstructionsRoutes);
 app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);
 
