@@ -5267,25 +5267,33 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     'Danach'
   ];
 
-  // Hilfsfunktion: Konvertiert Plaintext mit Zeilenumbrüchen zu HTML für den RichTextEditor
+  // Konvertiert Anzeige-Text zu Editor-HTML wie auf der Seite: **fett** → <strong>, Zeilenumbrüche → <br>, vorhandenes HTML unverändert.
   const plainTextToHtml = (text: string): string => {
-    if (!text || text.trim() === '') return '';
-    // Wenn bereits HTML, zurückgeben
-    if (/<[a-z][\s\S]*>/i.test(text)) return text;
-    // Konvertiere Zeilenumbrüche zu <br/> und escapen HTML
-    // Wichtig: Erhalte auch führende/abschließende Whitespace
-    return text
+    if (text === undefined || text === null) return '';
+    const t = String(text);
+    if (t.trim() === '') return t;
+    if (/<[a-zA-Z][^>]*>/i.test(t)) return t;
+    // 1) **...** durch Platzhalter ersetzen (damit Escapen die Tags nicht zerstört)
+    const OPEN = '\uFFFFBOLD\uFFFF';
+    const CLOSE = '\uFFFF/BOLD\uFFFF';
+    let out = t.replace(/\*\*([^*]+)\*\*/g, OPEN + '$1' + CLOSE);
+    // 2) HTML escapen, Zeilenumbrüche → <br>
+    out = out
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/\n/g, '<br/>');
+      .replace(/\r\n?|\n/g, '<br>');
+    // 3) Platzhalter durch echte <strong>-Tags ersetzen
+    out = out.split(OPEN).join('<strong>').split(CLOSE).join('</strong>');
+    return out;
   };
 
   // Hilfsfunktion: Rendert HTML-Inhalt oder Plaintext mit renderBoldText
   const renderTextContent = (text: string, boldColor?: string, lineHeight: number = 1.75, asList: boolean = false) => {
     if (!text) return null;
-    // Prüfe ob Text HTML enthält (einfache Heuristik: HTML-Tags)
-    const hasHtml = /<[a-z][\s\S]*>/i.test(text);
+    const trimmed = text.trim();
+    // Gespeichertes HTML aus dem Editor: immer als HTML rendern (Tag-Heuristik, auch bei führendem Whitespace)
+    const hasHtml = trimmed.length > 0 && (/<[a-z][^>]*>/i.test(trimmed) || (trimmed.includes('<') && trimmed.includes('>')));
     if (hasHtml) {
       return <Box component="div" dangerouslySetInnerHTML={{ __html: text }} sx={{ fontSize: '1.15rem', lineHeight, color: '#333', '& p': { margin: '0.5em 0' }, '& ul, & ol': { margin: '0.5em 0', paddingLeft: '1.5em' }, '& li': { margin: '0.25em 0', lineHeight }, '& br': { display: 'block', content: '""', marginBottom: '0.5em' } }} />;
     }
@@ -5500,6 +5508,129 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       </Box>
     );
   };
+
+  // Inline-SVGs für Editor-HTML (Material-Icons wie auf der Seite)
+  const MATERIAL_ICONS_HTML: Record<'lederband' | 'stoebe' | 'papier' | 'zettel', string> = {
+    zettel: '<svg width="20" height="24" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" stroke-width="0.8"/><line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" stroke-width="0.6"/><line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" stroke-width="0.6"/><line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" stroke-width="0.6"/></svg>',
+    lederband: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><path d="M4 12h16M4 12v6l8-3 8 3v-6M4 12l8-3 8 3" stroke="#ed6c02" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>',
+    stoebe: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><rect x="10" y="2" width="4" height="20" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/><rect x="4" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/><rect x="16" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" stroke-width="0.8"/></svg>',
+    papier: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px"><rect x="3" y="5" width="18" height="14" rx="0.5" fill="#fffef7" stroke="#ed6c02" stroke-width="0.8"/><line x1="6" y1="10" x2="18" y2="10" stroke="#e0d0b0" stroke-width="0.6"/><line x1="6" y1="14" x2="15" y2="14" stroke="#e0d0b0" stroke-width="0.6"/></svg>'
+  };
+  const ASSIGNMENT_ICON_HTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:2px;flex-shrink:0"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" fill="#ed6c02"/></svg>';
+  const INFO_ICON_HTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-left:1px;opacity:0.8"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#1565c0"/></svg>';
+
+  /** Konvertiert Anzeige-Text zu Editor-HTML mit gleicher Formatierung wie auf der Seite: Farben, Icons, Glossar-Tooltips. */
+  function plainTextToEditorHtml(text: string, section: 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte'): string {
+    if (text === undefined || text === null) return '';
+    const t = String(text);
+    if (t.trim() === '') return t;
+    if (/<[a-zA-Z][^>]*>/i.test(t)) return t;
+    // Geheimtexte/Klartexte: Anzeige ist nur Pre-Wrap oder HTML – nur Fett und Zeilenumbrüche
+    if (section === 'geheimtexte') return plainTextToHtml(t);
+
+    const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapeTitle = (s: string) => escapeHtml(s).replace(/"/g, '&quot;');
+
+    if (section === 'materialliste') {
+      const normalized = normalizeMaterialListText(t);
+      const parts: Array<{ type: 'text' | 'material'; content: string; icon?: 'lederband' | 'stoebe' | 'papier' | 'zettel' }> = [];
+      let remaining = normalized;
+      while (remaining.length > 0) {
+        let best: { index: number; length: number; label: string; icon: 'lederband' | 'stoebe' | 'papier' | 'zettel' } | null = null;
+        for (const { pattern, label, icon } of MATERIAL_TERMS) {
+          pattern.lastIndex = 0;
+          const m = pattern.exec(remaining);
+          if (m && (best === null || m.index < best.index)) {
+            best = { index: m.index, length: m[0].length, label: m[0], icon };
+          }
+        }
+        if (!best) {
+          parts.push({ type: 'text', content: remaining });
+          break;
+        }
+        if (best.index > 0) parts.push({ type: 'text', content: remaining.slice(0, best.index) });
+        parts.push({ type: 'material', content: best.label, icon: best.icon });
+        remaining = remaining.slice(best.index + best.length);
+      }
+      const out = parts.map(p => {
+        if (p.type === 'text') return escapeHtml(p.content).replace(/\n/g, '<br>');
+        const icon = p.icon ? MATERIAL_ICONS_HTML[p.icon] : MATERIAL_ICONS_HTML.papier;
+        return `<span style="color:#ed6c02;font-weight:400;display:inline-flex;align-items:center">${icon}${escapeHtml(p.content)}</span>`;
+      }).join('');
+      return out.replace(/\r\n?|\n/g, '<br>');
+    }
+
+    const boldColor = (section === 'anweisungen' || section === 'abAnleitung') ? '#ed6c02' : undefined;
+    type Seg = { type: 'instruction'; operator: string; rest: string; punct: string } | { type: 'bold'; content: string } | { type: 'normal'; content: string };
+    const segments: Seg[] = [];
+    let pos = 0;
+    while (pos < t.length) {
+      let nextInstruction: { index: number; operator: string; rest: string; punct: string; end: number } | null = null;
+      for (const op of INSTRUCTION_OPERATORS) {
+        const idx = t.toLowerCase().indexOf(op.toLowerCase(), pos);
+        if (idx === -1) continue;
+        const afterOp = t.slice(idx + op.length);
+        const m = afterOp.match(/^([^.,:]*?)([,.:]|$)/);
+        const rest = m ? m[1] : afterOp;
+        const punct = m && m[2] ? m[2] : '';
+        const end = idx + op.length + rest.length + punct.length;
+        if (!nextInstruction || idx < nextInstruction.index) {
+          nextInstruction = { index: idx, operator: t.slice(idx, idx + op.length), rest, punct, end };
+        }
+      }
+      const boldMatch = t.slice(pos).match(/\*\*([^*]+)\*\*/);
+      const boldIndex = boldMatch ? pos + boldMatch.index! : t.length;
+      if (nextInstruction && nextInstruction.index < boldIndex) {
+        if (nextInstruction.index > pos) segments.push({ type: 'normal', content: t.slice(pos, nextInstruction.index) });
+        segments.push({ type: 'instruction', operator: nextInstruction.operator, rest: nextInstruction.rest, punct: nextInstruction.punct });
+        pos = nextInstruction.end;
+        continue;
+      }
+      if (boldMatch) {
+        if (boldIndex > pos) segments.push({ type: 'normal', content: t.slice(pos, boldIndex) });
+        segments.push({ type: 'bold', content: boldMatch[1] });
+        pos = boldIndex + boldMatch[0].length;
+        continue;
+      }
+      segments.push({ type: 'normal', content: t.slice(pos) });
+      break;
+    }
+
+    const linkify = (part: string) => {
+      const segs = part.split(urlRegex);
+      return segs.map(seg => {
+        if (seg.startsWith('http://') || seg.startsWith('https://')) {
+          const url = seg.trim();
+          const short = url.length > 45 ? url.slice(0, 42) + '…' : url;
+          return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="font-size:0.75rem;word-break:break-all;color:#1565c0;text-decoration:none;border-bottom:1px solid #90caf9">${escapeHtml(short)}</a>`;
+        }
+        return escapeHtml(seg);
+      }).join('');
+    };
+
+    const htmlParts = segments.map(seg => {
+      if (seg.type === 'instruction') {
+        return `<span style="font-style:italic">„<strong>${escapeHtml(seg.operator)}</strong>${escapeHtml(seg.rest)}„${escapeHtml(seg.punct)}</span>`;
+      }
+      if (seg.type === 'bold') {
+        const term = seg.content;
+        const glossar = FACHBEGRIFFE_GLOSSAR[term];
+        if (!glossar) {
+          if (term === 'fünf') return `<strong style="color:${boldColor ?? '#2e7d32'}">${escapeHtml(term)}</strong>`;
+          if (term === 'Gruppen') return `<strong style="color:${boldColor ?? '#e65100'}">${escapeHtml(term)}</strong>`;
+          if (boldColor === '#ed6c02') {
+            return `<span style="color:#ed6c02;display:inline-flex;align-items:center;gap:0.35em">${ASSIGNMENT_ICON_HTML}${escapeHtml(term)}</span>`;
+          }
+          return `<span style="color:#1565c0">${escapeHtml(term)}</span>`;
+        }
+        const title = `Erklärung: ${glossar.erklärung} — Beispiel: ${glossar.beispiel}`;
+        return `<span style="color:#1565c0;border-bottom:1px dotted currentColor;cursor:help" title="${escapeTitle(title)}">${escapeHtml(term)}${INFO_ICON_HTML}</span>`;
+      }
+      return linkify(seg.content).replace(/\r\n?|\n/g, '<br>');
+    });
+
+    return htmlParts.join('').replace(/\r\n?|\n/g, '<br>');
+  }
 
   /** Gruppiert Dateien nach Basisname (ohne Endung). Eine Zeile pro Dokument, Buttons PDF/DOC pro Version. Freigabe nur für PDF. */
   const groupFilesByBaseName = (files: any[]): { baseName: string; versions: { ext: string; file: any }[] }[] => {
@@ -15708,29 +15839,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const allFiles = (lessonModalData.children || []).filter((c: any) => c.type === 'file' && !(c.name && c.name.startsWith('~$')));
                 const isEditing = (section: LessonBoxField) => lessonBoxEdit?.lessonName === lessonName && lessonBoxEdit?.section === section;
                 const startEdit = (section: LessonBoxField) => {
-                  // Hole den aktuellen Text (aus edited oder base)
                   const currentText = (instructions as any)?.[section] ?? '';
-                  // Wenn Plaintext, konvertiere zu HTML für den RichTextEditor
-                  let htmlText = plainTextToHtml(currentText);
-                  // Falls leer, setze leeren String (nicht undefined)
-                  if (!htmlText) htmlText = '';
-                  // Setze den Wert und merke uns den Originalzustand für Rückgängig
+                  const htmlText = plainTextToEditorHtml(currentText, section);
                   setLessonBoxEdit({ lessonName, section, draft: htmlText, originalDraft: htmlText });
                 };
-                const saveEdit = () => {
+                const sanitizeSavedHtml = (html: string): string => {
+                  if (!html || typeof html !== 'string') return html;
+                  return html
+                    .replace(/\s*contenteditable\s*=\s*["']?(?:true|false)["']?/gi, '')
+                    .replace(/\s*data-[a-z-]+\s*=\s*["'][^"']*["']/gi, '');
+                };
+                const saveEdit = (e?: React.MouseEvent) => {
+                  e?.preventDefault();
+                  e?.stopPropagation();
                   if (!lessonBoxEdit) return;
                   const { lessonName: ln, section, draft, originalDraft } = lessonBoxEdit;
-                  // Nicht speichern, wenn der Editor Inhalt verloren hat: leerer Draft obwohl Original Inhalt hatte
                   if (!draft?.trim() && originalDraft?.trim()) {
                     setLessonBoxEdit(null);
                     return;
                   }
-                  // Wenn nichts geändert wurde, nur schließen – keine Überschreibung mit evtl. normalisiertem HTML
-                  if (draft === originalDraft) {
+                  const sanitized = sanitizeSavedHtml(draft);
+                  if (sanitized === originalDraft || sanitized === sanitizeSavedHtml(originalDraft)) {
                     setLessonBoxEdit(null);
                     return;
                   }
-                  setEditedLessonInstructions(prev => ({ ...prev, [ln]: { ...prev[ln], [section]: draft } }));
+                  setEditedLessonInstructions(prev => ({ ...prev, [ln]: { ...prev[ln], [section]: sanitized } }));
                   setLessonBoxEdit(null);
                 };
                 const undoEdit = () => {
@@ -15769,7 +15902,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             />
                             <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                               <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                              <Button size="small" onClick={saveEdit} sx={{ color: '#1565c0' }}>Fertig</Button>
+                              <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0' }}>Fertig</Button>
                             </Box>
                           </>
                         ) : instructions?.voraussetzungen?.trim() && instructions.voraussetzungen.trim() !== 'Keine fachlichen Voraussetzungen.' ? (
@@ -15845,16 +15978,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               />
                               <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                                 <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                <Button size="small" onClick={saveEdit} sx={{ color: '#ed6c02' }}>Fertig</Button>
+                                <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#ed6c02' }}>Fertig</Button>
                               </Box>
                             </>
                           ) : (
                             <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
-                              {/^<[a-z][\s\S]*>/i.test(instructions!.materialliste!) ? (
-                                renderTextContent(instructions!.materialliste!)
-                              ) : (
-                                renderMaterialListContent(instructions!.materialliste!)
-                              )}
+                              {(() => {
+                                const raw = instructions!.materialliste!;
+                                const looksLikeHtml = raw.trim().length > 0 && (/<[a-z][^>]*>/i.test(raw.trim()) || (raw.includes('<') && raw.includes('>')));
+                                return looksLikeHtml ? renderTextContent(raw) : renderMaterialListContent(raw);
+                              })()}
                             </Box>
                           )}
                         </Box>
@@ -15887,7 +16020,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               />
                               <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                                 <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                <Button size="small" onClick={saveEdit} sx={{ color: '#2e7d32' }}>Fertig</Button>
+                                <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#2e7d32' }}>Fertig</Button>
                               </Box>
                             </>
                           ) : (
@@ -15923,7 +16056,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               />
                               <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                                 <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                <Button size="small" onClick={saveEdit} sx={{ color: '#616161' }}>Fertig</Button>
+                                <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#616161' }}>Fertig</Button>
                               </Box>
                             </Box>
                           ) : (
@@ -15933,13 +16066,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 <Typography component="span" sx={{ fontWeight: 700, color: '#424242', fontSize: '1.05rem' }}>Die Nachrichten: Klartexte</Typography>
                               </Box>
                               <Collapse in={geheimtexteOpen}>
-                                {/^<[a-z][\s\S]*>/i.test((instructions as any)?.geheimtexte || '') ? (
-                                  <Box sx={{ px: 1.5, pb: 1.5, fontSize: '0.95rem', color: '#333' }} dangerouslySetInnerHTML={{ __html: (instructions as any)?.geheimtexte || '' }} />
-                                ) : (
-                                  <Box sx={{ px: 1.5, pb: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.95rem', color: '#333' }}>
-                                    {(instructions as any)?.geheimtexte?.trim() || ''}
-                                  </Box>
-                                )}
+                                {(() => {
+                                  const raw = (instructions as any)?.geheimtexte || '';
+                                  const looksLikeHtml = raw.trim().length > 0 && (/<[a-z][^>]*>/i.test(raw.trim()) || (raw.includes('<') && raw.includes('>')));
+                                  return looksLikeHtml ? (
+                                    <Box sx={{ px: 1.5, pb: 1.5, fontSize: '0.95rem', color: '#333' }} dangerouslySetInnerHTML={{ __html: raw }} />
+                                  ) : (
+                                    <Box sx={{ px: 1.5, pb: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.95rem', color: '#333' }}>
+                                      {raw.trim() || ''}
+                                    </Box>
+                                  );
+                                })()}
                               </Collapse>
                             </>
                           )}
@@ -16051,7 +16188,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 />
                                 <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
                                   <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                  <Button size="small" onClick={saveEdit} sx={{ color: '#f57c00' }}>Fertig</Button>
+                                  <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f57c00' }}>Fertig</Button>
                                 </Box>
                               </>
                             ) : instructions?.abAnleitung ? (

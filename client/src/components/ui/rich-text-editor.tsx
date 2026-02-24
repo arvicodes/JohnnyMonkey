@@ -222,19 +222,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (!editorRef.current) return;
     
     const currentContent = editorRef.current.innerHTML;
-    const shouldUpdate = value !== currentContent && 
-                        value !== lastValueRef.current && 
-                        !isUpdatingRef.current;
+    const editorEmpty = !currentContent || currentContent.trim() === '' || currentContent === '<br>' || currentContent === '<br/>';
+    const valueNonEmpty = value && value.trim() !== '';
+    // Immer aktualisieren wenn: Wert weicht von Anzeige ab ODER Editor ist leer aber Wert ist da (initialer Mount)
+    const shouldUpdate = !isUpdatingRef.current && (
+      (value !== currentContent && value !== lastValueRef.current) ||
+      (editorEmpty && valueNonEmpty)
+    );
     
     if (shouldUpdate) {
-      // Save cursor position before updating
       const cursorPosition = saveCursorPosition();
-      
-      // Update content
       editorRef.current.innerHTML = value;
       lastValueRef.current = value;
-      
-      // Restore cursor position after DOM update
       requestAnimationFrame(() => {
         restoreCursorPosition(cursorPosition);
       });
