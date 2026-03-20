@@ -119,6 +119,7 @@ import {
   Error as ErrorIcon,
   Warning as WarningIcon,
   Info as InfoIcon,
+  HelpOutline as HelpOutlineIcon,
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
   ViewList as ViewListIcon,
@@ -284,11 +285,16 @@ import {
   PictureAsPdf as PictureAsPdfIcon,
   Code as CodeIcon,
   Games as GamesIcon,
+  DirectionsRun as DirectionsRunIcon,
   Computer as ComputerIcon,
   Calculate as CalculateIcon,
   Functions as FunctionsIcon,
   EmojiEmotions as EmojiEmotionsIcon,
-  OpenInNew as OpenInNewIcon
+  OpenInNew as OpenInNewIcon,
+  SettingsRemote as SettingsRemoteIcon,
+  RotateRight as RotateRightIcon,
+  SlowMotionVideo as SlowMotionVideoIcon,
+  South as SouthIcon
 } from '@mui/icons-material';
 import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
@@ -2385,6 +2391,519 @@ const BalloonGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ op
   );
 };
 
+/** Bewegungsspiele fürs Klassenzimmer & draußen (reine Anleitungen, ohne Punkte/Modi) */
+type MovementGameCard = {
+  title: string;
+  duration: string;
+  emoji: string;
+  goal: string;
+  material: string;
+  steps: string[];
+  tip?: string;
+  /** Öffnet interaktives UI (z. B. Zufallskarten + Sounds) */
+  interactive?: 'randomCards';
+};
+
+const REMOTE_MOVEMENT_CARD_DEFS: Array<{
+  id: string;
+  label: string;
+  hint: string;
+  emoji: string;
+  color: string;
+}> = [
+  { id: 'play', label: 'PLAY', hint: 'Normal weiterbewegen', emoji: '▶️', color: '#2e7d32' },
+  { id: 'pause', label: 'PAUSE', hint: 'Komplett einfrieren', emoji: '⏸️', color: '#c62828' },
+  { id: 'rewind', label: 'REWIND', hint: 'Rückwärts gehen oder wackeln', emoji: '⏪', color: '#6a1b9a' },
+  { id: 'louder', label: 'LAUTER', hint: 'Auf der Stelle hüpfen', emoji: '🔊', color: '#ef6c00' },
+  { id: 'mute', label: 'STUMM', hint: 'Starre Pose – wie „Ton aus“', emoji: '🔇', color: '#455a64' },
+  { id: 'slow', label: 'LANGSAM', hint: 'Alles in Zeitlupe', emoji: '🐢', color: '#0277bd' },
+  { id: 'spin', label: 'DREHEN', hint: 'Einmal um die eigene Achse', emoji: '🌀', color: '#00838f' },
+  { id: 'duck', label: 'DUCKEN', hint: 'Kurz in die Hocke', emoji: '⬇️', color: '#5d4037' },
+];
+
+/** MUI-Icons wie auf einer Fernbedienung (statt Emojis) */
+const REMOTE_CARD_ICON: Record<string, React.ElementType> = {
+  play: PlayIcon,
+  pause: PauseIcon,
+  rewind: FastRewindIcon,
+  louder: VolumeUpIcon,
+  mute: VolumeOffIcon,
+  slow: SlowMotionVideoIcon,
+  spin: RotateRightIcon,
+  duck: SouthIcon,
+};
+
+function playRemoteMovementSound(cardId: string) {
+  const Win = typeof window !== 'undefined' ? window : null;
+  if (!Win) return;
+  const AC = Win.AudioContext || (Win as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AC) return;
+  const ctx = new AC();
+  const master = ctx.createGain();
+  master.gain.value = 0.11;
+  master.connect(ctx.destination);
+  const t0 = ctx.currentTime;
+  const beep = (f: number, start: number, dur: number, type: OscillatorType = 'sine') => {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(f, start);
+    o.connect(master);
+    o.start(start);
+    o.stop(start + dur);
+  };
+  try {
+    switch (cardId) {
+      case 'play':
+        beep(523.25, t0, 0.07);
+        beep(659.25, t0 + 0.09, 0.11);
+        break;
+      case 'pause':
+        beep(103.83, t0, 0.38);
+        break;
+      case 'rewind': {
+        const o = ctx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(400, t0);
+        o.frequency.exponentialRampToValueAtTime(110, t0 + 0.24);
+        o.connect(master);
+        o.start(t0);
+        o.stop(t0 + 0.26);
+        break;
+      }
+      case 'louder':
+        beep(880, t0, 0.05);
+        beep(988, t0 + 0.07, 0.05);
+        beep(1174.66, t0 + 0.14, 0.06);
+        break;
+      case 'mute':
+        beep(784, t0, 0.03);
+        beep(92.5, t0 + 0.06, 0.25, 'square');
+        break;
+      case 'slow':
+        beep(196, t0, 0.15);
+        beep(174.61, t0 + 0.2, 0.2);
+        break;
+      case 'spin': {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(200, t0);
+        o.frequency.exponentialRampToValueAtTime(700, t0 + 0.18);
+        o.connect(master);
+        o.start(t0);
+        o.stop(t0 + 0.2);
+        break;
+      }
+      case 'duck':
+        beep(330, t0, 0.05);
+        beep(164.81, t0 + 0.08, 0.12);
+        break;
+      default:
+        beep(440, t0, 0.1);
+    }
+  } catch {
+    // ignore
+  }
+  window.setTimeout(() => {
+    ctx.close().catch(() => {});
+  }, 700);
+}
+
+const MovementRandomCardsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [running, setRunning] = useState(false);
+  const [intervalMs, setIntervalMs] = useState(2800);
+  const intervalMsRef = useRef(intervalMs);
+  const [current, setCurrent] = useState<(typeof REMOTE_MOVEMENT_CARD_DEFS)[0] | null>(null);
+  // Typen unterscheiden sich zwischen DOM- und Node-Definitions (number vs. Timeout).
+  // Für unseren Zweck reicht ein permissiver Typ.
+  const timeoutRef = useRef<any>(null);
+  const lastIdRef = useRef<string | null>(null);
+
+  const clearTick = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  const pickRandomCard = useCallback(() => {
+    const pool = REMOTE_MOVEMENT_CARD_DEFS;
+    let next = pool[Math.floor(Math.random() * pool.length)];
+    if (pool.length > 1 && lastIdRef.current && next.id === lastIdRef.current) {
+      next = pool[(pool.indexOf(next) + 1) % pool.length];
+    }
+    lastIdRef.current = next.id;
+    setCurrent(next);
+    playRemoteMovementSound(next.id);
+  }, []);
+
+  // Wichtig: Wir verwenden eine setTimeout-Kette statt setInterval,
+  // damit Änderungen an der Geschwindigkeit (Slider) zuverlässig beim nächsten Tick greifen.
+  const startTick = useCallback(() => {
+    clearTick();
+    timeoutRef.current = window.setTimeout(() => {
+      pickRandomCard();
+      startTick();
+    }, intervalMsRef.current);
+  }, [pickRandomCard, clearTick]);
+
+  const handleStop = useCallback(() => {
+    clearTick();
+    setRunning(false);
+    setCurrent(null);
+    lastIdRef.current = null;
+  }, [clearTick]);
+
+  useEffect(() => {
+    intervalMsRef.current = intervalMs;
+  }, [intervalMs]);
+
+  useEffect(() => {
+    if (open) {
+      setRunning(true);
+      pickRandomCard();
+      // Starten der Tick-Kette mit aktuellem Slider-Wert
+      startTick();
+    } else {
+      handleStop();
+    }
+  }, [open, handleStop, pickRandomCard, startTick]);
+
+  useEffect(() => () => clearTick(), [clearTick]);
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+      <DialogTitle
+        sx={{
+          position: 'relative',
+          pr: 5,
+          pl: 2,
+          py: 1.25,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, pr: 1, lineHeight: 1.3 }}>
+          Remote-Karten
+        </Typography>
+        <IconButton
+          onClick={onClose}
+          aria-label="Schließen"
+          size="small"
+          sx={{
+            position: 'absolute',
+            right: 6,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            p: 0.35,
+            width: 30,
+            height: 30,
+            color: 'text.secondary',
+            '&:hover': { bgcolor: 'action.hover' },
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 1 }}>
+        <Box sx={{ mb: 1.1 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', fontWeight: 800, mb: 0.5, fontSize: '0.9rem' }}
+          >
+            Bedeutung der Fernbedienungs-Tasten
+          </Typography>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
+              gap: 0.45,
+              px: 0.4,
+            }}
+          >
+            {REMOTE_MOVEMENT_CARD_DEFS.map((c) => (
+              <Box
+                key={c.id}
+                sx={{
+                  borderRadius: 1,
+                  border: `1px solid ${c.color}33`,
+                  bgcolor: `${c.color}10`,
+                  px: 0.8,
+                  py: 0.3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.4,
+                }}
+              >
+                <Box sx={{ width: 7, height: 7, borderRadius: 0.5, bgcolor: `${c.color}55` }} />
+                <Box sx={{ display: 'flex', gap: 0.35, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: c.color, fontWeight: 900, lineHeight: 1.05, fontSize: '0.82rem' }}
+                  >
+                    {c.label}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: 'text.secondary', lineHeight: 1.05, fontSize: '0.72rem' }}
+                  >
+                    {c.hint}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        <Paper
+          elevation={3}
+          sx={{
+            minHeight: 220,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 3,
+            mb: 2,
+            borderRadius: 2,
+            bgcolor: current ? `${current.color}14` : 'action.hover',
+            border: current ? `3px solid ${current.color}` : '2px dashed',
+            borderColor: current ? current.color : 'divider',
+            transition: 'background-color 0.25s ease, border-color 0.25s ease',
+          }}
+        >
+          {current ? (() => {
+            const BigIcon = REMOTE_CARD_ICON[current.id] || SettingsRemoteIcon;
+            return (
+              <>
+                <Box
+                  key={current.id}
+                  sx={{
+                    width: 160,
+                    height: 160,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 1.5,
+                    bgcolor: `${current.color}22`,
+                    border: `3px solid ${current.color}`,
+                    color: current.color,
+                    animation:
+                      current.id === 'spin'
+                        ? 'remoteSpin 1.1s linear infinite'
+                        : 'remoteCardPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    '@keyframes remoteCardPop': {
+                      '0%': { transform: 'scale(0.65)', opacity: 0.5 },
+                      '100%': { transform: 'scale(1)', opacity: 1 },
+                    },
+                    '@keyframes remoteSpin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' },
+                    },
+                  }}
+                >
+                  <BigIcon sx={{ fontSize: 96 }} />
+                </Box>
+                <Typography
+                  variant="h4"
+                  sx={{ fontWeight: 800, color: current.color, letterSpacing: 1, fontSize: '2rem' }}
+                >
+                  {current.label}
+                </Typography>
+              </>
+            );
+          })() : null}
+        </Paper>
+        <Box sx={{ px: 0.5, mb: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            Geschwindigkeit: alle {(intervalMs / 1000).toFixed(1)} s neue Karte
+          </Typography>
+          <Slider
+            value={intervalMs}
+            onChange={(_, v) => {
+              const next = typeof v === 'number' ? v : v[0];
+              intervalMsRef.current = next;
+              setIntervalMs(next);
+              // Sofort neu takten (keine Wartezeit bis zum nächsten alten Intervall).
+              // Wichtiger als `running`, weil `running` kurz nach dem Öffnen noch "false" sein kann.
+              if (open) startTick();
+            }}
+            min={300}
+            max={6000}
+            step={50}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(v) => `${(v / 1000).toFixed(1)} s`}
+            aria-label="Geschwindigkeit der Karten"
+          />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Tooltip title="Stopp" arrow>
+            <span>
+              <IconButton
+                color="error"
+                disabled={!running}
+                onClick={handleStop}
+                aria-label="Stopp"
+                sx={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 1.5,
+                  border: '2px solid',
+                  borderColor: 'error.main',
+                  animation: running ? 'remoteStopPulse 1.8s ease-in-out infinite' : 'none',
+                  '@keyframes remoteStopPulse': {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.35)' },
+                    '50%': { boxShadow: '0 0 0 10px rgba(211, 47, 47, 0)' },
+                  },
+                }}
+              >
+                <StopIcon sx={{ fontSize: 40 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const MOVEMENT_GAMES_BRAIN: MovementGameCard[] = [
+  {
+    title: 'Stop / Remote / Rewind',
+    duration: 'ca. 2 Min.',
+    emoji: '🎴',
+    goal: '',
+    material: '',
+    steps: [],
+    interactive: 'randomCards',
+  },
+  {
+    title: 'Zahl-Körper',
+    duration: 'ca. 2 Min.',
+    emoji: '🔢',
+    goal: 'Koordination, kurzer Wachwerden.',
+    material: 'Optional: Zahlenkarten 1–10.',
+    steps: [
+      'Alle stehen (oder sitzen mit Oberkörper): Du rufst eine Zahl von 1 bis 10.',
+      'Die Zahl wird mit Fingern, Armen oder als Mini-Gruppe geformt (z. B. zwei Leute = „1“ und „0“ für 10).',
+      'Nach 3 Sekunden nächste Zahl – Tempo langsam steigern.',
+      'Letzte Runde: eine „Lieblingszahl“ der Klasse, alle zeigen sie gleichzeitig.',
+    ],
+  },
+  {
+    title: 'Schulter-Taxi',
+    duration: 'ca. 2 Min.',
+    emoji: '🚕',
+    goal: 'Nacken/Schultern lockern, ohne Platz zu brauchen.',
+    material: 'Keins.',
+    steps: [
+      'Stehend: Rechten Ellbogen mit linker Hand „abholen“, sanft zur linken Schulter ziehen, 5 Sekunden halten, wechseln.',
+      'Dann „Fahrstrecke“: große, langsame Schulterkreisen vorwärts und rückwärts.',
+      'Arme einmal klatschen über dem Kopf, dann locker hängen lassen und tief durchatmen.',
+    ],
+    tip: 'Wer nicht stehen kann: nur Oberkörper und Arme mitmachen.',
+  },
+];
+
+const MOVEMENT_GAMES_INDOOR_LONG: MovementGameCard[] = [
+  {
+    title: 'Buchstaben-Factory',
+    duration: 'ca. 10 Min.',
+    emoji: '🔤',
+    goal: 'Teamwork, Kreativität, Thema einklinken.',
+    material: 'Stift + Zettel mit Begriffen (optional).',
+    steps: [
+      'Teams à 4–5. Pro Runde ein Wort oder Begriff (zum Fach oder frei).',
+      'Das Team formt die Buchstaben mit dem Körper – stehend, am Boden oder kombiniert.',
+      'Andere raten; nach max. 1 Min. Auflösung. Dann nächstes Team.',
+      '3–4 Runden, zum Schluss: schnellstes „Wort des Tages“ in 20 Sekunden.',
+    ],
+  },
+  {
+    title: 'Bank-Insel-Parkour',
+    duration: 'ca. 10 Min.',
+    emoji: '🏝️',
+    goal: 'Bewegung im Raum, ohne wild zu werden.',
+    material: 'Farbiges Klebeband oder A4-Zettel als „Inseln“, ggf. eine „Laser“-Linie unter der Tür.',
+    steps: [
+      'Legt eine sichere Route: nur auf Inseln stehen/treten, Abstand zu Heizung/Fenster beachten.',
+      'Variante A: nacheinander durch den Parcours, andere klatschen im Takt.',
+      'Variante B: Paare – einer blind (Augen zu), der andere spricht nur „links/rechts/stopp“.',
+      'Letzte 2 Min.: freiwillig eine „Trick-Insel“ (Balance auf einem Fuß 3 Sekunden).',
+    ],
+    tip: 'Klare Regel: nicht rennen, nicht über Tische.',
+  },
+  {
+    title: 'Marionetten-Duo',
+    duration: 'ca. 10 Min.',
+    emoji: '🎭',
+    goal: 'Kommunikation ohne Worte, Fokus.',
+    material: 'Keins.',
+    steps: [
+      'Paare: Person A ist „Puppe“, B ist „Regisseur“ nur mit Händen/Gesten (keine Worte).',
+      'A bewegt sich erst, wenn B „zieht“ (Gesten). Auf Schnippfinger: einfrieren.',
+      '4 Minuten, dann Rollentausch.',
+      'Optional: zwei Paare zeigen vor der Klasse eine 30-Sekunden-„Szene“.',
+    ],
+  },
+];
+
+const MOVEMENT_GAMES_OUTDOOR: MovementGameCard[] = [
+  {
+    title: 'Human Compiler',
+    duration: 'ca. 15–20 Min.',
+    emoji: '🤖',
+    goal: 'Bewegung + logisches Denken (gut zu Informatik).',
+    material: 'Hütchen oder Steine als Ziele.',
+    steps: [
+      'Je Gruppe: eine „Roboterperson“ (führt nur genau genannte Befehle aus, z. B. 2 Schritte, 90° drehen, hinsetzen, aufstehen).',
+      'Die Gruppe „programmiert“ laut eine Kette, um ein Ziel zu erreichen – dann wird ausgeführt.',
+      'Fehler? Kein Stress: „Debuggen“ = Befehl wiederholen oder korrigieren.',
+      'Mehrere Gruppen, verschiedene Ziele; zum Schluss kurz: Was war schwer am „Programmieren“?',
+    ],
+  },
+  {
+    title: 'Stations-Parcours',
+    duration: 'ca. 15–20 Min.',
+    emoji: '🎯',
+    goal: 'Ausdauer in kurzen Blöcken, alle kommen dran.',
+    material: '4–6 Stationen markieren (Hütchen), optional weicher Ball, Seil.',
+    steps: [
+      'Stationen z. B.: 15 Kniebeugen oder Kniehebelauf, Slalom um Hütchen, 20 Sekunden Plank (oder Unterarmstütz), Partner-Ball zuwerfen (2 m), 10 Hampelmänner.',
+      'Gruppen rotieren im 2–3-Minuten-Takt; Signal zum Wechsel durch dich oder eine Ampelkarte.',
+      'Niemand muss alles „perfekt“ – Alternativen an jeder Station anbieten (z. B. Wand-Sitzen statt Plank).',
+    ],
+  },
+  {
+    title: 'Zonen-Wechsel',
+    duration: 'ca. 15–20 Min.',
+    emoji: '🛟',
+    goal: 'Tempo + Teamgeist ohne Ausschluss.',
+    material: '3–4 markierte „sichere Zonen“ (Kreide, Taschentücher, Hütchen).',
+    steps: [
+      'Alle starten in einer Zone. Bei deinem Signal müssen alle eine andere Zone erreichen, bevor du „Stopp“ sagst.',
+      'Wer keine andere Zone schafft: die **ganze Klasse** macht 5 gemeinsame Hampelmänner (nicht die Person allein).',
+      'Nach einigen Runden: zwei Zonen „schließen“ – es wird knapper, aber fair bleiben.',
+      'Cooldown: langsam zur nächsten Stunde laufen oder im Kreis stehen und atmen.',
+    ],
+  },
+  {
+    title: 'Lauf-Chaos-Staffel',
+    duration: 'ca. 15–20 Min.',
+    emoji: '🏃',
+    goal: 'Kreativität, kein klassischer Sportwettkampf.',
+    material: 'Start-/Ziel-Linie mit Kreide oder Band.',
+    steps: [
+      'Jede Kleingruppe erfindet eine „Lauf-Engine“: z. B. Zeitlupe-Astronaut, Ente, seitwärts, nur auf Zehenspitzen.',
+      'Kurze Strecke (10–15 m): Staffelstab = Highfive oder Klatsch.',
+      'Keine Punkte – optional nur „beste Idee“ per Applaus.',
+      'Wichtig: Strecke frei von Steinen/Glas, Tempo „Schrittgeschwindigkeit“ wenn es eng ist.',
+    ],
+  },
+];
+
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
   const navigate = useNavigate();
   const subjectManagerRef = useRef<any>(null);
@@ -2630,6 +3149,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [showTeacherMessageBox, setShowTeacherMessageBox] = useState(false);
   const [showRiddleOverview, setShowRiddleOverview] = useState(false);
   const [showCarnivalGames, setShowCarnivalGames] = useState(false);
+  const [showMovementGames, setShowMovementGames] = useState(false);
+  const [showMovementRandomCards, setShowMovementRandomCards] = useState(false);
   // Modal für Unterrichtsstunde (Anweisungen, Folien, AB)
   const [lessonModalOpen, setLessonModalOpen] = useState(false);
   const [lessonModalData, setLessonModalData] = useState<{
@@ -5119,6 +5640,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     });
   };
 
+  // Einheitliche Schriftgröße und Zeilenhöhe in allen Stundenmodals (01_Skytale etc.)
+  const LESSON_MODAL_FONT_SIZE = '1rem';
+  const LESSON_MODAL_LINE_HEIGHT = 1.75;
+
   // Lehrerhinweise pro Unterrichtsstunde (Stundenordner-Name als Key)
   const LESSON_INSTRUCTIONS: Record<string, {
     voraussetzungen?: string;
@@ -5206,6 +5731,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       abAnleitung: `• Wir brauchen **fünf** **Gruppen**, die sich mit den Fällen A bis E befassen. Bearbeitet damit Aufgabe 1.
 • Besprechung Aufgabe 1 und Folien dazu zeigen.
 • Danach die restlichen beiden Aufgaben bearbeiten und mit Folien besprechen.`
+    },
+    '06 Alan Turing & Enigma': {
+      materialliste: `Ohrhörer oder Kopfhörer (für Podcast), Smartphone/Player für den Podcast, Schnur und Karten für die Zeitleiste, vorbereitetes Enigma-Puzzle (Material/Arbeitsblatt je Gruppe).`,
+      anweisungen: `<ol>
+<li>Hört euch den Podcast an, während ihr gemeinsam spaziert.</li>
+<li>Diskutiert zu zweit für 5 Minuten über das Gehörte.</li>
+<li>Erstellt in 10 Minuten eine Zeitleiste mit einer Schnur und Karten, auf die ihr Stichpunkte schreibt.</li>
+<li>Vergleicht anschließend eure Zeitleisten in der Gruppe.</li>
+<li>Geht an einen ruhigen Ort, hört einen weiteren Podcast über Enigma und besprecht die Details.</li>
+<li>Entschlüsselt dann gemeinsam ein vorbereitetes Puzzle und präsentiert eure Lösung am Ende der Gruppe.</li>
+</ol>`,
+      abAnleitung: `• Notiert zuerst nach Podcast 1 wichtige Stichpunkte für eure Karten.
+• Ergänzt anschließend eure Zeitleiste und haltet die entscheidenden Erkenntnisse fest.
+• Im letzten Teil: Tragt eure gelöste Puzzle-Lösung (und 1–2 Sätze, wie ihr vorgegangen seid) ins Arbeitsblatt ein.`
     }
   };
 
@@ -5226,6 +5765,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       erklärung: 'Zwei grundlegende Arten: Transposition (Zeichen werden umgestellt) vs. Substitution (Zeichen werden ersetzt).',
       beispiel: 'Skytale = Transposition; Caesar = Substitution.'
     },
+    'Transposition': {
+      erklärung: 'Verschlüsselung durch Umstellung der Zeichenpositionen (Reihenfolge wird geändert, Zeichen werden nicht ersetzt).',
+      beispiel: 'Skytale: Nachricht wird um den Stab gewickelt geschrieben und quer gelesen.'
+    },
     'Kryptologie': {
       erklärung: 'Wissenschaft von der Verschlüsselung (Kryptographie) und dem Entschlüsseln (Kryptoanalyse).',
       beispiel: 'Sicherheitsziele wie Vertraulichkeit und Integrität werden durch kryptologische Verfahren angestrebt.'
@@ -5245,8 +5788,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   const urlRegex = /(https?:\/\/[^\s)]+)/g;
+  const arrowReplace = (s: string) => s.replace(/-->/g, '→');
   const renderPartWithLinks = (part: string, keyPrefix: string) => {
-    const segments = part.split(urlRegex);
+    const segments = arrowReplace(part).split(urlRegex);
     return segments.map((seg, j) => {
       if (seg.startsWith('http://') || seg.startsWith('https://')) {
         const url = seg.trim();
@@ -5257,7 +5801,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: '0.75rem', wordBreak: 'break-all', color: '#1565c0', textDecoration: 'none', borderBottom: '1px solid #90caf9' }}
+            style={{ fontSize: LESSON_MODAL_FONT_SIZE, wordBreak: 'break-all', color: '#1565c0', textDecoration: 'none', borderBottom: '1px solid #90caf9' }}
           >
             {short}
           </a>
@@ -5304,18 +5848,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   // Hilfsfunktion: Rendert HTML-Inhalt oder Plaintext mit renderBoldText
-  const renderTextContent = (text: string, boldColor?: string, lineHeight: number = 1.75, asList: boolean = false) => {
+  const renderTextContent = (text: string, boldColor?: string, lineHeight: number = LESSON_MODAL_LINE_HEIGHT, asList: boolean = false) => {
     if (!text) return null;
     const trimmed = text.trim();
     // Gespeichertes HTML aus dem Editor: immer als HTML rendern (Tag-Heuristik, auch bei führendem Whitespace)
     const hasHtml = trimmed.length > 0 && (/<[a-z][^>]*>/i.test(trimmed) || (trimmed.includes('<') && trimmed.includes('>')));
     if (hasHtml) {
-      return <Box component="div" dangerouslySetInnerHTML={{ __html: text }} sx={{ fontSize: '1.15rem', lineHeight, color: '#333', '& p': { margin: '0.5em 0' }, '& ul, & ol': { margin: '0.5em 0', paddingLeft: '1.5em' }, '& li': { margin: '0.25em 0', lineHeight }, '& br': { display: 'block', content: '""', marginBottom: '0.5em' } }} />;
+      return <Box component="div" dangerouslySetInnerHTML={{ __html: text }} sx={{ fontSize: LESSON_MODAL_FONT_SIZE, lineHeight, color: '#333', '& p': { margin: '0.5em 0' }, '& ul, & ol': { margin: '0.5em 0', paddingLeft: '1.5em' }, '& li': { margin: '0.25em 0', lineHeight }, '& a': { fontSize: LESSON_MODAL_FONT_SIZE }, '& span': { fontSize: 'inherit' }, '& br': { display: 'block', content: '""', marginBottom: '0.5em' }, '& img[data-editor-icon]': { display: 'none' } }} />;
     }
     // Plaintext: Wenn als Liste, zeige als Liste mit renderBoldText pro Zeile
     if (asList) {
       return (
-        <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: '1.15rem', lineHeight }}>
+        <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight }}>
           {text.split('\n').filter(Boolean).map((line, i) => (
             <Box component="li" key={i} sx={{ mb: 0.75 }}>
               {renderBoldText(line.replace(/^•\s*/, ''), boldColor)}
@@ -5326,7 +5870,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
     // Plaintext: Zeige mit Zeilenumbrüchen
     return (
-      <Box component="div" sx={{ whiteSpace: 'pre-wrap', fontSize: '1.15rem', lineHeight, color: '#333' }}>
+      <Box component="div" sx={{ whiteSpace: 'pre-wrap', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight, color: '#333' }}>
         {text.split('\n').map((line, i, arr) => (
           <React.Fragment key={i}>
             {renderBoldText(line, boldColor)}
@@ -5400,24 +5944,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         if (!glossar) {
           if (term === 'fünf') return <strong key={i} style={{ color: boldColor ?? '#2e7d32' }}>{term}</strong>;
           if (term === 'Gruppen') return <strong key={i} style={{ color: boldColor ?? '#e65100' }}>{term}</strong>;
-          // Material: orange, nicht bold, mit Icon
+          // Material: orange, nicht bold
           if (boldColor === '#ed6c02') {
-            return (
-              <Box key={i} component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, color: '#ed6c02' }}>
-                <AssignmentIcon sx={{ fontSize: 16, flexShrink: 0 }} />
-                <span>{term}</span>
-              </Box>
-            );
+            return <span key={i} style={{ color: '#ed6c02' }}>{term}</span>;
           }
           // Sonstige Begriffe (nur Farbe, nicht bold)
           return <span key={i} style={{ color: '#1565c0' }}>{term}</span>;
         }
-        // Fachbegriffe: blau, nicht bold (mit Tooltip)
+        // Fachbegriffe: blau, nicht bold, mit Fragezeichen-Hover (Erklärung + Beispiel)
         return (
           <Tooltip
             key={i}
             title={
-              <Box component="span" sx={{ display: 'block', maxWidth: 320, fontSize: '1rem' }}>
+              <Box component="span" sx={{ display: 'block', maxWidth: 320, fontSize: LESSON_MODAL_FONT_SIZE }}>
                 <Box component="span" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>Erklärung:</Box>
                 {glossar.erklärung}
                 <Box component="span" sx={{ fontWeight: 600, display: 'block', mt: 1, mb: 0.5 }}>Beispiel:</Box>
@@ -5429,7 +5968,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           >
             <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, cursor: 'help', borderBottom: '1px dotted currentColor', color: '#1565c0', fontWeight: 400 }}>
               <span>{term}</span>
-              <InfoIcon sx={{ fontSize: 14, opacity: 0.8 }} />
+              <HelpOutlineIcon sx={{ fontSize: 14, opacity: 0.85 }} />
             </Box>
           </Tooltip>
         );
@@ -5476,56 +6015,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       parts.push({ type: 'material', content: best.label, icon: best.icon });
       remaining = remaining.slice(best.index + best.length);
     }
-    const iconSx = { flexShrink: 0, lineHeight: 0, display: 'inline-flex', alignItems: 'center', mr: 0.5, verticalAlign: 'middle' };
     return (
-      <Box component="span" sx={{ display: 'inline', color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+      <Box component="span" sx={{ display: 'inline', color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: LESSON_MODAL_LINE_HEIGHT }}>
         {parts.map((p, i) => {
           if (p.type === 'text') return <span key={i}>{p.content}</span>;
-          const IconComp = p.icon === 'zettel' ? (
-            <Box component="span" sx={iconSx} title={p.content}>
-              <svg width="20" height="24" viewBox="0 0 22 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="1" width="20" height="25" rx="0.5" fill="#fffef7" stroke="#b0a090" strokeWidth="0.8"/>
-                <line x1="4" y1="6" x2="18" y2="6" stroke="#d0c8b8" strokeWidth="0.6"/>
-                <line x1="4" y1="10" x2="16" y2="10" stroke="#d0c8b8" strokeWidth="0.6"/>
-                <line x1="4" y1="14" x2="18" y2="14" stroke="#d0c8b8" strokeWidth="0.6"/>
-              </svg>
-            </Box>
-          ) : p.icon === 'lederband' ? (
-            <Box component="span" sx={iconSx} title={p.content}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 12h16M4 12v6l8-3 8 3v-6M4 12l8-3 8 3" stroke="#ed6c02" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-              </svg>
-            </Box>
-          ) : p.icon === 'stoebe' ? (
-            <Box component="span" sx={iconSx} title={p.content}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="10" y="2" width="4" height="20" rx="1" fill="#8d6e63" stroke="#5d4e37" strokeWidth="0.8"/>
-                <rect x="4" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" strokeWidth="0.8"/>
-                <rect x="16" y="6" width="4" height="16" rx="1" fill="#8d6e63" stroke="#5d4e37" strokeWidth="0.8"/>
-              </svg>
-            </Box>
-          ) : (
-            <Box component="span" sx={iconSx} title={p.content}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="5" width="18" height="14" rx="0.5" fill="#fffef7" stroke="#ed6c02" strokeWidth="0.8"/>
-                <line x1="6" y1="10" x2="18" y2="10" stroke="#e0d0b0" strokeWidth="0.6"/>
-                <line x1="6" y1="14" x2="15" y2="14" stroke="#e0d0b0" strokeWidth="0.6"/>
-              </svg>
-            </Box>
-          );
-          return (
-            <Box component="span" key={i} sx={{ color: '#ed6c02', fontWeight: 400, display: 'inline-flex', alignItems: 'center' }}>
-              {IconComp}
-              <span>{p.content}</span>
-            </Box>
-          );
+          return <span key={i} style={{ color: '#ed6c02', fontWeight: 400 }}>{p.content}</span>;
         })}
       </Box>
     );
   };
 
-  // Icons als <img> mit Data-URI (contentEditable entfernt Inline-SVG oft; img bleibt erhalten)
-  const svgToImgDataUri = (svg: string, w: number, h: number, style = 'vertical-align:middle;margin-right:2px'): string => {
+  // Icons als <img> mit Data-URI – strikt inline, damit sie in Listen und Fließtext sauber mitlaufen
+  const iconImgStyle = 'display:inline;vertical-align:middle;margin:0 2px;max-height:1.1em;width:auto;height:1.1em;';
+  const svgToImgDataUri = (svg: string, w: number, h: number, style = iconImgStyle): string => {
     try {
       const base64 = btoa(unescape(encodeURIComponent(svg.trim())));
       const uri = `data:image/svg+xml;base64,${base64}`;
@@ -5550,7 +6052,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return r;
   })();
   const ASSIGNMENT_ICON_HTML = svgToImgDataUri(ASSIGNMENT_ICON_SVG, 16, 16);
-  const INFO_ICON_HTML = svgToImgDataUri(INFO_ICON_SVG, 14, 14, 'vertical-align:middle;margin-left:1px;opacity:0.8');
+  const INFO_ICON_HTML = svgToImgDataUri(INFO_ICON_SVG, 14, 14, iconImgStyle + 'margin-left:1px;opacity:0.8');
 
   /** Konvertiert Anzeige-Text zu Editor-HTML mit gleicher Formatierung wie auf der Seite: Farben, Icons, Glossar-Tooltips. */
   function plainTextToEditorHtml(text: string, section: 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte'): string {
@@ -5587,8 +6089,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       }
       const out = parts.map(p => {
         if (p.type === 'text') return escapeHtml(p.content).replace(/\n/g, '<br>');
-        const icon = p.icon ? MATERIAL_ICONS_HTML[p.icon] : MATERIAL_ICONS_HTML.papier;
-        return `<span style="color:#ed6c02;font-weight:400;display:inline-flex;align-items:center">${icon}${escapeHtml(p.content)}</span>`;
+        return `<span style="color:#ed6c02;font-weight:400;display:inline;font-size:1rem">${escapeHtml(p.content)}</span>`;
       }).join('');
       return out.replace(/\r\n?|\n/g, '<br>');
     }
@@ -5630,12 +6131,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
 
     const linkify = (part: string) => {
-      const segs = part.split(urlRegex);
+      const withArrow = part.replace(/-->/g, '→');
+      const segs = withArrow.split(urlRegex);
       return segs.map(seg => {
         if (seg.startsWith('http://') || seg.startsWith('https://')) {
           const url = seg.trim();
           const short = url.length > 45 ? url.slice(0, 42) + '…' : url;
-          return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="font-size:0.75rem;word-break:break-all;color:#1565c0;text-decoration:none;border-bottom:1px solid #90caf9">${escapeHtml(short)}</a>`;
+          return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="font-size:1rem;word-break:break-all;color:#1565c0;text-decoration:none;border-bottom:1px solid #90caf9">${escapeHtml(short)}</a>`;
         }
         return escapeHtml(seg);
       }).join('');
@@ -5652,12 +6154,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           if (term === 'fünf') return `<strong style="color:${boldColor ?? '#2e7d32'}">${escapeHtml(term)}</strong>`;
           if (term === 'Gruppen') return `<strong style="color:${boldColor ?? '#e65100'}">${escapeHtml(term)}</strong>`;
           if (boldColor === '#ed6c02') {
-            return `<span style="color:#ed6c02;display:inline-flex;align-items:center;gap:0.35em">${ASSIGNMENT_ICON_HTML}${escapeHtml(term)}</span>`;
+            return `<span style="color:#ed6c02;display:inline;font-size:1rem">${escapeHtml(term)}</span>`;
           }
-          return `<span style="color:#1565c0">${escapeHtml(term)}</span>`;
+          return `<span style="color:#1565c0;font-size:1rem">${escapeHtml(term)}</span>`;
         }
         const title = `Erklärung: ${glossar.erklärung} — Beispiel: ${glossar.beispiel}`;
-        return `<span style="color:#1565c0;border-bottom:1px dotted currentColor;cursor:help" title="${escapeTitle(title)}">${escapeHtml(term)}${INFO_ICON_HTML}</span>`;
+        return `<span style="color:#1565c0;border-bottom:1px dotted currentColor;cursor:help;font-size:1rem" title="${escapeTitle(title)}">${escapeHtml(term)}</span>`;
       }
       return linkify(seg.content).replace(/\r\n?|\n/g, '<br>');
     });
@@ -9675,6 +10177,32 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 >
                   <GamesIcon sx={{ fontSize: 18 }} />
                 </IconButton>
+                {/* Bewegungsspiele (Klassenzimmer & draußen) */}
+                <IconButton
+                  onClick={() => setShowMovementGames(true)}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(0, 137, 123, 0.35)',
+                    background: 'linear-gradient(135deg, #00695c 0%, #00897b 50%, #26a69a 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(0, 137, 123, 0.35)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(0, 137, 123, 0.55)',
+                      boxShadow: '0 4px 12px rgba(0, 137, 123, 0.45)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Bewegungsspiele (Brainbreak & draußen)"
+                >
+                  <DirectionsRunIcon sx={{ fontSize: 20 }} />
+                </IconButton>
               </Box>
             </Box>
           </Box>
@@ -10704,7 +11232,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                                                 {lessonQuizzes[lesson.id] ? '🧩' : '📄'}
                                                               </span>
                                                             )}
-                                                          </Box>
+                                                        </Box>
                                                         ))}
                                                     </Box>
                                                   ))}
@@ -10717,7 +11245,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             </Box>
                           </Box>
                           )}
-
+          
                         </Grid>
                       </Grid>
                       
@@ -11055,11 +11583,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 textAlign: 'center'
                               }}>
                                 Keine Gruppen
-                          </Typography>
+                              </Typography>
                             </Box>
                           )}
                         </Box>
-                        
 
                       </CardContent>
                     </Card>
@@ -12662,7 +13189,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         </Box>
                       </Box>
                     )}
-
+    
                     {/* Karteikarten-Liste mit Drag & Drop und Löschen-Funktion - Vier Spalten */}
                     <Grid container spacing={2}>
                       {selectedDeck.cards.map((card, index) => (
@@ -15003,6 +15530,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   onTouchMove={handleTouchMove}
                         >
                   {isCurrentDropTarget && (
+                    <>
                     <Box sx={{
                       position: 'absolute',
                       top: -8,
@@ -15022,8 +15550,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     }}>
                       ✓
                     </Box>
-                  )}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.05, justifyContent: 'center', height: '100%' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.05, justifyContent: 'center', height: '100%' }}>
                     <Typography variant="caption" sx={{ fontWeight: 500, fontSize: '0.5rem', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.1 }}>
                               {formatStudentName(student.name)}
                             </Typography>
@@ -15031,6 +15558,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               {colors.emoji}
                             </Typography>
                           </Box>
+                    </>
+                  )}
                   {/* Globale Slot-Nummer */}
                   <Box sx={{
                     position: 'absolute',
@@ -15056,7 +15585,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             K
                           </Box>
                   )}
-                        </Paper>
+                          </Paper>
               );
               
               return hasComment ? (
@@ -15153,6 +15682,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   }}
                 >
                   {isCurrentDropTarget && (
+                    <>
                     <Box sx={{
                       position: 'absolute',
                       top: -8,
@@ -15172,10 +15702,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     }}>
                       ✓
                     </Box>
-                  )}
-                  <Typography variant="caption" sx={{ color: isCurrentDropTarget ? '#2E7D32' : '#9e9e9e', fontSize: '0.6rem', fontWeight: isCurrentDropTarget ? 600 : 400 }}>
+                    <Typography variant="caption" sx={{ color: isCurrentDropTarget ? '#2E7D32' : '#9e9e9e', fontSize: '0.6rem', fontWeight: isCurrentDropTarget ? 600 : 400 }}>
                     {isCurrentDropTarget ? 'Hier ablegen' : 'Leer'}
                   </Typography>
+                    </>
+                  )}
                   {/* Globale Slot-Nummer */}
                   <Box sx={{
                     position: 'absolute',
@@ -15377,8 +15908,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           </Box>
                         )}
                       </Box>
-                );
-              })}
+                    );
+                  })}
                 </Box>
               </Box>
             );
@@ -15650,7 +16181,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             </Box>
                           </Tooltip>
                         )}
-                        
+                                
                         {periodConfig.period2Hours && stat.period2 && (
                           <Tooltip title={`Zeitraum 2 (St. ${periodConfig.period1Hours ? periodConfig.period1Hours + 1 : 1}-${periodConfig.period1Hours ? periodConfig.period1Hours + periodConfig.period2Hours : periodConfig.period2Hours}): ${stat.period2.count} Bewertungen`} arrow>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
@@ -15673,7 +16204,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             </Box>
                           </Tooltip>
                         )}
-                        
+                                
                         <Box sx={{ width: '1px', height: '16px', bgcolor: '#d0d0d0', mx: 0.5 }} />
                         
                         <Tooltip title="Gesamtnote (alle Bewertungen)" arrow>
@@ -15709,7 +16240,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             </Typography>
                           </Tooltip>
                         )}
-                        
+                                
                         {epo2 && (
                           <Tooltip title="Epo 2 (Zeitraum 2)" arrow>
                             <Typography 
@@ -15726,7 +16257,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             </Typography>
                           </Tooltip>
                         )}
-                      </Box>
+                              </Box>
                     </Box>
                   );
                 })}
@@ -15867,8 +16398,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               {(() => {
                 const lessonName = lessonModalData.lessonName;
                 const lessonPath = lessonModalData.lessonPath;
+                const normalizedLessonName = (lessonName || '').replace(/_/g, ' ');
                 const baseInstructions = LESSON_INSTRUCTIONS[lessonName]
-                  ?? Object.entries(LESSON_INSTRUCTIONS).find(([key]) => lessonName.includes(key) || key.includes(lessonName))?.[1];
+                  ?? LESSON_INSTRUCTIONS[normalizedLessonName]
+                  ?? Object.entries(LESSON_INSTRUCTIONS).find(([key]) => {
+                      const n = (key || '').replace(/_/g, ' ');
+                      return normalizedLessonName.includes(n) || n.includes(normalizedLessonName);
+                    })?.[1];
                 const instructions = { ...baseInstructions, ...(editedLessonInstructions[lessonPath] || {}) } as typeof baseInstructions;
                 const allFiles = (lessonModalData.children || []).filter((c: any) => c.type === 'file' && !(c.name && c.name.startsWith('~$')));
                 const isEditing = (section: LessonBoxField) => lessonBoxEdit?.lessonPath === lessonPath && lessonBoxEdit?.section === section;
@@ -15920,7 +16456,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const abFiles = allFiles.filter((f: any) => !/\.(pdf|pptx?|odp)$/i.test(f.name || '') || isABByName(f.name));
 
                 return (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: LESSON_MODAL_FONT_SIZE }}>
                     {/* Voraussetzungen – blaue Box immer da, Inhalt nur bei echten Voraussetzungen (nicht bei "Keine fachlichen Voraussetzungen.") */}
                     <Box sx={{ pt: 1.5 }}>
                       <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, pr: 5, border: '1px solid #90caf9', borderBottom: 'none' }}>
@@ -15963,9 +16499,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
                                   >
                                     {voraussetzungenGlossarOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#1565c0' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#1565c0' }} />}
-                                    <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>
-                                      Fachbegriffe (Erklärungen & Beispiele)
-                                    </Typography>
+<Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>
+                                    Fachbegriffe (Erklärungen & Beispiele)
+                                  </Typography>
                                   </Box>
                                   <Collapse in={voraussetzungenGlossarOpen}>
                                     <Box sx={{ mt: 1 }}>
@@ -15974,12 +16510,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                         if (!g) return null;
                                         return (
                                           <Box key={term} sx={{ mb: 1.25 }}>
-                                            <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: '1.05rem' }}>{term}</Typography>
+                                            <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>{term}</Typography>
                                             <Box sx={{ mt: 0.5, pl: 1, borderLeft: '3px solid #90caf9' }}>
-                                              <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block', mb: 0.25 }}>
+                                              <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block', mb: 0.25 }}>
                                                 <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Erklärung:</Box> {g.erklärung}
                                               </Typography>
-                                              <Typography component="span" sx={{ fontSize: '1rem', color: '#333', display: 'block' }}>
+                                              <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block' }}>
                                                 <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Beispiel:</Box> {g.beispiel}
                                               </Typography>
                                             </Box>
@@ -16026,7 +16562,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               </Box>
                             </>
                           ) : (
-                            <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: '1.15rem', lineHeight: 1.75 }}>
+                            <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: LESSON_MODAL_LINE_HEIGHT }}>
                               {(() => {
                                 const raw = instructions!.materialliste!;
                                 const looksLikeHtml = raw.trim().length > 0 && (/<[a-z][^>]*>/i.test(raw.trim()) || (raw.includes('<') && raw.includes('>')));
@@ -16037,10 +16573,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         </Box>
                       </Box>
                     )}
-
+    
                     {/* Lehrer-Anweisungen (ohne Überschrift), AB nur unten – Materialbegriffe (**) orange */}
                     {instructions?.anweisungen && (
-                      <Box>
+                      <Box sx={{ fontSize: LESSON_MODAL_FONT_SIZE }}>
                         <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', borderRadius: 0, p: 2, pr: 5, border: '1px solid #c5e1a5', borderBottom: 'none' }}>
                           <Tooltip title="Text bearbeiten">
                             <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
@@ -16068,12 +16604,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               </Box>
                             </>
                           ) : (
-                            renderTextContent(instructions.anweisungen, '#ed6c02', 1.85, true)
+                            renderTextContent(instructions.anweisungen, '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
                           )}
                         </Box>
                       </Box>
                     )}
-
+    
                     {/* Die Nachrichten: Klartexte – ausklappbar (Inhalt optional) */}
                     {(instructions && 'geheimtexte' in instructions) || isEditing('geheimtexte') ? (
                       <Box sx={{ pt: 0 }}>
@@ -16107,16 +16643,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             <>
                               <Box onClick={() => setGeheimtexteOpen(v => !v)} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', p: 1.5, '&:hover': { bgcolor: '#f5f5f5' } }}>
                                 {geheimtexteOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#616161' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#616161' }} />}
-                                <Typography component="span" sx={{ fontWeight: 700, color: '#424242', fontSize: '1.05rem' }}>Die Nachrichten: Klartexte</Typography>
+                                <Typography component="span" sx={{ fontWeight: 700, color: '#424242', fontSize: LESSON_MODAL_FONT_SIZE }}>Die Nachrichten: Klartexte</Typography>
                               </Box>
                               <Collapse in={geheimtexteOpen}>
                                 {(() => {
                                   const raw = (instructions as any)?.geheimtexte || '';
                                   const looksLikeHtml = raw.trim().length > 0 && (/<[a-z][^>]*>/i.test(raw.trim()) || (raw.includes('<') && raw.includes('>')));
                                   return looksLikeHtml ? (
-                                    <Box sx={{ px: 1.5, pb: 1.5, fontSize: '0.95rem', color: '#333' }} dangerouslySetInnerHTML={{ __html: raw }} />
+                                    <Box sx={{ px: 1.5, pb: 1.5, fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', '& img[data-editor-icon]': { display: 'none' } }} dangerouslySetInnerHTML={{ __html: raw }} />
                                   ) : (
-                                    <Box sx={{ px: 1.5, pb: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.95rem', color: '#333' }}>
+                                    <Box sx={{ px: 1.5, pb: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: LESSON_MODAL_FONT_SIZE, color: '#333' }}>
                                       {raw.trim() || ''}
                                     </Box>
                                   );
@@ -16159,7 +16695,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         <LessonSharedInputBox groupId={lessonModalData.groupId} lessonPath={lessonModalData.lessonPath} />
                       </Box>
                     )}
-
+    
                     {/* Folien */}
                     {folienFiles.length > 0 && (
                       <Box>
@@ -16176,7 +16712,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 <ListItemIcon sx={{ minWidth: 28 }}>
                                   <DescriptionIcon fontSize="small" sx={{ color: '#1976d2' }} />
                                 </ListItemIcon>
-                                <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: '0.9rem' }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
                                   {sortedVersions.map(({ ext, file }) => (
                                     <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
@@ -16205,7 +16741,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         </List>
                       </Box>
                     )}
-
+    
                     {/* Arbeitsblatt (AB) – Kasten nur anzeigen, wenn AB-Dateien existieren; sonst leer lassen */}
                     {abFiles.length > 0 && (
                       <Box>
@@ -16236,7 +16772,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </Box>
                               </>
                             ) : instructions?.abAnleitung ? (
-                              renderTextContent(instructions.abAnleitung, '#ed6c02', 1.75, true)
+                              renderTextContent(instructions.abAnleitung, '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
                             ) : null}
                           </Box>
                         )}
@@ -16250,7 +16786,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   <ListItemIcon sx={{ minWidth: 28 }}>
                                     <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
                                   </ListItemIcon>
-                                  <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: '0.9rem' }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                  <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
                                     {sortedVersions.map(({ ext, file }) => (
                                       <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
@@ -16279,7 +16815,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         </List>
                       </Box>
                     )}
-
+    
                     {!instructions && folienFiles.length === 0 && abFiles.length === 0 && (
                       <Typography variant="body2" color="text.secondary">
                         Keine Anweisungen oder Dateien für diese Stunde hinterlegt.
@@ -17386,6 +17922,306 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Bewegungsspiele – Anleitungen (ohne Punkte/Modi) */}
+      <Dialog
+        open={showMovementGames}
+        onClose={() => setShowMovementGames(false)}
+        maxWidth="md"
+        fullWidth
+        scroll="paper"
+        PaperProps={{
+          sx: {
+            background: 'linear-gradient(160deg, #004d40 0%, #00695c 35%, #00897b 100%)',
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            color: 'white',
+            py: 1.5,
+            px: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid rgba(255,255,255,0.2)',
+          }}
+        >
+          <Box sx={{ width: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 700, flex: 1, textAlign: 'center', fontSize: '1.05rem' }}>
+            Bewegungsspiele
+          </Typography>
+          <IconButton
+            onClick={() => setShowMovementGames(false)}
+            size="small"
+            sx={{
+              color: 'white',
+              p: 0.5,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1, px: 2 }}>
+          <Typography variant="subtitle2" sx={{ color: '#b2dfdb', fontWeight: 700, mb: 1, mt: 0.5 }}>
+            Drinnen · Brainbreak (ca. 2 Min.)
+          </Typography>
+          {MOVEMENT_GAMES_BRAIN.map((g) => (
+            <Accordion
+              key={g.title}
+              disableGutters
+              sx={{
+                mb: 1,
+                bgcolor: 'rgba(255,255,255,0.95)',
+                borderRadius: '8px !important',
+                overflow: 'hidden',
+                '&:before': { display: 'none' },
+              }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#00695c' }} />}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: '100%', pr: 1 }}>
+                  <Typography component="span" sx={{ fontSize: '1.25rem' }}>{g.emoji}</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#004d40' }}>{g.title}</Typography>
+                  {g.interactive === 'randomCards' && (
+                    <Tooltip title="Remote-Karten öffnen (Startet den Zufallsmodus)" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementRandomCards(true);
+                        }}
+                        aria-label="Remote-Karten starten"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#ff9800',
+                          color: '#fff',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          animation: 'remotePlayGlow 1.6s ease-in-out infinite',
+                          '@keyframes remotePlayGlow': {
+                            '0%, 100%': {
+                              boxShadow: '0 2px 8px rgba(255,152,0,0.55)',
+                              transform: 'scale(1)',
+                            },
+                            '50%': {
+                              boxShadow: '0 0 0 6px rgba(255,152,0,0.25)',
+                              transform: 'scale(1.04)',
+                            },
+                          },
+                          '&:hover': {
+                            bgcolor: '#f57c00',
+                            animation: 'none',
+                            transform: 'scale(1.06)',
+                          },
+                        }}
+                      >
+                        <SettingsRemoteIcon sx={{ fontSize: 26 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <Box sx={{ flex: 1 }} />
+                  <Chip label={g.duration} size="small" sx={{ bgcolor: '#e0f2f1', color: '#00695c', fontWeight: 600 }} />
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0, borderTop: '1px solid #eee' }}>
+                {g.interactive === 'randomCards' ? (
+                  <Box sx={{ py: 0.65 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: 'block', fontWeight: 800, mb: 0.45, px: 0.4, fontSize: '0.82rem' }}
+                    >
+                      Fernbedienungs-Tasten: Bedeutung
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.65, flexWrap: 'wrap', mb: 0.55, px: 0.4 }}>
+                      {REMOTE_MOVEMENT_CARD_DEFS.map((c, idx) => {
+                        const IconC = REMOTE_CARD_ICON[c.id] || SettingsRemoteIcon;
+                        return (
+                          <Tooltip key={c.id} title={`${c.label}: ${c.hint}`} arrow>
+                            <Box
+                              sx={{
+                                width: 52,
+                                height: 52,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 1,
+                                bgcolor: `${c.color}14`,
+                                border: `3px solid ${c.color}`,
+                                color: c.color,
+                                animation: 'remoteHintBob 2.2s ease-in-out infinite',
+                                animationDelay: `${idx * 0.1}s`,
+                                '@keyframes remoteHintBob': {
+                                  '0%, 100%': { transform: 'translateY(0)' },
+                                  '50%': { transform: 'translateY(-3px)' },
+                                },
+                              }}
+                            >
+                              <IconC sx={{ fontSize: 28 }} />
+                            </Box>
+                          </Tooltip>
+                        );
+                      })}
+                    </Box>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 0.45, px: 0.35 }}>
+                      {REMOTE_MOVEMENT_CARD_DEFS.map((c) => (
+                        <Box key={c.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.6 }}>
+                          <Box sx={{ width: 10, height: 10, borderRadius: 0.6, bgcolor: `${c.color}55`, mt: '0.35em' }} />
+                          <Box>
+                            <Typography variant="caption" sx={{ color: c.color, fontWeight: 900, lineHeight: 1.05, display: 'block', fontSize: '0.78rem' }}>
+                              {c.label}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.05, fontSize: '0.7rem' }}>
+                              {c.hint}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                ) : (
+                  <>
+                    <Typography variant="body2" sx={{ mb: 1, color: '#333' }}><strong>Ziel:</strong> {g.goal}</Typography>
+                    <Typography variant="body2" sx={{ mb: 1, color: '#555' }}><strong>Material:</strong> {g.material}</Typography>
+                    <List dense disablePadding>
+                      {g.steps.map((s, i) => (
+                        <ListItem key={i} sx={{ py: 0.25, alignItems: 'flex-start' }}>
+                          <ListItemText
+                            primary={`${i + 1}. ${s}`}
+                            primaryTypographyProps={{ variant: 'body2', color: '#424242' }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                    {g.tip && (
+                      <Alert severity="info" sx={{ mt: 1, py: 0.5 }} icon={<InfoIcon />}>
+                        {g.tip}
+                      </Alert>
+                    )}
+                  </>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          ))}
+
+          <Typography variant="subtitle2" sx={{ color: '#b2dfdb', fontWeight: 700, mb: 1, mt: 2 }}>
+            Drinnen · länger (ca. 10 Min.)
+          </Typography>
+          {MOVEMENT_GAMES_INDOOR_LONG.map((g) => (
+            <Accordion
+              key={g.title}
+              disableGutters
+              sx={{
+                mb: 1,
+                bgcolor: 'rgba(255,255,255,0.95)',
+                borderRadius: '8px !important',
+                overflow: 'hidden',
+                '&:before': { display: 'none' },
+              }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#00695c' }} />}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: '100%', pr: 1 }}>
+                  <Typography component="span" sx={{ fontSize: '1.25rem' }}>{g.emoji}</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#004d40', flex: 1 }}>{g.title}</Typography>
+                  <Chip label={g.duration} size="small" sx={{ bgcolor: '#e0f2f1', color: '#00695c', fontWeight: 600 }} />
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0, borderTop: '1px solid #eee' }}>
+                {g.goal && (
+                  <Typography variant="body2" sx={{ mb: 1, color: '#333' }}><strong>Ziel:</strong> {g.goal}</Typography>
+                )}
+                <Typography variant="body2" sx={{ mb: 1, color: '#555' }}><strong>Material:</strong> {g.material}</Typography>
+                <List dense disablePadding>
+                  {g.steps.map((s, i) => (
+                    <ListItem key={i} sx={{ py: 0.25, alignItems: 'flex-start' }}>
+                      <ListItemText
+                        primary={`${i + 1}. ${s}`}
+                        primaryTypographyProps={{ variant: 'body2', color: '#424242' }}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                {g.tip && (
+                  <Alert severity="info" sx={{ mt: 1, py: 0.5 }} icon={<InfoIcon />}>
+                    {g.tip}
+                  </Alert>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          ))}
+
+          <Typography variant="subtitle2" sx={{ color: '#b2dfdb', fontWeight: 700, mb: 1, mt: 2 }}>
+            Draußen (ca. 15–20 Min.)
+          </Typography>
+          {MOVEMENT_GAMES_OUTDOOR.map((g) => (
+            <Accordion
+              key={g.title}
+              disableGutters
+              sx={{
+                mb: 1,
+                bgcolor: 'rgba(255,255,255,0.95)',
+                borderRadius: '8px !important',
+                overflow: 'hidden',
+                '&:before': { display: 'none' },
+              }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#00695c' }} />}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: '100%', pr: 1 }}>
+                  <Typography component="span" sx={{ fontSize: '1.25rem' }}>{g.emoji}</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#004d40', flex: 1 }}>{g.title}</Typography>
+                  <Chip label={g.duration} size="small" sx={{ bgcolor: '#e0f2f1', color: '#00695c', fontWeight: 600 }} />
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0, borderTop: '1px solid #eee' }}>
+                <Typography variant="body2" sx={{ mb: 1, color: '#333' }}><strong>Ziel:</strong> {g.goal}</Typography>
+                <Typography variant="body2" sx={{ mb: 1, color: '#555' }}><strong>Material:</strong> {g.material}</Typography>
+                <List dense disablePadding>
+                  {g.steps.map((s, i) => (
+                    <ListItem key={i} sx={{ py: 0.25, alignItems: 'flex-start' }}>
+                      <ListItemText
+                        primary={`${i + 1}. ${s}`}
+                        primaryTypographyProps={{ variant: 'body2', color: '#424242' }}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                {g.tip && (
+                  <Alert severity="info" sx={{ mt: 1, py: 0.5 }} icon={<InfoIcon />}>
+                    {g.tip}
+                  </Alert>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1.5, bgcolor: 'rgba(0,0,0,0.12)' }}>
+          <Button
+            onClick={() => setShowMovementGames(false)}
+            variant="contained"
+            size="small"
+            sx={{
+              bgcolor: 'white',
+              color: '#00695c',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#e0f2f1' },
+            }}
+          >
+            Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <MovementRandomCardsModal
+        open={showMovementRandomCards}
+        onClose={() => {
+          setShowMovementRandomCards(false);
+        }}
+      />
 
       {/* Konfetti-Wurf Game */}
       <ConfettiGameModal 
