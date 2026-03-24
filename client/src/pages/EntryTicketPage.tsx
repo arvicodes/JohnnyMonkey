@@ -94,6 +94,9 @@ export default function EntryTicketPage() {
   const [showSolutions, setShowSolutions] = useState(false);
   const [teacherNotes, setTeacherNotes] = useState('');
   const [sessionDone, setSessionDone] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingPrompt, setEditingPrompt] = useState('');
+  const [editingSolution, setEditingSolution] = useState('');
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
   const activeTasks = selectedTasks;
@@ -164,6 +167,47 @@ export default function EntryTicketPage() {
       return next;
     });
   };
+
+  const startEditingTask = (index: number) => {
+    const task = activeTasks[index];
+    if (!task) return;
+    setEditingIndex(index);
+    setEditingPrompt(task.prompt);
+    setEditingSolution(task.solution);
+  };
+
+  const cancelEditingTask = () => {
+    setEditingIndex(null);
+    setEditingPrompt('');
+    setEditingSolution('');
+  };
+
+  const saveEditingTask = () => {
+    if (editingIndex === null) return;
+    const prompt = editingPrompt.trim();
+    const solution = calculateAutoSolution(prompt).trim();
+    if (!prompt || !solution) return;
+    setSelectedTasks((prev) => {
+      if (editingIndex < 0 || editingIndex >= prev.length) return prev;
+      const next = [...prev];
+      next[editingIndex] = { ...next[editingIndex], prompt, solution };
+      return next;
+    });
+    cancelEditingTask();
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    saveEditingTask();
+  };
+
+  const handleEditingPromptChange = (value: string) => {
+    setEditingPrompt(value);
+  };
+
+  const getLiveAutoSolution = (prompt: string): string =>
+    calculateAutoSolution(prompt);
 
   const handleBack = () => {
     if (sessionStarted) {
@@ -275,6 +319,201 @@ export default function EntryTicketPage() {
   const cleanPrompt = (prompt: string): string =>
     prompt.replace(/\s{2,}/g, ' ').trim();
 
+  const toNumber = (value: string): number => Number(value.replace(',', '.'));
+
+  const formatDeNumber = (value: number, maxDecimals = 2): string => {
+    if (!Number.isFinite(value)) return '';
+    const rounded = Number(value.toFixed(maxDecimals));
+    return rounded.toString().replace('.', ',');
+  };
+
+  const parseTimeToMinutes = (hh: string, mm: string): number => Number(hh) * 60 + Number(mm);
+  const formatMinutesToTime = (totalMinutes: number): string => {
+    const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+    const hh = Math.floor(normalized / 60).toString().padStart(2, '0');
+    const mm = (normalized % 60).toString().padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const evaluateSimpleExpression = (expr: string): number | null => {
+    const normalized = expr
+      .replace(/€/g, '')
+      .replace(/,/g, '.')
+      .replace(/·/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/:/g, '/')
+      .replace(/\s+/g, '');
+    if (!/^[0-9+\-*/().]+$/.test(normalized)) return null;
+    try {
+      // eslint-disable-next-line no-new-func
+      const value = Function(`"use strict"; return (${normalized});`)();
+      return typeof value === 'number' && Number.isFinite(value) ? value : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const normalizeMathExpression = (expr: string): string => {
+    return expr
+      .replace(/€/g, '')
+      .replace(/,/g, '.')
+      .replace(/·/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/:/g, '/')
+      .replace(/(\d+(?:\.\d+)?)%/g, '($1/100)')
+      .replace(/\s+/g, '');
+  };
+
+  const evaluateExpressionWithVariable = (expr: string, x: number): number | null => {
+    const normalized = normalizeMathExpression(expr).replace(/\?/g, `(${x})`);
+    if (!/^[0-9+\-*/().]+$/.test(normalized)) return null;
+    try {
+      // eslint-disable-next-line no-new-func
+      const value = Function(`"use strict"; return (${normalized});`)();
+      return typeof value === 'number' && Number.isFinite(value) ? value : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const solveQuestionMarkEquation = (prompt: string): number | null => {
+    const text = cleanPrompt(prompt);
+    const eqIndex = text.indexOf('=');
+    if (eqIndex < 0 || !text.includes('?')) return null;
+
+    const lhsRaw = text.slice(0, eqIndex);
+    const rhsRaw = text.slice(eqIndex + 1);
+
+    // Begrenze auf mathematische Tokens, damit Sätze außenrum nicht stören.
+    const stripToMath = (s: string) => (s.match(/[0-9+\-*/().,·:÷?%\s€]+/g) || []).join('');
+    const lhs = stripToMath(lhsRaw);
+    const rhs = stripToMath(rhsRaw);
+    if (!lhs || !rhs) return null;
+
+    const h0Left = evaluateExpressionWithVariable(lhs, 0);
+    const h0Right = evaluateExpressionWithVariable(rhs, 0);
+    const h1Left = evaluateExpressionWithVariable(lhs, 1);
+    const h1Right = evaluateExpressionWithVariable(rhs, 1);
+    if (h0Left === null || h0Right === null || h1Left === null || h1Right === null) return null;
+
+    // h(x) = lhs(x) - rhs(x) = a*x + b
+    const b = h0Left - h0Right;
+    const a = (h1Left - h1Right) - b;
+    if (Math.abs(a) < 1e-9) return null;
+    return -b / a;
+  };
+
+  const extractExpectedSuffix = (prompt: string): string => {
+    const match = prompt.match(/\?\s*([A-Za-zÄÖÜäöü€%²³/]+)\.?/);
+    return match?.[1]?.trim() ?? '';
+  };
+
+  const convertUnit = (value: number, from: string, to: string): number | null => {
+    const factors: Record<string, number> = {
+      mm: 0.001,
+      cm: 0.01,
+      m: 1,
+      km: 1000,
+      mg: 0.000001,
+      g: 0.001,
+      kg: 1,
+      ml: 0.001,
+      l: 1,
+      s: 1,
+      min: 60,
+      h: 3600,
+    };
+    if (!(from in factors) || !(to in factors)) return null;
+    return (value * factors[from]) / factors[to];
+  };
+
+  const calculateAutoSolution = (prompt: string): string => {
+    const text = cleanPrompt(prompt);
+
+    if (/^wahr\s*oder\s*falsch:/i.test(text)) {
+      const statement = text.replace(/^wahr\s*oder\s*falsch:\s*/i, '').replace(/\?$/, '').trim();
+      if (/0,4\s*entspricht\s*40%/i.test(statement)) return 'Wahr';
+      if (/15%\s*von\s*200\s*sind\s*25/i.test(statement)) return 'Falsch';
+      if (/2,5\s*l\s*sind\s*250\s*ml/i.test(statement)) return 'Falsch';
+      if (/3\/4\s*ist\s*kleiner\s*als\s*2\/3/i.test(statement)) return 'Falsch';
+      return 'Wahr/Falsch prüfen';
+    }
+
+    const solvedQuestion = solveQuestionMarkEquation(text);
+    if (solvedQuestion !== null) {
+      const suffix = extractExpectedSuffix(text);
+      const formatted = formatDeNumber(solvedQuestion, 4);
+      return suffix ? `${formatted} ${suffix}` : formatted;
+    }
+
+    let m = text.match(/(\d+(?:[.,]\d+)?)%\s*von\s*(\d+(?:[.,]\d+)?)/i);
+    if (m) {
+      const value = (toNumber(m[1]) / 100) * toNumber(m[2]);
+      return formatDeNumber(value);
+    }
+
+    m = text.match(/(\d+(?:[.,]\d+)?)\s*€\s*([+-])\s*(\d+(?:[.,]\d+)?)%/i);
+    if (m) {
+      const base = toNumber(m[1]);
+      const pct = toNumber(m[3]) / 100;
+      const value = m[2] === '+' ? base * (1 + pct) : base * (1 - pct);
+      return `${formatDeNumber(value)} €`;
+    }
+
+    m = text.match(/von\s*(\d{1,2}):(\d{2})\s*uhr\s*bis\s*(\d{1,2}):(\d{2})\s*uhr/i);
+    if (m) {
+      const start = parseTimeToMinutes(m[1], m[2]);
+      const end = parseTimeToMinutes(m[3], m[4]);
+      const diff = end >= start ? end - start : end + 24 * 60 - start;
+      return `${diff} min`;
+    }
+
+    m = text.match(/start\s*(\d{1,2}):(\d{2})\s*uhr.*dauer\s*(\d+)\s*h\s*(\d+)\s*min.*ende\s*um\s*\?\s*uhr/i);
+    if (m) {
+      const start = parseTimeToMinutes(m[1], m[2]);
+      const end = start + Number(m[3]) * 60 + Number(m[4]);
+      return `${formatMinutesToTime(end)} Uhr`;
+    }
+
+    m = text.match(/(\d+(?:[.,]\d+)?)\s*(m|km|l)\s*=\s*\?\s*(cm|m|ml)\b/i);
+    if (m) {
+      const value = toNumber(m[1]);
+      const from = m[2].toLowerCase();
+      const to = m[3].toLowerCase();
+      const converted = convertUnit(value, from, to);
+      if (converted !== null) return `${formatDeNumber(converted)} ${to}`;
+    }
+
+    // Generische Zieleinheitserkennung (wenn komplett umformuliert wurde)
+    m = text.match(/(\d+(?:[.,]\d+)?)\s*([A-Za-zÄÖÜäöü]+)\s*=\s*\?\s*([A-Za-zÄÖÜäöü]+)\b/i);
+    if (m) {
+      const value = toNumber(m[1]);
+      const from = m[2].toLowerCase();
+      const to = m[3].toLowerCase();
+      const converted = convertUnit(value, from, to);
+      if (converted !== null) return `${formatDeNumber(converted)} ${to}`;
+    }
+
+    m = text.match(/(\d+(?:[.,]\d+)?)\s*km\s*bei\s*(\d+(?:[.,]\d+)?)\s*km\/h.*\?\s*min/i);
+    if (m) {
+      const distance = toNumber(m[1]);
+      const speed = toNumber(m[2]);
+      if (speed > 0) return `${formatDeNumber((distance / speed) * 60)} min`;
+    }
+
+    const eqIndex = text.indexOf('=');
+    if (eqIndex > 0) {
+      const expr = text.slice(0, eqIndex);
+      const value = evaluateSimpleExpression(expr);
+      if (value !== null) {
+        const suffix = extractExpectedSuffix(text);
+        return suffix ? `${formatDeNumber(value)} ${suffix}` : formatDeNumber(value);
+      }
+    }
+
+    return 'Nicht berechenbar';
+  };
+
   const colorizeOperators = (text: string, keyPrefix: string, large = false) => {
     const parts = text.split(/([+\-·:÷=<>%?])/g);
     return parts.map((part, index) => {
@@ -340,19 +579,53 @@ export default function EntryTicketPage() {
     return <>{colorizeOperators(text, `${keyPrefix}-std`, large)}</>;
   };
 
-  const renderPromptWithInlineGreenSolution = (prompt: string, solution: string, keyPrefix: string) => {
+  const renderPromptWithInlineGreenSolution = (
+    prompt: string,
+    solution: string,
+    keyPrefix: string,
+    rightAlignedSolution = false,
+  ) => {
     const cleaned = cleanPrompt(prompt);
     const questionIndex = cleaned.indexOf('?');
     if (questionIndex < 0) return renderPrompt(cleaned, keyPrefix, false, true);
 
     const before = cleaned.slice(0, questionIndex);
     const after = cleaned.slice(questionIndex + 1);
+    const beforeTrimmedRight = before.replace(/\s+$/, '');
     const needsSpaceBefore = before.length > 0 && !before.endsWith(' ');
     const needsSpaceAfter = after.length > 0 && !after.startsWith(' ');
+    const forceSpaceAfterEquals = beforeTrimmedRight.endsWith('=');
+
+    if (rightAlignedSolution) {
+      return (
+        <Box
+          component="span"
+          sx={{
+            display: 'inline-flex',
+            width: '100%',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <Box component="span">
+            {renderPrompt(before, `${keyPrefix}-before`, false, true)}
+          </Box>
+          <Box component="span" sx={{ textAlign: 'right', minWidth: '28%' }}>
+            <Box component="span" sx={{ color: 'success.dark', fontWeight: 800 }}>
+              {solution}
+            </Box>
+            {needsSpaceAfter ? ' ' : ''}
+            {renderPrompt(after, `${keyPrefix}-after`, false, true)}
+          </Box>
+        </Box>
+      );
+    }
+
     return (
       <>
         {renderPrompt(before, `${keyPrefix}-before`, false, true)}
-        {needsSpaceBefore ? ' ' : ''}
+        {(needsSpaceBefore || forceSpaceAfterEquals) ? ' ' : ''}
         <Box component="span" sx={{ color: 'success.dark', fontWeight: 800 }}>
           {solution}
         </Box>
@@ -417,7 +690,10 @@ export default function EntryTicketPage() {
                     <Button
                       size="small"
                       variant="outlined"
-                      onClick={() => setSelectedTasks(ENTRY_TICKET_TASK_POOL.slice(0, TARGET_TASK_COUNT))}
+                      onClick={() => {
+                        setSelectedTasks(ENTRY_TICKET_TASK_POOL.slice(0, TARGET_TASK_COUNT));
+                        cancelEditingTask();
+                      }}
                     >
                       Reset
                     </Button>
@@ -456,23 +732,60 @@ export default function EntryTicketPage() {
                         borderColor: 'divider',
                       }}
                     >
+                      {editingIndex === index ? (
+                        <>
+                          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.6 }}>
+                            <TextField
+                              size="small"
+                              value={editingPrompt}
+                              onChange={(e) => handleEditingPromptChange(e.target.value)}
+                              placeholder="Frage"
+                              onKeyDown={handleEditKeyDown}
+                            />
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                              Vorschau: {renderPromptWithInlineGreenSolution(editingPrompt, getLiveAutoSolution(editingPrompt), `preview-${index}`)}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Button size="small" variant="contained" onClick={saveEditingTask} sx={{ minWidth: 44 }}>
+                              OK
+                            </Button>
+                            <Button size="small" variant="text" onClick={cancelEditingTask} sx={{ minWidth: 44 }}>
+                              Ab
+                            </Button>
+                          </Box>
+                        </>
+                      ) : (
+                        <>
                       <Typography variant="body2" sx={{ fontSize: '1rem', lineHeight: 1.2 }}>
-                        <Box component="span" sx={{ fontWeight: 400 }}>
-                          {index + 1}.
-                        </Box>{' '}
-                        <Box component="span" sx={{ fontWeight: 700 }}>
-                          {renderPrompt(task.prompt, `selection-${index}`, false, true)}
-                        </Box>
-                      </Typography>
-                      <Button
-                        size="small"
-                        color="error"
-                        variant="outlined"
-                        onClick={() => replaceTaskAtIndex(index)}
-                        sx={{ minWidth: 22, width: 22, height: 22, p: 0, lineHeight: 1 }}
-                      >
-                        ×
-                      </Button>
+                            <Box component="span" sx={{ fontWeight: 400 }}>
+                              {index + 1}.
+                            </Box>{' '}
+                            <Box component="span" sx={{ fontWeight: 700 }}>
+                              {renderPrompt(task.prompt, `selection-${index}`, false, true)}
+                            </Box>
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => startEditingTask(index)}
+                              sx={{ minWidth: 22, width: 22, height: 22, p: 0, lineHeight: 1 }}
+                            >
+                              ✎
+                            </Button>
+                            <Button
+                              size="small"
+                              color="error"
+                              variant="outlined"
+                              onClick={() => replaceTaskAtIndex(index)}
+                              sx={{ minWidth: 22, width: 22, height: 22, p: 0, lineHeight: 1 }}
+                            >
+                              ×
+                            </Button>
+                          </Box>
+                        </>
+                      )}
                     </Box>
                   ))}
                 </Box>
@@ -683,7 +996,7 @@ export default function EntryTicketPage() {
                           <Typography variant="body2" sx={{ fontSize: '0.98rem', lineHeight: 1.16 }}>
                             {index + 1}.{' '}
                             {showSolutions
-                              ? renderPromptWithInlineGreenSolution(task.prompt, task.solution, `final-${index}`)
+                              ? renderPromptWithInlineGreenSolution(task.prompt, task.solution, `final-${index}`, true)
                               : renderPrompt(task.prompt, `final-${index}`, false, true)}
                           </Typography>
                         </Box>
