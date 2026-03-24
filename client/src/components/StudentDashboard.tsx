@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import {
   Box,
   Typography,
@@ -47,7 +48,8 @@ import {
   FormatItalic as FormatItalicIcon,
   FormatUnderlined as FormatUnderlinedIcon,
   Link as LinkIcon,
-  OpenInNew as OpenInNewIcon
+  OpenInNew as OpenInNewIcon,
+  AutoStories as AutoStoriesIcon
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -200,7 +202,8 @@ const DraggableCanvasCard: React.FC<{
   onFormatChange: (id: string, format: Partial<Pick<SharedInputItem, 'bold' | 'italic' | 'underline' | 'fontSize'>>) => void;
   onFormatRangeChange: (id: string, ranges: TextFormatRange[]) => void;
   onConnect: (fromId: string, toId: string) => void;
-}> = ({ item, otherItems, onTextChange, onColorChange, onFormatChange, onFormatRangeChange, onConnect }) => {
+  onDeleteItem: (id: string) => void;
+}> = ({ item, otherItems, onTextChange, onColorChange, onFormatChange, onFormatRangeChange, onConnect, onDeleteItem }) => {
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const contentEditableRef = useRef<HTMLDivElement>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: item.id });
@@ -280,13 +283,18 @@ const DraggableCanvasCard: React.FC<{
       {...attributes}
       {...listeners}
     >
+      {/* Top-right controls: Stift + X übereinander (robust gegen kleine Kartengrößen) */}
       <Box
         sx={{
           position: 'absolute',
           top: 2,
           right: 2,
-          zIndex: 10,
+          zIndex: 11,
           pointerEvents: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 0.25,
         }}
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
@@ -308,7 +316,7 @@ const DraggableCanvasCard: React.FC<{
             onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
             onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
             onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
-            sx={{ p: 0.2, minWidth: 20, width: 20, height: 20, color: '#666', pointerEvents: 'auto', zIndex: 11 }}
+            sx={{ p: 0.2, minWidth: 20, width: 20, height: 20, color: '#666' }}
             aria-label="Einstellungen"
           >
             <EditIcon sx={{ fontSize: 14 }} />
@@ -407,66 +415,49 @@ const DraggableCanvasCard: React.FC<{
           </Box>
           
           {/* Verbinden */}
-          <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>Verbinden mit</Typography>
+          <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>
+            Verbinden mit
+          </Typography>
           <Box sx={{ maxHeight: 120, overflow: 'auto', mb: 1.5 }}>
             {targets.length === 0 ? (
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>Kein anderer Kasten.</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                Kein anderer Kasten.
+              </Typography>
             ) : (
               targets.map((t) => (
-                <Box key={t.id} onClick={(e) => { e.stopPropagation(); onConnect(item.id, t.id); setMenuAnchor(null); }} sx={{ py: 0.4, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }, borderRadius: 0.5, px: 0.5 }}>
-                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }} noWrap>{t.text || '(leer)'}</Typography>
+                <Box
+                  key={t.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onConnect(item.id, t.id);
+                    setMenuAnchor(null);
+                  }}
+                  sx={{ py: 0.4, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }, borderRadius: 0.5, px: 0.5 }}
+                >
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }} noWrap>
+                    {t.text || '(leer)'}
+                  </Typography>
                 </Box>
               ))
             )}
           </Box>
           
-          {/* Textformatierung */}
-          <Typography variant="caption" sx={{ display: 'block', color: '#333', mb: 0.75, fontWeight: 600, fontSize: '0.75rem' }}>Textformatierung</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={(e) => { e.stopPropagation(); applyFormatToSelection('material'); }}
-              sx={{ 
-                fontSize: '0.75rem', 
-                textTransform: 'none',
-                color: '#ed6c02',
-                borderColor: '#ed6c02',
-                '&:hover': { borderColor: '#ed6c02', bgcolor: 'rgba(237, 108, 2, 0.1)' }
-              }}
-            >
-              Als Material markieren
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={(e) => { e.stopPropagation(); applyFormatToSelection('term'); }}
-              sx={{ 
-                fontSize: '0.75rem', 
-                textTransform: 'none',
-                color: '#1976d2',
-                borderColor: '#1976d2',
-                '&:hover': { borderColor: '#1976d2', bgcolor: 'rgba(25, 118, 210, 0.1)' }
-              }}
-            >
-              Als Fachbegriff markieren
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={(e) => { e.stopPropagation(); applyFormatToSelection('instruction'); }}
-              sx={{ 
-                fontSize: '0.75rem', 
-                textTransform: 'none',
-                fontStyle: 'italic',
-                color: '#666',
-                borderColor: '#999',
-                '&:hover': { borderColor: '#999', bgcolor: 'rgba(0, 0, 0, 0.05)' }
-              }}
-            >
-              Als direkte Anweisung markieren
-            </Button>
-          </Box>
+          {/* Eintrag löschen (im Stiftmenü) */}
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onDeleteItem(item.id);
+              setMenuAnchor(null);
+            }}
+            sx={{ fontSize: '0.75rem', textTransform: 'none', mt: 0.5 }}
+          >
+            Eintrag löschen
+          </Button>
+          
         </Box>
       </Popover>
     </Box>
@@ -480,6 +471,7 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
   const [loading, setLoading] = useState(true);
   const [newText, setNewText] = useState('');
   const [emptyAddHint, setEmptyAddHint] = useState(false);
+  const [clipboardStatus, setClipboardStatus] = useState<string>('');
   const newTextRef = useRef('');
   const containerRef = useRef<HTMLDivElement>(null);
   const saveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -551,17 +543,75 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
     setItems((prev) => prev.map((p) => (p.id === id ? { ...p, formattedRanges: ranges.length > 0 ? ranges : undefined } : p)));
   };
 
+  // Verbindungen togglebar:
+  // - existiert die Verbindung bereits, wird sie entfernt
+  // - existiert sie noch nicht, wird sie hinzugefügt
   const addConnection = (fromId: string, toId: string) => {
     const key = [fromId, toId].sort().join('-');
     setConnections((prev) => {
       const exists = prev.some((c) => [c.fromId, c.toId].sort().join('-') === key);
-      if (exists) return prev;
+      if (exists) {
+        return prev.filter((c) => [c.fromId, c.toId].sort().join('-') !== key);
+      }
       return [...prev, { fromId, toId }];
     });
   };
 
   const removeConnection = (fromId: string, toId: string) => {
     setConnections((prev) => prev.filter((c) => !(c.fromId === fromId && c.toId === toId) && !(c.fromId === toId && c.toId === fromId)));
+  };
+
+  const removeItem = (id: string) => {
+    // Entferne den Eintrag selbst
+    setItems((prev) => prev.filter((p) => p.id !== id));
+    // Entferne auch alle Verbindungen, die diesen Eintrag betreffen
+    setConnections((prev) => prev.filter((c) => c.fromId !== id && c.toId !== id));
+  };
+
+  const setClipboardStatusTimed = (msg: string) => {
+    setClipboardStatus(msg);
+    window.setTimeout(() => setClipboardStatus(''), 2000);
+  };
+
+  // Kopieren/Übernehmen: kompletter Leinwandzustand (items + connections) als JSON
+  const handleCopyAllToClipboard = async () => {
+    const payload = {
+      version: 1,
+      items,
+      connections,
+    };
+    const text = JSON.stringify(payload);
+    try {
+      await navigator.clipboard.writeText(text);
+      setClipboardStatusTimed('Leinwand kopiert ✓');
+    } catch (err) {
+      // Fallback: manuell kopieren (z. B. wenn Clipboard-API blockiert ist)
+      const manual = window.prompt('Clipboard nicht verfügbar. Kopiere diese JSON manuell:', text);
+      if (manual !== null) setClipboardStatusTimed('Leinwand kopiert (manuell) ✓');
+    }
+  };
+
+  const handlePasteAllFromClipboard = async () => {
+    try {
+      let text = '';
+      try {
+        text = await navigator.clipboard.readText();
+      } catch {
+        text = window.prompt('Füge hier die JSON ein (vorher kopierte Leinwand):') || '';
+      }
+
+      if (!text.trim()) return;
+      const parsed = JSON.parse(text);
+      if (!parsed || !Array.isArray(parsed.items) || !Array.isArray(parsed.connections)) {
+        throw new Error('Ungültiges Clipboard-Format');
+      }
+      setItems(parsed.items);
+      setConnections(parsed.connections);
+      setClipboardStatusTimed('Leinwand übernommen ✓');
+    } catch (err: any) {
+      console.error('Paste failed:', err);
+      alert(err?.message ? `Konnte nicht übernehmen: ${err.message}` : 'Konnte nicht übernehmen.');
+    }
   };
 
   const addItem = useCallback(() => {
@@ -592,7 +642,8 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
         bgcolor: '#e8f5e9',
         borderRadius: fullScreen ? 0 : 1,
         border: '1px solid #a5d6a7',
-        ...(fullScreen && { height: '100vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }),
+        // ~5% weniger hoch, damit die Leinwand etwas Luft zum UI lässt
+        ...(fullScreen && { height: '95vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }),
       }}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
@@ -627,11 +678,36 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
       <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem', mb: 0.5, pr: 5 }}>
         Gemeinsame Leinwand (Einträge ziehen zum Verschieben)
       </Typography>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 0.75, flexWrap: 'wrap' }}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={handleCopyAllToClipboard}
+          disabled={loading}
+          sx={{ fontSize: '0.7rem', textTransform: 'none', px: 1 }}
+        >
+          Alle kopieren
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={handlePasteAllFromClipboard}
+          disabled={loading}
+          sx={{ fontSize: '0.7rem', textTransform: 'none', px: 1 }}
+        >
+          Alles übernehmen
+        </Button>
+        {clipboardStatus && (
+          <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 700, ml: 0.5 }}>
+            {clipboardStatus}
+          </Typography>
+        )}
+      </Box>
       <Box
         ref={containerRef}
         sx={{
           position: 'relative',
-          minHeight: fullScreen ? 'calc(100vh - 120px)' : 240,
+          minHeight: fullScreen ? 'calc(95vh - 120px)' : 228,
           ...(fullScreen && { flex: 1, minHeight: 0 }),
           borderRadius: 1.5,
           bgcolor: '#f1f8e9',
@@ -704,6 +780,7 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
                   onFormatChange={updateItemFormat}
                   onFormatRangeChange={updateItemFormatRanges}
                   onConnect={addConnection}
+                  onDeleteItem={removeItem}
                 />
               ))}
             </DndContext>
@@ -722,7 +799,7 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         sx={{
-          mt: 0.75,
+          mt: 0.35,
           '& .MuiOutlinedInput-root': {
             fontSize: '0.8rem',
             bgcolor: '#fff',
@@ -764,7 +841,7 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
         }}
       />
       {emptyAddHint && (
-        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#ed6c02' }}>
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.25, color: '#ed6c02' }}>
           Bitte zuerst Text eingeben, dann auf + klicken.
         </Typography>
       )}
@@ -4861,7 +4938,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               </Box>
               <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
                 {/* Rätseljahr 2026 Button mit Statistik-Badge */}
-                <Box sx={{ position: 'relative' }}>
+                <Box sx={{ position: 'relative', ml: 'auto' }}>
                   <IconButton
                     onClick={() => {
                       // Tägliches Rätsel basierend auf Datum + userId auswählen
@@ -5067,6 +5144,105 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     >
                       🎭
                     </Typography>
+                  </IconButton>
+                </Box>
+                {/* 7-Minuten-Workout */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => navigate('/seven-minute-workout')}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(255, 107, 53, 0.45)',
+                      background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(255, 107, 53, 0.35)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(255, 107, 53, 0.7)',
+                        boxShadow: '0 4px 12px rgba(255, 107, 53, 0.45)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="7-Minuten-Workout"
+                  >
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: '1.25rem',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        display: 'inline-block',
+                      }}
+                    >
+                      7
+                    </Typography>
+                  </IconButton>
+                </Box>
+                {/* EntryTicket */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => navigate('/entry-ticket')}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(33, 150, 243, 0.45)',
+                      background: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(30, 136, 229, 0.35)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(33, 150, 243, 0.7)',
+                        boxShadow: '0 4px 12px rgba(30, 136, 229, 0.45)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="EntryTicket (5 Minuten)"
+                  >
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: '1.35rem',
+                        fontWeight: 800,
+                        letterSpacing: 0,
+                        lineHeight: 1,
+                        display: 'inline-block',
+                      }}
+                    >
+                      E
+                    </Typography>
+                  </IconButton>
+                </Box>
+                {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => navigate('/bewegungsgeschichten-klassiker')}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(92, 107, 192, 0.45)',
+                      background: 'linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(57, 73, 171, 0.35)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(92, 107, 192, 0.75)',
+                        boxShadow: '0 4px 12px rgba(57, 73, 171, 0.45)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="Bewegungsgeschichten (Pferderennen, Elefant, Löwenjagd)"
+                  >
+                    <AutoStoriesIcon sx={{ fontSize: 22 }} />
                   </IconButton>
                 </Box>
                 {/* Logout Button */}
@@ -6148,32 +6324,18 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         <DialogTitle sx={{ 
           bgcolor: 'transparent',
           color: 'white',
-          textAlign: 'center',
           py: 1.5,
           px: 2,
-          position: 'relative',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          ...dialogCloseTitleSx,
         }}>
-          <Box sx={{ width: 28 }} />
-          <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.4rem', flex: 1, textAlign: 'center' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.4rem', textAlign: 'center', width: '100%' }}>
             🎭 Karnevals-Minigames 🎪
           </Typography>
-          <IconButton
-            onClick={() => setShowCarnivalGames(false)}
-            size="small"
-            sx={{ 
-              color: 'white',
-              p: 0.5,
-              minWidth: 28,
-              width: 28,
-              height: 28,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 20 }} />
-          </IconButton>
+          <DialogCloseIconButton
+            onClose={() => setShowCarnivalGames(false)}
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         <DialogContent sx={{ pt: 2, pb: 2, px: 3 }}>
           <Grid container spacing={2}>
@@ -6380,18 +6542,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
-              📊 Deine Abgabestatistik
-            </Typography>
-            <IconButton
-              onClick={() => setShowSubmissionStats(false)}
-              sx={{ width: 24, height: 24, p: 0 }}
-            >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1, ...dialogCloseTitleSx }}>
+          <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
+            📊 Deine Abgabestatistik
+          </Typography>
+          <DialogCloseIconButton onClose={() => setShowSubmissionStats(false)} />
         </DialogTitle>
         <DialogContent sx={{ pt: 2, pb: 2 }}>
           <SubmissionStatistics userId={userId} submissionStats={submissionStats} setSubmissionStats={setSubmissionStats} />
@@ -6420,35 +6575,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         <DialogTitle sx={{ 
           bgcolor: 'transparent',
           color: 'white',
-          textAlign: 'center',
           py: 1.25,
           px: 2,
-          position: 'relative',
           minHeight: 44,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          ...dialogCloseTitleSx,
         }}>
-          <Box sx={{ width: 28 }} /> {/* Spacer */}
-          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', flex: 1, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', textAlign: 'center', width: '100%' }}>
             🎊 Rätseljahr 2026 🎊
           </Typography>
-          <IconButton
-            onClick={() => {
+          <DialogCloseIconButton
+            onClose={() => {
               setShowNewYearRiddle(false);
               setRiddleAnswer('');
               setRiddleSolved(false);
               setShowHint(false);
             }}
-            sx={{ 
-              width: 28, 
-              height: 28, 
-              color: 'white',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         <DialogContent sx={{ bgcolor: 'white', pt: 3, pb: 2, px: 2.5 }}>
           {currentRiddle && !riddleSolved ? (
@@ -6639,22 +6783,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         <DialogTitle sx={{ 
           bgcolor: 'transparent',
           color: 'white',
-          textAlign: 'center',
           py: 1.25,
           px: 2,
-          position: 'relative',
           minHeight: 44,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          ...dialogCloseTitleSx,
         }}>
-          <Box sx={{ width: 28 }} />
-          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', flex: 1, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', textAlign: 'center', width: '100%' }}>
             🎮 Minigame
           </Typography>
-          <IconButton
-            onClick={() => {
-              // Erlaube Schließen wenn nicht gespielt wird oder Game Over/Gewinn
+          <DialogCloseIconButton
+            disabled={gameStarted && !gameOver && !gameWon}
+            onClose={() => {
               if (!gameStarted || gameOver || gameWon) {
                 setShowMinigame(false);
                 setGameStarted(false);
@@ -6667,16 +6806,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 keysPressedRef.current.clear();
               }
             }}
-            disabled={gameStarted && !gameOver && !gameWon}
-            sx={{ 
-              width: 28, 
-              height: 28, 
-              color: 'white',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         <DialogContent sx={{ bgcolor: 'white', pt: 3, pb: 2, px: 2.5 }}>
           {gameWon ? (
@@ -7907,7 +8039,9 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
           alignItems: 'center', 
           mb: 1.5,
           pb: 0.75,
-          borderBottom: '1px solid #f0f0f0'
+          borderBottom: '1px solid #f0f0f0',
+          position: 'relative',
+          pr: 5,
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Typography variant="h6" sx={{ 
@@ -8046,21 +8180,12 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
                 </Button>
               </>
             )}
-            
-            <IconButton 
-              onClick={handleClose} 
-              size="small"
-              sx={{ 
-                width: 24,
-                height: 24,
-                bgcolor: '#f8f9fa',
-                color: '#6c757d',
-                '&:hover': { bgcolor: '#e9ecef' }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
           </Box>
+          <DialogCloseIconButton
+            onClose={handleClose}
+            sx={{ color: '#6c757d', bgcolor: '#f8f9fa', '&:hover': { bgcolor: '#e9ecef' } }}
+            iconSx={{ color: '#6c757d' }}
+          />
         </Box>
 
         {learningMode === 'selection' ? (

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import KACorrectionMode from './KACorrectionMode';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import TeacherMessageBox from './TeacherMessageBox';
 import { FlashcardLearningModal, LessonSharedInputBox } from './StudentDashboard';
 import { RIDDLES } from './riddles';
+import { MOVEMENT_STORIES } from '../data/movementStories';
 import {
   Box,
   Typography,
@@ -11,6 +13,7 @@ import {
   Card,
   CardContent,
   Grid,
+  Stack,
   Paper,
   List,
   ListItem,
@@ -260,6 +263,7 @@ import {
   LocationOn as LocalZoneIcon,
   School as SchoolIcon,
   Book as BookIcon,
+  AutoStories as AutoStoriesIcon,
   Topic as TopicIcon,
   MenuBook as LessonIcon,
   PersonAddAlt1 as HandRaiseIcon,
@@ -318,6 +322,8 @@ const isCorrectionFile = (fileName: string): boolean => {
 
 interface TeacherDashboardProps {
   userId: string;
+  /** Nur TEACHER sieht z. B. Bewegungsspiele-Button (Lehreransicht). */
+  userRole?: 'TEACHER' | 'STUDENT' | string;
   onLogout: () => void;
 }
 
@@ -1506,9 +1512,28 @@ const GroupConfettiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ 
             <Typography variant="h6" sx={{ mb: 3 }}>
               Musik spielt, stoppt zufällig, dann kommt eine Karte mit einer Aufgabe!
             </Typography>
-            <Button variant="contained" onClick={startGame} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
-              Spiel starten!
-            </Button>
+            <Tooltip title="Spiel starten" arrow>
+              <IconButton
+                onClick={startGame}
+                aria-label="Spiel starten"
+                sx={{
+                  bgcolor: '#FF1493',
+                  color: 'white',
+                  width: 72,
+                  height: 72,
+                  borderRadius: 2,
+                  boxShadow: '0 8px 22px rgba(255,20,147,0.28)',
+                  animation: 'streamerPlayGlow 1.7s ease-in-out infinite',
+                  '@keyframes streamerPlayGlow': {
+                    '0%, 100%': { transform: 'scale(1)', boxShadow: '0 8px 22px rgba(255,20,147,0.28)' },
+                    '50%': { transform: 'scale(1.04)', boxShadow: '0 0 0 10px rgba(255,20,147,0.12)' },
+                  },
+                  '&:hover': { bgcolor: '#F5008A' },
+                }}
+              >
+                <PlayIcon sx={{ fontSize: 34 }} />
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
         {gameActive && (
@@ -2214,20 +2239,29 @@ const StreamerGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ o
                 <Typography variant="h3" sx={{ mb: 4, fontWeight: 700, color: '#FF1493' }}>
                   {currentAction.action}
                 </Typography>
-                <Button
-                  variant="contained"
-                  onClick={handleActionDone}
-                  size="small"
-                  sx={{
-                    bgcolor: '#FF1493',
-                    fontSize: '0.7rem',
-                    py: 0.5,
-                    px: 1.5,
-                    minWidth: 'auto'
-                  }}
-                >
-                  Weiter
-                </Button>
+                <Tooltip title="Aktion als geschafft bestätigen" arrow>
+                  <IconButton
+                    onClick={handleActionDone}
+                    aria-label="Aktion bestätigen"
+                    size="small"
+                    sx={{
+                      bgcolor: '#FF1493',
+                      color: 'white',
+                      width: 64,
+                      height: 64,
+                      borderRadius: 2,
+                      boxShadow: '0 8px 16px rgba(255,20,147,0.25)',
+                      animation: 'streamerCheckPulse 1.9s ease-in-out infinite',
+                      '@keyframes streamerCheckPulse': {
+                        '0%, 100%': { transform: 'scale(1)' },
+                        '50%': { transform: 'scale(1.05)' },
+                      },
+                      '&:hover': { bgcolor: '#F5008A' },
+                    }}
+                  >
+                    <CheckIcon sx={{ fontSize: 28 }} />
+                  </IconButton>
+                </Tooltip>
               </Box>
             )}
           </>
@@ -2332,9 +2366,28 @@ const BalloonGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ op
             <Typography variant="h6" sx={{ mb: 3 }}>
               Popst so viele Luftballons wie möglich, bevor sie oben verschwinden!
             </Typography>
-            <Button variant="contained" onClick={() => setGameActive(true)} sx={{ bgcolor: '#FF1493', fontSize: '1.2rem', py: 1.5, px: 4 }}>
-              Spiel starten!
-            </Button>
+            <Tooltip title="Spiel starten" arrow>
+              <IconButton
+                onClick={() => setGameActive(true)}
+                aria-label="Luftballon-Pop starten"
+                sx={{
+                  bgcolor: '#FF1493',
+                  color: 'white',
+                  width: 72,
+                  height: 72,
+                  borderRadius: 2,
+                  boxShadow: '0 8px 22px rgba(255,20,147,0.28)',
+                  animation: 'balloonPlayGlow 1.7s ease-in-out infinite',
+                  '@keyframes balloonPlayGlow': {
+                    '0%, 100%': { transform: 'scale(1)', boxShadow: '0 8px 22px rgba(255,20,147,0.28)' },
+                    '50%': { transform: 'scale(1.04)', boxShadow: '0 0 0 10px rgba(255,20,147,0.12)' },
+                  },
+                  '&:hover': { bgcolor: '#F5008A' },
+                }}
+              >
+                <PlayIcon sx={{ fontSize: 34 }} />
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
         {gameActive && (
@@ -2378,9 +2431,28 @@ const BalloonGameModal: React.FC<{ open: boolean; onClose: () => void }> = ({ op
                popped >= 25 ? '🎉 Sehr gut! Tolle Ballon-Popper!' :
                popped >= 15 ? '👍 Gut gemacht!' : '💪 Weiter so!'}
             </Typography>
-            <Button variant="contained" onClick={() => { setTimeLeft(60); setBalloons([]); setPopped(0); setGameActive(true); }} sx={{ bgcolor: '#FF1493', mr: 1, fontSize: '1.1rem' }}>
-              Nochmal spielen
-            </Button>
+            <Tooltip title="Nochmal spielen" arrow>
+              <IconButton
+                onClick={() => {
+                  setTimeLeft(60);
+                  setBalloons([]);
+                  setPopped(0);
+                  setGameActive(true);
+                }}
+                aria-label="Nochmal spielen"
+                sx={{
+                  bgcolor: '#FF1493',
+                  color: 'white',
+                  width: 72,
+                  height: 72,
+                  borderRadius: 2,
+                  boxShadow: '0 8px 16px rgba(255,20,147,0.22)',
+                  '&:hover': { bgcolor: '#F5008A' },
+                }}
+              >
+                <PlayIcon sx={{ fontSize: 34 }} />
+              </IconButton>
+            </Tooltip>
             <Button variant="outlined" onClick={onClose} sx={{ fontSize: '1.1rem' }}>
               Schließen
             </Button>
@@ -2401,7 +2473,18 @@ type MovementGameCard = {
   steps: string[];
   tip?: string;
   /** Öffnet interaktives UI (z. B. Zufallskarten + Sounds) */
-  interactive?: 'randomCards';
+  interactive?:
+    | 'randomCards'
+    | 'numberBody'
+    | 'shoulderTaxi'
+    | 'letterFactory'
+    | 'islandParkour'
+    | 'marionetteDuo'
+    | 'outdoorHumanCompiler'
+    | 'outdoorStationsParcours'
+    | 'outdoorZoneWechsel'
+    | 'outdoorLaufChaos'
+    | 'movementStory';
 };
 
 const REMOTE_MOVEMENT_CARD_DEFS: Array<{
@@ -2586,24 +2669,10 @@ const MovementRandomCardsModal: React.FC<{ open: boolean; onClose: () => void }>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, pr: 1, lineHeight: 1.3 }}>
           Remote-Karten
         </Typography>
-        <IconButton
-          onClick={onClose}
-          aria-label="Schließen"
-          size="small"
-          sx={{
-            position: 'absolute',
-            right: 6,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            p: 0.35,
-            width: 30,
-            height: 30,
-            color: 'text.secondary',
-            '&:hover': { bgcolor: 'action.hover' },
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 18 }} />
-        </IconButton>
+        <DialogCloseIconButton
+          onClose={onClose}
+          sx={{ color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}
+        />
       </DialogTitle>
       <DialogContent sx={{ pt: 1 }}>
         <Box sx={{ mb: 1.1 }}>
@@ -2769,7 +2838,2402 @@ const MovementRandomCardsModal: React.FC<{ open: boolean; onClose: () => void }>
   );
 };
 
+// Zahl-Körper - Gruppenspiel (für ganze Klasse)
+const NumberBodyModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const TOTAL_DURATION_MS = 120000; // ca. 2 Minuten
+
+  const [running, setRunning] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const [isLastRound, setIsLastRound] = useState(false);
+
+  const [intervalMs, setIntervalMs] = useState(3000);
+  const intervalMsRef = useRef(intervalMs);
+
+  const [currentNumber, setCurrentNumber] = useState<number | null>(null);
+  const timeoutRef = useRef<any>(null);
+
+  const startTsRef = useRef(0);
+  const favoriteNumberRef = useRef<number | null>(null);
+  const lastNumberRef = useRef<number | null>(null);
+
+  const clearTick = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  const pickNext = useCallback((): boolean => {
+    const elapsed = Date.now() - startTsRef.current;
+    if (elapsed >= TOTAL_DURATION_MS) {
+      setEnded(true);
+      setRunning(false);
+      setIsLastRound(false);
+      return false;
+    }
+
+    const remaining = TOTAL_DURATION_MS - elapsed;
+    const inLastRound = remaining <= intervalMsRef.current;
+
+    let next: number;
+    if (inLastRound && favoriteNumberRef.current != null) {
+      next = favoriteNumberRef.current;
+    } else {
+      // Zufallszahl 1–10 (direkte Wiederholung vermeiden)
+      next = 1 + Math.floor(Math.random() * 10);
+      let guard = 0;
+      while (lastNumberRef.current != null && next === lastNumberRef.current && guard < 5) {
+        next = 1 + Math.floor(Math.random() * 10);
+        guard++;
+      }
+    }
+
+    lastNumberRef.current = next;
+    setIsLastRound(inLastRound);
+    setCurrentNumber(next);
+    return true;
+  }, []);
+
+  const startTick = useCallback(() => {
+    clearTick();
+    timeoutRef.current = window.setTimeout(() => {
+      const cont = pickNext();
+      if (cont) startTick();
+    }, intervalMsRef.current);
+  }, [pickNext, clearTick]);
+
+  const handleStop = useCallback(() => {
+    clearTick();
+    setRunning(false);
+    setEnded(false);
+    setCurrentNumber(null);
+    setIsLastRound(false);
+    favoriteNumberRef.current = null;
+    lastNumberRef.current = null;
+  }, [clearTick]);
+
+  useEffect(() => {
+    intervalMsRef.current = intervalMs;
+  }, [intervalMs]);
+
+  useEffect(() => {
+    if (!open) {
+      handleStop();
+      return;
+    }
+
+    // Start: Werte initialisieren und direkt automatisch laufen lassen
+    setEnded(false);
+    setIsLastRound(false);
+    setCurrentNumber(null);
+
+    favoriteNumberRef.current = 1 + Math.floor(Math.random() * 10);
+    startTsRef.current = Date.now();
+    lastNumberRef.current = null;
+
+    setRunning(true);
+    pickNext();
+    startTick();
+  }, [open, handleStop, pickNext, startTick]);
+
+  useEffect(() => () => clearTick(), [clearTick]);
+
+  const NUMBER_COLORS = ['#ff1744', '#ff9100', '#00c853', '#00b0ff', '#2962ff', '#d500f9', '#ff4081', '#4caf50', '#009688', '#f4511e'];
+  const numberColor = currentNumber == null ? '#004d40' : NUMBER_COLORS[(currentNumber - 1) % NUMBER_COLORS.length];
+  const numberColor2 = currentNumber == null ? '#00897b' : NUMBER_COLORS[currentNumber % NUMBER_COLORS.length];
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle
+        sx={{
+          position: 'relative',
+          pr: 5,
+          pl: 2,
+          py: 1.25,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, pr: 1, lineHeight: 1.3 }}>
+          Zahl-Körper
+        </Typography>
+        <DialogCloseIconButton
+          onClose={onClose}
+          sx={{ color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}
+        />
+      </DialogTitle>
+
+      <DialogContent sx={{ pt: 1 }}>
+        <Paper
+          elevation={3}
+          sx={{
+            minHeight: 220,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 3,
+            mb: 2,
+            borderRadius: 2,
+            bgcolor: 'rgba(0,105,92,0.08)',
+            border: '2px solid rgba(0,105,92,0.25)',
+          }}
+        >
+          {currentNumber == null ? (
+            <Typography variant="body1" sx={{ fontWeight: 700, color: '#004d40' }}>
+              Bereit...
+            </Typography>
+          ) : (
+            <>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  mb: 0.5,
+                  fontWeight: 900,
+                  color: isLastRound ? '#c62828' : numberColor,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {isLastRound ? 'Letzte Runde!' : 'Neue Zahl'}
+              </Typography>
+              <Typography
+                variant="h2"
+                sx={{
+                  fontWeight: 900,
+                  color: 'transparent',
+                  background: isLastRound
+                    ? 'linear-gradient(90deg, #ff1744 0%, #ffc400 100%)'
+                    : `linear-gradient(90deg, ${numberColor} 0%, ${numberColor2} 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  textShadow: isLastRound ? '0 6px 18px rgba(255,23,68,0.25)' : '0 6px 18px rgba(0,0,0,0.15)',
+                  fontSize: '7.5rem',
+                  lineHeight: 1,
+                  mb: 0.5,
+                  transform: isLastRound ? 'scale(1.03)' : 'scale(1)',
+                  transition: 'transform 250ms ease',
+                }}
+              >
+                {currentNumber}
+              </Typography>
+              <Typography variant="body1" sx={{ color: isLastRound ? '#c62828' : numberColor2, fontWeight: 800 }}>
+                Zeigt die Zahl mit dem Körper (1–10)
+              </Typography>
+            </>
+          )}
+
+          {ended && (
+            <Typography variant="body2" sx={{ mt: 1.5, color: '#00695c', fontWeight: 800 }}>
+              Fertig! Ihr habt „Zahl-Körper“ durchgespielt.
+            </Typography>
+          )}
+        </Paper>
+
+        <Box sx={{ px: 0.5, mb: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            Geschwindigkeit: alle {(intervalMs / 1000).toFixed(1)} s neue Zahl
+          </Typography>
+          <Slider
+            value={intervalMs}
+            onChange={(_, v) => {
+              const next = typeof v === 'number' ? v : v[0];
+              intervalMsRef.current = next;
+              setIntervalMs(next);
+              if (open) startTick();
+            }}
+            min={300}
+            max={6000}
+            step={50}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(v) => `${(v / 1000).toFixed(1)} s`}
+            aria-label="Geschwindigkeit der Zahlen"
+          />
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Tooltip title="Stopp" arrow>
+            <span>
+              <IconButton
+                color="error"
+                disabled={!running}
+                onClick={handleStop}
+                aria-label="Stopp"
+                sx={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 1.5,
+                  border: '2px solid',
+                  borderColor: 'error.main',
+                  animation: running ? 'remoteStopPulse 1.8s ease-in-out infinite' : 'none',
+                  '@keyframes remoteStopPulse': {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.35)' },
+                    '50%': { boxShadow: '0 0 0 10px rgba(211, 47, 47, 0)' },
+                  },
+                }}
+              >
+                <StopIcon sx={{ fontSize: 40 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const SHOULDER_TAXI_PHASES: Array<{
+  title: string;
+  subtitle: string;
+  emoji: string;
+  accent1: string;
+  accent2: string;
+}> = [
+  {
+    title: 'Ellbogen holen',
+    subtitle: '5 Sekunden halten, dann wechseln',
+    emoji: '🫳',
+    accent1: '#1565c0',
+    accent2: '#00c853',
+  },
+  {
+    title: 'Schulterfahrt',
+    subtitle: 'langsam kreisen: vorwärts + rückwärts',
+    emoji: '🌀',
+    accent1: '#00c853',
+    accent2: '#00b0ff',
+  },
+  {
+    title: 'Klatschen + Atmen',
+    subtitle: '1x über dem Kopf, dann locker hängen lassen',
+    emoji: '👏',
+    accent1: '#00b0ff',
+    accent2: '#d500f9',
+  },
+];
+
+// Schulter-Taxi - Gruppenspiel (für ganze Klasse)
+const ShoulderTaxiModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const TOTAL_DURATION_MS = 120000; // ca. 2 Minuten
+
+  const phases = SHOULDER_TAXI_PHASES;
+
+  const [running, setRunning] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const [isLastRound, setIsLastRound] = useState(false);
+  const [intervalMs, setIntervalMs] = useState(3500);
+  const intervalMsRef = useRef(intervalMs);
+
+  const [currentPhase, setCurrentPhase] = useState<number | null>(null);
+  const timeoutRef = useRef<any>(null);
+
+  const startTsRef = useRef(0);
+  const favoritePhaseRef = useRef<number | null>(null);
+  const lastPhaseRef = useRef<number | null>(null);
+
+  const clearTick = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  const pickNext = useCallback((): boolean => {
+    const elapsed = Date.now() - startTsRef.current;
+    if (elapsed >= TOTAL_DURATION_MS) {
+      setEnded(true);
+      setRunning(false);
+      setIsLastRound(false);
+      return false;
+    }
+
+    const remaining = TOTAL_DURATION_MS - elapsed;
+    const inLastRound = remaining <= intervalMsRef.current;
+
+    const len = SHOULDER_TAXI_PHASES.length;
+    let next: number;
+    if (inLastRound && favoritePhaseRef.current != null) {
+      next = favoritePhaseRef.current;
+    } else {
+      next = lastPhaseRef.current == null ? 0 : (lastPhaseRef.current + 1) % len;
+      // Guard: wenn zufällig doch die letzte Phase gleich bleibt (bei len=1 wäre das relevant)
+      if (lastPhaseRef.current != null && next === lastPhaseRef.current) {
+        next = (next + 1) % len;
+      }
+    }
+
+    lastPhaseRef.current = next;
+    setIsLastRound(inLastRound);
+    setCurrentPhase(next);
+    return true;
+  }, []);
+
+  const startTick = useCallback(() => {
+    clearTick();
+    timeoutRef.current = window.setTimeout(() => {
+      const cont = pickNext();
+      if (cont) startTick();
+    }, intervalMsRef.current);
+  }, [pickNext, clearTick]);
+
+  const handleStop = useCallback(() => {
+    clearTick();
+    setRunning(false);
+    setEnded(false);
+    setCurrentPhase(null);
+    setIsLastRound(false);
+    favoritePhaseRef.current = null;
+    lastPhaseRef.current = null;
+  }, [clearTick]);
+
+  useEffect(() => {
+    intervalMsRef.current = intervalMs;
+  }, [intervalMs]);
+
+  useEffect(() => {
+    if (!open) {
+      handleStop();
+      return;
+    }
+
+    setEnded(false);
+    setIsLastRound(false);
+    setCurrentPhase(null);
+
+    favoritePhaseRef.current = Math.floor(Math.random() * SHOULDER_TAXI_PHASES.length);
+    startTsRef.current = Date.now();
+    lastPhaseRef.current = null;
+
+    setRunning(true);
+    pickNext();
+    startTick();
+  }, [open, handleStop, pickNext, startTick]);
+
+  useEffect(() => () => clearTick(), [clearTick]);
+
+  const active = currentPhase == null ? null : phases[currentPhase];
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle
+        sx={{
+          position: 'relative',
+          pr: 5,
+          pl: 2,
+          py: 1.25,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, pr: 1, lineHeight: 1.3 }}>
+          Schulter-Taxi
+        </Typography>
+        <DialogCloseIconButton
+          onClose={onClose}
+          sx={{ color: 'text.secondary', '&:hover': { bgcolor: 'action.hover' } }}
+        />
+      </DialogTitle>
+
+      <DialogContent sx={{ pt: 1 }}>
+        <Paper
+          elevation={3}
+          sx={{
+            minHeight: 260,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 3,
+            mb: 2,
+            borderRadius: 2,
+            bgcolor: 'rgba(21,101,192,0.08)',
+            border: '2px solid rgba(21,101,192,0.25)',
+          }}
+        >
+          {active == null ? (
+            <Typography variant="body1" sx={{ fontWeight: 700, color: '#0d47a1' }}>
+              Bereit...
+            </Typography>
+          ) : (
+            <>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  mb: 0.6,
+                  fontWeight: 900,
+                  color: isLastRound ? '#c62828' : active.accent1,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {isLastRound ? 'Letzte Phase!' : 'Aktuelle Phase'}
+              </Typography>
+
+              <Box sx={{ display: 'flex', gap: 0.8, mb: 1 }}>
+                {SHOULDER_TAXI_PHASES.map((_, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: 999,
+                      background: i === currentPhase ? active.accent1 : `${active.accent2}33`,
+                      border: `2px solid ${i === currentPhase ? active.accent1 : `${active.accent2}55`}`,
+                      boxShadow: i === currentPhase ? `0 0 0 6px ${active.accent2}22` : 'none',
+                      transition: 'all 250ms ease',
+                    }}
+                  />
+                ))}
+              </Box>
+
+              <Box
+                sx={{
+                  width: 130,
+                  height: 130,
+                  borderRadius: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 1,
+                  background: `linear-gradient(135deg, ${active.accent1} 0%, ${active.accent2} 100%)`,
+                  boxShadow: '0 10px 28px rgba(0,0,0,0.14)',
+                  border: `3px solid ${active.accent1}`,
+                  animation: 'taxiPop 0.65s ease-in-out both',
+                  '@keyframes taxiPop': {
+                    '0%': { transform: 'scale(0.85)', opacity: 0.6 },
+                    '100%': { transform: 'scale(1)', opacity: 1 },
+                  },
+                }}
+              >
+                <Typography
+                  component="span"
+                  sx={{
+                    fontSize: 58,
+                    filter: 'drop-shadow(0 10px 18px rgba(0,0,0,0.25))',
+                    animation: 'taxiEmojiBob 1.1s ease-in-out infinite',
+                    '@keyframes taxiEmojiBob': {
+                      '0%, 100%': { transform: 'translateY(0)' },
+                      '50%': { transform: 'translateY(-3px)' },
+                    },
+                    userSelect: 'none',
+                  }}
+                >
+                  {active.emoji}
+                </Typography>
+              </Box>
+
+              <Typography
+                variant="h3"
+                sx={{
+                  fontWeight: 950,
+                  color: '#0d47a1',
+                  textAlign: 'center',
+                  lineHeight: 1.1,
+                  mb: 0.5,
+                  fontSize: '2.3rem',
+                }}
+              >
+                {active.title}
+              </Typography>
+              <Typography variant="body1" sx={{ color: '#004d40', fontWeight: 850, textAlign: 'center' }}>
+                {active.subtitle}
+              </Typography>
+            </>
+          )}
+
+          {ended && (
+            <Typography variant="body2" sx={{ mt: 1.5, color: '#00695c', fontWeight: 800 }}>
+              Fertig! „Schulter-Taxi“ ist durch.
+            </Typography>
+          )}
+        </Paper>
+
+        <Box sx={{ px: 0.5, mb: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            Schrittwechsel: alle {(intervalMs / 1000).toFixed(1)} s
+          </Typography>
+          <Slider
+            value={intervalMs}
+            onChange={(_, v) => {
+              const next = typeof v === 'number' ? v : v[0];
+              intervalMsRef.current = next;
+              setIntervalMs(next);
+              if (open) startTick();
+            }}
+            min={300}
+            max={6000}
+            step={50}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(v) => `${(v / 1000).toFixed(1)} s`}
+            aria-label="Geschwindigkeit der Schulter-Taxi Schritte"
+          />
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Tooltip title="Stopp" arrow>
+            <span>
+              <IconButton
+                color="error"
+                disabled={!running}
+                onClick={handleStop}
+                aria-label="Stopp"
+                sx={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 1.5,
+                  border: '2px solid',
+                  borderColor: 'error.main',
+                  animation: running ? 'remoteStopPulse 1.8s ease-in-out infinite' : 'none',
+                  '@keyframes remoteStopPulse': {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.35)' },
+                    '50%': { boxShadow: '0 0 0 10px rgba(211, 47, 47, 0)' },
+                  },
+                }}
+              >
+                <StopIcon sx={{ fontSize: 40 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/** Wörter für Buchstaben-Factory (Körper-Buchstaben) */
+const LETTER_FACTORY_WORDS = [
+  'MATHE',
+  'KLASSE',
+  'WORTE',
+  'TEAM',
+  'KRAFT',
+  'CODE',
+  'LOGIK',
+  'IDEEN',
+  'KREIS',
+  'TAKT',
+  'PROJEKT',
+  'SCHULE',
+  'WELT',
+  'TAG',
+  'STERN',
+];
+
+/** Buchstaben-Factory: industrielles „Werk“-UI, manuelles Ziehen (kein Auto-Slider) */
+const LetterFactoryModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [word, setWord] = useState<string | null>(null);
+  const lastRef = useRef<string | null>(null);
+
+  const drawWord = useCallback(() => {
+    let next = LETTER_FACTORY_WORDS[Math.floor(Math.random() * LETTER_FACTORY_WORDS.length)];
+    let guard = 0;
+    while (LETTER_FACTORY_WORDS.length > 1 && next === lastRef.current && guard < 12) {
+      next = LETTER_FACTORY_WORDS[Math.floor(Math.random() * LETTER_FACTORY_WORDS.length)];
+      guard++;
+    }
+    lastRef.current = next;
+    setWord(next);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      drawWord();
+    } else {
+      setWord(null);
+      lastRef.current = null;
+    }
+  }, [open, drawWord]);
+
+  const letters = word ? word.split('') : [];
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 0,
+          overflow: 'hidden',
+          background: 'linear-gradient(165deg, #1a1d24 0%, #0d0f12 55%, #1a1d24 100%)',
+          border: '4px solid #f59e0b',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.55)',
+        },
+      }}
+    >
+      <Box
+        sx={{
+          height: 6,
+          background: 'repeating-linear-gradient(90deg, #f59e0b 0px, #f59e0b 18px, #111 18px, #111 36px)',
+        }}
+      />
+      <DialogTitle
+        sx={{
+          position: 'relative',
+          pr: 5,
+          pl: 2,
+          py: 1.5,
+          color: '#e2e8f0',
+          borderBottom: '1px solid rgba(245,158,11,0.35)',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 800, letterSpacing: 2, color: '#f59e0b' }}>
+          BUCHSTABEN-FABRIK
+        </Typography>
+        <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mt: 0.25 }}>
+          Produktionsausgabe · Zufallswort zum Nachformen
+        </Typography>
+        <DialogCloseIconButton onClose={onClose} sx={{ color: '#94a3b8' }} iconSx={{ color: '#94a3b8' }} />
+      </DialogTitle>
+      <DialogContent sx={{ pt: 2, pb: 2, px: 2 }}>
+        <Box sx={{ px: 1, py: 2, mb: 2, bgcolor: '#0d0f12', border: '1px dashed rgba(245,158,11,0.35)' }}>
+          <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, letterSpacing: 1 }}>
+            AKTUELLES WORT
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, justifyContent: 'center', mt: 1.5, minHeight: 72 }}>
+            {letters.map((ch, i) => (
+              <Box
+                key={`${ch}-${i}`}
+                sx={{
+                  width: 44,
+                  height: 52,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: '#111827',
+                  color: '#fbbf24',
+                  fontWeight: 900,
+                  fontSize: '1.5rem',
+                  border: '2px solid rgba(245,158,11,0.6)',
+                  borderRadius: 2,
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  animation: 'lfStamp 0.35s ease-out',
+                  '@keyframes lfStamp': {
+                    '0%': { transform: 'translateY(8px) scale(0.9)', opacity: 0 },
+                    '100%': { transform: 'translateY(0) scale(1)', opacity: 1 },
+                  },
+                  animationDelay: `${i * 45}ms`,
+                }}
+              >
+                {ch}
+              </Box>
+            ))}
+          </Box>
+        </Box>
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={drawWord}
+          sx={{
+            py: 1.25,
+            fontWeight: 900,
+            letterSpacing: 1,
+            bgcolor: '#f59e0b',
+            color: '#0d0f12',
+            borderRadius: 0,
+            boxShadow: '0 8px 0 #b45309',
+            '&:hover': { bgcolor: '#fbbf24', boxShadow: '0 8px 0 #b45309' },
+          }}
+        >
+          NEUES WORT ZIEHEN
+        </Button>
+        <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 1.5, color: '#64748b' }}>
+          Kein Auto-Timer – du entscheidest, wann die nächste „Charge“ kommt.
+        </Typography>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const ISLAND_PARKOUR_STATIONS = [
+  { label: 'Start', hint: 'Alle bereit machen – kurz Schultern lockern.', emoji: '⚓' },
+  { label: 'Insel 1', hint: 'Nur auf der Insel stehen – Tipp: 3 Sekunden Balance.', emoji: '🏝️' },
+  { label: 'Insel 2', hint: 'Weiter zur nächsten Markierung – ohne zu rennen.', emoji: '🏝️' },
+  { label: 'Insel 3', hint: 'Kurz in die Hocke – dann weiter.', emoji: '🏝️' },
+  { label: 'Ziel', hint: 'Alle ankommen – Applaus im Takt.', emoji: '🎯' },
+];
+
+/** Bank-Insel-Parkour: Karten-„Karte“ mit manuellen Stationen (kein Slider) */
+const IslandParkourModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (open) setIdx(0);
+  }, [open]);
+
+  const station = ISLAND_PARKOUR_STATIONS[idx];
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: 'hidden',
+          background: 'linear-gradient(180deg, #0ea5e9 0%, #e0f2fe 38%, #bae6fd 100%)',
+          border: '3px solid #fff',
+          boxShadow: '0 20px 50px rgba(14,165,233,0.35)',
+        },
+      }}
+    >
+      <DialogTitle sx={{ pt: 2, pb: 1, px: 2, ...dialogCloseTitleSx }}>
+        <Typography variant="h6" sx={{ fontWeight: 900, color: '#0c4a6e', textAlign: 'center' }}>
+          🗺️ Insel-Route
+        </Typography>
+        <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: '#0369a1' }}>
+          Station für Station – du klickst „Weiter“
+        </Typography>
+        <DialogCloseIconButton onClose={onClose} sx={{ color: '#0c4a6e' }} iconSx={{ color: '#0c4a6e' }} />
+      </DialogTitle>
+      <DialogContent sx={{ pt: 0, pb: 2 }}>
+        <Box sx={{ px: 1, py: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, px: 0.5, mb: 2 }}>
+            {ISLAND_PARKOUR_STATIONS.map((s, i) => (
+              <React.Fragment key={s.label}>
+                <Box sx={{ textAlign: 'center', flex: 1 }}>
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      mx: 'auto',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.2rem',
+                      bgcolor: i === idx ? '#fff' : 'rgba(255,255,255,0.45)',
+                      border: i === idx ? '3px solid #f59e0b' : '2px solid rgba(255,255,255,0.8)',
+                      boxShadow: i === idx ? '0 0 0 6px rgba(245,158,11,0.35)' : 'none',
+                      transition: 'all 0.25s ease',
+                    }}
+                  >
+                    {s.emoji}
+                  </Box>
+                  <Typography variant="caption" sx={{ color: '#0c4a6e', fontWeight: 800, display: 'block', mt: 0.25 }}>
+                    {s.label}
+                  </Typography>
+                </Box>
+                {i < ISLAND_PARKOUR_STATIONS.length - 1 && (
+                  <Box sx={{ flex: 0.25, height: 3, bgcolor: i < idx ? '#f59e0b' : 'rgba(255,255,255,0.45)', borderRadius: 2 }} />
+                )}
+              </React.Fragment>
+            ))}
+          </Box>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2.5,
+              borderRadius: 3,
+              bgcolor: 'rgba(255,255,255,0.92)',
+              border: '2px solid rgba(14,165,233,0.35)',
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="h5" sx={{ fontWeight: 900, color: '#0c4a6e', mb: 1 }}>
+              {station.label}
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#334155', fontWeight: 600 }}>
+              {station.hint}
+            </Typography>
+          </Paper>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, px: 1 }}>
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={() => setIdx((i) => Math.max(0, i - 1))}
+            disabled={idx === 0}
+            sx={{ borderColor: '#0c4a6e', color: '#0c4a6e', fontWeight: 800 }}
+          >
+            Zurück
+          </Button>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={() => setIdx((i) => Math.min(ISLAND_PARKOUR_STATIONS.length - 1, i + 1))}
+            disabled={idx >= ISLAND_PARKOUR_STATIONS.length - 1}
+            sx={{ bgcolor: '#0284c7', fontWeight: 900, '&:hover': { bgcolor: '#0369a1' } }}
+          >
+            {idx >= ISLAND_PARKOUR_STATIONS.length - 1 ? 'Fertig' : 'Weiter'}
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const MARIONETTE_GESTURES = [
+  'Winken',
+  'Drehen',
+  'In die Hocke',
+  'Arme wie ein Vogel',
+  'Zeitlupe-Schritt',
+  'Einmal auf der Stelle springen',
+  'Ruhig atmen (nur Oberkörper)',
+  'Kleine Verbeugung',
+];
+
+/** Marionetten-Duo: Theater-UI, Fokus auf Rollen + Schnipp (kein Slider) */
+const MarionetteDuoModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [gesture, setGesture] = useState<string>('');
+  const [freezeFlash, setFreezeFlash] = useState(false);
+  const lastG = useRef<string | null>(null);
+
+  const newGesture = useCallback(() => {
+    let g = MARIONETTE_GESTURES[Math.floor(Math.random() * MARIONETTE_GESTURES.length)];
+    let n = 0;
+    while (MARIONETTE_GESTURES.length > 1 && g === lastG.current && n < 10) {
+      g = MARIONETTE_GESTURES[Math.floor(Math.random() * MARIONETTE_GESTURES.length)];
+      n++;
+    }
+    lastG.current = g;
+    setGesture(g);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      newGesture();
+    } else {
+      setGesture('');
+      lastG.current = null;
+    }
+  }, [open, newGesture]);
+
+  const snap = () => {
+    setFreezeFlash(true);
+    window.setTimeout(() => setFreezeFlash(false), 420);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          overflow: 'hidden',
+          background: 'linear-gradient(180deg, #0f172a 0%, #450a0a 40%, #7f1d1d 100%)',
+          border: '4px solid #fbbf24',
+          boxShadow: '0 24px 60px rgba(127,29,29,0.45)',
+        },
+      }}
+    >
+      <Box
+        sx={{
+          py: 1.25,
+          textAlign: 'center',
+          bgcolor: 'rgba(0,0,0,0.25)',
+          borderBottom: '2px solid rgba(251,191,36,0.5)',
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ color: '#fde68a', fontWeight: 900, letterSpacing: 3 }}>
+          MARIONETTEN-BÜHNE
+        </Typography>
+      </Box>
+      <DialogTitle sx={{ pt: 2, pb: 1, px: 2, ...dialogCloseTitleSx, minHeight: 40 }}>
+        <DialogCloseIconButton onClose={onClose} sx={{ color: '#fde68a' }} iconSx={{ color: '#fde68a' }} />
+      </DialogTitle>
+      <DialogContent sx={{ pt: 0, pb: 2 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 2 }}>
+          <Paper
+            sx={{
+              p: 2,
+              textAlign: 'center',
+              bgcolor: 'rgba(15,23,42,0.85)',
+              border: '2px solid #fbbf24',
+              borderRadius: 2,
+            }}
+          >
+            <LocalTheaterIcon sx={{ fontSize: 40, color: '#fbbf24', mb: 0.5 }} />
+            <Typography variant="subtitle2" sx={{ color: '#fde68a', fontWeight: 900 }}>
+              Regisseur
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+              Nur Gesten – keine Worte
+            </Typography>
+          </Paper>
+          <Paper
+            sx={{
+              p: 2,
+              textAlign: 'center',
+              bgcolor: 'rgba(15,23,42,0.85)',
+              border: '2px solid #fbbf24',
+              borderRadius: 2,
+            }}
+          >
+            <EmojiEmotionsIcon sx={{ fontSize: 40, color: '#fbbf24', mb: 0.5 }} />
+            <Typography variant="subtitle2" sx={{ color: '#fde68a', fontWeight: 900 }}>
+              Puppe
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+              Bewegt sich erst bei „Zug“
+            </Typography>
+          </Paper>
+        </Box>
+        <Paper
+          sx={{
+            p: 2.5,
+            mb: 2,
+            textAlign: 'center',
+            bgcolor: freezeFlash ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.35)',
+            border: '2px solid rgba(251,191,36,0.5)',
+            transition: 'background-color 0.2s ease',
+          }}
+        >
+          <Typography variant="caption" sx={{ color: '#fde68a', fontWeight: 800, letterSpacing: 1 }}>
+            MINI-GESTE
+          </Typography>
+          <Typography variant="h5" sx={{ mt: 1, fontWeight: 900, color: freezeFlash ? '#0f172a' : '#fff' }}>
+            {gesture || '…'}
+          </Typography>
+        </Paper>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Button
+            variant="contained"
+            onClick={newGesture}
+            sx={{ bgcolor: '#fbbf24', color: '#0f172a', fontWeight: 900, letterSpacing: 0.5, '&:hover': { bgcolor: '#fcd34d' } }}
+          >
+            Neue Idee
+          </Button>
+          <Button variant="outlined" onClick={snap} sx={{ borderColor: '#fde68a', color: '#fde68a', fontWeight: 900 }}>
+            Schnipp – Einfrieren
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/** Draußen: kräftige Naturfarben + helle Karten für Lesbarkeit */
+const OUTDOOR_UI = {
+  paper: '#eef4ea',
+  surface: 'rgba(255, 255, 252, 0.97)',
+  card: 'rgba(255, 255, 252, 0.98)',
+  ink: '#142812',
+  inkMuted: '#2d4a30',
+  line: 'rgba(45, 90, 52, 0.32)',
+  moss: '#3d6b47',
+  bark: '#4a3326',
+  accent: '#1e4d24',
+  accentHover: '#153818',
+  water: '#2d6b7a',
+  skyTop: '#8ecae6',
+} as const;
+
+type OutdoorScene = 'wald' | 'bach' | 'hain' | 'wiese';
+
+/** Großes Panorama: Himmel, Hügel, viele Bäume (Nadel & Laub), Büsche, Farn, Blüten, Wasser */
+const OutdoorSceneBanner: React.FC<{ scene: OutdoorScene }> = ({ scene }) => {
+  const sky =
+    scene === 'wald'
+      ? 'linear-gradient(180deg, #6eb8e8 0%, #9ecfb8 38%, #6fa86e 100%)'
+      : scene === 'bach'
+        ? 'linear-gradient(180deg, #5a9ec4 0%, #8ec4b8 35%, #5a9078 68%, #3d6b52 100%)'
+        : scene === 'hain'
+          ? 'linear-gradient(180deg, #8a9b78 0%, #5d7d58 45%, #2d4a28 100%)'
+          : 'linear-gradient(180deg, #7ec8f0 0%, #b8d68a 48%, #7cb342 88%, #558b2f 100%)';
+
+  return (
+    <Box
+      sx={{
+        height: { xs: 132, sm: 152 },
+        position: 'relative',
+        overflow: 'hidden',
+        borderBottom: '3px solid rgba(25, 55, 30, 0.45)',
+        boxShadow: 'inset 0 -8px 24px rgba(20, 50, 25, 0.15)',
+      }}
+      aria-hidden
+    >
+      <Box sx={{ position: 'absolute', inset: 0, background: sky }} />
+      {/* ferne Nebel-Hügel */}
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 48,
+          left: 0,
+          right: 0,
+          height: 40,
+          background: 'linear-gradient(180deg, transparent 0%, rgba(180, 200, 170, 0.35) 100%)',
+          opacity: 0.9,
+        }}
+      />
+      {/* Sonne */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: '10%',
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,252,230,0.98) 0%, rgba(255,230,150,0.4) 50%, transparent 72%)',
+          opacity: 0.92,
+        }}
+      />
+      <Box
+        component="svg"
+        viewBox="0 0 480 152"
+        preserveAspectRatio="xMidYMax slice"
+        sx={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+        }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="hillGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(90,120,85,0.5)" />
+            <stop offset="100%" stopColor="rgba(40,70,42,0.75)" />
+          </linearGradient>
+          <linearGradient id="trunkGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#3d2818" />
+            <stop offset="100%" stopColor="#6b4a35" />
+          </linearGradient>
+        </defs>
+        {/* Hügelkamm */}
+        <path d="M0 96 Q120 72 240 88 T480 80 L480 152 L0 152 Z" fill="url(#hillGrad)" />
+        {/* Boden */}
+        <path
+          d="M0 108 Q160 100 320 106 T480 102 L480 152 L0 152 Z"
+          fill={scene === 'bach' ? 'rgba(38,78,62,0.55)' : 'rgba(28,58,35,0.58)'}
+        />
+        {/* Bach */}
+        {scene === 'bach' && (
+          <>
+            <path
+              d="M0 114 Q100 108 220 112 T400 110 T480 116 L480 152 L0 152 Z"
+              fill="rgba(95,160,185,0.62)"
+            />
+            <path d="M30 118 Q90 114 150 118" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" fill="none" />
+            <path d="M200 120 Q260 116 320 120" stroke="rgba(255,255,255,0.3)" strokeWidth="1" fill="none" />
+            <ellipse cx="360" cy="124" rx="18" ry="6" fill="rgba(255,255,255,0.22)" />
+            <ellipse cx="80" cy="126" rx="12" ry="4" fill="rgba(200,235,255,0.25)" />
+          </>
+        )}
+        {/* —— Nadelbäume (mehr, verschiedene Höhen) —— */}
+        <path d="M16 152 L16 62 L6 62 L22 18 L38 62 L28 62 L28 152 Z" fill="#0c2214" />
+        <path d="M44 152 L44 72 L36 72 L50 36 L64 72 L56 72 L56 152 Z" fill="#122a18" />
+        <path d="M288 152 L288 58 L278 58 L294 12 L310 58 L300 58 L300 152 Z" fill="#0a1e12" />
+        <path d="M312 152 L312 68 L302 68 L318 28 L334 68 L324 68 L324 152 Z" fill="#143222" />
+        <path d="M420 152 L420 64 L410 64 L426 20 L442 64 L432 64 L432 152 Z" fill="#0c2214" />
+        <path d="M448 152 L448 76 L440 76 L452 42 L464 76 L456 76 L456 152 Z" fill="#122618" />
+        {/* —— Laubbäume (runde Kronen + Stämme) —— */}
+        <ellipse cx="118" cy="52" rx="34" ry="30" fill="#1a4a24" />
+        <ellipse cx="112" cy="46" rx="18" ry="16" fill="#245a30" opacity="0.9" />
+        <rect x="108" y="68" width="14" height="84" rx="2" fill="url(#trunkGrad)" />
+        <ellipse cx="200" cy="44" rx="38" ry="34" fill="#1e5228" />
+        <ellipse cx="208" cy="38" rx="20" ry="18" fill="#2d6b38" opacity="0.85" />
+        <rect x="194" y="66" width="14" height="86" rx="2" fill="url(#trunkGrad)" />
+        <ellipse cx="268" cy="50" rx="30" ry="28" fill="#163c20" />
+        <rect x="262" y="66" width="12" height="86" rx="2" fill="url(#trunkGrad)" />
+        <ellipse cx="360" cy="56" rx="36" ry="32" fill="#1a4822" />
+        <ellipse cx="368" cy="48" rx="22" ry="20" fill="#286034" opacity="0.88" />
+        <rect x="354" y="72" width="13" height="80" rx="2" fill="url(#trunkGrad)" />
+        {/* Birke-artig (heller Stamm) */}
+        <rect x="76" y="78" width="8" height="74" rx="1" fill="#c4b8a8" opacity="0.95" />
+        <ellipse cx="80" cy="62" rx="22" ry="26" fill="#6d9a72" />
+        {/* Büsche & Hecken */}
+        <ellipse cx="64" cy="124" rx="28" ry="16" fill="#245a2c" />
+        <ellipse cx="240" cy="128" rx="32" ry="18" fill="#1a4020" />
+        <ellipse cx="392" cy="122" rx="36" ry="20" fill="#2d5530" />
+        <ellipse cx="176" cy="130" rx="24" ry="14" fill="#1e4824" />
+        {/* Farnwedel (Vordergrund) */}
+        <path
+          d="M20 152 Q28 118 24 108 Q32 120 30 152 M34 152 Q40 112 38 100 Q46 118 44 152"
+          stroke="#1a3d22"
+          strokeWidth="2.2"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <path
+          d="M400 152 Q408 120 404 108 Q414 124 412 152 M416 152 Q422 114 420 102 Q428 118 426 152"
+          stroke="#143018"
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+        />
+        {/* kleine Blüten / Klee */}
+        <circle cx="98" cy="118" r="4" fill="#f5e6a8" />
+        <circle cx="104" cy="122" r="3" fill="#fff8dc" />
+        <circle cx="300" cy="124" r="3.5" fill="#ffe082" />
+        <circle cx="332" cy="120" r="3" fill="#ffecb3" />
+        <circle cx="220" cy="126" r="2.5" fill="#e8f5e0" />
+        {/* Wiese: Gräser & Blümchen */}
+        {scene === 'wiese' && (
+          <>
+            <path d="M140 152 L144 118 L148 152 M152 152 L156 112 L160 152" stroke="#2d5018" strokeWidth="2" fill="none" />
+            <path d="M260 152 L264 116 L268 152 M272 152 L276 110 L280 152" stroke="#2d5018" strokeWidth="2" fill="none" />
+            <circle cx="128" cy="128" r="5" fill="#ffeb3b" opacity="0.95" />
+            <circle cx="248" cy="130" r="4" fill="#fff176" />
+            <circle cx="180" cy="132" r="3" fill="#f48fb1" opacity="0.9" />
+          </>
+        )}
+        {/* schwebende Blätter */}
+        <path d="M340 28 Q352 18 362 32 Q348 38 340 28" fill="rgba(35,90,45,0.55)" />
+        <path d="M72 34 Q84 24 94 38 Q82 44 72 34" fill="rgba(50,110,60,0.45)" />
+        <path d="M200 22 Q214 12 224 26 Q210 34 200 22" fill="rgba(30,85,42,0.42)" />
+        <path d="M400 36 Q412 28 420 40 Q408 46 400 36" fill="rgba(45,100,55,0.4)" />
+        <ellipse cx="160" cy="18" rx="10" ry="6" fill="rgba(60,120,70,0.35)" transform="rotate(-20 160 18)" />
+      </Box>
+    </Box>
+  );
+};
+
+/** Mehrschichtiges Blätter-/Pflanzen-Muster (kachelbar) */
+const OUTDOOR_LEAF_PATTERN =
+  'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'72\' height=\'72\' viewBox=\'0 0 72 72\'%3E%3Cpath fill=\'%233d6b47\' fill-opacity=\'0.07\' d=\'M10 36 Q36 6 62 36 Q36 66 10 36\'/%3E%3Cpath fill=\'%231e4d24\' fill-opacity=\'0.06\' d=\'M36 50 Q48 22 60 50\'/%3E%3Cpath fill=\'%234a7c59\' fill-opacity=\'0.05\' d=\'M0 60 Q18 40 36 60\'/%3E%3Ccircle cx=\'54\' cy=\'18\' r=\'3\' fill=\'%233d6b47\' fill-opacity=\'0.06\'/%3E%3C/svg%3E")';
+
+/** Zarte Ecken-Illustration (Blätter) im Inhaltsbereich */
+const OutdoorPlantCorners: React.FC = () => (
+  <Box
+    sx={{
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      overflow: 'hidden',
+      borderRadius: 0,
+      zIndex: 0,
+    }}
+    aria-hidden
+  >
+    <Box
+      component="svg"
+      viewBox="0 0 80 80"
+      sx={{ position: 'absolute', top: -4, left: -4, width: 72, height: 72, opacity: 0.5 }}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M8 72 Q4 40 28 20 Q20 48 8 72" fill="rgba(30,77,36,0.35)" />
+      <path d="M0 72 Q12 32 44 8 Q28 36 0 72" fill="rgba(61,107,71,0.28)" />
+    </Box>
+    <Box
+      component="svg"
+      viewBox="0 0 80 80"
+      sx={{ position: 'absolute', bottom: -4, right: -4, width: 80, height: 80, opacity: 0.45 }}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M72 72 Q76 36 52 12 Q60 44 72 72" fill="rgba(30,77,36,0.32)" />
+      <path d="M80 72 Q68 28 36 4 Q52 38 80 72" fill="rgba(61,107,71,0.26)" />
+    </Box>
+  </Box>
+);
+
+type OutdoorSessionShellProps = {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  eyebrow?: string;
+  /** Optischer Hintergrund: Wald, Bachufer, Hain, Blumenwiese */
+  scene?: OutdoorScene;
+  maxWidth?: 'xs' | 'sm' | 'md';
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+};
+
+/** Gemeinsame Hülle: Natur-Banner + Blätter-Muster + lesbare Kartenfläche */
+const OutdoorSessionShell: React.FC<OutdoorSessionShellProps> = ({
+  open,
+  onClose,
+  title,
+  eyebrow,
+  scene = 'wald',
+  maxWidth = 'sm',
+  children,
+  footer,
+}) => (
+  <Dialog
+    open={open}
+    onClose={onClose}
+    maxWidth={maxWidth}
+    fullWidth
+    PaperProps={{
+      sx: {
+        borderRadius: 2,
+        overflow: 'hidden',
+        bgcolor: OUTDOOR_UI.paper,
+        border: `2px solid rgba(61, 107, 71, 0.35)`,
+        boxShadow: '0 28px 64px rgba(15, 45, 22, 0.28), 0 0 0 1px rgba(255,255,255,0.5) inset',
+        backgroundImage: `${OUTDOOR_LEAF_PATTERN}, linear-gradient(165deg, #e8f0e4 0%, #f5faf2 50%, #eef5e8 100%)`,
+        backgroundSize: '72px 72px, 100% 100%',
+      },
+    }}
+  >
+    <OutdoorSceneBanner scene={scene} />
+    <DialogTitle
+      sx={{
+        pt: 2.25,
+        pb: 1.25,
+        px: 3,
+        ...dialogCloseTitleSx,
+        borderBottom: `1px solid ${OUTDOOR_UI.line}`,
+        bgcolor: 'rgba(255, 255, 252, 0.96)',
+        backgroundImage:
+          'linear-gradient(180deg, rgba(210, 235, 210, 0.55) 0%, rgba(255, 255, 252, 0.98) 100%)',
+      }}
+    >
+      {eyebrow && (
+        <Typography
+          variant="overline"
+          sx={{
+            color: OUTDOOR_UI.moss,
+            letterSpacing: 0.14,
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            display: 'block',
+            mb: 0.5,
+          }}
+        >
+          {eyebrow}
+        </Typography>
+      )}
+      <Typography
+        component="div"
+        sx={{
+          fontWeight: 800,
+          color: OUTDOOR_UI.ink,
+          fontSize: '1.18rem',
+          lineHeight: 1.35,
+          pr: 5,
+          letterSpacing: '-0.02em',
+          textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+        }}
+      >
+        {title}
+      </Typography>
+      <DialogCloseIconButton onClose={onClose} sx={{ color: OUTDOOR_UI.accent }} iconSx={{ color: OUTDOOR_UI.accent }} />
+    </DialogTitle>
+    <DialogContent
+      sx={{
+        px: 3,
+        pt: 2.5,
+        pb: 2,
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundImage: `${OUTDOOR_LEAF_PATTERN}, linear-gradient(180deg, rgba(232, 244, 228, 0.97) 0%, rgba(218, 235, 212, 0.92) 100%)`,
+        backgroundSize: '72px 72px, 100% 100%',
+      }}
+    >
+      <OutdoorPlantCorners />
+      <Paper
+        elevation={0}
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          mb: 2.5,
+          p: 1.5,
+          pl: 2,
+          borderRadius: 1.5,
+          bgcolor: 'rgba(255, 255, 252, 0.94)',
+          border: `1px solid rgba(74, 124, 89, 0.32)`,
+          borderLeft: `5px solid ${OUTDOOR_UI.moss}`,
+          boxShadow: '0 4px 16px rgba(25, 60, 32, 0.1)',
+        }}
+      >
+        <Typography
+          variant="body2"
+          component="p"
+          sx={{
+            color: OUTDOOR_UI.inkMuted,
+            lineHeight: 1.55,
+            fontSize: '0.9rem',
+            m: 0,
+          }}
+        >
+          <strong>Draußen-Spiele</strong> brauchen echten Platz, frische Luft und echte Punkte (Zaun, Baum, Rasen …).
+          Ohne Beamer: kurz <strong>drinnen</strong> lesen oder <strong>laut draußen</strong> ansagen.
+        </Typography>
+      </Paper>
+      <Box sx={{ position: 'relative', zIndex: 1 }}>{children}</Box>
+    </DialogContent>
+    {footer && (
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2,
+          backgroundImage: 'linear-gradient(180deg, rgba(220, 235, 220, 0.5) 0%, rgba(255, 255, 252, 0.98) 100%)',
+          borderTop: `1px solid ${OUTDOOR_UI.line}`,
+          flexDirection: 'column',
+          alignItems: 'stretch',
+        }}
+      >
+        {footer}
+      </DialogActions>
+    )}
+  </Dialog>
+);
+
+/** Kurze Rufe, die nur mit Weite & echten Zielen draußen Sinn ergeben (kein „Programmieren“) */
+const OUTDOOR_WEITE_RUFE = [
+  'ZUR NÄCHSTEN GROSSEN EICHE!',
+  'ZUM ZAUN AM SPIELFELDRAND!',
+  'IN DIE MITTE DER WIESE!',
+  'ZUR PARKBANK!',
+  '20 SCHRITTE GERADEAUS – DANN STOPP!',
+  'UM DIE BAUMGRUPPE HERUM!',
+  'ZUM SCHATTEN UNTER DEM BAUM!',
+  'ZUM HÜGEL / ZUR BODENWELLE!',
+  'LANGSAM AM RAND DES RASENS ENTLANG!',
+  'ZUM TOR / ZUR TÜR DES GEBÄUDES!',
+];
+
+/** Stationen, die Natur, Wetter, Abstand oder Untergrund brauchen */
+const OUTDOOR_STATION_TRAIL = [
+  {
+    id: 'lausch',
+    label: 'Lauschen',
+    task: '1 Minute still stehen oder sitzen: nur Naturgeräusche hören (Vögel, Wind, fernes Geräusch). Niemand spricht.',
+    emoji: '👂',
+  },
+  {
+    id: 'stein',
+    label: 'Stein & Boden',
+    task: 'Jede Person sucht einen Stein oder ein Stück Rinde. Alle halten hoch und nennen laut eine Eigenschaft (Farbe, glatt, kantig …).',
+    emoji: '🪨',
+  },
+  {
+    id: 'schatten',
+    label: 'Sonne & Schatten',
+    task: 'Alle stellen sich in einen großen Schatten (Baum, Mauer). Zeigt mit dem Arm, wo ungefähr die Sonne steht.',
+    emoji: '🌤️',
+  },
+  {
+    id: 'weite',
+    label: 'Weite spüren',
+    task: '10–15 Schritte in eine Richtung – weit weg von der Gruppe, ohne etwas zu berühren. Dann zurück oder Signal abwarten.',
+    emoji: '↔️',
+  },
+  {
+    id: 'wolke',
+    label: 'Himmel',
+    task: 'Alle schauen hoch: eine Wolke finden und laut die Form nennen („Schaf“, „Streifen“ …).',
+    emoji: '☁️',
+  },
+  {
+    id: 'wind',
+    label: 'Wind',
+    task: '30 Sekunden: Arme zur Seite, spüren ob Wind geht – dann kurz sagen, aus welcher Richtung er sich anfühlt.',
+    emoji: '💨',
+  },
+];
+
+/** Echte Orte am Hof – vorher mit Hütchen/Kreide markieren */
+const OUTDOOR_ZONE_NAMES = [
+  { name: 'Eiche', hint: 'z. B. großer Baum' },
+  { name: 'Zaun', hint: 'Spielfeldrand' },
+  { name: 'Mitte', hint: 'Mitte Rasen/Wiese' },
+  { name: 'Bank', hint: 'Sitzbank / Mauer' },
+];
+
+/** Bewegung, die Boden und Freifläche nutzt */
+const OUTDOOR_LAUF_STILE = [
+  { label: 'Über Wurzeln / unebenen Boden tippeln', emoji: '🌳' },
+  { label: 'Den Hügel oder die Stufe hoch und runter', emoji: '⛰️' },
+  { label: 'Durch hohes Gras / weiche Fläche', emoji: '🌾' },
+  { label: 'Am Rand entlang (Zaun, Beet)', emoji: '🚧' },
+  { label: 'Gegen den Wind laufen', emoji: '💨' },
+  { label: 'Auf Asphalt kurz, dann auf Rasen weich', emoji: '🦶' },
+  { label: 'Weit ausholen – volle Armbewegung wie auf der Wiese', emoji: '🤸' },
+];
+
+/** Weite-Rufe: ein Ziel zum Anlaufen – nur draußen sinnvoll */
+const OutdoorHumanCompilerModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [cmd, setCmd] = useState('');
+  const last = useRef<string | null>(null);
+
+  const neu = useCallback(() => {
+    let c = OUTDOOR_WEITE_RUFE[Math.floor(Math.random() * OUTDOOR_WEITE_RUFE.length)];
+    let g = 0;
+    while (OUTDOOR_WEITE_RUFE.length > 1 && c === last.current && g < 12) {
+      c = OUTDOOR_WEITE_RUFE[Math.floor(Math.random() * OUTDOOR_WEITE_RUFE.length)];
+      g++;
+    }
+    last.current = c;
+    setCmd(c);
+  }, []);
+
+  useEffect(() => {
+    if (open) neu();
+    else {
+      setCmd('');
+      last.current = null;
+    }
+  }, [open, neu]);
+
+  return (
+    <OutdoorSessionShell
+      open={open}
+      onClose={onClose}
+      scene="wald"
+      eyebrow="Draußen · Weite"
+      title="Ziel zum Anlaufen – mit echtem Abstand"
+      maxWidth="xs"
+      footer={
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={neu}
+          sx={{
+            bgcolor: OUTDOOR_UI.accent,
+            py: 1.25,
+            fontWeight: 700,
+            textTransform: 'none',
+            fontSize: '1rem',
+            boxShadow: '0 4px 14px rgba(30, 70, 35, 0.35)',
+            '&:hover': { bgcolor: OUTDOOR_UI.accentHover },
+          }}
+        >
+          Nächster Ruf
+        </Button>
+      }
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          color: OUTDOOR_UI.moss,
+          mb: 1.25,
+          display: 'block',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          fontWeight: 700,
+        }}
+      >
+        Laut ansagen – dann los
+      </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          textAlign: 'center',
+          bgcolor: OUTDOOR_UI.card,
+          border: `2px solid rgba(74, 124, 89, 0.35)`,
+          borderRadius: 2,
+          boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.85), 0 8px 24px rgba(30, 60, 35, 0.12)',
+          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(245, 250, 242, 0.95) 100%)',
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: { xs: '1.65rem', sm: '1.9rem' },
+            fontWeight: 800,
+            color: OUTDOOR_UI.ink,
+            lineHeight: 1.25,
+            letterSpacing: '0.03em',
+          }}
+        >
+          {cmd || '…'}
+        </Typography>
+      </Paper>
+    </OutdoorSessionShell>
+  );
+};
+
+/** Stationen mit Natur, Wetter, Boden – nicht Indoor-Fitness */
+const OutdoorStationsParcoursModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (open) setIdx(0);
+  }, [open]);
+  const s = OUTDOOR_STATION_TRAIL[idx];
+  return (
+    <OutdoorSessionShell
+      open={open}
+      onClose={onClose}
+      scene="bach"
+      eyebrow="Draußen · Hof & Natur"
+      title="Stationen – mit dem, was draußen da ist"
+      maxWidth="sm"
+      footer={
+        <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+          <Button
+            variant="outlined"
+            fullWidth
+            disabled={idx === 0}
+            onClick={() => setIdx((i) => Math.max(0, i - 1))}
+            sx={{
+              borderColor: OUTDOOR_UI.moss,
+              color: OUTDOOR_UI.ink,
+              fontWeight: 600,
+              textTransform: 'none',
+              py: 1.1,
+              bgcolor: 'rgba(255,255,252,0.9)',
+            }}
+          >
+            Zurück
+          </Button>
+          <Button
+            variant="contained"
+            fullWidth
+            disabled={idx >= OUTDOOR_STATION_TRAIL.length - 1}
+            onClick={() => setIdx((i) => Math.min(OUTDOOR_STATION_TRAIL.length - 1, i + 1))}
+            sx={{
+              bgcolor: OUTDOOR_UI.accent,
+              fontWeight: 700,
+              textTransform: 'none',
+              py: 1.1,
+              boxShadow: '0 4px 12px rgba(30, 70, 35, 0.3)',
+              '&:hover': { bgcolor: OUTDOOR_UI.accentHover },
+            }}
+          >
+            Weiter
+          </Button>
+        </Box>
+      }
+    >
+      <Typography variant="body2" sx={{ color: OUTDOOR_UI.inkMuted, mb: 1.75, lineHeight: 1.55 }}>
+        Station <strong>{idx + 1}</strong> von {OUTDOOR_STATION_TRAIL.length} – vor Ort an echten Punkten umsetzen (Nummer antippen zum Springen)
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'center', mb: 2, flexWrap: 'wrap' }}>
+        {OUTDOOR_STATION_TRAIL.map((st, i) => (
+          <Box
+            key={st.id}
+            component="button"
+            type="button"
+            onClick={() => setIdx(i)}
+            sx={{
+              width: 38,
+              height: 38,
+              borderRadius: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              bgcolor: i === idx ? OUTDOOR_UI.accent : OUTDOOR_UI.card,
+              color: i === idx ? '#fafaf9' : OUTDOOR_UI.inkMuted,
+              border: i === idx ? `2px solid ${OUTDOOR_UI.moss}` : `1px solid ${OUTDOOR_UI.line}`,
+              boxShadow: i === idx ? '0 4px 12px rgba(30, 60, 35, 0.25)' : 'none',
+              '&:hover': { opacity: 0.95 },
+            }}
+          >
+            {i + 1}
+          </Box>
+        ))}
+      </Box>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          bgcolor: OUTDOOR_UI.card,
+          border: `2px solid rgba(61, 122, 140, 0.25)`,
+          borderRadius: 2,
+          boxShadow: '0 6px 20px rgba(30, 70, 60, 0.1)',
+        }}
+      >
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 700,
+            color: OUTDOOR_UI.ink,
+            mb: 1.25,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            fontSize: '1.1rem',
+          }}
+        >
+          <Box component="span" sx={{ fontSize: '1.5rem' }} aria-hidden>
+            {s.emoji}
+          </Box>
+          {s.label}
+        </Typography>
+        <Typography variant="body1" sx={{ color: OUTDOOR_UI.ink, lineHeight: 1.65, fontSize: '1rem' }}>
+          {s.task}
+        </Typography>
+      </Paper>
+    </OutdoorSessionShell>
+  );
+};
+
+/** Markierungen am Boden = echte Ziele auf dem Hof */
+const OutdoorZoneWechselModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [zoneIdx, setZoneIdx] = useState(0);
+  const ziehen = useCallback(() => {
+    setZoneIdx(Math.floor(Math.random() * OUTDOOR_ZONE_NAMES.length));
+  }, []);
+  useEffect(() => {
+    if (open) ziehen();
+  }, [open, ziehen]);
+  const z = OUTDOOR_ZONE_NAMES[zoneIdx];
+  return (
+    <OutdoorSessionShell
+      open={open}
+      onClose={onClose}
+      scene="hain"
+      eyebrow="Draußen · Markierungen"
+      title="Zwischen echten Punkten wechseln"
+      maxWidth="xs"
+      footer={
+        <Button
+          fullWidth
+          variant="outlined"
+          onClick={ziehen}
+          sx={{
+            borderColor: OUTDOOR_UI.moss,
+            color: OUTDOOR_UI.ink,
+            fontWeight: 600,
+            textTransform: 'none',
+            py: 1.1,
+            bgcolor: 'rgba(255,255,252,0.95)',
+          }}
+        >
+          Andere Ziel-Markierung
+        </Button>
+      }
+    >
+      <Typography variant="body2" sx={{ color: OUTDOOR_UI.inkMuted, mb: 2, lineHeight: 1.55 }}>
+        Hütchen/Kreide = echte Orte auf dem Hof. Wähle die Markierung, zu der alle laufen sollen – dann laut ausrufen.
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+        {OUTDOOR_ZONE_NAMES.map((zz, i) => (
+          <Paper
+            key={zz.name}
+            elevation={0}
+            onClick={() => setZoneIdx(i)}
+            sx={{
+              p: 1.75,
+              cursor: 'pointer',
+              bgcolor: i === zoneIdx ? 'rgba(220, 235, 218, 0.95)' : OUTDOOR_UI.card,
+              border: i === zoneIdx ? `2px solid ${OUTDOOR_UI.moss}` : `1px solid ${OUTDOOR_UI.line}`,
+              borderRadius: 2,
+              backgroundImage:
+                i === zoneIdx
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(232, 245, 228, 0.9) 100%)'
+                  : 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(250, 252, 248, 0.98) 100%)',
+              boxShadow: i === zoneIdx ? '0 4px 16px rgba(30, 80, 40, 0.15)' : '0 1px 4px rgba(0,0,0,0.06)',
+            }}
+          >
+            <Typography variant="caption" sx={{ color: OUTDOOR_UI.inkMuted, display: 'block', mb: 0.25 }}>
+              {zz.hint}
+            </Typography>
+            <Typography sx={{ fontWeight: 700, color: OUTDOOR_UI.ink, fontSize: '1.1rem' }}>{zz.name}</Typography>
+          </Paper>
+        ))}
+      </Box>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.25,
+          bgcolor: OUTDOOR_UI.card,
+          border: `2px dashed ${OUTDOOR_UI.moss}`,
+          borderRadius: 2,
+          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(240, 248, 236, 0.95) 100%)',
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            color: OUTDOOR_UI.inkMuted,
+            mb: 0.75,
+            display: 'block',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            fontWeight: 600,
+          }}
+        >
+          Ausruf
+        </Typography>
+        <Typography sx={{ fontWeight: 800, color: OUTDOOR_UI.ink, fontSize: '1.35rem', lineHeight: 1.35 }}>
+          {z.name === 'Mitte' ? '„Alle in die Mitte!“' : `„Alle zur ${z.name}!“`}
+        </Typography>
+      </Paper>
+    </OutdoorSessionShell>
+  );
+};
+
+/** Terrain & Untergrund – kein „Maskenlauf“, sondern draußen */
+const OutdoorLaufChaosModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [i, setI] = useState(0);
+  const last = useRef<number | null>(null);
+  const neu = useCallback(() => {
+    let n = Math.floor(Math.random() * OUTDOOR_LAUF_STILE.length);
+    let g = 0;
+    while (OUTDOOR_LAUF_STILE.length > 1 && n === last.current && g < 10) {
+      n = Math.floor(Math.random() * OUTDOOR_LAUF_STILE.length);
+      g++;
+    }
+    last.current = n;
+    setI(n);
+  }, []);
+  useEffect(() => {
+    if (open) neu();
+    else last.current = null;
+  }, [open, neu]);
+  const L = OUTDOOR_LAUF_STILE[i];
+  return (
+    <OutdoorSessionShell
+      open={open}
+      onClose={onClose}
+      scene="wiese"
+      eyebrow="Draußen · Terrain"
+      title="Wie bewegen wir uns auf dem echten Boden?"
+      maxWidth="xs"
+      footer={
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={neu}
+          sx={{
+            bgcolor: OUTDOOR_UI.accent,
+            py: 1.25,
+            fontWeight: 700,
+            textTransform: 'none',
+            boxShadow: '0 4px 14px rgba(60, 100, 30, 0.35)',
+            '&:hover': { bgcolor: OUTDOOR_UI.accentHover },
+          }}
+        >
+          Nächste Art zu laufen
+        </Button>
+      }
+    >
+      <Typography variant="body2" sx={{ color: OUTDOOR_UI.inkMuted, mb: 1.5, lineHeight: 1.5 }}>
+        Kurze Strecke auf <strong>Rasen, Asphalt, Kies</strong> – Tempo wie „Schrittgeschwindigkeit“, Strecke frei von Hindernissen.
+      </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          textAlign: 'center',
+          bgcolor: OUTDOOR_UI.card,
+          border: `2px solid rgba(139, 195, 74, 0.45)`,
+          borderRadius: 2,
+          backgroundImage: 'linear-gradient(165deg, rgba(255,255,255,0.9) 0%, rgba(232, 245, 210, 0.85) 100%)',
+          boxShadow: '0 8px 28px rgba(60, 90, 40, 0.12)',
+        }}
+      >
+        <Typography sx={{ fontSize: '3rem', lineHeight: 1, mb: 1.5 }} aria-hidden>
+          {L.emoji}
+        </Typography>
+        <Typography sx={{ fontWeight: 800, color: OUTDOOR_UI.ink, fontSize: '1.35rem', lineHeight: 1.35 }}>
+          {L.label}
+        </Typography>
+      </Paper>
+    </OutdoorSessionShell>
+  );
+};
+
+/** Leise, gleichmäßige Dämpfe (Sinus) – keine externe Datei nötig */
+function useMovementStoryAmbient(active: boolean, volume: number) {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const masterRef = useRef<GainNode | null>(null);
+
+  useEffect(() => {
+    if (!active) {
+      if (ctxRef.current) {
+        try {
+          ctxRef.current.close();
+        } catch {
+          /* ignore */
+        }
+        ctxRef.current = null;
+        masterRef.current = null;
+      }
+      return;
+    }
+    const Win = typeof window !== 'undefined' ? window : null;
+    if (!Win) return;
+    const AC =
+      Win.AudioContext || (Win as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    ctxRef.current = ctx;
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
+    }
+    const master = ctx.createGain();
+    master.gain.value = Math.min(0.35, Math.max(0, volume));
+    master.connect(ctx.destination);
+    masterRef.current = master;
+    const freqs = [130.81, 164.81, 196.0];
+    freqs.forEach((f) => {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.value = 0.055;
+      o.connect(g);
+      g.connect(master);
+      o.start();
+    });
+    return () => {
+      try {
+        ctx.close();
+      } catch {
+        /* ignore */
+      }
+      ctxRef.current = null;
+      masterRef.current = null;
+    };
+  }, [active]);
+
+  useEffect(() => {
+    if (masterRef.current && ctxRef.current) {
+      try {
+        masterRef.current.gain.setValueAtTime(Math.min(0.35, Math.max(0, volume)), ctxRef.current.currentTime);
+      } catch {
+        masterRef.current.gain.value = Math.min(0.35, Math.max(0, volume));
+      }
+    }
+  }, [volume]);
+}
+
+const MovementStoryModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [tab, setTab] = useState(0);
+  const [musicOn, setMusicOn] = useState(true);
+  const [musicVol, setMusicVol] = useState(0.12);
+  const [ttsActive, setTtsActive] = useState(false);
+  const [ttsPaused, setTtsPaused] = useState(false);
+  const [ttsIndex, setTtsIndex] = useState<number | null>(null);
+  const [ttsRate, setTtsRate] = useState(1.0);
+  const [ttsVoiceURI, setTtsVoiceURI] = useState<string>('');
+  const [ttsVoices, setTtsVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const runIdRef = useRef(0);
+  const ttsRateRef = useRef(ttsRate);
+  const ttsVoiceURIRef = useRef(ttsVoiceURI);
+  const ttsVoicesRef = useRef(ttsVoices);
+
+  useEffect(() => {
+    ttsRateRef.current = ttsRate;
+  }, [ttsRate]);
+
+  useEffect(() => {
+    ttsVoiceURIRef.current = ttsVoiceURI;
+  }, [ttsVoiceURI]);
+
+  useEffect(() => {
+    ttsVoicesRef.current = ttsVoices;
+  }, [ttsVoices]);
+
+  useEffect(() => {
+    if (open) setTab(0);
+  }, [open]);
+
+  useMovementStoryAmbient(open && musicOn, musicVol);
+
+  const story = MOVEMENT_STORIES[tab];
+
+  const stopTts = () => {
+    runIdRef.current += 1;
+    try {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    } catch {
+      /* ignore */
+    }
+    setTtsActive(false);
+    setTtsPaused(false);
+    setTtsIndex(null);
+  };
+
+  useEffect(() => {
+    if (!open) stopTts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    // Beim Wechsel der Geschichte abbrechen (Tab im Modal)
+    if (ttsActive || ttsPaused) stopTts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const synth = window.speechSynthesis;
+
+    const updateVoices = () => {
+      const list = synth.getVoices?.() ?? [];
+      setTtsVoices(list);
+      setTtsVoiceURI((prev) => prev || list[0]?.voiceURI || '');
+    };
+
+    // Browser laden Stimmen oft async
+    updateVoices();
+    synth.onvoiceschanged = updateVoices;
+    return () => {
+      try {
+        synth.onvoiceschanged = null;
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
+
+  const pauseTts = () => {
+    if (!ttsActive || ttsPaused) return;
+    try {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.pause();
+        setTtsPaused(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const resumeTts = () => {
+    if (!ttsActive || !ttsPaused) return;
+    try {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.resume();
+        setTtsPaused(false);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const speakStep = (index: number, runId: number) => {
+    if (runId !== runIdRef.current) return;
+    const beats = story.beats;
+    if (!Array.isArray(beats) || beats.length === 0) return;
+    if (index < 0 || index >= beats.length) return;
+
+    setTtsIndex(index);
+
+    const narration = beats[index]?.narration?.trim() ?? '';
+    if (!narration) {
+      if (index + 1 < beats.length) speakStep(index + 1, runId);
+      else {
+        setTtsActive(false);
+        setTtsPaused(false);
+        setTtsIndex(null);
+      }
+      return;
+    }
+
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const synth = window.speechSynthesis;
+
+    const utter = new SpeechSynthesisUtterance(narration);
+    utter.lang = 'de-DE';
+    utter.rate = ttsRateRef.current;
+    utter.pitch = 1;
+
+    const voices = ttsVoicesRef.current;
+    const selectedVoice = voices.find((v) => v.voiceURI === ttsVoiceURIRef.current);
+    if (selectedVoice) utter.voice = selectedVoice;
+
+    utter.onend = () => {
+      if (runId !== runIdRef.current) return;
+      if (index + 1 < beats.length) speakStep(index + 1, runId);
+      else {
+        setTtsActive(false);
+        setTtsPaused(false);
+        setTtsIndex(null);
+      }
+    };
+
+    utter.onerror = () => {
+      if (runId !== runIdRef.current) return;
+      if (index + 1 < beats.length) speakStep(index + 1, runId);
+      else {
+        setTtsActive(false);
+        setTtsPaused(false);
+        setTtsIndex(null);
+      }
+    };
+
+    try {
+      synth.speak(utter);
+    } catch {
+      utter.onend?.(undefined as any);
+    }
+  };
+
+  const startTts = (fromIndex: number) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const beats = story.beats;
+    if (!Array.isArray(beats) || beats.length === 0) return;
+
+    runIdRef.current += 1;
+    const runId = runIdRef.current;
+
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      /* ignore */
+    }
+
+    setTtsActive(true);
+    setTtsPaused(false);
+    const clamped = Math.max(0, Math.min(fromIndex, beats.length - 1));
+    setTtsIndex(clamped);
+    speakStep(clamped, runId);
+  };
+
+  const goPrevTts = () => {
+    const beats = story.beats;
+    if (!Array.isArray(beats) || beats.length === 0) return;
+    const current = ttsIndex ?? 0;
+    startTts(Math.max(0, current - 1));
+  };
+
+  const goNextTts = () => {
+    const beats = story.beats;
+    if (!Array.isArray(beats) || beats.length === 0) return;
+    const current = ttsIndex ?? 0;
+    startTts(Math.min(beats.length - 1, current + 1));
+  };
+
+  const handlePlayPause = () => {
+    if (ttsActive && ttsPaused) return resumeTts();
+    if (ttsActive) return;
+    startTts(ttsIndex ?? 0);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 2, maxHeight: 'min(96vh, 920px)' } }}
+    >
+      <DialogTitle
+        sx={{
+          pr: 4,
+          background: 'linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%)',
+          color: '#fff',
+          ...dialogCloseTitleSx,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <AutoStoriesIcon />
+          <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.15rem' }}>
+            Bewegungsgeschichte
+          </Typography>
+        </Box>
+        <DialogCloseIconButton
+          onClose={onClose}
+          sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+          iconSx={{ color: '#fff' }}
+        />
+      </DialogTitle>
+      <DialogContent sx={{ pt: 2, pb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Zu jedem Abschnitt steht die passende <strong>Bewegung</strong> direkt daneben (Schritt für Schritt). Bild oben.
+          Musik optional leise dazu.
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={musicOn}
+                onChange={(_, v) => setMusicOn(v)}
+                color="primary"
+              />
+            }
+            label="Leise Hintergrundmusik"
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+            Sanfte Töne – Lautstärke für den Raum anpassen
+          </Typography>
+        </Box>
+        {musicOn && (
+          <Box sx={{ mb: 2, px: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              Lautstärke
+            </Typography>
+            <Slider
+              value={musicVol}
+              min={0.02}
+              max={0.22}
+              step={0.01}
+              onChange={(_, v) => setMusicVol(typeof v === 'number' ? v : v[0])}
+              valueLabelFormat={(v) => `${Math.round(v * 400)} %`}
+              aria-label="Musiklautstärke"
+            />
+          </Box>
+        )}
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+        >
+          {MOVEMENT_STORIES.map((s, i) => (
+            <Tab key={s.id} label={s.title} value={i} sx={{ textTransform: 'none', fontWeight: 700 }} />
+          ))}
+        </Tabs>
+        <Typography variant="subtitle2" color="primary" sx={{ mb: 1, fontWeight: 700 }}>
+          {story.subtitle}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 2 }}>
+          <FormControl size="small" sx={{ minWidth: 220 }}>
+            <InputLabel id="tts-voice-label">Stimme</InputLabel>
+            <Select
+              labelId="tts-voice-label"
+              value={ttsVoiceURI}
+              label="Stimme"
+              onChange={(e) => setTtsVoiceURI(e.target.value)}
+              disabled={ttsVoices.length === 0}
+            >
+              {ttsVoices.map((v) => (
+                <MenuItem key={v.voiceURI} value={v.voiceURI}>
+                  {v.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Box sx={{ minWidth: 260 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, display: 'block', mb: 0.25 }}>
+              Tempo {Math.round(ttsRate * 100)}%
+            </Typography>
+            <Slider
+              value={ttsRate}
+              min={0.7}
+              max={1.3}
+              step={0.05}
+              onChange={(_, v) => setTtsRate(typeof v === 'number' ? v : v[0])}
+              aria-label="Sprechgeschwindigkeit"
+              size="small"
+            />
+          </Box>
+
+          <Tooltip title="Zurück">
+            <IconButton
+              onClick={goPrevTts}
+              disabled={!ttsActive && (ttsIndex === null || ttsIndex <= 0)}
+              sx={{
+                p: 0.5,
+                minWidth: 32,
+                width: 32,
+                height: 32,
+                borderRadius: 1.4,
+                color: 'white',
+                bgcolor: 'rgba(21, 101, 192, 0.65)',
+                '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.9)' },
+                transition: 'all 0.2s ease',
+              }}
+              aria-label="Vorleseabschnitt zurück"
+            >
+              <SkipPreviousIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title={ttsActive && ttsPaused ? 'Weiter' : 'Vorlesen'}>
+            <IconButton
+              onClick={handlePlayPause}
+              disabled={!story?.beats?.length}
+              sx={{
+                p: 0.5,
+                minWidth: 32,
+                width: 32,
+                height: 32,
+                borderRadius: 1.4,
+                color: 'white',
+                bgcolor: 'linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%)',
+                boxShadow: '0 2px 8px rgba(57, 73, 171, 0.25)',
+                '&:hover': { bgcolor: 'linear-gradient(135deg, #3949ab 0%, #5c6bc0 100%)' },
+                transition: 'all 0.2s ease',
+              }}
+              aria-label="Vorlesen starten"
+            >
+              <PlayIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Pause">
+            <IconButton
+              onClick={pauseTts}
+              disabled={!ttsActive || ttsPaused}
+              sx={{
+                p: 0.5,
+                minWidth: 32,
+                width: 32,
+                height: 32,
+                borderRadius: 1.4,
+                color: 'white',
+                bgcolor: '#616161',
+                '&:hover': { bgcolor: '#424242' },
+                transition: 'all 0.2s ease',
+              }}
+              aria-label="Vorlesen pausieren"
+            >
+              <PauseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Stoppen">
+            <IconButton
+              onClick={stopTts}
+              disabled={!ttsActive}
+              sx={{
+                p: 0.5,
+                minWidth: 32,
+                width: 32,
+                height: 32,
+                borderRadius: 1.4,
+                color: 'white',
+                bgcolor: '#d32f2f',
+                '&:hover': { bgcolor: '#b71c1c' },
+                transition: 'all 0.2s ease',
+              }}
+              aria-label="Vorlesen stoppen"
+            >
+              <StopIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Vorwärts">
+            <IconButton
+              onClick={goNextTts}
+              disabled={!ttsActive && (ttsIndex === null || (story.beats && ttsIndex >= story.beats.length - 1))}
+              sx={{
+                p: 0.5,
+                minWidth: 32,
+                width: 32,
+                height: 32,
+                borderRadius: 1.4,
+                color: 'white',
+                bgcolor: 'rgba(0, 137, 123, 0.7)',
+                '&:hover': { bgcolor: 'rgba(0, 137, 123, 0.95)' },
+                transition: 'all 0.2s ease',
+              }}
+              aria-label="Vorleseabschnitt vorwärts"
+            >
+              <SkipNextIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+            {ttsActive
+              ? ttsPaused
+                ? `Vorlesen pausiert – Schritt ${ttsIndex !== null ? ttsIndex + 1 : '…'}`
+                : `Vorlesen läuft – Schritt ${ttsIndex !== null ? ttsIndex + 1 : '…'}`
+              : 'Vorlesen optional (Text-to-Speech)'}
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            borderRadius: 2,
+            overflow: 'hidden',
+            mb: 2,
+            boxShadow: '0 8px 28px rgba(25, 40, 80, 0.12)',
+            border: '1px solid rgba(0,0,0,0.06)',
+          }}
+        >
+          <Box
+            component="img"
+            src={story.imageUrl}
+            alt={story.imageAlt}
+            sx={{
+              width: '100%',
+              height: { xs: 220, sm: 260 },
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        </Box>
+        <Stack spacing={1.75} sx={{ maxHeight: { xs: 'none', md: 'min(52vh, 480px)' }, overflowY: { xs: 'visible', md: 'auto' }, pr: { md: 0.5 } }}>
+          {story.beats.map((b, i) => (
+            <Paper
+              key={i}
+              elevation={0}
+              sx={{
+                p: { xs: 1.5, sm: 2 },
+                borderRadius: 2,
+                border: '1px solid rgba(0,0,0,0.08)',
+                bgcolor: ttsActive && ttsIndex === i ? 'rgba(0, 121, 107, 0.08)' : '#fff',
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  gap: { xs: 1.25, md: 2 },
+                  alignItems: { md: 'flex-start' },
+                }}
+              >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{ color: 'text.secondary', fontWeight: 800, display: 'block', mb: 0.5 }}
+                  >
+                    Schritt {i + 1} · Erzählung
+                    {ttsActive && ttsIndex === i ? (ttsPaused ? ' (pausiert)' : ' (wird vorgelesen)') : ''}
+                  </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      lineHeight: 1.9,
+                      color: '#37474f',
+                      textAlign: 'left',
+                      fontSize: '1.02rem',
+                    }}
+                  >
+                    {b.narration}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: { xs: '100%', md: 280 },
+                    flexShrink: 0,
+                    p: 1.25,
+                    borderRadius: 1.5,
+                    bgcolor: 'rgba(0, 121, 107, 0.08)',
+                    borderLeft: '4px solid #00796b',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 800, display: 'block', mb: 0.35 }}>
+                    Bewegung
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.45, color: '#1b5e20' }}>
+                    {b.movement}
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          ))}
+        </Stack>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const MOVEMENT_GAMES_BRAIN: MovementGameCard[] = [
+  {
+    title: 'Bewegungsgeschichte',
+    duration: 'ca. 15–25 Min.',
+    emoji: '📖',
+    goal: 'Ausführlich vorlesen, Bewegungen kurz und klar – ohne Wettkampf.',
+    material: 'Optional: leise Musik im Fenster (Schalter).',
+    steps: [
+      'Eine von drei Geschichten wählen. Bild oben – zu jedem Schritt steht die Bewegung direkt daneben.',
+      'Absatz für Absatz vorlesen; die Gruppe macht jeweils die zugehörige Bewegung im grünen Kasten.',
+      'Musik optional leise; Lautstärke an den Raum anpassen.',
+      'Wer möchte mitmacht; sitzend oder kleinere Bewegungen sind möglich.',
+    ],
+    interactive: 'movementStory',
+  },
   {
     title: 'Stop / Remote / Rewind',
     duration: 'ca. 2 Min.',
@@ -2791,6 +5255,7 @@ const MOVEMENT_GAMES_BRAIN: MovementGameCard[] = [
       'Nach 3 Sekunden nächste Zahl – Tempo langsam steigern.',
       'Letzte Runde: eine „Lieblingszahl“ der Klasse, alle zeigen sie gleichzeitig.',
     ],
+    interactive: 'numberBody',
   },
   {
     title: 'Schulter-Taxi',
@@ -2804,6 +5269,7 @@ const MOVEMENT_GAMES_BRAIN: MovementGameCard[] = [
       'Arme einmal klatschen über dem Kopf, dann locker hängen lassen und tief durchatmen.',
     ],
     tip: 'Wer nicht stehen kann: nur Oberkörper und Arme mitmachen.',
+    interactive: 'shoulderTaxi',
   },
 ];
 
@@ -2820,6 +5286,7 @@ const MOVEMENT_GAMES_INDOOR_LONG: MovementGameCard[] = [
       'Andere raten; nach max. 1 Min. Auflösung. Dann nächstes Team.',
       '3–4 Runden, zum Schluss: schnellstes „Wort des Tages“ in 20 Sekunden.',
     ],
+    interactive: 'letterFactory',
   },
   {
     title: 'Bank-Insel-Parkour',
@@ -2834,6 +5301,7 @@ const MOVEMENT_GAMES_INDOOR_LONG: MovementGameCard[] = [
       'Letzte 2 Min.: freiwillig eine „Trick-Insel“ (Balance auf einem Fuß 3 Sekunden).',
     ],
     tip: 'Klare Regel: nicht rennen, nicht über Tische.',
+    interactive: 'islandParkour',
   },
   {
     title: 'Marionetten-Duo',
@@ -2847,64 +5315,67 @@ const MOVEMENT_GAMES_INDOOR_LONG: MovementGameCard[] = [
       '4 Minuten, dann Rollentausch.',
       'Optional: zwei Paare zeigen vor der Klasse eine 30-Sekunden-„Szene“.',
     ],
+    interactive: 'marionetteDuo',
   },
 ];
 
 const MOVEMENT_GAMES_OUTDOOR: MovementGameCard[] = [
   {
-    title: 'Human Compiler',
+    title: 'Weite-Rufe',
     duration: 'ca. 15–20 Min.',
-    emoji: '🤖',
-    goal: 'Bewegung + logisches Denken (gut zu Informatik).',
-    material: 'Hütchen oder Steine als Ziele.',
+    emoji: '📣',
+    goal: 'Abstand und echte Ziele nutzen – geht draußen, nicht in der Klasse.',
+    material: 'Sichtbare Punkte (Zaun, Baum, Bank, Mitte).',
     steps: [
-      'Je Gruppe: eine „Roboterperson“ (führt nur genau genannte Befehle aus, z. B. 2 Schritte, 90° drehen, hinsetzen, aufstehen).',
-      'Die Gruppe „programmiert“ laut eine Kette, um ein Ziel zu erreichen – dann wird ausgeführt.',
-      'Fehler? Kein Stress: „Debuggen“ = Befehl wiederholen oder korrigieren.',
-      'Mehrere Gruppen, verschiedene Ziele; zum Schluss kurz: Was war schwer am „Programmieren“?',
+      'Vorher festlegen, was „Eiche“, „Zaun“ usw. bei euch konkret ist.',
+      'Du rufst einen Weite-Ruf (oder nutzt die Zufallsliste auf dem Handy): alle laufen sinnvoll dorthin, ohne zu rempeln.',
+      'Zwischen den Rufen kurz versammeln oder in Zweierlinie – dann nächster Ruf.',
+      'Variante: zwei Gruppen starten an verschiedenen Punkten und tauschen die Ziele.',
     ],
+    interactive: 'outdoorHumanCompiler',
   },
   {
-    title: 'Stations-Parcours',
+    title: 'Hof- & Natur-Runde',
     duration: 'ca. 15–20 Min.',
-    emoji: '🎯',
-    goal: 'Ausdauer in kurzen Blöcken, alle kommen dran.',
-    material: '4–6 Stationen markieren (Hütchen), optional weicher Ball, Seil.',
+    emoji: '🌿',
+    goal: 'Sinne, Wetter, Boden – nutzen, was nur draußen da ist.',
+    material: 'Optional Hütchen als Wegpunkte; keine Sportgeräte nötig.',
     steps: [
-      'Stationen z. B.: 15 Kniebeugen oder Kniehebelauf, Slalom um Hütchen, 20 Sekunden Plank (oder Unterarmstütz), Partner-Ball zuwerfen (2 m), 10 Hampelmänner.',
-      'Gruppen rotieren im 2–3-Minuten-Takt; Signal zum Wechsel durch dich oder eine Ampelkarte.',
-      'Niemand muss alles „perfekt“ – Alternativen an jeder Station anbieten (z. B. Wand-Sitzen statt Plank).',
+      'Stationen z. B.: lauschen, Stein finden, Schatten/Sonne, Wolke, Wind – wie in der App beschrieben.',
+      'Klasse geht die Kette in kleinen Gruppen oder nacheinander ab; du gibst das Tempo vor.',
+      'Bei Regen: Stationen verkürzen oder unter Überdachung nur „Lauschen“ + „Wolke“.',
     ],
+    interactive: 'outdoorStationsParcours',
   },
   {
-    title: 'Zonen-Wechsel',
+    title: 'Markierungs-Wechsel',
     duration: 'ca. 15–20 Min.',
-    emoji: '🛟',
-    goal: 'Tempo + Teamgeist ohne Ausschluss.',
-    material: '3–4 markierte „sichere Zonen“ (Kreide, Taschentücher, Hütchen).',
+    emoji: '📍',
+    goal: 'Schnell reagieren und den Hof kennen – mit echten Markierungen.',
+    material: '3–4 klare Markierungen (Kreide, Tücher, Hütchen) an sicheren Stellen.',
     steps: [
-      'Alle starten in einer Zone. Bei deinem Signal müssen alle eine andere Zone erreichen, bevor du „Stopp“ sagst.',
-      'Wer keine andere Zone schafft: die **ganze Klasse** macht 5 gemeinsame Hampelmänner (nicht die Person allein).',
-      'Nach einigen Runden: zwei Zonen „schließen“ – es wird knapper, aber fair bleiben.',
-      'Cooldown: langsam zur nächsten Stunde laufen oder im Kreis stehen und atmen.',
+      'Alle starten an einer Markierung. Auf dein Signal: alle müssen eine andere Markierung erreichen, bevor du „Stopp“ sagst.',
+      'Wer es nicht schafft: die ganze Gruppe macht eine kurze gemeinsame Bewegung (z. B. fünf sanfte Hüpfer) – kein Einzelstrafen.',
+      'Später eine Markierung wegnehmen – es wird knapper.',
     ],
+    interactive: 'outdoorZoneWechsel',
   },
   {
-    title: 'Lauf-Chaos-Staffel',
+    title: 'Terrain-Lauf',
     duration: 'ca. 15–20 Min.',
     emoji: '🏃',
-    goal: 'Kreativität, kein klassischer Sportwettkampf.',
-    material: 'Start-/Ziel-Linie mit Kreide oder Band.',
+    goal: 'Bewegung anpassen an Boden, Wind, Weite – nicht „Theaterlauf“.',
+    material: 'Freie, eingesehene Strecke (10–20 m), kein Glas/Loch.',
     steps: [
-      'Jede Kleingruppe erfindet eine „Lauf-Engine“: z. B. Zeitlupe-Astronaut, Ente, seitwärts, nur auf Zehenspitzen.',
-      'Kurze Strecke (10–15 m): Staffelstab = Highfive oder Klatsch.',
-      'Keine Punkte – optional nur „beste Idee“ per Applaus.',
-      'Wichtig: Strecke frei von Steinen/Glas, Tempo „Schrittgeschwindigkeit“ wenn es eng ist.',
+      'Die App schlägt eine Art vor (z. B. über Wurzeln tippeln, gegen den Wind). Kurz zeigen oder erklären, dann kurze Strecke.',
+      'Staffel oder alle nacheinander; Übergabe per Highfive.',
+      'Tempo maximal Schrittgeschwindigkeit; bei Glatteis/Regen: nur Gehen oder aussetzen.',
     ],
+    interactive: 'outdoorLaufChaos',
   },
 ];
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout }) => {
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 'TEACHER', onLogout }) => {
   const navigate = useNavigate();
   const subjectManagerRef = useRef<any>(null);
   const materialCreatorRef = useRef<any>(null);
@@ -3000,7 +5471,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     // Warten bis subjects-State existiert (weiter unten deklariert)
     // Dieser Effekt wird nach der Erst-Initialisierung erneut getriggert
   }, []);
-  // Track which groups are expanded (default: expanded)
+  // Track which groups are expanded (Standard: eingeklappt; Ausnahme: Informatik GK 12 ausgeklappt)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track which groups' student lists are expanded (default: collapsed)
   const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
@@ -3012,7 +5483,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
       const next: Record<string, boolean> = { ...prev };
       for (const g of groups) {
         if (next[g.id] === undefined) {
-          next[g.id] = false; // alle standardmäßig eingeklappt
+          const isInformatikGk12 = /gk\s*12|informatik\s*gk\s*12/i.test(g.name);
+          next[g.id] = isInformatikGk12; // GK 12 standardmäßig ausgeklappt, sonst eingeklappt
         }
       }
       return next;
@@ -3150,7 +5622,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
   const [showRiddleOverview, setShowRiddleOverview] = useState(false);
   const [showCarnivalGames, setShowCarnivalGames] = useState(false);
   const [showMovementGames, setShowMovementGames] = useState(false);
+  const [showMovementStory, setShowMovementStory] = useState(false);
   const [showMovementRandomCards, setShowMovementRandomCards] = useState(false);
+  const [showMovementNumberBody, setShowMovementNumberBody] = useState(false);
+  const [showMovementShoulderTaxi, setShowMovementShoulderTaxi] = useState(false);
+  const [showMovementLetterFactory, setShowMovementLetterFactory] = useState(false);
+  const [showMovementIslandParkour, setShowMovementIslandParkour] = useState(false);
+  const [showMovementMarionette, setShowMovementMarionette] = useState(false);
+  const [showMovementOutdoorHumanCompiler, setShowMovementOutdoorHumanCompiler] = useState(false);
+  const [showMovementOutdoorStations, setShowMovementOutdoorStations] = useState(false);
+  const [showMovementOutdoorZones, setShowMovementOutdoorZones] = useState(false);
+  const [showMovementOutdoorLauf, setShowMovementOutdoorLauf] = useState(false);
   // Modal für Unterrichtsstunde (Anweisungen, Folien, AB)
   const [lessonModalOpen, setLessonModalOpen] = useState(false);
   const [lessonModalData, setLessonModalData] = useState<{
@@ -5653,7 +8135,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, onLogout })
     geheimtexte?: string;
   }> = {
     '01': {
-      materialliste: `Die 10 Lederbänder mit den Geheimtexten, die Kiste mit den Stöcken, Papierstreifen.`,
+      materialliste: `10 Lederbänder mit den Geheimtexten, Kiste mit den Stöcken, Papierstreifen.`,
       anweisungen: `• Die zwei **Skytale**-Folien zeigen.
 • Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
 • **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
@@ -5676,7 +8158,7 @@ Die Zeichen des Klartextes werden umsortiert 20
 Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so geheim ausgetauscht. 25`
     },
     '01 Einstieg': {
-      materialliste: `Die 10 Lederbänder mit den Geheimtexten, die Kiste mit den Stöcken, Papierstreifen.`,
+      materialliste: `10 Lederbänder mit den Geheimtexten, Kiste mit den Stöcken, Papierstreifen.`,
       anweisungen: `• Die zwei **Skytale**-Folien zeigen.
 • Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
 • **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
@@ -5699,7 +8181,7 @@ Die Zeichen des Klartextes werden umsortiert 20
 Nachrichten wurden schon vor 2500 Jahren per Transposition verschlüsselt und so geheim ausgetauscht. 25`
     },
     '01 Skytale': {
-      materialliste: `Die 10 Lederbänder mit den Geheimtexten, die Kiste mit den Stöcken, Papierstreifen.`,
+      materialliste: `10 Lederbänder mit den Geheimtexten, Kiste mit den Stöcken, Papierstreifen.`,
       anweisungen: `• Die zwei **Skytale**-Folien zeigen.
 • Die **10 Lederbänder** austeilen: Findet heraus, was dort steht.
 • **Folie 3:** Oh, ihr erhaltet eine Nachricht von einem eurer Spione.
@@ -5733,7 +8215,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 • Danach die restlichen beiden Aufgaben bearbeiten und mit Folien besprechen.`
     },
     '06 Alan Turing & Enigma': {
-      materialliste: `Ohrhörer oder Kopfhörer (für Podcast), Smartphone/Player für den Podcast, Schnur und Karten für die Zeitleiste, vorbereitetes Enigma-Puzzle (Material/Arbeitsblatt je Gruppe).`,
+      materialliste: `Ohrhörer oder Kopfhörer, Smartphone/Player, Schnur, Karten, vorbereitetes Enigma-Puzzle (Material/Arbeitsblatt je Gruppe).`,
       anweisungen: `<ol>
 <li>Hört euch den Podcast an, während ihr gemeinsam spaziert.</li>
 <li>Diskutiert zu zweit für 5 Minuten über das Gehörte.</li>
@@ -5882,7 +8364,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   const renderBoldText = (text: string, boldColor?: string) => {
-    type Seg = { type: 'instruction'; operator: string; rest: string; punct: string } | { type: 'bold'; content: string } | { type: 'normal'; content: string };
+    type Seg =
+      | { type: 'instruction'; operator: string; rest: string; punct: string }
+      | { type: 'bold'; content: string }
+      | { type: 'ansprache'; content: string }
+      | { type: 'anweisung'; content: string }
+      | { type: 'normal'; content: string };
     const segments: Seg[] = [];
     let pos = 0;
 
@@ -5904,51 +8391,133 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       const boldMatch = text.slice(pos).match(/\*\*([^*]+)\*\*/);
       const boldIndex = boldMatch ? pos + boldMatch.index! : text.length;
 
-      if (nextInstruction && nextInstruction.index < boldIndex) {
-        if (nextInstruction.index > pos) {
-          segments.push({ type: 'normal', content: text.slice(pos, nextInstruction.index) });
-        }
-        segments.push({
-          type: 'instruction',
+      const anspracheMatch = text.slice(pos).match(/\[\[ANS:([\s\S]*?)\]\]/);
+      const anspracheIndex = anspracheMatch ? pos + anspracheMatch.index! : text.length;
+      const anweisungMatch = text.slice(pos).match(/\[\[ANW:([\s\S]*?)\]\]/);
+      const anweisungIndex = anweisungMatch ? pos + anweisungMatch.index! : text.length;
+
+      const candidates: Array<
+        | { kind: 'instruction'; index: number; end: number; operator: string; rest: string; punct: string }
+        | { kind: 'bold'; index: number; end: number; content: string }
+        | { kind: 'ansprache'; index: number; end: number; content: string }
+        | { kind: 'anweisung'; index: number; end: number; content: string }
+      > = [];
+
+      if (nextInstruction) {
+        candidates.push({
+          kind: 'instruction',
+          index: nextInstruction.index,
+          end: nextInstruction.end,
           operator: nextInstruction.operator,
           rest: nextInstruction.rest,
           punct: nextInstruction.punct
         });
-        pos = nextInstruction.end;
-        continue;
       }
       if (boldMatch) {
-        if (boldIndex > pos) {
-          segments.push({ type: 'normal', content: text.slice(pos, boldIndex) });
-        }
-        segments.push({ type: 'bold', content: boldMatch[1] });
-        pos = boldIndex + boldMatch[0].length;
-        continue;
+        candidates.push({ kind: 'bold', index: boldIndex, end: boldIndex + boldMatch[0].length, content: boldMatch[1] });
       }
-      segments.push({ type: 'normal', content: text.slice(pos) });
-      break;
+      if (anspracheMatch) {
+        candidates.push({
+          kind: 'ansprache',
+          index: anspracheIndex,
+          end: anspracheIndex + anspracheMatch[0].length,
+          content: anspracheMatch[1]
+        });
+      }
+      if (anweisungMatch) {
+        candidates.push({
+          kind: 'anweisung',
+          index: anweisungIndex,
+          end: anweisungIndex + anweisungMatch[0].length,
+          content: anweisungMatch[1]
+        });
+      }
+
+      if (!candidates.length) {
+        segments.push({ type: 'normal', content: text.slice(pos) });
+        break;
+      }
+
+      candidates.sort((a, b) => a.index - b.index);
+      const next = candidates[0];
+
+      if (next.index > pos) segments.push({ type: 'normal', content: text.slice(pos, next.index) });
+
+      if (next.kind === 'instruction') {
+        segments.push({ type: 'instruction', operator: next.operator, rest: next.rest, punct: next.punct });
+      } else if (next.kind === 'bold') {
+        segments.push({ type: 'bold', content: next.content });
+      } else if (next.kind === 'ansprache') {
+        segments.push({ type: 'ansprache', content: next.content });
+      } else if (next.kind === 'anweisung') {
+        segments.push({ type: 'anweisung', content: next.content });
+      }
+
+      pos = next.end;
+      continue;
     }
 
     return segments.map((seg, i) => {
       // Direkte Rede (operationalisieren): Anweisungsoperator bold, Rede in Anführungszeichen und kursiv
       if (seg.type === 'instruction') {
         return (
-          <span key={i} style={{ fontStyle: 'italic' }}>
+          <span key={i} style={{ fontStyle: 'italic', color: '#2e7d32' }}>
             &bdquo;<strong>{seg.operator}</strong>{seg.rest}&ldquo;{seg.punct}
           </span>
         );
       }
       if (seg.type === 'bold') {
         const term = seg.content;
+        const normTerm = term.trim().replace(/[.:,;!?]+$/g, '');
+        const isPhysicalMaterial =
+          /(10\s*Lederbänder?|Geheimtexten?|Kiste|Stöck(e|en)?|Papierstreifen|Zettel|Ohrhörer|Kopfhörer|Smartphone|Player|Schnur|Karten|Enigma|Arbeitsblatt)/i.test(
+            normTerm
+          );
+        const isFolieTerm = /^Folie\b/i.test(normTerm);
         const glossar = FACHBEGRIFFE_GLOSSAR[term];
         if (!glossar) {
           if (term === 'fünf') return <strong key={i} style={{ color: boldColor ?? '#2e7d32' }}>{term}</strong>;
           if (term === 'Gruppen') return <strong key={i} style={{ color: boldColor ?? '#e65100' }}>{term}</strong>;
-          // Material: orange, nicht bold
+          // Anweisungen: boldColor '#ed6c02' = Material-/Folie-/Operator-Kontext
           if (boldColor === '#ed6c02') {
-            return <span key={i} style={{ color: '#ed6c02' }}>{term}</span>;
+            if (isPhysicalMaterial) {
+              return (
+                <strong
+                  key={i}
+                  style={{
+                    color: '#ed6c02',
+                    fontWeight: 800,
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                    textDecorationThickness: '3px'
+                  }}
+                >
+                  {term}
+                </strong>
+              );
+            }
+            if (isFolieTerm) {
+              return (
+                <strong
+                  key={i}
+                  style={{
+                    color: '#f57c00',
+                    fontWeight: 800,
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                    textDecorationThickness: '3px',
+                    cursor: 'pointer'
+                  }}
+                  title="Folie"
+                >
+                  {term}
+                </strong>
+              );
+            }
+            // Operator: fett
+            return <strong key={i} style={{ fontWeight: 800, color: '#333' }}>{term}</strong>;
           }
-          // Sonstige Begriffe (nur Farbe, nicht bold)
+          // Sonstige Begriffe (nur Farbe, nicht fett)
           return <span key={i} style={{ color: '#1565c0' }}>{term}</span>;
         }
         // Fachbegriffe: blau, nicht bold, mit Fragezeichen-Hover (Erklärung + Beispiel)
@@ -5973,54 +8542,143 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           </Tooltip>
         );
       }
+      if (seg.type === 'ansprache') {
+        return (
+          <span key={i} style={{ fontStyle: 'italic', color: '#2e7d32' }}>
+            &bdquo;{seg.content}&ldquo;
+          </span>
+        );
+      }
+      if (seg.type === 'anweisung') {
+        return (
+          <span key={i} style={{ color: '#2e7d32', fontWeight: 700 }}>
+            {seg.content}
+          </span>
+        );
+      }
       return <span key={i}>{renderPartWithLinks(seg.content, `normal-${i}`)}</span>;
     });
   };
 
-  // Materialliste: Leerzeichen vor Komma/Punkt entfernen, nur Materialbegriffe orange + Icon
+  // Materialliste: Normalisiert die gespeicherte Textform für eine kompakte Ein-Satz-Ausgabe.
   const normalizeMaterialListText = (s: string) =>
     s
       .replace(/\s+/g, ' ')
       .replace(/\s+([,.])/g, '$1')
       .trim();
 
+  // Entfernt Editor-HTML (z.B. <strong> / <span>) damit auch ältere gespeicherte Drafts
+  // durch den aktuellen Material-Renderer gehen.
+  const stripHtmlTags = (s: string) =>
+    s
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/?[^>]+>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const stripBenotigtPrefix = (s: string) =>
+    s.replace(/^\s*Benötigt\s+werden\s*[:]?/i, '').trim();
+
+  const stripTrailingDot = (s: string) => s.replace(/[.]\s*$/,'').trim();
+
+  const stripLeadingArticle = (s: string) =>
+    s.replace(/^(die|das|der|den)\s+/i, '').trim();
+
+  // Teilt nach Kommas, aber nicht innerhalb von Klammern.
+  const splitMaterialItems = (s: string): string[] => {
+    const out: string[] = [];
+    let current = '';
+    let depth = 0;
+    for (const ch of s) {
+      if (ch === '(') depth++;
+      if (ch === ')') depth = Math.max(0, depth - 1);
+      if (ch === ',' && depth === 0) {
+        const trimmed = current.trim();
+        if (trimmed) out.push(trimmed);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    const trimmed = current.trim();
+    if (trimmed) out.push(trimmed);
+    return out;
+  };
+
+  // Material-Nomen/Zahlen (nur physisch): diese werden orange + unterstrichen + fett.
+  // Zwischenwörter (z.B. "mit", "den", "oder", "je") bleiben normal.
   const MATERIAL_TERMS: { pattern: RegExp; label: string; icon: 'lederband' | 'stoebe' | 'papier' | 'zettel' }[] = [
-    { pattern: /10 Lederbänder/gi, label: '10 Lederbänder', icon: 'lederband' },
+    { pattern: /10\s*Lederbänder/gi, label: '10 Lederbänder', icon: 'lederband' },
+    { pattern: /Geheimtexten?/gi, label: 'Geheimtexten', icon: 'zettel' },
+    { pattern: /Kisten?/gi, label: 'Kiste', icon: 'stoebe' },
     { pattern: /Stöcken?/gi, label: 'Stöcken', icon: 'stoebe' },
     { pattern: /Papierstreifen/gi, label: 'Papierstreifen', icon: 'papier' },
-    { pattern: /Zettel/gi, label: 'Zettel', icon: 'zettel' }
+    { pattern: /Zettel/gi, label: 'Zettel', icon: 'zettel' },
+
+    { pattern: /Ohrhörer/gi, label: 'Ohrhörer', icon: 'stoebe' },
+    { pattern: /Kopfhörer/gi, label: 'Kopfhörer', icon: 'stoebe' },
+    { pattern: /Smartphone/gi, label: 'Smartphone', icon: 'stoebe' },
+    { pattern: /Player/gi, label: 'Player', icon: 'stoebe' },
+    { pattern: /Schnur/gi, label: 'Schnur', icon: 'stoebe' },
+    { pattern: /Karten/gi, label: 'Karten', icon: 'papier' },
+    { pattern: /Enigma[\s-]?Puzzle/gi, label: 'Enigma-Puzzle', icon: 'zettel' },
+    { pattern: /Material/gi, label: 'Material', icon: 'papier' },
+    { pattern: /Arbeitsblatt/gi, label: 'Arbeitsblatt', icon: 'zettel' }
   ];
 
   const renderMaterialListContent = (raw: string) => {
-    const text = normalizeMaterialListText(raw);
-    const parts: Array<{ type: 'text' | 'material'; content: string; icon?: 'lederband' | 'stoebe' | 'papier' | 'zettel' }> = [];
-    let remaining = text;
-    let key = 0;
+    const cleaned = stripTrailingDot(stripBenotigtPrefix(normalizeMaterialListText(raw)));
+
+    const orangeStrongSx = {
+      color: '#ed6c02',
+      fontWeight: 800,
+      textDecoration: 'underline',
+      textUnderlineOffset: '2px',
+      textDecorationThickness: '3px'
+    } as const;
+
+    const parts: Array<{ type: 'text' | 'material'; content: string }> = [];
+    let remaining = cleaned;
     while (remaining.length > 0) {
-      let best: { index: number; length: number; label: string; icon: 'lederband' | 'stoebe' | 'papier' | 'zettel' } | null = null;
-      for (const { pattern, label, icon } of MATERIAL_TERMS) {
+      let bestIndex: number | null = null;
+      let bestMatchText: string | null = null;
+
+      for (const { pattern } of MATERIAL_TERMS) {
         pattern.lastIndex = 0;
         const m = pattern.exec(remaining);
-        if (m && (best === null || m.index < best.index)) {
-          best = { index: m.index, length: m[0].length, label: m[0], icon };
+        if (!m) continue;
+        const idx = m.index;
+        if (bestIndex === null || idx < bestIndex) {
+          bestIndex = idx;
+          bestMatchText = m[0];
         }
       }
-      if (!best) {
+
+      if (bestIndex === null || bestMatchText === null) {
         parts.push({ type: 'text', content: remaining });
         break;
       }
-      if (best.index > 0) {
-        parts.push({ type: 'text', content: remaining.slice(0, best.index) });
+
+      if (bestIndex > 0) {
+        parts.push({ type: 'text', content: remaining.slice(0, bestIndex) });
       }
-      parts.push({ type: 'material', content: best.label, icon: best.icon });
-      remaining = remaining.slice(best.index + best.length);
+      parts.push({ type: 'material', content: bestMatchText });
+      remaining = remaining.slice(bestIndex + bestMatchText.length);
     }
+
     return (
-      <Box component="span" sx={{ display: 'inline', color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: LESSON_MODAL_LINE_HEIGHT }}>
-        {parts.map((p, i) => {
-          if (p.type === 'text') return <span key={i}>{p.content}</span>;
-          return <span key={i} style={{ color: '#ed6c02', fontWeight: 400 }}>{p.content}</span>;
-        })}
+      <Box component="span" sx={{ display: 'inline', color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
+        Benötigt werden{' '}
+        {parts.map((p, i) =>
+          p.type === 'material' ? (
+            <strong key={i} style={orangeStrongSx}>
+              {p.content}
+            </strong>
+          ) : (
+            <span key={i}>{p.content}</span>
+          )
+        )}
+        .
       </Box>
     );
   };
@@ -6059,7 +8717,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     if (text === undefined || text === null) return '';
     const t = String(text);
     if (t.trim() === '') return t;
-    if (/<[a-zA-Z][^>]*>/i.test(t)) return t;
+    const looksLikeHtml = /<([a-zA-Z])[^>]*>/i.test(t);
+    // Wichtig: Für materialliste sollen auch ältere gespeicherte Drafts neu formatiert werden,
+    // damit "nur Nomen/Zahlen" orange + unterstrichen + fett sind (nicht Zwischenwörter).
+    if (looksLikeHtml) {
+      if (section === 'materialliste') {
+        // Nur Text extrahieren; danach über materialliste-Renderer/Regeln neu aufbauen.
+        return plainTextToEditorHtml(stripHtmlTags(t), section);
+      }
+      return t;
+    }
     // Geheimtexte/Klartexte: Anzeige ist nur Pre-Wrap oder HTML – nur Fett und Zeilenumbrüche
     if (section === 'geheimtexte') return plainTextToHtml(t);
 
@@ -6067,35 +8734,54 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     const escapeTitle = (s: string) => escapeHtml(s).replace(/"/g, '&quot;');
 
     if (section === 'materialliste') {
-      const normalized = normalizeMaterialListText(t);
-      const parts: Array<{ type: 'text' | 'material'; content: string; icon?: 'lederband' | 'stoebe' | 'papier' | 'zettel' }> = [];
-      let remaining = normalized;
+      const cleaned = stripTrailingDot(stripBenotigtPrefix(normalizeMaterialListText(t)));
+      const parts: Array<{ type: 'text' | 'material'; content: string }> = [];
+      let remaining = cleaned;
       while (remaining.length > 0) {
-        let best: { index: number; length: number; label: string; icon: 'lederband' | 'stoebe' | 'papier' | 'zettel' } | null = null;
-        for (const { pattern, label, icon } of MATERIAL_TERMS) {
+        let bestIndex: number | null = null;
+        let bestMatchText: string | null = null;
+
+        for (const { pattern } of MATERIAL_TERMS) {
           pattern.lastIndex = 0;
           const m = pattern.exec(remaining);
-          if (m && (best === null || m.index < best.index)) {
-            best = { index: m.index, length: m[0].length, label: m[0], icon };
+          if (!m) continue;
+          const idx = m.index;
+          if (bestIndex === null || idx < bestIndex) {
+            bestIndex = idx;
+            bestMatchText = m[0];
           }
         }
-        if (!best) {
+
+        if (bestIndex === null || bestMatchText === null) {
           parts.push({ type: 'text', content: remaining });
           break;
         }
-        if (best.index > 0) parts.push({ type: 'text', content: remaining.slice(0, best.index) });
-        parts.push({ type: 'material', content: best.label, icon: best.icon });
-        remaining = remaining.slice(best.index + best.length);
+
+        if (bestIndex > 0) parts.push({ type: 'text', content: remaining.slice(0, bestIndex) });
+        parts.push({ type: 'material', content: bestMatchText });
+        remaining = remaining.slice(bestIndex + bestMatchText.length);
       }
-      const out = parts.map(p => {
-        if (p.type === 'text') return escapeHtml(p.content).replace(/\n/g, '<br>');
-        return `<span style="color:#ed6c02;font-weight:400;display:inline;font-size:1rem">${escapeHtml(p.content)}</span>`;
-      }).join('');
-      return out.replace(/\r\n?|\n/g, '<br>');
+
+      const styled = parts
+        .map(p =>
+          p.type === 'material'
+            ? `<strong style="color:#ed6c02;font-weight:800;text-decoration:underline;text-underline-offset:2px;display:inline">${escapeHtml(
+                p.content
+              )}</strong>`
+            : escapeHtml(p.content)
+        )
+        .join('');
+
+      return `Benötigt werden ${styled}.`;
     }
 
     const boldColor = (section === 'anweisungen' || section === 'abAnleitung') ? '#ed6c02' : undefined;
-    type Seg = { type: 'instruction'; operator: string; rest: string; punct: string } | { type: 'bold'; content: string } | { type: 'normal'; content: string };
+    type Seg =
+      | { type: 'instruction'; operator: string; rest: string; punct: string }
+      | { type: 'bold'; content: string }
+      | { type: 'ansprache'; content: string }
+      | { type: 'anweisung'; content: string }
+      | { type: 'normal'; content: string };
     const segments: Seg[] = [];
     let pos = 0;
     while (pos < t.length) {
@@ -6112,22 +8798,81 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           nextInstruction = { index: idx, operator: t.slice(idx, idx + op.length), rest, punct, end };
         }
       }
+
       const boldMatch = t.slice(pos).match(/\*\*([^*]+)\*\*/);
       const boldIndex = boldMatch ? pos + boldMatch.index! : t.length;
-      if (nextInstruction && nextInstruction.index < boldIndex) {
-        if (nextInstruction.index > pos) segments.push({ type: 'normal', content: t.slice(pos, nextInstruction.index) });
-        segments.push({ type: 'instruction', operator: nextInstruction.operator, rest: nextInstruction.rest, punct: nextInstruction.punct });
-        pos = nextInstruction.end;
-        continue;
+
+      // Tokens aus älteren Drafts: [[ANS:...]] / [[ANW:...]]
+      const anspracheMatch = t.slice(pos).match(/\[\[ANS:([\s\S]*?)\]\]/);
+      const anspracheIndex = anspracheMatch ? pos + anspracheMatch.index! : t.length;
+
+      const anweisungMatch = t.slice(pos).match(/\[\[ANW:([\s\S]*?)\]\]/);
+      const anweisungIndex = anweisungMatch ? pos + anweisungMatch.index! : t.length;
+
+      const candidates: Array<
+        | { type: 'instruction'; index: number; end: number; operator: string; rest: string; punct: string }
+        | { type: 'bold'; index: number; end: number; content: string }
+        | { type: 'ansprache'; index: number; end: number; content: string }
+        | { type: 'anweisung'; index: number; end: number; content: string }
+      > = [];
+
+      if (nextInstruction) {
+        candidates.push({
+          type: 'instruction',
+          index: nextInstruction.index,
+          end: nextInstruction.end,
+          operator: nextInstruction.operator,
+          rest: nextInstruction.rest,
+          punct: nextInstruction.punct
+        });
       }
       if (boldMatch) {
-        if (boldIndex > pos) segments.push({ type: 'normal', content: t.slice(pos, boldIndex) });
-        segments.push({ type: 'bold', content: boldMatch[1] });
-        pos = boldIndex + boldMatch[0].length;
-        continue;
+        candidates.push({
+          type: 'bold',
+          index: boldIndex,
+          end: boldIndex + boldMatch[0].length,
+          content: boldMatch[1]
+        });
       }
-      segments.push({ type: 'normal', content: t.slice(pos) });
-      break;
+      if (anspracheMatch) {
+        candidates.push({
+          type: 'ansprache',
+          index: anspracheIndex,
+          end: anspracheIndex + anspracheMatch[0].length,
+          content: anspracheMatch[1]
+        });
+      }
+      if (anweisungMatch) {
+        candidates.push({
+          type: 'anweisung',
+          index: anweisungIndex,
+          end: anweisungIndex + anweisungMatch[0].length,
+          content: anweisungMatch[1]
+        });
+      }
+
+      if (!candidates.length) {
+        segments.push({ type: 'normal', content: t.slice(pos) });
+        break;
+      }
+
+      candidates.sort((a, b) => a.index - b.index);
+      const next = candidates[0];
+
+      if (next.index > pos) segments.push({ type: 'normal', content: t.slice(pos, next.index) });
+
+      if (next.type === 'instruction') {
+        segments.push({ type: 'instruction', operator: next.operator, rest: next.rest, punct: next.punct });
+      } else if (next.type === 'bold') {
+        segments.push({ type: 'bold', content: next.content });
+      } else if (next.type === 'ansprache') {
+        segments.push({ type: 'ansprache', content: next.content });
+      } else if (next.type === 'anweisung') {
+        segments.push({ type: 'anweisung', content: next.content });
+      }
+
+      pos = next.end;
+      continue;
     }
 
     const linkify = (part: string) => {
@@ -6160,6 +8905,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         }
         const title = `Erklärung: ${glossar.erklärung} — Beispiel: ${glossar.beispiel}`;
         return `<span style="color:#1565c0;border-bottom:1px dotted currentColor;cursor:help;font-size:1rem" title="${escapeTitle(title)}">${escapeHtml(term)}</span>`;
+      }
+      if (seg.type === 'ansprache') {
+        return `<span style="font-style:italic;color:#2e7d32">&bdquo;${escapeHtml(seg.content)}&ldquo;</span>`;
+      }
+      if (seg.type === 'anweisung') {
+        return `<span style="color:#2e7d32;font-weight:700">${escapeHtml(seg.content)}</span>`;
       }
       return linkify(seg.content).replace(/\r\n?|\n/g, '<br>');
     });
@@ -10177,7 +12928,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 >
                   <GamesIcon sx={{ fontSize: 18 }} />
                 </IconButton>
-                {/* Bewegungsspiele (Klassenzimmer & draußen) */}
+                {/* Bewegungsspiele (Klassenzimmer & draußen) – nur Lehreransicht */}
+                {userRole === 'TEACHER' && (
                 <IconButton
                   onClick={() => setShowMovementGames(true)}
                   sx={{
@@ -10202,6 +12954,108 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   title="Bewegungsspiele (Brainbreak & draußen)"
                 >
                   <DirectionsRunIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+                )}
+                {/* 7-Minuten-Workout */}
+                <IconButton
+                  onClick={() => navigate('/seven-minute-workout')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(255, 107, 53, 0.45)',
+                    background: 'linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(255, 107, 53, 0.35)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(255, 107, 53, 0.7)',
+                      boxShadow: '0 4px 12px rgba(255, 107, 53, 0.45)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="7-Minuten-Workout"
+                >
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '1rem',
+                      fontWeight: 800,
+                      lineHeight: 1,
+                      display: 'inline-block',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    7
+                  </Typography>
+                </IconButton>
+                {/* EntryTicket */}
+                <IconButton
+                  onClick={() => navigate('/entry-ticket')}
+                  sx={{
+                    ml: 'auto',
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(33, 150, 243, 0.45)',
+                    background: 'linear-gradient(135deg, #1e88e5 0%, #3949ab 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(30, 136, 229, 0.35)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(33, 150, 243, 0.7)',
+                      boxShadow: '0 4px 12px rgba(30, 136, 229, 0.45)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="EntryTicket (5 Minuten)"
+                >
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '1rem',
+                      fontWeight: 800,
+                      letterSpacing: 0,
+                      lineHeight: 1,
+                      display: 'inline-block',
+                    }}
+                  >
+                    E
+                  </Typography>
+                </IconButton>
+                {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
+                <IconButton
+                  onClick={() => navigate('/bewegungsgeschichten-klassiker')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(92, 107, 192, 0.45)',
+                    background: 'linear-gradient(135deg, #5c6bc0 0%, #3949ab 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(57, 73, 171, 0.35)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(92, 107, 192, 0.75)',
+                      boxShadow: '0 4px 12px rgba(57, 73, 171, 0.45)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="Bewegungsgeschichten (Pferderennen, Elefant, Löwenjagd)"
+                >
+                  <AutoStoriesIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </Box>
             </Box>
@@ -12443,18 +15297,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
-              📊 Abgabestatistik: {selectedStudentForStats?.name}
-            </Typography>
-            <IconButton
-              onClick={() => setShowStudentSubmissionStats(false)}
-              sx={{ width: 24, height: 24, p: 0 }}
-            >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1, ...dialogCloseTitleSx }}>
+          <Typography variant="h6" sx={{ fontSize: '0.95rem', fontWeight: 600 }}>
+            📊 Abgabestatistik: {selectedStudentForStats?.name}
+          </Typography>
+          <DialogCloseIconButton onClose={() => setShowStudentSubmissionStats(false)} />
         </DialogTitle>
         <DialogContent sx={{ pt: 2, pb: 2 }}>
           {selectedStudentForStats && (
@@ -13611,7 +16458,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           }
         }}
       >
-        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0', ...dialogCloseTitleSx }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
               <Box sx={{ 
@@ -13772,23 +16619,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 Statistik
               </Button>
             </Box>
-            <IconButton 
-              size="small" 
-              onClick={handleParticipationClose}
-              sx={{ 
-                p: 0,
-                width: 20,
-                height: 20,
-                flexShrink: 0,
-                '& svg': {
-                  width: '100%',
-                  height: '100%'
-                }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 20 }} />
-            </IconButton>
           </Box>
+          <DialogCloseIconButton onClose={handleParticipationClose} />
         </DialogTitle>
         
         <DialogContent sx={{ p: 1, pt: 1 }}>
@@ -15930,7 +18762,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           }
         }}
       >
-        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0', ...dialogCloseTitleSx }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '1 1 auto', minWidth: 0 }}>
               <Box sx={{ 
@@ -16083,23 +18915,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 Zurücksetzen
               </Button>
             </Box>
-            <IconButton 
-              size="small" 
-              onClick={handleStatisticsClose}
-              sx={{ 
-                p: 0,
-                width: 20,
-                height: 20,
-                flexShrink: 0,
-                '& svg': {
-                  width: '100%',
-                  height: '100%'
-                }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 20 }} />
-            </IconButton>
           </Box>
+          <DialogCloseIconButton onClose={handleStatisticsClose} />
         </DialogTitle>
         
         <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
@@ -16278,27 +19095,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           }
         }}
       >
-        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
-              Zeiträume einstellen
-            </Typography>
-            <IconButton 
-              size="small" 
-              onClick={() => setPeriodConfigModalOpen(false)}
-              sx={{ 
-                p: 0,
-                width: 20,
-                height: 20,
-                '& svg': {
-                  width: '100%',
-                  height: '100%'
-                }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-          </Box>
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0', ...dialogCloseTitleSx }}>
+          <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
+            Zeiträume einstellen
+          </Typography>
+          <DialogCloseIconButton onClose={() => setPeriodConfigModalOpen(false)} />
         </DialogTitle>
         
         <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
@@ -16372,27 +19173,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       >
         {lessonModalData && (
           <>
-            <DialogTitle component="div" sx={{ borderBottom: '1px solid #e0e0e0', pb: 1.5, pr: 5, position: 'relative' }}>
+            <DialogTitle component="div" sx={{ borderBottom: '1px solid #e0e0e0', pb: 1.5, ...dialogCloseTitleSx }}>
               <Typography variant="h6" component="span" sx={{ fontWeight: 600 }}>
                 {lessonModalData.lessonName}
               </Typography>
-              <IconButton
-                size="small"
-                onClick={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); }}
-                sx={{
-                  position: 'absolute',
-                  right: 4,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  p: 0.25,
-                  minWidth: 28,
-                  width: 28,
-                  height: 28,
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              >
-                <CloseIcon sx={{ fontSize: 18 }} />
-              </IconButton>
+              <DialogCloseIconButton
+                onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); }}
+                sx={{ '&:hover': { bgcolor: 'action.hover' } }}
+              />
             </DialogTitle>
             <DialogContent sx={{ pt: 2 }}>
               {(() => {
@@ -16532,10 +19320,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     </Box>
 
-                    {/* Material – orangefarbener Kasten; Begriffe orange, nicht bold, mit passendem Icon */}
+                    {/* Material – orangefarbener Kasten; "Benötigt werden ...", Materialien fett/unterstrichen/orange */}
                     {(instructions?.materialliste || isEditing('materialliste')) && (
                       <Box>
-                        <Box sx={{ position: 'relative', bgcolor: '#fff3e0', borderRadius: 0, p: 1.5, pr: 5, border: '1px solid #ffb74d', borderBottom: 'none' }}>
+                        <Box sx={{ position: 'relative', bgcolor: '#fff3e0', borderRadius: 0, p: 1, pr: 4, border: '1px solid #ffb74d', borderBottom: 'none' }}>
                           <Tooltip title="Text bearbeiten">
                             <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#ed6c02', '&:hover': { bgcolor: 'rgba(237, 108, 2, 0.08)' } }}>
                               <EditIcon sx={{ fontSize: 16 }} />
@@ -16562,11 +19350,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               </Box>
                             </>
                           ) : (
-                            <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: LESSON_MODAL_LINE_HEIGHT }}>
+                            <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
                               {(() => {
                                 const raw = instructions!.materialliste!;
-                                const looksLikeHtml = raw.trim().length > 0 && (/<[a-z][^>]*>/i.test(raw.trim()) || (raw.includes('<') && raw.includes('>')));
-                                return looksLikeHtml ? renderTextContent(raw) : renderMaterialListContent(raw);
+                                return renderMaterialListContent(stripHtmlTags(raw));
                               })()}
                             </Box>
                           )}
@@ -16916,27 +19703,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           }
         }}
       >
-        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
-              Kommentar für {commentStudentName}
-            </Typography>
-            <IconButton 
-              size="small" 
-              onClick={handleCommentClose}
-              sx={{ 
-                p: 0,
-                width: 20,
-                height: 20,
-                '& svg': {
-                  width: '100%',
-                  height: '100%'
-                }
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-          </Box>
+        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0', ...dialogCloseTitleSx }}>
+          <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600 }}>
+            Kommentar für {commentStudentName}
+          </Typography>
+          <DialogCloseIconButton onClose={handleCommentClose} />
         </DialogTitle>
         <DialogContent sx={{ p: 1.5, pt: 1.5 }}>
           <TextField
@@ -17331,35 +20102,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <DialogTitle sx={{ 
           bgcolor: '#667eea',
           color: 'white',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           py: 0.75,
           px: 1.5,
-          position: 'relative',
-          minHeight: 40
+          minHeight: 40,
+          ...dialogCloseTitleSx,
         }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem', pr: 4 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
             🎊 Rätseljahr 2026 - Übersicht ({RIDDLES.length} Rätsel)
           </Typography>
-          <IconButton
-            onClick={() => setShowRiddleOverview(false)}
-            size="small"
-            sx={{ 
-              position: 'absolute',
-              right: 4,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'white',
-              p: 0.25,
-              minWidth: 20,
-              width: 20,
-              height: 20,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
+          <DialogCloseIconButton
+            onClose={() => setShowRiddleOverview(false)}
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         <DialogContent sx={{ pt: 1.5, pb: 1, px: 2 }}>
           <TableContainer sx={{ maxHeight: '80vh', overflowY: 'auto' }}>
@@ -17474,32 +20229,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <DialogTitle sx={{ 
           bgcolor: 'transparent',
           color: 'white',
-          textAlign: 'center',
           py: 1.5,
           px: 2,
-          position: 'relative',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          ...dialogCloseTitleSx,
         }}>
-          <Box sx={{ width: 28 }} />
-          <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.4rem', flex: 1, textAlign: 'center' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, fontSize: '1.4rem', textAlign: 'center', width: '100%' }}>
             🎭 Karnevals-Minigames 🎪
           </Typography>
-          <IconButton
-            onClick={() => setShowCarnivalGames(false)}
-            size="small"
-            sx={{ 
-              color: 'white',
-              p: 0.5,
-              minWidth: 28,
-              width: 28,
-              height: 28,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 20 }} />
-          </IconButton>
+          <DialogCloseIconButton
+            onClose={() => setShowCarnivalGames(false)}
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         <DialogContent sx={{ pt: 2, pb: 2, px: 3 }}>
           <Grid container spacing={2}>
@@ -17942,27 +20683,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             color: 'white',
             py: 1.5,
             px: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            pr: 5,
+            position: 'relative',
             borderBottom: '1px solid rgba(255,255,255,0.2)',
           }}
         >
-          <Box sx={{ width: 28 }} />
-          <Typography variant="h6" sx={{ fontWeight: 700, flex: 1, textAlign: 'center', fontSize: '1.05rem' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, textAlign: 'center', fontSize: '1.05rem', width: '100%' }}>
             Bewegungsspiele
           </Typography>
-          <IconButton
-            onClick={() => setShowMovementGames(false)}
-            size="small"
-            sx={{
-              color: 'white',
-              p: 0.5,
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 20 }} />
-          </IconButton>
+          <DialogCloseIconButton
+            onClose={() => setShowMovementGames(false)}
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         <DialogContent sx={{ pt: 2, pb: 1, px: 2 }}>
           <Typography variant="subtitle2" sx={{ color: '#b2dfdb', fontWeight: 700, mb: 1, mt: 0.5 }}>
@@ -17984,6 +20717,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: '100%', pr: 1 }}>
                   <Typography component="span" sx={{ fontSize: '1.25rem' }}>{g.emoji}</Typography>
                   <Typography sx={{ fontWeight: 700, color: '#004d40' }}>{g.title}</Typography>
+                  {g.interactive === 'movementStory' && (
+                    <Tooltip title="Bewegungsgeschichte öffnen (3 Geschichten, leise Musik)" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementStory(true);
+                        }}
+                        aria-label="Bewegungsgeschichte starten"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#5c6bc0',
+                          color: '#fff',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          '&:hover': { bgcolor: '#3f51b5', transform: 'scale(1.05)' },
+                        }}
+                      >
+                        <AutoStoriesIcon sx={{ fontSize: 24 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   {g.interactive === 'randomCards' && (
                     <Tooltip title="Remote-Karten öffnen (Startet den Zufallsmodus)" arrow>
                       <IconButton
@@ -18021,6 +20779,86 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         }}
                       >
                         <SettingsRemoteIcon sx={{ fontSize: 26 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {g.interactive === 'numberBody' && (
+                    <Tooltip title="Zahl-Körper starten (läuft automatisch)" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementNumberBody(true);
+                        }}
+                        aria-label="Zahl-Körper starten"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#00695c',
+                          color: '#fff',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          animation: 'numberPlayGlow 1.6s ease-in-out infinite',
+                          '@keyframes numberPlayGlow': {
+                            '0%, 100%': {
+                              boxShadow: '0 2px 8px rgba(0,105,92,0.45)',
+                              transform: 'scale(1)',
+                            },
+                            '50%': {
+                              boxShadow: '0 0 0 6px rgba(0,105,92,0.18)',
+                              transform: 'scale(1.04)',
+                            },
+                          },
+                          '&:hover': {
+                            bgcolor: '#004d40',
+                            animation: 'none',
+                            transform: 'scale(1.06)',
+                          },
+                        }}
+                      >
+                        <PlayIcon sx={{ fontSize: 26 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {g.interactive === 'shoulderTaxi' && (
+                    <Tooltip title="Schulter-Taxi starten (läuft automatisch)" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementShoulderTaxi(true);
+                        }}
+                        aria-label="Schulter-Taxi starten"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#1565c0',
+                          color: '#fff',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          animation: 'taxiPlayGlow 1.6s ease-in-out infinite',
+                          '@keyframes taxiPlayGlow': {
+                            '0%, 100%': {
+                              boxShadow: '0 2px 8px rgba(21,101,192,0.45)',
+                              transform: 'scale(1)',
+                            },
+                            '50%': {
+                              boxShadow: '0 0 0 6px rgba(21,101,192,0.18)',
+                              transform: 'scale(1.04)',
+                            },
+                          },
+                          '&:hover': {
+                            bgcolor: '#0d47a1',
+                            animation: 'none',
+                            transform: 'scale(1.06)',
+                          },
+                        }}
+                      >
+                        <LocalTaxiIcon sx={{ fontSize: 26 }} />
                       </IconButton>
                     </Tooltip>
                   )}
@@ -18128,6 +20966,82 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: '100%', pr: 1 }}>
                   <Typography component="span" sx={{ fontSize: '1.25rem' }}>{g.emoji}</Typography>
                   <Typography sx={{ fontWeight: 700, color: '#004d40', flex: 1 }}>{g.title}</Typography>
+                  {g.interactive === 'letterFactory' && (
+                    <Tooltip title="Buchstaben-Factory (Werk-Modus)" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementLetterFactory(true);
+                        }}
+                        aria-label="Buchstaben-Factory öffnen"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 0,
+                          bgcolor: '#f59e0b',
+                          color: '#0d0f12',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                          '&:hover': { bgcolor: '#fbbf24' },
+                        }}
+                      >
+                        <BuildIcon sx={{ fontSize: 24 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {g.interactive === 'islandParkour' && (
+                    <Tooltip title="Insel-Karte (Station für Station)" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementIslandParkour(true);
+                        }}
+                        aria-label="Bank-Insel-Parkour öffnen"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 2,
+                          bgcolor: '#0ea5e9',
+                          color: '#fff',
+                          boxShadow: '0 2px 6px rgba(14,165,233,0.45)',
+                          '&:hover': { bgcolor: '#0284c7' },
+                        }}
+                      >
+                        <MapIcon sx={{ fontSize: 24 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {g.interactive === 'marionetteDuo' && (
+                    <Tooltip title="Marionetten-Bühne" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementMarionette(true);
+                        }}
+                        aria-label="Marionetten-Duo öffnen"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#7f1d1d',
+                          color: '#fde68a',
+                          border: '2px solid #fbbf24',
+                          boxShadow: '0 2px 8px rgba(127,29,29,0.45)',
+                          '&:hover': { bgcolor: '#991b1b' },
+                        }}
+                      >
+                        <LocalTheaterIcon sx={{ fontSize: 24 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Chip label={g.duration} size="small" sx={{ bgcolor: '#e0f2f1', color: '#00695c', fontWeight: 600 }} />
                 </Box>
               </AccordionSummary>
@@ -18156,7 +21070,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           ))}
 
           <Typography variant="subtitle2" sx={{ color: '#b2dfdb', fontWeight: 700, mb: 1, mt: 2 }}>
-            Draußen (ca. 15–20 Min.)
+            Draußen – Platz, Weite, echte Umgebung (ca. 15–20 Min.)
           </Typography>
           {MOVEMENT_GAMES_OUTDOOR.map((g) => (
             <Accordion
@@ -18174,6 +21088,106 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: '100%', pr: 1 }}>
                   <Typography component="span" sx={{ fontSize: '1.25rem' }}>{g.emoji}</Typography>
                   <Typography sx={{ fontWeight: 700, color: '#004d40', flex: 1 }}>{g.title}</Typography>
+                  {g.interactive === 'outdoorHumanCompiler' && (
+                    <Tooltip title="Weite-Rufe (Ziele zum Anlaufen)" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementOutdoorHumanCompiler(true);
+                        }}
+                        aria-label="Weite-Rufe draußen"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#3f5240',
+                          color: '#f5f0e8',
+                          border: '1px solid #2d3828',
+                          '&:hover': { bgcolor: '#344538' },
+                        }}
+                      >
+                        <PlaceIcon sx={{ fontSize: 22 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {g.interactive === 'outdoorStationsParcours' && (
+                    <Tooltip title="Hof- & Natur-Stationen" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementOutdoorStations(true);
+                        }}
+                        aria-label="Stationen draußen"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#3f5240',
+                          color: '#f5f0e8',
+                          border: '1px solid #2d3828',
+                          '&:hover': { bgcolor: '#344538' },
+                        }}
+                      >
+                        <LocalFloristIcon sx={{ fontSize: 22 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {g.interactive === 'outdoorZoneWechsel' && (
+                    <Tooltip title="Markierungen am Hof" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementOutdoorZones(true);
+                        }}
+                        aria-label="Zonen draußen"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#3f5240',
+                          color: '#f5f0e8',
+                          border: '1px solid #2d3828',
+                          '&:hover': { bgcolor: '#344538' },
+                        }}
+                      >
+                        <PublicIcon sx={{ fontSize: 22 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {g.interactive === 'outdoorLaufChaos' && (
+                    <Tooltip title="Terrain & Boden" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMovementOutdoorLauf(true);
+                        }}
+                        aria-label="Laufstil draußen"
+                        size="small"
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          minWidth: 44,
+                          p: 0,
+                          borderRadius: 1,
+                          bgcolor: '#3f5240',
+                          color: '#f5f0e8',
+                          border: '1px solid #2d3828',
+                          '&:hover': { bgcolor: '#344538' },
+                        }}
+                      >
+                        <DirectionsRunIcon sx={{ fontSize: 22 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Chip label={g.duration} size="small" sx={{ bgcolor: '#e0f2f1', color: '#00695c', fontWeight: 600 }} />
                 </Box>
               </AccordionSummary>
@@ -18221,6 +21235,51 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         onClose={() => {
           setShowMovementRandomCards(false);
         }}
+      />
+
+      <MovementStoryModal open={showMovementStory} onClose={() => setShowMovementStory(false)} />
+      <NumberBodyModal
+        open={showMovementNumberBody}
+        onClose={() => {
+          setShowMovementNumberBody(false);
+        }}
+      />
+
+      <ShoulderTaxiModal
+        open={showMovementShoulderTaxi}
+        onClose={() => {
+          setShowMovementShoulderTaxi(false);
+        }}
+      />
+
+      <LetterFactoryModal
+        open={showMovementLetterFactory}
+        onClose={() => setShowMovementLetterFactory(false)}
+      />
+      <IslandParkourModal
+        open={showMovementIslandParkour}
+        onClose={() => setShowMovementIslandParkour(false)}
+      />
+      <MarionetteDuoModal
+        open={showMovementMarionette}
+        onClose={() => setShowMovementMarionette(false)}
+      />
+
+      <OutdoorHumanCompilerModal
+        open={showMovementOutdoorHumanCompiler}
+        onClose={() => setShowMovementOutdoorHumanCompiler(false)}
+      />
+      <OutdoorStationsParcoursModal
+        open={showMovementOutdoorStations}
+        onClose={() => setShowMovementOutdoorStations(false)}
+      />
+      <OutdoorZoneWechselModal
+        open={showMovementOutdoorZones}
+        onClose={() => setShowMovementOutdoorZones(false)}
+      />
+      <OutdoorLaufChaosModal
+        open={showMovementOutdoorLauf}
+        onClose={() => setShowMovementOutdoorLauf(false)}
       />
 
       {/* Konfetti-Wurf Game */}
@@ -18328,21 +21387,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <DialogTitle sx={{ 
           bgcolor: 'transparent',
           color: 'white',
-          textAlign: 'center',
           py: 1.25,
           px: 2,
-          position: 'relative',
           minHeight: 44,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          ...dialogCloseTitleSx,
         }}>
-          <Box sx={{ width: 28 }} />
-          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', flex: 1, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.2rem', textAlign: 'center', width: '100%' }}>
             🎮 Minigame Test
           </Typography>
-          <IconButton
-            onClick={() => {
+          <DialogCloseIconButton
+            disabled={gameStarted && !gameOver && !gameWon}
+            onClose={() => {
               if (!gameStarted || gameOver || gameWon) {
                 setShowMinigame(false);
                 setGameStarted(false);
@@ -18360,16 +21415,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 totalPausedTimeRef.current = 0;
               }
             }}
-            disabled={gameStarted && !gameOver && !gameWon}
-            sx={{ 
-              width: 28, 
-              height: 28, 
-              color: 'white',
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         <DialogContent sx={{ 
           bgcolor: '#fafafa', 

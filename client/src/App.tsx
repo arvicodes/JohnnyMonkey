@@ -16,6 +16,9 @@ import FlashcardStudyPage from './pages/FlashcardStudyPage';
 import JohnnyNavigationPage from './pages/JohnnyNavigationPage';
 import AdventCalendarPage from './pages/AdventCalendarPage';
 import SharedOverviewPage from './pages/SharedOverviewPage';
+import SevenMinuteWorkoutPage from './pages/SevenMinuteWorkoutPage';
+import MovementStoriesPage from './pages/MovementStoriesPage';
+import EntryTicketPage from './pages/EntryTicketPage';
 
 import { Snackbar, Alert } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -202,7 +205,7 @@ function AppContent() {
     if (!user) return <Navigate to="/" />;
     
     return user.role === 'TEACHER' ? (
-      <TeacherDashboard userId={user.id} onLogout={handleLogout} />
+      <TeacherDashboard userId={user.id} userRole={user.role} onLogout={handleLogout} />
     ) : (
       <StudentDashboard userId={user.id} onLogout={handleLogout} />
     );
@@ -256,6 +259,9 @@ function AppContent() {
         <Route path="/johnny" element={<JohnnyNavigationPage />} />
         <Route path="/advent-calendar" element={<AdventCalendarPage />} />
         <Route path="/shared-overview" element={<SharedOverviewPage />} />
+        <Route path="/seven-minute-workout" element={<SevenMinuteWorkoutPage />} />
+        <Route path="/bewegungsgeschichten-klassiker" element={<MovementStoriesPage />} />
+        <Route path="/entry-ticket" element={<EntryTicketPage />} />
 
       </Routes>
       
