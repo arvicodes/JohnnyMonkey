@@ -31,27 +31,45 @@ cd ..
 
 ### 3. Start Application
 
-#### Option A: One-Command Startup (Recommended)
+**Ports:** Frontend **3000**, API **3003** (siehe `client/src/setupProxy.js`).
+
+#### Option A: Ein Befehl (empfohlen)
 ```bash
-# Start both server and client automatically
+# Im Projektroot – startet API + React gleichzeitig
+npm install
+npm run dev
+```
+Dann im Browser: **http://localhost:3000**
+
+#### Option B: Shell-Skript
+```bash
+chmod +x start-all.sh
 ./start-all.sh
 ```
 
-#### Option B: Manual Startup
+#### Option C: Zwei Terminals
 ```bash
-# Terminal 1: Start server
+# Terminal 1: API (Port 3003)
 cd server
 npm run dev
 
-# Terminal 2: Start client
+# Terminal 2: React (Port 3000)
 cd client
 npm start
 ```
 
 ### 4. Access Application
-- **Frontend**: http://localhost:3003
-- **Backend API**: http://localhost:3001
-- **Database**: server/prisma/dev.db
+- **Frontend (Website):** http://127.0.0.1:3000 (oder `http://localhost:3000`)
+- **Backend API:** http://127.0.0.1:3003
+- **Database:** server/prisma/dev.db
+
+### Problem: „Verbindung abgelehnt“ / Website nicht erreichbar
+
+1. **Server wirklich gestartet?** Im Projektroot: `npm run dev` und **mindestens 30–60 Sekunden** warten (erster Start kompiliert lange).
+2. **Richtige Adresse:** **`http://127.0.0.1:3000`** – nicht nur `http://localhost` (ohne Port) und nicht Port **3003** für die Website (das ist nur die API).
+3. **Prüfen:** Im Projektroot `npm run check:local` – zeigt, ob Port 3000 und 3003 antworten.
+4. **`localhost` vs IPv6:** Wenn `localhost` streikt, immer **`127.0.0.1:3000`** verwenden.
+5. **Windows:** `server`-Skripte nutzen **Bash** (`setup-local.sh`). Am besten **Git Bash** oder **WSL** verwenden, im Projektroot `npm run dev` ausführen.
 
 ## 🚀 Production Deployment
 

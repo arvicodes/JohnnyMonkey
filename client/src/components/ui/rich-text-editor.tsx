@@ -4,13 +4,12 @@ import {
   IconButton, 
   Tooltip, 
   Popover, 
-  Grid
+  MenuItem
 } from '@mui/material';
 import {
   FormatBold,
   FormatItalic,
   FormatUnderlined,
-  Palette,
   FormatAlignLeft,
   FormatAlignCenter,
   FormatAlignRight,
@@ -30,12 +29,28 @@ interface RichTextEditorProps {
 
 const colors = [
   { name: 'Schwarz', value: '#000000' },
+  { name: 'Dunkelgrau', value: '#374151' },
+  { name: 'Grau', value: '#6b7280' },
   { name: 'Rot', value: '#dc2626' },
+  { name: 'Orange', value: '#ea580c' },
   { name: 'Grün', value: '#16a34a' },
   { name: 'Blau', value: '#2563eb' },
   { name: 'Lila', value: '#9333ea' },
-  { name: 'Orange', value: '#ea580c' },
-  { name: 'Grau', value: '#6b7280' },
+  { name: 'Braun', value: '#92400e' },
+  { name: 'Türkis', value: '#0d9488' },
+  { name: 'Rosa', value: '#db2777' },
+  { name: 'Gelb', value: '#ca8a04' },
+];
+
+const toolbarSymbols = [
+  { label: 'Pfeil', char: '→' },
+  { label: 'Doppelpfeil', char: '⇒' },
+  { label: 'Aufzählung', char: '•' },
+  { label: 'Haken', char: '✓' },
+  { label: 'Kreuz', char: '✗' },
+  { label: 'Punkt', char: '·' },
+  { label: 'Gedankenstrich', char: '–' },
+  { label: 'Ellipse', char: '…' },
 ];
 
 // Verwende das gleiche Farbschema wie in der App
@@ -66,27 +81,35 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#000000');
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [alignment, setAlignment] = useState<'left' | 'center' | 'right'>('left');
   const [isUploading, setIsUploading] = useState(false);
-  // Removed resizingImage state - not needed anymore
+  const [hexInput, setHexInput] = useState('#000000');
+  const [fontSize, setFontSize] = useState('1rem');
+  const [showFontSizePicker, setShowFontSizePicker] = useState(false);
+  const fontSizePickerRef = useRef<HTMLDivElement>(null);
+
+  const FONT_SIZE_OPTIONS = [
+    { label: 'Klein', value: '0.875rem' },
+    { label: 'Normal', value: '1rem' },
+    { label: 'Groß', value: '1.125rem' },
+    { label: 'Sehr groß', value: '1.25rem' },
+  ];
   
   const editorRef = useRef<HTMLDivElement>(null);
-  const colorPickerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
   const isUpdatingRef = useRef(false);
   const lastValueRef = useRef(value);
+  const lastReceivedValueRef = useRef(value);
 
   // Debounced onChange to prevent excessive updates
   const debouncedOnChange = useCallback((newValue: string) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      lastValueRef.current = newValue;
-      onChange(newValue);
-    }, 150);
+    // IMPORTANT: In den Stundenmodals wird "Fertig" direkt nach dem Edit-Click ausgelöst.
+    // Wenn wir hier (wie bisher) debouncen, ist der Parent-State evtl. noch nicht aktualisiert,
+    // und "Fertig" speichert dann die alte Version. Deshalb: sofort weitergeben.
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    lastValueRef.current = newValue;
+    onChange(newValue);
   }, [onChange]);
 
   // Save cursor position with more robust selection handling
@@ -111,53 +134,105 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     return { offset: 0, node: null, nodeOffset: 0 };
   };
 
-  // Save text selection for color application
-  const saveSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      return null;
-    }
-    
+  // Offset-basiertes Speichern der Auswahl (überlebt Fokusverlust / Re-Render)
+  const getSelectionOffsets = (): { start: number; end: number } | null => {
+    if (!editorRef.current) return null;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    if (!editorRef.current.contains(range.commonAncestorContainer)) return null;
     try {
-      const range = selection.getRangeAt(0);
-      const text = selection.toString();
-      
-      if (!text || text.length === 0) {
-        return null;
-      }
-      
-      // Save the selection details
-      return {
-        text: text,
-        startContainer: range.startContainer,
-        startOffset: range.startOffset,
-        endContainer: range.endContainer,
-        endOffset: range.endOffset
-      };
-    } catch (error) {
-      console.warn('Error saving selection:', error);
+      const pre = document.createRange();
+      pre.selectNodeContents(editorRef.current);
+      pre.setEnd(range.startContainer, range.startOffset);
+      const start = pre.toString().length;
+      const end = start + range.toString().length;
+      return { start, end };
+    } catch {
       return null;
     }
   };
 
-  // Restore text selection for color application
-  const restoreSelection = (savedSelection: any) => {
-    if (!savedSelection || !editorRef.current) return;
-    
+  const restoreSelectionByOffsets = (start: number, end: number): boolean => {
+    if (!editorRef.current) return false;
     try {
-      const selection = window.getSelection();
-      if (!selection) return;
-      
+      const walker = document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+      let pos = 0;
+      let startNode: Node | null = null;
+      let startOffset = 0;
+      let endNode: Node | null = null;
+      let endOffset = 0;
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        const len = node.textContent?.length ?? 0;
+        if (pos + len > start && startNode === null) {
+          startNode = node;
+          startOffset = Math.min(start - pos, len);
+        }
+        if (pos + len >= end && endNode === null) {
+          endNode = node;
+          endOffset = Math.min(end - pos, len);
+          break;
+        }
+        pos += len;
+      }
+      if (!startNode) {
+        startNode = editorRef.current;
+        startOffset = 0;
+      }
+      if (!endNode) {
+        endNode = startNode;
+        endOffset = (startNode as Text).textContent?.length ?? 0;
+      }
       const range = document.createRange();
-      range.setStart(savedSelection.startContainer, savedSelection.startOffset);
-      range.setEnd(savedSelection.endContainer, savedSelection.endOffset);
-      
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+      const selection = window.getSelection();
+      if (!selection) return false;
       selection.removeAllRanges();
       selection.addRange(range);
-      
-      console.log('🔄 Selection restored successfully');
-    } catch (error) {
-      console.warn('Error restoring selection:', error);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    const text = range.toString();
+    if (!text) return null;
+    const offsets = getSelectionOffsets();
+    if (!offsets) return null;
+    return {
+      text,
+      start: offsets.start,
+      end: offsets.end,
+      startContainer: range.startContainer,
+      startOffset: range.startOffset,
+      endContainer: range.endContainer,
+      endOffset: range.endOffset
+    };
+  };
+
+  const restoreSelection = (saved: any) => {
+    if (!saved || !editorRef.current) return false;
+    if (typeof saved.start === 'number' && typeof saved.end === 'number') {
+      return restoreSelectionByOffsets(saved.start, saved.end);
+    }
+    try {
+      const range = document.createRange();
+      range.setStart(saved.startContainer, saved.startOffset);
+      range.setEnd(saved.endContainer, saved.endOffset);
+      if (!editorRef.current.contains(range.commonAncestorContainer)) return false;
+      const selection = window.getSelection();
+      if (!selection) return false;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return true;
+    } catch {
+      return false;
     }
   };
 
@@ -220,16 +295,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   useEffect(() => {
     if (!editorRef.current) return;
-    
     const currentContent = editorRef.current.innerHTML;
     const editorEmpty = !currentContent || currentContent.trim() === '' || currentContent === '<br>' || currentContent === '<br/>';
     const valueNonEmpty = value && value.trim() !== '';
-    // Immer aktualisieren wenn: Wert weicht von Anzeige ab ODER Editor ist leer aber Wert ist da (initialer Mount)
+    const valueChangedExternally = value !== lastReceivedValueRef.current;
+    lastReceivedValueRef.current = value;
+    // Nur synchronisieren wenn: Wert von außen geändert ODER initialer Mount (Editor leer, Wert da). Nicht während Nutzer tippt.
+    const editorHasFocus = editorRef.current.contains(document.activeElement);
     const shouldUpdate = !isUpdatingRef.current && (
-      (value !== currentContent && value !== lastValueRef.current) ||
+      (valueChangedExternally && !editorHasFocus) ||
       (editorEmpty && valueNonEmpty)
     );
-    
     if (shouldUpdate) {
       const cursorPosition = saveCursorPosition();
       editorRef.current.innerHTML = value;
@@ -254,22 +330,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     };
   }, []);
 
-  // Click outside handler for color picker
+  // Click outside: Schriftgrößen-Popover schließen
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
-        setShowColorPicker(false);
-      }
+      const target = event.target as Node;
+      if (fontSizePickerRef.current && !fontSizePickerRef.current.contains(target)) setShowFontSizePicker(false);
     };
-
-    if (showColorPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showColorPicker]);
+    if (showFontSizePicker) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFontSizePicker]);
 
   // Add image resize handlers after content updates - moved after makeImageResizable definition
 
@@ -321,72 +390,67 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  const applyColor = (color: string) => {
-    console.log('🎨 APPLYING COLOR:', color);
-    
-    if (!editorRef.current) {
-      console.error('❌ No editor ref');
-      return;
-    }
-    
-    // Get the saved selection from when color picker was opened
-    const savedSelection = (window as any).savedTextSelection;
-    console.log('💾 Retrieved saved selection:', savedSelection);
-    
-    if (!savedSelection || !savedSelection.text || savedSelection.text.length === 0) {
-      console.log('⚠️ NO TEXT SELECTED! Please select text first, then choose a color.');
-      alert('Bitte markieren Sie zuerst Text, dann wählen Sie eine Farbe!');
-      setShowColorPicker(false);
-      return;
-    }
-    
-    // Force focus first
+  const wrapSelectionWithStyle = (styleKey: string, styleValue: string) => {
+    if (!editorRef.current) return false;
+    const saved = (window as any).savedTextSelection;
     editorRef.current.focus();
-    
-    // Restore the saved selection
-    restoreSelection(savedSelection);
-    
-    // Get the restored selection
+    if (!saved || !saved.text) return false;
+    if (!restoreSelection(saved)) return false;
     const selection = window.getSelection();
-    const selectedText = selection?.toString() || '';
-    
-    console.log('📝 Restored text:', `"${selectedText}"`, 'Length:', selectedText.length);
-    
-    if (selectedText && selectedText.length > 0) {
-      // Text is selected - wrap it in a colored span
-      console.log('✅ Wrapping selected text in colored span');
-      
-      const range = selection!.getRangeAt(0);
+    if (!selection || selection.rangeCount === 0) return false;
+    const range = selection.getRangeAt(0);
+    if (!editorRef.current.contains(range.commonAncestorContainer) || range.collapsed) return false;
+    try {
+      const fragment = range.extractContents();
       const span = document.createElement('span');
-      span.style.color = color;
-      span.textContent = selectedText;
-      
-      // Replace the selected text with colored span
-      range.deleteContents();
+      (span.style as any)[styleKey] = styleValue;
+      span.appendChild(fragment);
       range.insertNode(span);
-      
-      // Move cursor to end of span
       range.setStartAfter(span);
       range.collapse(true);
-      selection!.removeAllRanges();
-      selection!.addRange(range);
-      
-      console.log('🎯 SUCCESS: Color applied to selected text');
-      
-      // Clear the saved selection
+      selection.removeAllRanges();
+      selection.addRange(range);
       (window as any).savedTextSelection = null;
-    } else {
-      console.log('❌ Failed to restore selection');
-      alert('Fehler beim Anwenden der Farbe. Bitte versuchen Sie es erneut.');
-      setShowColorPicker(false);
-      return;
+      handleInput();
+      return true;
+    } catch {
+      return false;
     }
-    
+  };
+
+  const applyColor = (color: string) => {
+    if (!editorRef.current) return;
     setSelectedColor(color);
-    setShowColorPicker(false);
-    handleInput();
-    
-    console.log('✅ Color application complete');
+    setHexInput(color);
+    wrapSelectionWithStyle('color', color);
+  };
+
+  const applyFontSize = (size: string) => {
+    setFontSize(size);
+    wrapSelectionWithStyle('fontSize', size);
+    setShowFontSizePicker(false);
+  };
+
+  const insertSymbol = (char: string) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    try {
+      document.execCommand('insertText', false, char);
+      handleInput();
+    } catch {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editorRef.current.contains(sel.anchorNode)) {
+        const range = sel.getRangeAt(0);
+        const text = document.createTextNode(char);
+        range.deleteContents();
+        range.insertNode(text);
+        range.setStartAfter(text);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        handleInput();
+      }
+    }
   };
 
   const applyAlignment = (align: 'left' | 'center' | 'right') => {
@@ -395,6 +459,87 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       setAlignment(align);
     } catch (error) {
       console.warn('Error applying alignment:', error);
+    }
+  };
+
+  // Wrappt die aktuelle Textauswahl (selection range) in einen <span> mit inline-styles.
+  // So funktionieren die Markierungen auch ohne Tokens (kein [[ANS:..]]).
+  const wrapCurrentSelectionWithSpan = (styles: Record<string, string>, title?: string) => {
+    if (!editorRef.current) return false;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return false;
+    if (!editorRef.current.contains(selection.anchorNode)) return false;
+
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return false;
+
+    editorRef.current.focus();
+    try {
+      const extracted = range.extractContents();
+      const span = document.createElement('span');
+      if (title) span.title = title;
+      Object.entries(styles).forEach(([k, v]) => {
+        (span.style as any)[k] = v;
+      });
+      span.appendChild(extracted);
+      range.insertNode(span);
+
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(span);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+      handleInput();
+      return true;
+    } catch (e) {
+      console.warn('wrapCurrentSelectionWithSpan failed:', e);
+      return false;
+    }
+  };
+
+  const surroundCurrentSelectionWithQuotes = (
+    quoteStart: string,
+    quoteEnd: string,
+    styles: Record<string, string>,
+    title?: string
+  ) => {
+    if (!editorRef.current) return false;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return false;
+    if (!editorRef.current.contains(selection.anchorNode)) return false;
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) return false;
+
+    editorRef.current.focus();
+    try {
+      const extracted = range.extractContents();
+      const span = document.createElement('span');
+      if (title) span.title = title;
+      Object.entries(styles).forEach(([k, v]) => {
+        (span.style as any)[k] = v;
+      });
+      span.appendChild(extracted);
+
+      const startQuoteNode = document.createTextNode(quoteStart);
+      const endQuoteNode = document.createTextNode(quoteEnd);
+
+      const combined = document.createDocumentFragment();
+      combined.appendChild(startQuoteNode);
+      combined.appendChild(span);
+      combined.appendChild(endQuoteNode);
+
+      range.insertNode(combined);
+
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(endQuoteNode);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+      handleInput();
+      return true;
+    } catch (e) {
+      console.warn('surroundCurrentSelectionWithQuotes failed:', e);
+      return false;
     }
   };
 
@@ -517,17 +662,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       isUpdatingRef.current = true;
       const newValue = editorRef.current.innerHTML;
       
-      // Only trigger onChange if content actually changed
-      if (newValue !== value && newValue !== lastValueRef.current) {
-        debouncedOnChange(newValue);
-      }
+      // Only trigger onChange if editor content actually changed.
+      // Wichtig: Wir filtern nur gegen den letzten bekannten Editor-Wert,
+      // nicht zusätzlich gegen `value` (das kann im selben Event-Tick noch stale sein).
+      if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
       
       // Reset the flag after a short delay
       setTimeout(() => {
         isUpdatingRef.current = false;
       }, 100);
     }
-  }, [value, debouncedOnChange]);
+  }, [debouncedOnChange]);
 
   const makeImageResizable = useCallback((img: HTMLImageElement) => {
     console.log('🎯 DEBUG: makeImageResizable aufgerufen für:', img.src);
@@ -745,15 +890,24 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    
+    if (!editorRef.current) return;
     try {
-      // Get plain text from clipboard
+      const html = e.clipboardData.getData('text/html');
       const text = e.clipboardData.getData('text/plain');
-      
-      // Insert text at cursor position
-      if (editorRef.current) {
-        document.execCommand('insertText', false, text);
+      // Wenn HTML vorhanden (z. B. aus unserem Editor inkl. Icons), sicher einfügen
+      if (html && html.trim()) {
+        const sanitized = html
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+          .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
+        if (sanitized.trim()) {
+          document.execCommand('insertHTML', false, sanitized);
+          handleInput();
+          return;
+        }
       }
+      document.execCommand('insertText', false, text || '');
+      handleInput();
     } catch (error) {
       console.warn('Error handling paste:', error);
     }
@@ -795,8 +949,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           p: compact ? 0.5 : 1,
           borderBottom: `1px solid ${appColors.border}`,
           backgroundColor: appColors.background,
-          flexWrap: 'nowrap',
-          overflow: 'hidden'
+          flexWrap: 'wrap', // Kompatibel mit schmalen Modals: Toolbar in mehreren Zeilen
+          overflow: 'visible',
+          rowGap: 0.25,
+          columnGap: 0.25,
+          justifyContent: 'flex-start'
         }}
       >
         {/* Text Formatting */}
@@ -857,6 +1014,143 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             }}
           >
             <FormatUnderlined fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Custom Defaults: Material/Operator/Ansprache/Fachbegriff/Folie/Anweisung */}
+        <Tooltip title="Material (orange, fett, dick unterstrichen)">
+          <IconButton
+            size="small"
+            onClick={() =>
+              wrapCurrentSelectionWithSpan(
+                {
+                  color: '#ed6c02',
+                  fontWeight: '800',
+                  textDecoration: 'underline',
+                  textDecorationThickness: '3px',
+                  textUnderlineOffset: '2px'
+                },
+                undefined
+              )
+            }
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.secondary,
+              border: `1px solid ${appColors.secondary}`,
+              '&:hover': { backgroundColor: `${appColors.secondary}10`, borderColor: appColors.secondary }
+            }}
+          >
+            <Box component="span" sx={{ fontSize: 12, fontWeight: 900 }}>M</Box>
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Operator (fett)">
+          <IconButton
+            size="small"
+            onClick={() => wrapCurrentSelectionWithSpan({ fontWeight: '800' })}
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.textPrimary,
+              border: `1px solid ${appColors.border}`,
+              '&:hover': { backgroundColor: `${appColors.primary}10`, borderColor: appColors.primary }
+            }}
+          >
+            <Box component="span" sx={{ fontSize: 12, fontWeight: 900 }}>O</Box>
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Ansprache („...“, kursiv dunkelgrün)">
+          <IconButton
+            size="small"
+            onClick={() =>
+              surroundCurrentSelectionWithQuotes('„', '“', { color: '#2e7d32', fontStyle: 'italic' })
+            }
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.primary,
+              border: `1px solid ${appColors.primary}`,
+              '&:hover': { backgroundColor: `${appColors.primary}10`, borderColor: appColors.primary }
+            }}
+          >
+            <Box component="span" sx={{ fontSize: 12, fontWeight: 900 }}>„</Box>
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Fachbegriff (blau, verlinkt)">
+          <IconButton
+            size="small"
+            onClick={() =>
+              wrapCurrentSelectionWithSpan(
+                {
+                  color: '#1565c0',
+                  cursor: 'help',
+                  borderBottom: '1px dotted currentColor'
+                },
+                'Fachbegriff'
+              )
+            }
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: '#1565c0',
+              border: '1px solid #1565c0',
+              '&:hover': { backgroundColor: '#1565c010', borderColor: '#1565c0' }
+            }}
+          >
+            <Box component="span" sx={{ fontSize: 12, fontWeight: 900 }}>F</Box>
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Folie (blutorange, unterstrichen)">
+          <IconButton
+            size="small"
+            onClick={() =>
+              wrapCurrentSelectionWithSpan(
+                {
+                  color: '#f57c00',
+                  fontWeight: '800',
+                  textDecoration: 'underline',
+                  textDecorationThickness: '3px',
+                  textUnderlineOffset: '2px',
+                  cursor: 'pointer'
+                },
+                'Folie'
+              )
+            }
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.secondary,
+              border: `1px solid ${appColors.secondary}`,
+              '&:hover': { backgroundColor: `${appColors.secondary}10`, borderColor: appColors.secondary }
+            }}
+          >
+            <Box component="span" sx={{ fontSize: 12, fontWeight: 900 }}>·</Box>
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Anweisung (grün)">
+          <IconButton
+            size="small"
+            onClick={() => wrapCurrentSelectionWithSpan({ color: '#2e7d32', fontWeight: '700' })}
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.primary,
+              border: `1px solid ${appColors.primary}`,
+              '&:hover': { backgroundColor: `${appColors.primary}10`, borderColor: appColors.primary }
+            }}
+          >
+            <Box component="span" sx={{ fontSize: 12, fontWeight: 900 }}>A</Box>
           </IconButton>
         </Tooltip>
         
@@ -1007,24 +1301,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <Image fontSize="small" />
           </IconButton>
         </Tooltip>
-        
-        {/* Color Picker */}
-        <Box ref={colorPickerRef} sx={{ position: 'relative' }}>
-          <Tooltip title="Textfarbe">
+
+        {/* Schriftgröße – wie Farbauswahl: Auswahl beim Klick speichern, dann Popover */}
+        <Box ref={fontSizePickerRef} sx={{ position: 'relative' }}>
+          <Tooltip title="Schriftgröße">
             <IconButton
               size="small"
               onClick={() => {
-                // Save selection before opening color picker
-                const savedSelection = saveSelection();
-                if (savedSelection && savedSelection.text && savedSelection.text.length > 0) {
-                  console.log('💾 Color picker opened with saved selection:', savedSelection.text);
-                  // Store the selection globally so applyColor can access it
-                  (window as any).savedTextSelection = savedSelection;
-                  setShowColorPicker(!showColorPicker);
-                } else {
-                  console.log('⚠️ No text selected for color picker');
-                  alert('Bitte markieren Sie zuerst Text, dann öffnen Sie die Farbpalette!');
-                }
+                const saved = saveSelection();
+                (window as any).savedTextSelection = saved;
+                setShowFontSizePicker((v) => !v);
               }}
               sx={{
                 width: compact ? 28 : 32,
@@ -1032,78 +1318,89 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 backgroundColor: 'transparent',
                 color: appColors.textPrimary,
                 border: `1px solid ${appColors.border}`,
-                '&:hover': {
-                  backgroundColor: `${appColors.primary}10`,
-                  borderColor: appColors.primary
-                }
+                '&:hover': { backgroundColor: `${appColors.primary}10`, borderColor: appColors.primary }
               }}
             >
-              <Palette fontSize="small" />
-              <Box
-                sx={{
-                  width: compact ? 8 : 10,
-                  height: compact ? 8 : 10,
-                  borderRadius: '50%',
-                  backgroundColor: selectedColor,
-                  border: `1px solid ${appColors.border}`,
-                  borderColor: appColors.border,
-                  position: 'absolute',
-                  bottom: 1,
-                  right: 1
-                }}
-              />
+              <Box component="span" sx={{ fontSize: '0.9rem', fontWeight: 700 }}>A</Box>
             </IconButton>
           </Tooltip>
-          
           <Popover
-            open={showColorPicker}
-            anchorEl={colorPickerRef.current}
-            onClose={() => setShowColorPicker(false)}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'left',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'left',
-            }}
+            open={showFontSizePicker}
+            anchorEl={fontSizePickerRef.current}
+            onClose={() => setShowFontSizePicker(false)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
             slotProps={{
-              paper: {
-                sx: {
-                  p: 1,
-                  backgroundColor: appColors.cardBg,
-                  border: `1px solid ${appColors.border}`,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-                }
-              }
+              paper: { sx: { p: 1, backgroundColor: appColors.cardBg, border: `1px solid ${appColors.border}` } }
             }}
           >
-            <Grid container spacing={0.5} sx={{ width: 160 }}>
-              {colors.map((color) => (
-                <Grid item key={color.value}>
-                  <Tooltip title={color.name}>
-                    <Box
-                      onClick={() => applyColor(color.value)}
-                      sx={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 0.5,
-                        backgroundColor: color.value,
-                        border: `1px solid ${appColors.border}`,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          transform: 'scale(1.1)',
-                          borderColor: appColors.primary,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                        }
-                      }}
-                    />
-                  </Tooltip>
-                </Grid>
+            <Box sx={{ minWidth: 120 }}>
+              {FONT_SIZE_OPTIONS.map((opt) => (
+                <MenuItem
+                  key={opt.value}
+                  selected={fontSize === opt.value}
+                  onClick={() => applyFontSize(opt.value)}
+                  sx={{ fontSize: opt.value }}
+                >
+                  {opt.label}
+                </MenuItem>
               ))}
-            </Grid>
+            </Box>
           </Popover>
+        </Box>
+        
+        {/* Textfarbe: alle Farben direkt in der Leiste – Auswahl bei Mousedown speichern, bei Klick anwenden */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'wrap' }}>
+          {colors.map((color) => (
+            <Tooltip key={color.value} title={color.name}>
+              <Box
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const saved = saveSelection();
+                  (window as any).savedTextSelection = saved;
+                }}
+                onClick={() => applyColor(color.value)}
+                sx={{
+                  width: compact ? 22 : 26,
+                  height: compact ? 22 : 26,
+                  borderRadius: 0.5,
+                  backgroundColor: color.value,
+                  border: `2px solid ${selectedColor === color.value ? appColors.primary : appColors.border}`,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                    borderColor: appColors.primary,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
+                  }
+                }}
+              />
+            </Tooltip>
+          ))}
+        </Box>
+
+        {/* Symbole einfügen (Pfeil, Aufzählung, …) */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, ml: 0.5, borderLeft: `1px solid ${appColors.border}`, pl: 0.5 }}>
+          {toolbarSymbols.map(({ label, char }) => (
+            <Tooltip key={char} title={label}>
+              <IconButton
+                size="small"
+                onClick={() => insertSymbol(char)}
+                sx={{
+                  width: compact ? 26 : 30,
+                  height: compact ? 26 : 30,
+                  minWidth: 0,
+                  color: appColors.textPrimary,
+                  border: `1px solid ${appColors.border}`,
+                  borderRadius: 0.5,
+                  fontSize: '1rem',
+                  '&:hover': { backgroundColor: `${appColors.primary}10`, borderColor: appColors.primary }
+                }}
+              >
+                {char}
+              </IconButton>
+            </Tooltip>
+          ))}
         </Box>
         
         {/* Text Alignment */}
@@ -1192,7 +1489,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             color: appColors.textSecondary,
             pointerEvents: 'none'
           },
-          '& img': {
+          /* Icons (Material, Assignment, Info): strikt inline, bewegen sich mit dem Text */
+          '& img[data-editor-icon]': {
+            display: 'inline',
+            verticalAlign: 'middle',
+            maxHeight: '1.1em',
+            width: 'auto',
+            height: '1.1em',
+            margin: '0 2px',
+            cursor: 'default',
+            border: 'none',
+            position: 'static'
+          },
+          /* Nur große Bilder (Uploads): Resize, nicht Icons */
+          '& img:not([data-editor-icon])': {
             cursor: 'nw-resize',
             transition: 'all 0.2s ease',
             border: `2px solid transparent`,

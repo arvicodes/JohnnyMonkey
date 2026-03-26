@@ -48,7 +48,7 @@ kill_port() {
     fi
 }
 
-# Clean up all relevant ports
+# Clean up all relevant ports (React=3000, API=3003)
 echo -e "${PURPLE}🧹 Cleaning up ports...${NC}"
 PORTS=(3000 3001 3002 3003)
 for port in "${PORTS[@]}"; do
@@ -71,19 +71,19 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# Start server with smart port management
-npm run dev:smart &
+# API läuft fest auf Port 3003 (server/package.json: dev)
+npm run dev &
 SERVER_PID=$!
 cd ..
 
-# Wait a moment for server to start
-sleep 5
+# Kurz warten bis nodemon die API hochgefahren hat
+sleep 6
 
-# Check if server is running
-if ! check_port 3001; then
-    echo -e "${GREEN}✅ Server started successfully${NC}"
+# Prüfen ob API auf 3003 lauscht
+if check_port 3003; then
+    echo -e "${GREEN}✅ API läuft auf Port 3003${NC}"
 else
-    echo -e "${YELLOW}⚠️  Server may be using a different port${NC}"
+    echo -e "${YELLOW}⚠️  Port 3003 noch nicht aktiv – evtl. länger warten oder Terminal prüfen${NC}"
 fi
 
 # Start client in background
@@ -101,9 +101,9 @@ cd ..
 
 echo ""
 echo -e "${GREEN}🎉 All services started!${NC}"
-echo -e "${BLUE}💡 Server: http://localhost:3001${NC}"
-echo -e "${BLUE}💡 Client: http://localhost:3003${NC}"
-echo -e "${BLUE}💡 Health: http://localhost:3001/health${NC}"
+echo -e "${BLUE}💡 Website (React): http://localhost:3000${NC}"
+echo -e "${BLUE}💡 API (Backend):  http://localhost:3003${NC}"
+echo -e "${BLUE}💡 Health:         http://localhost:3003/health (falls vorhanden)${NC}"
 echo ""
 echo -e "${YELLOW}📝 To stop all services, press Ctrl+C${NC}"
 echo -e "${YELLOW}📝 Or run: pkill -f 'npm\|node'${NC}"

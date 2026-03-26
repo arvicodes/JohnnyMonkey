@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
+  Close as CloseIcon,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
   RestartAlt as RestartAltIcon,
@@ -30,12 +31,23 @@ type EntryTicketTask = {
 };
 
 const SLIDE_DURATION_SEC = 10;
-const TARGET_TASK_COUNT = 20;
+const TARGET_TASK_COUNT = 16;
 const DISPLAY_BOX_WIDTH = 1320;
 const DISPLAY_BOX_HEIGHT = 340;
 const FINAL_DISPLAY_BOX_HEIGHT = 500;
 const OPERATOR_COLOR = '#ef6c00';
 const QUESTION_COLOR = '#d32f2f';
+
+type Grade = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+type GradeQuestionSets = Record<Grade, EntryTicketTask[]>;
+type CoarseCategory =
+  | 'Grundrechenarten'
+  | 'Bruch/Dezimal/Prozent'
+  | 'Geometrie/Einheiten'
+  | 'Zeit/Geld/Alltag'
+  | 'Logik/Muster'
+  | 'Wahr/Falsch'
+  | 'Eigen';
 
 const ENTRY_TICKET_TASK_POOL: EntryTicketTask[] = [
   { category: 'Kopfrechnen', prompt: '375 + 489 - 126 = ?', solution: '738' },
@@ -46,11 +58,11 @@ const ENTRY_TICKET_TASK_POOL: EntryTicketTask[] = [
   { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 3/4 ist kleiner als 2/3.', solution: 'Falsch' },
   { category: 'Überschlag', prompt: '49,80 € + 19,90 € grob gerundet = ?', solution: 'ca. 70 €' },
   { category: 'Geld', prompt: '50 € - 18,70 € - 9,95 € = ?', solution: '21,35 €' },
-  { category: 'Einheiten', prompt: '3,75 m = ? cm', solution: '375 cm' },
-  { category: 'Einheiten', prompt: '2,4 l = ? ml', solution: '2400 ml' },
+  { category: 'Einheiten', prompt: '3,75 m = ? cm', solution: '375' },
+  { category: 'Einheiten', prompt: '2,4 l = ? ml', solution: '2400' },
   { category: 'Umfang', prompt: 'Rechteck 8 cm und 5 cm: Umfang = ?', solution: '26 cm' },
-  { category: 'Zeit', prompt: 'Start 09:35 Uhr, Dauer 2 h 25 min. Ende um ? Uhr.', solution: '12:00 Uhr' },
-  { category: 'Zeit', prompt: 'Von 08:50 Uhr bis 11:35 Uhr = ? min', solution: '165 min' },
+  { category: 'Zeit', prompt: 'Start 09:35 Uhr, Dauer 2 h 25 min. Ende um ? Uhr.', solution: '12:00' },
+  { category: 'Zeit', prompt: 'Von 08:50 Uhr bis 11:35 Uhr = ? min', solution: '165' },
   { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 2,5 l sind 250 ml.', solution: 'Falsch' },
   { category: 'Bruch', prompt: '3/4 + 2/3 = ?', solution: '17/12 (1 5/12)' },
   { category: 'Bruch', prompt: '5/8 von 64 = ?', solution: '40' },
@@ -62,16 +74,16 @@ const ENTRY_TICKET_TASK_POOL: EntryTicketTask[] = [
   { category: 'Supermarkt', prompt: '6 · 1,79 € + 3 · 2,49 € = ?', solution: '18,21 €' },
   { category: 'Schätzen', prompt: '1,98 m ist näher an 1,5 m oder 2,0 m?', solution: '2,0 m' },
   { category: 'Regalmaße', prompt: '2 Bretter 118 cm + 3 Bretter 74 cm = ?', solution: '458 cm' },
-  { category: 'Regalmaße', prompt: 'Wand 2,60 m - Regal 2,15 m = ? cm', solution: '45 cm' },
+  { category: 'Regalmaße', prompt: 'Wand 2,60 m - Regal 2,15 m = ? cm', solution: '45' },
   { category: 'Kopfrechnen', prompt: '48 · 25 = ?', solution: '1200' },
   { category: 'Kopfrechnen', prompt: '1331 : 11 = ?', solution: '121' },
   { category: 'Muster', prompt: 'Zahlenmuster: 3, 6, 12, 24, ... nächste Zahl = ?', solution: '48' },
-  { category: 'Einheiten', prompt: '2,75 km + 850 m = ? m', solution: '3600 m' },
-  { category: 'Zeit', prompt: 'Film 1 h 58 min, Start 20:17 Uhr. Ende um ? Uhr.', solution: '22:15 Uhr' },
+  { category: 'Einheiten', prompt: '2,75 km + 850 m = ? m', solution: '3600' },
+  { category: 'Zeit', prompt: 'Film 1 h 58 min, Start 20:17 Uhr. Ende um ? Uhr.', solution: '22:15' },
   { category: 'Bruch/Dezimal', prompt: '7/8 als Dezimalzahl = ?', solution: '0,875' },
   { category: 'Prozent', prompt: '3,5% von 800 = ?', solution: '28' },
   { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 15% von 200 sind 25.', solution: 'Falsch' },
-  { category: 'Alltag', prompt: '36 km bei 90 km/h = ? min', solution: '24 min' },
+  { category: 'Alltag', prompt: '36 km bei 90 km/h = ? min', solution: '24' },
   { category: 'Logik', prompt: '3 Kisten mit je 12 Flaschen, 5 Flaschen kaputt. Wie viele ganz?', solution: '31' },
   { category: 'Mittelwert', prompt: 'Noten 2, 3, 2, 1. Durchschnitt = ?', solution: '2,0' },
   { category: 'Fläche', prompt: 'Rechteck 12 cm · 7 cm: Fläche = ?', solution: '84 cm²' },
@@ -82,12 +94,254 @@ const ENTRY_TICKET_TASK_POOL: EntryTicketTask[] = [
   { category: 'Kombi', prompt: '2 T-Shirts à 14,90 € und 1 Hose 39,90 €: Gesamt = ?', solution: '69,70 €' },
 ];
 
+const TASK_POOL_5: EntryTicketTask[] = [
+  { category: 'Addition', prompt: '48 + 27 = ?', solution: '75' },
+  { category: 'Addition', prompt: '125 + 340 = ?', solution: '465' },
+  { category: 'Subtraktion', prompt: '130 - 58 = ?', solution: '72' },
+  { category: 'Subtraktion', prompt: '400 - 175 = ?', solution: '225' },
+  { category: 'Multiplikation', prompt: '6 · 7 = ?', solution: '42' },
+  { category: 'Multiplikation', prompt: '9 · 8 = ?', solution: '72' },
+  { category: 'Division', prompt: '96 : 8 = ?', solution: '12' },
+  { category: 'Division', prompt: '84 : 7 = ?', solution: '12' },
+  { category: 'Kombiniert', prompt: '25 + 18 - 9 = ?', solution: '34' },
+  { category: 'Kombiniert', prompt: '7 · 6 + 5 = ?', solution: '47' },
+  { category: 'Kombiniert', prompt: '40 - 4 · 5 = ?', solution: '20' },
+  { category: 'Kombiniert', prompt: '(18 + 12) : 3 = ?', solution: '10' },
+  { category: 'Umfang', prompt: 'Rechteck: 6 cm und 4 cm. Umfang = ?', solution: '20 cm' },
+  { category: 'Umfang', prompt: 'Quadrat mit Seite 7 cm. Umfang = ?', solution: '28 cm' },
+  { category: 'Flächeninhalt', prompt: 'Rechteck: 5 cm · 3 cm. Fläche = ?', solution: '15 cm²' },
+  { category: 'Flächeninhalt', prompt: 'Rechteck: 8 cm · 2 cm. Fläche = ?', solution: '16 cm²' },
+  { category: 'Einheiten', prompt: '2 m = ? cm', solution: '200' },
+  { category: 'Einheiten', prompt: '350 cm = ? m', solution: '3,5' },
+  { category: 'Einheiten', prompt: '1 l = ? ml', solution: '1000' },
+  { category: 'Einheiten', prompt: '90 min = ? h', solution: '1,5' },
+  { category: 'Zeit', prompt: 'Start 08:45 Uhr, Dauer 55 min. Ende um ? Uhr.', solution: '09:40' },
+  { category: 'Zeit', prompt: 'Von 10:20 Uhr bis 11:05 Uhr = ? min', solution: '45' },
+  { category: 'Geld', prompt: '3,40 € + 2,80 € + 1,20 € = ?', solution: '7,40 €' },
+  { category: 'Geld', prompt: 'Du gibst 20 €. Rechnung 13,70 €. Rückgeld = ?', solution: '6,30 €' },
+  { category: 'Alltag', prompt: 'Bus fährt 6 km in 15 min. 18 km dauern ? min', solution: '45' },
+  { category: 'Alltag', prompt: 'Regal: 2 Bretter à 40 cm und 1 Brett à 30 cm. Gesamt = ? cm', solution: '110' },
+  { category: 'Alltag', prompt: 'Einkauf: 2 Brötchen à 0,45 € und 1 Saft 1,20 €. Gesamt = ?', solution: '2,10 €' },
+  { category: 'Alltag', prompt: 'Schulweg hin 1,5 km und zurück 1,5 km. Zusammen = ? km', solution: '3' },
+];
+
+const TASK_POOL_6: EntryTicketTask[] = [
+  { category: 'Kopfrechnen', prompt: '67 + 28 = ?', solution: '95' },
+  { category: 'Kopfrechnen', prompt: '200 - 79 = ?', solution: '121' },
+  { category: 'Multiplikation', prompt: '12 · 7 = ?', solution: '84' },
+  { category: 'Division', prompt: '144 : 9 = ?', solution: '16' },
+  { category: 'Einheiten', prompt: '1,6 km = ? m', solution: '1600' },
+  { category: 'Einheiten', prompt: '900 ml = ? l', solution: '0,9' },
+  { category: 'Zeit', prompt: 'Start 13:25 Uhr, Dauer 45 min. Ende um ? Uhr.', solution: '14:10' },
+  { category: 'Zeit', prompt: 'Von 09:10 Uhr bis 10:00 Uhr = ? min', solution: '50' },
+  { category: 'Geld', prompt: '5 · 1,25 € = ?', solution: '6,25 €' },
+  { category: 'Geld', prompt: 'Du gibst 10 €. Rechnung 7,85 €. Rückgeld = ?', solution: '2,15 €' },
+  { category: 'Bruch', prompt: '2/3 von 30 = ?', solution: '20' },
+  { category: 'Prozent', prompt: '25% von 80 = ?', solution: '20' },
+  { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 1/4 entspricht 0,25.', solution: 'Wahr' },
+  { category: 'Alltag', prompt: '3 Brote à 2,40 € = ?', solution: '7,20 €' },
+  { category: 'Alltag', prompt: 'Regalhöhe: 3 Böden à 28 cm + 2 Abstände à 4 cm = ? cm', solution: '92' },
+  { category: 'Alltag', prompt: 'Supermarkt: 4 Joghurts à 0,65 € + 1 Milch 1,25 € = ?', solution: '3,85 €' },
+  { category: 'Alltag', prompt: 'Fahrradweg: 12 km bei 6 km in 20 min. Dauer = ? min', solution: '40' },
+  { category: 'Alltag', prompt: 'Umweg: 850 m + 1,2 km = ? m', solution: '2050' },
+];
+
+const TASK_POOL_9: EntryTicketTask[] = [
+  { category: 'Kopfrechnen', prompt: '920 - 347 + 88 = ?', solution: '661' },
+  { category: 'Multiplikation', prompt: '35 · 18 = ?', solution: '630' },
+  { category: 'Division', prompt: '144 : 12 = ?', solution: '12' },
+  { category: 'Bruch', prompt: '3/5 von 20 = ?', solution: '12' },
+  { category: 'Bruch/Dezimal', prompt: '3/4 als Dezimalzahl = ?', solution: '0,75' },
+  { category: 'Dezimal', prompt: '2,5 - 0,75 = ?', solution: '1,75' },
+  { category: 'Prozent', prompt: '25% von 60 = ?', solution: '15' },
+  { category: 'Prozent', prompt: '120 € um 20% reduziert = ?', solution: '96 €' },
+  { category: 'Einheiten', prompt: '1,2 km = ? m', solution: '1200' },
+  { category: 'Zeit', prompt: 'Start 19:30 Uhr, Dauer 1 h 50 min. Ende um ? Uhr.', solution: '21:20' },
+  { category: 'Alltag', prompt: '4 Joghurts je 0,65 € = ?', solution: '2,60 €' },
+  { category: 'Regalmaße', prompt: 'Regalbrett: 120 cm - 2 · 3 cm Seitenteil = ? cm', solution: '114' },
+  { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 15% von 200 sind 25.', solution: 'Falsch' },
+  { category: 'Alltag', prompt: 'Ikea: 3 Bretter à 119 cm + 2 Seiten à 201 cm = ? cm', solution: '759' },
+  { category: 'Alltag', prompt: 'Rabatt: Schuhpreis 89,90 € mit 15% Rabatt = ?', solution: '76,42 €' },
+  { category: 'Alltag', prompt: 'Fahrt: 42 km bei 70 km/h. Zeit = ? min', solution: '36' },
+  { category: 'Alltag', prompt: 'Einkauf: 2,5 kg Äpfel à 2,80 €/kg + 1,2 kg Bananen à 2,10 €/kg = ?', solution: '9,52 €' },
+];
+
+const TASK_POOL_10: EntryTicketTask[] = [
+  { category: 'Kopfrechnen', prompt: '540 - 275 + 63 = ?', solution: '328' },
+  { category: 'Multiplikation', prompt: '48 · 25 = ?', solution: '1200' },
+  { category: 'Division', prompt: '1331 : 11 = ?', solution: '121' },
+  { category: 'Bruch', prompt: '5/8 von 64 = ?', solution: '40' },
+  { category: 'Dezimal', prompt: '4,75 + 2,9 - 1,35 = ?', solution: '6,30' },
+  { category: 'Prozent', prompt: '15% von 240 = ?', solution: '36' },
+  { category: 'Prozent', prompt: '120 € um 20% reduziert = ?', solution: '96 €' },
+  { category: 'Einheiten', prompt: '2,75 km + 850 m = ? m', solution: '3600' },
+  { category: 'Zeit', prompt: 'Film 1 h 58 min, Start 20:17 Uhr. Ende um ? Uhr.', solution: '22:15' },
+  { category: 'Alltag', prompt: '36 km bei 90 km/h = ? min', solution: '24' },
+  { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 3/4 ist kleiner als 2/3.', solution: 'Falsch' },
+  { category: 'Alltag', prompt: 'Regalwand: 2,80 m breit, Regal 2,35 m. Rest = ? cm', solution: '45' },
+  { category: 'Alltag', prompt: 'Tank: 38 l à 1,79 €/l = ?', solution: '68,02 €' },
+  { category: 'Alltag', prompt: 'Lieferweg 54 km bei 90 km/h. Dauer = ? min', solution: '36' },
+  { category: 'Alltag', prompt: 'Einkauf: 3 Artikel à 14,90 € und 2 Artikel à 7,50 € = ?', solution: '59,70 €' },
+];
+
+const TASK_POOL_11: EntryTicketTask[] = [
+  { category: 'Prozent', prompt: '3,5% von 800 = ?', solution: '28' },
+  { category: 'Prozent', prompt: '240 € + 12% = ?', solution: '268,80 €' },
+  { category: 'Prozent', prompt: '320 € - 17,5% = ?', solution: '264 €' },
+  { category: 'Bruch', prompt: '3/4 + 2/3 = ?', solution: '17/12 (1 5/12)' },
+  { category: 'Mittelwert', prompt: 'Noten 2, 3, 2, 1. Durchschnitt = ?', solution: '2,0' },
+  { category: 'Logik', prompt: '3 Kisten mit je 12 Flaschen, 5 Flaschen kaputt. Wie viele ganz?', solution: '31' },
+  { category: 'Reihenfolge', prompt: 'Ordne aufsteigend: 0,5 ; 0,05 ; 0,55.', solution: '0,05 < 0,5 < 0,55' },
+  { category: 'Fläche', prompt: 'Rechteck 12 cm · 7 cm: Fläche = ?', solution: '84 cm²' },
+  { category: 'Geometrie', prompt: 'Quadrat mit Seitenlänge 9 cm: Fläche = ?', solution: '81 cm²' },
+  { category: 'Skalierung', prompt: 'Rezept für 4 Personen, du kochst für 6: Faktor = ?', solution: '1,5' },
+  { category: 'Kombi', prompt: '6 · 1,79 € + 3 · 2,49 € = ?', solution: '18,21 €' },
+  { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 0,4 entspricht 40%.', solution: 'Wahr' },
+  { category: 'Alltag', prompt: 'Möbelprojekt: 6 Bretter à 0,85 m und 4 Bretter à 0,42 m = ? m', solution: '6,78' },
+  { category: 'Alltag', prompt: 'Anfahrt: 84 km bei 70 km/h plus 18 min Pause. Gesamtzeit = ? min', solution: '90' },
+  { category: 'Alltag', prompt: 'Wocheneinkauf: 12% Rabatt auf 186,50 € = neuer Preis ?', solution: '164,12 €' },
+  { category: 'Alltag', prompt: 'Strecke: 2,4 km zu Fuß + 18 km Bus + 450 m zu Fuß = ? km', solution: '20,85' },
+];
+
+const TASK_POOL_12: EntryTicketTask[] = [
+  { category: 'Prozent', prompt: '240 € + 12% = ?', solution: '268,80 €' },
+  { category: 'Prozent', prompt: '320 € - 17,5% = ?', solution: '264 €' },
+  { category: 'Bruch', prompt: '3/4 + 2/3 = ?', solution: '17/12 (1 5/12)' },
+  { category: 'Reihenfolge', prompt: 'Ordne aufsteigend: 0,5 ; 0,05 ; 0,55.', solution: '0,05 < 0,5 < 0,55' },
+  { category: 'Fläche', prompt: 'Rechteck 12 cm · 7 cm: Fläche = ?', solution: '84 cm²' },
+  { category: 'Kombi', prompt: '2 T-Shirts à 14,90 € und 1 Hose 39,90 €: Gesamt = ?', solution: '69,70 €' },
+  { category: 'Mittelwert', prompt: 'Noten 1, 2, 2, 3. Durchschnitt = ?', solution: '2,0' },
+  { category: 'Alltag', prompt: 'Küchenplanung: 5 Schränke à 60 cm + 2 Blenden à 2 cm = ? cm', solution: '304' },
+  { category: 'Alltag', prompt: 'Einkauf: 3,4 kg Obst à 2,90 €/kg + 2 Brote à 3,20 € = ?', solution: '16,26 €' },
+  { category: 'Alltag', prompt: 'Fahrt: 126 km bei 84 km/h. Dauer = ? min', solution: '90' },
+  { category: 'Alltag', prompt: 'Preissteigerung: 249 € um 8% erhöht = ?', solution: '268,92 €' },
+];
+
+const TASK_POOL_13: EntryTicketTask[] = [
+  { category: 'Logik', prompt: '3 Kisten mit je 12 Flaschen, 5 Flaschen kaputt. Wie viele ganz?', solution: '31' },
+  { category: 'Skalierung', prompt: 'Rezept für 4 Personen, du kochst für 6: Faktor = ?', solution: '1,5' },
+  { category: 'Geometrie', prompt: 'Quadrat mit Seitenlänge 9 cm: Fläche = ?', solution: '81 cm²' },
+  { category: 'Reihenfolge', prompt: 'Ordne aufsteigend: 0,5 ; 0,05 ; 0,55.', solution: '0,05 < 0,5 < 0,55' },
+  { category: 'Wahr/Falsch', prompt: 'Wahr oder falsch: 0,4 entspricht 40%.', solution: 'Wahr' },
+  { category: 'Alltag', prompt: 'Projektkalkulation: 14 Bretter à 1,35 m + Verschnitt 8% = ? m', solution: '20,41' },
+  { category: 'Alltag', prompt: 'Pendeln: 32 km je Strecke, 5 Tage/Woche, 38 Wochen = ? km', solution: '12160' },
+  { category: 'Alltag', prompt: 'Mengenrabatt: 12% auf 1.480 € und danach 3% Skonto = ?', solution: '1263,89 €' },
+  { category: 'Alltag', prompt: 'Reisezeit: 210 km bei 105 km/h + 25 min Stopp = ? min', solution: '145' },
+];
+
+const QUESTION_SET_STORAGE_KEY = 'entry-ticket-question-sets-v1';
+
+const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
+  5: TASK_POOL_5,
+  6: TASK_POOL_6,
+  7: ENTRY_TICKET_TASK_POOL,
+  8: ENTRY_TICKET_TASK_POOL,
+  9: TASK_POOL_9,
+  10: TASK_POOL_10,
+  11: TASK_POOL_11,
+  12: TASK_POOL_12,
+  13: TASK_POOL_13,
+};
+
+const coarseCategoryForTask = (category: string): CoarseCategory => {
+  const c = category.toLowerCase();
+  if (c.includes('eigen')) return 'Eigen';
+  if (c.includes('wahr')) return 'Wahr/Falsch';
+  if (c.includes('bruch') || c.includes('dezimal') || c.includes('prozent')) return 'Bruch/Dezimal/Prozent';
+  if (c.includes('umfang') || c.includes('fläche') || c.includes('einheit') || c.includes('geometr')) return 'Geometrie/Einheiten';
+  if (c.includes('alltag') || c.includes('geld') || c.includes('zeit') || c.includes('regal') || c.includes('supermarkt') || c.includes('kombi')) return 'Zeit/Geld/Alltag';
+  if (c.includes('logik') || c.includes('muster') || c.includes('reihenfolge')) return 'Logik/Muster';
+  return 'Grundrechenarten';
+};
+
+const inflateSetToFiftyPerCategory = (list: EntryTicketTask[]): EntryTicketTask[] => {
+  const next = [...list];
+  const categories: CoarseCategory[] = [
+    'Grundrechenarten',
+    'Bruch/Dezimal/Prozent',
+    'Geometrie/Einheiten',
+    'Zeit/Geld/Alltag',
+    'Logik/Muster',
+    'Wahr/Falsch',
+  ];
+  for (const cat of categories) {
+    const inCat = next.filter((q) => coarseCategoryForTask(q.category) === cat);
+    if (inCat.length === 0) continue;
+    let i = 0;
+    while (next.filter((q) => coarseCategoryForTask(q.category) === cat).length < 50) {
+      const template = inCat[i % inCat.length];
+      next.push({ ...template, category: cat });
+      i += 1;
+    }
+  }
+  return next;
+};
+
+const dedupeEigenQuestions = (list: EntryTicketTask[]): EntryTicketTask[] => {
+  const seen = new Set<string>();
+  return list.filter((q) => {
+    if (coarseCategoryForTask(q.category) !== 'Eigen') return true;
+    const key = q.prompt.trim().toLowerCase();
+    if (!key) return false;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 export default function EntryTicketPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [grade, setGrade] = useState<Grade>(7);
+  const [taskSeed, setTaskSeed] = useState(1);
+  const [showSetEditor, setShowSetEditor] = useState(false);
+  const [questionSets, setQuestionSets] = useState<GradeQuestionSets>(() => {
+    try {
+      const raw = localStorage.getItem(QUESTION_SET_STORAGE_KEY);
+      if (!raw) {
+        return {
+          5: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[5])),
+          6: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[6])),
+          7: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[7])),
+          8: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[8])),
+          9: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[9])),
+          10: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[10])),
+          11: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[11])),
+          12: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[12])),
+          13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[13])),
+        };
+      }
+      const parsed = JSON.parse(raw) as Partial<GradeQuestionSets>;
+      return {
+        5: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[5] ?? DEFAULT_QUESTION_SETS[5])),
+        6: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[6] ?? DEFAULT_QUESTION_SETS[6])),
+        7: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[7] ?? DEFAULT_QUESTION_SETS[7])),
+        8: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[8] ?? DEFAULT_QUESTION_SETS[8])),
+        9: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[9] ?? DEFAULT_QUESTION_SETS[9])),
+        10: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[10] ?? DEFAULT_QUESTION_SETS[10])),
+        11: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[11] ?? DEFAULT_QUESTION_SETS[11])),
+        12: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[12] ?? DEFAULT_QUESTION_SETS[12])),
+        13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[13] ?? DEFAULT_QUESTION_SETS[13])),
+      };
+    } catch {
+      return {
+        5: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[5])),
+        6: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[6])),
+        7: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[7])),
+        8: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[8])),
+        9: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[9])),
+        10: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[10])),
+        11: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[11])),
+        12: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[12])),
+        13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[13])),
+      };
+    }
+  });
   const [selectedTasks, setSelectedTasks] = useState<EntryTicketTask[]>(
-    ENTRY_TICKET_TASK_POOL.slice(0, TARGET_TASK_COUNT),
+    [],
   );
+  const [pickedListIndices, setPickedListIndices] = useState<number[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(SLIDE_DURATION_SEC);
   const [isRunning, setIsRunning] = useState(false);
@@ -97,6 +351,20 @@ export default function EntryTicketPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingPrompt, setEditingPrompt] = useState('');
   const [editingSolution, setEditingSolution] = useState('');
+  const [setEditIndex, setSetEditIndex] = useState<number | null>(null);
+  const [setEditPrompt, setSetEditPrompt] = useState('');
+  const [setEditSolution, setSetEditSolution] = useState('');
+  const [setEditCategory, setSetEditCategory] = useState('Alltag');
+  const [newPrompt, setNewPrompt] = useState('');
+  const [newSolution, setNewSolution] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const gradeParam = Number(params.get('grade'));
+    if (Number.isFinite(gradeParam) && gradeParam >= 5 && gradeParam <= 13) {
+      setGrade(gradeParam as Grade);
+    }
+  }, [location.search]);
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
   const activeTasks = selectedTasks;
@@ -107,6 +375,134 @@ export default function EntryTicketPage() {
     activeTasks.length > 0 ? Math.min((completedSlides / activeTasks.length) * 100, 100) : 0;
   const elapsedSeconds = currentIndex * SLIDE_DURATION_SEC + (SLIDE_DURATION_SEC - secondsLeft);
   const remainingSeconds = Math.max(totalRunSeconds - elapsedSeconds, 0);
+
+  const toCoarseCategory = (category: string): CoarseCategory => {
+    return coarseCategoryForTask(category);
+  };
+
+  const poolForBand = useMemo(() => questionSets[grade] ?? [], [questionSets, grade]);
+  const groupedSetQuestions = useMemo(() => {
+    const indexed = poolForBand.map((q, idx) => ({ q, idx }));
+    const categoryOrder: CoarseCategory[] = [
+      'Eigen',
+      'Grundrechenarten',
+      'Bruch/Dezimal/Prozent',
+      'Geometrie/Einheiten',
+      'Zeit/Geld/Alltag',
+      'Logik/Muster',
+      'Wahr/Falsch',
+    ];
+    const rank = (cat: CoarseCategory) => {
+      const i = categoryOrder.indexOf(cat);
+      return i === -1 ? 999 : i;
+    };
+    indexed.sort((a, b) => {
+      const ca = toCoarseCategory(a.q.category);
+      const cb = toCoarseCategory(b.q.category);
+      const byCategory = rank(ca) - rank(cb);
+      if (byCategory !== 0) return byCategory;
+      return a.idx - b.idx;
+    });
+    // Anzeige-Nummerierung soll so wirken wie die Reihenfolge im Editor (nach Sortierung).
+    let displayCounter = 1;
+    const withDisplay = indexed.map((item) => {
+      const displayNumber = displayCounter;
+      displayCounter += 1;
+      return { ...item, displayNumber };
+    });
+    const groups: Array<{ category: string; items: Array<{ q: EntryTicketTask; idx: number; displayNumber: number }> }> = [];
+    for (const item of withDisplay) {
+      const coarse = toCoarseCategory(item.q.category);
+      const last = groups[groups.length - 1];
+      if (!last || last.category !== coarse) {
+        groups.push({ category: coarse, items: [item] });
+      } else {
+        last.items.push(item);
+      }
+    }
+    return groups;
+  }, [poolForBand]);
+
+  const displayNumberByPoolIndex = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const group of groupedSetQuestions) {
+      for (const item of group.items) {
+        map.set(item.idx, item.displayNumber);
+      }
+    }
+    return map;
+  }, [groupedSetQuestions]);
+
+  const categoryVisuals: Record<CoarseCategory, { icon: string; bg: string; fg: string; border: string }> = {
+    Grundrechenarten: { icon: '🧮', bg: '#fff3e0', fg: '#e65100', border: '#ffcc80' },
+    'Bruch/Dezimal/Prozent': { icon: '📊', bg: '#e8f5e9', fg: '#1b5e20', border: '#a5d6a7' },
+    'Geometrie/Einheiten': { icon: '📐', bg: '#e3f2fd', fg: '#0d47a1', border: '#90caf9' },
+    'Zeit/Geld/Alltag': { icon: '🕒', bg: '#f3e5f5', fg: '#6a1b9a', border: '#ce93d8' },
+    'Logik/Muster': { icon: '🧩', bg: '#ede7f6', fg: '#4527a0', border: '#b39ddb' },
+    'Wahr/Falsch': { icon: '✅', bg: '#e0f2f1', fg: '#004d40', border: '#80cbc4' },
+    Eigen: { icon: '🧾', bg: '#e8f5ff', fg: '#0b3a91', border: '#90caf9' },
+  };
+
+  const varyNumbersOnly = (prompt: string, seed: number): string => {
+    if (/wahr\s*oder\s*falsch/i.test(prompt)) return prompt;
+    let localSeed = seed;
+    const rnd = () => {
+      localSeed = (localSeed * 1103515245 + 12345) % 2147483648;
+      return localSeed / 2147483648;
+    };
+    return prompt.replace(/(?<![:\d])\d+(?:[.,]\d+)?(?!:\d)/g, (raw) => {
+      const hasComma = raw.includes(',');
+      const base = Number(raw.replace(',', '.'));
+      if (!Number.isFinite(base)) return raw;
+      const factor = hasComma ? (0.8 + rnd() * 0.4) : (0.7 + rnd() * 0.6);
+      let v = base * factor;
+      if (!hasComma) v = Math.max(1, Math.round(v));
+      const decimals = hasComma ? ((raw.split(',')[1] || '').length || 1) : 0;
+      const str = decimals > 0 ? v.toFixed(decimals) : String(v);
+      return str.replace('.', ',');
+    });
+  };
+
+  const pickRandomTasks = (
+    pool: EntryTicketTask[],
+    count: number,
+    seed: number,
+  ): { tasks: EntryTicketTask[]; indices: number[] } => {
+    const indexedPool = pool.map((task, i) => ({ task, i }));
+    const arr = [...indexedPool];
+    let s = seed;
+    const rnd = () => {
+      s = (s * 1664525 + 1013904223) % 4294967296;
+      return s / 4294967296;
+    };
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rnd() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    const sliced = arr.slice(0, Math.min(count, arr.length));
+    return {
+      tasks: sliced.map(({ task }, idx) => ({
+        ...task,
+        prompt: varyNumbersOnly(task.prompt, seed + idx * 31),
+      })),
+      indices: sliced.map(({ i }) => i),
+    };
+  };
+
+  useEffect(() => {
+    if (sessionStarted) return;
+    const picked = pickRandomTasks(poolForBand, TARGET_TASK_COUNT, taskSeed);
+    setSelectedTasks(picked.tasks);
+    setPickedListIndices(picked.indices.map((i) => displayNumberByPoolIndex.get(i) ?? i + 1));
+  }, [poolForBand, taskSeed, sessionStarted]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(QUESTION_SET_STORAGE_KEY, JSON.stringify(questionSets));
+    } catch {
+      // ignore storage errors
+    }
+  }, [questionSets]);
 
   useEffect(() => {
     if (!sessionStarted || !isRunning || sessionDone || activeTasks.length === 0) return undefined;
@@ -137,6 +533,7 @@ export default function EntryTicketPage() {
     setShowSolutions(false);
     setTeacherNotes('');
     setIsRunning(true);
+    setPickedListIndices([]);
   };
 
   const startOrResume = () => {
@@ -155,17 +552,116 @@ export default function EntryTicketPage() {
   const replaceTaskAtIndex = (index: number) => {
     setSelectedTasks((prev) => {
       if (index < 0 || index >= prev.length) return prev;
-      const currentPrompt = prev[index].prompt;
-      const usedPrompts = new Set(prev.map((task) => task.prompt));
-      usedPrompts.delete(currentPrompt);
-      const replacement = ENTRY_TICKET_TASK_POOL.find(
-        (task) => task.prompt !== currentPrompt && !usedPrompts.has(task.prompt),
-      );
-      if (!replacement) return prev;
+      if (poolForBand.length === 0) return prev;
+      const pickBase = poolForBand[Math.floor(Math.random() * poolForBand.length)];
+      const baseIndex = poolForBand.indexOf(pickBase);
+      const replacement = {
+        ...pickBase,
+        prompt: varyNumbersOnly(pickBase.prompt, Date.now() + index),
+      };
       const next = [...prev];
       next[index] = replacement;
+      setPickedListIndices((prevIndices) => {
+        const nextIndices = [...prevIndices];
+        nextIndices[index] = displayNumberByPoolIndex.get(baseIndex) ?? baseIndex + 1;
+        return nextIndices;
+      });
       return next;
     });
+  };
+
+  const startSetEditing = (index: number) => {
+    const task = poolForBand[index];
+    if (!task) return;
+    setSetEditIndex(index);
+    setSetEditCategory(task.category);
+    setSetEditPrompt(task.prompt);
+    setSetEditSolution(task.solution);
+  };
+
+  const cancelSetEditing = () => {
+    setSetEditIndex(null);
+    setSetEditCategory('Alltag');
+    setSetEditPrompt('');
+    setSetEditSolution('');
+  };
+
+  const saveSetEditing = () => {
+    if (setEditIndex === null) return;
+    const prompt = setEditPrompt.trim();
+    const solution = setEditSolution.trim();
+    const category = toCoarseCategory(setEditCategory.trim() || 'Zeit/Geld/Alltag');
+    if (!prompt || !solution) return;
+    setQuestionSets((prev) => {
+      const list = [...(prev[grade] ?? [])];
+      if (setEditIndex < 0 || setEditIndex >= list.length) return prev;
+      list[setEditIndex] = { ...list[setEditIndex], category, prompt, solution };
+      return { ...prev, [grade]: list };
+    });
+    cancelSetEditing();
+    setTaskSeed((s) => s + 1);
+  };
+
+  const deleteSetQuestion = (index: number) => {
+    setQuestionSets((prev) => {
+      const list = [...(prev[grade] ?? [])];
+      if (index < 0 || index >= list.length) return prev;
+      list.splice(index, 1);
+      return { ...prev, [grade]: list };
+    });
+    setTaskSeed((s) => s + 1);
+  };
+
+  const addSetQuestion = () => {
+    const prompt = newPrompt.trim();
+    const solution = newSolution.trim();
+    if (!prompt || !solution) return;
+    setQuestionSets((prev) => {
+      const list = [...(prev[grade] ?? [])];
+      list.push({
+        category: 'Eigen',
+        prompt,
+        solution,
+      });
+      return { ...prev, [grade]: list };
+    });
+    setNewPrompt('');
+    setNewSolution('');
+    setTaskSeed((s) => s + 1);
+  };
+
+  const handleAddQuestionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    addSetQuestion();
+  };
+
+  const fillToFiftyPerCategory = () => {
+    setQuestionSets((prev) => {
+      const base = [...(prev[grade] ?? [])];
+      const categories: CoarseCategory[] = [
+        'Grundrechenarten',
+        'Bruch/Dezimal/Prozent',
+        'Geometrie/Einheiten',
+        'Zeit/Geld/Alltag',
+        'Logik/Muster',
+        'Wahr/Falsch',
+        'Eigen',
+      ];
+      const next = [...base];
+      for (const cat of categories) {
+        const inCat = next.filter((q) => toCoarseCategory(q.category) === cat);
+        if (inCat.length === 0) continue;
+        let i = 0;
+        while (next.filter((q) => toCoarseCategory(q.category) === cat).length < 50) {
+          const template = inCat[i % inCat.length];
+          next.push({ ...template, category: cat });
+          i += 1;
+        }
+      }
+      return { ...prev, [grade]: next };
+    });
+    setTaskSeed((s) => s + 1);
   };
 
   const startEditingTask = (index: number) => {
@@ -287,10 +783,7 @@ export default function EntryTicketPage() {
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (!sessionStarted) {
-          startSession();
-          return;
-        }
+        if (!sessionStarted) return;
         if (isRunning) {
           pause();
         } else {
@@ -441,9 +934,9 @@ export default function EntryTicketPage() {
 
     const solvedQuestion = solveQuestionMarkEquation(text);
     if (solvedQuestion !== null) {
-      const suffix = extractExpectedSuffix(text);
       const formatted = formatDeNumber(solvedQuestion, 4);
-      return suffix ? `${formatted} ${suffix}` : formatted;
+      // Wichtig: die Einheit steht im Prompt hinter dem '?', daher nur den Zahlenwert zurückgeben.
+      return formatted;
     }
 
     let m = text.match(/(\d+(?:[.,]\d+)?)%\s*von\s*(\d+(?:[.,]\d+)?)/i);
@@ -465,14 +958,14 @@ export default function EntryTicketPage() {
       const start = parseTimeToMinutes(m[1], m[2]);
       const end = parseTimeToMinutes(m[3], m[4]);
       const diff = end >= start ? end - start : end + 24 * 60 - start;
-      return `${diff} min`;
+      return `${diff}`;
     }
 
     m = text.match(/start\s*(\d{1,2}):(\d{2})\s*uhr.*dauer\s*(\d+)\s*h\s*(\d+)\s*min.*ende\s*um\s*\?\s*uhr/i);
     if (m) {
       const start = parseTimeToMinutes(m[1], m[2]);
       const end = start + Number(m[3]) * 60 + Number(m[4]);
-      return `${formatMinutesToTime(end)} Uhr`;
+      return `${formatMinutesToTime(end)}`;
     }
 
     m = text.match(/(\d+(?:[.,]\d+)?)\s*(m|km|l)\s*=\s*\?\s*(cm|m|ml)\b/i);
@@ -481,7 +974,7 @@ export default function EntryTicketPage() {
       const from = m[2].toLowerCase();
       const to = m[3].toLowerCase();
       const converted = convertUnit(value, from, to);
-      if (converted !== null) return `${formatDeNumber(converted)} ${to}`;
+      if (converted !== null) return `${formatDeNumber(converted)}`;
     }
 
     // Generische Zieleinheitserkennung (wenn komplett umformuliert wurde)
@@ -491,14 +984,14 @@ export default function EntryTicketPage() {
       const from = m[2].toLowerCase();
       const to = m[3].toLowerCase();
       const converted = convertUnit(value, from, to);
-      if (converted !== null) return `${formatDeNumber(converted)} ${to}`;
+      if (converted !== null) return `${formatDeNumber(converted)}`;
     }
 
     m = text.match(/(\d+(?:[.,]\d+)?)\s*km\s*bei\s*(\d+(?:[.,]\d+)?)\s*km\/h.*\?\s*min/i);
     if (m) {
       const distance = toNumber(m[1]);
       const speed = toNumber(m[2]);
-      if (speed > 0) return `${formatDeNumber((distance / speed) * 60)} min`;
+      if (speed > 0) return `${formatDeNumber((distance / speed) * 60)}`;
     }
 
     const eqIndex = text.indexOf('=');
@@ -506,8 +999,8 @@ export default function EntryTicketPage() {
       const expr = text.slice(0, eqIndex);
       const value = evaluateSimpleExpression(expr);
       if (value !== null) {
-        const suffix = extractExpectedSuffix(text);
-        return suffix ? `${formatDeNumber(value)} ${suffix}` : formatDeNumber(value);
+        // Einheit steht hinter dem '?', daher nur Zahlenwert zurückgeben.
+        return formatDeNumber(value);
       }
     }
 
@@ -515,7 +1008,8 @@ export default function EntryTicketPage() {
   };
 
   const colorizeOperators = (text: string, keyPrefix: string, large = false) => {
-    const parts = text.split(/([+\-·:÷=<>%?])/g);
+    const formattedText = text.replace(/(\d+)\s*\/\s*(\d+)/g, '$1⁄$2');
+    const parts = formattedText.split(/([+\-·:÷=<>%?])/g);
     return parts.map((part, index) => {
       const isOperator = /^[+\-·:÷=<>%]$/.test(part);
       const isQuestionMark = part === '?';
@@ -586,6 +1080,53 @@ export default function EntryTicketPage() {
     rightAlignedSolution = false,
   ) => {
     const cleaned = cleanPrompt(prompt);
+    const normalized = cleaned.toLowerCase();
+    const wfPrefix = 'wahr oder falsch:';
+    if (normalized.startsWith(wfPrefix)) {
+      const statement = cleaned.slice(wfPrefix.length).trim().replace(/[.]\s*$/, '');
+      const statementNode = colorizeOperators(statement, `${keyPrefix}-wf`, false);
+      if (rightAlignedSolution) {
+        return (
+          <Box
+            component="span"
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) auto',
+              width: '100%',
+              alignItems: 'baseline',
+              columnGap: 1.5,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Box
+              component="div"
+              sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
+            >
+              <Box component="span" sx={{ fontWeight: 700, color: '#37474f' }}>
+                Wahr oder falsch?{' '}
+              </Box>
+              {statementNode}
+            </Box>
+            <Box component="span" sx={{ color: 'success.dark', fontWeight: 800, whiteSpace: 'nowrap' }}>
+              {solution}
+            </Box>
+          </Box>
+        );
+      }
+
+      return (
+        <>
+          <Box component="span" sx={{ fontWeight: 700, color: '#37474f' }}>
+            Wahr oder falsch?{' '}
+          </Box>
+          {statementNode}{' '}
+          <Box component="span" sx={{ color: OPERATOR_COLOR, fontWeight: 900 }}>
+            {solution}
+          </Box>
+        </>
+      );
+    }
+
     const questionIndex = cleaned.indexOf('?');
     if (questionIndex < 0) return renderPrompt(cleaned, keyPrefix, false, true);
 
@@ -595,28 +1136,36 @@ export default function EntryTicketPage() {
     const needsSpaceBefore = before.length > 0 && !before.endsWith(' ');
     const needsSpaceAfter = after.length > 0 && !after.startsWith(' ');
     const forceSpaceAfterEquals = beforeTrimmedRight.endsWith('=');
+    const afterTrimStart = after.trimStart();
 
     if (rightAlignedSolution) {
       return (
         <Box
           component="span"
           sx={{
-            display: 'inline-flex',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
             width: '100%',
             alignItems: 'baseline',
-            justifyContent: 'space-between',
-            gap: 8,
+            columnGap: 1.5,
+            whiteSpace: 'nowrap',
           }}
         >
-          <Box component="span">
+          <Box component="div" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {renderPrompt(before, `${keyPrefix}-before`, false, true)}
           </Box>
-          <Box component="span" sx={{ textAlign: 'right', minWidth: '28%' }}>
+          <Box component="span" sx={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
             <Box component="span" sx={{ color: 'success.dark', fontWeight: 800 }}>
               {solution}
             </Box>
-            {needsSpaceAfter ? ' ' : ''}
-            {renderPrompt(after, `${keyPrefix}-after`, false, true)}
+            {afterTrimStart ? (
+              <>
+                {' '}
+                <Box component="span" sx={{ color: 'success.dark', fontWeight: 800 }}>
+                  {afterTrimStart}
+                </Box>
+              </>
+            ) : needsSpaceAfter ? ' ' : null}
           </Box>
         </Box>
       );
@@ -629,8 +1178,14 @@ export default function EntryTicketPage() {
         <Box component="span" sx={{ color: 'success.dark', fontWeight: 800 }}>
           {solution}
         </Box>
-        {needsSpaceAfter ? ' ' : ''}
-        {renderPrompt(after, `${keyPrefix}-after`, false, true)}
+        {afterTrimStart ? (
+          <>
+            {' '}
+            <Box component="span" sx={{ color: 'success.dark', fontWeight: 800 }}>
+              {afterTrimStart}
+            </Box>
+          </>
+        ) : needsSpaceAfter ? ' ' : null}
       </>
     );
   };
@@ -665,7 +1220,22 @@ export default function EntryTicketPage() {
             EntryTicket
           </Typography>
 
-          <Box sx={{ width: 32, height: 32 }} />
+          <IconButton
+            onClick={() => navigate('/dashboard')}
+            aria-label="Ins Dashboard"
+            size="small"
+            sx={{
+              p: 0,
+              minWidth: 32,
+              width: 32,
+              height: 32,
+              bgcolor: 'white',
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
         </Box>
 
         <Card sx={{ borderRadius: 2, boxShadow: '0 6px 20px rgba(0,0,0,0.07)' }}>
@@ -687,15 +1257,44 @@ export default function EntryTicketPage() {
                     Auswahl vor Start ({activeTasks.length}/{TARGET_TASK_COUNT})
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 0.75 }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mr: 0.5 }}>
+                      {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
+                        <Button
+                          key={g}
+                          size="small"
+                          variant={grade === g ? 'contained' : 'outlined'}
+                          onClick={() => setGrade(g)}
+                          sx={{ minWidth: 36, px: 0.6 }}
+                        >
+                          {g}
+                        </Button>
+                      ))}
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setTaskSeed((s) => s + 1)}
+                        sx={{ minWidth: 74, px: 0.75 }}
+                      >
+                        Mischen
+                      </Button>
+                    </Box>
                     <Button
                       size="small"
                       variant="outlined"
                       onClick={() => {
-                        setSelectedTasks(ENTRY_TICKET_TASK_POOL.slice(0, TARGET_TASK_COUNT));
+                        setTaskSeed((s) => s + 1);
                         cancelEditingTask();
                       }}
                     >
                       Reset
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={showSetEditor ? 'contained' : 'outlined'}
+                      onClick={() => setShowSetEditor((v) => !v)}
+                      sx={{ minWidth: 92 }}
+                    >
+                      Fragenset
                     </Button>
                     <Button
                       size="small"
@@ -764,6 +1363,12 @@ export default function EntryTicketPage() {
                             <Box component="span" sx={{ fontWeight: 700 }}>
                               {renderPrompt(task.prompt, `selection-${index}`, false, true)}
                             </Box>
+                        {pickedListIndices[index] !== undefined && (
+                              <Box component="span" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                {' '}
+                            (List: {pickedListIndices[index]})
+                              </Box>
+                            )}
                           </Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
                             <Button
@@ -789,6 +1394,124 @@ export default function EntryTicketPage() {
                     </Box>
                   ))}
                 </Box>
+
+                {showSetEditor && (
+                  <Box sx={{ mt: 1.5, p: 1, border: '1px solid', borderColor: '#bcd3ff', borderRadius: 1.25, bgcolor: '#eef4ff' }}>
+                    <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 700 }}>
+                      Fragenset Klasse {grade} ({poolForBand.length} Fragen)
+                    </Typography>
+                    <Box sx={{ mt: 0.8, display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                      <TextField
+                        size="small"
+                        value={newPrompt}
+                        onChange={(e) => setNewPrompt(e.target.value)}
+                        placeholder="Neue Frage (mit ?)"
+                        sx={{ flex: 1 }}
+                        onKeyDown={handleAddQuestionKeyDown}
+                      />
+                      <TextField
+                        size="small"
+                        value={newSolution}
+                        onChange={(e) => setNewSolution(e.target.value)}
+                        placeholder="Antwort"
+                        sx={{ width: 140 }}
+                        onKeyDown={handleAddQuestionKeyDown}
+                      />
+                      <Button size="small" variant="contained" onClick={addSetQuestion} sx={{ minWidth: 34, width: 34, height: 30, p: 0 }}>
+                        +
+                      </Button>
+                    </Box>
+                    <Box sx={{ display: 'grid', gap: 0.6, mt: 0.8 }}>
+                      {groupedSetQuestions.map((group) => (
+                        <Box key={group.category} sx={{ display: 'grid', gap: 0.45 }}>
+                          <Box
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              px: 0.75,
+                              py: 0.35,
+                              borderRadius: 1,
+                              width: 'fit-content',
+                              bgcolor: categoryVisuals[group.category as CoarseCategory].bg,
+                              color: categoryVisuals[group.category as CoarseCategory].fg,
+                              border: '1px solid',
+                              borderColor: categoryVisuals[group.category as CoarseCategory].border,
+                            }}
+                          >
+                            <Box component="span" sx={{ fontSize: '0.85rem', lineHeight: 1 }}>
+                              {categoryVisuals[group.category as CoarseCategory].icon}
+                            </Box>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'inherit' }}>
+                              {group.category}
+                            </Typography>
+                          </Box>
+                          {group.items.map(({ q, idx, displayNumber }) => (
+                            <Box
+                              key={`${idx}-${q.prompt}`}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                p: 0.5,
+                                border: '1px solid',
+                                borderColor: categoryVisuals[group.category as CoarseCategory].border,
+                                borderRadius: 1,
+                                bgcolor: categoryVisuals[group.category as CoarseCategory].bg,
+                              }}
+                            >
+                              {setEditIndex === idx ? (
+                                <>
+                                  <TextField
+                                    size="small"
+                                    value={setEditCategory}
+                                    onChange={(e) => setSetEditCategory(e.target.value)}
+                                    placeholder="Kategorie"
+                                    sx={{ width: 110 }}
+                                  />
+                                  <TextField
+                                    size="small"
+                                    value={setEditPrompt}
+                                    onChange={(e) => setSetEditPrompt(e.target.value)}
+                                    placeholder="Frage"
+                                    sx={{ flex: 1 }}
+                                  />
+                                  <TextField
+                                    size="small"
+                                    value={setEditSolution}
+                                    onChange={(e) => setSetEditSolution(e.target.value)}
+                                    placeholder="Lösung"
+                                    sx={{ width: 130 }}
+                                  />
+                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.35 }}>
+                                    <Button size="small" variant="contained" onClick={saveSetEditing} sx={{ minWidth: 26, px: 0.6 }}>OK</Button>
+                                    <Button size="small" onClick={cancelSetEditing} sx={{ minWidth: 26, px: 0.6 }}>Ab</Button>
+                                  </Box>
+                                </>
+                              ) : (
+                                <>
+                                  <Typography variant="body2" sx={{ minWidth: 28, color: 'text.secondary', fontWeight: 700 }}>
+                                    {displayNumber}.
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ flex: 1 }}>
+                                    {q.prompt}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ minWidth: 90, color: 'success.dark', fontWeight: 700 }}>
+                                    {q.solution}
+                                  </Typography>
+                                  <Box sx={{ ml: 'auto', display: 'flex', gap: 0.35 }}>
+                                    <Button size="small" variant="outlined" onClick={() => startSetEditing(idx)} sx={{ minWidth: 22, width: 22, height: 22, p: 0 }}>✎</Button>
+                                    <Button size="small" color="error" variant="outlined" onClick={() => deleteSetQuestion(idx)} sx={{ minWidth: 22, width: 22, height: 22, p: 0 }}>×</Button>
+                                  </Box>
+                                </>
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
               </Box>
             ) : (
               <>
@@ -993,31 +1716,30 @@ export default function EntryTicketPage() {
                             borderColor: 'divider',
                           }}
                         >
-                          <Typography variant="body2" sx={{ fontSize: '0.98rem', lineHeight: 1.16 }}>
-                            {index + 1}.{' '}
-                            {showSolutions
-                              ? renderPromptWithInlineGreenSolution(task.prompt, task.solution, `final-${index}`, true)
-                              : renderPrompt(task.prompt, `final-${index}`, false, true)}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, width: '100%', minWidth: 0 }}>
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              sx={{ fontSize: '0.98rem', lineHeight: 1.16, whiteSpace: 'nowrap', flexShrink: 0 }}
+                            >
+                              {index + 1}.
+                            </Typography>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              {showSolutions
+                                ? renderPromptWithInlineGreenSolution(task.prompt, task.solution, `final-${index}`, true)
+                                : (
+                                  <Typography variant="body2" sx={{ fontSize: '0.98rem', lineHeight: 1.16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {renderPrompt(task.prompt, `final-${index}`, false, true)}
+                                  </Typography>
+                                )}
+                            </Box>
+                          </Box>
                         </Box>
                       ))}
                     </Box>
                   </Box>
                 )}
               </>
-            )}
-
-            {sessionStarted && sessionDone && isTeacher && (
-              <TextField
-                multiline
-                minRows={4}
-                fullWidth
-                label="Notizen / Rechenwege"
-                placeholder="Rechenwege..."
-                value={teacherNotes}
-                onChange={(e) => setTeacherNotes(e.target.value)}
-                sx={{ mt: 1.25 }}
-              />
             )}
 
           </CardContent>

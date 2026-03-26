@@ -276,7 +276,9 @@ async function integrateEpoGradesToSchema(groupId) {
     }
     catch (error) {
         console.error('Error integrating EPO grades into grading schema for group:', groupId, error);
-        // Nicht werfen, um Benutzerinteraktionen nicht zu blockieren
+        console.error('Integration error details:', error === null || error === void 0 ? void 0 : error.message, error === null || error === void 0 ? void 0 : error.stack);
+        // Werfe den Fehler weiter, damit er im aufrufenden Code behandelt werden kann
+        throw new Error(`Fehler beim Integrieren der EPO-Noten ins Notenschema: ${(error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler'}`);
     }
 }
 // Get participation data for a specific student in all their groups
@@ -1246,7 +1248,9 @@ router.post('/:groupId/epo-grades/release', async (req, res) => {
             }
             catch (integrationError) {
                 console.error('Error integrating EPO grades:', integrationError);
-                // Weiter machen, auch wenn Integration fehlschlägt
+                console.error('Integration error details:', integrationError === null || integrationError === void 0 ? void 0 : integrationError.message, integrationError === null || integrationError === void 0 ? void 0 : integrationError.stack);
+                // Werfe den Fehler weiter, damit der Client informiert wird
+                throw new Error(`Fehler beim Integrieren der Noten ins Schema: ${(integrationError === null || integrationError === void 0 ? void 0 : integrationError.message) || 'Unbekannter Fehler'}`);
             }
         }
         else {
@@ -1305,9 +1309,10 @@ router.post('/:groupId/epo-grades/release', async (req, res) => {
     catch (error) {
         console.error('Error releasing EPO grades:', error);
         console.error('Error details:', error === null || error === void 0 ? void 0 : error.message, error === null || error === void 0 ? void 0 : error.stack);
+        const errorMessage = (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler';
         res.status(500).json({
-            error: 'Server error',
-            message: (error === null || error === void 0 ? void 0 : error.message) || 'Unbekannter Fehler'
+            error: 'Fehler beim Freigeben der Noten',
+            message: errorMessage
         });
     }
 });

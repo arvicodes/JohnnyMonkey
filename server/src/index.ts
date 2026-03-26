@@ -24,6 +24,7 @@ import gradesRoutes from './routes/grades.routes';
 import fileSystemPathsRoutes from './routes/fileSystemPaths';
 import kaCorrectionsRoutes from './routes/kaCorrections';
 import messageRoutes from './routes/messages';
+import exitTicketRoutes from './routes/exitTicket';
 import flashcardRoutes from './routes/flashcards';
 import submissionRoutes from './routes/submissions';
 import fileShareRoutes from './routes/fileShares';
@@ -84,6 +85,7 @@ app.use('/api/advent-calendar', adventCalendarRoutes);
 app.use('/api/lesson-instructions', lessonInstructionsRoutes);
 app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/exit-ticket', exitTicketRoutes);
 
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));
@@ -116,24 +118,54 @@ app.get('/api/monitoring/stats', (req, res) => {
   }
 });
 
-// Serve static files from client build
-const clientBuildPath = path.join(__dirname, '..', 'client-build');
-app.use(express.static(clientBuildPath));
+// Serve static files from client build ONLY in production
+let clientBuildPath: string | null = null;
+if (process.env.NODE_ENV === 'production') {
+  clientBuildPath = path.join(__dirname, '..', 'client-build');
+  app.use(express.static(clientBuildPath));
 
-// React Router Fallback - ALWAYS last (but exclude API routes)
-app.get('*', (req, res) => {
-  // Don't serve React app for API routes
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
-  }
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
-});
+  // React Router Fallback - ALWAYS last (but exclude API routes)
+  app.get('*', (req, res) => {
+    // Don't serve React app for API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    if (!clientBuildPath) {
+      return res.status(500).json({ error: 'Client build path not configured' });
+    }
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+} else {
+  // Development: don't serve a potentially stale client-build.
+  // Provide a helpful hint when someone opens backend URLs in the browser.
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/material/')) {
+      return res.status(404).json({ error: 'Endpoint not found' });
+    }
+
+    const acceptsHtml = String(req.headers.accept || '').includes('text/html');
+    if (acceptsHtml) {
+      return res
+        .status(302)
+        .setHeader('Location', 'http://localhost:3000')
+        .send('Redirecting to the frontend dev server...');
+    }
+
+    return res.status(404).json({
+      error: 'Frontend not served in development',
+      hint: 'Open http://localhost:3000 for the app. Backend API is on http://localhost:3003/api',
+      path: req.path
+    });
+  });
+}
 
 // Error monitoring middleware (must be last)
 app.use(MonitoringService.errorMonitor());
 
-// Debug: Log the build path
-console.log('🔍 Client build path:', clientBuildPath);
+// Debug: Log the build path (only if configured)
+if (clientBuildPath) {
+  console.log('🔍 Client build path:', clientBuildPath);
+}
 console.log('🔍 Current directory:', __dirname);
 
 // Graceful shutdown
@@ -174,7 +206,8 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server with Render compatibility
 async function startServer() {
   try {
-    const port = parseInt(process.env.PORT || '3000', 10);
+    // Lokal: 3003 (React nutzt 3000). Ohne PORT kein Konflikt mit dem Frontend.
+    const port = parseInt(process.env.PORT || '3003', 10);
     
     // For Render, use simple server start
     if (process.env.NODE_ENV === 'production') {

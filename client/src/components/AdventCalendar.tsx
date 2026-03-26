@@ -21,12 +21,12 @@ import {
   Grow
 } from '@mui/material';
 import {
-  Close as CloseIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Refresh as RefreshIcon,
   Star as StarIcon
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 interface AdventCalendarDoor {
   id: string;
@@ -578,15 +578,15 @@ const AdventCalendar: React.FC<AdventCalendarProps> = ({ userId }) => {
       >
         {selectedDoor && (
           <>
-            <DialogTitle sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: '#fff' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  🎁 Türchen {selectedDoor.day}
-                </Typography>
-                <IconButton onClick={handleCloseDialog} size="small" sx={{ color: '#fff' }}>
-                  <CloseIcon />
-                </IconButton>
-              </Box>
+            <DialogTitle sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: '#fff', ...dialogCloseTitleSx }}>
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                🎁 Türchen {selectedDoor.day}
+              </Typography>
+              <DialogCloseIconButton
+                onClose={handleCloseDialog}
+                sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+                iconSx={{ color: '#fff' }}
+              />
             </DialogTitle>
             <DialogContent sx={{ bgcolor: '#fff', mt: 0 }}>
               {!showResults ? (

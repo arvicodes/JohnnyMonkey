@@ -19,6 +19,7 @@ import SharedOverviewPage from './pages/SharedOverviewPage';
 import SevenMinuteWorkoutPage from './pages/SevenMinuteWorkoutPage';
 import MovementStoriesPage from './pages/MovementStoriesPage';
 import EntryTicketPage from './pages/EntryTicketPage';
+import ExitTicketPage from './pages/ExitTicketPage';
 
 import { Snackbar, Alert } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -262,6 +263,7 @@ function AppContent() {
         <Route path="/seven-minute-workout" element={<SevenMinuteWorkoutPage />} />
         <Route path="/bewegungsgeschichten-klassiker" element={<MovementStoriesPage />} />
         <Route path="/entry-ticket" element={<EntryTicketPage />} />
+        <Route path="/exit-ticket" element={<ExitTicketPage />} />
 
       </Routes>
       

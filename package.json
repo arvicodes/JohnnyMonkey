@@ -4,6 +4,8 @@
   "description": "Educational platform with database backup integration",
   "main": "index.js",
   "scripts": {
+    "dev": "concurrently -n API,WEB -c blue,green \"npm run dev --prefix server\" \"npm start --prefix client\"",
+    "check:local": "node scripts/check-local.js",
     "backup": "bash scripts/backup-manager.sh create",
     "backup:list": "bash scripts/backup-manager.sh list",
     "backup:cleanup": "bash scripts/backup-manager.sh cleanup",
@@ -17,5 +19,8 @@
   },
   "keywords": ["education", "database", "backup", "git"],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }

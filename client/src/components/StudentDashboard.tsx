@@ -5219,6 +5219,43 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Typography>
                   </IconButton>
                 </Box>
+                {/* ExitTicket */}
+                <Box sx={{ position: 'relative' }}>
+                  <IconButton
+                    onClick={() => navigate('/exit-ticket')}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 1.4,
+                      position: 'relative',
+                      overflow: 'visible',
+                      border: '2px solid rgba(102, 187, 106, 0.45)',
+                      background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(67, 160, 71, 0.35)',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        borderColor: 'rgba(102, 187, 106, 0.75)',
+                        boxShadow: '0 4px 12px rgba(67, 160, 71, 0.45)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                    title="ExitTicket"
+                  >
+                    <Typography
+                      component="span"
+                      sx={{
+                        fontSize: '1.35rem',
+                        fontWeight: 800,
+                        letterSpacing: 0,
+                        lineHeight: 1,
+                        display: 'inline-block',
+                      }}
+                    >
+                      X
+                    </Typography>
+                  </IconButton>
+                </Box>
                 {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
                 <Box sx={{ position: 'relative' }}>
                   <IconButton

@@ -6,19 +6,18 @@ import {
   DialogActions,
   Button,
   Box,
-  IconButton,
   Slider,
   Typography,
   ButtonGroup
 } from '@mui/material';
 import {
-  Close as CloseIcon,
   RotateLeft as RotateLeftIcon,
   RotateRight as RotateRightIcon,
   Crop as CropIcon,
   Check as CheckIcon,
   Cancel as CancelIcon
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 interface ImageEditorProps {
   imageData: string; // Base64 oder Blob URL
@@ -269,23 +268,16 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageData, onSave, onCancel }
         color: 'white',
         py: 1.5,
         px: 2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
+        ...dialogCloseTitleSx,
       }}>
         <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 600 }}>
           📸 Foto bearbeiten
         </Typography>
-        <IconButton 
-          onClick={onCancel} 
-          sx={{ 
-            color: 'white',
-            '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-          }}
-          size="small"
-        >
-          <CloseIcon />
-        </IconButton>
+        <DialogCloseIconButton
+          onClose={onCancel}
+          sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
+          iconSx={{ color: 'white' }}
+        />
       </DialogTitle>
 
       <DialogContent sx={{ p: 2, bgcolor: '#f5f5f5' }}>

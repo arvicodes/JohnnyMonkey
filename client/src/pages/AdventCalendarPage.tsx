@@ -22,13 +22,13 @@ import {
   Grow
 } from '@mui/material';
 import {
-  Close as CloseIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
   Refresh as RefreshIcon,
   ArrowBack as ArrowBackIcon,
   EmojiEvents as EmojiEventsIcon
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 
 interface AdventCalendarDoor {
   id: string;
@@ -1437,53 +1437,46 @@ const AdventCalendarPage: React.FC = () => {
       >
         {selectedDoor && (
           <>
-            <DialogTitle sx={{ bgcolor: '#2e7d32', color: '#fff', py: 1, px: 1.5 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <DialogTitle sx={{ bgcolor: '#2e7d32', color: '#fff', py: 1, px: 1.5, ...dialogCloseTitleSx }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem' }}>
                   {doorIcons[selectedDoor.day - 1] || '🎁'} Türchen {selectedDoor.day}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {
-                      setShowThemePicker(true);
-                      handleCloseDialog();
-                    }}
-                    sx={{
-                      borderColor: 'rgba(255,255,255,0.6)',
-                      color: '#fff',
-                      fontSize: '0.65rem',
-                      py: 0.2,
-                      px: 0.6,
-                      minWidth: 'auto',
-                      '&:hover': {
-                        bgcolor: 'rgba(255,255,255,0.15)',
-                        borderColor: '#fff'
-                      }
-                    }}
-                  >
-                    Thema ändern
-                  </Button>
-                  <IconButton 
-                    onClick={handleCloseDialog} 
-                    sx={{ 
-                      color: '#fff',
-                      width: 22,
-                      height: 22,
-                      p: 0,
-                      minWidth: 22,
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        transform: 'scale(1.2) rotate(90deg)',
-                        bgcolor: 'rgba(255,255,255,0.2)'
-                      }
-                    }}
-                  >
-                    <CloseIcon sx={{ fontSize: 14, width: '100%', height: '100%' }} />
-                  </IconButton>
-                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setShowThemePicker(true);
+                    handleCloseDialog();
+                  }}
+                  sx={{
+                    borderColor: 'rgba(255,255,255,0.6)',
+                    color: '#fff',
+                    fontSize: '0.65rem',
+                    py: 0.2,
+                    px: 0.6,
+                    minWidth: 'auto',
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.15)',
+                      borderColor: '#fff'
+                    }
+                  }}
+                >
+                  Thema ändern
+                </Button>
               </Box>
+              <DialogCloseIconButton
+                onClose={handleCloseDialog}
+                sx={{
+                  color: '#fff',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.2) rotate(90deg)',
+                    bgcolor: 'rgba(255,255,255,0.2)',
+                  },
+                }}
+                iconSx={{ color: '#fff' }}
+              />
             </DialogTitle>
             <DialogContent sx={{ mt: 1.5, px: 1.5, pb: 1.5, position: 'relative' }}>
               {/* Konfetti-Animation */}

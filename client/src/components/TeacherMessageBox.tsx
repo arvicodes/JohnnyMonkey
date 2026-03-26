@@ -24,7 +24,6 @@ import {
   Button
 } from '@mui/material';
 import {
-  Close,
   Mail,
   MailOutline,
   Send,
@@ -36,6 +35,7 @@ import {
   Add,
   Delete
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import { Tabs, Tab } from '@mui/material';
 
 interface Message {
@@ -339,11 +339,9 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
       <DialogTitle sx={{ 
         bgcolor: '#1976d2', 
         color: '#fff',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         py: 0.75,
-        px: 1.5
+        px: 1.5,
+        ...dialogCloseTitleSx,
       }}>
         <Box display="flex" alignItems="center" gap={0.75}>
           <Mail sx={{ fontSize: 18 }} />
@@ -351,19 +349,11 @@ const TeacherMessageBox: React.FC<TeacherMessageBoxProps> = ({ open, onClose, us
             Nachrichten
           </Typography>
         </Box>
-        <IconButton
-          onClick={onClose}
-          sx={{ 
-            color: '#fff', 
-            p: 0,
-            minWidth: 32,
-            width: 32,
-            height: 32,
-            '& .MuiSvgIcon-root': { fontSize: 20 }
-          }}
-        >
-          <Close sx={{ width: '100%', height: '100%' }} />
-        </IconButton>
+        <DialogCloseIconButton
+          onClose={onClose}
+          sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+          iconSx={{ color: '#fff' }}
+        />
       </DialogTitle>
       
       <DialogContent sx={{ p: 0, minHeight: 400, maxHeight: '75vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

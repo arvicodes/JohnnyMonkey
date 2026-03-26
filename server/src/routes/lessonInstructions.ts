@@ -4,8 +4,6 @@ import { PrismaClient } from '@prisma/client';
 const router = Router();
 const prisma = new PrismaClient();
 
-type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
-
 /** GET alle gespeicherten Anweisungs-Overrides für einen Lehrer */
 router.get('/teacher/:teacherId', async (req: Request, res: Response) => {
   try {
@@ -15,10 +13,10 @@ router.get('/teacher/:teacherId', async (req: Request, res: Response) => {
       where: { teacherId },
       select: { lessonPath: true, content: true, updatedAt: true }
     });
-    const byPath: Record<string, Partial<Record<LessonBoxField, string>>> = {};
+    const byPath: Record<string, Record<string, any>> = {};
     for (const row of list) {
       try {
-        byPath[row.lessonPath] = JSON.parse(row.content || '{}') as Partial<Record<LessonBoxField, string>>;
+        byPath[row.lessonPath] = JSON.parse(row.content || '{}') as Record<string, any>;
       } catch {
         byPath[row.lessonPath] = {};
       }

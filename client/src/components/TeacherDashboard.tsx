@@ -5643,10 +5643,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   } | null>(null);
   const [voraussetzungenGlossarOpen, setVoraussetzungenGlossarOpen] = useState(false);
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
-  // Bearbeitbare Stunden-Texte: pro Stunde (lessonPath) Overrides für die farbigen Boxen – werden persistent gespeichert
+  // Bearbeitbare Stunden-Texte und Ablaufplanung pro Stunde (lessonPath)
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
-  const [editedLessonInstructions, setEditedLessonInstructions] = useState<Record<string, Partial<Record<LessonBoxField, string>>>>({});
+  type LessonPlanItemType = 'entry-ticket' | 'exit-ticket' | 'quiz' | 'arbeitsauftrag' | 'leinwand';
+  type LessonPlanItem = {
+    id: string;
+    type: LessonPlanItemType;
+    label: string;
+    grade?: number;
+    exitType?: 'feedback' | 'quick-check' | 'transfer' | 'draw';
+  };
+  type LessonInstructionContent = Partial<Record<LessonBoxField, string>> & { lessonPlan?: LessonPlanItem[] };
+  const [editedLessonInstructions, setEditedLessonInstructions] = useState<Record<string, LessonInstructionContent>>({});
   const [lessonBoxEdit, setLessonBoxEdit] = useState<{ lessonName: string; lessonPath: string; section: LessonBoxField; draft: string; originalDraft: string } | null>(null);
+  const [selectedPlanTypes, setSelectedPlanTypes] = useState<LessonPlanItemType[]>([]);
+  const [newPlanGrade, setNewPlanGrade] = useState<number>(7);
+  const [newExitType, setNewExitType] = useState<'feedback' | 'quick-check' | 'transfer' | 'draw'>('feedback');
+  const [dragPlanIndex, setDragPlanIndex] = useState<number | null>(null);
+  const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -6131,13 +6145,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   // Mitarbeitsbewertung States
   const [participationModalOpen, setParticipationModalOpen] = useState(false);
   const [createExaminationModalOpen, setCreateExaminationModalOpen] = useState(false);
+  const [createLessonModalOpen, setCreateLessonModalOpen] = useState(false);
   const [examinationType, setExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('QZ');
   const [examinationFileName, setExaminationFileName] = useState('');
   const [examinationFolderPath, setExaminationFolderPath] = useState('');
+  const [newLessonName, setNewLessonName] = useState('');
+  const [newLessonFolderPath, setNewLessonFolderPath] = useState('');
   const [examinationLearningGroupId, setExaminationLearningGroupId] = useState('');
   const [availableFolders, setAvailableFolders] = useState<Array<{ path: string; name: string }>>([]);
   const [folderTree, setFolderTree] = useState<any>(null);
   const [expandedFolderPaths, setExpandedFolderPaths] = useState<Set<string>>(new Set());
+  const [folderPickerMode, setFolderPickerMode] = useState<'exam' | 'lesson'>('exam');
   const [examDurationMinutes, setExamDurationMinutes] = useState(5);
   const examinationFileNameInputRef = useRef<HTMLInputElement>(null);
   
@@ -9531,8 +9549,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 collectExpanded(tree);
                 setExpandedFolderPaths(defaultExpanded);
-                if (!examinationFolderPath && defaultFolderPath) {
-                  setExaminationFolderPath(defaultFolderPath);
+                if (defaultFolderPath) {
+                  if (folderPickerMode === 'exam' && !examinationFolderPath) {
+                    setExaminationFolderPath(defaultFolderPath);
+                  }
+                  if (folderPickerMode === 'lesson' && !newLessonFolderPath) {
+                    setNewLessonFolderPath(defaultFolderPath);
+                  }
                 }
                 setFolderTree(tree);
                 console.log('✅ Ordnerstruktur geladen:', tree);
@@ -9578,6 +9601,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const renderFolderTree = (node: any, level: number = 0) => {
     if (!node) return null;
     
+    const selectedFolderPath = folderPickerMode === 'exam' ? examinationFolderPath : newLessonFolderPath;
     const isExpanded = expandedFolderPaths.has(node.path);
     const hasChildren = node.children && node.children.length > 0;
     
@@ -9594,13 +9618,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             '&:hover': {
               bgcolor: 'rgba(0,0,0,0.04)',
             },
-            ...(examinationFolderPath === node.path && {
+            ...(selectedFolderPath === node.path && {
               bgcolor: '#e3f2fd',
               borderLeft: '3px solid #1976d2'
             })
           }}
           onClick={() => {
-            setExaminationFolderPath(node.path);
+            if (folderPickerMode === 'exam') {
+              setExaminationFolderPath(node.path);
+            } else {
+              setNewLessonFolderPath(node.path);
+            }
             if (hasChildren) {
               const newExpanded = new Set(expandedFolderPaths);
               if (isExpanded) {
@@ -9636,8 +9664,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             variant="body2" 
             sx={{ 
               fontSize: '0.85rem',
-              color: examinationFolderPath === node.path ? '#1976d2' : '#333',
-              fontWeight: examinationFolderPath === node.path ? 600 : 'normal'
+              color: selectedFolderPath === node.path ? '#1976d2' : '#333',
+              fontWeight: selectedFolderPath === node.path ? 600 : 'normal'
             }}
           >
             {node.name}
@@ -9812,6 +9840,52 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     } catch (error) {
       console.error('Fehler beim Erstellen der Prüfung:', error);
       showSnackbar('Fehler beim Erstellen der Prüfung', 'error');
+    }
+  };
+  
+  const handleCreateLessonFolder = async () => {
+    if (!newLessonName.trim() || !newLessonFolderPath) {
+      showSnackbar('Bitte Ordner auswählen und Stundennamen eingeben', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/file-system-paths/create-lesson-folder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          folderPath: newLessonFolderPath,
+          lessonName: newLessonName.trim()
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
+        showSnackbar(`Fehler: ${error.error || 'Unbekannter Fehler'}`, 'error');
+        return;
+      }
+
+      const data = await response.json();
+      const modalGroupId = examinationLearningGroupId || getDefaultLearningGroupId() || groups[0]?.id || '';
+
+      setCreateLessonModalOpen(false);
+      setNewLessonName('');
+      setNewLessonFolderPath('');
+      setFolderPickerMode('exam');
+
+      setLessonModalData({
+        lessonName: data.lessonFolderName,
+        lessonPath: data.lessonFolderPath,
+        children: Array.isArray(data.children) ? data.children : [],
+        groupId: modalGroupId
+      });
+      setLessonModalOpen(true);
+      showSnackbar(`Stunde "${data.lessonFolderName}" erfolgreich erstellt!`, 'success');
+    } catch (error) {
+      console.error('Fehler beim Erstellen der Stunde:', error);
+      showSnackbar('Fehler beim Erstellen der Stunde', 'error');
     }
   };
 
@@ -12733,6 +12807,39 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 </IconButton>
                 <IconButton
                   onClick={() => {
+                    setFolderPickerMode('lesson');
+                    setNewLessonFolderPath('');
+                    fetchAvailableFolders();
+                    setCreateLessonModalOpen(true);
+                  }}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    color: '#2e7d32',
+                    bgcolor: '#9e9e9e',
+                    borderRadius: 1.4,
+                    '&:hover': { bgcolor: '#757575' }
+                  }}
+                  title="Neue Stunde erstellen"
+                >
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '1.0rem',
+                      fontWeight: 800,
+                      lineHeight: 1,
+                      display: 'inline-block',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    S+
+                  </Typography>
+                </IconButton>
+                <IconButton
+                  onClick={() => {
+                    setFolderPickerMode('exam');
                     setCreateExaminationModalOpen(true);
                     fetchAvailableFolders();
                   }}
@@ -13029,6 +13136,43 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     }}
                   >
                     E
+                  </Typography>
+                </IconButton>
+                {/* ExitTicket */}
+                <IconButton
+                  onClick={() => navigate('/exit-ticket')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(102, 187, 106, 0.45)',
+                    background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(67, 160, 71, 0.35)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(102, 187, 106, 0.75)',
+                      boxShadow: '0 4px 12px rgba(67, 160, 71, 0.45)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="ExitTicket"
+                >
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '1rem',
+                      fontWeight: 800,
+                      letterSpacing: 0,
+                      lineHeight: 1,
+                      display: 'inline-block',
+                    }}
+                  >
+                    X
                   </Typography>
                 </IconButton>
                 {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
@@ -19167,7 +19311,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       <Dialog
         open={lessonModalOpen}
         onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); }}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
         PaperProps={{ sx: { borderRadius: 2 } }}
       >
@@ -19182,20 +19326,118 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 sx={{ '&:hover': { bgcolor: 'action.hover' } }}
               />
             </DialogTitle>
-            <DialogContent sx={{ pt: 2 }}>
+            <DialogContent sx={{ pt: 2, overflow: 'visible' }}>
               {(() => {
                 const lessonName = lessonModalData.lessonName;
                 const lessonPath = lessonModalData.lessonPath;
                 const normalizedLessonName = (lessonName || '').replace(/_/g, ' ');
+                const isNumericShortKey = (key: string) => /^\d{2}$/.test((key || '').trim());
                 const baseInstructions = LESSON_INSTRUCTIONS[lessonName]
                   ?? LESSON_INSTRUCTIONS[normalizedLessonName]
                   ?? Object.entries(LESSON_INSTRUCTIONS).find(([key]) => {
                       const n = (key || '').replace(/_/g, ' ');
+                      if (isNumericShortKey(n) && normalizedLessonName !== n) {
+                        // Verhindert, dass z.B. "01 Ritterduell" die generische "01"-Vorlage lädt
+                        return false;
+                      }
                       return normalizedLessonName.includes(n) || n.includes(normalizedLessonName);
                     })?.[1];
-                const instructions = { ...baseInstructions, ...(editedLessonInstructions[lessonPath] || {}) } as typeof baseInstructions;
+                const lessonOverrides = editedLessonInstructions[lessonPath] || {};
+                const instructions = {
+                  ...baseInstructions,
+                  ...lessonOverrides
+                } as typeof baseInstructions;
                 const allFiles = (lessonModalData.children || []).filter((c: any) => c.type === 'file' && !(c.name && c.name.startsWith('~$')));
+                const lessonPlan = Array.isArray(lessonOverrides.lessonPlan) ? lessonOverrides.lessonPlan : [];
                 const isEditing = (section: LessonBoxField) => lessonBoxEdit?.lessonPath === lessonPath && lessonBoxEdit?.section === section;
+                const persistLessonContent = async (nextContent: LessonInstructionContent) => {
+                  try {
+                    await fetch('/api/lesson-instructions', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ teacherId: userId, lessonPath, content: nextContent })
+                    });
+                  } catch (_) {
+                    showSnackbar('Änderungen konnten nicht gespeichert werden.', 'error');
+                  }
+                };
+                const updateLessonPlan = async (nextPlan: LessonPlanItem[]) => {
+                  const nextContent: LessonInstructionContent = {
+                    ...lessonOverrides,
+                    lessonPlan: nextPlan
+                  };
+                  setEditedLessonInstructions(prev => ({ ...prev, [lessonPath]: nextContent }));
+                  await persistLessonContent(nextContent);
+                };
+                const resolvePlanLabel = (type: LessonPlanItemType) => {
+                  if (type === 'entry-ticket') return 'Entry Ticket';
+                  if (type === 'exit-ticket') return 'Exit Ticket';
+                  if (type === 'quiz') return 'Quiz';
+                  if (type === 'arbeitsauftrag') return 'Arbeitsauftrag';
+                  return 'Leinwand';
+                };
+                const getPlanTypeStyle = (type: LessonPlanItemType) => {
+                  if (type === 'entry-ticket') return { bg: '#e3f2fd', border: '#90caf9', text: '#1565c0' }; // blau
+                  if (type === 'exit-ticket') return { bg: '#c8e6c9', border: '#388e3c', text: '#1b5e20' }; // dunkler gruen
+                  if (type === 'quiz') return { bg: '#ffebee', border: '#ef9a9a', text: '#c62828' }; // roetlich
+                  if (type === 'leinwand') return { bg: '#e8f5e9', border: '#c8e6c9', text: '#2e7d32' }; // leicht gruenlich
+                  return { bg: '#f3e5f5', border: '#ce93d8', text: '#7b1fa2' }; // leicht lila
+                };
+                const addPlanItems = async () => {
+                  if (selectedPlanTypes.length === 0) {
+                    showSnackbar('Bitte mindestens einen Baustein auswählen.', 'error');
+                    return;
+                  }
+                  const newItems: LessonPlanItem[] = selectedPlanTypes.map((type, idx) => ({
+                    id: `${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+                    type,
+                    label: resolvePlanLabel(type),
+                    ...(type === 'entry-ticket' ? { grade: newPlanGrade } : {}),
+                    ...(type === 'exit-ticket' ? { exitType: newExitType } : {})
+                  }));
+                  await updateLessonPlan([...lessonPlan, ...newItems]);
+                  setSelectedPlanTypes([]);
+                };
+                const removePlanItem = async (id: string) => {
+                  await updateLessonPlan(lessonPlan.filter((item) => item.id !== id));
+                };
+                const movePlanItem = async (fromIndex: number, toIndex: number) => {
+                  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= lessonPlan.length || toIndex >= lessonPlan.length) return;
+                  const next = [...lessonPlan];
+                  const [moved] = next.splice(fromIndex, 1);
+                  next.splice(toIndex, 0, moved);
+                  await updateLessonPlan(next);
+                };
+                const openPlanItem = (item: LessonPlanItem) => {
+                  if (item.type === 'entry-ticket') {
+                    window.open(`/entry-ticket?grade=${encodeURIComponent(String(item.grade || 7))}`, '_blank');
+                    return;
+                  }
+                  if (item.type === 'exit-ticket') {
+                    const template = item.exitType || 'feedback';
+                    window.open(`/exit-ticket?template=${encodeURIComponent(template)}`, '_blank');
+                    return;
+                  }
+                  if (item.type === 'quiz') {
+                    const quizFile = allFiles.find((f: any) => typeof f.name === 'string' && f.name.startsWith('Quiz'));
+                    if (!quizFile) {
+                      showSnackbar('Keine Quiz-Datei (Quiz*) in diesem Stundenordner gefunden.', 'error');
+                      return;
+                    }
+                    handleQuizDialogOpen(quizFile.path, quizFile.name);
+                    return;
+                  }
+                  if (item.type === 'arbeitsauftrag') {
+                    const submissionFile = allFiles.find((f: any) => typeof f.name === 'string' && f.name.startsWith('H_'));
+                    if (!submissionFile) {
+                      showSnackbar('Keine Arbeitsauftrag-Datei (H_*) im Stundenordner gefunden.', 'error');
+                      return;
+                    }
+                    window.open(`/submissions-grid?filePath=${encodeURIComponent(submissionFile.path)}&fileName=${encodeURIComponent(submissionFile.name)}&teacherId=${userId}&groupId=${lessonModalData.groupId}`, '_blank');
+                    return;
+                  }
+                    window.open(`/whiteboard?groupId=${lessonModalData.groupId}`, '_blank');
+                };
                 const startEdit = (section: LessonBoxField) => {
                   const currentText = (instructions as any)?.[section] ?? '';
                   const htmlText = plainTextToEditorHtml(currentText, section);
@@ -19245,6 +19487,250 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
                 return (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: LESSON_MODAL_FONT_SIZE }}>
+                    {/* Stundenablauf planen */}
+                    <Box sx={{ mb: 1.5, p: 1.5, border: '1px solid #d7e3f1', borderRadius: 1.5, bgcolor: '#f7fbff' }}>
+                      <Box sx={{ mb: 1.0, display: 'flex', alignItems: 'flex-start', gap: 0.6, flexWrap: 'wrap', width: '100%' }}>
+                        {[
+                          { id: 'entry-ticket', label: 'Entry Ticket' },
+                          { id: 'exit-ticket', label: 'Exit Ticket' },
+                          { id: 'quiz', label: 'Quiz' },
+                          { id: 'arbeitsauftrag', label: 'Arbeitsauftrag' },
+                          { id: 'leinwand', label: 'Leinwand' }
+                        ].map((option) => {
+                          const optionId = option.id as LessonPlanItemType;
+                          const style = getPlanTypeStyle(optionId);
+                          const isSelected = selectedPlanTypes.includes(optionId);
+                          return (
+                            <Box
+                              key={option.id}
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'flex-start',
+                                gap: 0.3,
+                                overflow: 'visible',
+                                flexShrink: 0,
+                                minWidth: optionId === 'arbeitsauftrag' ? 150 : optionId === 'leinwand' ? 115 : 105,
+                                paddingRight: 0.3
+                              }}
+                            >
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    size="small"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      setSelectedPlanTypes((prev) =>
+                                        checked ? [...prev, optionId] : prev.filter((t) => t !== optionId)
+                                      );
+                                    }}
+                                    sx={{
+                                      p: 0.25,
+                                      color: style.text,
+                                      '&.Mui-checked': { color: style.text }
+                                    }}
+                                  />
+                                }
+                                label={option.label}
+                                sx={{
+                                  mr: 0,
+                                  px: 0.3,
+                                  py: 0.22,
+                                  flex: '0 0 auto',
+                                  overflow: 'visible',
+                                  minWidth: optionId === 'arbeitsauftrag' ? 150 : optionId === 'leinwand' ? 115 : 105,
+                                  borderRadius: 1,
+                                  bgcolor: isSelected ? style.bg : '#ffffff',
+                                  border: `1px solid ${isSelected ? style.border : '#e0e0e0'}`,
+                                  flexShrink: 0,
+                                  minHeight: 26,
+                                  '& .MuiFormControlLabel-label': {
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    color: isSelected ? style.text : '#546e7a',
+                                    lineHeight: 1.05,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'visible',
+                                    textOverflow: 'clip',
+                                    display: 'block',
+                                    maxWidth: 'none'
+                                  }
+                                }}
+                              />
+                              {optionId === 'entry-ticket' && isSelected && (
+                                <TextField
+                                  size="small"
+                                  type="number"
+                                  placeholder="Kl."
+                                  value={newPlanGrade}
+                                  onChange={(e) => setNewPlanGrade(Math.max(5, Math.min(13, Number(e.target.value) || 7)))}
+                                  inputProps={{ min: 5, max: 13 }}
+                                  sx={{
+                                    width: 56,
+                                    '& .MuiInputBase-input': {
+                                      fontSize: '0.68rem',
+                                      py: 0.32,
+                                      px: 0.55,
+                                      textAlign: 'center'
+                                    }
+                                  }}
+                                />
+                              )}
+                              {optionId === 'exit-ticket' && isSelected && (
+                                <FormControl size="small" sx={{ minWidth: 108 }}>
+                                  <Select
+                                    value={newExitType}
+                                    onChange={(e) => setNewExitType(e.target.value as 'feedback' | 'quick-check' | 'transfer' | 'draw')}
+                                    sx={{ fontSize: '0.68rem', '& .MuiSelect-select': { py: 0.45, px: 0.7 } }}
+                                  >
+                                    <MenuItem value="feedback">Feedback</MenuItem>
+                                    <MenuItem value="quick-check">Quick Check</MenuItem>
+                                    <MenuItem value="transfer">Transfer</MenuItem>
+                                    <MenuItem value="draw">Zeichnung</MenuItem>
+                                  </Select>
+                                </FormControl>
+                              )}
+                            </Box>
+                          );
+                        })}
+                        <Box sx={{ ml: 'auto', flexShrink: 0, overflow: 'visible' }}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={addPlanItems}
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.95rem',
+                              minWidth: 26,
+                              height: 24,
+                              px: 0.85,
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
+                              bgcolor: '#1976d2',
+                              '&:hover': { bgcolor: '#1565c0' }
+                            }}
+                            aria-label="Ausgewählte hinzufügen"
+                            title="Ausgewählte hinzufügen"
+                          >
+                            +
+                          </Button>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                        {lessonPlan.length === 0 ? (
+                          <Typography variant="caption" sx={{ color: '#607d8b' }}>
+                            Noch keine Bausteine geplant.
+                          </Typography>
+                        ) : lessonPlan.map((item, index) => (
+                          <Box
+                            key={item.id}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDragEnter={() => setDragOverPlanIndex(index)}
+                            onDragLeave={() => setDragOverPlanIndex((prev) => (prev === index ? null : prev))}
+                            onDrop={async () => {
+                              if (dragPlanIndex === null) return;
+                              await movePlanItem(dragPlanIndex, index);
+                              setDragPlanIndex(null);
+                              setDragOverPlanIndex(null);
+                            }}
+                            onClick={() => openPlanItem(item)}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              p: 0.75,
+                              border: dragOverPlanIndex === index ? '1px solid #42a5f5' : '1px solid #c9d7e6',
+                              borderRadius: 1,
+                              bgcolor: '#ffffff',
+                              position: 'relative',
+                              cursor: 'pointer',
+                              boxShadow: dragOverPlanIndex === index ? '0 0 0 2px rgba(66,165,245,0.15)' : 'none',
+                              '&:hover': { bgcolor: '#f8fbff' }
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ color: '#455a64', fontWeight: 700, minWidth: 22 }}>
+                              {index + 1}.
+                            </Typography>
+                            {(() => {
+                              const style = getPlanTypeStyle(item.type);
+                              return (
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                flex: 1,
+                                px: 0.8,
+                                py: 0.25,
+                                borderRadius: 0.75,
+                                bgcolor: style.bg,
+                                color: style.text,
+                                border: `1px solid ${style.border}`,
+                                fontSize: '0.78rem',
+                                fontWeight: 700
+                              }}
+                            >
+                              {item.label}
+                              {item.type === 'entry-ticket' && ` (Klasse ${item.grade || 7})`}
+                              {item.type === 'exit-ticket' && ` (${item.exitType || 'feedback'})`}
+                            </Typography>
+                              );
+                            })()}
+                            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                              <Box
+                                draggable
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  setDragPlanIndex(index);
+                                  setDragOverPlanIndex(index);
+                                }}
+                                onDragEnd={() => {
+                                  setDragPlanIndex(null);
+                                  setDragOverPlanIndex(null);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                sx={{
+                                  width: 16,
+                                  height: 16,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: 0.5,
+                                  color: '#607d8b',
+                                  cursor: 'grab',
+                                  userSelect: 'none',
+                                  '&:active': { cursor: 'grabbing' },
+                                  '&:hover': { bgcolor: '#eceff1' }
+                                }}
+                                title="Ziehen zum Sortieren"
+                              >
+                                <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>⋮⋮</Typography>
+                              </Box>
+                              <Box sx={{ position: 'relative', width: 18, height: 18 }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removePlanItem(item.id);
+                                  }}
+                                  sx={{
+                                    width: 18,
+                                    height: 18,
+                                    minWidth: 18,
+                                    p: 0,
+                                    bgcolor: '#ffebee',
+                                    border: '1px solid #ef9a9a',
+                                    '&:hover': { bgcolor: '#ffcdd2' }
+                                  }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: 14, color: '#c62828' }} />
+                                </IconButton>
+                              </Box>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+
                     {/* Voraussetzungen – blaue Box immer da, Inhalt nur bei echten Voraussetzungen (nicht bei "Keine fachlichen Voraussetzungen.") */}
                     <Box sx={{ pt: 1.5 }}>
                       <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, pr: 5, border: '1px solid #90caf9', borderBottom: 'none' }}>
@@ -19451,38 +19937,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     ) : null}
 
-                    {/* Gemeinsame Übersicht – Leinwand + Freigabe + Präsentieren */}
-                    {lessonModalData && (
-                      <Box sx={{ pt: 0.75, pb: 0.5 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 0.5 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32' }}>
-                            Gemeinsame Übersicht
-                          </Typography>
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                size="small"
-                                checked={(lessonSharedInputSharePaths[lessonModalData.groupId] || []).includes(lessonModalData.lessonPath)}
-                                onChange={() => toggleLessonSharedInputShare(lessonModalData.groupId, lessonModalData.lessonPath)}
-                                sx={{ py: 0, color: '#2e7d32', '&.Mui-checked': { color: '#2e7d32' } }}
-                              />
-                            }
-                            label={<Typography variant="caption" sx={{ color: '#333' }}>Freigeben</Typography>}
-                          />
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<OpenInNewIcon />}
-                            onClick={() => window.open(`/shared-overview?groupId=${encodeURIComponent(lessonModalData.groupId)}&lessonPath=${encodeURIComponent(lessonModalData.lessonPath)}`, '_blank')}
-                            sx={{ ml: 0.5, color: '#2e7d32', borderColor: '#2e7d32', '&:hover': { borderColor: '#1b5e20', bgcolor: 'rgba(46, 125, 50, 0.08)' } }}
-                          >
-                            Präsentieren
-                          </Button>
-                        </Box>
-                        <LessonSharedInputBox groupId={lessonModalData.groupId} lessonPath={lessonModalData.lessonPath} />
-                      </Box>
-                    )}
-    
                     {/* Folien */}
                     {folienFiles.length > 0 && (
                       <Box>
@@ -21903,6 +22357,136 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         </DialogActions>
       </Dialog>
 
+      {/* Stunde erstellen Modal */}
+      <Dialog
+        open={createLessonModalOpen}
+        onClose={() => {
+          setCreateLessonModalOpen(false);
+          setNewLessonName('');
+          setNewLessonFolderPath('');
+          setFolderPickerMode('exam');
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (newLessonName.trim() && newLessonFolderPath) {
+              handleCreateLessonFolder();
+            }
+          }
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            maxHeight: '90vh',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          pb: 1.5,
+          pt: 2.5,
+          px: 3,
+          borderBottom: '2px solid #e3f2fd',
+          bgcolor: '#f5f9ff'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <LessonIcon sx={{ color: colors.primary, fontSize: 30 }} />
+            <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#1976d2' }}>
+              Neue Stunde erstellen
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <TextField
+              fullWidth
+              required
+              autoFocus
+              label="Name der Stunde"
+              value={newLessonName}
+              onChange={(e) => setNewLessonName(e.target.value)}
+              placeholder="z.B. Alan Turing"
+              helperText="Es wird genau dieser Ordnername erstellt (ohne automatische Nummerierung)"
+            />
+
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '0.95rem' }}>
+                Zielordner auswählen <span style={{ color: '#d32f2f' }}>*</span>
+              </Typography>
+              <Box
+                sx={{
+                  border: '2px solid #e3f2fd',
+                  borderRadius: 2,
+                  p: 2,
+                  maxHeight: 300,
+                  overflow: 'auto',
+                  bgcolor: '#fafbff',
+                  '&:hover': {
+                    borderColor: '#90caf9'
+                  }
+                }}
+              >
+                {folderTree ? (
+                  <Box>
+                    {renderFolderTree(folderTree)}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
+                    <CircularProgress size={24} sx={{ mb: 1 }} />
+                    <Typography variant="body2" sx={{ color: '#666', fontStyle: 'italic' }}>
+                      Lade Ordnerstruktur...
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              {newLessonFolderPath && (
+                <Typography variant="caption" sx={{ mt: 1, display: 'block', color: '#1976d2' }}>
+                  Ausgewählt: {newLessonFolderPath.replace('git-intern/', '')}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{
+          px: 3,
+          py: 2,
+          borderTop: '2px solid #e3f2fd',
+          bgcolor: '#fafafa',
+          gap: 1
+        }}>
+          <Button
+            onClick={() => {
+              setCreateLessonModalOpen(false);
+              setNewLessonName('');
+              setNewLessonFolderPath('');
+              setFolderPickerMode('exam');
+            }}
+            sx={{
+              color: '#666',
+              '&:hover': { bgcolor: '#f0f0f0' }
+            }}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            onClick={handleCreateLessonFolder}
+            variant="contained"
+            disabled={!newLessonName.trim() || !newLessonFolderPath}
+            sx={{
+              bgcolor: colors.primary,
+              px: 3,
+              '&:hover': { bgcolor: '#1565c0' },
+              '&:disabled': { bgcolor: '#ccc' }
+            }}
+          >
+            Erstellen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Prüfung erstellen Modal */}
       <Dialog
         open={createExaminationModalOpen}
@@ -21913,6 +22497,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           setExamDurationMinutes(5);
           setExaminationFolderPath('');
           setExaminationLearningGroupId('');
+          setFolderPickerMode('exam');
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -22125,6 +22710,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               setExamDurationMinutes(5);
               setExaminationFolderPath('');
               setExaminationLearningGroupId('');
+              setFolderPickerMode('exam');
             }}
             sx={{ 
               color: '#666',

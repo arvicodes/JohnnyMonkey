@@ -56,5 +56,19 @@ router.post('/save-file-beacon', FileSystemPathController_1.FileSystemPathContro
 router.get('/load-whiteboard', FileSystemPathController_1.FileSystemPathController.loadWhiteboardFile);
 // Statische Dateien aus J-M-Reihen bedienen (CSS, JS, etc.)
 router.get('/static/*', FileSystemPathController_1.FileSystemPathController.serveStaticFile);
+// Prüfung erstellen (KA, KU, HU, QZ)
+router.post('/create-examination', FileSystemPathController_1.FileSystemPathController.createExamination);
+// Stunde erstellen (Ordner + Standardmaterialien)
+router.post('/create-lesson-folder', FileSystemPathController_1.FileSystemPathController.createLessonFolder);
+// Prüfungsinhalte generieren
+router.post('/generate-examination-content', FileSystemPathController_1.FileSystemPathController.generateExaminationContent);
+// Einzelfrage generieren
+router.post('/generate-single-question', FileSystemPathController_1.FileSystemPathController.generateSingleQuestion);
+// Alle Fragen einer Prüfung abrufen
+router.get('/get-examination-questions', FileSystemPathController_1.FileSystemPathController.getExaminationQuestions);
+// Einzelfrage aktualisieren
+router.post('/update-single-question', FileSystemPathController_1.FileSystemPathController.updateSingleQuestion);
+// Titel einer Prüfung aktualisieren
+router.post('/update-examination-title', FileSystemPathController_1.FileSystemPathController.updateExaminationTitle);
 exports.default = router;
 //# sourceMappingURL=fileSystemPaths.js.map

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.batchCheckFileShares = exports.checkFileShare = exports.getSharedFilesForGroup = exports.toggleFileShare = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
+const normalizeFilePath = (p) => (p || '').replace(/\\/g, '/').trim();
 // Toggle file share for a learning group
 const toggleFileShare = async (req, res) => {
     try {
@@ -10,11 +11,12 @@ const toggleFileShare = async (req, res) => {
         if (!filePath || !groupId) {
             return res.status(400).json({ error: 'Dateipfad und Gruppen-ID sind erforderlich' });
         }
+        const normalizedPath = normalizeFilePath(filePath);
         // Check if the share already exists
         const existingShare = await prisma.fileShare.findUnique({
             where: {
                 filePath_groupId: {
-                    filePath,
+                    filePath: normalizedPath,
                     groupId
                 }
             }
@@ -32,7 +34,7 @@ const toggleFileShare = async (req, res) => {
             // Create new share
             const newShare = await prisma.fileShare.create({
                 data: {
-                    filePath,
+                    filePath: normalizedPath,
                     groupId
                 }
             });
@@ -41,7 +43,8 @@ const toggleFileShare = async (req, res) => {
     }
     catch (error) {
         console.error('Error toggling file share:', error);
-        res.status(500).json({ error: 'Serverfehler beim Ändern der Datei-Freigabe' });
+        const message = (error === null || error === void 0 ? void 0 : error.message) || (error === null || error === void 0 ? void 0 : error.code) || 'Serverfehler beim Ändern der Datei-Freigabe';
+        res.status(500).json({ error: message });
     }
 };
 exports.toggleFileShare = toggleFileShare;
@@ -57,7 +60,7 @@ const getSharedFilesForGroup = async (req, res) => {
                 groupId
             }
         });
-        const filePaths = shares.map(share => share.filePath);
+        const filePaths = shares.map(share => normalizeFilePath(share.filePath));
         res.json({ groupId, filePaths, shares });
     }
     catch (error) {

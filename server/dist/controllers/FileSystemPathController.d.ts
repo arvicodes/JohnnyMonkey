@@ -69,5 +69,49 @@ export declare class FileSystemPathController {
      * Save file using sendBeacon (for automatic saving when closing tab)
      */
     static saveFileBeacon(req: Request, res: Response): Promise<void>;
+    /**
+     * Create a new examination file (KA, KU, HU, QZ)
+     */
+    static createExamination(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Generiert Prüfungsinhalte basierend auf einem Prompt
+     */
+    static generateExaminationContent(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Analysiert einen Prompt und generiert Aufgaben
+     */
+    private static parsePromptAndGenerateTasks;
+    /**
+     * Generiert eine Multiple-Choice-Aufgabe mit AI
+     */
+    private static generateMultipleChoiceTask;
+    /**
+     * Generiert eine Textaufgabe mit AI
+     */
+    private static generateTextTask;
+    /**
+     * Generiert eine Frage mit AI (OpenAI oder Fallback)
+     */
+    private static generateAIQuestion;
+    /**
+     * Generiert Fallback-Inhalte wenn keine AI verfügbar ist
+     */
+    private static generateFallbackQuestion;
+    /**
+     * Liest alle Aufgaben aus einer HTML-Datei
+     */
+    static getExaminationQuestions(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Aktualisiert eine einzelne Frage in der HTML-Datei
+     */
+    static updateSingleQuestion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Aktualisiert den Titel einer Prüfung
+     */
+    static updateExaminationTitle(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Generiert eine einzelne Frage und ersetzt sie in der HTML-Datei
+     */
+    static generateSingleQuestion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=FileSystemPathController.d.ts.map

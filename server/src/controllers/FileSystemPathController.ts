@@ -1685,6 +1685,74 @@ export class FileSystemPathController {
   }
 
   /**
+   * Create a new lesson folder with standard markdown files
+   */
+  static async createLessonFolder(req: Request, res: Response) {
+    try {
+      const { folderPath, lessonName } = req.body;
+
+      if (!folderPath || !lessonName || !lessonName.trim()) {
+        return res.status(400).json({ error: 'folderPath und lessonName sind erforderlich' });
+      }
+
+      const normalizedLessonName = lessonName.trim();
+
+      const sanitizeForFolder = (input: string) =>
+        input
+          .replace(/[\\/:*?"<>|]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const lessonFolderBaseName = sanitizeForFolder(normalizedLessonName);
+      if (!lessonFolderBaseName) {
+        return res.status(400).json({ error: 'lessonName enthält keine gültigen Zeichen' });
+      }
+
+      let fullParentFolderPath: string;
+      if (folderPath.startsWith('git-intern/')) {
+        const relativePath = folderPath.replace('git-intern/', '');
+        if (process.env.NODE_ENV === 'production') {
+          const serverPath = path.join(process.cwd(), 'J-M-Reihen');
+          const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
+          const jmReihenPath = fs.existsSync(serverPath) ? serverPath : projectPath;
+          fullParentFolderPath = path.join(jmReihenPath, relativePath);
+        } else {
+          const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+          fullParentFolderPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+        }
+      } else {
+        fullParentFolderPath = path.resolve(folderPath);
+      }
+
+      if (!fs.existsSync(fullParentFolderPath)) {
+        return res.status(404).json({ error: 'Ausgewählter Zielordner wurde nicht gefunden' });
+      }
+
+      const lessonFolderName = lessonFolderBaseName;
+      const fullLessonFolderPath = path.join(fullParentFolderPath, lessonFolderName);
+
+      if (fs.existsSync(fullLessonFolderPath)) {
+        return res.status(409).json({ error: 'Ein Stundenordner mit diesem Namen existiert bereits' });
+      }
+      fs.mkdirSync(fullLessonFolderPath, { recursive: true });
+
+      const relativeFolderPath = folderPath.startsWith('git-intern/')
+        ? `${folderPath}/${lessonFolderName}`
+        : fullLessonFolderPath;
+
+      res.json({
+        success: true,
+        lessonFolderName,
+        lessonFolderPath: relativeFolderPath,
+        children: []
+      });
+    } catch (error) {
+      console.error('Fehler beim Erstellen des Stundenordners:', error);
+      res.status(500).json({ error: 'Fehler beim Erstellen des Stundenordners' });
+    }
+  }
+
+  /**
    * Generiert Prüfungsinhalte basierend auf einem Prompt
    */
   static async generateExaminationContent(req: Request, res: Response) {

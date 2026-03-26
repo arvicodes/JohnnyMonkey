@@ -26,12 +26,12 @@ import {
   SortByAlpha as SortByAlphaIcon,
   CalendarToday as CalendarIcon,
   RateReview as RateReviewIcon,
-  Close as CloseIcon,
   NavigateBefore as NavigateBeforeIcon,
   NavigateNext as NavigateNextIcon,
   Check as CheckIcon,
   ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 
 interface Student {
   id: string;
@@ -706,7 +706,7 @@ const SubmissionsGridPage: React.FC = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1, position: 'relative' }}>
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', py: 1, ...dialogCloseTitleSx }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Avatar sx={{ bgcolor: '#1976d2', width: 36, height: 36, fontSize: '0.9rem' }}>
               {submissionsToReview[currentReviewIndex]?.student.avatarEmoji || 
@@ -721,12 +721,7 @@ const SubmissionsGridPage: React.FC = () => {
               </Typography>
             </Box>
           </Box>
-          <IconButton
-            onClick={() => setReviewMode(false)}
-            sx={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, p: 0 }}
-          >
-            <CloseIcon sx={{ fontSize: 16 }} />
-          </IconButton>
+          <DialogCloseIconButton onClose={() => setReviewMode(false)} />
         </DialogTitle>
 
         <DialogContent sx={{ mt: '1%', pt: 0, pb: 1.5 }}>
@@ -921,16 +916,11 @@ const SubmissionsGridPage: React.FC = () => {
         maxWidth="xl"
         fullWidth
       >
-        <DialogTitle sx={{ bgcolor: '#f5f5f5', py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle sx={{ bgcolor: '#f5f5f5', py: 1, ...dialogCloseTitleSx }}>
           <Typography variant="h6" sx={{ fontSize: '0.9rem' }}>
             {submissionsToReview[currentReviewIndex]?.originalFileName}
           </Typography>
-          <IconButton
-            onClick={() => setExpandedPreview(false)}
-            sx={{ width: 24, height: 24, p: 0 }}
-          >
-            <CloseIcon sx={{ fontSize: 18 }} />
-          </IconButton>
+          <DialogCloseIconButton onClose={() => setExpandedPreview(false)} />
         </DialogTitle>
         <DialogContent sx={{ p: 0, bgcolor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
           {submissionsToReview[currentReviewIndex] && (

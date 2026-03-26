@@ -9,19 +9,18 @@ import {
   Typography,
   LinearProgress,
   Alert,
-  IconButton,
   Paper
 } from '@mui/material';
 import {
   Upload as UploadIcon,
   InsertDriveFile as FileIcon,
   CheckCircle,
-  Close as CloseIcon,
   Visibility as VisibilityIcon,
   Delete as DeleteIcon,
   CameraAlt as CameraIcon
 } from '@mui/icons-material';
 import ImageEditor from './ImageEditor';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 interface SubmissionUploadProps {
   fileName: string;
@@ -321,29 +320,12 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
         py: 1,
         px: 2,
         borderBottom: '1px solid #e0e0e0',
-        position: 'relative'
+        ...dialogCloseTitleSx,
       }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem', pr: 3 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
           Abgabe
         </Typography>
-        <IconButton 
-          onClick={onClose} 
-          sx={{ 
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            width: 24,
-            height: 24,
-            padding: 0,
-            color: '#666',
-            '&:hover': {
-              bgcolor: '#e0e0e0',
-              color: '#333'
-            }
-          }}
-        >
-          <CloseIcon sx={{ fontSize: 18 }} />
-        </IconButton>
+        <DialogCloseIconButton onClose={onClose} sx={{ color: '#666', '&:hover': { bgcolor: '#e0e0e0', color: '#333' } }} iconSx={{ color: '#666' }} />
       </DialogTitle>
 
       <DialogContent sx={{ pt: 3, pb: 1.5, px: 2 }}>
@@ -566,23 +548,16 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
             color: 'white',
             py: 1.5,
             px: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
+            ...dialogCloseTitleSx,
           }}>
             <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 600 }}>
               📸 Foto aufnehmen
             </Typography>
-            <IconButton 
-              onClick={stopCamera} 
-              sx={{ 
-                color: 'white',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-              }}
-              size="small"
-            >
-              <CloseIcon />
-            </IconButton>
+            <DialogCloseIconButton
+              onClose={stopCamera}
+              sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
+              iconSx={{ color: 'white' }}
+            />
           </DialogTitle>
           
           <DialogContent sx={{ p: 0, bgcolor: '#000' }}>

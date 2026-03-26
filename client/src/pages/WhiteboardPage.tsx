@@ -26,8 +26,8 @@ import {
   ToggleButton,
   Chip
 } from '@mui/material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 import {
-  Close as CloseIcon,
   Delete as DeleteIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
@@ -3159,9 +3159,23 @@ const WhiteboardPage: React.FC = () => {
   const handleDeleteSelected = () => {
     if (selectedObjects.length === 0) return;
     const selectedIds = selectedObjects.map(o => o.id);
-    setObjects(objects.filter(obj => !selectedIds.includes(obj.id)));
+    // Funktionales Update: verhindert Probleme durch "stale closure" beim schnellen Drag/Resize.
+    setObjects(prevObjects => prevObjects.filter(obj => !selectedIds.includes(obj.id)));
     setSelectedObjects([]);
     setShowObjectPanel(false);
+  };
+
+  // Wenn eine Gruppe ausgewählt wurde (selectedObjects enthält mehrere Elemente),
+  // soll man trotzdem einzelne Boxen löschen können: Wir löschen dann nur selectedObjects[0]
+  // (das Element, das zuletzt angeklickt wurde).
+  const handleDeleteSingleSelected = () => {
+    if (selectedObjects.length === 0) return;
+    const idToDelete = selectedObjects[0].id;
+    // Funktionales Update: sicher gegen stale closure.
+    setObjects(prevObjects => prevObjects.filter(obj => obj.id !== idToDelete));
+    setSelectedObjects([]);
+    setShowObjectPanel(false);
+    console.log(`🗑️ Deleted single object: ${idToDelete}`);
   };
 
   const updateSelectedObject = (updates: Partial<DrawObject>) => {
@@ -4508,27 +4522,11 @@ const WhiteboardPage: React.FC = () => {
             borderRadius: 2
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Box sx={{ position: 'relative', pr: 5, mb: 1 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               {showColorPicker === 'stroke' ? 'Strichfarbe' : 'Füllfarbe'}
             </Typography>
-            <IconButton 
-              size="small" 
-              onClick={() => setShowColorPicker(null)}
-              sx={{
-                width: 20,
-                height: 20,
-                minWidth: 20,
-                minHeight: 20,
-                '& .MuiSvgIcon-root': {
-                  width: '100%',
-                  height: '100%',
-                  fontSize: '0.8rem'
-                }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
+            <DialogCloseIconButton onClose={() => setShowColorPicker(null)} />
           </Box>
           
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 0.5, mb: 1 }}>
@@ -5128,27 +5126,11 @@ const WhiteboardPage: React.FC = () => {
             bgcolor: 'white'
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ position: 'relative', pr: 5, mb: 2 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
               Objekt-Eigenschaften
             </Typography>
-            <IconButton 
-              size="small" 
-              onClick={() => setShowObjectPanel(false)}
-              sx={{
-                width: 20,
-                height: 20,
-                minWidth: 20,
-                minHeight: 20,
-                '& .MuiSvgIcon-root': {
-                  width: '100%',
-                  height: '100%',
-                  fontSize: '0.8rem'
-                }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
+            <DialogCloseIconButton onClose={() => setShowObjectPanel(false)} />
           </Box>
 
           {selectedObjects[0] && (
@@ -5483,21 +5465,32 @@ const WhiteboardPage: React.FC = () => {
               </Box>
 
               {/* Actions */}
-              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+              <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap' }}>
                 <Button
                   variant="outlined"
                   size="small"
                   onClick={handleDeleteSelected}
                   color="error"
-                  sx={{ flexGrow: 1 }}
+                  sx={{ flexGrow: 1, minWidth: 120 }}
                 >
-                  Löschen
+                  {selectedObjects.length > 1 ? 'Gruppe löschen' : 'Löschen'}
                 </Button>
+                {selectedObjects.length > 1 && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleDeleteSingleSelected}
+                    color="error"
+                    sx={{ flexGrow: 1, minWidth: 120 }}
+                  >
+                    Einzeln löschen
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   size="small"
                   onClick={handleDuplicate}
-                  sx={{ flexGrow: 1 }}
+                  sx={{ flexGrow: 1, minWidth: 120 }}
                 >
                   Kopieren
                 </Button>
@@ -5524,36 +5517,19 @@ const WhiteboardPage: React.FC = () => {
         <DialogTitle sx={{ 
           background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
           color: 'white',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           py: 1,
           px: 2,
           minHeight: 'auto',
-          position: 'relative'
+          ...dialogCloseTitleSx,
         }}>
           <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 500 }}>
             Icons & Emojis
           </Typography>
-          <IconButton 
-            onClick={() => setShowIconPicker(false)}
-            sx={{ 
-              color: 'white',
-              p: 0.5,
-              minWidth: 'auto',
-              width: 24,
-              height: 24,
-              position: 'absolute',
-              top: '50%',
-              right: 8,
-              transform: 'translateY(-50%)',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)'
-              }
-            }}
-          >
-            <CloseIcon sx={{ fontSize: '1rem' }} />
-          </IconButton>
+          <DialogCloseIconButton
+            onClose={() => setShowIconPicker(false)}
+            sx={{ color: 'white', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
+            iconSx={{ color: 'white' }}
+          />
         </DialogTitle>
         
         <DialogContent sx={{ p: 1.5 }}>

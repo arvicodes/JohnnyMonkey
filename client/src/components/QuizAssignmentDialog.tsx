@@ -12,13 +12,12 @@ import {
   Typography,
   Box,
   Alert,
-  IconButton
 } from '@mui/material';
 import {
   Quiz as QuizIcon,
-  Close as CloseIcon,
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 interface Quiz {
   id: string;
@@ -135,16 +134,12 @@ const QuizAssignmentDialog: React.FC<QuizAssignmentDialogProps> = ({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth onKeyDown={handleKeyDown}>
       <div ref={dialogRef} tabIndex={-1}>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <AssignmentIcon sx={{ mr: 1, color: '#ff9800' }} />
-              <Typography variant="h6">Quiz zuordnen</Typography>
-            </Box>
-            <IconButton onClick={onClose}>
-              <CloseIcon />
-            </IconButton>
+        <DialogTitle sx={dialogCloseTitleSx}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <AssignmentIcon sx={{ mr: 1, color: '#ff9800' }} />
+            <Typography variant="h6">Quiz zuordnen</Typography>
           </Box>
+          <DialogCloseIconButton onClose={onClose} />
         </DialogTitle>
         
         <DialogContent>

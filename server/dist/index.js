@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const dotenv_1 = __importDefault(require("dotenv"));
 const client_1 = require("@prisma/client");
 const portManager_1 = require("./utils/portManager");
 const monitoring_1 = __importDefault(require("./utils/monitoring"));
@@ -28,12 +29,15 @@ const grades_routes_1 = __importDefault(require("./routes/grades.routes"));
 const fileSystemPaths_1 = __importDefault(require("./routes/fileSystemPaths"));
 const kaCorrections_1 = __importDefault(require("./routes/kaCorrections"));
 const messages_1 = __importDefault(require("./routes/messages"));
+const exitTicket_1 = __importDefault(require("./routes/exitTicket"));
 const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const submissions_1 = __importDefault(require("./routes/submissions"));
 const fileShares_1 = __importDefault(require("./routes/fileShares"));
 const participation_1 = __importDefault(require("./routes/participation"));
 const adventCalendar_1 = __importDefault(require("./routes/adventCalendar"));
+const lessonInstructions_1 = __importDefault(require("./routes/lessonInstructions"));
 const path_1 = __importDefault(require("path"));
+dotenv_1.default.config();
 const app = (0, express_1.default)();
 const prisma = new client_1.PrismaClient();
 // Trust proxy - wichtig für nginx Reverse Proxy und X-Forwarded-Proto
@@ -76,8 +80,10 @@ app.use('/api/submissions', submissions_1.default);
 app.use('/api/file-shares', fileShares_1.default);
 app.use('/api/participation', participation_1.default);
 app.use('/api/advent-calendar', adventCalendar_1.default);
+app.use('/api/lesson-instructions', lessonInstructions_1.default);
 app.use('/api/ka-corrections', kaCorrections_1.default);
 app.use('/api/messages', messages_1.default);
+app.use('/api/exit-ticket', exitTicket_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
 // Enhanced health check endpoint with monitoring
@@ -107,21 +113,50 @@ app.get('/api/monitoring/stats', (req, res) => {
         res.status(500).json({ error: 'Failed to get monitoring stats' });
     }
 });
-// Serve static files from client build
-const clientBuildPath = path_1.default.join(__dirname, '..', 'client-build');
-app.use(express_1.default.static(clientBuildPath));
-// React Router Fallback - ALWAYS last (but exclude API routes)
-app.get('*', (req, res) => {
-    // Don't serve React app for API routes
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({ error: 'API endpoint not found' });
-    }
-    res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
-});
+// Serve static files from client build ONLY in production
+let clientBuildPath = null;
+if (process.env.NODE_ENV === 'production') {
+    clientBuildPath = path_1.default.join(__dirname, '..', 'client-build');
+    app.use(express_1.default.static(clientBuildPath));
+    // React Router Fallback - ALWAYS last (but exclude API routes)
+    app.get('*', (req, res) => {
+        // Don't serve React app for API routes
+        if (req.path.startsWith('/api/')) {
+            return res.status(404).json({ error: 'API endpoint not found' });
+        }
+        if (!clientBuildPath) {
+            return res.status(500).json({ error: 'Client build path not configured' });
+        }
+        res.sendFile(path_1.default.join(clientBuildPath, 'index.html'));
+    });
+}
+else {
+    // Development: don't serve a potentially stale client-build.
+    // Provide a helpful hint when someone opens backend URLs in the browser.
+    app.get('*', (req, res) => {
+        if (req.path.startsWith('/api/') || req.path === '/health' || req.path.startsWith('/material/')) {
+            return res.status(404).json({ error: 'Endpoint not found' });
+        }
+        const acceptsHtml = String(req.headers.accept || '').includes('text/html');
+        if (acceptsHtml) {
+            return res
+                .status(302)
+                .setHeader('Location', 'http://localhost:3000')
+                .send('Redirecting to the frontend dev server...');
+        }
+        return res.status(404).json({
+            error: 'Frontend not served in development',
+            hint: 'Open http://localhost:3000 for the app. Backend API is on http://localhost:3003/api',
+            path: req.path
+        });
+    });
+}
 // Error monitoring middleware (must be last)
 app.use(monitoring_1.default.errorMonitor());
-// Debug: Log the build path
-console.log('🔍 Client build path:', clientBuildPath);
+// Debug: Log the build path (only if configured)
+if (clientBuildPath) {
+    console.log('🔍 Client build path:', clientBuildPath);
+}
 console.log('🔍 Current directory:', __dirname);
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -157,7 +192,8 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server with Render compatibility
 async function startServer() {
     try {
-        const port = parseInt(process.env.PORT || '3000', 10);
+        // Lokal: 3003 (React nutzt 3000). Ohne PORT kein Konflikt mit dem Frontend.
+        const port = parseInt(process.env.PORT || '3003', 10);
         // For Render, use simple server start
         if (process.env.NODE_ENV === 'production') {
             // Listen on 0.0.0.0 to accept connections from outside the container

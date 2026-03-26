@@ -1374,6 +1374,1142 @@ class FileSystemPathController {
             res.status(500).json({ error: 'Fehler beim Speichern der Datei' });
         }
     }
+    /**
+     * Create a new examination file (KA, KU, HU, QZ)
+     */
+    static async createExamination(req, res) {
+        try {
+            const { examType, fileName, folderPath, learningGroupId, title, durationMinutes } = req.body;
+            if (!examType || !fileName || !folderPath) {
+                return res.status(400).json({ error: 'examType, fileName und folderPath sind erforderlich' });
+            }
+            // Validiere Prüfungstyp
+            const validTypes = ['KA', 'KU', 'HU', 'QZ'];
+            if (!validTypes.includes(examType)) {
+                return res.status(400).json({ error: 'Ungültiger Prüfungstyp. Erlaubt: KA, KU, HU, QZ' });
+            }
+            // Stelle sicher, dass der Dateiname mit dem richtigen Präfix beginnt
+            const prefix = examType === 'KA' ? 'KA_' : examType === 'KU' ? 'KU_' : examType === 'HU' ? 'HU_' : 'QZ_';
+            const finalFileName = fileName.startsWith(prefix) ? fileName : `${prefix}${fileName}`;
+            // Konvertiere git-intern Pfad zu absolutem Pfad
+            let fullFolderPath;
+            if (folderPath.startsWith('git-intern/')) {
+                const relativePath = folderPath.replace('git-intern/', '');
+                if (process.env.NODE_ENV === 'production') {
+                    const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
+                    const jmReihenPath = fs_1.default.existsSync(serverPath) ? serverPath : projectPath;
+                    fullFolderPath = path_1.default.join(jmReihenPath, relativePath);
+                }
+                else {
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                    fullFolderPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
+            }
+            else {
+                fullFolderPath = path_1.default.resolve(folderPath);
+            }
+            const filePath = path_1.default.join(fullFolderPath, `${finalFileName}.html`);
+            console.log('📝 Erstelle Prüfungsdatei:', {
+                examType,
+                fileName: finalFileName,
+                folderPath,
+                fullFolderPath,
+                filePath
+            });
+            // Lade Template-Datei
+            let templatePath;
+            if (process.env.NODE_ENV === 'production') {
+                // Production: Versuche verschiedene Pfade
+                const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+                templatePath = fs_1.default.existsSync(serverPath) ? serverPath : projectPath;
+            }
+            else {
+                // Development: Verwende absoluten Pfad
+                templatePath = path_1.default.join('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey', 'J-M-Reihen', 'Mathe', 'Klasse 7', 'Kap.3 - Geometrische Abbildungen', 'HU_geometrische-abbildungen.html');
+            }
+            console.log('📄 Template-Pfad:', templatePath);
+            console.log('📄 Template existiert:', fs_1.default.existsSync(templatePath));
+            if (!fs_1.default.existsSync(templatePath)) {
+                return res.status(404).json({
+                    error: 'Template-Datei nicht gefunden',
+                    templatePath: templatePath,
+                    cwd: process.cwd()
+                });
+            }
+            let templateContent = fs_1.default.readFileSync(templatePath, 'utf-8');
+            // Ersetze KA_KEY im Template
+            const kaKey = finalFileName.replace('.html', '');
+            templateContent = templateContent.replace(/const KA_KEY = ['"](.*?)['"]/g, `const KA_KEY = '${kaKey}'`);
+            templateContent = templateContent.replace(/KA_KEY = ['"](.*?)['"]/g, `KA_KEY = '${kaKey}'`);
+            const defaultDurations = {
+                KA: 60,
+                KU: 90,
+                HU: 15,
+                QZ: 5
+            };
+            const resolvedDurationMinutes = typeof durationMinutes === 'number' && durationMinutes > 0
+                ? durationMinutes
+                : (defaultDurations[examType] || 15);
+            // Ersetze Titel
+            const examTypeNames = {
+                'KA': 'Klassenarbeit',
+                'KU': 'Kursarbeit',
+                'HU': 'Hausaufgabenüberprüfung (HÜ)',
+                'QZ': 'Quiz'
+            };
+            const examTypeName = examTypeNames[examType] || 'Prüfung';
+            const finalTitle = title || `${examTypeName}: ${finalFileName.replace(prefix, '').replace(/-/g, ' ')}`;
+            templateContent = templateContent.replace(/<title>(.*?)<\/title>/, `<title>${finalTitle}</title>`);
+            templateContent = templateContent.replace(/Hausaufgabenüberprüfung \(HÜ\): Geometrische Abbildungen/g, finalTitle);
+            // Entferne "Wichtiger Hinweis" Box
+            templateContent = templateContent.replace(/<div class="info-box">[\s\S]*?<\/div>\s*/g, '');
+            // Entferne Footer-Hinweise (Viel Erfolg / Punkte / Note)
+            templateContent = templateContent.replace(/<div class="footer-right">[\s\S]*?<\/div>/g, '');
+            templateContent = templateContent.replace(/<div class="footer-note">[\s\S]*?<\/div>/g, '');
+            // Punkte-/Notenanzeige absichern, falls Footer entfernt wurde
+            templateContent = templateContent.replace(/const pointsDisplay = document\.getElementById\('pointsDisplay'\);\s*const noteText = document\.getElementById\('noteText'\);\s*const noteNumber = document\.getElementById\('noteNumber'\);\s*/g, "const pointsDisplay = document.getElementById('pointsDisplay');\n            const noteText = document.getElementById('noteText');\n            const noteNumber = document.getElementById('noteNumber');\n            if (!pointsDisplay || !noteText || !noteNumber) {\n                return;\n            }\n");
+            // Setze Timer-Dauer
+            const timerLabel = `${resolvedDurationMinutes}:00`;
+            templateContent = templateContent.replace(/<div class="timer-container" id="timer">\s*[\d:]+\s*<\/div>/, `<div class="timer-container" id="timer">\n                ${timerLabel}\n            </div>`);
+            templateContent = templateContent.replace(/let timeLeft = \d+ \* 60;.*$/m, `let timeLeft = ${resolvedDurationMinutes} * 60; // ${resolvedDurationMinutes} Minuten in Sekunden`);
+            // Stelle sicher, dass der Ordner existiert
+            if (!fs_1.default.existsSync(fullFolderPath)) {
+                fs_1.default.mkdirSync(fullFolderPath, { recursive: true });
+            }
+            // Schreibe die neue Datei
+            fs_1.default.writeFileSync(filePath, templateContent, 'utf-8');
+            console.log('✅ Prüfungsdatei erstellt:', filePath);
+            // Erstelle git-intern Pfad für die Antwort
+            let gitInternPath;
+            if (folderPath.startsWith('git-intern/')) {
+                const relativePath = folderPath.replace('git-intern/', '');
+                gitInternPath = `git-intern/${relativePath}/${finalFileName}.html`;
+            }
+            else {
+                // Falls kein git-intern Pfad, verwende den relativen Pfad
+                gitInternPath = filePath;
+            }
+            res.json({
+                success: true,
+                filePath: gitInternPath,
+                fileName: `${finalFileName}.html`,
+                kaKey
+            });
+        }
+        catch (error) {
+            console.error('Fehler beim Erstellen der Prüfungsdatei:', error);
+            res.status(500).json({ error: 'Fehler beim Erstellen der Prüfungsdatei' });
+        }
+    }
+    /**
+     * Generiert Prüfungsinhalte basierend auf einem Prompt
+     */
+    static async generateExaminationContent(req, res) {
+        try {
+            const { filePath, prompt, examType } = req.body;
+            if (!filePath || !prompt) {
+                return res.status(400).json({ error: 'filePath und prompt sind erforderlich' });
+            }
+            // Lese die HTML-Datei
+            let fullFilePath;
+            if (filePath.startsWith('git-intern/')) {
+                const relativePath = filePath.replace('git-intern/', '');
+                if (process.env.NODE_ENV === 'production') {
+                    const jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    fullFilePath = path_1.default.join(jmReihenPath, relativePath);
+                }
+                else {
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                    fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
+            }
+            else {
+                fullFilePath = path_1.default.resolve(filePath);
+            }
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            let htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
+            console.log('📄 HTML-Datei gelesen, Länge:', htmlContent.length);
+            // Analysiere den Prompt und generiere Aufgaben
+            const tasks = await FileSystemPathController.parsePromptAndGenerateTasks(prompt, examType);
+            console.log('✅ Aufgaben generiert:', tasks.length);
+            // Finde die Stelle, wo die Aufgaben eingefügt werden sollen
+            const submitSectionMatch = htmlContent.match(/<div class="submit-section">/);
+            if (!submitSectionMatch) {
+                console.error('❌ submit-section nicht gefunden');
+                return res.status(400).json({
+                    error: 'Konnte submit-section nicht finden. Bitte überprüfen Sie die HTML-Struktur.',
+                    details: 'Die HTML-Datei muss ein <div class="submit-section"> Element enthalten.'
+                });
+            }
+            const submitSectionPosition = submitSectionMatch.index;
+            console.log('📍 submit-section Position:', submitSectionPosition);
+            // Suche nach bestehenden Aufgaben
+            const taskStartMatch = htmlContent.match(/<!-- Aufgabe 1/);
+            let insertPosition;
+            let endPosition;
+            if (taskStartMatch) {
+                // Es gibt bereits Aufgaben - ersetze sie
+                console.log('📝 Bestehende Aufgaben gefunden, ersetze sie');
+                const taskStartPosition = taskStartMatch.index;
+                // Finde die letzte schließende </div> vor submit-section, die zu einer Aufgabe gehört
+                const beforeSubmitSection = htmlContent.substring(0, submitSectionPosition);
+                // Suche nach dem letzten </div> mit Einrückung (4 Leerzeichen) vor submit-section
+                // Das sollte das Ende der letzten Aufgabe sein
+                // Pattern: Suche nach </div> gefolgt von optionalem Whitespace und dann submit-section
+                const taskDivEndPattern = /(\n    <\/div>\s*\n\s*)(?=\n\s*<div class="submit-section">)/;
+                const lastTaskDivMatch = beforeSubmitSection.match(taskDivEndPattern);
+                if (lastTaskDivMatch) {
+                    insertPosition = taskStartPosition;
+                    endPosition = lastTaskDivMatch.index + lastTaskDivMatch[1].length;
+                    console.log('✅ Aufgabe-Ende gefunden mit Pattern:', endPosition);
+                }
+                else {
+                    // Fallback: Suche nach dem letzten </div> mit 4 Leerzeichen Einrückung
+                    const lastDivIndex = beforeSubmitSection.lastIndexOf('\n    </div>');
+                    if (lastDivIndex !== -1) {
+                        // Finde das Ende dieses </div> Tags (inkl. Whitespace bis zum nächsten Tag)
+                        const afterLastDiv = beforeSubmitSection.substring(lastDivIndex);
+                        // Suche nach </div> gefolgt von Whitespace bis zum nächsten Tag oder Zeilenende
+                        const divEndMatch = afterLastDiv.match(/<\/div>(\s*\n\s*)/);
+                        insertPosition = taskStartPosition;
+                        endPosition = lastDivIndex + (divEndMatch ? divEndMatch[0].length : 6);
+                        console.log('✅ Aufgabe-Ende gefunden mit Fallback:', endPosition);
+                    }
+                    else {
+                        // Letzter Fallback: Einfach vor submit-section einfügen
+                        insertPosition = taskStartPosition;
+                        endPosition = submitSectionPosition;
+                        console.log('⚠️ Verwende submit-section Position als Endposition:', endPosition);
+                    }
+                }
+            }
+            else {
+                // Keine Aufgaben vorhanden - füge nach .instructions ein
+                console.log('📝 Keine bestehenden Aufgaben, füge nach instructions ein');
+                const instructionsMatch = htmlContent.match(/<\/div>\s*(?=\n\s*<div class="submit-section">)/);
+                if (instructionsMatch) {
+                    insertPosition = instructionsMatch.index + instructionsMatch[0].length;
+                    endPosition = submitSectionPosition;
+                }
+                else {
+                    // Fallback: Suche nach dem letzten </div> vor submit-section
+                    const beforeSubmit = htmlContent.substring(0, submitSectionPosition);
+                    const lastDivMatch = beforeSubmit.match(/\n    <\/div>\s*$/m);
+                    if (lastDivMatch) {
+                        insertPosition = lastDivMatch.index + lastDivMatch[0].length;
+                    }
+                    else {
+                        insertPosition = submitSectionPosition;
+                    }
+                    endPosition = submitSectionPosition;
+                }
+            }
+            console.log('📍 Einfügeposition:', insertPosition);
+            console.log('📍 Endposition:', endPosition);
+            // Validierung: Stelle sicher, dass die Positionen gültig sind
+            if (insertPosition < 0 || endPosition < 0 || insertPosition >= htmlContent.length || endPosition > htmlContent.length) {
+                console.error('❌ Ungültige Positionen:', { insertPosition, endPosition, contentLength: htmlContent.length });
+                return res.status(500).json({
+                    error: 'Ungültige Einfügepositionen berechnet',
+                    details: `insertPosition: ${insertPosition}, endPosition: ${endPosition}, contentLength: ${htmlContent.length}`
+                });
+            }
+            if (insertPosition >= endPosition) {
+                console.error('❌ insertPosition >= endPosition:', { insertPosition, endPosition });
+                return res.status(500).json({
+                    error: 'Einfügeposition ist größer oder gleich Endposition',
+                    details: `insertPosition: ${insertPosition}, endPosition: ${endPosition}`
+                });
+            }
+            // Ersetze den Aufgabenbereich
+            const beforeTasks = htmlContent.substring(0, insertPosition);
+            const afterTasks = htmlContent.substring(endPosition);
+            console.log('📏 Vor Aufgaben:', beforeTasks.length, 'Zeichen');
+            console.log('📏 Nach Aufgaben:', afterTasks.length, 'Zeichen');
+            console.log('📏 Neue Aufgaben:', tasks.join('\n\n').length, 'Zeichen');
+            htmlContent = beforeTasks +
+                '\n\n' + tasks.join('\n\n') +
+                '\n\n    ' +
+                afterTasks;
+            // Validierung: Stelle sicher, dass die neue HTML-Datei gültig ist
+            if (!htmlContent.includes('<div class="submit-section">')) {
+                console.error('❌ submit-section nach dem Einfügen nicht gefunden!');
+                return res.status(500).json({
+                    error: 'Fehler beim Einfügen: submit-section nicht mehr vorhanden',
+                    details: 'Die HTML-Struktur wurde möglicherweise beschädigt'
+                });
+            }
+            // Schreibe die aktualisierte HTML-Datei
+            fs_1.default.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+            console.log('✅ Prüfungsinhalte erfolgreich generiert:', fullFilePath);
+            res.json({
+                success: true,
+                message: 'Inhalte erfolgreich generiert',
+                tasksCount: tasks.length
+            });
+        }
+        catch (error) {
+            console.error('❌ Fehler beim Generieren der Prüfungsinhalte:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            console.error('❌ Fehler-Details:', { errorMessage, errorStack });
+            // Prüfe ob es ein AI-Fehler ist
+            if (errorMessage.includes('OpenAI') || errorMessage.includes('API')) {
+                res.status(500).json({
+                    error: 'Fehler bei der AI-Generierung',
+                    details: errorMessage,
+                    hint: 'Bitte überprüfen Sie Ihren OpenAI API Key in der server/.env Datei'
+                });
+            }
+            else {
+                res.status(500).json({
+                    error: 'Fehler beim Generieren der Prüfungsinhalte',
+                    details: errorMessage
+                });
+            }
+        }
+    }
+    /**
+     * Analysiert einen Prompt und generiert Aufgaben
+     */
+    static async parsePromptAndGenerateTasks(prompt, examType) {
+        const tasks = [];
+        const lowerPrompt = prompt && typeof prompt === 'string' ? prompt.toLowerCase() : '';
+        // Extrahiere Thema (vor dem ersten Komma oder "die")
+        const topicMatch = prompt.match(/thema\s+([^,]+?)(?:\s*,\s*die|$)/i) ||
+            prompt.match(/zum\s+Thema\s+([^,]+?)(?:\s*,\s*die|$)/i) ||
+            prompt.match(/über\s+([^,]+?)(?:\s*,\s*die|$)/i);
+        const topic = topicMatch ? topicMatch[1].trim() : 'dem Thema';
+        // Extrahiere Gesamtanzahl der Fragen
+        const totalQuestionsMatch = prompt.match(/die\s+(\d+)\s+fragen\s+umfasst/i) ||
+            prompt.match(/(\d+)\s+fragen\s+umfasst/i) ||
+            prompt.match(/die\s+(\d+)\s+aufgaben/i);
+        const totalQuestions = totalQuestionsMatch ? parseInt(totalQuestionsMatch[1]) : 4;
+        // Extrahiere Anzahl Multiple Choice Fragen
+        const mcQuestionsMatch = prompt.match(/(\d+)\s+fragen\s+multiple\s+choice/i) ||
+            prompt.match(/davon\s+sollen\s+(\d+)\s+fragen\s+multiple\s+choice/i);
+        const mcQuestions = mcQuestionsMatch ? parseInt(mcQuestionsMatch[1]) : (totalQuestions - 1);
+        // Extrahiere Anzahl Ankreuzmöglichkeiten
+        const optionsMatch = prompt.match(/(\d+)\s+ankreuzmöglichkeiten/i) ||
+            prompt.match(/mit\s+(\d+)\s+ankreuzmöglichkeiten/i);
+        const optionsCount = optionsMatch ? parseInt(optionsMatch[1]) : 4;
+        // Extrahiere Anzahl Textantwort-Fragen
+        const textQuestionsMatch = prompt.match(/(\d+)\s+frage\s+soll\s+eine\s+textantwort/i) ||
+            prompt.match(/(\d+)\s+fragen\s+sollen\s+eine\s+textantwort/i) ||
+            prompt.match(/(\d+)\s+frage\s+textantwort/i);
+        const textQuestions = textQuestionsMatch ? parseInt(textQuestionsMatch[1]) : 1;
+        // Berechne die tatsächliche Verteilung
+        const actualMCQuestions = Math.min(mcQuestions, totalQuestions - textQuestions);
+        const actualTextQuestions = Math.min(textQuestions, totalQuestions - actualMCQuestions);
+        const remainingQuestions = totalQuestions - actualMCQuestions - actualTextQuestions;
+        console.log('📊 Aufgaben-Verteilung:', {
+            total: totalQuestions,
+            mc: actualMCQuestions,
+            text: actualTextQuestions,
+            remaining: remainingQuestions,
+            topic,
+            optionsCount
+        });
+        // Generiere Aufgaben in der richtigen Reihenfolge
+        let taskNumber = 1;
+        const generatedQuestions = []; // Speichere bereits generierte Fragen für Kontext
+        // Multiple Choice Fragen (von einfach zu schwer)
+        for (let i = 0; i < actualMCQuestions; i++) {
+            const difficulty = i === 0 ? 'einfachste' : (i === actualMCQuestions - 1 ? 'schwerste' : 'mittel');
+            const taskContent = await FileSystemPathController.generateMultipleChoiceTask(taskNumber++, topic, totalQuestions, optionsCount, difficulty, i === 0, // erste Frage
+            i === actualMCQuestions - 1, // letzte MC Frage
+            i + 1, // Frage-Nummer für AI-Prompt
+            actualMCQuestions, // Gesamtanzahl MC-Fragen
+            generatedQuestions // Kontext über bereits generierte Fragen
+            );
+            // Extrahiere die Frage aus dem generierten HTML für den Kontext
+            const questionMatch = taskContent.match(/<label[^>]*>([^<]+)<\/label>/);
+            if (questionMatch) {
+                generatedQuestions.push(questionMatch[1].trim());
+            }
+            tasks.push(taskContent);
+        }
+        // Verbleibende Fragen als Textaufgaben (falls vorhanden)
+        for (let i = 0; i < remainingQuestions; i++) {
+            const taskContent = await FileSystemPathController.generateTextTask(taskNumber++, topic, totalQuestions, 'mittel', false, actualMCQuestions + i + 1, // Frage-Nummer für AI-Prompt
+            totalQuestions, generatedQuestions // Kontext über bereits generierte Fragen
+            );
+            // Extrahiere die Frage aus dem generierten HTML für den Kontext
+            const questionMatch = taskContent.match(/<p[^>]*>([^<]+)<\/p>/);
+            if (questionMatch) {
+                generatedQuestions.push(questionMatch[1].trim());
+            }
+            tasks.push(taskContent);
+        }
+        // Textantwort-Fragen (am Ende, schwerste)
+        for (let i = 0; i < actualTextQuestions; i++) {
+            const taskContent = await FileSystemPathController.generateTextTask(taskNumber++, topic, totalQuestions, 'schwerste', taskNumber === totalQuestions + 1, // letzte Frage insgesamt
+            totalQuestions - actualTextQuestions + i + 1, // Frage-Nummer für AI-Prompt
+            totalQuestions, generatedQuestions // Kontext über bereits generierte Fragen
+            );
+            // Extrahiere die Frage aus dem generierten HTML für den Kontext
+            const questionMatch = taskContent.match(/<p[^>]*>([^<]+)<\/p>/);
+            if (questionMatch) {
+                generatedQuestions.push(questionMatch[1].trim());
+            }
+            tasks.push(taskContent);
+        }
+        return tasks;
+    }
+    /**
+     * Generiert eine Multiple-Choice-Aufgabe mit AI
+     */
+    static async generateMultipleChoiceTask(taskNumber, topic, totalTasks, optionsCount = 4, difficulty = 'mittel', isFirst = false, isLastMC = false, questionNumber = 1, totalMCQuestions = 1, previousQuestions = []) {
+        const points = 1;
+        // AFB-Level basierend auf Schwierigkeit: einfachste = AFB 1, schwerste = AFB 2
+        const afbLevel = difficulty === 'einfachste' ? 1 : (difficulty === 'schwerste' ? 2 : 1);
+        const difficultyNote = isFirst ? ' (einfachste Frage)' : (isLastMC ? ' (schwerste Multiple-Choice-Frage)' : '');
+        // Generiere Frage und Antworten mit AI
+        const aiContent = await FileSystemPathController.generateAIQuestion(topic, 'multiple-choice', difficulty, questionNumber, totalMCQuestions, optionsCount, previousQuestions);
+        return `    <!-- Aufgabe ${taskNumber}: AFB ${afbLevel} - Multiple Choice${difficultyNote} -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe ${taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${points} Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-${afbLevel}">AFB ${afbLevel}</span>
+                <div class="points">${points} Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">${aiContent.question}</label>
+                <div style="margin-left: 20px;">
+${aiContent.optionsHTML}
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>${aiContent.correctAnswer}</strong></p>
+                <p>${aiContent.explanation}</p>
+            </div>
+        </div>
+    </div>`;
+    }
+    /**
+     * Generiert eine Textaufgabe mit AI
+     */
+    static async generateTextTask(taskNumber, topic, totalTasks, difficulty = 'mittel', isLast = false, questionNumber = 1, totalQuestions = 1, previousQuestions = []) {
+        const points = 1;
+        // AFB-Level basierend auf Schwierigkeit: einfachste = AFB 1, schwerste = AFB 2
+        const afbLevel = difficulty === 'einfachste' ? 1 : (difficulty === 'schwerste' ? 2 : 2);
+        const difficultyNote = isLast ? ' (schwerste Frage)' : '';
+        // Generiere Frage mit AI
+        const aiContent = await FileSystemPathController.generateAIQuestion(topic, 'text', difficulty, questionNumber, totalQuestions, 0, previousQuestions);
+        return `    <!-- Aufgabe ${taskNumber}: AFB ${afbLevel} - Textaufgabe${difficultyNote} -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe ${taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${points} Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-${afbLevel}">AFB ${afbLevel}</span>
+                <div class="points">${points} Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu ${topic}:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>${aiContent.question}</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a${taskNumber}" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: ${isLast ? '150' : '100'}px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>${aiContent.explanation || '<em>Bitte passen Sie diese Musterlösung an Ihre spezifischen Anforderungen an.</em>'}</p>
+            </div>
+        </div>
+    </div>`;
+    }
+    /**
+     * Generiert eine Frage mit AI (OpenAI oder Fallback)
+     */
+    static async generateAIQuestion(topic, questionType, difficulty, questionNumber, totalQuestions, optionsCount, previousQuestions = []) {
+        var _a;
+        // Prüfe ob OpenAI API Key vorhanden ist
+        const openaiApiKey = process.env.OPENAI_API_KEY;
+        console.log('🤖 AI-Generierung gestartet:', {
+            topic,
+            questionType,
+            difficulty,
+            questionNumber,
+            totalQuestions,
+            optionsCount,
+            hasApiKey: !!openaiApiKey
+        });
+        if (!openaiApiKey) {
+            console.log('⚠️ Kein OpenAI API Key gefunden, verwende Fallback-Inhalte');
+            console.log('💡 Tipp: Setzen Sie OPENAI_API_KEY in der .env Datei');
+            return this.generateFallbackQuestion(topic, questionType, difficulty, optionsCount);
+        }
+        const looksLikePlaceholder = (text) => {
+            if (!text || typeof text !== 'string') {
+                return true;
+            }
+            const normalized = text.trim();
+            if (!normalized) {
+                return true;
+            }
+            if (normalized.includes('_')) {
+                return true;
+            }
+            const placeholderPatterns = [
+                /\bantwort\s*[a-f]\b/i,
+                /\boption\s*\d+\b/i,
+                /\boption\s*[a-f]\b/i,
+                /\bantwort\s*\d+\b/i,
+                /\bplaceholder\b/i
+            ];
+            return placeholderPatterns.some((pattern) => pattern.test(normalized));
+        };
+        const maxAttempts = 2;
+        let lastError = null;
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+            try {
+                // Verwende OpenAI API
+                const OpenAI = require('openai');
+                const openai = new OpenAI({ apiKey: openaiApiKey });
+                console.log(`✅ OpenAI Client erstellt, starte API-Aufruf (Versuch ${attempt}/${maxAttempts})...`);
+                const difficultyText = difficulty && typeof difficulty === 'string'
+                    ? (difficulty === 'einfachste' ? 'einfach' : (difficulty === 'schwerste' ? 'schwer' : 'mittel'))
+                    : 'mittel';
+                // Erstelle Kontext über bereits generierte Fragen
+                const previousQuestionsContext = previousQuestions.length > 0
+                    ? `\n\nBEREITS GENERIERTE FRAGEN (diese müssen sich UNTERSCHEIDEN):\n${previousQuestions.map((q, idx) => `${idx + 1}. ${q}`).join('\n')}\n\nWICHTIG: Deine neue Frage muss sich von ALLEN oben genannten Fragen unterscheiden! Verwende einen ANDEREN Aspekt, ein ANDERES Beispiel oder eine ANDERE Formulierung!`
+                    : '';
+                // Erstelle einen spezifischen Aspekt-Index für diese Frage, um Variation zu gewährleisten
+                const aspectIndex = questionNumber % 7; // 7 verschiedene Aspekte
+                const aspectHints = [
+                    'Fokussiere dich auf Definitionen und Grundbegriffe',
+                    'Fokussiere dich auf praktische Anwendungen und Beispiele',
+                    'Fokussiere dich auf Berechnungen und Formeln',
+                    'Fokussiere dich auf Vergleiche und Unterschiede',
+                    'Fokussiere dich auf konkrete Situationen und Szenarien',
+                    'Fokussiere dich auf Zusammenhänge und Abhängigkeiten',
+                    'Fokussiere dich auf spezifische Eigenschaften und Merkmale'
+                ];
+                const aspectHint = aspectHints[aspectIndex];
+                const prompt = questionType === 'multiple-choice'
+                    ? `Erstelle eine ${difficultyText}e Multiple-Choice-Frage zum Thema "${topic}" für Schüler der 7. Klasse. 
+
+KRITISCH WICHTIG: 
+- Dies ist Frage ${questionNumber} von ${totalQuestions} Fragen. 
+- ${aspectHint} des Themas "${topic}"
+- Jede Frage muss EINDEUTIG und UNTERSCHIEDLICH sein - verwende verschiedene Aspekte, Formulierungen und Konzepte!
+- Erstelle ${optionsCount} konkrete, realistische Antwortmöglichkeiten mit echten Inhalten (NIEMALS "Antwort A", "Antwort B" etc.)
+- Alle Antwortoptionen müssen sinnvoll zur Frage passen und plausibel klingen
+- Nur eine Antwort ist richtig, die anderen müssen aber auch logisch erscheinen
+- Die Frage muss sich von allen anderen Fragen unterscheiden und verschiedene Aspekte des Themas "${topic}" abdecken
+- Verwende konkrete Beispiele, Zahlen oder Situationen in der Frage${previousQuestionsContext}
+
+Formatiere die Antwort als JSON mit folgenden Feldern:
+- "question": Die konkrete Frage (nicht "Frage zu [Thema]", sondern eine echte Frage mit Kontext)
+- "options": Array mit ${optionsCount} konkreten, realistischen Antwortoptionen (z.B. ["Die absolute Häufigkeit ist die Anzahl der Vorkommen eines Merkmals", "Die relative Häufigkeit wird immer als Dezimalzahl zwischen 0 und 1 angegeben", ...])
+- "correctAnswer": Buchstabe der richtigen Antwort (A, B, C, etc.)
+- "explanation": Kurze, verständliche Erklärung warum diese Antwort richtig ist`
+                    : `Erstelle eine ${difficultyText}e Textaufgabe zum Thema "${topic}" für Schüler der 7. Klasse.
+
+KRITISCH WICHTIG:
+- Dies ist Frage ${questionNumber} von ${totalQuestions} Fragen. 
+- ${aspectHint} des Themas "${topic}"
+- Jede Frage muss EINDEUTIG und UNTERSCHIEDLICH sein - verwende verschiedene Aspekte und Formulierungen!
+- Die Aufgabenstellung muss konkret und präzise sein (nicht "Beschreiben Sie [Thema]", sondern eine spezifische Aufgabe)
+- Die Frage muss sich von allen anderen Fragen unterscheiden
+- Verwende konkrete Beispiele, Zahlen oder Situationen${previousQuestionsContext}
+
+Formatiere die Antwort als JSON mit folgenden Feldern:
+- "question": Die konkrete, präzise Aufgabenstellung
+- "explanation": Eine ausführliche, verständliche Musterlösung`;
+                console.log('📤 Sende Request an OpenAI...');
+                let completion;
+                try {
+                    completion = await openai.chat.completions.create({
+                        model: 'gpt-4o-mini',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `Du bist ein erfahrener Lehrer, der präzise und altersgerechte Prüfungsfragen erstellt. 
+
+KRITISCH WICHTIG:
+- Jede Frage muss EINDEUTIG sein und sich von allen anderen unterscheiden
+- Verwende verschiedene Aspekte, Formulierungen, Beispiele und Konzepte des Themas
+- Verwende IMMER konkrete, realistische Antwortoptionen mit echten Inhalten (NIEMALS "Antwort A", "Antwort B", "Option 1" etc.)
+- Alle Antwortoptionen müssen sinnvoll zur Frage passen und plausibel klingen
+- Die richtige Antwort muss klar identifizierbar sein, aber die falschen Antworten sollten auch logisch erscheinen
+- Antworte IMMER im JSON-Format
+- Stelle sicher, dass jede Frage verschiedene Aspekte des Themas abdeckt
+- Verwende konkrete Beispiele, Zahlen oder Situationen in den Fragen`
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        response_format: { type: 'json_object' },
+                        temperature: 0.95, // Sehr hohe Temperatur für maximale Variation
+                        seed: Math.floor(Math.random() * 1000000) // Zufälliger Seed für jede Frage, um Variation zu gewährleisten
+                    });
+                    console.log('✅ OpenAI Response erhalten');
+                }
+                catch (apiError) {
+                    console.error('❌ OpenAI API Fehler:', {
+                        message: apiError.message,
+                        status: apiError.status,
+                        code: apiError.code,
+                        type: apiError.type
+                    });
+                    throw new Error(`OpenAI API Fehler: ${apiError.message || 'Unbekannter Fehler'}`);
+                }
+                const rawContent = completion.choices[0].message.content || '{}';
+                console.log('📥 AI-Response erhalten:', rawContent.substring(0, 200) + '...');
+                const content = JSON.parse(rawContent);
+                console.log('✅ JSON geparst:', {
+                    hasQuestion: !!content.question,
+                    hasOptions: !!content.options,
+                    optionsCount: ((_a = content.options) === null || _a === void 0 ? void 0 : _a.length) || 0,
+                    hasCorrectAnswer: !!content.correctAnswer
+                });
+                if (looksLikePlaceholder(content.question)) {
+                    throw new Error('AI-Antwort enthält Platzhalter im Fragetext');
+                }
+                if (questionType === 'multiple-choice') {
+                    const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+                    if (!Array.isArray(content.options) || content.options.length < optionsCount) {
+                        throw new Error('AI-Antwort enthält zu wenige Antwortoptionen');
+                    }
+                    const actualOptions = content.options.slice(0, Math.min(optionsCount, optionLabels.length));
+                    if (actualOptions.some((option) => looksLikePlaceholder(String(option)))) {
+                        throw new Error('AI-Antwort enthält Platzhalter in den Antwortoptionen');
+                    }
+                    const normalizedCorrectAnswer = typeof content.correctAnswer === 'string'
+                        ? content.correctAnswer.trim().toUpperCase()
+                        : '';
+                    if (!optionLabels.includes(normalizedCorrectAnswer)) {
+                        throw new Error('AI-Antwort enthält keine gültige richtige Antwort (A-F)');
+                    }
+                    const optionsHTML = actualOptions.map((option, index) => {
+                        // Stelle sicher, dass der Index gültig ist
+                        if (index >= optionLabels.length) {
+                            console.error('❌ Index außerhalb des Bereichs:', index, 'max:', optionLabels.length);
+                            throw new Error(`Zu viele Optionen: Index ${index} außerhalb des Bereichs`);
+                        }
+                        const optionLabel = optionLabels[index];
+                        if (!optionLabel || typeof optionLabel !== 'string') {
+                            console.error('❌ OptionLabel ist undefined oder kein String für Index:', index, 'optionLabel:', optionLabel);
+                            throw new Error(`OptionLabel ist undefined oder kein String für Index ${index}`);
+                        }
+                        const optionText = typeof option === 'string' && option.trim()
+                            ? option.trim()
+                            : '';
+                        if (!optionText) {
+                            throw new Error('AI-Antwort enthält leere Antwortoption');
+                        }
+                        const optionValue = optionLabel.toLowerCase();
+                        return `                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a${questionNumber}" value="${optionValue}" style="margin-right: 8px;">
+                        ${optionText}
+                    </label>`;
+                    }).join('\n');
+                    return {
+                        question: content.question,
+                        optionsHTML,
+                        correctAnswer: normalizedCorrectAnswer,
+                        explanation: content.explanation || 'Bitte passen Sie diese Musterlösung an.'
+                    };
+                }
+                return {
+                    question: content.question,
+                    explanation: content.explanation || 'Bitte passen Sie diese Musterlösung an.'
+                };
+            }
+            catch (error) {
+                console.error('❌ Fehler bei AI-Generierung:', error);
+                console.error('❌ Fehler-Details:', {
+                    message: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined
+                });
+                lastError = error instanceof Error ? error : new Error(String(error));
+                if (attempt < maxAttempts) {
+                    console.log('🔁 Erneuter Versuch der AI-Generierung...');
+                    continue;
+                }
+            }
+        }
+        throw lastError || new Error('AI-Generierung fehlgeschlagen');
+    }
+    /**
+     * Generiert Fallback-Inhalte wenn keine AI verfügbar ist
+     */
+    static generateFallbackQuestion(topic, questionType, difficulty, optionsCount) {
+        if (questionType === 'multiple-choice') {
+            const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+            // Generiere verschiedene Fallback-Optionen basierend auf dem Thema
+            const fallbackOptions = [
+                `Eine wichtige Eigenschaft von ${topic}`,
+                `Eine häufige Anwendung von ${topic}`,
+                `Ein grundlegendes Konzept zu ${topic}`,
+                `Ein Beispiel für ${topic}`,
+                `Eine Definition von ${topic}`,
+                `Eine Regel zu ${topic}`
+            ];
+            const optionsHTML = Array.from({ length: optionsCount }, (_, i) => {
+                if (i >= optionLabels.length) {
+                    console.error('❌ Fallback: Index außerhalb des Bereichs:', i, 'max:', optionLabels.length);
+                    return '';
+                }
+                const optionLabel = optionLabels[i];
+                if (!optionLabel || typeof optionLabel !== 'string') {
+                    console.error('❌ Fallback: OptionLabel ist undefined oder kein String für Index:', i);
+                    return '';
+                }
+                const optionValue = optionLabel.toLowerCase();
+                const optionText = fallbackOptions[i] || `Option zu ${topic}`;
+                return `                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a1" value="${optionValue}" style="margin-right: 8px;">
+                        ${optionText}
+                    </label>`;
+            }).filter(html => html !== '').join('\n');
+            return {
+                question: `Welche der folgenden Aussagen zu ${topic} ist korrekt?`,
+                optionsHTML,
+                correctAnswer: 'B',
+                explanation: '⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).'
+            };
+        }
+        else {
+            return {
+                question: `Beschreiben Sie die wichtigsten Konzepte zu ${topic}${difficulty === 'schwerste' ? ' in ausführlicher Form' : ''}.`,
+                explanation: '⚠️ HINWEIS: Dies sind Platzhalter-Inhalte. Für echte, individuelle Fragen benötigen Sie einen OpenAI API Key. Bitte setzen Sie OPENAI_API_KEY in der .env Datei des Servers (server/.env).'
+            };
+        }
+    }
+    /**
+     * Liest alle Aufgaben aus einer HTML-Datei
+     */
+    static async getExaminationQuestions(req, res) {
+        try {
+            const { filePath } = req.query;
+            if (!filePath || typeof filePath !== 'string') {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            // Lese die HTML-Datei
+            let fullFilePath;
+            if (filePath.startsWith('git-intern/')) {
+                const relativePath = filePath.replace('git-intern/', '');
+                if (process.env.NODE_ENV === 'production') {
+                    const jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    fullFilePath = path_1.default.join(jmReihenPath, relativePath);
+                }
+                else {
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                    fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
+            }
+            else {
+                fullFilePath = path_1.default.resolve(filePath);
+            }
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            const htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
+            // Extrahiere den Titel
+            let title = '';
+            // Versuche zuerst den header-title zu extrahieren
+            const headerTitleMatch = htmlContent.match(/<div class="header-title">([^<]+)<\/div>/);
+            if (headerTitleMatch) {
+                title = headerTitleMatch[1].trim();
+            }
+            else {
+                // Fallback: Extrahiere aus dem <title> Tag
+                const titleMatch = htmlContent.match(/<title>([^<]+)<\/title>/);
+                if (titleMatch) {
+                    title = titleMatch[1].trim();
+                }
+            }
+            // Extrahiere alle Aufgaben
+            const taskPattern = /<!-- Aufgabe (\d+):([^>]*)-->([\s\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)/g;
+            const questions = [];
+            let match;
+            while ((match = taskPattern.exec(htmlContent)) !== null) {
+                const taskNumber = parseInt(match[1]);
+                const taskMeta = match[2].trim();
+                const taskHTML = match[3].trim();
+                // Bestimme den Fragentyp
+                const isMultipleChoice = taskHTML.includes('type="radio"');
+                const questionType = isMultipleChoice ? 'multiple-choice' : 'text';
+                // Extrahiere die Frage
+                let questionText = '';
+                if (isMultipleChoice) {
+                    const questionMatch = taskHTML.match(/<label[^>]*style="font-weight: bold[^"]*"[^>]*>([^<]+)<\/label>/);
+                    if (questionMatch) {
+                        questionText = questionMatch[1].trim();
+                    }
+                }
+                else {
+                    const questionMatch = taskHTML.match(/<p[^>]*>([^<]+)<\/p>/);
+                    if (questionMatch) {
+                        questionText = questionMatch[1].trim();
+                    }
+                }
+                // Extrahiere Antwortoptionen für Multiple Choice
+                const options = [];
+                if (isMultipleChoice) {
+                    const optionMatches = taskHTML.matchAll(/<label[^>]*>[\s\S]*?<input[^>]*value="([^"]*)"[^>]*>[\s\S]*?([^<]+)<\/label>/g);
+                    for (const optionMatch of optionMatches) {
+                        options.push(optionMatch[2].trim());
+                    }
+                }
+                // Extrahiere die richtige Antwort
+                let correctAnswer = '';
+                if (isMultipleChoice) {
+                    const correctMatch = taskHTML.match(/Richtige Antwort: <strong>([^<]+)<\/strong>/);
+                    if (correctMatch) {
+                        correctAnswer = correctMatch[1].trim();
+                    }
+                }
+                // Extrahiere die Erklärung
+                let explanation = '';
+                const explanationMatch = taskHTML.match(/<p>([^<]+)<\/p>/);
+                if (explanationMatch && !explanationMatch[1].includes('Richtige Antwort')) {
+                    explanation = explanationMatch[1].trim();
+                }
+                // Versuche es mit der Musterlösung
+                const solutionMatch = taskHTML.match(/<div class="solution">[\s\S]*?<p>([^<]+)<\/p>/);
+                if (solutionMatch) {
+                    explanation = solutionMatch[1].trim();
+                }
+                questions.push({
+                    taskNumber,
+                    questionType,
+                    questionText,
+                    options,
+                    correctAnswer,
+                    explanation,
+                    taskHTML,
+                    taskMeta
+                });
+            }
+            res.json({
+                success: true,
+                title: title,
+                questions: questions.sort((a, b) => a.taskNumber - b.taskNumber)
+            });
+        }
+        catch (error) {
+            console.error('❌ Fehler beim Lesen der Fragen:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            res.status(500).json({
+                error: 'Fehler beim Lesen der Fragen',
+                details: errorMessage
+            });
+        }
+    }
+    /**
+     * Aktualisiert eine einzelne Frage in der HTML-Datei
+     */
+    static async updateSingleQuestion(req, res) {
+        try {
+            const { filePath, taskNumber, questionText, questionType, options, correctAnswer, explanation } = req.body;
+            if (!filePath || !taskNumber || !questionText) {
+                return res.status(400).json({ error: 'filePath, taskNumber und questionText sind erforderlich' });
+            }
+            // Lese die HTML-Datei
+            let fullFilePath;
+            if (filePath.startsWith('git-intern/')) {
+                const relativePath = filePath.replace('git-intern/', '');
+                if (process.env.NODE_ENV === 'production') {
+                    const jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    fullFilePath = path_1.default.join(jmReihenPath, relativePath);
+                }
+                else {
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                    fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
+            }
+            else {
+                fullFilePath = path_1.default.resolve(filePath);
+            }
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            let htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
+            // Finde die Aufgabe mit der angegebenen Nummer
+            const taskPattern = new RegExp(`<!-- Aufgabe ${taskNumber}:([^>]*)-->([\\s\\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)`, 'i');
+            const taskMatch = htmlContent.match(taskPattern);
+            if (!taskMatch) {
+                return res.status(404).json({ error: `Aufgabe ${taskNumber} nicht gefunden` });
+            }
+            // Extrahiere Punkte und AFB-Level aus der bestehenden Aufgabe
+            const pointsMatch = taskMatch[0].match(/\\((\d+)\\s+Punkte\\)/);
+            const points = pointsMatch ? parseInt(pointsMatch[1]) : 5;
+            const afbMatch = taskMatch[0].match(/AFB (\\d+)/);
+            const afbLevel = afbMatch ? parseInt(afbMatch[1]) : 2;
+            // Erstelle die aktualisierte Aufgabe
+            let newTaskHTML;
+            if (questionType === 'multiple-choice') {
+                const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+                const optionsHTML = (options || []).map((option, index) => {
+                    const optionLabel = optionLabels[index] || String.fromCharCode(65 + index);
+                    const optionValue = optionLabel.toLowerCase();
+                    return `                    <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="a${taskNumber}" value="${optionValue}" style="margin-right: 8px;">
+                        ${option}
+                    </label>`;
+                }).join('\n');
+                newTaskHTML = `    <!-- Aufgabe ${taskNumber}: AFB ${afbLevel} - Multiple Choice -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe ${taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${points} Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-${afbLevel}">AFB ${afbLevel}</span>
+                <div class="points">${points} Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">${questionText}</label>
+                <div style="margin-left: 20px;">
+${optionsHTML}
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>${correctAnswer || 'A'}</strong></p>
+                <p>${explanation || ''}</p>
+            </div>
+        </div>
+    </div>`;
+            }
+            else {
+                newTaskHTML = `    <!-- Aufgabe ${taskNumber}: AFB ${afbLevel} - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe ${taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${points} Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-${afbLevel}">AFB ${afbLevel}</span>
+                <div class="points">${points} Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>${questionText}</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a${taskNumber}" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>${explanation || ''}</p>
+            </div>
+        </div>
+    </div>`;
+            }
+            // Ersetze die alte Aufgabe mit der neuen
+            htmlContent = htmlContent.replace(taskPattern, newTaskHTML);
+            // Schreibe die aktualisierte HTML-Datei
+            fs_1.default.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+            console.log('✅ Frage erfolgreich aktualisiert:', fullFilePath, 'Aufgabe', taskNumber);
+            res.json({
+                success: true,
+                message: 'Frage erfolgreich aktualisiert',
+                taskNumber
+            });
+        }
+        catch (error) {
+            console.error('❌ Fehler beim Aktualisieren der Frage:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            res.status(500).json({
+                error: 'Fehler beim Aktualisieren der Frage',
+                details: errorMessage
+            });
+        }
+    }
+    /**
+     * Aktualisiert den Titel einer Prüfung
+     */
+    static async updateExaminationTitle(req, res) {
+        try {
+            const { filePath, title } = req.body;
+            if (!filePath || !title) {
+                return res.status(400).json({ error: 'filePath und title sind erforderlich' });
+            }
+            // Lese die HTML-Datei
+            let fullFilePath;
+            if (filePath.startsWith('git-intern/')) {
+                const relativePath = filePath.replace('git-intern/', '');
+                if (process.env.NODE_ENV === 'production') {
+                    const jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    fullFilePath = path_1.default.join(jmReihenPath, relativePath);
+                }
+                else {
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                    fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
+            }
+            else {
+                fullFilePath = path_1.default.resolve(filePath);
+            }
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            let htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
+            // Aktualisiere den Titel im <title> Tag
+            htmlContent = htmlContent.replace(/<title>([^<]+)<\/title>/, `<title>${title}</title>`);
+            // Aktualisiere den Titel im header-title
+            htmlContent = htmlContent.replace(/<div class="header-title">([^<]+)<\/div>/, `<div class="header-title">${title}</div>`);
+            // Schreibe die aktualisierte HTML-Datei
+            fs_1.default.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+            console.log('✅ Titel erfolgreich aktualisiert:', fullFilePath, 'Titel:', title);
+            res.json({
+                success: true,
+                message: 'Titel erfolgreich aktualisiert',
+                title
+            });
+        }
+        catch (error) {
+            console.error('❌ Fehler beim Aktualisieren des Titels:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            res.status(500).json({
+                error: 'Fehler beim Aktualisieren des Titels',
+                details: errorMessage
+            });
+        }
+    }
+    /**
+     * Generiert eine einzelne Frage und ersetzt sie in der HTML-Datei
+     */
+    static async generateSingleQuestion(req, res) {
+        try {
+            const { filePath, questionNumber, questionType, topic } = req.body;
+            if (!filePath || !questionNumber || !questionType || !topic) {
+                return res.status(400).json({ error: 'filePath, questionNumber, questionType und topic sind erforderlich' });
+            }
+            // Lese die HTML-Datei
+            let fullFilePath;
+            if (filePath.startsWith('git-intern/')) {
+                const relativePath = filePath.replace('git-intern/', '');
+                if (process.env.NODE_ENV === 'production') {
+                    const jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    fullFilePath = path_1.default.join(jmReihenPath, relativePath);
+                }
+                else {
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                    fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
+            }
+            else {
+                fullFilePath = path_1.default.resolve(filePath);
+            }
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            let htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
+            // Finde die Aufgabe mit der angegebenen Nummer
+            const taskPattern = new RegExp(`<!-- Aufgabe ${questionNumber}:([^>]*)-->([\\s\\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)`, 'i');
+            const taskMatch = htmlContent.match(taskPattern);
+            if (!taskMatch) {
+                return res.status(404).json({ error: `Aufgabe ${questionNumber} nicht gefunden` });
+            }
+            // Generiere die neue Frage
+            const difficulty = questionNumber === 1 ? 'einfachste' : 'mittel';
+            const aiContent = await FileSystemPathController.generateAIQuestion(topic, questionType, difficulty, questionNumber, 1, // totalQuestions (nicht relevant für Einzelfragen)
+            questionType === 'multiple-choice' ? 4 : 0);
+            // Erstelle die neue Aufgabe
+            let newTaskHTML;
+            if (questionType === 'multiple-choice') {
+                const points = 5; // Standard-Punkte
+                const afbLevel = difficulty === 'einfachste' ? 1 : 2;
+                newTaskHTML = `    <!-- Aufgabe ${questionNumber}: AFB ${afbLevel} - Multiple Choice -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe ${questionNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${points} Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-${afbLevel}">AFB ${afbLevel}</span>
+                <div class="points">${points} Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <div class="input-group full-width" style="margin-bottom: 20px;">
+                <label style="font-weight: bold; margin-bottom: 10px; display: block;">${aiContent.question}</label>
+                <div style="margin-left: 20px;">
+${aiContent.optionsHTML}
+                </div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>Richtige Antwort: <strong>${aiContent.correctAnswer}</strong></p>
+                <p>${aiContent.explanation}</p>
+            </div>
+        </div>
+    </div>`;
+            }
+            else {
+                const points = 5;
+                const afbLevel = 2;
+                newTaskHTML = `    <!-- Aufgabe ${questionNumber}: AFB ${afbLevel} - Textaufgabe -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe ${questionNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${points} Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-${afbLevel}">AFB ${afbLevel}</span>
+                <div class="points">${points} Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+            <p><strong>Bearbeite</strong> die folgende Aufgabe zu ${topic}:</p>
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 4px; line-height: 1.8; font-size: 15px; margin-bottom: 15px;">
+                <p>${aiContent.question}</p>
+            </div>
+
+            <div class="input-group full-width">
+                <textarea id="a${questionNumber}" placeholder="Ihre Antwort hier..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-family: Arial, sans-serif;"></textarea>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>${aiContent.explanation || '<em>Bitte passen Sie diese Musterlösung an Ihre spezifischen Anforderungen an.</em>'}</p>
+            </div>
+        </div>
+    </div>`;
+            }
+            // Ersetze die alte Aufgabe mit der neuen
+            htmlContent = htmlContent.replace(taskPattern, newTaskHTML);
+            // Schreibe die aktualisierte HTML-Datei
+            fs_1.default.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+            console.log('✅ Einzelfrage erfolgreich generiert:', fullFilePath, 'Aufgabe', questionNumber);
+            res.json({
+                success: true,
+                message: 'Frage erfolgreich generiert',
+                questionNumber
+            });
+        }
+        catch (error) {
+            console.error('❌ Fehler beim Generieren der Einzelfrage:', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            res.status(500).json({
+                error: 'Fehler beim Generieren der Einzelfrage',
+                details: errorMessage
+            });
+        }
+    }
 }
 exports.FileSystemPathController = FileSystemPathController;
 //# sourceMappingURL=FileSystemPathController.js.map

@@ -79,6 +79,9 @@ router.get('/static/*', FileSystemPathController.serveStaticFile);
 // Prüfung erstellen (KA, KU, HU, QZ)
 router.post('/create-examination', FileSystemPathController.createExamination);
 
+// Stunde erstellen (Ordner + Standardmaterialien)
+router.post('/create-lesson-folder', FileSystemPathController.createLessonFolder);
+
 // Prüfungsinhalte generieren
 router.post('/generate-examination-content', FileSystemPathController.generateExaminationContent);
 

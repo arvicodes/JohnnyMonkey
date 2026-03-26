@@ -19,7 +19,6 @@ import {
   TextField
 } from '@mui/material';
 import {
-  Close as CloseIcon,
   Delete as DeleteIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
@@ -34,8 +33,10 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
   Fullscreen as FullscreenIcon,
-  Layers as LayersIcon
+  Layers as LayersIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import useWhiteboardPerformance from '../hooks/useWhiteboardPerformance';
 
 type Tool = 'brush' | 'pen' | 'marker' | 'text' | 'line' | 'circle' | 'rectangle' | 'triangle' | 'arrow' | 'polygon' | 'eraser' | 'image' | 'select' | 'freeform' | 'connector' | 'stamp' | 'highlighter';
@@ -581,8 +582,8 @@ const AdvancedWhiteboard: React.FC<AdvancedWhiteboardProps> = ({
             </IconButton>
           </Tooltip>
 
-          <IconButton onClick={() => window.close()} size="small">
-            <CloseIcon />
+          <IconButton onClick={() => window.close()} size="small" aria-label="Fenster schließen">
+            <CloseIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Box>
       </Paper>
@@ -630,7 +631,10 @@ const AdvancedWhiteboard: React.FC<AdvancedWhiteboardProps> = ({
 
       {/* Layers Dialog */}
       <Dialog open={showLayers} onClose={() => setShowLayers(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Ebenen verwalten</DialogTitle>
+        <DialogTitle sx={dialogCloseTitleSx}>
+          Ebenen verwalten
+          <DialogCloseIconButton onClose={() => setShowLayers(false)} />
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
             {layers.map(layer => (

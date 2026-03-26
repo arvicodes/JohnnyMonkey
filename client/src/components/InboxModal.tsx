@@ -3,7 +3,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   Button,
   Box,
   Typography,
@@ -17,7 +16,6 @@ import {
   Chip,
   Badge,
   IconButton,
-  Paper,
   TextField,
   FormControl,
   InputLabel,
@@ -27,7 +25,6 @@ import {
   Tab
 } from '@mui/material';
 import {
-  Close,
   Mail,
   MailOutline,
   Person,
@@ -35,6 +32,7 @@ import {
   Send,
   Add
 } from '@mui/icons-material';
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 interface Message {
   id: string;
@@ -275,11 +273,9 @@ const InboxModal: React.FC<InboxModalProps> = ({ open, onClose }) => {
       <DialogTitle sx={{ 
         bgcolor: '#1976d2', 
         color: '#fff',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         py: 0.75,
-        px: 1.5
+        px: 1.5,
+        ...dialogCloseTitleSx,
       }}>
         <Box display="flex" alignItems="center" gap={0.75}>
           <Mail sx={{ fontSize: 18 }} />
@@ -301,21 +297,11 @@ const InboxModal: React.FC<InboxModalProps> = ({ open, onClose }) => {
             />
           )}
         </Box>
-        <IconButton
-          onClick={onClose}
-          sx={{ 
-            color: '#fff', 
-            p: 0,
-            minWidth: 32,
-            width: 32,
-            height: 32,
-            '& .MuiSvgIcon-root': {
-              fontSize: 20
-            }
-          }}
-        >
-          <Close sx={{ width: '100%', height: '100%' }} />
-        </IconButton>
+        <DialogCloseIconButton
+          onClose={onClose}
+          sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+          iconSx={{ color: '#fff' }}
+        />
       </DialogTitle>
       
       <DialogContent sx={{ p: 0, minHeight: 300, maxHeight: '70vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
