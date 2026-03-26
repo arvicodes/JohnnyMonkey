@@ -10,6 +10,7 @@ type ExitTicketTemplate = {
   title: string;
   description: string;
   questions: string[];
+  responseMode?: 'questions-only' | 'text-input' | 'photo-upload';
 };
 
 type ExitTicketResponse = {
@@ -17,6 +18,8 @@ type ExitTicketResponse = {
   studentName: string;
   answers: string[];
   drawingDataUrl?: string;
+  photoDataUrl?: string;
+  completionOnly?: boolean;
   submittedAt: string;
 };
 
@@ -153,6 +156,8 @@ export class ExitTicketController {
 
       const answers = Array.isArray(req.body?.answers) ? (req.body.answers as string[]) : null;
       const drawingDataUrl = typeof req.body?.drawingDataUrl === 'string' ? req.body.drawingDataUrl : undefined;
+      const photoDataUrl = typeof req.body?.photoDataUrl === 'string' ? req.body.photoDataUrl : undefined;
+      const completionOnly = Boolean(req.body?.completionOnly);
       if (!answers) return res.status(400).json({ error: 'answers ist erforderlich' });
 
       const teacher = await getTeacherForStudent(user.id);
@@ -179,6 +184,8 @@ export class ExitTicketController {
         studentName: user.name,
         answers,
         drawingDataUrl,
+        photoDataUrl,
+        completionOnly,
         submittedAt: new Date().toISOString(),
       });
 

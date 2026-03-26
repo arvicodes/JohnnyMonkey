@@ -5645,7 +5645,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
   // Bearbeitbare Stunden-Texte und Ablaufplanung pro Stunde (lessonPath)
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
-  type LessonPlanItemType = 'entry-ticket' | 'exit-ticket' | 'quiz' | 'arbeitsauftrag' | 'leinwand';
+  type LessonPlanItemType = 'entry-ticket' | 'exit-ticket' | 'quiz' | 'arbeitsauftrag' | 'leinwand' | 'tafel';
   type LessonPlanItem = {
     id: string;
     type: LessonPlanItemType;
@@ -5661,6 +5661,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [newExitType, setNewExitType] = useState<'feedback' | 'quick-check' | 'transfer' | 'draw'>('feedback');
   const [dragPlanIndex, setDragPlanIndex] = useState<number | null>(null);
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
+  const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run'>('create');
   const [showConfettiGame, setShowConfettiGame] = useState(false);
   const [showMaskMemory, setShowMaskMemory] = useState(false);
   const [showFoolQuiz, setShowFoolQuiz] = useState(false);
@@ -19310,7 +19311,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       {/* Modal: Unterrichtsstunde – Anweisungen, Folien, AB. X-Button: immer klein, ganz rechts, Icon überdeckt Button. */}
       <Dialog
         open={lessonModalOpen}
-        onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); }}
+        onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); setLessonPlanViewMode('create'); }}
         maxWidth="lg"
         fullWidth
         PaperProps={{ sx: { borderRadius: 2 } }}
@@ -19322,7 +19323,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 {lessonModalData.lessonName}
               </Typography>
               <DialogCloseIconButton
-                onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); }}
+                onClose={() => { setLessonModalOpen(false); setLessonModalData(null); setVoraussetzungenGlossarOpen(false); setLessonBoxEdit(null); setLessonPlanViewMode('create'); }}
                 sx={{ '&:hover': { bgcolor: 'action.hover' } }}
               />
             </DialogTitle>
@@ -19374,6 +19375,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'exit-ticket') return 'Exit Ticket';
                   if (type === 'quiz') return 'Quiz';
                   if (type === 'arbeitsauftrag') return 'Arbeitsauftrag';
+                  if (type === 'tafel') return 'Tafel';
                   return 'Leinwand';
                 };
                 const getPlanTypeStyle = (type: LessonPlanItemType) => {
@@ -19381,6 +19383,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'exit-ticket') return { bg: '#c8e6c9', border: '#388e3c', text: '#1b5e20' }; // dunkler gruen
                   if (type === 'quiz') return { bg: '#ffebee', border: '#ef9a9a', text: '#c62828' }; // roetlich
                   if (type === 'leinwand') return { bg: '#e8f5e9', border: '#c8e6c9', text: '#2e7d32' }; // leicht gruenlich
+                  if (type === 'tafel') return { bg: '#eceff1', border: '#b0bec5', text: '#37474f' }; // neutral
                   return { bg: '#f3e5f5', border: '#ce93d8', text: '#7b1fa2' }; // leicht lila
                 };
                 const addPlanItems = async () => {
@@ -19408,14 +19411,89 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   next.splice(toIndex, 0, moved);
                   await updateLessonPlan(next);
                 };
-                const openPlanItem = (item: LessonPlanItem) => {
+                const openPlanItem = async (item: LessonPlanItem) => {
                   if (item.type === 'entry-ticket') {
-                    window.open(`/entry-ticket?grade=${encodeURIComponent(String(item.grade || 7))}`, '_blank');
+                    const autoStart = lessonPlanViewMode === 'run' ? '&autostart=1' : '';
+                    window.open(`/entry-ticket?grade=${encodeURIComponent(String(item.grade || 7))}${autoStart}`, '_blank');
                     return;
                   }
                   if (item.type === 'exit-ticket') {
                     const template = item.exitType || 'feedback';
-                    window.open(`/exit-ticket?template=${encodeURIComponent(template)}`, '_blank');
+                    const exitTicketUrl = `/exit-ticket?template=${encodeURIComponent(template)}`;
+                    const openedWindow = window.open('about:blank', '_blank');
+                    if (!openedWindow) {
+                      showSnackbar('Popup wurde blockiert. Bitte Popups für diese Seite erlauben.', 'error');
+                      return;
+                    }
+                    const topic = (lessonName || '').trim() || 'dem heutigen Thema';
+                    const exitTemplateByType: Record<'feedback' | 'quick-check' | 'transfer' | 'draw', { title: string; description: string; questions: string[] }> = {
+                      feedback: {
+                        title: '3-Fragen-Feedback',
+                        description: 'Reflexion zur Stunde aus Sicht der SuS.',
+                        questions: [
+                          'Was ist das Wichtigste, das du aus der heutigen Stunde mitnimmst?',
+                          'Was war heute neu oder besonders interessant für dich?',
+                          'Welche Frage ist bei dir noch offen?'
+                        ]
+                      },
+                      'quick-check': {
+                        title: '3 kurze Fragen zum Thema',
+                        description: `Automatisch erzeugte Kurzfragen zu "${topic}".`,
+                        questions: [
+                          `Erkläre in 1-2 Sätzen die Kernidee von ${topic}.`,
+                          `Nenne zwei wichtige Begriffe aus ${topic} und erkläre sie kurz.`,
+                          `Gib ein kurzes Beispiel zu ${topic} aus Alltag oder Unterricht.`
+                        ]
+                      },
+                      transfer: {
+                        title: 'Transferaufgabe',
+                        description: 'Übertrage das Gelernte auf eine neue Situation.',
+                        questions: [
+                          'Beschreibe eine reale Situation, in der das heutige Thema vorkommt.',
+                          'Erkläre, wie du das Gelernte auf diese Situation anwendest.',
+                          'Formuliere zum Schluss einen kurzen Merksatz.'
+                        ]
+                      },
+                      draw: {
+                        title: 'Zeichne ein Bild zur Stunde',
+                        description: 'Zeig mit einer Zeichnung, was dir heute am wichtigsten war.',
+                        questions: [
+                          'Zeichne ein Bild, das deine wichtigste Idee aus der Stunde zeigt.',
+                          'Beschrifte mindestens 1 Teil deiner Zeichnung.',
+                          'Schreibe 1 Satz dazu: „Das bedeutet für mich …“'
+                        ]
+                      }
+                    };
+
+                    const selected = exitTemplateByType[template];
+                    const loginCode = localStorage.getItem('loginCode') || '';
+                    try {
+                      const publishRes = await fetch('/api/exit-ticket/publish', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(loginCode ? { 'x-login-code': loginCode } : {})
+                        },
+                        body: JSON.stringify({
+                          template: {
+                            id: template,
+                            title: selected.title,
+                            description: selected.description,
+                            questions: selected.questions
+                          }
+                        })
+                      });
+                      if (!publishRes.ok) {
+                        showSnackbar('Exit Ticket konnte nicht veröffentlicht werden.', 'error');
+                        openedWindow.close();
+                        return;
+                      }
+                    } catch (_) {
+                      showSnackbar('Fehler beim Starten des Exit Tickets.', 'error');
+                      openedWindow.close();
+                      return;
+                    }
+                    openedWindow.location.href = exitTicketUrl;
                     return;
                   }
                   if (item.type === 'quiz') {
@@ -19436,7 +19514,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     window.open(`/submissions-grid?filePath=${encodeURIComponent(submissionFile.path)}&fileName=${encodeURIComponent(submissionFile.name)}&teacherId=${userId}&groupId=${lessonModalData.groupId}`, '_blank');
                     return;
                   }
+                  if (item.type === 'leinwand') {
+                    window.open(`/shared-overview?groupId=${encodeURIComponent(lessonModalData.groupId)}&lessonPath=${encodeURIComponent(lessonModalData.lessonPath)}`, '_blank');
+                    return;
+                  }
+                  if (item.type === 'tafel') {
                     window.open(`/whiteboard?groupId=${lessonModalData.groupId}`, '_blank');
+                    return;
+                  }
                 };
                 const startEdit = (section: LessonBoxField) => {
                   const currentText = (instructions as any)?.[section] ?? '';
@@ -19489,13 +19574,33 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: LESSON_MODAL_FONT_SIZE }}>
                     {/* Stundenablauf planen */}
                     <Box sx={{ mb: 1.5, p: 1.5, border: '1px solid #d7e3f1', borderRadius: 1.5, bgcolor: '#f7fbff' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                        <FormControlLabel
+                          sx={{ m: 0 }}
+                          control={
+                            <Switch
+                              size="small"
+                              checked={lessonPlanViewMode === 'run'}
+                              onChange={(e) => setLessonPlanViewMode(e.target.checked ? 'run' : 'create')}
+                            />
+                          }
+                          label={
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: '#455a64' }}>
+                              {lessonPlanViewMode === 'run' ? 'Durchführen' : 'Erstellen'}
+                            </Typography>
+                          }
+                        />
+                      </Box>
+
+                      {lessonPlanViewMode === 'create' && (
                       <Box sx={{ mb: 1.0, display: 'flex', alignItems: 'flex-start', gap: 0.6, flexWrap: 'wrap', width: '100%' }}>
                         {[
                           { id: 'entry-ticket', label: 'Entry Ticket' },
                           { id: 'exit-ticket', label: 'Exit Ticket' },
                           { id: 'quiz', label: 'Quiz' },
                           { id: 'arbeitsauftrag', label: 'Arbeitsauftrag' },
-                          { id: 'leinwand', label: 'Leinwand' }
+                          { id: 'leinwand', label: 'Leinwand' },
+                          { id: 'tafel', label: 'Tafel' }
                         ].map((option) => {
                           const optionId = option.id as LessonPlanItemType;
                           const style = getPlanTypeStyle(optionId);
@@ -19616,6 +19721,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           </Button>
                         </Box>
                       </Box>
+                      )}
 
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                         {lessonPlan.length === 0 ? (
@@ -19625,10 +19731,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         ) : lessonPlan.map((item, index) => (
                           <Box
                             key={item.id}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDragEnter={() => setDragOverPlanIndex(index)}
-                            onDragLeave={() => setDragOverPlanIndex((prev) => (prev === index ? null : prev))}
+                            onDragOver={(e) => {
+                              if (lessonPlanViewMode !== 'create') return;
+                              e.preventDefault();
+                            }}
+                            onDragEnter={() => {
+                              if (lessonPlanViewMode !== 'create') return;
+                              setDragOverPlanIndex(index);
+                            }}
+                            onDragLeave={() => {
+                              if (lessonPlanViewMode !== 'create') return;
+                              setDragOverPlanIndex((prev) => (prev === index ? null : prev));
+                            }}
                             onDrop={async () => {
+                              if (lessonPlanViewMode !== 'create') return;
                               if (dragPlanIndex === null) return;
                               await movePlanItem(dragPlanIndex, index);
                               setDragPlanIndex(null);
@@ -19640,12 +19756,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               alignItems: 'center',
                               gap: 1,
                               p: 0.75,
-                              border: dragOverPlanIndex === index ? '1px solid #42a5f5' : '1px solid #c9d7e6',
+                              border: lessonPlanViewMode === 'create' && dragOverPlanIndex === index ? '1px solid #42a5f5' : '1px solid #c9d7e6',
                               borderRadius: 1,
                               bgcolor: '#ffffff',
                               position: 'relative',
                               cursor: 'pointer',
-                              boxShadow: dragOverPlanIndex === index ? '0 0 0 2px rgba(66,165,245,0.15)' : 'none',
+                              boxShadow: lessonPlanViewMode === 'create' && dragOverPlanIndex === index ? '0 0 0 2px rgba(66,165,245,0.15)' : 'none',
                               '&:hover': { bgcolor: '#f8fbff' }
                             }}
                           >
@@ -19675,57 +19791,59 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             </Typography>
                               );
                             })()}
-                            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.4 }}>
-                              <Box
-                                draggable
-                                onDragStart={(e) => {
-                                  e.stopPropagation();
-                                  setDragPlanIndex(index);
-                                  setDragOverPlanIndex(index);
-                                }}
-                                onDragEnd={() => {
-                                  setDragPlanIndex(null);
-                                  setDragOverPlanIndex(null);
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                sx={{
-                                  width: 16,
-                                  height: 16,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  borderRadius: 0.5,
-                                  color: '#607d8b',
-                                  cursor: 'grab',
-                                  userSelect: 'none',
-                                  '&:active': { cursor: 'grabbing' },
-                                  '&:hover': { bgcolor: '#eceff1' }
-                                }}
-                                title="Ziehen zum Sortieren"
-                              >
-                                <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>⋮⋮</Typography>
-                              </Box>
-                              <Box sx={{ position: 'relative', width: 18, height: 18 }}>
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => {
+                            {lessonPlanViewMode === 'create' && (
+                              <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                                <Box
+                                  draggable
+                                  onDragStart={(e) => {
                                     e.stopPropagation();
-                                    removePlanItem(item.id);
+                                    setDragPlanIndex(index);
+                                    setDragOverPlanIndex(index);
                                   }}
+                                  onDragEnd={() => {
+                                    setDragPlanIndex(null);
+                                    setDragOverPlanIndex(null);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
                                   sx={{
-                                    width: 18,
-                                    height: 18,
-                                    minWidth: 18,
-                                    p: 0,
-                                    bgcolor: '#ffebee',
-                                    border: '1px solid #ef9a9a',
-                                    '&:hover': { bgcolor: '#ffcdd2' }
+                                    width: 16,
+                                    height: 16,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: 0.5,
+                                    color: '#607d8b',
+                                    cursor: 'grab',
+                                    userSelect: 'none',
+                                    '&:active': { cursor: 'grabbing' },
+                                    '&:hover': { bgcolor: '#eceff1' }
                                   }}
+                                  title="Ziehen zum Sortieren"
                                 >
-                                  <DeleteIcon sx={{ fontSize: 14, color: '#c62828' }} />
-                                </IconButton>
+                                  <Typography variant="caption" sx={{ fontSize: '0.75rem', lineHeight: 1 }}>⋮⋮</Typography>
+                                </Box>
+                                <Box sx={{ position: 'relative', width: 18, height: 18 }}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removePlanItem(item.id);
+                                    }}
+                                    sx={{
+                                      width: 18,
+                                      height: 18,
+                                      minWidth: 18,
+                                      p: 0,
+                                      bgcolor: '#ffebee',
+                                      border: '1px solid #ef9a9a',
+                                      '&:hover': { bgcolor: '#ffcdd2' }
+                                    }}
+                                  >
+                                    <DeleteIcon sx={{ fontSize: 14, color: '#c62828' }} />
+                                  </IconButton>
+                                </Box>
                               </Box>
-                            </Box>
+                            )}
                           </Box>
                         ))}
                       </Box>

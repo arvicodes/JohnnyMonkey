@@ -6,6 +6,10 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   TextField,
   Tooltip,
@@ -14,14 +18,25 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, CheckCircle as CheckCircleIcon, Close as CloseIcon } from '@mui/icons-material';
 import { apiGet, apiPost } from '../lib/api';
+import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
 
-type ExitTicketTemplateType = 'feedback' | 'quick-check' | 'transfer' | 'draw';
+type ExitTicketTemplateType =
+  | 'feedback'
+  | 'quick-check'
+  | 'transfer'
+  | 'draw'
+  | 'error-hunt'
+  | 'exam-question'
+  | 'prediction';
+
+type ExitTicketResponseMode = 'questions-only' | 'text-input' | 'photo-upload';
 
 type ExitTicketTemplate = {
   id: ExitTicketTemplateType;
   title: string;
   description: string;
   questions: string[];
+  responseMode: ExitTicketResponseMode;
 };
 
 type CollectedExitTicketResponse = {
@@ -29,6 +44,8 @@ type CollectedExitTicketResponse = {
   studentName: string;
   answers: string[];
   drawingDataUrl?: string;
+  photoDataUrl?: string;
+  completionOnly?: boolean;
   submittedAt: string;
 };
 
@@ -39,12 +56,16 @@ const TEMPLATE_IMAGE_SRC: Record<ExitTicketTemplateType, string> = {
   'quick-check': '/exit-ticket/exit-ticket-quick-check.svg',
   transfer: '/exit-ticket/exit-ticket-transfer.svg',
   draw: '/exit-ticket/exit-ticket-draw.svg',
+  'error-hunt': '/exit-ticket/exit-ticket-quick-check.svg',
+  'exam-question': '/exit-ticket/exit-ticket-feedback.svg',
+  prediction: '/exit-ticket/exit-ticket-transfer.svg',
 };
 
 const FEEDBACK_TEMPLATE: ExitTicketTemplate = {
   id: 'feedback',
   title: '3-Fragen-Feedback',
   description: 'Reflexion zur Stunde aus Sicht der SuS.',
+  responseMode: 'questions-only',
   questions: [
     'Was ist das Wichtigste, das du aus der heutigen Stunde mitnimmst?',
     'Was war heute neu oder besonders interessant für dich?',
@@ -58,6 +79,7 @@ const buildQuickCheckTemplate = (topic: string): ExitTicketTemplate => {
     id: 'quick-check',
     title: '3 kurze Fragen zum Thema',
     description: `Automatisch erzeugte Kurzfragen zu "${cleanedTopic}".`,
+    responseMode: 'questions-only',
     questions: [
       `Erkläre in 1-2 Sätzen die Kernidee von ${cleanedTopic}.`,
       `Nenne zwei wichtige Begriffe aus ${cleanedTopic} und erkläre sie kurz.`,
@@ -70,6 +92,7 @@ const TRANSFER_TEMPLATE: ExitTicketTemplate = {
   id: 'transfer',
   title: 'Transferaufgabe',
   description: 'Übertrage das Gelernte auf eine neue Situation.',
+  responseMode: 'questions-only',
   questions: [
     'Beschreibe eine reale Situation, in der das heutige Thema vorkommt.',
     'Erkläre, wie du das Gelernte auf diese Situation anwendest.',
@@ -81,10 +104,47 @@ const DRAW_TEMPLATE: ExitTicketTemplate = {
   id: 'draw',
   title: 'Zeichne ein Bild zur Stunde',
   description: 'Zeig mit einer Zeichnung, was dir heute am wichtigsten war.',
+  responseMode: 'questions-only',
   questions: [
     'Zeichne ein Bild, das deine wichtigste Idee aus der Stunde zeigt.',
     'Beschrifte mindestens 1 Teil deiner Zeichnung.',
     'Schreibe 1 Satz dazu: „Das bedeutet für mich …“',
+  ],
+};
+
+const ERROR_HUNT_TEMPLATE: ExitTicketTemplate = {
+  id: 'error-hunt',
+  title: 'Fehler-Fahndung',
+  description: 'Finde und verbessere typische Denk- oder Rechenfehler.',
+  responseMode: 'questions-only',
+  questions: [
+    'Finde einen typischen Fehler zum heutigen Thema.',
+    'Korrigiere den Fehler und erkläre kurz, warum er falsch ist.',
+    'Formuliere eine Merkhilfe, damit der Fehler nicht noch einmal passiert.',
+  ],
+};
+
+const EXAM_QUESTION_TEMPLATE: ExitTicketTemplate = {
+  id: 'exam-question',
+  title: 'Prüfungsfrage bauen',
+  description: 'Erstelle eine mögliche Prüfungsfrage zur heutigen Stunde.',
+  responseMode: 'questions-only',
+  questions: [
+    'Erstelle eine sinnvolle Prüfungsfrage zum heutigen Thema.',
+    'Gib eine kurze Musterlösung dazu an.',
+    'Begründe in 1 Satz, warum diese Frage wichtig ist.',
+  ],
+};
+
+const PREDICTION_TEMPLATE: ExitTicketTemplate = {
+  id: 'prediction',
+  title: 'Vorhersage fürs nächste Mal',
+  description: 'Schätze, was als Nächstes kommt und warum.',
+  responseMode: 'questions-only',
+  questions: [
+    'Schätze: Was wird in der nächsten Stunde wahrscheinlich behandelt?',
+    'Begründe deine Vorhersage mit Bezug zur heutigen Stunde.',
+    'Formuliere eine Frage, die du in der nächsten Stunde klären willst.',
   ],
 };
 
@@ -100,6 +160,14 @@ const parseStoredTemplate = (): ExitTicketTemplate | null => {
   }
 };
 
+const withTemplateDefaults = (template: ExitTicketTemplate | null | undefined): ExitTicketTemplate | null => {
+  if (!template) return null;
+  return {
+    ...template,
+    responseMode: template.responseMode ?? 'questions-only',
+  };
+};
+
 const OPERATOR_WORDS = [
   'Erkläre',
   'Nenne',
@@ -112,6 +180,11 @@ const OPERATOR_WORDS = [
   'Übertrage',
   'Schreibe',
   'Bearbeite',
+  'Finde',
+  'Korrigiere',
+  'Erstelle',
+  'Begründe',
+  'Schätze',
 ];
 
 const renderWithBoldOperators = (text: string, keyPrefix: string) => {
@@ -134,17 +207,33 @@ export default function ExitTicketPage() {
   const location = useLocation();
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
   const [selectedType, setSelectedType] = useState<ExitTicketTemplateType>('feedback');
+  const [selectedResponseMode, setSelectedResponseMode] = useState<ExitTicketResponseMode>('questions-only');
   const [quickCheckTopic, setQuickCheckTopic] = useState('');
   const [publishedTemplate, setPublishedTemplate] = useState<ExitTicketTemplate | null>(parseStoredTemplate());
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [responses, setResponses] = useState<CollectedExitTicketResponse[]>([]);
   const [loadingResponses, setLoadingResponses] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [draftTemplateType, setDraftTemplateType] = useState<ExitTicketTemplateType>('feedback');
+  const [draftTopic, setDraftTopic] = useState('');
+  const [draftResponseMode, setDraftResponseMode] = useState<ExitTicketResponseMode>('questions-only');
+  const [draftAnswers, setDraftAnswers] = useState<string[]>([]);
+  const [draftPhotoDataUrl, setDraftPhotoDataUrl] = useState<string>('');
+  const draftCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const template = params.get('template');
-    const allowed: ExitTicketTemplateType[] = ['feedback', 'quick-check', 'transfer', 'draw'];
+    const allowed: ExitTicketTemplateType[] = [
+      'feedback',
+      'quick-check',
+      'transfer',
+      'draw',
+      'error-hunt',
+      'exam-question',
+      'prediction',
+    ];
     if (template && allowed.includes(template as ExitTicketTemplateType)) {
       setSelectedType(template as ExitTicketTemplateType);
     }
@@ -160,11 +249,11 @@ export default function ExitTicketPage() {
         if (!response.ok) throw new Error('Laden fehlgeschlagen');
         const data = await response.json();
         if (!mounted) return;
-        setPublishedTemplate(data?.template ?? null);
+        setPublishedTemplate(withTemplateDefaults(data?.template ?? null));
       } catch {
         if (mounted) {
           // Fallback for existing local state in case API is temporarily unavailable.
-          setPublishedTemplate(parseStoredTemplate());
+          setPublishedTemplate(withTemplateDefaults(parseStoredTemplate()));
         }
       } finally {
         if (mounted) setLoading(false);
@@ -241,7 +330,15 @@ export default function ExitTicketPage() {
       return false;
     };
 
-    const templateOrder: ExitTicketTemplateType[] = ['feedback', 'quick-check', 'transfer', 'draw'];
+    const templateOrder: ExitTicketTemplateType[] = [
+      'feedback',
+      'quick-check',
+      'transfer',
+      'draw',
+      'error-hunt',
+      'exam-question',
+      'prediction',
+    ];
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
@@ -261,19 +358,48 @@ export default function ExitTicketPage() {
   }, [isTeacher, selectedType]);
 
   const selectedTemplate = useMemo(() => {
-    if (selectedType === 'feedback') return FEEDBACK_TEMPLATE;
-    if (selectedType === 'quick-check') return buildQuickCheckTemplate(quickCheckTopic);
-    if (selectedType === 'draw') return DRAW_TEMPLATE;
-    return TRANSFER_TEMPLATE;
-  }, [selectedType, quickCheckTopic]);
+    const baseTemplate =
+      selectedType === 'feedback'
+        ? FEEDBACK_TEMPLATE
+        : selectedType === 'quick-check'
+          ? buildQuickCheckTemplate(quickCheckTopic)
+          : selectedType === 'error-hunt'
+            ? ERROR_HUNT_TEMPLATE
+            : selectedType === 'exam-question'
+              ? EXAM_QUESTION_TEMPLATE
+              : selectedType === 'prediction'
+                ? PREDICTION_TEMPLATE
+                : selectedType === 'draw'
+                  ? DRAW_TEMPLATE
+                  : TRANSFER_TEMPLATE;
+    return { ...baseTemplate, responseMode: selectedResponseMode };
+  }, [selectedType, quickCheckTopic, selectedResponseMode]);
 
-  const publishTemplate = async () => {
+  const draftTemplate = useMemo(() => {
+    const baseTemplate =
+      draftTemplateType === 'feedback'
+        ? FEEDBACK_TEMPLATE
+        : draftTemplateType === 'quick-check'
+          ? buildQuickCheckTemplate(draftTopic)
+          : draftTemplateType === 'error-hunt'
+            ? ERROR_HUNT_TEMPLATE
+            : draftTemplateType === 'exam-question'
+              ? EXAM_QUESTION_TEMPLATE
+              : draftTemplateType === 'prediction'
+                ? PREDICTION_TEMPLATE
+                : draftTemplateType === 'draw'
+                  ? DRAW_TEMPLATE
+                  : TRANSFER_TEMPLATE;
+    return { ...baseTemplate, responseMode: draftResponseMode };
+  }, [draftTemplateType, draftTopic, draftResponseMode]);
+
+  const publishTemplate = async (templateToPublish: ExitTicketTemplate = selectedTemplate) => {
     setPublishing(true);
     try {
-      const response = await apiPost('/api/exit-ticket/publish', { template: selectedTemplate });
+      const response = await apiPost('/api/exit-ticket/publish', { template: templateToPublish });
       if (!response.ok) throw new Error('Veröffentlichen fehlgeschlagen');
-      localStorage.setItem(EXIT_TICKET_STORAGE_KEY, JSON.stringify(selectedTemplate));
-      setPublishedTemplate(selectedTemplate);
+      localStorage.setItem(EXIT_TICKET_STORAGE_KEY, JSON.stringify(templateToPublish));
+      setPublishedTemplate(templateToPublish);
       await refreshResponses();
     } catch {
       // Keep UI stable if server fails.
@@ -303,7 +429,97 @@ export default function ExitTicketPage() {
       title: DRAW_TEMPLATE.title,
       description: 'Zeichnung + kurzer Merksatz.',
     },
+    {
+      id: 'error-hunt',
+      title: ERROR_HUNT_TEMPLATE.title,
+      description: 'Typische Fehler finden und verbessern.',
+    },
+    {
+      id: 'exam-question',
+      title: EXAM_QUESTION_TEMPLATE.title,
+      description: 'Eigene Prüfungsfrage + Lösung formulieren.',
+    },
+    {
+      id: 'prediction',
+      title: PREDICTION_TEMPLATE.title,
+      description: 'Inhalt der nächsten Stunde vorhersagen.',
+    },
   ];
+
+  const openTemplateModal = (templateType: ExitTicketTemplateType) => {
+    setSelectedType(templateType);
+    setDraftTemplateType(templateType);
+    setDraftTopic(quickCheckTopic);
+    setDraftResponseMode(selectedResponseMode);
+    setDraftAnswers(new Array(3).fill(''));
+    setDraftPhotoDataUrl('');
+    setTemplateModalOpen(true);
+  };
+
+  const closeTemplateModal = () => {
+    setTemplateModalOpen(false);
+  };
+
+  const publishFromModal = async () => {
+    setSelectedType(draftTemplateType);
+    setQuickCheckTopic(draftTopic);
+    setSelectedResponseMode(draftResponseMode);
+    await publishTemplate(draftTemplate);
+    setTemplateModalOpen(false);
+  };
+
+  const clearDraftCanvas = () => {
+    const canvas = draftCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const onDraftCanvasPointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = draftCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    if (e.type === 'pointerdown') {
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#1a237e';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (e.type === 'pointermove') {
+      if (e.buttons === 0) return;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      return;
+    }
+    ctx.closePath();
+  };
+
+  const onDraftPhotoPick = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setDraftPhotoDataUrl(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  useEffect(() => {
+    if (!templateModalOpen) return;
+    if (draftTemplateType !== 'draw' || draftResponseMode !== 'text-input') return;
+    clearDraftCanvas();
+  }, [templateModalOpen, draftTemplateType, draftResponseMode]);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6fb', py: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 2.5 } }}>
@@ -357,7 +573,7 @@ export default function ExitTicketPage() {
                     return (
                       <ButtonBase
                         key={card.id}
-                        onClick={() => setSelectedType(card.id)}
+                        onClick={() => openTemplateModal(card.id)}
                         sx={{ borderRadius: 2, overflow: 'hidden', height: '100%', textAlign: 'left' }}
                       >
                         <Box
@@ -403,66 +619,9 @@ export default function ExitTicketPage() {
                   })}
                 </Box>
 
-                {selectedType === 'quick-check' && (
-                  <TextField
-                    size="small"
-                    label="Thema für automatische Fragen"
-                    placeholder="z. B. Alan Turing und Enigma"
-                    value={quickCheckTopic}
-                    onChange={(e) => setQuickCheckTopic(e.target.value)}
-                  />
-                )}
-
-                <Card variant="outlined" sx={{ bgcolor: '#f0f7ff' }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.6, flexWrap: 'wrap', mt: 0.6 }}>
-                      <Box sx={{ flex: 1, minWidth: 260, pt: 0.3 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 900, mb: 0.5, lineHeight: 1.15 }}>
-                          Vorschau: {renderWithBoldOperators(selectedTemplate.title, `prev-title-${selectedTemplate.id}`)}
-                        </Typography>
-                        <Typography variant="body1" sx={{ color: 'text.secondary', mb: 1.2 }}>
-                          {renderWithBoldOperators(selectedTemplate.description, `prev-desc-${selectedTemplate.id}`)}
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{
-                          width: { xs: '100%', sm: 220 },
-                          maxWidth: '100%',
-                          height: { xs: 140, sm: 128 },
-                          borderRadius: 2,
-                          overflow: 'hidden',
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          bgcolor: '#edf3ff',
-                          boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
-                        }}
-                      >
-                        <Box
-                          component="img"
-                          src={TEMPLATE_IMAGE_SRC[selectedTemplate.id]}
-                          alt={selectedTemplate.title}
-                          sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        />
-                      </Box>
-                    </Box>
-                    {selectedTemplate.questions.map((question, index) => (
-                      <Typography key={`${selectedTemplate.id}-${index}`} variant="body1" sx={{ mb: 0.5 }}>
-                        {index + 1}. {renderWithBoldOperators(question, `prev-q-${selectedTemplate.id}-${index}`)}
-                      </Typography>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button
-                    variant="contained"
-                    startIcon={<CheckCircleIcon />}
-                    onClick={publishTemplate}
-                    disabled={publishing}
-                  >
-                    Für SuS freigeben
-                  </Button>
-                </Box>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Vorlage anklicken, um sie im Modal mit Antwortmodus und Funktionalität zu konfigurieren.
+                </Typography>
 
                 <Card variant="outlined" sx={{ mt: 1, bgcolor: '#fff' }}>
                   <CardContent>
@@ -495,11 +654,24 @@ export default function ExitTicketPage() {
                                   {idx + 1}. {answer || '—'}
                                 </Typography>
                               ))}
+                              {item.completionOnly && (
+                                <Typography variant="body2" sx={{ mb: 0.35, fontStyle: 'italic', color: 'text.secondary' }}>
+                                  Nur angezeigt / als gesehen markiert
+                                </Typography>
+                              )}
                               {item.drawingDataUrl && (
                                 <Box
                                   component="img"
                                   src={item.drawingDataUrl}
                                   alt={`Zeichnung von ${item.studentName}`}
+                                  sx={{ mt: 0.8, width: 220, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+                                />
+                              )}
+                              {item.photoDataUrl && (
+                                <Box
+                                  component="img"
+                                  src={item.photoDataUrl}
+                                  alt={`Antwortfoto von ${item.studentName}`}
                                   sx={{ mt: 0.8, width: 220, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
                                 />
                               )}
@@ -533,6 +705,150 @@ export default function ExitTicketPage() {
             )}
           </CardContent>
         </Card>
+
+        {isTeacher && (
+          <Dialog open={templateModalOpen} onClose={closeTemplateModal} maxWidth="md" fullWidth>
+            <DialogTitle sx={{ ...dialogCloseTitleSx }}>
+              <Typography variant="h6">
+                Vorlage konfigurieren: {draftTemplate.title}
+              </Typography>
+              <DialogCloseIconButton onClose={closeTemplateModal} />
+            </DialogTitle>
+            <DialogContent dividers>
+              {draftTemplateType === 'quick-check' && (
+                <TextField
+                  size="small"
+                  fullWidth
+                  sx={{ mb: 1.2 }}
+                  label="Thema für automatische Fragen"
+                  placeholder="z. B. Alan Turing und Enigma"
+                  value={draftTopic}
+                  onChange={(e) => setDraftTopic(e.target.value)}
+                />
+              )}
+
+              <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', mb: 1.2 }}>
+                <Button
+                  size="small"
+                  variant={draftResponseMode === 'questions-only' ? 'contained' : 'outlined'}
+                  onClick={() => setDraftResponseMode('questions-only')}
+                >
+                  Nur Fragen anzeigen
+                </Button>
+                <Button
+                  size="small"
+                  variant={draftResponseMode === 'text-input' ? 'contained' : 'outlined'}
+                  onClick={() => setDraftResponseMode('text-input')}
+                >
+                  Antworten eingeben
+                </Button>
+                <Button
+                  size="small"
+                  variant={draftResponseMode === 'photo-upload' ? 'contained' : 'outlined'}
+                  onClick={() => setDraftResponseMode('photo-upload')}
+                >
+                  Antworten fotografieren
+                </Button>
+              </Box>
+
+              <Card variant="outlined" sx={{ bgcolor: '#f0f7ff' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', gap: 1.4, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <Box sx={{ flex: 1, minWidth: 260 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 900, mb: 0.5 }}>
+                        {renderWithBoldOperators(draftTemplate.title, 'draft-title')}
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: 'text.secondary', mb: 0.9 }}>
+                        {renderWithBoldOperators(draftTemplate.description, 'draft-desc')}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ width: { xs: '100%', sm: 220 }, height: { xs: 140, sm: 128 }, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                      <Box component="img" src={TEMPLATE_IMAGE_SRC[draftTemplate.id]} alt={draftTemplate.title} sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    </Box>
+                  </Box>
+
+                  {draftTemplate.questions.map((question, index) => (
+                    <Box key={`draft-q-${index}`} sx={{ mb: 0.7 }}>
+                      <Typography variant="body1" sx={{ mb: 0.4 }}>
+                        {index + 1}. {renderWithBoldOperators(question, `draft-q-${index}`)}
+                      </Typography>
+                      {draftResponseMode === 'text-input' && (
+                        <TextField
+                          size="small"
+                          multiline
+                          minRows={2}
+                          fullWidth
+                          placeholder="Antwortfeld für SuS"
+                          value={draftAnswers[index] ?? ''}
+                          onChange={(e) => {
+                            const next = [...draftAnswers];
+                            next[index] = e.target.value;
+                            setDraftAnswers(next);
+                          }}
+                        />
+                      )}
+                    </Box>
+                  ))}
+
+                  {draftTemplate.id === 'draw' && draftResponseMode === 'text-input' && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                        Malfläche (SuS-Ansicht)
+                      </Typography>
+                      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden', bgcolor: '#fff' }}>
+                        <canvas
+                          ref={draftCanvasRef}
+                          width={720}
+                          height={260}
+                          style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'none' }}
+                          onPointerDown={onDraftCanvasPointer}
+                          onPointerMove={onDraftCanvasPointer}
+                          onPointerUp={onDraftCanvasPointer}
+                          onPointerCancel={onDraftCanvasPointer}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.7 }}>
+                        <Button size="small" variant="outlined" onClick={clearDraftCanvas}>Malfläche leeren</Button>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {draftResponseMode === 'photo-upload' && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                        Bild-Upload (SuS-Ansicht)
+                      </Typography>
+                      <Button variant="outlined" component="label" size="small">
+                        Foto auswählen
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          hidden
+                          onChange={(e) => onDraftPhotoPick(e.target.files?.[0])}
+                        />
+                      </Button>
+                      {draftPhotoDataUrl && (
+                        <Box component="img" src={draftPhotoDataUrl} alt="Vorschau" sx={{ mt: 0.8, width: 220, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }} />
+                      )}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </DialogContent>
+            <DialogActions sx={{ px: 2, py: 1.2 }}>
+              <Button onClick={closeTemplateModal}>Abbrechen</Button>
+              <Button
+                variant="contained"
+                startIcon={<CheckCircleIcon />}
+                onClick={publishFromModal}
+                disabled={publishing}
+              >
+                Für SuS freigeben
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
       </Box>
     </Box>
   );
@@ -550,6 +866,7 @@ function StudentExitTicketRender(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string>('');
 
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const questionRefs = useRef<Array<HTMLElement | null>>([]);
@@ -588,7 +905,8 @@ function StudentExitTicketRender(props: {
     setActiveQuestionIndex(0);
     questionRefs.current = [];
     setAnswers(new Array(publishedTemplate.questions.length).fill(''));
-  }, [publishedTemplate.id]);
+    setPhotoDataUrl('');
+  }, [publishedTemplate.id, publishedTemplate.questions.length]);
 
   useEffect(() => {
     const isTypingTarget = (target: EventTarget | null) => {
@@ -691,12 +1009,21 @@ function StudentExitTicketRender(props: {
   };
 
   const submitAnswers = async () => {
+    if (publishedTemplate.responseMode === 'text-input') {
+      const hasAnyText = answers.some((entry) => entry.trim().length > 0);
+      if (!hasAnyText) return;
+    }
+
+    if (publishedTemplate.responseMode === 'photo-upload' && !photoDataUrl) return;
+
     setSubmitting(true);
     try {
       const drawingDataUrl = publishedTemplate.id === 'draw' ? canvasRef.current?.toDataURL('image/png') : undefined;
       const response = await apiPost('/api/exit-ticket/submit', {
-        answers,
+        answers: publishedTemplate.responseMode === 'text-input' ? answers : [],
         drawingDataUrl,
+        photoDataUrl: publishedTemplate.responseMode === 'photo-upload' ? photoDataUrl : undefined,
+        completionOnly: publishedTemplate.responseMode === 'questions-only',
       });
       if (!response.ok) throw new Error('Speichern fehlgeschlagen');
       if (drawingDataUrl) {
@@ -710,6 +1037,16 @@ function StudentExitTicketRender(props: {
     }
   };
 
+  const onPickPhoto = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setPhotoDataUrl(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <Card variant="outlined" sx={{ bgcolor: '#f0f7ff' }}>
       <CardContent>
@@ -720,6 +1057,13 @@ function StudentExitTicketRender(props: {
             </Typography>
             <Typography variant="body1" sx={{ color: 'text.secondary', mb: 1.2 }}>
               {renderWithBoldOperators(publishedTemplate.description, `stud-desc-${publishedTemplate.id}`)}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.2 }}>
+              Modus: {publishedTemplate.responseMode === 'questions-only'
+                ? 'Nur Fragen'
+                : publishedTemplate.responseMode === 'text-input'
+                  ? 'Antworten eingeben'
+                  : 'Antworten fotografieren'}
             </Typography>
           </Box>
           <Box
@@ -761,24 +1105,52 @@ function StudentExitTicketRender(props: {
             >
               {index + 1}. {renderWithBoldOperators(question, `stud-q-${publishedTemplate.id}-${index}`)}
             </Typography>
-            <TextField
-              size="small"
-              multiline
-              minRows={2}
-              fullWidth
-              placeholder="Deine Antwort..."
-              value={answers[index] ?? ''}
-              onChange={(e) => {
-                const next = [...answers];
-                next[index] = e.target.value;
-                setAnswers(next);
-              }}
-              sx={{ mb: 1 }}
-            />
+            {publishedTemplate.responseMode === 'text-input' && (
+              <TextField
+                size="small"
+                multiline
+                minRows={2}
+                fullWidth
+                placeholder="Deine Antwort..."
+                value={answers[index] ?? ''}
+                onChange={(e) => {
+                  const next = [...answers];
+                  next[index] = e.target.value;
+                  setAnswers(next);
+                }}
+                sx={{ mb: 1 }}
+              />
+            )}
           </Box>
         ))}
 
-        {publishedTemplate.id === 'draw' && (
+        {publishedTemplate.responseMode === 'photo-upload' && (
+          <Box sx={{ mt: 1, mb: 1.2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.6 }}>
+              Foto deiner Antworten hochladen
+            </Typography>
+            <Button variant="outlined" component="label" size="small">
+              Foto auswählen
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                hidden
+                onChange={(e) => onPickPhoto(e.target.files?.[0])}
+              />
+            </Button>
+            {photoDataUrl && (
+              <Box
+                component="img"
+                src={photoDataUrl}
+                alt="Antwortfoto"
+                sx={{ mt: 1, width: 260, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+              />
+            )}
+          </Box>
+        )}
+
+        {publishedTemplate.id === 'draw' && publishedTemplate.responseMode === 'text-input' && (
           <Box sx={{ mt: 1.5 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.8 }}>
               Zeichne hier:
@@ -818,11 +1190,29 @@ function StudentExitTicketRender(props: {
           </Box>
         )}
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-          <Button variant="contained" onClick={submitAnswers} disabled={submitting}>
-            {submitting ? 'Sende...' : 'Antworten senden'}
-          </Button>
-        </Box>
+        {publishedTemplate.responseMode === 'questions-only' && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+            <Button variant="contained" onClick={submitAnswers} disabled={submitting}>
+              {submitting ? 'Sende...' : 'Als gesehen markieren'}
+            </Button>
+          </Box>
+        )}
+
+        {publishedTemplate.responseMode !== 'questions-only' && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+            <Button
+              variant="contained"
+              onClick={submitAnswers}
+              disabled={
+                submitting
+                || (publishedTemplate.responseMode === 'photo-upload' && !photoDataUrl)
+                || (publishedTemplate.responseMode === 'text-input' && !answers.some((entry) => entry.trim().length > 0))
+              }
+            >
+              {submitting ? 'Sende...' : 'Antworten senden'}
+            </Button>
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
