@@ -7,6 +7,7 @@ import { FlashcardLearningModal, LessonSharedInputBox } from './StudentDashboard
 import { RIDDLES } from './riddles';
 import { MOVEMENT_STORIES } from '../data/movementStories';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
+import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 import {
   Box,
   Typography,
@@ -8215,6 +8216,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const LESSON_MODAL_FONT_SIZE = '1rem';
   const LESSON_MODAL_LINE_HEIGHT = 1.75;
 
+  /** Bullet-Zeilen aus Lehrer-Anweisungen (HTML oder Klartext) für Hintergrund-Ansicht: Ablauf + Musterlösungen */
+  const splitAnweisungenIntoBulletSteps = (html: string): string[] => {
+    if (!html?.trim()) return [];
+    const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    const fromLi: string[] = [];
+    let lm: RegExpExecArray | null;
+    while ((lm = liRegex.exec(html)) !== null) {
+      const text = lm[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (text) fromLi.push(text);
+    }
+    if (fromLi.length > 0) return fromLi;
+    const plain = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, ' ');
+    const lines = plain.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    const bullets: string[] = [];
+    for (const line of lines) {
+      if (/^[•\-\*]\s*/.test(line) || line.startsWith('\u2022')) {
+        const stripped = line.replace(/^[\u2022•\-\*]\s*/, '').trim();
+        if (stripped) bullets.push(stripped);
+      }
+    }
+    if (bullets.length > 0) return bullets;
+    const one = plain.replace(/\s+/g, ' ').trim();
+    return one ? [one] : [];
+  };
+
   // Lehrerhinweise pro Unterrichtsstunde (Stundenordner-Name als Key)
   const LESSON_INSTRUCTIONS: Record<string, {
     voraussetzungen?: string;
@@ -13249,7 +13275,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 </IconButton>
                 {/* EntryTicket */}
                 <IconButton
-                  onClick={() => navigate('/entry-ticket')}
+                  onClick={() => {
+                    const g = selectedGroupId
+                      ? groups.find((x) => x.id === selectedGroupId)
+                      : groups[0];
+                    const band = g ? gradeFromGroupNames([g.name]) : 7;
+                    navigate(`/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}`);
+                  }}
                   sx={{
                     ml: 'auto',
                     p: 0.5,
@@ -13270,7 +13302,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     },
                     transition: 'all 0.2s ease',
                   }}
-                  title="EntryTicket (5 Minuten)"
+                  title="EntryTicket (10 zufällige Fragen, Klasse aus gewählter Gruppe)"
                 >
                   <Typography
                     component="span"
@@ -17289,8 +17321,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const openPlanItem = async (item: LessonPlanItem) => {
                   if (item.type === 'entry-ticket') {
-                    const autoStart = planRunOrBackground ? '&autostart=1' : '';
-                    window.open(`/entry-ticket?grade=${encodeURIComponent(String(item.grade || 7))}${autoStart}`, '_blank');
+                    window.open(`/entry-ticket?grade=${encodeURIComponent(String(item.grade || 7))}&autostart=1&r=${Date.now()}`, '_blank');
                     return;
                   }
                   if (item.type === 'exit-ticket') {
@@ -17489,11 +17520,354 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const abFiles = allFiles.filter((f: any) => !/\.(pdf|pptx?|odp)$/i.test(f.name || '') || isABByName(f.name));
                 const planHasArbeitsauftrag = lessonPlan.some((i) => i.type === 'arbeitsauftrag');
                 const planHasInput = lessonPlan.some((i) => i.type === 'input');
+                const bgSteps = splitAnweisungenIntoBulletSteps(instructions?.anweisungen || '');
+                const bgInputPhaseSteps =
+                  planHasInput && planHasArbeitsauftrag
+                    ? bgSteps.slice(0, Math.max(1, Math.ceil(bgSteps.length / 2)))
+                    : planHasInput
+                      ? [...bgSteps]
+                      : [];
+                const bgAbPhaseSteps =
+                  planHasArbeitsauftrag && planHasInput
+                    ? bgSteps.slice(Math.max(1, Math.ceil(bgSteps.length / 2)))
+                    : planHasArbeitsauftrag
+                      ? [...bgSteps]
+                      : [];
+                const bgGroupId = lessonModalData.groupId;
+                const inputShareOnForLesson =
+                  !!lessonPath &&
+                  !!bgGroupId &&
+                  (lessonSharedInputSharePaths[bgGroupId] || []).includes(lessonPath);
+                const bgCollectLessonPdfPaths = (): string[] => {
+                  const out: string[] = [];
+                  for (const coll of [folienFiles, abFiles]) {
+                    for (const { versions } of groupFilesByBaseName(coll)) {
+                      const pdfFile = getPdfFromGroup(versions);
+                      if (pdfFile?.path) out.push(pdfFile.path);
+                    }
+                  }
+                  return [...new Set(out)];
+                };
+                const bgEnsureAllMaterialPdfsShared = async () => {
+                  if (!bgGroupId) return;
+                  for (const p of bgCollectLessonPdfPaths()) {
+                    const key = fileShareKey(p, bgGroupId);
+                    if (!fileShares[key]) await toggleFileShare(p, bgGroupId);
+                  }
+                };
+
+                const createInputReorder = lessonPlanViewMode === 'create' && planHasInput;
+
+                const abPlanSection =
+                  planHasArbeitsauftrag && abFiles.length > 0 ? (
+                    <Box sx={{ mb: 1.25 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#f57c00', mb: 1, pt: 0.5 }}>
+                        Arbeitsauftrag
+                      </Typography>
+                      {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
+                        <Box sx={{ position: 'relative', bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, pr: 5, border: '1px solid #ffe082', borderBottom: 'none' }}>
+                          <Tooltip title="Text bearbeiten">
+                            <IconButton size="small" onClick={() => startEdit('abAnleitung')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f57c00', '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.08)' } }}>
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          {isEditing('abAnleitung') ? (
+                            <>
+                              <RichTextEditor
+                                key={`edit-abAnleitung-plan-${lessonName}`}
+                                value={lessonBoxEdit?.draft ?? ''}
+                                onChange={(value) =>
+                                  setLessonBoxEdit((prev) => {
+                                    if (!prev) return null;
+                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                    return { ...prev, draft: value };
+                                  })
+                                }
+                                placeholder="Arbeitsblatt-Anleitung eingeben..."
+                                rows={4}
+                                compact={true}
+                              />
+                              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>
+                                  Rückgängig
+                                </Button>
+                                <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f57c00' }}>
+                                  Fertig
+                                </Button>
+                              </Box>
+                            </>
+                          ) : instructions?.abAnleitung ? (
+                            renderTextContent(instructions.abAnleitung, '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
+                          ) : null}
+                        </Box>
+                      )}
+                      <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
+                        {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
+                          const pdfFile = getPdfFromGroup(versions);
+                          const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
+                          const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                          return (
+                            <ListItem key={`plan-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
+                              </ListItemIcon>
+                              <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                {sortedVersions.map(({ ext, file }) => (
+                                  <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
+                                    <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#f57c00', '&:hover': { bgcolor: 'action.hover' } }}>
+                                      {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
+                                    </IconButton>
+                                  </Tooltip>
+                                ))}
+                                {pdfFile && (
+                                  <FormControlLabel
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        checked={isPdfShared}
+                                        onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                        sx={{ py: 0 }}
+                                      />
+                                    }
+                                    label={<Typography variant="caption">Freigeben (PDF)</Typography>}
+                                  />
+                                )}
+                              </Box>
+                            </ListItem>
+                          );
+                        })}
+                      </List>
+                    </Box>
+                  ) : null;
+
+                const inputFolienSection =
+                  planHasInput && (folienFiles.length > 0 || createInputReorder) ? (
+                    <Box sx={{ mb: 1.25, border: '1px solid #c5e1a5', borderRadius: 1, overflow: 'hidden', bgcolor: '#f9fff9' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32', px: 1, pt: 1, pb: 0.5 }}>
+                        Input
+                      </Typography>
+                      {folienFiles.length > 0 ? (
+                        <List dense sx={{ bgcolor: '#f1f8e9', borderRadius: 0, py: 0, border: 'none', borderTop: '1px solid #dcedc8' }}>
+                          {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
+                            const pdfFile = getPdfFromGroup(versions);
+                            const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
+                            const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                            return (
+                              <ListItem key={`plan-input-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
+                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                  <DescriptionIcon fontSize="small" sx={{ color: '#2e7d32' }} />
+                                </ListItemIcon>
+                                <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                  {sortedVersions.map(({ ext, file }) => (
+                                    <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
+                                      <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#2e7d32', '&:hover': { bgcolor: 'action.hover' } }}>
+                                        {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
+                                      </IconButton>
+                                    </Tooltip>
+                                  ))}
+                                  {pdfFile && (
+                                    <FormControlLabel
+                                      control={
+                                        <Checkbox
+                                          size="small"
+                                          checked={isPdfShared}
+                                          onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                          sx={{ py: 0 }}
+                                        />
+                                      }
+                                      label={<Typography variant="caption">Freigeben (PDF)</Typography>}
+                                    />
+                                  )}
+                                </Box>
+                              </ListItem>
+                            );
+                          })}
+                        </List>
+                      ) : (
+                        <Typography variant="caption" sx={{ px: 1, py: 0.75, display: 'block', color: 'text.secondary', borderTop: '1px solid #e8f5e9' }}>
+                          Keine Folien-Dateien im Ordner.
+                        </Typography>
+                      )}
+                      {false && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, px: 1, pb: 1, pt: 0.5, maxWidth: 400, alignSelf: 'flex-start', width: '100%', borderTop: '1px solid #c5e1a5', bgcolor: '#fafafa' }}>
+                          <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1, pr: 4, border: '1px solid #90caf9', borderBottom: 'none' }}>
+                            <Tooltip title="Text bearbeiten">
+                              <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
+                                <EditIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0', display: 'block', mb: 0.75 }}>
+                              Voraussetzungen
+                            </Typography>
+                            {isEditing('voraussetzungen') ? (
+                              <>
+                                <RichTextEditor
+                                  key={`edit-voraussetzungen-create-${lessonName}`}
+                                  value={lessonBoxEdit?.draft ?? ''}
+                                  onChange={value => setLessonBoxEdit(prev => {
+                                    if (!prev) return null;
+                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                    return { ...prev, draft: value };
+                                  })}
+                                  placeholder="Voraussetzungen eingeben…"
+                                  rows={4}
+                                  compact={true}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                  <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                  <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0' }}>Fertig</Button>
+                                </Box>
+                              </>
+                            ) : instructions?.voraussetzungen?.trim() && instructions?.voraussetzungen?.trim() !== 'Keine fachlichen Voraussetzungen.' ? (
+                              <>
+                                {renderTextContent(instructions.voraussetzungen ?? '', undefined, 1.75, true)}
+                                {(() => {
+                                  const safeV = instructions.voraussetzungen ?? '';
+                                  const terms = [...safeV.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1]).filter((t, i, a) => a.indexOf(t) === i);
+                                  const withGlossar = terms.filter(t => FACHBEGRIFFE_GLOSSAR[t]);
+                                  if (withGlossar.length === 0) return null;
+                                  return (
+                                    <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #90caf9' }}>
+                                      <Box
+                                        onClick={() => setVoraussetzungenGlossarOpen(v => !v)}
+                                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
+                                      >
+                                        {voraussetzungenGlossarOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#1565c0' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#1565c0' }} />}
+                                        <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>
+                                          Fachbegriffe (Erklärungen & Beispiele)
+                                        </Typography>
+                                      </Box>
+                                      <Collapse in={voraussetzungenGlossarOpen}>
+                                        <Box sx={{ mt: 1 }}>
+                                          {withGlossar.map(term => {
+                                            const g = FACHBEGRIFFE_GLOSSAR[term];
+                                            if (!g) return null;
+                                            return (
+                                              <Box key={term} sx={{ mb: 1.25 }}>
+                                                <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>{term}</Typography>
+                                                <Box sx={{ mt: 0.5, pl: 1, borderLeft: '3px solid #90caf9' }}>
+                                                  <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block', mb: 0.25 }}>
+                                                    <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Erklärung:</Box> {g.erklärung}
+                                                  </Typography>
+                                                  <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block' }}>
+                                                    <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Beispiel:</Box> {g.beispiel}
+                                                  </Typography>
+                                                </Box>
+                                              </Box>
+                                            );
+                                          })}
+                                        </Box>
+                                      </Collapse>
+                                    </Box>
+                                  );
+                                })()}
+                              </>
+                            ) : (
+                              <Box
+                                onClick={() => startEdit('voraussetzungen')}
+                                sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(21, 101, 192, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.06)' } }}
+                              >
+                                <Typography variant="body2" sx={{ color: '#1565c0', opacity: 0.85, fontStyle: 'italic', pr: 1 }}>
+                                  Noch leer – hier klicken oder Stift: Voraussetzungen ergänzen.
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                          <Box sx={{ position: 'relative', bgcolor: '#fffde7', borderRadius: 0, p: 1, pr: 4, border: '1px solid #ffd54f', borderBottom: 'none' }}>
+                            <Tooltip title="Text bearbeiten">
+                              <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f9a825', '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' } }}>
+                                <EditIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17', display: 'block', mb: 0.5 }}>
+                              Material
+                            </Typography>
+                            {isEditing('materialliste') ? (
+                              <>
+                                <RichTextEditor
+                                  key={`edit-materialliste-create-${lessonName}`}
+                                  value={lessonBoxEdit?.draft ?? ''}
+                                  onChange={value => setLessonBoxEdit(prev => {
+                                    if (!prev) return null;
+                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                    return { ...prev, draft: value };
+                                  })}
+                                  placeholder="Benötigtes Material eintragen…"
+                                  rows={3}
+                                  compact={true}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                  <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                  <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f9a825' }}>Fertig</Button>
+                                </Box>
+                              </>
+                            ) : instructions?.materialliste?.trim() ? (
+                              <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
+                                {renderMaterialListContent(stripHtmlTags(instructions.materialliste ?? ''))}
+                              </Box>
+                            ) : (
+                              <Box
+                                onClick={() => startEdit('materialliste')}
+                                sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(245, 127, 23, 0.4)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(255, 213, 79, 0.2)' } }}
+                              >
+                                <Typography variant="body2" sx={{ color: '#f57f17', opacity: 0.85, fontStyle: 'italic', pr: 1 }}>
+                                  Noch leer – hier klicken oder Stift: Material eintragen.
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                          <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, p: 1, pr: 4, border: '1px solid #c5e1a5' }}>
+                            <Tooltip title="Text bearbeiten">
+                              <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
+                                <EditIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32', display: 'block', mb: 0.5 }}>
+                              Ablauf / Sprechakte
+                            </Typography>
+                            {isEditing('anweisungen') ? (
+                              <>
+                                <RichTextEditor
+                                  key={`edit-anweisungen-create-${lessonName}`}
+                                  value={lessonBoxEdit?.draft ?? ''}
+                                  onChange={value => setLessonBoxEdit(prev => {
+                                    if (!prev) return null;
+                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                    return { ...prev, draft: value };
+                                  })}
+                                  placeholder="Ablauf, Sprechimpulse, Leitfragen… (z. B. mit • oder nummeriert)"
+                                  rows={6}
+                                  compact={true}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                  <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                  <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#2e7d32' }}>Fertig</Button>
+                                </Box>
+                              </>
+                            ) : instructions?.anweisungen?.trim() ? (
+                              renderTextContent(instructions.anweisungen ?? '', '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
+                            ) : (
+                              <Box
+                                onClick={() => startEdit('anweisungen')}
+                                sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(46, 125, 50, 0.35)', outlineOffset: 4, py: 0.5, minHeight: 48, '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.06)' } }}
+                              >
+                                <Typography variant="body2" sx={{ color: '#2e7d32', opacity: 0.85, fontStyle: 'italic', pr: 1 }}>
+                                  Noch leer – hier klicken oder Stift: Ablauf und Sprechakte festhalten.
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  ) : null;
 
                 return (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: LESSON_MODAL_FONT_SIZE }}>
                     {/* Stundenablauf planen */}
-                    <Box sx={{ mb: 1.5, p: 1.5, border: '1px solid #d7e3f1', borderRadius: 1.5, bgcolor: '#f7fbff' }}>
+                    <Box sx={{ mb: 1.5, p: 1.5, border: '1px solid #d7e3f1', borderRadius: 1.5, bgcolor: '#f7fbff', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
                         <ToggleButtonGroup
                           size="small"
@@ -17661,134 +18035,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                       )}
 
-                      {/* Gelbe AB-Box + Dateiliste (wie Skytale), sobald „Arbeitsauftrag“ im Plan — vor den Bausteinen */}
-                      {planHasArbeitsauftrag && abFiles.length > 0 && (
-                        <Box sx={{ mb: 1.25 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#f57c00', mb: 1, pt: 0.5 }}>
-                            Arbeitsauftrag
-                          </Typography>
-                          {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
-                            <Box sx={{ position: 'relative', bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, pr: 5, border: '1px solid #ffe082', borderBottom: 'none' }}>
-                              <Tooltip title="Text bearbeiten">
-                                <IconButton size="small" onClick={() => startEdit('abAnleitung')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f57c00', '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.08)' } }}>
-                                  <EditIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              </Tooltip>
-                              {isEditing('abAnleitung') ? (
-                                <>
-                                  <RichTextEditor
-                                    key={`edit-abAnleitung-plan-${lessonName}`}
-                                    value={lessonBoxEdit?.draft ?? ''}
-                                    onChange={(value) =>
-                                      setLessonBoxEdit((prev) => {
-                                        if (!prev) return null;
-                                        if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                        return { ...prev, draft: value };
-                                      })
-                                    }
-                                    placeholder="Arbeitsblatt-Anleitung eingeben..."
-                                    rows={4}
-                                    compact={true}
-                                  />
-                                  <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                                    <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>
-                                      Rückgängig
-                                    </Button>
-                                    <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f57c00' }}>
-                                      Fertig
-                                    </Button>
-                                  </Box>
-                                </>
-                              ) : instructions?.abAnleitung ? (
-                                renderTextContent(instructions.abAnleitung, '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
-                              ) : null}
-                            </Box>
-                          )}
-                          <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
-                            {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
-                              const pdfFile = getPdfFromGroup(versions);
-                              const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
-                              const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
-                              return (
-                                <ListItem key={`plan-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
-                                  <ListItemIcon sx={{ minWidth: 28 }}>
-                                    <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
-                                  </ListItemIcon>
-                                  <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                    {sortedVersions.map(({ ext, file }) => (
-                                      <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
-                                        <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#f57c00', '&:hover': { bgcolor: 'action.hover' } }}>
-                                          {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
-                                        </IconButton>
-                                      </Tooltip>
-                                    ))}
-                                    {pdfFile && (
-                                      <FormControlLabel
-                                        control={
-                                          <Checkbox
-                                            size="small"
-                                            checked={isPdfShared}
-                                            onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
-                                            sx={{ py: 0 }}
-                                          />
-                                        }
-                                        label={<Typography variant="caption">Freigeben (PDF)</Typography>}
-                                      />
-                                    )}
-                                  </Box>
-                                </ListItem>
-                              );
-                            })}
-                          </List>
-                        </Box>
-                      )}
-
-                      {/* Folien-Ansicht (wie „Folien“), grün akzentuiert — sobald „Input“ im Plan, vor den Bausteinen */}
-                      {planHasInput && folienFiles.length > 0 && (
-                        <Box sx={{ mb: 1.25 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32', mb: 1, pt: 0.5 }}>
-                            Input
-                          </Typography>
-                          <List dense sx={{ bgcolor: '#f1f8e9', borderRadius: 0, py: 0, border: '1px solid #c5e1a5' }}>
-                            {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
-                              const pdfFile = getPdfFromGroup(versions);
-                              const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
-                              const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
-                              return (
-                                <ListItem key={`plan-input-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
-                                  <ListItemIcon sx={{ minWidth: 28 }}>
-                                    <DescriptionIcon fontSize="small" sx={{ color: '#2e7d32' }} />
-                                  </ListItemIcon>
-                                  <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                    {sortedVersions.map(({ ext, file }) => (
-                                      <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
-                                        <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#2e7d32', '&:hover': { bgcolor: 'action.hover' } }}>
-                                          {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
-                                        </IconButton>
-                                      </Tooltip>
-                                    ))}
-                                    {pdfFile && (
-                                      <FormControlLabel
-                                        control={
-                                          <Checkbox
-                                            size="small"
-                                            checked={isPdfShared}
-                                            onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
-                                            sx={{ py: 0 }}
-                                          />
-                                        }
-                                        label={<Typography variant="caption">Freigeben (PDF)</Typography>}
-                                      />
-                                    )}
-                                  </Box>
-                                </ListItem>
-                              );
-                            })}
-                          </List>
-                        </Box>
-                      )}
+                      {/* In Erstellen-Modus: Input-Inhalte sitzen im Input-Plan-Element selbst */}
+                      {abPlanSection}
+                      {lessonPlanViewMode !== 'create' && inputFolienSection}
 
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                         {lessonPlan.length === 0 ? (
@@ -17928,7 +18177,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </Box>
                               )}
                             </Box>
-                            {lessonPlanViewMode === 'create' && (item.type === 'input' || item.type === 'arbeitsauftrag') && (
+                            {/* Arbeitsauftrag: Material-Auswahl direkt unter der Karte */}
+                            {lessonPlanViewMode === 'create' && item.type === 'arbeitsauftrag' && (
                               <FormControl
                                 size="small"
                                 fullWidth
@@ -17963,62 +18213,182 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </Select>
                               </FormControl>
                             )}
+                            {lessonPlanViewMode === 'create' && item.type === 'input' && (
+                              <Box sx={{ mt: 0.75, ml: 4.5, maxWidth: 420 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 1, overflow: 'hidden', border: '1px solid #c5e1a5', bgcolor: '#fafafa' }}>
+                                  <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', p: 1, pr: 4, borderBottom: '1px solid #90caf9' }}>
+                                    <Tooltip title="Text bearbeiten">
+                                      <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
+                                        <EditIcon sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0', display: 'block', mb: 0.5 }}>
+                                      Voraussetzungen
+                                    </Typography>
+                                    {isEditing('voraussetzungen') ? (
+                                      <>
+                                        <RichTextEditor
+                                          key={`edit-voraussetzungen-create-inputItem-${lessonName}`}
+                                          value={lessonBoxEdit?.draft ?? ''}
+                                          onChange={value => setLessonBoxEdit(prev => {
+                                            if (!prev) return null;
+                                            if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                            return { ...prev, draft: value };
+                                          })}
+                                          placeholder="Voraussetzungen eingeben…"
+                                          rows={4}
+                                          compact={true}
+                                        />
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
+                                          <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 14 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.75, py: 0.2, fontSize: '0.68rem' }}>Rückgängig</Button>
+                                          <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0', minWidth: 0, px: 0.85, py: 0.2, fontSize: '0.68rem' }}>Fertig</Button>
+                                        </Box>
+                                      </>
+                                    ) : instructions?.voraussetzungen?.trim() && instructions?.voraussetzungen?.trim() !== 'Keine fachlichen Voraussetzungen.' ? (
+                                      renderTextContent(instructions.voraussetzungen ?? '', undefined, 1.75, true)
+                                    ) : (
+                                      <Box
+                                        onClick={() => startEdit('voraussetzungen')}
+                                        sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(21, 101, 192, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.06)' } }}
+                                      >
+                                        <Typography variant="body2" sx={{ color: '#1565c0', opacity: 0.85, fontStyle: 'italic' }}>
+                                          Noch leer – klicken zum Ergänzen.
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+
+                                  <Box sx={{ position: 'relative', bgcolor: '#fffde7', p: 1, pr: 4, borderBottom: '1px solid #ffd54f' }}>
+                                    <Tooltip title="Text bearbeiten">
+                                      <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f9a825', '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' } }}>
+                                        <EditIcon sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17', display: 'block', mb: 0.5 }}>
+                                      Material
+                                    </Typography>
+                                    {isEditing('materialliste') ? (
+                                      <>
+                                        <RichTextEditor
+                                          key={`edit-materialliste-create-inputItem-${lessonName}`}
+                                          value={lessonBoxEdit?.draft ?? ''}
+                                          onChange={value => setLessonBoxEdit(prev => {
+                                            if (!prev) return null;
+                                            if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                            return { ...prev, draft: value };
+                                          })}
+                                          placeholder="Benötigtes Material eintragen…"
+                                          rows={3}
+                                          compact={true}
+                                        />
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
+                                          <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 14 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.75, py: 0.2, fontSize: '0.68rem' }}>Rückgängig</Button>
+                                          <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f9a825', minWidth: 0, px: 0.85, py: 0.2, fontSize: '0.68rem' }}>Fertig</Button>
+                                        </Box>
+                                      </>
+                                    ) : instructions?.materialliste?.trim() ? (
+                                      <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
+                                        {renderMaterialListContent(stripHtmlTags(instructions.materialliste ?? ''))}
+                                      </Box>
+                                    ) : (
+                                      <Box
+                                        onClick={() => startEdit('materialliste')}
+                                        sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(245, 127, 23, 0.4)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(255, 213, 79, 0.2)' } }}
+                                      >
+                                        <Typography variant="body2" sx={{ color: '#f57f17', opacity: 0.85, fontStyle: 'italic' }}>
+                                          Noch leer – klicken zum Ergänzen.
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+
+                                  <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', p: 1, pr: 4 }}>
+                                    <Tooltip title="Text bearbeiten">
+                                      <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
+                                        <EditIcon sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32', display: 'block', mb: 0.5 }}>
+                                      Ablauf / Sprechakte
+                                    </Typography>
+                                    {isEditing('anweisungen') ? (
+                                      <>
+                                        <RichTextEditor
+                                          key={`edit-anweisungen-create-inputItem-${lessonName}`}
+                                          value={lessonBoxEdit?.draft ?? ''}
+                                          onChange={value => setLessonBoxEdit(prev => {
+                                            if (!prev) return null;
+                                            if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                            return { ...prev, draft: value };
+                                          })}
+                                          placeholder="Ablauf, Sprechimpulse, Leitfragen…"
+                                          rows={6}
+                                          compact={true}
+                                        />
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
+                                          <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 14 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.75, py: 0.2, fontSize: '0.68rem' }}>Rückgängig</Button>
+                                          <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#2e7d32', minWidth: 0, px: 0.85, py: 0.2, fontSize: '0.68rem' }}>Fertig</Button>
+                                        </Box>
+                                      </>
+                                    ) : instructions?.anweisungen?.trim() ? (
+                                      renderTextContent(instructions.anweisungen ?? '', '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
+                                    ) : (
+                                      <Box
+                                        onClick={() => startEdit('anweisungen')}
+                                        sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(46, 125, 50, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.06)' } }}
+                                      >
+                                        <Typography variant="body2" sx={{ color: '#2e7d32', opacity: 0.85, fontStyle: 'italic' }}>
+                                          Noch leer – klicken zum Ergänzen.
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                </Box>
+                                <FormControl
+                                  size="small"
+                                  fullWidth
+                                  sx={{ maxWidth: 420, mt: 0.85 }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  <InputLabel id={`plan-mat-${item.id}`} shrink>
+                                    Material (Ordner)
+                                  </InputLabel>
+                                  <Select
+                                    labelId={`plan-mat-${item.id}`}
+                                    label="Material (Ordner)"
+                                    notched
+                                    displayEmpty
+                                    value={item.linkedMaterialPath || ''}
+                                    onChange={(e) => {
+                                      const v = e.target.value as string;
+                                      const f = allFiles.find((x: any) => x.path === v);
+                                      void setPlanItemLinkedMaterial(item.id, v || undefined, f?.name);
+                                    }}
+                                    sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.65 } }}
+                                  >
+                                    <MenuItem value="">
+                                      <em>Keins (Standard)</em>
+                                    </MenuItem>
+                                    {allFiles.map((f: any) => (
+                                      <MenuItem key={f.path} value={f.path} sx={{ fontSize: '0.75rem' }}>
+                                        {f.name}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              </Box>
+                            )}
                           </Box>
                         ))}
                       </Box>
                     </Box>
 
-                    {lessonPlanViewMode === 'background' && (
-                      <Box
-                        sx={{
-                          mb: 1.5,
-                          p: 1.5,
-                          border: '1px solid #c8e6c9',
-                          borderRadius: 1.5,
-                          bgcolor: '#f1f8e9',
-                        }}
-                      >
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32', mb: 1 }}>
-                          Musterlösungen & Lösungsdateien
-                        </Typography>
-                        {musterLoesungFiles.length === 0 ? (
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: LESSON_MODAL_FONT_SIZE }}>
-                            Keine passenden Dateien im Ordner (z. B. Dateinamen mit „Lösung“, „Muster“, „ML_“ …).
-                          </Typography>
-                        ) : (
-                          <List dense>
-                            {musterLoesungFiles.map((f: any) => (
-                              <ListItem key={f.path} sx={{ py: 0.25, px: 0 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, width: '100%' }}>
-                                  <DescriptionIcon sx={{ fontSize: 18, color: '#2e7d32', flexShrink: 0 }} />
-                                  <Typography
-                                    component="button"
-                                    type="button"
-                                    onClick={() => handleFileClick(f)}
-                                    sx={{
-                                      border: 'none',
-                                      background: 'none',
-                                      cursor: 'pointer',
-                                      textAlign: 'left',
-                                      color: '#1565c0',
-                                      fontSize: LESSON_MODAL_FONT_SIZE,
-                                      textDecoration: 'underline',
-                                      p: 0,
-                                      fontFamily: 'inherit',
-                                    }}
-                                  >
-                                    {f.name}
-                                  </Typography>
-                                </Box>
-                              </ListItem>
-                            ))}
-                          </List>
-                        )}
-                      </Box>
-                    )}
-
-                    {/* Voraussetzungen – blaue Box immer da, Inhalt nur bei echten Voraussetzungen (nicht bei "Keine fachlichen Voraussetzungen.") */}
-                    <Box sx={{ pt: 1.5 }}>
+                    {/* Hintergrund: Material oben (order), sonst zuerst Voraussetzungen – im Erstellen-Modus bei Input-Baustein bereits oberhalb der Bausteine */}
+                    {!(lessonPlanViewMode === 'create' && planHasInput) && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                      <Box sx={{ order: lessonPlanViewMode === 'background' ? 2 : 1, pt: lessonPlanViewMode === 'background' ? 0 : 1.5 }}>
+                      {/* Voraussetzungen – blaue Box immer da, Inhalt nur bei echten Voraussetzungen (nicht bei "Keine fachlichen Voraussetzungen.") */}
                       <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, pr: 5, border: '1px solid #90caf9', borderBottom: 'none' }}>
                         <Tooltip title="Text bearbeiten">
                           <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
@@ -18090,11 +18460,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           </>
                         ) : null}
                       </Box>
-                    </Box>
-
+                      </Box>
+                      <Box sx={{ order: lessonPlanViewMode === 'background' ? 1 : 2 }}>
                     {/* Material – orangefarbener Kasten; "Benötigt werden ...", Materialien fett/unterstrichen/orange */}
                     {(instructions?.materialliste || isEditing('materialliste')) && (
                       <Box>
+                        {lessonPlanViewMode === 'background' && (
+                        <Typography variant="caption" sx={{ display: 'block', fontWeight: 800, color: '#e65100', mb: 0.35, letterSpacing: 0.02 }}>
+                          Material
+                        </Typography>
+                        )}
                         <Box sx={{ position: 'relative', bgcolor: '#fff3e0', borderRadius: 0, p: 1, pr: 4, border: '1px solid #ffb74d', borderBottom: 'none' }}>
                           <Tooltip title="Text bearbeiten">
                             <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#ed6c02', '&:hover': { bgcolor: 'rgba(237, 108, 2, 0.08)' } }}>
@@ -18132,9 +18507,268 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         </Box>
                       </Box>
                     )}
+                      </Box>
+                    </Box>
+                    )}
+
+                    {lessonPlanViewMode === 'background' && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 1 }}>
+                        <Paper variant="outlined" sx={{ p: 1.25, bgcolor: '#fafafa', borderColor: '#b0bec5' }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#37474f' }}>
+                            Freigaben für die Lerngruppe
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+                            {lessonPath && bgGroupId && (
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    size="small"
+                                    checked={inputShareOnForLesson}
+                                    onChange={() => toggleLessonSharedInputShare(bgGroupId, lessonPath)}
+                                  />
+                                }
+                                label={<Typography variant="body2">Gemeinsame Input-Leinwand freigeben</Typography>}
+                              />
+                            )}
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                              <Button size="small" variant="outlined" onClick={() => void bgEnsureAllMaterialPdfsShared()}>
+                                Alle Folien- &amp; AB-PDFs freigeben
+                              </Button>
+                              <Typography variant="caption" color="text.secondary">
+                                Einzelne Dateien unten pro Schritt ebenfalls möglich.
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Paper>
+
+                        {planHasInput && (
+                          <Paper variant="outlined" sx={{ p: 1.25, borderColor: '#a5d6a7', bgcolor: '#f9fff9' }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#2e7d32', mb: 1 }}>
+                              Input (Folien)
+                            </Typography>
+                            {folienFiles.length > 0 && (
+                              <List dense sx={{ bgcolor: '#f1f8e9', borderRadius: 1, py: 0, border: '1px solid #c5e1a5', mb: 1 }}>
+                                {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
+                                  const pdfFile = getPdfFromGroup(versions);
+                                  const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
+                                  const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                                  return (
+                                    <ListItem key={`bg-in-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
+                                      <ListItemIcon sx={{ minWidth: 28 }}>
+                                        <DescriptionIcon fontSize="small" sx={{ color: '#2e7d32' }} />
+                                      </ListItemIcon>
+                                      <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                        {sortedVersions.map(({ ext, file }) => (
+                                          <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
+                                            <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#2e7d32' }}>
+                                              {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
+                                            </IconButton>
+                                          </Tooltip>
+                                        ))}
+                                        {pdfFile && (
+                                          <FormControlLabel
+                                            control={
+                                              <Checkbox
+                                                size="small"
+                                                checked={isPdfShared}
+                                                onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                                sx={{ py: 0 }}
+                                              />
+                                            }
+                                            label={<Typography variant="caption">Material freigeben (PDF)</Typography>}
+                                          />
+                                        )}
+                                      </Box>
+                                    </ListItem>
+                                  );
+                                })}
+                              </List>
+                            )}
+                            {lessonPath && bgGroupId && (
+                              <Box sx={{ mb: 1, maxHeight: 240, overflow: 'auto', border: '1px solid #c5e1a5', borderRadius: 1, p: 0.5 }}>
+                                <LessonSharedInputBox groupId={bgGroupId} lessonPath={lessonPath} />
+                              </Box>
+                            )}
+                            {bgInputPhaseSteps.length > 0 && (
+                              <Box sx={{ mt: 0.5 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#1b5e20', display: 'block', mb: 0.75 }}>
+                                  Sprechimpulse / mündliche Leitungen (Einsteig)
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                                  {bgInputPhaseSteps.map((step, i) => (
+                                    <Paper key={`sp-in-${i}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#fff', borderLeft: '4px solid #66bb6a' }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#558b2f' }}>{i + 1}. Sprechakt</Typography>
+                                      <Typography variant="body2" sx={{ mt: 0.35, fontSize: LESSON_MODAL_FONT_SIZE }}>{step}</Typography>
+                                    </Paper>
+                                  ))}
+                                </Box>
+                              </Box>
+                            )}
+                          </Paper>
+                        )}
+
+                        {planHasArbeitsauftrag && (
+                          <Paper variant="outlined" sx={{ p: 1.25, borderColor: '#ffcc80', bgcolor: '#fffdf5' }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#e65100', mb: 1 }}>
+                              Arbeitsauftrag &amp; Besprechung (chronologisch)
+                            </Typography>
+                            {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
+                              <Box sx={{ position: 'relative', bgcolor: '#fff8e1', borderRadius: 1, p: 1.25, pr: 4, border: '1px solid #ffe082', mb: 1 }}>
+                                <Tooltip title="Text bearbeiten">
+                                  <IconButton size="small" onClick={() => startEdit('abAnleitung')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f57c00' }}>
+                                    <EditIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                </Tooltip>
+                                {isEditing('abAnleitung') ? (
+                                  <>
+                                    <RichTextEditor
+                                      key={`edit-abAnleitung-bg-${lessonName}`}
+                                      value={lessonBoxEdit?.draft ?? ''}
+                                      onChange={value => setLessonBoxEdit(prev => {
+                                        if (!prev) return null;
+                                        if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                                        return { ...prev, draft: value };
+                                      })}
+                                      placeholder="Arbeitsblatt-Anleitung eingeben..."
+                                      rows={4}
+                                      compact={true}
+                                    />
+                                    <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                      <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
+                                      <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f57c00' }}>Fertig</Button>
+                                    </Box>
+                                  </>
+                                ) : instructions?.abAnleitung ? (
+                                  renderTextContent(instructions.abAnleitung, '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
+                                ) : null}
+                              </Box>
+                            )}
+                            {abFiles.length > 0 && (
+                              <List dense sx={{ bgcolor: '#fffde7', borderRadius: 1, py: 0, border: '1px solid #ffe082', mb: 1 }}>
+                                {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
+                                  const pdfFile = getPdfFromGroup(versions);
+                                  const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
+                                  const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                                  return (
+                                    <ListItem key={`bg-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
+                                      <ListItemIcon sx={{ minWidth: 28 }}>
+                                        <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
+                                      </ListItemIcon>
+                                      <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                                        {sortedVersions.map(({ ext, file }) => (
+                                          <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
+                                            <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#f57c00' }}>
+                                              {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
+                                            </IconButton>
+                                          </Tooltip>
+                                        ))}
+                                        {pdfFile && (
+                                          <FormControlLabel
+                                            control={
+                                              <Checkbox
+                                                size="small"
+                                                checked={isPdfShared}
+                                                onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                                sx={{ py: 0 }}
+                                              />
+                                            }
+                                            label={<Typography variant="caption">Material freigeben</Typography>}
+                                          />
+                                        )}
+                                      </Box>
+                                    </ListItem>
+                                  );
+                                })}
+                              </List>
+                            )}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              {bgAbPhaseSteps.map((step, idx) => (
+                                <Box key={`ab-step-${idx}`}>
+                                  <Paper variant="outlined" sx={{ p: 0.85, bgcolor: '#fff', borderLeft: '4px solid #ffa726' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#ef6c00' }}>{idx + 1}. Ablauf / Sprechakt</Typography>
+                                    <Typography variant="body2" sx={{ mt: 0.35, fontSize: LESSON_MODAL_FONT_SIZE }}>{step}</Typography>
+                                  </Paper>
+                                  {musterLoesungFiles[idx] && (
+                                    <Paper variant="outlined" sx={{ mt: 0.5, ml: 1.5, p: 0.85, bgcolor: '#e8f5e9', borderColor: '#81c784' }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Musterlösung (Schritt {idx + 1})</Typography>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
+                                        <Button size="small" variant="text" onClick={() => handleFileClick(musterLoesungFiles[idx])} sx={{ textTransform: 'none', p: 0, minWidth: 0 }}>
+                                          {musterLoesungFiles[idx].name}
+                                        </Button>
+                                        {(() => {
+                                          const f = musterLoesungFiles[idx];
+                                          const pdfFile = /\.pdf$/i.test(f.name || '') ? f : null;
+                                          if (!pdfFile || !bgGroupId) return null;
+                                          const shared = !!fileShares[fileShareKey(pdfFile.path, bgGroupId)];
+                                          return (
+                                            <FormControlLabel
+                                              control={
+                                                <Checkbox
+                                                  size="small"
+                                                  checked={shared}
+                                                  onChange={() => toggleFileShare(pdfFile.path, bgGroupId)}
+                                                />
+                                              }
+                                              label={<Typography variant="caption">Material freigeben</Typography>}
+                                            />
+                                          );
+                                        })()}
+                                      </Box>
+                                    </Paper>
+                                  )}
+                                </Box>
+                              ))}
+                              {musterLoesungFiles.slice(bgAbPhaseSteps.length).map((f, j) => (
+                                <Paper key={`ab-ml-rest-${j}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#f1f8e9', borderColor: '#a5d6a7' }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Weitere Musterlösung</Typography>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                    <Button size="small" variant="text" onClick={() => handleFileClick(f)} sx={{ textTransform: 'none' }}>
+                                      {f.name}
+                                    </Button>
+                                  </Box>
+                                </Paper>
+                              ))}
+                            </Box>
+                          </Paper>
+                        )}
+
+                        {folienFiles.length > 0 && !planHasInput && (
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1976d2', mb: 0.5 }}>Folien (ohne Input-Baustein im Plan)</Typography>
+                            <List dense sx={{ bgcolor: '#f5f5f5', borderRadius: 1, py: 0, border: '1px solid #e3f2fd' }}>
+                              {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
+                                const pdfFile = getPdfFromGroup(versions);
+                                const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
+                                const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                                return (
+                                  <ListItem key={`bg-fol-noin-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
+                                    <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
+                                      {sortedVersions.map(({ ext, file }) => (
+                                        <IconButton key={file.path} size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25 }}>
+                                          {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
+                                        </IconButton>
+                                      ))}
+                                      {pdfFile && (
+                                        <FormControlLabel
+                                          control={<Checkbox size="small" checked={isPdfShared} onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)} />}
+                                          label={<Typography variant="caption">Freigeben</Typography>}
+                                        />
+                                      )}
+                                    </Box>
+                                  </ListItem>
+                                );
+                              })}
+                            </List>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
     
-                    {/* Lehrer-Anweisungen (ohne Überschrift), AB nur unten – Materialbegriffe (**) orange */}
-                    {instructions?.anweisungen && (
+                    {/* Lehrer-Anweisungen – im Erstellen-Modus mit Input-Baustein siehe grüne Input-Box */}
+                    {instructions?.anweisungen && lessonPlanViewMode !== 'background' && !(lessonPlanViewMode === 'create' && planHasInput) && (
                       <Box sx={{ fontSize: LESSON_MODAL_FONT_SIZE }}>
                         <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', borderRadius: 0, p: 2, pr: 5, border: '1px solid #c5e1a5', borderBottom: 'none' }}>
                           <Tooltip title="Text bearbeiten">
@@ -18223,8 +18857,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     ) : null}
 
-                    {/* Folien (ausgeblendet, wenn „Input“ im Stundenplan — dann oben im grünen Block) */}
-                    {folienFiles.length > 0 && !planHasInput && (
+                    {/* Folien (ausgeblendet, wenn „Input“ im Stundenplan — dann oben im grünen Block; in „Hintergrund“ separat) */}
+                    {folienFiles.length > 0 && !planHasInput && lessonPlanViewMode !== 'background' && (
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, pt: 1 }}>
                           Folien
@@ -18269,8 +18903,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     )}
     
-                    {/* Arbeitsblatt (AB) – ausgeblendet, wenn „Arbeitsauftrag“ im Plan (dann oben im gelben Block) */}
-                    {abFiles.length > 0 && !planHasArbeitsauftrag && (
+                    {/* Arbeitsblatt (AB) – ausgeblendet, wenn „Arbeitsauftrag“ im Plan (dann oben im gelben Block; in „Hintergrund“ separat) */}
+                    {abFiles.length > 0 && !planHasArbeitsauftrag && lessonPlanViewMode !== 'background' && (
                       <Box>
                         {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
                           <Box sx={{ position: 'relative', bgcolor: '#fff8e1', borderRadius: 0, p: 1.5, pr: 5, border: '1px solid #ffe082', borderBottom: 'none' }}>
