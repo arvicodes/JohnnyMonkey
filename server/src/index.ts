@@ -25,6 +25,7 @@ import fileSystemPathsRoutes from './routes/fileSystemPaths';
 import kaCorrectionsRoutes from './routes/kaCorrections';
 import messageRoutes from './routes/messages';
 import exitTicketRoutes from './routes/exitTicket';
+import journeyRoutes from './routes/journey';
 import flashcardRoutes from './routes/flashcards';
 import submissionRoutes from './routes/submissions';
 import fileShareRoutes from './routes/fileShares';
@@ -49,7 +50,7 @@ app.use(cors({
     : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
 }));
 
 app.use(express.json({ limit: '50mb' }));
@@ -86,6 +87,7 @@ app.use('/api/lesson-instructions', lessonInstructionsRoutes);
 app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/exit-ticket', exitTicketRoutes);
+app.use('/api/journey', journeyRoutes);
 
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));

@@ -21,7 +21,7 @@ import MovementStoriesPage from './pages/MovementStoriesPage';
 import EntryTicketPage from './pages/EntryTicketPage';
 import ExitTicketPage from './pages/ExitTicketPage';
 
-import { Snackbar, Alert } from '@mui/material';
+import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 import FlutterElf from './components/FlutterElf';
 
@@ -38,6 +38,8 @@ function AppContent() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [johnnyVisible, setJohnnyVisible] = useState(false);
   const [elfVisible, setElfVisible] = useState(false);
+  /** false bis Session aus localStorage geprüft — verhindert Redirect von /teacher/stunde → / vor Auto-Login */
+  const [authReady, setAuthReady] = useState(false);
   const navigate = useNavigate();
   const loginInputRef = useRef<HTMLInputElement>(null);
 
@@ -148,68 +150,84 @@ function AppContent() {
     };
   }, []);
 
-  // Beim App-Start: Prüfe ob Benutzer bereits eingeloggt ist
+  // Beim App-Start: Prüfe ob Benutzer bereits eingeloggt ist (authReady erst danach true)
   useEffect(() => {
     const checkExistingLogin = async () => {
       const storedLoginCode = localStorage.getItem('loginCode');
       const storedUserId = localStorage.getItem('studentId') || localStorage.getItem('teacherId');
       const storedUserName = localStorage.getItem('userName');
-      
-      if (storedLoginCode && storedUserId && storedUserName) {
-        // Versuche automatisch einzuloggen mit gespeichertem Login-Code
-        try {
-          const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ loginCode: storedLoginCode }),
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ Auto-Login erfolgreich:', data.user.name);
-            setUser(data.user);
-            // Navigate to dashboard if on login page
-            if (window.location.pathname === '/') {
-              navigate('/dashboard');
+
+      try {
+        if (storedLoginCode && storedUserId && storedUserName) {
+          try {
+            const response = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ loginCode: storedLoginCode }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              console.log('✅ Auto-Login erfolgreich:', data.user.name);
+              setUser(data.user);
+              // Nur Startseite / nach Login auf Dashboard schicken, Deep-Links (z. B. /teacher/stunde) behalten
+              if (window.location.pathname === '/') {
+                navigate('/dashboard');
+              }
+            } else {
+              console.log('⚠️ Auto-Login fehlgeschlagen, lösche gespeicherte Daten');
+              localStorage.removeItem('teacherId');
+              localStorage.removeItem('studentId');
+              localStorage.removeItem('loginCode');
+              localStorage.removeItem('userName');
             }
-          } else {
-            // Login-Code ist ungültig, lösche gespeicherte Daten
-            console.log('⚠️ Auto-Login fehlgeschlagen, lösche gespeicherte Daten');
+          } catch (error) {
+            console.error('❌ Auto-Login Fehler:', error);
             localStorage.removeItem('teacherId');
             localStorage.removeItem('studentId');
             localStorage.removeItem('loginCode');
             localStorage.removeItem('userName');
           }
-        } catch (error) {
-          console.error('❌ Auto-Login Fehler:', error);
-          // Bei Fehler: gespeicherte Daten löschen
-          localStorage.removeItem('teacherId');
-          localStorage.removeItem('studentId');
-          localStorage.removeItem('loginCode');
-          localStorage.removeItem('userName');
         }
+      } finally {
+        setAuthReady(true);
       }
     };
-    
+
     checkExistingLogin();
-  }, [navigate]); // Nur einmal beim App-Start ausführen
+  }, [navigate]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user && authReady) {
       loginInputRef.current?.focus();
     }
-  }, [user]);
+  }, [user, authReady]);
+
+  const authLoading = (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+      <CircularProgress />
+    </Box>
+  );
 
   const renderDashboard = () => {
+    if (!authReady) return authLoading;
     if (!user) return <Navigate to="/" />;
-    
+
     return user.role === 'TEACHER' ? (
       <TeacherDashboard userId={user.id} userRole={user.role} onLogout={handleLogout} />
     ) : (
       <StudentDashboard userId={user.id} onLogout={handleLogout} />
     );
+  };
+
+  /** Stunden-Ansicht im eigenen Browser-Tab (Deep-Link mit groupId, lessonPath, lessonName). */
+  const renderTeacherStundeTab = () => {
+    if (!authReady) return authLoading;
+    if (!user) return <Navigate to="/" replace />;
+    if (user.role !== 'TEACHER') return <Navigate to="/dashboard" replace />;
+    return <TeacherDashboard userId={user.id} userRole={user.role} onLogout={handleLogout} />;
   };
 
   return (
@@ -218,7 +236,9 @@ function AppContent() {
         <Route
           path="/"
           element={
-            !user ? (
+            !authReady ? (
+              authLoading
+            ) : !user ? (
               <div className="login-container">
                 <h2>Willkommen!</h2>
                 <form onSubmit={handleLogin}>
@@ -247,6 +267,7 @@ function AppContent() {
           }
         />
         <Route path="/dashboard" element={renderDashboard()} />
+        <Route path="/teacher/stunde" element={renderTeacherStundeTab()} />
         <Route path="/learning-group/:id" element={<LearningGroupPage />} />
         <Route path="/quiz-player/:quizId" element={<QuizPlayerPage />} />
         <Route path="/quiz-session/:quizId" element={<QuizSessionPage />} />

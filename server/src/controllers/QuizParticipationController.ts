@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { percentageToGrade, percentageToMSSPoints } from '../utils/gradeConverter';
+import { applyJourneyEvent } from '../services/journeyService';
 
 const prisma = new PrismaClient();
 
@@ -216,6 +217,12 @@ export const submitAnswers = async (req: Request, res: Response) => {
         }
       })
     ]);
+
+    try {
+      await applyJourneyEvent(participation.studentId, 'quiz_complete');
+    } catch (journeyErr) {
+      console.error('Reisebegleiter: quiz_complete', journeyErr);
+    }
 
     // Calculate percentage and create grade if quiz has a gradeCategory
     const percentage = participation.maxScore ? Math.round((totalScore / participation.maxScore) * 100) : 0;

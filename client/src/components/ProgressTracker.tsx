@@ -242,7 +242,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
               <span>Vervollständigung</span>
               <span>{stats.completionRate}%</span>
             </div>
-            <Progress value={stats.completionRate} className="h-2" />
+            <Progress value={stats.completionRate} className="h-3" />
           </div>
           
           <div className="space-y-2">
@@ -250,7 +250,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
               <span>Meisterschaft</span>
               <span>{stats.masteryRate}%</span>
             </div>
-            <Progress value={stats.masteryRate} className="h-2" />
+            <Progress value={stats.masteryRate} className="h-3" />
           </div>
         </CardContent>
       </Card>

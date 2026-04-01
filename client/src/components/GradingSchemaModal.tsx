@@ -27,6 +27,7 @@ import {
   Select,
   MenuItem
 } from '@mui/material';
+import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -786,18 +787,18 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                   )}
                 </Box>
                 
-                <LinearProgress 
-                  variant="determinate" 
-                  value={Math.min(weightSum, 100)} 
-                  sx={{ 
-                    height: 6,
-                    borderRadius: 3,
-                    bgcolor: colors.border,
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: isValid ? colors.success : colors.error,
-                      borderRadius: 3,
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(weightSum, 100)}
+                  sx={determinateLinearProgressSx(
+                    isValid
+                      ? `linear-gradient(90deg, ${colors.success}99 0%, ${colors.success} 100%)`
+                      : `linear-gradient(90deg, ${colors.error}99 0%, ${colors.error} 100%)`,
+                    {
+                      height: 9,
+                      barGlow: isValid ? `${colors.success}55` : `${colors.error}55`,
                     }
-                  }} 
+                  )}
                 />
               </Box>
             )}
@@ -1244,18 +1245,21 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
                     <InfoIcon sx={{ fontSize: 18, color: colors.primary }} />
                     Gesamtsumme: {calculateWeightSum(gradeNodes).toFixed(1)}%
                   </Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={Math.min(calculateWeightSum(gradeNodes), 100)} 
-                    sx={{ 
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: colors.border,
-                      '& .MuiLinearProgress-bar': {
-                        bgcolor: Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01 ? colors.success : colors.error,
-                        borderRadius: 4,
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(calculateWeightSum(gradeNodes), 100)}
+                    sx={determinateLinearProgressSx(
+                      Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01
+                        ? `linear-gradient(90deg, ${colors.success}99 0%, ${colors.success} 100%)`
+                        : `linear-gradient(90deg, ${colors.error}99 0%, ${colors.error} 100%)`,
+                      {
+                        height: 10,
+                        barGlow:
+                          Math.abs(calculateWeightSum(gradeNodes) - 100) < 0.01
+                            ? `${colors.success}55`
+                            : `${colors.error}55`,
                       }
-                    }} 
+                    )}
                   />
                   {Math.abs(calculateWeightSum(gradeNodes) - 100) > 0.01 && (
                     <Typography color="error" variant="body2" sx={{ mt: 1, fontWeight: 'bold', fontSize: '0.75rem' }}>
@@ -1553,20 +1557,21 @@ const GradingSchemaModal: React.FC<GradingSchemaModalProps> = ({
               <InfoIcon sx={{ fontSize: 18, color: colors.primary }} />
               Gesamtsumme: {calculateWeightSum(gradeNodes).toFixed(1)}%
             </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={Math.min(calculateWeightSum(gradeNodes), 100)} 
-              sx={{ 
-                height: 8,
-                borderRadius: 4,
-                bgcolor: colors.border,
-                '& .MuiLinearProgress-bar': {
-                  borderRadius: 4,
-                  background: calculateWeightSum(gradeNodes) === 100 
-                    ? `linear-gradient(90deg, ${colors.success} 0%, ${colors.primary} 100%)`
-                    : `linear-gradient(90deg, ${colors.warning} 0%, ${colors.error} 100%)`
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(calculateWeightSum(gradeNodes), 100)}
+              sx={determinateLinearProgressSx(
+                calculateWeightSum(gradeNodes) === 100
+                  ? `linear-gradient(90deg, ${colors.success} 0%, ${colors.primary} 100%)`
+                  : `linear-gradient(90deg, ${colors.warning} 0%, ${colors.error} 100%)`,
+                {
+                  height: 10,
+                  barGlow:
+                    calculateWeightSum(gradeNodes) === 100
+                      ? `${colors.success}55`
+                      : `${colors.error}55`,
                 }
-              }}
+              )}
             />
             <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block', fontSize: '0.7rem' }}>
               {calculateWeightSum(gradeNodes) === 100 

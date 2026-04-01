@@ -11,6 +11,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { keyframes } from '@mui/material/styles';
+import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import {
   ArrowBack as ArrowBackIcon,
   PlayArrow as PlayIcon,
@@ -350,16 +351,16 @@ export default function SevenMinuteWorkoutPage() {
                   variant="determinate"
                   value={progress}
                   sx={{
-                    height: 8,
-                    borderRadius: 1,
+                    ...determinateLinearProgressSx(
+                      isRestPhase
+                        ? 'linear-gradient(90deg, #c8e6c9 0%, #66bb6a 40%, #1b5e20 100%)'
+                        : 'linear-gradient(90deg, #80deea 0%, #26a69a 42%, #00695c 100%)',
+                      {
+                        height: 11,
+                        barGlow: isRestPhase ? 'rgba(46, 125, 50, 0.35)' : 'rgba(0, 137, 123, 0.35)',
+                      }
+                    ),
                     mb: 2,
-                    bgcolor: 'grey.200',
-                    '& .MuiLinearProgress-bar': {
-                      background: isRestPhase
-                        ? 'linear-gradient(90deg, #a5d6a7, #1b5e20)'
-                        : 'linear-gradient(90deg, #4ecdc4, #1a535c)',
-                      transition: 'transform 0.4s ease',
-                    },
                   }}
                 />
                 {state.phase === 'session' && state.mode === 'work' && (

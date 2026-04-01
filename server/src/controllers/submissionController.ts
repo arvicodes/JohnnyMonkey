@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { applyJourneyEvent } from '../services/journeyService';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
@@ -253,6 +254,12 @@ export const submitAssignment = async (req: Request, res: Response) => {
         }
       }
     });
+
+    try {
+      await applyJourneyEvent(studentId, 'homework_submit');
+    } catch (journeyErr) {
+      console.error('Reisebegleiter: homework_submit', journeyErr);
+    }
 
     res.json(submission);
   } catch (error) {

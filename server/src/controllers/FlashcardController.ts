@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { SpacedRepetitionService } from '../services/SpacedRepetitionService';
+import { applyJourneyEvent } from '../services/journeyService';
 import { parseFlashcardWordFile, ParsedFlashcardDocument } from '../utils/flashcardWordParser';
 
 const prisma = new PrismaClient();
@@ -1416,6 +1417,15 @@ export const endLearningSession = async (req: Request, res: Response) => {
         sessionDuration: Math.floor((Date.now() - new Date().getTime()) / 1000)
       }
     });
+
+    const reviewed = cardsReviewed || 0;
+    if (reviewed > 0) {
+      try {
+        await applyJourneyEvent(session.studentId, 'flashcard_session', { cardsReviewed: reviewed });
+      } catch (journeyErr) {
+        console.error('Reisebegleiter: flashcard_session', journeyErr);
+      }
+    }
 
     res.json({ session });
   } catch (error) {

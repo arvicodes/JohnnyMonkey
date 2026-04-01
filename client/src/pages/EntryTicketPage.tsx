@@ -23,6 +23,7 @@ import {
   SkipNext as SkipNextIcon,
   SkipPrevious as SkipPreviousIcon,
 } from '@mui/icons-material';
+import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 
 type EntryTicketTask = {
   category: string;
@@ -357,13 +358,16 @@ export default function EntryTicketPage() {
   const [setEditCategory, setSetEditCategory] = useState('Alltag');
   const [newPrompt, setNewPrompt] = useState('');
   const [newSolution, setNewSolution] = useState('');
+  const [autoStartPending, setAutoStartPending] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const gradeParam = Number(params.get('grade'));
+    const autoStartParam = params.get('autostart');
     if (Number.isFinite(gradeParam) && gradeParam >= 5 && gradeParam <= 13) {
       setGrade(gradeParam as Grade);
     }
+    setAutoStartPending(autoStartParam === '1' || autoStartParam === 'true');
   }, [location.search]);
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
@@ -544,6 +548,13 @@ export default function EntryTicketPage() {
     }
     setIsRunning(true);
   };
+
+  useEffect(() => {
+    if (!autoStartPending || sessionStarted) return;
+    if (selectedTasks.length === 0) return;
+    startSession();
+    setAutoStartPending(false);
+  }, [autoStartPending, sessionStarted, selectedTasks.length]);
 
   const pause = () => {
     setIsRunning(false);
@@ -1519,14 +1530,11 @@ export default function EntryTicketPage() {
                   variant="determinate"
                   value={progressPercent}
                   sx={{
-                    height: 10,
-                    borderRadius: 99,
+                    ...determinateLinearProgressSx(
+                      'linear-gradient(90deg, #5c6bc0 0%, #3949ab 38%, #1565c0 100%)',
+                      { height: 11, barGlow: 'rgba(30, 136, 229, 0.35)' }
+                    ),
                     mb: 1.25,
-                    bgcolor: '#e3e9ff',
-                    '& .MuiLinearProgress-bar': {
-                      borderRadius: 99,
-                      background: 'linear-gradient(90deg, #3949ab 0%, #1e88e5 100%)',
-                    },
                   }}
                 />
 

@@ -19,6 +19,7 @@ import {
   EmojiEvents as TrophyIcon,
   School as SchoolIcon
 } from '@mui/icons-material';
+import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 
 interface QuizResultsModalProps {
   open: boolean;
@@ -94,12 +95,13 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
   const score = participation?.score || correctAnswers;
   const maxScore = participation?.maxScore || totalQuestions;
 
-  const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 90) return '#4caf50';
-    if (percentage >= 70) return '#ff9800';
-    if (percentage >= 50) return '#ff5722';
+  const getPerformanceColor = (pct: number) => {
+    if (pct >= 90) return '#4caf50';
+    if (pct >= 70) return '#ff9800';
+    if (pct >= 50) return '#ff5722';
     return '#f44336';
   };
+  const performanceAccent = getPerformanceColor(percentage);
 
   const getPerformanceText = (percentage: number) => {
     if (percentage >= 90) return 'Ausgezeichnet!';
@@ -213,18 +215,13 @@ export const QuizResultsModal: React.FC<QuizResultsModalProps> = ({
               <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 600, fontSize: '0.9rem' }}>
                 {score} von {maxScore} Punkten
               </Typography>
-              <LinearProgress 
-                variant="determinate" 
-                value={percentage} 
-                sx={{ 
-                  height: 8, 
-                  borderRadius: 4,
-                  backgroundColor: 'rgba(0,0,0,0.1)',
-                  '& .MuiLinearProgress-bar': {
-                    background: `linear-gradient(90deg, ${getPerformanceColor(percentage)} 0%, ${getPerformanceColor(percentage)}dd 100%)`,
-                    borderRadius: 4
-                  }
-                }} 
+              <LinearProgress
+                variant="determinate"
+                value={percentage}
+                sx={determinateLinearProgressSx(
+                  `linear-gradient(90deg, ${performanceAccent}bb 0%, ${performanceAccent} 45%, ${performanceAccent} 100%)`,
+                  { height: 10, barGlow: `${performanceAccent}55` }
+                )}
               />
             </Box>
 

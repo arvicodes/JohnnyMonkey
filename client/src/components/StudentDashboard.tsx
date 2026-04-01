@@ -65,7 +65,9 @@ import EmojiSelector from './EmojiSelector';
 import InboxModal from './InboxModal';
 import QuizStartButton from './QuizStartButton';
 import SubmissionUpload from './SubmissionUpload';
+import ReisebegleiterAvatarBadge from './ReisebegleiterPanel';
 import { RIDDLES, Riddle } from './riddles';
+import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -465,7 +467,7 @@ const DraggableCanvasCard: React.FC<{
 };
 
 /** Gemeinsame Leinwand: Einträge hinzufügen (+), frei auf der Fläche ziehen. fullScreen = für Präsentations-Tab (füllt Fenster). */
-export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: string; fullScreen?: boolean }> = ({ groupId, lessonPath, fullScreen }) => {
+export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: string; fullScreen?: boolean; autoFocusAddField?: boolean }> = ({ groupId, lessonPath, fullScreen, autoFocusAddField }) => {
   const [items, setItems] = useState<SharedInputItem[]>([]);
   const [connections, setConnections] = useState<SharedInputConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -494,6 +496,12 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [groupId, lessonPath]);
+
+  useEffect(() => {
+    if (loading || !autoFocusAddField) return;
+    const t = window.setTimeout(() => inputRef.current?.focus(), 100);
+    return () => window.clearTimeout(t);
+  }, [loading, autoFocusAddField]);
 
   const save = useCallback((payloadItems: SharedInputItem[], payloadConnections: SharedInputConnection[]) => {
     fetch(`/api/learning-groups/${groupId}/lesson-shared-input`, {
@@ -1732,6 +1740,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Inbox States
   const [showInbox, setShowInbox] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  const [journeyRefreshKey, setJourneyRefreshKey] = useState(0);
 
   // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
   const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
@@ -5341,6 +5351,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <Typography variant="h1" sx={{ fontSize: '4rem', mb: 1 }}>
                   {isUpdatingEmoji ? '⏳' : selectedEmoji}
                 </Typography>
+                <ReisebegleiterAvatarBadge refreshKey={journeyRefreshKey} />
                 <Tooltip title="Avatar ändern" placement="top">
                   <IconButton
                     sx={{
@@ -6271,6 +6282,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         open={flashcardLearningOpen}
         onClose={() => setFlashcardLearningOpen(false)}
         studentId={userId}
+        onSessionEnded={() => setJourneyRefreshKey((k) => k + 1)}
       />
       
       {/* Kommentar-Modal */}
@@ -6555,6 +6567,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           filePath={selectedSubmissionFile.path}
           teacherId={selectedSubmissionFile.teacherId}
           studentId={userId}
+          onUploadSuccess={() => setJourneyRefreshKey((k) => k + 1)}
           onViewFile={(item: any) => previewFile(item)}
           onClose={() => {
             setShowSubmissionModal(false);
@@ -7258,9 +7271,18 @@ interface FlashcardLearningModalProps {
   isTeacher?: boolean;
   teacherDeck?: any; // Deck für Lehrer-Modus
   teacherId?: string; // Lehrer-ID für Export
+  onSessionEnded?: () => void;
 }
 
-export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ open, onClose, studentId, isTeacher = false, teacherDeck, teacherId }) => {
+export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
+  open,
+  onClose,
+  studentId,
+  isTeacher = false,
+  teacherDeck,
+  teacherId,
+  onSessionEnded,
+}) => {
   const [assignedDecks, setAssignedDecks] = useState<any[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -7934,6 +7956,7 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
   };
 
   const endLearningSession = async () => {
+    const reviewedSnapshot = sessionStats.cardsReviewed;
     // Session beenden, auch wenn keine sessionId vorhanden ist
     try {
       if (sessionId) {
@@ -7950,6 +7973,10 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
       }
     } catch (error) {
       console.error('Error ending learning session:', error);
+    }
+
+    if (!isTeacher && studentId && reviewedSnapshot > 0) {
+      onSessionEnded?.();
     }
 
     // Lösche den gespeicherten Session-Fortschritt
@@ -8634,18 +8661,13 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({ 
                     )}
                   </Box>
                   
-                  <LinearProgress 
-                    variant="determinate" 
+                  <LinearProgress
+                    variant="determinate"
                     value={((currentCardIndex + 1) / selectedDeck.cards.length) * 100}
-                    sx={{ 
-                      height: 2,
-                      borderRadius: 1,
-                      bgcolor: '#e9ecef',
-                      '& .MuiLinearProgress-bar': {
-                        borderRadius: 1,
-                        bgcolor: '#ff6b35'
-                      }
-                    }}
+                    sx={determinateLinearProgressSx(
+                      'linear-gradient(90deg, #ffab91 0%, #ff6b35 42%, #e65100 100%)',
+                      { height: 10, barGlow: 'rgba(255, 107, 53, 0.35)' }
+                    )}
                   />
                 </Box>
 

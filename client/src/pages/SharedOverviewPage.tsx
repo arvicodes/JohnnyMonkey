@@ -11,6 +11,7 @@ export default function SharedOverviewPage() {
   const [searchParams] = useSearchParams();
   const groupId = searchParams.get('groupId') || '';
   const lessonPath = searchParams.get('lessonPath') || '';
+  const focusInput = searchParams.get('focus') === 'input';
 
   if (!groupId || !lessonPath) {
     return (
@@ -22,7 +23,7 @@ export default function SharedOverviewPage() {
 
   return (
     <Box sx={{ width: '100%', minHeight: '100vh', bgcolor: '#e8f5e9' }}>
-      <LessonSharedInputBox groupId={groupId} lessonPath={lessonPath} fullScreen />
+      <LessonSharedInputBox groupId={groupId} lessonPath={lessonPath} fullScreen autoFocusAddField={focusInput} />
     </Box>
   );
 }

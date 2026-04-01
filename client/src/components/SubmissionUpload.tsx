@@ -19,6 +19,7 @@ import {
   Delete as DeleteIcon,
   CameraAlt as CameraIcon
 } from '@mui/icons-material';
+import { indeterminateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import ImageEditor from './ImageEditor';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
@@ -29,6 +30,7 @@ interface SubmissionUploadProps {
   studentId: string;
   onViewFile: (item: any) => void;
   onClose: () => void;
+  onUploadSuccess?: () => void;
 }
 
 const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
@@ -37,7 +39,8 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
   teacherId,
   studentId,
   onViewFile,
-  onClose
+  onClose,
+  onUploadSuccess
 }) => {
   const [assignment, setAssignment] = useState<any>(null);
   const [submission, setSubmission] = useState<any>(null);
@@ -140,6 +143,7 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
       const submissionData = await response.json();
       setSubmission(submissionData);
       setSelectedFile(null);
+      onUploadSuccess?.();
       
       alert('✅ Abgabe erfolgreich hochgeladen!');
     } catch (err: any) {
@@ -331,7 +335,7 @@ const SubmissionUpload: React.FC<SubmissionUploadProps> = ({
       <DialogContent sx={{ pt: 3, pb: 1.5, px: 2 }}>
         {loading && (
           <Box sx={{ py: 2 }}>
-            <LinearProgress />
+            <LinearProgress sx={indeterminateLinearProgressSx} />
             <Typography sx={{ textAlign: 'center', mt: 1.5, color: 'text.secondary', fontSize: '0.85rem' }}>
               Lade...
             </Typography>
