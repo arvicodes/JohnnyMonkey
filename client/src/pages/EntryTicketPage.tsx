@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -32,7 +32,8 @@ type EntryTicketTask = {
 };
 
 const SLIDE_DURATION_SEC = 10;
-const TARGET_TASK_COUNT = 16;
+/** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
+const TARGET_TASK_COUNT = 10;
 const DISPLAY_BOX_WIDTH = 1320;
 const DISPLAY_BOX_HEIGHT = 340;
 const FINAL_DISPLAY_BOX_HEIGHT = 500;
@@ -232,6 +233,29 @@ const TASK_POOL_13: EntryTicketTask[] = [
 
 const QUESTION_SET_STORAGE_KEY = 'entry-ticket-question-sets-v1';
 
+function randomTaskSeed(): number {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return (buf[0] ?? Date.now()) >>> 0;
+  }
+  return (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
+}
+
+function parseEntryTicketSearch(search: string): { grade: Grade; autostart: boolean } {
+  const params = new URLSearchParams(search);
+  const gradeParam = Number(params.get('grade'));
+  const grade =
+    Number.isFinite(gradeParam) && gradeParam >= 5 && gradeParam <= 13
+      ? (gradeParam as Grade)
+      : (7 as Grade);
+  const autostart =
+    params.get('autostart') === '1' ||
+    params.get('autostart') === 'true' ||
+    params.get('start') === '1';
+  return { grade, autostart };
+}
+
 const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
   5: TASK_POOL_5,
   6: TASK_POOL_6,
@@ -293,9 +317,11 @@ const dedupeEigenQuestions = (list: EntryTicketTask[]): EntryTicketTask[] => {
 export default function EntryTicketPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const initialRoute =
+    typeof window !== 'undefined' ? parseEntryTicketSearch(window.location.search || '') : { grade: 7 as Grade, autostart: false };
   const [sessionStarted, setSessionStarted] = useState(false);
-  const [grade, setGrade] = useState<Grade>(7);
-  const [taskSeed, setTaskSeed] = useState(1);
+  const [grade, setGrade] = useState<Grade>(() => initialRoute.grade);
+  const [taskSeed, setTaskSeed] = useState(() => randomTaskSeed());
   const [showSetEditor, setShowSetEditor] = useState(false);
   const [questionSets, setQuestionSets] = useState<GradeQuestionSets>(() => {
     try {
@@ -358,16 +384,20 @@ export default function EntryTicketPage() {
   const [setEditCategory, setSetEditCategory] = useState('Alltag');
   const [newPrompt, setNewPrompt] = useState('');
   const [newSolution, setNewSolution] = useState('');
-  const [autoStartPending, setAutoStartPending] = useState(false);
+  const [autoStartPending, setAutoStartPending] = useState(() => initialRoute.autostart);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const gradeParam = Number(params.get('grade'));
-    const autoStartParam = params.get('autostart');
-    if (Number.isFinite(gradeParam) && gradeParam >= 5 && gradeParam <= 13) {
-      setGrade(gradeParam as Grade);
-    }
-    setAutoStartPending(autoStartParam === '1' || autoStartParam === 'true');
+  /** Klassenstufe aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
+  useLayoutEffect(() => {
+    const { grade: g, autostart } = parseEntryTicketSearch(location.search);
+    setGrade(g);
+    setAutoStartPending(autostart);
+    setTaskSeed(randomTaskSeed());
+    setSessionStarted(false);
+    setSessionDone(false);
+    setCurrentIndex(0);
+    setSecondsLeft(SLIDE_DURATION_SEC);
+    setIsRunning(false);
+    setShowSolutions(false);
   }, [location.search]);
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
@@ -498,7 +528,7 @@ export default function EntryTicketPage() {
     const picked = pickRandomTasks(poolForBand, TARGET_TASK_COUNT, taskSeed);
     setSelectedTasks(picked.tasks);
     setPickedListIndices(picked.indices.map((i) => displayNumberByPoolIndex.get(i) ?? i + 1));
-  }, [poolForBand, taskSeed, sessionStarted]);
+  }, [poolForBand, taskSeed, sessionStarted, displayNumberByPoolIndex]);
 
   useEffect(() => {
     try {

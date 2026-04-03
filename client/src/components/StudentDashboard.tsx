@@ -68,6 +68,7 @@ import SubmissionUpload from './SubmissionUpload';
 import ReisebegleiterAvatarBadge from './ReisebegleiterPanel';
 import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
+import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -5195,7 +5196,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 {/* EntryTicket */}
                 <Box sx={{ position: 'relative' }}>
                   <IconButton
-                    onClick={() => navigate('/entry-ticket')}
+                    onClick={() => {
+                      const band = gradeFromGroupNames(lerngruppen.map((lg) => lg.name));
+                      navigate(`/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}`);
+                    }}
                     sx={{
                       width: 42,
                       height: 42,
@@ -5213,7 +5217,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       },
                       transition: 'all 0.2s ease',
                     }}
-                    title="EntryTicket (5 Minuten)"
+                    title="EntryTicket (10 zufällige Fragen, klassenspezifisch)"
                   >
                     <Typography
                       component="span"

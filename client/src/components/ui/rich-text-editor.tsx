@@ -342,17 +342,40 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   // Add image resize handlers after content updates - moved after makeImageResizable definition
 
+  const syncFormatStateFromDocument = useCallback(() => {
+    try {
+      const el = document.activeElement;
+      if (!editorRef.current || el !== editorRef.current) return;
+      setIsBold(document.queryCommandState('bold'));
+      setIsItalic(document.queryCommandState('italic'));
+      setIsUnderline(document.queryCommandState('underline'));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const handleFocus = useCallback(() => {
+    syncFormatStateFromDocument();
+  }, [syncFormatStateFromDocument]);
+
+  const handleSelectionChange = useCallback(() => {
+    if (!editorRef.current || document.activeElement !== editorRef.current) return;
+    syncFormatStateFromDocument();
+  }, [syncFormatStateFromDocument]);
+
+  useEffect(() => {
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [handleSelectionChange]);
+
   const execCommand = (command: string, value?: string) => {
     if (!editorRef.current) return;
     
     try {
-      // Ensure the editor has focus before executing commands
       editorRef.current.focus();
       
-      // Restore selection if needed
       const selection = window.getSelection();
       if (!selection || selection.rangeCount === 0) {
-        // If no selection, place cursor at end
         const range = document.createRange();
         range.selectNodeContents(editorRef.current);
         range.collapse(false);
@@ -362,6 +385,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       
       document.execCommand(command, false, value);
       handleInput();
+      requestAnimationFrame(() => syncFormatStateFromDocument());
     } catch (error) {
       console.warn('Error executing command:', command, error);
     }
@@ -374,15 +398,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       switch (style) {
         case 'bold':
           execCommand('bold');
-          setIsBold(!isBold);
           break;
         case 'italic':
           execCommand('italic');
-          setIsItalic(!isItalic);
           break;
         case 'underline':
           execCommand('underline');
-          setIsUnderline(!isUnderline);
           break;
       }
     } catch (error) {
@@ -466,14 +487,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   // So funktionieren die Markierungen auch ohne Tokens (kein [[ANS:..]]).
   const wrapCurrentSelectionWithSpan = (styles: Record<string, string>, title?: string) => {
     if (!editorRef.current) return false;
+    editorRef.current.focus();
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return false;
-    if (!editorRef.current.contains(selection.anchorNode)) return false;
-
     const range = selection.getRangeAt(0);
+    if (!editorRef.current.contains(range.commonAncestorContainer)) return false;
     if (range.collapsed) return false;
 
-    editorRef.current.focus();
     try {
       const extracted = range.extractContents();
       const span = document.createElement('span');
@@ -504,13 +524,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     title?: string
   ) => {
     if (!editorRef.current) return false;
+    editorRef.current.focus();
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return false;
-    if (!editorRef.current.contains(selection.anchorNode)) return false;
     const range = selection.getRangeAt(0);
+    if (!editorRef.current.contains(range.commonAncestorContainer)) return false;
     if (range.collapsed) return false;
 
-    editorRef.current.focus();
     try {
       const extracted = range.extractContents();
       const span = document.createElement('span');
@@ -871,19 +891,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  const handleFocus = () => {
-    try {
-      // Update button states based on current selection
-      if (editorRef.current) {
-        setIsBold(document.queryCommandState('bold'));
-        setIsItalic(document.queryCommandState('italic'));
-        setIsUnderline(document.queryCommandState('underline'));
-      }
-    } catch (error) {
-      console.warn('Error updating button states:', error);
-    }
-  };
-
   const handleBlur = () => {
     // Don't close color picker on blur to allow clicking on it
   };
@@ -940,8 +947,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         }
       }}
     >
-      {/* Toolbar */}
+      {/* Toolbar – mousedown capture verhindert Fokus auf Buttons, Auswahl bleibt im Editor */}
       <Box
+        onMouseDownCapture={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.closest?.('input[type="file"]')) return;
+          e.preventDefault();
+        }}
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -1331,7 +1343,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
             transformOrigin={{ vertical: 'top', horizontal: 'left' }}
             slotProps={{
-              paper: { sx: { p: 1, backgroundColor: appColors.cardBg, border: `1px solid ${appColors.border}` } }
+              paper: {
+                onMouseDown: (e: React.MouseEvent) => e.preventDefault(),
+                sx: { p: 1, backgroundColor: appColors.cardBg, border: `1px solid ${appColors.border}` }
+              }
             }}
           >
             <Box sx={{ minWidth: 120 }}>
@@ -1481,6 +1496,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           color: appColors.textPrimary,
           fontSize: '0.875rem',
           outline: 'none',
+          userSelect: 'text',
+          WebkitUserSelect: 'text',
+          cursor: 'text',
           '&:focus': {
             boxShadow: `0 0 0 2px ${appColors.primary}40`
           },

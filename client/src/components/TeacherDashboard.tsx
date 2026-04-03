@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import KACorrectionMode from './KACorrectionMode';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import TeacherMessageBox from './TeacherMessageBox';
-import { FlashcardLearningModal, LessonSharedInputBox } from './StudentDashboard';
+import { FlashcardLearningModal } from './StudentDashboard';
 import { RIDDLES } from './riddles';
 import { MOVEMENT_STORIES } from '../data/movementStories';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
@@ -5381,6 +5381,24 @@ const MOVEMENT_GAMES_OUTDOOR: MovementGameCard[] = [
   },
 ];
 
+/** PDF/PPTX/ODP und gängige Bildformate – für „Dokumente im Ordner dieser Stunde“. */
+const LESSON_FOLDER_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
+
+/** Alle Dateien aus dem Stundenordner-Baum (read?recursive=true liefert Unterordner in children). */
+function collectLessonFolderFilesFromTree(nodes: any[] | undefined): any[] {
+  const out: any[] = [];
+  const walk = (items: any[] | undefined) => {
+    if (!Array.isArray(items)) return;
+    for (const n of items) {
+      if (!n || typeof n !== 'object') continue;
+      if (n.type === 'file' && n.name && !String(n.name).startsWith('~$')) out.push(n);
+      if (Array.isArray(n.children)) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 'TEACHER', onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -5654,7 +5672,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     groupId: string;
   } | null>(null);
   const [lessonStundeTabLoading, setLessonStundeTabLoading] = useState(false);
-  const [voraussetzungenGlossarOpen, setVoraussetzungenGlossarOpen] = useState(false);
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
   // Bearbeitbare Stunden-Texte und Ablaufplanung pro Stunde (lessonPath)
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
@@ -8691,6 +8708,25 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       .replace(/\s+/g, ' ')
       .trim();
 
+  /** Für Anzeige: „keine“ / Markdown / Standard-Platzhalter zählen als „leer“. */
+  const voraussetzungenPlainForMeaningfulCheck = (s: string) =>
+    stripHtmlTags(s)
+      .replace(/\*+/g, '')
+      .replace(/[„"''«»]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+  const isMeaningfulVoraussetzungenDisplay = (s: string | undefined): boolean => {
+    if (!s?.trim()) return false;
+    const p = voraussetzungenPlainForMeaningfulCheck(s);
+    if (!p) return false;
+    if (p === 'keine fachlichen voraussetzungen.' || p === 'keine fachlichen voraussetzungen') return false;
+    if (p === 'keine') return false;
+    if (p === '–' || p === '-' || p === '—' || p === 'n/a' || p === 'n.a.' || p === 'na') return false;
+    return true;
+  };
+
   const stripBenotigtPrefix = (s: string) =>
     s.replace(/^\s*Benötigt\s+werden\s*[:]?/i, '').trim();
 
@@ -8746,10 +8782,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
     const orangeStrongSx = {
       color: '#ed6c02',
-      fontWeight: 800,
-      textDecoration: 'underline',
-      textUnderlineOffset: '2px',
-      textDecorationThickness: '3px'
+      fontWeight: 800
     } as const;
 
     const parts: Array<{ type: 'text' | 'material'; content: string }> = [];
@@ -8798,6 +8831,48 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     );
   };
 
+  /** Aus dem RichTextEditor gespeichertes HTML (Spans, strong, …) – für die Vorschau absichern. */
+  const sanitizeMateriallisteDisplayHtml = (html: string): string =>
+    (html || '')
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/\s*contenteditable\s*=\s*["']?(?:true|false)["']?/gi, '')
+      .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/\s*data-[a-z-]+\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/<\/?u\b[^>]*>/gi, '');
+
+  /** True, wenn typische Editor-Tags vorkommen (nicht nur „3 < 5“). */
+  const materiallisteLooksLikeSavedHtml = (s: string) =>
+    /<(span|strong|b|u|i|em|br|div|p|img|font)\b/i.test((s ?? '').trim());
+
+  /** Plaintext → MATERIAL_TERMS-Highlighter; gespeichertes HTML → 1:1 (manuelle Material-Formatierung bleibt). */
+  const renderMateriallisteDisplay = (raw: string) => {
+    const trimmed = (raw ?? '').trim();
+    if (!trimmed) return null;
+    if (materiallisteLooksLikeSavedHtml(trimmed)) {
+      return (
+        <Box
+          component="span"
+          sx={{
+            display: 'inline',
+            color: '#333',
+            fontSize: LESSON_MODAL_FONT_SIZE,
+            lineHeight: 1.5,
+            '& img': { display: 'inline', verticalAlign: 'middle', maxHeight: '1.1em', width: 'auto', height: 'auto' },
+            '& a, & a:visited': {
+              color: 'inherit',
+              textDecoration: 'none',
+              pointerEvents: 'none',
+              cursor: 'inherit'
+            }
+          }}
+          dangerouslySetInnerHTML={{ __html: sanitizeMateriallisteDisplayHtml(trimmed) }}
+        />
+      );
+    }
+    return renderMaterialListContent(trimmed);
+  };
+
   // Icons als <img> mit Data-URI – strikt inline, damit sie in Listen und Fließtext sauber mitlaufen
   const iconImgStyle = 'display:inline;vertical-align:middle;margin:0 2px;max-height:1.1em;width:auto;height:1.1em;';
   const svgToImgDataUri = (svg: string, w: number, h: number, style = iconImgStyle): string => {
@@ -8833,15 +8908,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     const t = String(text);
     if (t.trim() === '') return t;
     const looksLikeHtml = /<([a-zA-Z])[^>]*>/i.test(t);
-    // Wichtig: Für materialliste sollen auch ältere gespeicherte Drafts neu formatiert werden,
-    // damit "nur Nomen/Zahlen" orange + unterstrichen + fett sind (nicht Zwischenwörter).
-    if (looksLikeHtml) {
-      if (section === 'materialliste') {
-        // Nur Text extrahieren; danach über materialliste-Renderer/Regeln neu aufbauen.
-        return plainTextToEditorHtml(stripHtmlTags(t), section);
-      }
-      return t;
-    }
+    // Gespeichertes HTML inkl. materialliste: nicht in Plaintext zurück verwandeln (manuelle Formatierung).
+    if (looksLikeHtml) return t;
     // Geheimtexte/Klartexte: Anzeige ist nur Pre-Wrap oder HTML – nur Fett und Zeilenumbrüche
     if (section === 'geheimtexte') return plainTextToHtml(t);
 
@@ -8880,9 +8948,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       const styled = parts
         .map(p =>
           p.type === 'material'
-            ? `<strong style="color:#ed6c02;font-weight:800;text-decoration:underline;text-underline-offset:2px;display:inline">${escapeHtml(
-                p.content
-              )}</strong>`
+            ? `<strong style="color:#ed6c02;font-weight:800;display:inline">${escapeHtml(p.content)}</strong>`
             : escapeHtml(p.content)
         )
         .join('');
@@ -12812,7 +12878,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   const handleCloseLessonPage = () => {
     setLessonModalData(null);
-    setVoraussetzungenGlossarOpen(false);
     setLessonBoxEdit(null);
     setLessonPlanViewMode('create');
     setParticipationModalOpen(false);
@@ -17241,8 +17306,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   ...baseInstructions,
                   ...lessonOverrides
                 } as typeof baseInstructions;
-                const allFiles = (lessonModalData.children || []).filter((c: any) => c.type === 'file' && !(c.name && c.name.startsWith('~$')));
-                const planRunOrBackground = lessonPlanViewMode === 'run' || lessonPlanViewMode === 'background';
+                const allFiles = collectLessonFolderFilesFromTree(lessonModalData.children);
                 const musterLoesungFiles = allFiles.filter((f: any) =>
                   /lösung|Lösung|muster|ML_|Muster|_L_|_lösung|musterlösung/i.test(f.name || '')
                 );
@@ -17440,15 +17504,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     return;
                   }
                   if (item.type === 'input') {
-                    if (item.linkedMaterialPath) {
-                      const f = allFiles.find((x: any) => x.path === item.linkedMaterialPath);
-                      if (f) {
-                        await handleFileClick(f);
-                        return;
-                      }
-                      showSnackbar('Die verknüpfte Datei fehlt im Ordner.', 'error');
-                      return;
-                    }
                     window.open(
                       `/shared-overview?groupId=${encodeURIComponent(lessonModalData.groupId)}&lessonPath=${encodeURIComponent(lessonModalData.lessonPath)}&focus=input`,
                       '_blank'
@@ -17517,16 +17572,21 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const isABByName = (name: string) => /^AB_|Sicherheitsziele/i.test((name || '').replace(/\.[^.]+$/, ''));
                 const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
-                const abFiles = allFiles.filter((f: any) => !/\.(pdf|pptx?|odp)$/i.test(f.name || '') || isABByName(f.name));
+                /** Ohne reine Bilddateien: die erscheinen unter „Dokumente im Ordner dieser Stunde“ (außer AB_* / Sicherheitsziele). */
+                const abFiles = allFiles.filter((f: any) => {
+                  const name = f.name || '';
+                  if (isABByName(name)) return true;
+                  if (/\.(pdf|pptx?|odp)$/i.test(name)) return false;
+                  if (LESSON_FOLDER_IMAGE_EXT_RE.test(name)) return false;
+                  return true;
+                });
+                /** PDF/PPTX/ODP und Bilder im Stundenordner (inkl. Unterordner). */
+                const lessonFolderPdfFiles = allFiles.filter(
+                  (f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') || LESSON_FOLDER_IMAGE_EXT_RE.test(f.name || '')
+                );
                 const planHasArbeitsauftrag = lessonPlan.some((i) => i.type === 'arbeitsauftrag');
                 const planHasInput = lessonPlan.some((i) => i.type === 'input');
                 const bgSteps = splitAnweisungenIntoBulletSteps(instructions?.anweisungen || '');
-                const bgInputPhaseSteps =
-                  planHasInput && planHasArbeitsauftrag
-                    ? bgSteps.slice(0, Math.max(1, Math.ceil(bgSteps.length / 2)))
-                    : planHasInput
-                      ? [...bgSteps]
-                      : [];
                 const bgAbPhaseSteps =
                   planHasArbeitsauftrag && planHasInput
                     ? bgSteps.slice(Math.max(1, Math.ceil(bgSteps.length / 2)))
@@ -17534,29 +17594,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       ? [...bgSteps]
                       : [];
                 const bgGroupId = lessonModalData.groupId;
-                const inputShareOnForLesson =
-                  !!lessonPath &&
-                  !!bgGroupId &&
-                  (lessonSharedInputSharePaths[bgGroupId] || []).includes(lessonPath);
-                const bgCollectLessonPdfPaths = (): string[] => {
-                  const out: string[] = [];
-                  for (const coll of [folienFiles, abFiles]) {
-                    for (const { versions } of groupFilesByBaseName(coll)) {
-                      const pdfFile = getPdfFromGroup(versions);
-                      if (pdfFile?.path) out.push(pdfFile.path);
-                    }
-                  }
-                  return [...new Set(out)];
-                };
-                const bgEnsureAllMaterialPdfsShared = async () => {
-                  if (!bgGroupId) return;
-                  for (const p of bgCollectLessonPdfPaths()) {
-                    const key = fileShareKey(p, bgGroupId);
-                    if (!fileShares[key]) await toggleFileShare(p, bgGroupId);
-                  }
-                };
 
                 const createInputReorder = lessonPlanViewMode === 'create' && planHasInput;
+                const firstInputPlanIndex = lessonPlan.findIndex((i: { type: string }) => i.type === 'input');
 
                 const abPlanSection =
                   planHasArbeitsauftrag && abFiles.length > 0 ? (
@@ -17641,228 +17681,340 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     </Box>
                   ) : null;
 
-                const inputFolienSection =
-                  planHasInput && (folienFiles.length > 0 || createInputReorder) ? (
-                    <Box sx={{ mb: 1.25, border: '1px solid #c5e1a5', borderRadius: 1, overflow: 'hidden', bgcolor: '#f9fff9' }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32', px: 1, pt: 1, pb: 0.5 }}>
-                        Input
+                const renderLessonFolderDocumentsList = (keyPrefix: string, runModeMinimal = false) => {
+                  const isImageExt = (ext: string) => LESSON_FOLDER_IMAGE_EXT_RE.test(`.${ext}`);
+                  const sortLessonFolderVersions = (vers: { ext: string; file: any }[]) =>
+                    [...vers].sort((a, b) => {
+                      const rank = (ext: string) => {
+                        const e = ext.toLowerCase();
+                        if (e === 'pdf') return 0;
+                        if (e === 'ppt' || e === 'pptx' || e === 'odp') return 1;
+                        if (isImageExt(e)) return 2;
+                        return 3;
+                      };
+                      return rank(a.ext) - rank(b.ext) || a.ext.localeCompare(b.ext);
+                    });
+                  if (lessonFolderPdfFiles.length === 0) {
+                    if (runModeMinimal) return null;
+                    return (
+                      <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.75 }}>
+                        Keine PDF-, Präsentations- oder Bilddateien im Ordner dieser Stunde.
                       </Typography>
-                      {folienFiles.length > 0 ? (
-                        <List dense sx={{ bgcolor: '#f1f8e9', borderRadius: 0, py: 0, border: 'none', borderTop: '1px solid #dcedc8' }}>
-                          {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
-                            const pdfFile = getPdfFromGroup(versions);
-                            const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
-                            const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
-                            return (
-                              <ListItem key={`plan-input-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
-                                <ListItemIcon sx={{ minWidth: 28 }}>
-                                  <DescriptionIcon fontSize="small" sx={{ color: '#2e7d32' }} />
-                                </ListItemIcon>
-                                <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                  {sortedVersions.map(({ ext, file }) => (
-                                    <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
-                                      <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#2e7d32', '&:hover': { bgcolor: 'action.hover' } }}>
-                                        {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
-                                      </IconButton>
+                    );
+                  }
+                  const docIconColor = '#546e7a';
+                  return (
+                    <List
+                      dense
+                      sx={{
+                        bgcolor: runModeMinimal ? 'transparent' : '#fafafa',
+                        borderRadius: 0.5,
+                        py: 0,
+                        border: runModeMinimal ? 'none' : '1px solid #e0e0e0',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {groupFilesByBaseName(lessonFolderPdfFiles).map(({ baseName, versions }) => {
+                        const sortedVersions = sortLessonFolderVersions(versions);
+                        const primary = sortedVersions[0];
+                        const pExt = primary.ext.toLowerCase();
+                        const openPrimary = () => handleFileClick(primary.file);
+                        const frontTooltip =
+                          pExt === 'pdf'
+                            ? 'PDF öffnen'
+                            : isImageExt(pExt)
+                              ? 'Bild öffnen'
+                              : `${pExt.toUpperCase()} öffnen`;
+                        const frontGlyph =
+                          pExt === 'pdf' ? (
+                            <PictureAsPdfIcon sx={{ fontSize: 20, color: docIconColor }} />
+                          ) : isImageExt(pExt) ? (
+                            <ImageIcon sx={{ fontSize: 20, color: docIconColor }} />
+                          ) : (
+                            <DescriptionIcon sx={{ fontSize: 20, color: docIconColor }} />
+                          );
+                        return (
+                          <ListItem
+                            key={`${keyPrefix}-${baseName}`}
+                            sx={{
+                              flexWrap: 'wrap',
+                              gap: 0.5,
+                              alignItems: 'center',
+                              display: 'flex',
+                              py: runModeMinimal ? 0.4 : 0.65,
+                              borderBottom: runModeMinimal ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
+                              '&:last-of-type': { borderBottom: 'none' },
+                              '&:hover': { bgcolor: runModeMinimal ? 'rgba(0, 0, 0, 0.03)' : 'rgba(0, 0, 0, 0.04)' }
+                            }}
+                          >
+                            <ListItemIcon sx={{ minWidth: 36 }}>
+                              <Tooltip title={frontTooltip}>
+                                <IconButton
+                                  size="small"
+                                  onClick={openPrimary}
+                                  aria-label={frontTooltip}
+                                  sx={{
+                                    p: 0.35,
+                                    color: docIconColor,
+                                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.06)' }
+                                  }}
+                                >
+                                  {frontGlyph}
+                                </IconButton>
+                              </Tooltip>
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={baseName}
+                              primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', fontWeight: runModeMinimal ? 400 : 500 }}
+                              sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }}
+                            />
+                            {!runModeMinimal && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0, flexWrap: 'wrap' }}>
+                                {sortedVersions.map(({ ext, file }) => {
+                                  const shareKey = fileShareKey(file.path, lessonModalData.groupId);
+                                  const isFileShared = !!fileShares[shareKey];
+                                  return (
+                                    <Tooltip key={file.path} title={`${ext.toUpperCase()} für die Lerngruppe freigeben`}>
+                                      <FormControlLabel
+                                        control={
+                                          <Checkbox
+                                            size="small"
+                                            checked={isFileShared}
+                                            onChange={() => toggleFileShare(file.path, lessonModalData.groupId)}
+                                            sx={{ py: 0 }}
+                                          />
+                                        }
+                                        label={<Typography variant="caption">Freigeben</Typography>}
+                                        sx={{
+                                          m: 0,
+                                          mr: 0.25,
+                                          '& .MuiFormControlLabel-label': { fontSize: '0.7rem' }
+                                        }}
+                                      />
                                     </Tooltip>
-                                  ))}
-                                  {pdfFile && (
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          size="small"
-                                          checked={isPdfShared}
-                                          onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
-                                          sx={{ py: 0 }}
-                                        />
-                                      }
-                                      label={<Typography variant="caption">Freigeben (PDF)</Typography>}
-                                    />
-                                  )}
-                                </Box>
-                              </ListItem>
-                            );
-                          })}
-                        </List>
-                      ) : (
-                        <Typography variant="caption" sx={{ px: 1, py: 0.75, display: 'block', color: 'text.secondary', borderTop: '1px solid #e8f5e9' }}>
-                          Keine Folien-Dateien im Ordner.
-                        </Typography>
+                                  );
+                                })}
+                              </Box>
+                            )}
+                          </ListItem>
+                        );
+                      })}
+                    </List>
+                  );
+                };
+
+                const renderLessonInputPhasenCard = ({
+                  editorKeySuffix,
+                  showDocumentsSection,
+                  documentsKeyPrefix,
+                  showTextPhasen
+                }: {
+                  editorKeySuffix: string;
+                  showDocumentsSection: boolean;
+                  documentsKeyPrefix: string;
+                  /** Im Modus „Durchführen“ nur Dokumente, keine Voraussetzungen/Material/Ablauf-Kästen */
+                  showTextPhasen: boolean;
+                }) => {
+                  if (!showTextPhasen && !showDocumentsSection) return null;
+                  return (
+                  <Box
+                    sx={{
+                      width: '100%',
+                      minWidth: 0,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: showTextPhasen ? '2px solid #616161' : '1px solid #e0e0e0',
+                      bgcolor: showTextPhasen ? '#fafafa' : '#fff'
+                    }}
+                  >
+                    {showTextPhasen && (
+                    <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', px: 0.75, pt: 0.65, pb: 0.65, pr: isEditing('voraussetzungen') ? 0.75 : 3.5, borderBottom: '1px solid #90caf9' }}>
+                      {!isEditing('voraussetzungen') && (
+                        <Tooltip title="Text bearbeiten">
+                          <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 3, right: 3, p: 0.2, minWidth: 26, width: 26, height: 26, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
+                            <EditIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        </Tooltip>
                       )}
-                      {false && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, px: 1, pb: 1, pt: 0.5, maxWidth: 400, alignSelf: 'flex-start', width: '100%', borderTop: '1px solid #c5e1a5', bgcolor: '#fafafa' }}>
-                          <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1, pr: 4, border: '1px solid #90caf9', borderBottom: 'none' }}>
-                            <Tooltip title="Text bearbeiten">
-                              <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
-                                <EditIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0', display: 'block', mb: 0.75 }}>
+                      {isEditing('voraussetzungen') ? (
+                        <>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0' }}>
                               Voraussetzungen
                             </Typography>
-                            {isEditing('voraussetzungen') ? (
-                              <>
-                                <RichTextEditor
-                                  key={`edit-voraussetzungen-create-${lessonName}`}
-                                  value={lessonBoxEdit?.draft ?? ''}
-                                  onChange={value => setLessonBoxEdit(prev => {
-                                    if (!prev) return null;
-                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                    return { ...prev, draft: value };
-                                  })}
-                                  placeholder="Voraussetzungen eingeben…"
-                                  rows={4}
-                                  compact={true}
-                                />
-                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                                  <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                  <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0' }}>Fertig</Button>
-                                </Box>
-                              </>
-                            ) : instructions?.voraussetzungen?.trim() && instructions?.voraussetzungen?.trim() !== 'Keine fachlichen Voraussetzungen.' ? (
-                              <>
-                                {renderTextContent(instructions.voraussetzungen ?? '', undefined, 1.75, true)}
-                                {(() => {
-                                  const safeV = instructions.voraussetzungen ?? '';
-                                  const terms = [...safeV.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1]).filter((t, i, a) => a.indexOf(t) === i);
-                                  const withGlossar = terms.filter(t => FACHBEGRIFFE_GLOSSAR[t]);
-                                  if (withGlossar.length === 0) return null;
-                                  return (
-                                    <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #90caf9' }}>
-                                      <Box
-                                        onClick={() => setVoraussetzungenGlossarOpen(v => !v)}
-                                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
-                                      >
-                                        {voraussetzungenGlossarOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#1565c0' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#1565c0' }} />}
-                                        <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>
-                                          Fachbegriffe (Erklärungen & Beispiele)
-                                        </Typography>
-                                      </Box>
-                                      <Collapse in={voraussetzungenGlossarOpen}>
-                                        <Box sx={{ mt: 1 }}>
-                                          {withGlossar.map(term => {
-                                            const g = FACHBEGRIFFE_GLOSSAR[term];
-                                            if (!g) return null;
-                                            return (
-                                              <Box key={term} sx={{ mb: 1.25 }}>
-                                                <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>{term}</Typography>
-                                                <Box sx={{ mt: 0.5, pl: 1, borderLeft: '3px solid #90caf9' }}>
-                                                  <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block', mb: 0.25 }}>
-                                                    <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Erklärung:</Box> {g.erklärung}
-                                                  </Typography>
-                                                  <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block' }}>
-                                                    <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Beispiel:</Box> {g.beispiel}
-                                                  </Typography>
-                                                </Box>
-                                              </Box>
-                                            );
-                                          })}
-                                        </Box>
-                                      </Collapse>
-                                    </Box>
-                                  );
-                                })()}
-                              </>
-                            ) : (
-                              <Box
-                                onClick={() => startEdit('voraussetzungen')}
-                                sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(21, 101, 192, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.06)' } }}
-                              >
-                                <Typography variant="body2" sx={{ color: '#1565c0', opacity: 0.85, fontStyle: 'italic', pr: 1 }}>
-                                  Noch leer – hier klicken oder Stift: Voraussetzungen ergänzen.
-                                </Typography>
-                              </Box>
-                            )}
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                              <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 13 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.5, py: 0.1, fontSize: '0.65rem', '& .MuiButton-startIcon': { mr: 0.25 } }}>Rückgängig</Button>
+                              <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0', minWidth: 0, px: 0.6, py: 0.1, fontSize: '0.65rem' }}>Fertig</Button>
+                            </Box>
                           </Box>
-                          <Box sx={{ position: 'relative', bgcolor: '#fffde7', borderRadius: 0, p: 1, pr: 4, border: '1px solid #ffd54f', borderBottom: 'none' }}>
-                            <Tooltip title="Text bearbeiten">
-                              <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f9a825', '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' } }}>
-                                <EditIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17', display: 'block', mb: 0.5 }}>
-                              Material
-                            </Typography>
-                            {isEditing('materialliste') ? (
-                              <>
-                                <RichTextEditor
-                                  key={`edit-materialliste-create-${lessonName}`}
-                                  value={lessonBoxEdit?.draft ?? ''}
-                                  onChange={value => setLessonBoxEdit(prev => {
-                                    if (!prev) return null;
-                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                    return { ...prev, draft: value };
-                                  })}
-                                  placeholder="Benötigtes Material eintragen…"
-                                  rows={3}
-                                  compact={true}
-                                />
-                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                                  <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                  <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f9a825' }}>Fertig</Button>
-                                </Box>
-                              </>
-                            ) : instructions?.materialliste?.trim() ? (
-                              <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
-                                {renderMaterialListContent(stripHtmlTags(instructions.materialliste ?? ''))}
-                              </Box>
-                            ) : (
-                              <Box
-                                onClick={() => startEdit('materialliste')}
-                                sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(245, 127, 23, 0.4)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(255, 213, 79, 0.2)' } }}
-                              >
-                                <Typography variant="body2" sx={{ color: '#f57f17', opacity: 0.85, fontStyle: 'italic', pr: 1 }}>
-                                  Noch leer – hier klicken oder Stift: Material eintragen.
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                          <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, p: 1, pr: 4, border: '1px solid #c5e1a5' }}>
-                            <Tooltip title="Text bearbeiten">
-                              <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
-                                <EditIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32', display: 'block', mb: 0.5 }}>
-                              Ablauf / Sprechakte
-                            </Typography>
-                            {isEditing('anweisungen') ? (
-                              <>
-                                <RichTextEditor
-                                  key={`edit-anweisungen-create-${lessonName}`}
-                                  value={lessonBoxEdit?.draft ?? ''}
-                                  onChange={value => setLessonBoxEdit(prev => {
-                                    if (!prev) return null;
-                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                    return { ...prev, draft: value };
-                                  })}
-                                  placeholder="Ablauf, Sprechimpulse, Leitfragen… (z. B. mit • oder nummeriert)"
-                                  rows={6}
-                                  compact={true}
-                                />
-                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                                  <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                  <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#2e7d32' }}>Fertig</Button>
-                                </Box>
-                              </>
-                            ) : instructions?.anweisungen?.trim() ? (
-                              renderTextContent(instructions.anweisungen ?? '', '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
-                            ) : (
-                              <Box
-                                onClick={() => startEdit('anweisungen')}
-                                sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(46, 125, 50, 0.35)', outlineOffset: 4, py: 0.5, minHeight: 48, '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.06)' } }}
-                              >
-                                <Typography variant="body2" sx={{ color: '#2e7d32', opacity: 0.85, fontStyle: 'italic', pr: 1 }}>
-                                  Noch leer – hier klicken oder Stift: Ablauf und Sprechakte festhalten.
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        </Box>
+                          <RichTextEditor
+                            key={`edit-voraussetzungen-${editorKeySuffix}-${lessonName}`}
+                            value={lessonBoxEdit?.draft ?? ''}
+                            onChange={value => setLessonBoxEdit(prev => {
+                              if (!prev) return null;
+                              if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                              return { ...prev, draft: value };
+                            })}
+                            placeholder="Voraussetzungen eingeben…"
+                            rows={3}
+                            compact={true}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0', display: 'block', mb: 0.35, pr: 2.5 }}>
+                            Voraussetzungen
+                          </Typography>
+                          {isMeaningfulVoraussetzungenDisplay(instructions?.voraussetzungen) ? (
+                            renderTextContent(instructions.voraussetzungen ?? '', undefined, 1.75, true)
+                          ) : (
+                            <Box
+                              onClick={() => startEdit('voraussetzungen')}
+                              sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(21, 101, 192, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.06)' } }}
+                            >
+                              <Typography variant="body2" sx={{ color: '#1565c0', opacity: 0.85, fontStyle: 'italic' }}>
+                                Noch leer – klicken zum Ergänzen.
+                              </Typography>
+                            </Box>
+                          )}
+                        </>
                       )}
                     </Box>
-                  ) : null;
+                    )}
+
+                    {showTextPhasen && (
+                    <Box sx={{ position: 'relative', bgcolor: '#fffde7', px: 0.75, pt: 0.65, pb: 0.65, pr: isEditing('materialliste') ? 0.75 : 3.5, borderBottom: '1px solid #ffd54f' }}>
+                      {!isEditing('materialliste') && (
+                        <Tooltip title="Text bearbeiten">
+                          <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 3, right: 3, p: 0.2, minWidth: 26, width: 26, height: 26, color: '#f9a825', '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' } }}>
+                            <EditIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {isEditing('materialliste') ? (
+                        <>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17' }}>
+                              Material
+                            </Typography>
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                              <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 13 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.5, py: 0.1, fontSize: '0.65rem', '& .MuiButton-startIcon': { mr: 0.25 } }}>Rückgängig</Button>
+                              <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f9a825', minWidth: 0, px: 0.6, py: 0.1, fontSize: '0.65rem' }}>Fertig</Button>
+                            </Box>
+                          </Box>
+                          <RichTextEditor
+                            key={`edit-materialliste-${editorKeySuffix}-${lessonName}`}
+                            value={lessonBoxEdit?.draft ?? ''}
+                            onChange={value => setLessonBoxEdit(prev => {
+                              if (!prev) return null;
+                              if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                              return { ...prev, draft: value };
+                            })}
+                            placeholder="Benötigtes Material eintragen…"
+                            rows={2}
+                            compact={true}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17', display: 'block', mb: 0.35, pr: 2.5 }}>
+                            Material
+                          </Typography>
+                          {instructions?.materialliste?.trim() ? (
+                            <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
+                              {renderMateriallisteDisplay(instructions.materialliste ?? '')}
+                            </Box>
+                          ) : (
+                            <Box
+                              onClick={() => startEdit('materialliste')}
+                              sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(245, 127, 23, 0.4)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(255, 213, 79, 0.2)' } }}
+                            >
+                              <Typography variant="body2" sx={{ color: '#f57f17', opacity: 0.85, fontStyle: 'italic' }}>
+                                Noch leer – klicken zum Ergänzen.
+                              </Typography>
+                            </Box>
+                          )}
+                        </>
+                      )}
+                    </Box>
+                    )}
+
+                    {showTextPhasen && (
+                    <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', px: 0.75, pt: 0.65, pb: 0.65, pr: isEditing('anweisungen') ? 0.75 : 3.5 }}>
+                      {!isEditing('anweisungen') && (
+                        <Tooltip title="Text bearbeiten">
+                          <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 3, right: 3, p: 0.2, minWidth: 26, width: 26, height: 26, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
+                            <EditIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {isEditing('anweisungen') ? (
+                        <>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32' }}>
+                              Ablauf / Sprechakte
+                            </Typography>
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                              <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 13 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.5, py: 0.1, fontSize: '0.65rem', '& .MuiButton-startIcon': { mr: 0.25 } }}>Rückgängig</Button>
+                              <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#2e7d32', minWidth: 0, px: 0.6, py: 0.1, fontSize: '0.65rem' }}>Fertig</Button>
+                            </Box>
+                          </Box>
+                          <RichTextEditor
+                            key={`edit-anweisungen-${editorKeySuffix}-${lessonName}`}
+                            value={lessonBoxEdit?.draft ?? ''}
+                            onChange={value => setLessonBoxEdit(prev => {
+                              if (!prev) return null;
+                              if (!value?.trim() && prev.originalDraft?.trim()) return prev;
+                              return { ...prev, draft: value };
+                            })}
+                            placeholder="Ablauf, Sprechimpulse, Leitfragen…"
+                            rows={4}
+                            compact={true}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32', display: 'block', mb: 0.35, pr: 2.5 }}>
+                            Ablauf / Sprechakte
+                          </Typography>
+                          {instructions?.anweisungen?.trim() ? (
+                            renderTextContent(instructions.anweisungen ?? '', '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
+                          ) : (
+                            <Box
+                              onClick={() => startEdit('anweisungen')}
+                              sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(46, 125, 50, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.06)' } }}
+                            >
+                              <Typography variant="body2" sx={{ color: '#2e7d32', opacity: 0.85, fontStyle: 'italic' }}>
+                                Noch leer – klicken zum Ergänzen.
+                              </Typography>
+                            </Box>
+                          )}
+                        </>
+                      )}
+                    </Box>
+                    )}
+                    {showDocumentsSection && (
+                      <Box
+                        sx={{
+                          position: 'relative',
+                          bgcolor: showTextPhasen ? '#f5f5f5' : 'transparent',
+                          px: showTextPhasen ? 0.75 : 0.5,
+                          pt: showTextPhasen ? 0.65 : 0.5,
+                          pb: showTextPhasen ? 0.65 : 0.5,
+                          borderTop: showTextPhasen ? '1px solid #bdbdbd' : 'none'
+                        }}
+                      >
+                        {showTextPhasen && (
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#424242', display: 'block', mb: 0.35 }}>
+                            Dokumente im Ordner dieser Stunde
+                          </Typography>
+                        )}
+                        {renderLessonFolderDocumentsList(documentsKeyPrefix, !showTextPhasen)}
+                      </Box>
+                    )}
+                  </Box>
+                  );
+                };
 
                 return (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: LESSON_MODAL_FONT_SIZE }}>
@@ -17895,14 +18047,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       {lessonPlanViewMode === 'create' && (
                       <Box sx={{ mb: 1.0, display: 'flex', alignItems: 'flex-start', gap: 0.6, flexWrap: 'wrap', width: '100%' }}>
                         {[
+                          { id: 'fortlaufend', label: 'Fortlaufend' },
                           { id: 'entry-ticket', label: 'Entry Ticket' },
                           { id: 'exit-ticket', label: 'Exit Ticket' },
-                          { id: 'quiz', label: 'Quiz' },
+                          { id: 'input', label: 'Input' },
                           { id: 'arbeitsauftrag', label: 'Arbeitsauftrag' },
                           { id: 'leinwand', label: 'Leinwand' },
                           { id: 'tafel', label: 'Tafel' },
-                          { id: 'input', label: 'Input' },
-                          { id: 'fortlaufend', label: 'Fortlaufende Aufgaben' }
+                          { id: 'quiz', label: 'Quiz' }
                         ].map((option) => {
                           const optionId = option.id as LessonPlanItemType;
                           const style = getPlanTypeStyle(optionId);
@@ -17913,7 +18065,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               : optionId === 'leinwand'
                                 ? 115
                                 : optionId === 'fortlaufend'
-                                  ? 178
+                                  ? 118
                                   : optionId === 'input'
                                     ? 95
                                     : 105;
@@ -18035,9 +18187,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                       )}
 
-                      {/* In Erstellen-Modus: Input-Inhalte sitzen im Input-Plan-Element selbst */}
+                      {/* Input: Voraussetzungen / Material / Ablauf (+ ggf. Dokumente) unter jedem Input-Baustein in allen Modi */}
                       {abPlanSection}
-                      {lessonPlanViewMode !== 'create' && inputFolienSection}
 
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                         {lessonPlan.length === 0 ? (
@@ -18098,6 +18249,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 return (
                                   <Typography
                                     variant="body2"
+                                    title={
+                                      item.type === 'input'
+                                        ? 'Klick: gemeinsame Input-Leinwand / Übersicht'
+                                        : undefined
+                                    }
                                     sx={{
                                       flex: 1,
                                       px: 0.8,
@@ -18117,7 +18273,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     {item.label}
                                     {item.type === 'entry-ticket' && ` (Klasse ${item.grade || 7})`}
                                     {item.type === 'exit-ticket' && ` (${item.exitType || 'feedback'})`}
-                                    {(item.type === 'input' || item.type === 'arbeitsauftrag') && item.linkedMaterialName
+                                    {item.type === 'arbeitsauftrag' && item.linkedMaterialName
                                       ? ` · ${item.linkedMaterialName}`
                                       : ''}
                                   </Typography>
@@ -18213,402 +18369,52 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </Select>
                               </FormControl>
                             )}
-                            {lessonPlanViewMode === 'create' && item.type === 'input' && (
-                              <Box sx={{ mt: 0.75, ml: 4.5, maxWidth: 420 }}>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 1, overflow: 'hidden', border: '1px solid #c5e1a5', bgcolor: '#fafafa' }}>
-                                  <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', p: 1, pr: 4, borderBottom: '1px solid #90caf9' }}>
-                                    <Tooltip title="Text bearbeiten">
-                                      <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
-                                        <EditIcon sx={{ fontSize: 16 }} />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0', display: 'block', mb: 0.5 }}>
-                                      Voraussetzungen
-                                    </Typography>
-                                    {isEditing('voraussetzungen') ? (
-                                      <>
-                                        <RichTextEditor
-                                          key={`edit-voraussetzungen-create-inputItem-${lessonName}`}
-                                          value={lessonBoxEdit?.draft ?? ''}
-                                          onChange={value => setLessonBoxEdit(prev => {
-                                            if (!prev) return null;
-                                            if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                            return { ...prev, draft: value };
-                                          })}
-                                          placeholder="Voraussetzungen eingeben…"
-                                          rows={4}
-                                          compact={true}
-                                        />
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
-                                          <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 14 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.75, py: 0.2, fontSize: '0.68rem' }}>Rückgängig</Button>
-                                          <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0', minWidth: 0, px: 0.85, py: 0.2, fontSize: '0.68rem' }}>Fertig</Button>
-                                        </Box>
-                                      </>
-                                    ) : instructions?.voraussetzungen?.trim() && instructions?.voraussetzungen?.trim() !== 'Keine fachlichen Voraussetzungen.' ? (
-                                      renderTextContent(instructions.voraussetzungen ?? '', undefined, 1.75, true)
-                                    ) : (
-                                      <Box
-                                        onClick={() => startEdit('voraussetzungen')}
-                                        sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(21, 101, 192, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.06)' } }}
-                                      >
-                                        <Typography variant="body2" sx={{ color: '#1565c0', opacity: 0.85, fontStyle: 'italic' }}>
-                                          Noch leer – klicken zum Ergänzen.
-                                        </Typography>
-                                      </Box>
-                                    )}
-                                  </Box>
-
-                                  <Box sx={{ position: 'relative', bgcolor: '#fffde7', p: 1, pr: 4, borderBottom: '1px solid #ffd54f' }}>
-                                    <Tooltip title="Text bearbeiten">
-                                      <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f9a825', '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' } }}>
-                                        <EditIcon sx={{ fontSize: 16 }} />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17', display: 'block', mb: 0.5 }}>
-                                      Material
-                                    </Typography>
-                                    {isEditing('materialliste') ? (
-                                      <>
-                                        <RichTextEditor
-                                          key={`edit-materialliste-create-inputItem-${lessonName}`}
-                                          value={lessonBoxEdit?.draft ?? ''}
-                                          onChange={value => setLessonBoxEdit(prev => {
-                                            if (!prev) return null;
-                                            if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                            return { ...prev, draft: value };
-                                          })}
-                                          placeholder="Benötigtes Material eintragen…"
-                                          rows={3}
-                                          compact={true}
-                                        />
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
-                                          <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 14 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.75, py: 0.2, fontSize: '0.68rem' }}>Rückgängig</Button>
-                                          <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f9a825', minWidth: 0, px: 0.85, py: 0.2, fontSize: '0.68rem' }}>Fertig</Button>
-                                        </Box>
-                                      </>
-                                    ) : instructions?.materialliste?.trim() ? (
-                                      <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
-                                        {renderMaterialListContent(stripHtmlTags(instructions.materialliste ?? ''))}
-                                      </Box>
-                                    ) : (
-                                      <Box
-                                        onClick={() => startEdit('materialliste')}
-                                        sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(245, 127, 23, 0.4)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(255, 213, 79, 0.2)' } }}
-                                      >
-                                        <Typography variant="body2" sx={{ color: '#f57f17', opacity: 0.85, fontStyle: 'italic' }}>
-                                          Noch leer – klicken zum Ergänzen.
-                                        </Typography>
-                                      </Box>
-                                    )}
-                                  </Box>
-
-                                  <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', p: 1, pr: 4 }}>
-                                    <Tooltip title="Text bearbeiten">
-                                      <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
-                                        <EditIcon sx={{ fontSize: 16 }} />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32', display: 'block', mb: 0.5 }}>
-                                      Ablauf / Sprechakte
-                                    </Typography>
-                                    {isEditing('anweisungen') ? (
-                                      <>
-                                        <RichTextEditor
-                                          key={`edit-anweisungen-create-inputItem-${lessonName}`}
-                                          value={lessonBoxEdit?.draft ?? ''}
-                                          onChange={value => setLessonBoxEdit(prev => {
-                                            if (!prev) return null;
-                                            if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                            return { ...prev, draft: value };
-                                          })}
-                                          placeholder="Ablauf, Sprechimpulse, Leitfragen…"
-                                          rows={6}
-                                          compact={true}
-                                        />
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
-                                          <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 14 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.75, py: 0.2, fontSize: '0.68rem' }}>Rückgängig</Button>
-                                          <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#2e7d32', minWidth: 0, px: 0.85, py: 0.2, fontSize: '0.68rem' }}>Fertig</Button>
-                                        </Box>
-                                      </>
-                                    ) : instructions?.anweisungen?.trim() ? (
-                                      renderTextContent(instructions.anweisungen ?? '', '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
-                                    ) : (
-                                      <Box
-                                        onClick={() => startEdit('anweisungen')}
-                                        sx={{ cursor: 'pointer', borderRadius: 0.5, outline: '1px dashed rgba(46, 125, 50, 0.35)', outlineOffset: 4, py: 0.5, '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.06)' } }}
-                                      >
-                                        <Typography variant="body2" sx={{ color: '#2e7d32', opacity: 0.85, fontStyle: 'italic' }}>
-                                          Noch leer – klicken zum Ergänzen.
-                                        </Typography>
-                                      </Box>
-                                    )}
-                                  </Box>
-                                </Box>
-                                <FormControl
-                                  size="small"
-                                  fullWidth
-                                  sx={{ maxWidth: 420, mt: 0.85 }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                >
-                                  <InputLabel id={`plan-mat-${item.id}`} shrink>
-                                    Material (Ordner)
-                                  </InputLabel>
-                                  <Select
-                                    labelId={`plan-mat-${item.id}`}
-                                    label="Material (Ordner)"
-                                    notched
-                                    displayEmpty
-                                    value={item.linkedMaterialPath || ''}
-                                    onChange={(e) => {
-                                      const v = e.target.value as string;
-                                      const f = allFiles.find((x: any) => x.path === v);
-                                      void setPlanItemLinkedMaterial(item.id, v || undefined, f?.name);
+                            {item.type === 'input' &&
+                              (() => {
+                                const showTextPhasen = lessonPlanViewMode !== 'run';
+                                const showDocumentsSection =
+                                  index === firstInputPlanIndex &&
+                                  (lessonFolderPdfFiles.length > 0 ||
+                                    createInputReorder ||
+                                    lessonPlanViewMode === 'background');
+                                if (!showTextPhasen && !showDocumentsSection) return null;
+                                return (
+                                  <Box
+                                    sx={{
+                                      mt: 0.75,
+                                      width: '100%',
+                                      alignSelf: 'stretch',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: 0.65,
+                                      /* Bündig mit gelbem Input-Chip: 1. Spalte (min. 22px) + gap:1 */
+                                      pl: '30px',
+                                      boxSizing: 'border-box',
                                     }}
-                                    sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.65 } }}
                                   >
-                                    <MenuItem value="">
-                                      <em>Keins (Standard)</em>
-                                    </MenuItem>
-                                    {allFiles.map((f: any) => (
-                                      <MenuItem key={f.path} value={f.path} sx={{ fontSize: '0.75rem' }}>
-                                        {f.name}
-                                      </MenuItem>
-                                    ))}
-                                  </Select>
-                                </FormControl>
-                              </Box>
-                            )}
+                                    {renderLessonInputPhasenCard({
+                                      editorKeySuffix: `input-${lessonPlanViewMode}-${index}`,
+                                      showTextPhasen,
+                                      showDocumentsSection,
+                                      documentsKeyPrefix:
+                                        lessonPlanViewMode === 'run'
+                                          ? 'lesson-run-docs'
+                                          : lessonPlanViewMode === 'background'
+                                            ? 'bg-in'
+                                            : 'plan-input-docs',
+                                    })}
+                                  </Box>
+                                );
+                              })()}
                           </Box>
                         ))}
                       </Box>
                     </Box>
 
-                    {/* Hintergrund: Material oben (order), sonst zuerst Voraussetzungen – im Erstellen-Modus bei Input-Baustein bereits oberhalb der Bausteine */}
-                    {!(lessonPlanViewMode === 'create' && planHasInput) && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                      <Box sx={{ order: lessonPlanViewMode === 'background' ? 2 : 1, pt: lessonPlanViewMode === 'background' ? 0 : 1.5 }}>
-                      {/* Voraussetzungen – blaue Box immer da, Inhalt nur bei echten Voraussetzungen (nicht bei "Keine fachlichen Voraussetzungen.") */}
-                      <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', borderRadius: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, p: 1.5, pr: 5, border: '1px solid #90caf9', borderBottom: 'none' }}>
-                        <Tooltip title="Text bearbeiten">
-                          <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
-                            <EditIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                        </Tooltip>
-                        {isEditing('voraussetzungen') ? (
-                          <>
-                            <RichTextEditor
-                              key={`edit-voraussetzungen-${lessonName}`}
-                              value={lessonBoxEdit?.draft ?? ''}
-                              onChange={value => setLessonBoxEdit(prev => {
-                                if (!prev) return null;
-                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
-                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                return { ...prev, draft: value };
-                              })}
-                              placeholder="Voraussetzungen eingeben..."
-                              rows={4}
-                              compact={true}
-                            />
-                            <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                              <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                              <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0' }}>Fertig</Button>
-                            </Box>
-                          </>
-                        ) : instructions?.voraussetzungen?.trim() && instructions.voraussetzungen.trim() !== 'Keine fachlichen Voraussetzungen.' ? (
-                          <>
-                            {renderTextContent(instructions.voraussetzungen, undefined, 1.75, true)}
-                            {(() => {
-                              const terms = [...instructions.voraussetzungen.matchAll(/\*\*([^*]+)\*\*/g)].map(m => m[1]).filter((t, i, a) => a.indexOf(t) === i);
-                              const withGlossar = terms.filter(t => FACHBEGRIFFE_GLOSSAR[t]);
-                              if (withGlossar.length === 0) return null;
-                              return (
-                                <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #90caf9' }}>
-                                  <Box
-                                    onClick={() => setVoraussetzungenGlossarOpen(v => !v)}
-                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', '&:hover': { opacity: 0.85 } }}
-                                  >
-                                    {voraussetzungenGlossarOpen ? <ExpandLessIcon sx={{ fontSize: 20, color: '#1565c0' }} /> : <ExpandMoreIcon sx={{ fontSize: 20, color: '#1565c0' }} />}
-<Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>
-                                    Fachbegriffe (Erklärungen & Beispiele)
-                                  </Typography>
-                                  </Box>
-                                  <Collapse in={voraussetzungenGlossarOpen}>
-                                    <Box sx={{ mt: 1 }}>
-                                      {withGlossar.map(term => {
-                                        const g = FACHBEGRIFFE_GLOSSAR[term];
-                                        if (!g) return null;
-                                        return (
-                                          <Box key={term} sx={{ mb: 1.25 }}>
-                                            <Typography component="span" sx={{ fontWeight: 700, color: '#1565c0', fontSize: LESSON_MODAL_FONT_SIZE }}>{term}</Typography>
-                                            <Box sx={{ mt: 0.5, pl: 1, borderLeft: '3px solid #90caf9' }}>
-                                              <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block', mb: 0.25 }}>
-                                                <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Erklärung:</Box> {g.erklärung}
-                                              </Typography>
-                                              <Typography component="span" sx={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', display: 'block' }}>
-                                                <Box component="span" sx={{ fontWeight: 600, color: '#1976d2' }}>Beispiel:</Box> {g.beispiel}
-                                              </Typography>
-                                            </Box>
-                                          </Box>
-                                        );
-                                      })}
-                                    </Box>
-                                  </Collapse>
-                                </Box>
-                              );
-                            })()}
-                          </>
-                        ) : null}
-                      </Box>
-                      </Box>
-                      <Box sx={{ order: lessonPlanViewMode === 'background' ? 1 : 2 }}>
-                    {/* Material – orangefarbener Kasten; "Benötigt werden ...", Materialien fett/unterstrichen/orange */}
-                    {(instructions?.materialliste || isEditing('materialliste')) && (
-                      <Box>
-                        {lessonPlanViewMode === 'background' && (
-                        <Typography variant="caption" sx={{ display: 'block', fontWeight: 800, color: '#e65100', mb: 0.35, letterSpacing: 0.02 }}>
-                          Material
-                        </Typography>
-                        )}
-                        <Box sx={{ position: 'relative', bgcolor: '#fff3e0', borderRadius: 0, p: 1, pr: 4, border: '1px solid #ffb74d', borderBottom: 'none' }}>
-                          <Tooltip title="Text bearbeiten">
-                            <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#ed6c02', '&:hover': { bgcolor: 'rgba(237, 108, 2, 0.08)' } }}>
-                              <EditIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </Tooltip>
-                          {isEditing('materialliste') ? (
-                            <>
-                              <RichTextEditor
-                                key={`edit-materialliste-${lessonName}`}
-                                value={lessonBoxEdit?.draft ?? ''}
-                                onChange={value => setLessonBoxEdit(prev => {
-                                if (!prev) return null;
-                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
-                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                return { ...prev, draft: value };
-                              })}
-                                placeholder="Materialliste eingeben..."
-                                rows={3}
-                                compact={true}
-                              />
-                              <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                                <Button size="small" startIcon={<UndoIcon />} onClick={undoEdit} sx={{ color: '#666' }}>Rückgängig</Button>
-                                <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#ed6c02' }}>Fertig</Button>
-                              </Box>
-                            </>
-                          ) : (
-                            <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
-                              {(() => {
-                                const raw = instructions!.materialliste!;
-                                return renderMaterialListContent(stripHtmlTags(raw));
-                              })()}
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-                    )}
-                      </Box>
-                    </Box>
-                    )}
+                    {/* Voraussetzungen / Material nur in der Input-Karte (Baustein „Input“ im Stundenplan). Kein zweiter blau/gelb-Block ohne Input. */}
 
-                    {lessonPlanViewMode === 'background' && (
+                    {lessonPlanViewMode === 'background' && planHasArbeitsauftrag && (
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 1 }}>
-                        <Paper variant="outlined" sx={{ p: 1.25, bgcolor: '#fafafa', borderColor: '#b0bec5' }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: '#37474f' }}>
-                            Freigaben für die Lerngruppe
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-                            {lessonPath && bgGroupId && (
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    size="small"
-                                    checked={inputShareOnForLesson}
-                                    onChange={() => toggleLessonSharedInputShare(bgGroupId, lessonPath)}
-                                  />
-                                }
-                                label={<Typography variant="body2">Gemeinsame Input-Leinwand freigeben</Typography>}
-                              />
-                            )}
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                              <Button size="small" variant="outlined" onClick={() => void bgEnsureAllMaterialPdfsShared()}>
-                                Alle Folien- &amp; AB-PDFs freigeben
-                              </Button>
-                              <Typography variant="caption" color="text.secondary">
-                                Einzelne Dateien unten pro Schritt ebenfalls möglich.
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </Paper>
-
-                        {planHasInput && (
-                          <Paper variant="outlined" sx={{ p: 1.25, borderColor: '#a5d6a7', bgcolor: '#f9fff9' }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#2e7d32', mb: 1 }}>
-                              Input (Folien)
-                            </Typography>
-                            {folienFiles.length > 0 && (
-                              <List dense sx={{ bgcolor: '#f1f8e9', borderRadius: 1, py: 0, border: '1px solid #c5e1a5', mb: 1 }}>
-                                {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
-                                  const pdfFile = getPdfFromGroup(versions);
-                                  const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
-                                  const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
-                                  return (
-                                    <ListItem key={`bg-in-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
-                                      <ListItemIcon sx={{ minWidth: 28 }}>
-                                        <DescriptionIcon fontSize="small" sx={{ color: '#2e7d32' }} />
-                                      </ListItemIcon>
-                                      <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                        {sortedVersions.map(({ ext, file }) => (
-                                          <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
-                                            <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#2e7d32' }}>
-                                              {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
-                                            </IconButton>
-                                          </Tooltip>
-                                        ))}
-                                        {pdfFile && (
-                                          <FormControlLabel
-                                            control={
-                                              <Checkbox
-                                                size="small"
-                                                checked={isPdfShared}
-                                                onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
-                                                sx={{ py: 0 }}
-                                              />
-                                            }
-                                            label={<Typography variant="caption">Material freigeben (PDF)</Typography>}
-                                          />
-                                        )}
-                                      </Box>
-                                    </ListItem>
-                                  );
-                                })}
-                              </List>
-                            )}
-                            {lessonPath && bgGroupId && (
-                              <Box sx={{ mb: 1, maxHeight: 240, overflow: 'auto', border: '1px solid #c5e1a5', borderRadius: 1, p: 0.5 }}>
-                                <LessonSharedInputBox groupId={bgGroupId} lessonPath={lessonPath} />
-                              </Box>
-                            )}
-                            {bgInputPhaseSteps.length > 0 && (
-                              <Box sx={{ mt: 0.5 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#1b5e20', display: 'block', mb: 0.75 }}>
-                                  Sprechimpulse / mündliche Leitungen (Einsteig)
-                                </Typography>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                                  {bgInputPhaseSteps.map((step, i) => (
-                                    <Paper key={`sp-in-${i}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#fff', borderLeft: '4px solid #66bb6a' }}>
-                                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#558b2f' }}>{i + 1}. Sprechakt</Typography>
-                                      <Typography variant="body2" sx={{ mt: 0.35, fontSize: LESSON_MODAL_FONT_SIZE }}>{step}</Typography>
-                                    </Paper>
-                                  ))}
-                                </Box>
-                              </Box>
-                            )}
-                          </Paper>
-                        )}
-
-                        {planHasArbeitsauftrag && (
                           <Paper variant="outlined" sx={{ p: 1.25, borderColor: '#ffcc80', bgcolor: '#fffdf5' }}>
                             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#e65100', mb: 1 }}>
                               Arbeitsauftrag &amp; Besprechung (chronologisch)
@@ -18683,92 +18489,64 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 })}
                               </List>
                             )}
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              {bgAbPhaseSteps.map((step, idx) => (
-                                <Box key={`ab-step-${idx}`}>
-                                  <Paper variant="outlined" sx={{ p: 0.85, bgcolor: '#fff', borderLeft: '4px solid #ffa726' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#ef6c00' }}>{idx + 1}. Ablauf / Sprechakt</Typography>
-                                    <Typography variant="body2" sx={{ mt: 0.35, fontSize: LESSON_MODAL_FONT_SIZE }}>{step}</Typography>
-                                  </Paper>
-                                  {musterLoesungFiles[idx] && (
-                                    <Paper variant="outlined" sx={{ mt: 0.5, ml: 1.5, p: 0.85, bgcolor: '#e8f5e9', borderColor: '#81c784' }}>
-                                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Musterlösung (Schritt {idx + 1})</Typography>
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
-                                        <Button size="small" variant="text" onClick={() => handleFileClick(musterLoesungFiles[idx])} sx={{ textTransform: 'none', p: 0, minWidth: 0 }}>
-                                          {musterLoesungFiles[idx].name}
+                            {(() => {
+                              const hasStepMuster = bgAbPhaseSteps.some((_, idx) => !!musterLoesungFiles[idx]);
+                              const restMuster = musterLoesungFiles.slice(bgAbPhaseSteps.length);
+                              if (!hasStepMuster && restMuster.length === 0) return null;
+                              return (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                  {bgAbPhaseSteps.map((_, idx) =>
+                                    musterLoesungFiles[idx] ? (
+                                      <Paper key={`ab-step-ml-${idx}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#e8f5e9', borderColor: '#81c784' }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Musterlösung (Schritt {idx + 1})</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
+                                          <Button size="small" variant="text" onClick={() => handleFileClick(musterLoesungFiles[idx])} sx={{ textTransform: 'none', p: 0, minWidth: 0 }}>
+                                            {musterLoesungFiles[idx].name}
+                                          </Button>
+                                          {(() => {
+                                            const f = musterLoesungFiles[idx];
+                                            const pdfFile = /\.pdf$/i.test(f.name || '') ? f : null;
+                                            if (!pdfFile || !bgGroupId) return null;
+                                            const shared = !!fileShares[fileShareKey(pdfFile.path, bgGroupId)];
+                                            return (
+                                              <FormControlLabel
+                                                control={
+                                                  <Checkbox
+                                                    size="small"
+                                                    checked={shared}
+                                                    onChange={() => toggleFileShare(pdfFile.path, bgGroupId)}
+                                                  />
+                                                }
+                                                label={<Typography variant="caption">Material freigeben</Typography>}
+                                              />
+                                            );
+                                          })()}
+                                        </Box>
+                                      </Paper>
+                                    ) : null
+                                  )}
+                                  {restMuster.map((f, j) => (
+                                    <Paper key={`ab-ml-rest-${j}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#f1f8e9', borderColor: '#a5d6a7' }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Weitere Musterlösung</Typography>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                        <Button size="small" variant="text" onClick={() => handleFileClick(f)} sx={{ textTransform: 'none' }}>
+                                          {f.name}
                                         </Button>
-                                        {(() => {
-                                          const f = musterLoesungFiles[idx];
-                                          const pdfFile = /\.pdf$/i.test(f.name || '') ? f : null;
-                                          if (!pdfFile || !bgGroupId) return null;
-                                          const shared = !!fileShares[fileShareKey(pdfFile.path, bgGroupId)];
-                                          return (
-                                            <FormControlLabel
-                                              control={
-                                                <Checkbox
-                                                  size="small"
-                                                  checked={shared}
-                                                  onChange={() => toggleFileShare(pdfFile.path, bgGroupId)}
-                                                />
-                                              }
-                                              label={<Typography variant="caption">Material freigeben</Typography>}
-                                            />
-                                          );
-                                        })()}
                                       </Box>
                                     </Paper>
-                                  )}
+                                  ))}
                                 </Box>
-                              ))}
-                              {musterLoesungFiles.slice(bgAbPhaseSteps.length).map((f, j) => (
-                                <Paper key={`ab-ml-rest-${j}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#f1f8e9', borderColor: '#a5d6a7' }}>
-                                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Weitere Musterlösung</Typography>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                    <Button size="small" variant="text" onClick={() => handleFileClick(f)} sx={{ textTransform: 'none' }}>
-                                      {f.name}
-                                    </Button>
-                                  </Box>
-                                </Paper>
-                              ))}
-                            </Box>
+                              );
+                            })()}
                           </Paper>
-                        )}
 
-                        {folienFiles.length > 0 && !planHasInput && (
-                          <Box>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1976d2', mb: 0.5 }}>Folien (ohne Input-Baustein im Plan)</Typography>
-                            <List dense sx={{ bgcolor: '#f5f5f5', borderRadius: 1, py: 0, border: '1px solid #e3f2fd' }}>
-                              {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
-                                const pdfFile = getPdfFromGroup(versions);
-                                const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
-                                const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
-                                return (
-                                  <ListItem key={`bg-fol-noin-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
-                                    <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} />
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
-                                      {sortedVersions.map(({ ext, file }) => (
-                                        <IconButton key={file.path} size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25 }}>
-                                          {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
-                                        </IconButton>
-                                      ))}
-                                      {pdfFile && (
-                                        <FormControlLabel
-                                          control={<Checkbox size="small" checked={isPdfShared} onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)} />}
-                                          label={<Typography variant="caption">Freigeben</Typography>}
-                                        />
-                                      )}
-                                    </Box>
-                                  </ListItem>
-                                );
-                              })}
-                            </List>
-                          </Box>
-                        )}
                       </Box>
                     )}
     
                     {/* Lehrer-Anweisungen – im Erstellen-Modus mit Input-Baustein siehe grüne Input-Box */}
-                    {instructions?.anweisungen && lessonPlanViewMode !== 'background' && !(lessonPlanViewMode === 'create' && planHasInput) && (
+                    {instructions?.anweisungen &&
+                      lessonPlanViewMode !== 'background' &&
+                      !(planHasInput && (lessonPlanViewMode === 'create' || lessonPlanViewMode === 'run')) && (
                       <Box sx={{ fontSize: LESSON_MODAL_FONT_SIZE }}>
                         <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', borderRadius: 0, p: 2, pr: 5, border: '1px solid #c5e1a5', borderBottom: 'none' }}>
                           <Tooltip title="Text bearbeiten">
@@ -18802,7 +18580,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         </Box>
                       </Box>
                     )}
-    
+
                     {/* Die Nachrichten: Klartexte – ausklappbar (Inhalt optional) */}
                     {(instructions && 'geheimtexte' in instructions) || isEditing('geheimtexte') ? (
                       <Box sx={{ pt: 0 }}>
@@ -18857,51 +18635,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     ) : null}
 
-                    {/* Folien (ausgeblendet, wenn „Input“ im Stundenplan — dann oben im grünen Block; in „Hintergrund“ separat) */}
-                    {folienFiles.length > 0 && !planHasInput && lessonPlanViewMode !== 'background' && (
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, pt: 1 }}>
-                          Folien
-                        </Typography>
-                        <List dense sx={{ bgcolor: '#f5f5f5', borderRadius: 0, py: 0, border: '1px solid #e3f2fd', borderTop: 'none' }}>
-                          {groupFilesByBaseName(folienFiles).map(({ baseName, versions }) => {
-                            const pdfFile = getPdfFromGroup(versions);
-                            const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
-                            const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
-                            return (
-                              <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
-                                <ListItemIcon sx={{ minWidth: 28 }}>
-                                  <DescriptionIcon fontSize="small" sx={{ color: '#1976d2' }} />
-                                </ListItemIcon>
-                                <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                  {sortedVersions.map(({ ext, file }) => (
-                                    <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
-                                      <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#1976d2', '&:hover': { bgcolor: 'action.hover' } }}>
-                                        {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
-                                      </IconButton>
-                                    </Tooltip>
-                                  ))}
-                                  {pdfFile && (
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          size="small"
-                                          checked={isPdfShared}
-                                          onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
-                                          sx={{ py: 0 }}
-                                        />
-                                      }
-                                      label={<Typography variant="caption">Freigeben (PDF)</Typography>}
-                                    />
-                                  )}
-                                </Box>
-                              </ListItem>
-                            );
-                          })}
-                        </List>
-                      </Box>
-                    )}
+                    {/* Folien/PDF-Listen nur bei Input-Baustein: „Dokumente im Ordner dieser Stunde“ in der Input-Karte */}
     
                     {/* Arbeitsblatt (AB) – ausgeblendet, wenn „Arbeitsauftrag“ im Plan (dann oben im gelben Block; in „Hintergrund“ separat) */}
                     {abFiles.length > 0 && !planHasArbeitsauftrag && lessonPlanViewMode !== 'background' && (
