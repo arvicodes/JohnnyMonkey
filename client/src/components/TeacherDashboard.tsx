@@ -219,7 +219,6 @@ import {
   Speaker as SpeakerIcon,
   Keyboard as KeyboardIcon,
   Mouse as MouseIcon,
-  Laptop as LaptopIcon,
   DesktopMac as DesktopMacIcon,
   Tablet as TabletIcon,
   Watch as WatchIcon,
@@ -5400,6 +5399,7 @@ function collectLessonFolderFilesFromTree(nodes: any[] | undefined): any[] {
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 'TEACHER', onLogout }) => {
+  const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isLessonStundeRoute = location.pathname === '/teacher/stunde';
@@ -8233,7 +8233,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const LESSON_MODAL_FONT_SIZE = '1rem';
   const LESSON_MODAL_LINE_HEIGHT = 1.75;
 
-  /** Bullet-Zeilen aus Lehrer-Anweisungen (HTML oder Klartext) für Hintergrund-Ansicht: Ablauf + Musterlösungen */
+  /** Bullet-Zeilen aus Lehrer-Anweisungen (HTML oder Klartext) für Laptop-Ansicht: Ablauf + Musterlösungen */
   const splitAnweisungenIntoBulletSteps = (html: string): string[] => {
     if (!html?.trim()) return [];
     const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
@@ -12890,6 +12890,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const participationDocked =
     participationModalOpen && lessonPlanViewMode === 'background' && isLessonStundeRoute;
   const lessonSplitLeft = isLessonStundeRoute && lessonPlanViewMode === 'background';
+  /** Gemeinsame Mittellinie / Farbübergang Laptop-Zweispalter */
+  const laptopSplitSeam = alpha('#3949ab', 0.2);
+  const laptopSplitGlow = alpha('#3949ab', 0.12);
 
   useEffect(() => {
     if (!isLessonStundeRoute) return;
@@ -12926,7 +12929,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   return (
     <Box 
-      sx={{ width: '100%', bgcolor: colors.background, p: 0, outline: 'none', '&:focus': { outline: 'none' } }}
+      sx={{
+        width: '100%',
+        bgcolor: colors.background,
+        p: 0,
+        outline: 'none',
+        '&:focus': { outline: 'none' },
+        ...(lessonSplitLeft && lessonModalData ? { overflowX: 'hidden', minWidth: 0 } : {}),
+      }}
       ref={dashboardRef}
       tabIndex={-1}
       onKeyDown={async (e) => { 
@@ -17255,13 +17265,27 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         <Box
           sx={{
             minHeight: '100vh',
-            width: lessonSplitLeft ? '50vw' : '100%',
-            maxWidth: lessonSplitLeft ? '50vw' : 'none',
-            bgcolor: colors.background,
+            width: lessonSplitLeft ? '50%' : '100%',
+            maxWidth: lessonSplitLeft ? '50%' : 'none',
+            minWidth: lessonSplitLeft ? 0 : undefined,
+            boxSizing: 'border-box',
+            bgcolor: lessonSplitLeft ? 'transparent' : colors.background,
+            background: lessonSplitLeft
+              ? `linear-gradient(90deg, ${alpha('#e8eaf6', 0.45)} 0%, ${alpha('#f4f6fb', 0.98)} 72%, #f7f9fc 100%)`
+              : undefined,
             display: 'flex',
             flexDirection: 'column',
-            boxSizing: 'border-box',
-            alignSelf: lessonSplitLeft ? 'flex-start' : 'stretch'
+            alignSelf: lessonSplitLeft ? 'flex-start' : 'stretch',
+            position: 'relative',
+            zIndex: 1,
+            ...(lessonSplitLeft && {
+              borderRight: `1px solid ${laptopSplitSeam}`,
+              boxShadow: `8px 0 28px -10px ${laptopSplitGlow}`,
+            }),
+            ...(lessonSplitLeft &&
+              participationDocked && {
+                zIndex: theme.zIndex.modal + 1,
+              }),
           }}
         >
           <Box
@@ -17274,18 +17298,39 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               position: 'relative',
               pr: 5,
               flexShrink: 0,
-              bgcolor: 'background.paper'
+              bgcolor: lessonSplitLeft ? alpha('#fff', 0.82) : 'background.paper',
+              backdropFilter: lessonSplitLeft ? 'blur(8px)' : 'none',
+              isolation: 'isolate',
+              ...(lessonSplitLeft && {
+                borderBottomColor: alpha('#3949ab', 0.12),
+              }),
             }}
           >
-            <Typography variant="h6" component="span" sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="h6"
+              component="span"
+              sx={{
+                fontWeight: 600,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+                paddingRight: '40px',
+              }}
+            >
               {lessonModalData.lessonName}
             </Typography>
             <DialogCloseIconButton
               onClose={handleCloseLessonPage}
-              sx={{ '&:hover': { bgcolor: 'action.hover' } }}
+              sx={{
+                zIndex: 2,
+                '&:hover': { bgcolor: 'action.hover' },
+              }}
             />
           </Box>
-          <Box sx={{ flex: 1, overflow: 'auto', pt: 2, px: 2, pb: 2 }}>
+          <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', overflowX: 'hidden', pt: 2, px: 2, pb: 2 }}>
               {(() => {
                 const lessonName = lessonModalData.lessonName;
                 const lessonPath = lessonModalData.lessonPath;
@@ -17812,7 +17857,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   editorKeySuffix: string;
                   showDocumentsSection: boolean;
                   documentsKeyPrefix: string;
-                  /** Im Modus „Durchführen“ nur Dokumente, keine Voraussetzungen/Material/Ablauf-Kästen */
+                  /** Im Modus „TABLET“ nur Dokumente, keine Voraussetzungen/Material/Ablauf-Kästen */
                   showTextPhasen: boolean;
                 }) => {
                   if (!showTextPhasen && !showDocumentsSection) return null;
@@ -18016,10 +18061,26 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   );
                 };
 
+                const isLessonLaptopMode = lessonPlanViewMode === 'background';
                 return (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, fontSize: LESSON_MODAL_FONT_SIZE }}>
                     {/* Stundenablauf planen */}
-                    <Box sx={{ mb: 1.5, p: 1.5, border: '1px solid #d7e3f1', borderRadius: 1.5, bgcolor: '#f7fbff', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+                    <Box
+                      sx={{
+                        mb: 1.5,
+                        p: 1.5,
+                        border: isLessonLaptopMode ? '1px solid rgba(92, 107, 201, 0.28)' : '1px solid #d7e3f1',
+                        borderRadius: isLessonLaptopMode ? 2 : 1.5,
+                        bgcolor: isLessonLaptopMode ? '#f8f9fc' : '#f7fbff',
+                        ...(isLessonLaptopMode && {
+                          background: 'linear-gradient(165deg, #ebeffa 0%, #f5f6fb 38%, #fafbfd 100%)',
+                          boxShadow: '0 4px 28px rgba(57, 73, 171, 0.08)',
+                        }),
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
+                      }}
+                    >
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
                         <ToggleButtonGroup
                           size="small"
@@ -18039,8 +18100,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           }}
                         >
                           <ToggleButton value="create">Erstellen</ToggleButton>
-                          <ToggleButton value="run">Durchführen</ToggleButton>
-                          <ToggleButton value="background">Hintergrund</ToggleButton>
+                          <ToggleButton value="run">TABLET</ToggleButton>
+                          <ToggleButton
+                            value="background"
+                            sx={{
+                              '&.Mui-selected': {
+                                bgcolor: alpha('#3949ab', 0.14),
+                                color: '#283593',
+                                fontWeight: 700,
+                                '&:hover': { bgcolor: alpha('#3949ab', 0.2) },
+                              },
+                            }}
+                          >
+                            Laptop
+                          </ToggleButton>
                         </ToggleButtonGroup>
                       </Box>
 
@@ -18222,12 +18295,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               flexDirection: 'column',
                               gap: 0.35,
                               p: 0.75,
-                              border: lessonPlanViewMode === 'create' && dragOverPlanIndex === index ? '1px solid #42a5f5' : '1px solid #c9d7e6',
-                              borderRadius: 1,
+                              border:
+                                lessonPlanViewMode === 'create' && dragOverPlanIndex === index
+                                  ? '1px solid #42a5f5'
+                                  : isLessonLaptopMode
+                                    ? `1px solid ${alpha('#3949ab', 0.18)}`
+                                    : '1px solid #c9d7e6',
+                              borderRadius: isLessonLaptopMode ? 1.5 : 1,
                               bgcolor: '#ffffff',
                               position: 'relative',
-                              boxShadow: lessonPlanViewMode === 'create' && dragOverPlanIndex === index ? '0 0 0 2px rgba(66,165,245,0.15)' : 'none',
-                              '&:hover': { bgcolor: '#f8fbff' }
+                              boxShadow:
+                                lessonPlanViewMode === 'create' && dragOverPlanIndex === index
+                                  ? '0 0 0 2px rgba(66,165,245,0.15)'
+                                  : isLessonLaptopMode
+                                    ? '0 2px 10px rgba(57, 73, 171, 0.06)'
+                                    : 'none',
+                              '&:hover': {
+                                bgcolor: isLessonLaptopMode ? alpha('#3949ab', 0.035) : '#f8fbff',
+                              },
                             }}
                           >
                             <Box
@@ -18415,12 +18500,40 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
                     {lessonPlanViewMode === 'background' && planHasArbeitsauftrag && (
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 1 }}>
-                          <Paper variant="outlined" sx={{ p: 1.25, borderColor: '#ffcc80', bgcolor: '#fffdf5' }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#e65100', mb: 1 }}>
-                              Arbeitsauftrag &amp; Besprechung (chronologisch)
-                            </Typography>
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 0,
+                              overflow: 'hidden',
+                              borderRadius: 2,
+                              border: `1px solid ${alpha('#e65100', 0.22)}`,
+                              bgcolor: '#fffefb',
+                              boxShadow: '0 6px 24px rgba(230, 81, 0, 0.07)',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                px: 1.5,
+                                py: 1.1,
+                                background: 'linear-gradient(90deg, rgba(255, 213, 79, 0.28) 0%, rgba(255, 249, 235, 0.95) 52%, rgba(255, 253, 248, 1) 100%)',
+                                borderBottom: `1px solid ${alpha('#ff9800', 0.2)}`,
+                              }}
+                            >
+                              <Stack direction="row" alignItems="center" spacing={1}>
+                                <AssignmentIcon sx={{ fontSize: 22, color: '#ef6c00' }} />
+                                <Box>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#e65100', lineHeight: 1.25 }}>
+                                    Arbeitsauftrag &amp; Besprechung
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                    Chronologisch – Laptop-Ansicht
+                                  </Typography>
+                                </Box>
+                              </Stack>
+                            </Box>
+                            <Stack spacing={1.25} sx={{ p: 1.5 }}>
                             {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
-                              <Box sx={{ position: 'relative', bgcolor: '#fff8e1', borderRadius: 1, p: 1.25, pr: 4, border: '1px solid #ffe082', mb: 1 }}>
+                              <Box sx={{ position: 'relative', bgcolor: '#fffbf0', borderRadius: 1.5, p: 1.35, pr: 4, border: `1px solid ${alpha('#ffb74d', 0.45)}`, mb: 0, boxShadow: `inset 0 1px 0 ${alpha('#fff', 0.8)}` }}>
                                 <Tooltip title="Text bearbeiten">
                                   <IconButton size="small" onClick={() => startEdit('abAnleitung')} sx={{ position: 'absolute', top: 4, right: 4, p: 0.25, minWidth: 28, width: 28, height: 28, color: '#f57c00' }}>
                                     <EditIcon sx={{ fontSize: 16 }} />
@@ -18451,7 +18564,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               </Box>
                             )}
                             {abFiles.length > 0 && (
-                              <List dense sx={{ bgcolor: '#fffde7', borderRadius: 1, py: 0, border: '1px solid #ffe082', mb: 1 }}>
+                              <List
+                                dense
+                                sx={{
+                                  bgcolor: '#fffbf0',
+                                  borderRadius: 1.5,
+                                  py: 0,
+                                  border: `1px solid ${alpha('#ffb74d', 0.4)}`,
+                                  mb: 1,
+                                  overflow: 'hidden',
+                                  boxShadow: `0 2px 8px ${alpha('#e65100', 0.05)}`,
+                                }}
+                              >
                                 {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
                                   const pdfFile = getPdfFromGroup(versions);
                                   const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
@@ -18497,7 +18621,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                   {bgAbPhaseSteps.map((_, idx) =>
                                     musterLoesungFiles[idx] ? (
-                                      <Paper key={`ab-step-ml-${idx}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#e8f5e9', borderColor: '#81c784' }}>
+                                      <Paper
+                                      key={`ab-step-ml-${idx}`}
+                                      elevation={0}
+                                      sx={{
+                                        p: 1,
+                                        borderRadius: 1.5,
+                                        bgcolor: '#f4fbf6',
+                                        border: `1px solid ${alpha('#43a047', 0.28)}`,
+                                        borderLeft: '4px solid #388e3c',
+                                        boxShadow: '0 2px 10px rgba(56, 142, 60, 0.06)',
+                                      }}
+                                    >
                                         <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Musterlösung (Schritt {idx + 1})</Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
                                           <Button size="small" variant="text" onClick={() => handleFileClick(musterLoesungFiles[idx])} sx={{ textTransform: 'none', p: 0, minWidth: 0 }}>
@@ -18526,7 +18661,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     ) : null
                                   )}
                                   {restMuster.map((f, j) => (
-                                    <Paper key={`ab-ml-rest-${j}`} variant="outlined" sx={{ p: 0.85, bgcolor: '#f1f8e9', borderColor: '#a5d6a7' }}>
+                                    <Paper
+                                      key={`ab-ml-rest-${j}`}
+                                      elevation={0}
+                                      sx={{
+                                        p: 1,
+                                        borderRadius: 1.5,
+                                        bgcolor: '#f7fcf4',
+                                        border: `1px solid ${alpha('#66bb6a', 0.35)}`,
+                                        borderLeft: '4px solid #66bb6a',
+                                        boxShadow: '0 2px 10px rgba(102, 187, 106, 0.07)',
+                                      }}
+                                    >
                                       <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Weitere Musterlösung</Typography>
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                                         <Button size="small" variant="text" onClick={() => handleFileClick(f)} sx={{ textTransform: 'none' }}>
@@ -18538,6 +18684,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 </Box>
                               );
                             })()}
+                            </Stack>
                           </Paper>
 
                       </Box>
@@ -18637,7 +18784,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
                     {/* Folien/PDF-Listen nur bei Input-Baustein: „Dokumente im Ordner dieser Stunde“ in der Input-Karte */}
     
-                    {/* Arbeitsblatt (AB) – ausgeblendet, wenn „Arbeitsauftrag“ im Plan (dann oben im gelben Block; in „Hintergrund“ separat) */}
+                    {/* Arbeitsblatt (AB) – ausgeblendet, wenn „Arbeitsauftrag“ im Plan (dann oben im gelben Block; in „Laptop“ separat) */}
                     {abFiles.length > 0 && !planHasArbeitsauftrag && lessonPlanViewMode !== 'background' && (
                       <Box>
                         {(instructions?.abAnleitung || isEditing('abAnleitung')) && (
@@ -18723,7 +18870,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         </Box>
       )}
 
-      {/* Mitarbeitsbewertungs-Modal (zentriert) bzw. rechts 50 % bei Stunden-Ansicht „Hintergrund“ */}
+      {/* Mitarbeitsbewertungs-Modal (zentriert) bzw. rechts 50 % bei Stunden-Ansicht „Laptop“ */}
       <Dialog 
         open={participationModalOpen} 
         onClose={handleParticipationClose}
@@ -18736,6 +18883,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 '& .MuiDialog-container': {
                   justifyContent: 'flex-end',
                   alignItems: 'stretch',
+                  overflow: 'hidden',
                 },
               }
             : undefined
@@ -18746,9 +18894,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 m: 0,
                 maxHeight: '100vh',
                 height: '100%',
-                maxWidth: '50vw',
-                width: '50vw',
+                maxWidth: '50%',
+                width: '50%',
+                minWidth: 0,
+                boxSizing: 'border-box',
                 borderRadius: 0,
+                borderLeft: `1px solid ${laptopSplitSeam}`,
+                background: `linear-gradient(90deg, ${alpha('#e8eaf6', 0.5)} 0%, ${alpha('#f5f7fb', 0.97)} 14%, #fafbfd 100%)`,
+                boxShadow: `-4px 0 20px -8px ${laptopSplitGlow}`,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
               }
             : {
                 borderRadius: 1,
@@ -18756,9 +18912,36 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               },
         }}
       >
-        <DialogTitle sx={{ pb: 0.5, pt: 1, px: 1.5, borderBottom: '1px solid #e0e0e0', ...dialogCloseTitleSx }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+        <DialogTitle
+          sx={{
+            pb: 0.5,
+            pt: 1,
+            px: 1.5,
+            borderBottom: '1px solid #e0e0e0',
+            ...(participationDocked && {
+              borderBottomColor: alpha('#3949ab', 0.12),
+              bgcolor: alpha('#fff', 0.82),
+              backdropFilter: 'blur(8px)',
+              flex: '0 0 auto',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box',
+            }),
+            ...dialogCloseTitleSx,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              flexWrap: participationDocked ? 'wrap' : 'nowrap',
+              rowGap: 0.75,
+              minWidth: 0,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, minWidth: 0 }}>
               <Box sx={{ 
                 width: 28, 
                 height: 28, 
@@ -18769,18 +18952,29 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 justifyContent: 'center' 
               }}>
                 <HandRaiseIcon sx={{ color: 'white', fontSize: 16 }} />
-    </Box>
-              <Box>
-                <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2 }}>
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2, wordBreak: 'break-word' }}>
                   Eintragung Epochalnoten
                 </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2, wordBreak: 'break-word' }}>
                   {participationGroupName}
                 </Typography>
               </Box>
             </Box>
             {/* Buttons kompakt nebeneinander mittig zwischen Titel und X */}
-            <Box sx={{ display: 'flex', gap: 0.4, alignItems: 'center', flexWrap: 'nowrap', flex: '1 1 auto', justifyContent: 'center', mx: 1 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 0.4,
+                alignItems: 'center',
+                flexWrap: participationDocked ? 'wrap' : 'nowrap',
+                flex: participationDocked ? '1 1 100%' : '1 1 auto',
+                justifyContent: participationDocked ? 'flex-start' : 'center',
+                mx: 1,
+                minWidth: 0,
+              }}
+            >
               {/* Zeiträume einstellen */}
               <Button
                 size="small"
@@ -18921,7 +19115,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           <DialogCloseIconButton onClose={handleParticipationClose} />
         </DialogTitle>
         
-        <DialogContent sx={{ p: 1, pt: 1 }}>
+        <DialogContent
+          sx={{
+            p: 1,
+            pt: 1,
+            ...(participationDocked && {
+              flex: '1 1 auto',
+              minHeight: 0,
+              minWidth: 0,
+              overflow: 'auto',
+              overflowX: 'hidden',
+            }),
+          }}
+        >
           {/* Erklärung der Notenberechnung */}
           <Box sx={{ 
             mt: 1,
