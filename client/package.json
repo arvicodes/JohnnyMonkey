@@ -65,6 +65,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.525.0",
     "mammoth": "^1.10.0",
+    "pdfjs-dist": "^4.4.168",
     "postcss": "^8.5.6",
     "prismjs": "^1.30.0",
     "react": "^18.2.0",

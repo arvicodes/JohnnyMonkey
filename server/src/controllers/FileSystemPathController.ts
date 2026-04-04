@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
+import { convert } from 'libreoffice-convert';
 
 const prisma = new PrismaClient();
 
@@ -34,6 +35,16 @@ export interface DirectoryContent {
 }
 
 export class FileSystemPathController {
+  /** PPTX/PPT → PDF (LibreOffice/soffice; lokal installiert) für Folien-Editor */
+  private static convertPowerPointBufferToPdf(fileContent: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      convert(fileContent, '.pdf', undefined, (err, done) => {
+        if (err) reject(err);
+        else resolve(done);
+      });
+    });
+  }
+
   /**
    * Get all paths
    */
@@ -698,6 +709,47 @@ export class FileSystemPathController {
     } catch (error) {
       console.error('Error reading PowerPoint file:', error);
       res.status(500).json({ error: 'Failed to read PowerPoint file' });
+    }
+  }
+
+  /**
+   * PowerPoint-Datei nach PDF konvertieren und inline ausliefern (Folien-Editor im Browser).
+   * Benötigt eine funktionierende LibreOffice-/soffice-Installation auf dem Server.
+   */
+  static async readPptxAsPdf(req: Request, res: Response) {
+    try {
+      const { filePath } = req.query;
+      if (!filePath || typeof filePath !== 'string') {
+        return res.status(400).json({ error: 'filePath is required' });
+      }
+      const ext = path.extname(filePath).toLowerCase();
+      if (ext !== '.pptx' && ext !== '.ppt') {
+        return res.status(400).json({ error: 'Nur .pptx oder .ppt' });
+      }
+
+      const fileContent = await StorageManager.readFile(filePath);
+      if (!fileContent) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      const pdfBuffer = await FileSystemPathController.convertPowerPointBufferToPdf(fileContent);
+      const baseName = path.basename(filePath, ext).replace(/[^\w.\-äöüÄÖÜß ]+/g, '_');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${baseName}.pdf"`);
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.send(pdfBuffer);
+    } catch (error: unknown) {
+      console.error('readPptxAsPdf:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const hint = /soffice|libreoffice|spawn|ENOENT|convert/i.test(errMsg)
+        ? ' Auf dem Server muss LibreOffice (soffice) installiert und im PATH erreichbar sein.'
+        : '';
+      res.status(503).json({
+        error: 'pptx_to_pdf_failed',
+        message: `PowerPoint konnte nicht nach PDF konvertiert werden.${hint}`,
+        detail: errMsg,
+      });
     }
   }
 

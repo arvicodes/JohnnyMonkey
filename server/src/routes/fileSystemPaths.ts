@@ -55,6 +55,9 @@ router.get('/read-text', FileSystemPathController.readTextFile);
 // PDF-Datei lesen
 router.get('/read-pdf', FileSystemPathController.readPdfFile);
 
+// PPTX/PPT → PDF (für Folien-Editor)
+router.get('/pptx-as-pdf', FileSystemPathController.readPptxAsPdf);
+
 // PDF-Datei lesen mit sauberer URL (nur Dateiname)
 router.get('/pdf/:filename', FileSystemPathController.readPdfByFilename);
 
