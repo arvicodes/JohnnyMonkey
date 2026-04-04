@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Draw as DrawIcon,
+  FiberManualRecord as LaserPointerIcon,
   GetApp as GetAppIcon,
   Highlight as HighlightIcon,
   OpenInNew as OpenInNewIcon,
@@ -67,6 +68,58 @@ type TextAnn = {
   fontSize: number;
   color: string;
 };
+
+function findTextAtPoint(x: number, y: number, texts: TextAnn[], ctx: CanvasRenderingContext2D): TextAnn | null {
+  for (let i = texts.length - 1; i >= 0; i--) {
+    const t = texts[i];
+    ctx.font = `${t.fontSize}px sans-serif`;
+    const m = ctx.measureText(t.text);
+    const asc = m.actualBoundingBoxAscent ?? t.fontSize * 0.75;
+    const desc = m.actualBoundingBoxDescent ?? t.fontSize * 0.25;
+    const w = m.width;
+    const pad = 10;
+    if (x >= t.x - pad && x <= t.x + w + pad && y >= t.y - asc - pad && y <= t.y + desc + pad) {
+      return t;
+    }
+  }
+  return null;
+}
+
+/** Nachleuchtzeit des Laserstrahls (ms) */
+const LASER_TRAIL_MS = 3200;
+
+/** Größerer Divisor = weichere Kurve (weniger „hackelig“) */
+const LASER_SPLINE_TENSION = 10;
+
+type LaserPt = { x: number; y: number; t: number };
+
+/** Catmull-Rom → kubische Bézier (ein Segment von p1 nach p2) */
+function catmullRomBezierControls(p0: LaserPt, p1: LaserPt, p2: LaserPt, p3: LaserPt, tension: number) {
+  const cp1x = p1.x + (p2.x - p0.x) / tension;
+  const cp1y = p1.y + (p2.y - p0.y) / tension;
+  const cp2x = p2.x - (p3.x - p1.x) / tension;
+  const cp2y = p2.y - (p3.y - p1.y) / tension;
+  return { cp1x, cp1y, cp2x, cp2y };
+}
+
+/** Leichtgewichtige Glättung (Fenster 3), zweimal hintereinander = deutlich ruhigere Linie */
+function smoothLaserPointsOnce(pts: LaserPt[]): LaserPt[] {
+  if (pts.length < 3) return pts.map((p) => ({ ...p }));
+  const out: LaserPt[] = [];
+  out.push({ ...pts[0] });
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const c = pts[i + 1];
+    out.push({
+      x: 0.22 * a.x + 0.56 * b.x + 0.22 * c.x,
+      y: 0.22 * a.y + 0.56 * b.y + 0.22 * c.y,
+      t: (a.t + 2 * b.t + c.t) / 4,
+    });
+  }
+  out.push({ ...pts[pts.length - 1] });
+  return out;
+}
 
 function cloneStrokesRecord(s: Record<number, Stroke[]>): Record<number, Stroke[]> {
   const out: Record<number, Stroke[]> = {};
@@ -162,7 +215,7 @@ const SlideDeckEditorPage: React.FC = () => {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [tool, setTool] = useState<'pen' | 'marker' | 'text'>('pen');
+  const [tool, setTool] = useState<'pen' | 'marker' | 'text' | 'laser'>('pen');
   const [strokeColor, setStrokeColor] = useState('#c62828');
   const [lineWidth, setLineWidth] = useState(2.5);
   const [markerOpacity, setMarkerOpacity] = useState(0.38);
@@ -174,15 +227,36 @@ const SlideDeckEditorPage: React.FC = () => {
 
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+  const laserCanvasRef = useRef<HTMLCanvasElement>(null);
+  const laserTrailRef = useRef<{ x: number; y: number; t: number }[]>([]);
+  const laserHeadRef = useRef<{ x: number; y: number } | null>(null);
+  const laserRafRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<{ width: number; height: number } | null>(null);
   const drawingStrokeRef = useRef<Stroke | null>(null);
   const overlayRectCacheRef = useRef<DOMRect | null>(null);
-  const [textDialog, setTextDialog] = useState<{ open: boolean; x: number; y: number; value: string }>({
+  const textDragRef = useRef<{
+    id: string;
+    pageIdx: number;
+    startCX: number;
+    startCY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
+  const textDragMovedRef = useRef(false);
+  const [textDialog, setTextDialog] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    value: string;
+    editingId?: string;
+    fontSize: number;
+  }>({
     open: false,
     x: 0,
     y: 0,
     value: '',
+    fontSize: 18,
   });
   const [fromPptx, setFromPptx] = useState(false);
   const [loadPhase, setLoadPhase] = useState<'server' | 'download' | 'parse'>('server');
@@ -278,6 +352,103 @@ const SlideDeckEditorPage: React.FC = () => {
     }
   }, [tool]);
 
+  const paintLaserFull = useCallback(() => {
+    const canvas = laserCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const now = Date.now();
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    laserTrailRef.current = laserTrailRef.current.filter((p) => now - p.t < LASER_TRAIL_MS);
+    const raw = laserTrailRef.current;
+    const pruned =
+      raw.length >= 4 ? smoothLaserPointsOnce(smoothLaserPointsOnce(raw)) : raw.length >= 3 ? smoothLaserPointsOnce(raw) : raw;
+
+    if (pruned.length >= 2) {
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      const n = pruned.length;
+      for (let i = 0; i < n - 1; i++) {
+        const p0 = i > 0 ? pruned[i - 1] : pruned[i];
+        const p1 = pruned[i];
+        const p2 = pruned[i + 1];
+        const p3 = i + 2 < n ? pruned[i + 2] : pruned[i + 1];
+        const age = now - (p1.t + p2.t) / 2;
+        const u = Math.max(0, 1 - age / LASER_TRAIL_MS);
+        if (u < 0.03) continue;
+        const { cp1x, cp1y, cp2x, cp2y } = catmullRomBezierControls(p0, p1, p2, p3, LASER_SPLINE_TENSION);
+        const strokeLaserLayer = (rgba: string, lw: number) => {
+          ctx.strokeStyle = rgba;
+          ctx.lineWidth = lw;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+          ctx.stroke();
+        };
+        strokeLaserLayer(`rgba(255, 210, 170, ${u * 0.5})`, 20);
+        strokeLaserLayer(`rgba(255, 85, 55, ${u * 0.82})`, 10);
+        strokeLaserLayer(`rgba(255, 245, 230, ${u * 0.98})`, 3.5);
+      }
+    }
+
+    const head = laserHeadRef.current;
+    if (head) {
+      const { x: hx, y: hy } = head;
+      ctx.save();
+      const gr = ctx.createRadialGradient(hx, hy, 0, hx, hy, 42);
+      gr.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      gr.addColorStop(0.1, 'rgba(255, 230, 120, 0.98)');
+      gr.addColorStop(0.28, 'rgba(255, 70, 45, 0.92)');
+      gr.addColorStop(0.55, 'rgba(255, 35, 25, 0.45)');
+      gr.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 42, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'rgba(255, 60, 40, 0.95)';
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }, []);
+
+  const scheduleLaserPaint = useCallback(() => {
+    if (laserRafRef.current != null) return;
+    const step = () => {
+      laserRafRef.current = null;
+      paintLaserFull();
+      const trailLeft = laserTrailRef.current.length > 0;
+      const head = laserHeadRef.current;
+      if (trailLeft || head != null) {
+        laserRafRef.current = requestAnimationFrame(step);
+      }
+    };
+    laserRafRef.current = requestAnimationFrame(step);
+  }, [paintLaserFull]);
+
+  const clearLaserCanvas = useCallback(() => {
+    laserTrailRef.current = [];
+    laserHeadRef.current = null;
+    if (laserRafRef.current != null) {
+      cancelAnimationFrame(laserRafRef.current);
+      laserRafRef.current = null;
+    }
+    const c = laserCanvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, c.width, c.height);
+  }, []);
+
+  useEffect(() => {
+    if (tool !== 'laser') clearLaserCanvas();
+  }, [tool, clearLaserCanvas]);
+
   const redrawOverlay = useCallback(() => {
     const overlay = overlayRef.current;
     const vp = viewportRef.current;
@@ -313,9 +484,15 @@ const SlideDeckEditorPage: React.FC = () => {
       overlay.width = viewport.width;
       overlay.height = viewport.height;
     }
+    const laser = laserCanvasRef.current;
+    if (laser) {
+      laser.width = viewport.width;
+      laser.height = viewport.height;
+    }
+    clearLaserCanvas();
     await page.render({ canvasContext: ctx, viewport }).promise;
     redrawOverlay();
-  }, [pdfDoc, pageNum, redrawOverlay]);
+  }, [pdfDoc, pageNum, redrawOverlay, clearLaserCanvas]);
 
   useEffect(() => {
     if (!pdfDoc) return;
@@ -336,20 +513,41 @@ const SlideDeckEditorPage: React.FC = () => {
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (tool === 'laser') return;
+    const canvas = overlayRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const { x, y } = getCanvasCoordsFromClient(canvas, rect, e.clientX, e.clientY);
+    const idx = pageNum - 1;
+    const texts = textByPage[idx] || [];
+    const hit = findTextAtPoint(x, y, texts, ctx);
+    if (hit) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      textDragRef.current = {
+        id: hit.id,
+        pageIdx: idx,
+        startCX: x,
+        startCY: y,
+        origX: hit.x,
+        origY: hit.y,
+      };
+      textDragMovedRef.current = false;
+      return;
+    }
     if (tool === 'text') {
-      const canvas = overlayRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const { x, y } = getCanvasCoordsFromClient(canvas, rect, e.clientX, e.clientY);
-      setTextDialog({ open: true, x, y, value: '' });
+      setTextDialog({
+        open: true,
+        x,
+        y,
+        value: '',
+        editingId: undefined,
+        fontSize: 18,
+      });
       return;
     }
     e.currentTarget.setPointerCapture(e.pointerId);
-    const canvas = overlayRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
     overlayRectCacheRef.current = rect;
-    const { x, y } = getCanvasCoordsFromClient(canvas, rect, e.clientX, e.clientY);
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const isMarker = tool === 'marker';
     drawingStrokeRef.current = {
@@ -363,6 +561,25 @@ const SlideDeckEditorPage: React.FC = () => {
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (textDragRef.current) {
+      const canvas = overlayRef.current;
+      const drag = textDragRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const { x, y } = getCanvasCoordsFromClient(canvas, rect, e.clientX, e.clientY);
+      const idx = drag.pageIdx;
+      const dx = x - drag.startCX;
+      const dy = y - drag.startCY;
+      if (Math.abs(dx) + Math.abs(dy) > 4) textDragMovedRef.current = true;
+      setTextByPage((prev) => {
+        const list = [...(prev[idx] || [])];
+        const i = list.findIndex((t) => t.id === drag.id);
+        if (i < 0) return prev;
+        list[i] = { ...list[i], x: drag.origX + dx, y: drag.origY + dy };
+        return { ...prev, [idx]: list };
+      });
+      return;
+    }
     const stroke = drawingStrokeRef.current;
     if (!stroke) return;
     const canvas = overlayRef.current;
@@ -393,6 +610,8 @@ const SlideDeckEditorPage: React.FC = () => {
     overlayRectCacheRef.current = null;
     const stroke = drawingStrokeRef.current;
     drawingStrokeRef.current = null;
+    textDragRef.current = null;
+    textDragMovedRef.current = false;
     if (stroke && stroke.points.length >= 2) {
       const idx = pageNum - 1;
       pushUndoSnapshot();
@@ -405,6 +624,28 @@ const SlideDeckEditorPage: React.FC = () => {
 
   const onPointerUp = () => {
     overlayRectCacheRef.current = null;
+    if (textDragRef.current) {
+      const drag = textDragRef.current;
+      textDragRef.current = null;
+      const idx = drag.pageIdx;
+      if (!textDragMovedRef.current) {
+        const t = (textSyncRef.current[idx] || []).find((x) => x.id === drag.id);
+        if (t) {
+          setTextDialog({
+            open: true,
+            x: t.x,
+            y: t.y,
+            value: t.text,
+            editingId: t.id,
+            fontSize: t.fontSize,
+          });
+        }
+      } else {
+        pushUndoSnapshot();
+      }
+      textDragMovedRef.current = false;
+      return;
+    }
     const stroke = drawingStrokeRef.current;
     drawingStrokeRef.current = null;
     if (!stroke || stroke.points.length < 2) return;
@@ -416,6 +657,33 @@ const SlideDeckEditorPage: React.FC = () => {
     }));
   };
 
+  const onLaserPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = laserCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const native = e.nativeEvent as globalThis.PointerEvent;
+    const coalesced =
+      typeof native.getCoalescedEvents === 'function' ? native.getCoalescedEvents() : [];
+    const eventsToProcess = coalesced.length > 0 ? coalesced : [native];
+    const now = Date.now();
+    const tr = laserTrailRef.current;
+    for (const ev of eventsToProcess) {
+      const { x, y } = getCanvasCoordsFromClient(canvas, rect, ev.clientX, ev.clientY);
+      laserHeadRef.current = { x, y };
+      const last = tr[tr.length - 1];
+      if (!last || Math.hypot(x - last.x, y - last.y) > 0.55 || now - last.t > 5) {
+        tr.push({ x, y, t: now });
+      }
+    }
+    if (tr.length > 720) tr.splice(0, tr.length - 720);
+    scheduleLaserPaint();
+  };
+
+  const onLaserPointerLeave = () => {
+    laserHeadRef.current = null;
+    scheduleLaserPaint();
+  };
+
   const commitText = () => {
     const v = textDialog.value.trim();
     if (!v) {
@@ -424,19 +692,30 @@ const SlideDeckEditorPage: React.FC = () => {
     }
     pushUndoSnapshot();
     const idx = pageNum - 1;
-    const ann: TextAnn = {
-      id: `${Date.now()}`,
-      x: textDialog.x,
-      y: textDialog.y,
-      text: v,
-      fontSize: 18,
-      color: strokeColor,
-    };
-    setTextByPage((prev) => ({
-      ...prev,
-      [idx]: [...(prev[idx] || []), ann],
-    }));
-    setTextDialog((d) => ({ ...d, open: false, value: '' }));
+    if (textDialog.editingId) {
+      setTextByPage((prev) => {
+        const list = (prev[idx] || []).map((t) =>
+          t.id === textDialog.editingId
+            ? { ...t, text: v, fontSize: textDialog.fontSize, color: strokeColor }
+            : t
+        );
+        return { ...prev, [idx]: list };
+      });
+    } else {
+      const ann: TextAnn = {
+        id: `${Date.now()}`,
+        x: textDialog.x,
+        y: textDialog.y,
+        text: v,
+        fontSize: textDialog.fontSize,
+        color: strokeColor,
+      };
+      setTextByPage((prev) => ({
+        ...prev,
+        [idx]: [...(prev[idx] || []), ann],
+      }));
+    }
+    setTextDialog((d) => ({ ...d, open: false, value: '', editingId: undefined }));
   };
 
   const exportPdf = async () => {
@@ -614,14 +893,29 @@ const SlideDeckEditorPage: React.FC = () => {
               <HighlightIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Text (Klick auf Folie)">
+          <Tooltip title="Text — Klick: neu. Auf Text ziehen: verschieben (auch mit Stift/Marker). Klick ohne Zug: bearbeiten">
             <IconButton size="small" color={tool === 'text' ? 'primary' : 'default'} onClick={() => setTool('text')}>
               <TextIcon />
             </IconButton>
           </Tooltip>
+          <Tooltip title="Laserpointer mit Nachleuchten (~3 s, nicht im PDF)">
+            <IconButton size="small" color={tool === 'laser' ? 'primary' : 'default'} onClick={() => setTool('laser')}>
+              <LaserPointerIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
 
           <Tooltip title={tool === 'marker' ? `Markerbreite: ${lineWidth}` : `Stiftstärke: ${lineWidth}`}>
-            <Box sx={{ width: 48, flexShrink: 0, py: 0, display: 'flex', alignItems: 'center' }}>
+            <Box
+              sx={{
+                width: 48,
+                flexShrink: 0,
+                py: 0,
+                display: 'flex',
+                alignItems: 'center',
+                visibility: tool === 'laser' ? 'hidden' : 'visible',
+                pointerEvents: tool === 'laser' ? 'none' : 'auto',
+              }}
+            >
               <Slider
                 size="small"
                 min={tool === 'marker' ? 6 : 1}
@@ -786,7 +1080,25 @@ const SlideDeckEditorPage: React.FC = () => {
                 width: '100%',
                 height: '100%',
                 display: 'block',
-                cursor: tool === 'text' ? 'text' : 'crosshair',
+                pointerEvents: tool === 'laser' ? 'none' : 'auto',
+                cursor: tool === 'text' ? 'text' : tool === 'pen' || tool === 'marker' ? 'crosshair' : 'default',
+                touchAction: 'none',
+              }}
+            />
+            <canvas
+              ref={laserCanvasRef}
+              onPointerMove={onLaserPointerMove}
+              onPointerLeave={onLaserPointerLeave}
+              onPointerDown={onLaserPointerMove}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                height: '100%',
+                display: 'block',
+                pointerEvents: tool === 'laser' ? 'auto' : 'none',
+                cursor: tool === 'laser' ? 'none' : 'default',
                 touchAction: 'none',
               }}
             />
@@ -794,23 +1106,49 @@ const SlideDeckEditorPage: React.FC = () => {
         </Box>
       </Box>
 
-      <Dialog open={textDialog.open} onClose={() => setTextDialog((d) => ({ ...d, open: false }))}>
-        <DialogTitle>Text auf dieser Folie</DialogTitle>
-        <DialogContent>
+      <Dialog open={textDialog.open} onClose={() => setTextDialog((d) => ({ ...d, open: false, editingId: undefined }))}>
+        <DialogTitle>{textDialog.editingId ? 'Text bearbeiten' : 'Neuer Text'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <TextField
             autoFocus
             fullWidth
             multiline
-            minRows={2}
+            minRows={3}
             value={textDialog.value}
             onChange={(e) => setTextDialog((d) => ({ ...d, value: e.target.value }))}
             placeholder="Text eingeben…"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                commitText();
+              }
+            }}
           />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption" sx={{ flexShrink: 0 }}>
+              Schriftgröße
+            </Typography>
+            <Slider
+              size="small"
+              min={6}
+              max={120}
+              step={1}
+              value={textDialog.fontSize}
+              onChange={(_, v) => setTextDialog((d) => ({ ...d, fontSize: v as number }))}
+              sx={{ flex: 1 }}
+            />
+            <Typography variant="caption" sx={{ minWidth: 32, textAlign: 'right' }}>
+              {textDialog.fontSize}px
+            </Typography>
+          </Box>
+          <Typography variant="caption" color="text.secondary">
+            Strg+Enter (⌘+Enter) übernimmt den Text.
+          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTextDialog((d) => ({ ...d, open: false }))}>Abbrechen</Button>
+          <Button onClick={() => setTextDialog((d) => ({ ...d, open: false, editingId: undefined }))}>Abbrechen</Button>
           <Button variant="contained" onClick={commitText}>
-            Einfügen
+            {textDialog.editingId ? 'Speichern' : 'Einfügen'}
           </Button>
         </DialogActions>
       </Dialog>
