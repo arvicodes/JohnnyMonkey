@@ -1,0 +1,31 @@
+<svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pr-bg" x1="0" y1="270" x2="960" y2="270">
+      <stop stop-color="#1A237E"/>
+      <stop offset="0.4" stop-color="#4527A0"/>
+      <stop offset="1" stop-color="#7E57C2"/>
+    </linearGradient>
+    <radialGradient id="pr-moon" cx="50%" cy="40%" r="50%">
+      <stop stop-color="#D1C4E9"/>
+      <stop offset="1" stop-color="#7E57C2"/>
+    </radialGradient>
+  </defs>
+  <rect width="960" height="540" rx="40" fill="url(#pr-bg)"/>
+  <!-- Sterne -->
+  <circle cx="120" cy="80" r="4" fill="#E8EAF6"/>
+  <circle cx="240" cy="140" r="3" fill="#E8EAF6"/>
+  <circle cx="800" cy="100" r="5" fill="#E8EAF6"/>
+  <circle cx="880" cy="200" r="3" fill="#E8EAF6"/>
+  <circle cx="160" cy="320" r="3" fill="#E8EAF6"/>
+  <!-- Kristallkugel / Zukunft -->
+  <circle cx="480" cy="260" r="130" fill="url(#pr-moon)" opacity="0.9"/>
+  <circle cx="480" cy="260" r="130" stroke="#B39DDB" stroke-width="6" fill="none"/>
+  <path d="M400 320 Q480 280 560 320" stroke="#4A148C" stroke-width="8" fill="none" opacity="0.5"/>
+  <!-- Pfeil in die Zukunft -->
+  <path d="M200 420 H720" stroke="#B39DDB" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+  <path d="M700 400 L760 420 L700 440" fill="#E1BEE7"/>
+  <!-- zusätzliche Sterne am Horizont -->
+  <circle cx="480" cy="480" r="4" fill="#B39DDB" opacity="0.7"/>
+  <circle cx="520" cy="470" r="3" fill="#D1C4E9" opacity="0.6"/>
+  <circle cx="440" cy="472" r="3" fill="#D1C4E9" opacity="0.6"/>
+</svg>

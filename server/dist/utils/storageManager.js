@@ -173,49 +173,46 @@ class StorageManager {
         };
     }
     /**
+     * Absoluter Pfad zu einer Datei oder einem Ordner unter git-intern (Relativpfad ohne Präfix "git-intern/").
+     * Gleiche Logik wie readFile — wichtig für saveFile, damit Speichern und Lesen dasselbe Verzeichnis nutzen.
+     */
+    static resolveGitInternRelativePath(relativePath) {
+        const rel = relativePath.replace(/\\/g, '/');
+        if (process.env.NODE_ENV === 'production') {
+            const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+            const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
+            let jmReihenPath;
+            if (fs_1.default.existsSync(serverPath)) {
+                jmReihenPath = serverPath;
+            }
+            else if (fs_1.default.existsSync(projectPath)) {
+                jmReihenPath = projectPath;
+            }
+            else {
+                jmReihenPath = serverPath;
+            }
+            if (rel.startsWith('J-M-Reihen/')) {
+                const basePath = jmReihenPath.replace(/J-M-Reihen$/, '');
+                return path_1.default.join(basePath, rel);
+            }
+            return path_1.default.join(jmReihenPath, rel);
+        }
+        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+        if (rel.startsWith('J-M-Reihen/')) {
+            return path_1.default.join(projectRoot, rel);
+        }
+        return path_1.default.join(projectRoot, 'J-M-Reihen', rel);
+    }
+    /**
      * Read file contents
      */
     static async readFile(filePath) {
         try {
+            const filePathNorm = filePath.replace(/\\/g, '/');
             // Handle git-intern paths
-            if (filePath.startsWith('git-intern/')) {
-                let fullPath;
-                const relativePath = filePath.replace('git-intern/', '');
-                if (process.env.NODE_ENV === 'production') {
-                    // Production: Use relative path from project root
-                    // Production: Look in server directory first, then project root
-                    const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
-                    const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
-                    let jmReihenPath;
-                    if (fs_1.default.existsSync(serverPath)) {
-                        jmReihenPath = serverPath;
-                    }
-                    else if (fs_1.default.existsSync(projectPath)) {
-                        jmReihenPath = projectPath;
-                    }
-                    else {
-                        jmReihenPath = serverPath; // Default to server path
-                    }
-                    // If relativePath already starts with J-M-Reihen, don't add it again
-                    if (relativePath.startsWith('J-M-Reihen/')) {
-                        const basePath = jmReihenPath.replace(/J-M-Reihen$/, '');
-                        fullPath = path_1.default.join(basePath, relativePath);
-                    }
-                    else {
-                        fullPath = path_1.default.join(jmReihenPath, relativePath);
-                    }
-                }
-                else {
-                    // Development: Use absolute path from project root
-                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                    // If relativePath already starts with J-M-Reihen, don't add it again
-                    if (relativePath.startsWith('J-M-Reihen/')) {
-                        fullPath = path_1.default.join(projectRoot, relativePath);
-                    }
-                    else {
-                        fullPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
-                    }
-                }
+            if (filePathNorm.startsWith('git-intern/')) {
+                const relativePath = filePathNorm.replace('git-intern/', '');
+                const fullPath = this.resolveGitInternRelativePath(relativePath);
                 console.log('StorageManager.readFile - fullPath:', fullPath);
                 console.log('StorageManager.readFile - exists:', fs_1.default.existsSync(fullPath));
                 if (fs_1.default.existsSync(fullPath)) {
@@ -227,7 +224,7 @@ class StorageManager {
                 return null;
             }
             // Handle local paths
-            const normalizedPath = path_1.default.resolve(filePath);
+            const normalizedPath = path_1.default.resolve(filePathNorm);
             if (fs_1.default.existsSync(normalizedPath)) {
                 return fs_1.default.readFileSync(normalizedPath);
             }

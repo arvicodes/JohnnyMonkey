@@ -30,6 +30,8 @@ const fileSystemPaths_1 = __importDefault(require("./routes/fileSystemPaths"));
 const kaCorrections_1 = __importDefault(require("./routes/kaCorrections"));
 const messages_1 = __importDefault(require("./routes/messages"));
 const exitTicket_1 = __importDefault(require("./routes/exitTicket"));
+const entryTicket_1 = __importDefault(require("./routes/entryTicket"));
+const journey_1 = __importDefault(require("./routes/journey"));
 const flashcards_1 = __importDefault(require("./routes/flashcards"));
 const submissions_1 = __importDefault(require("./routes/submissions"));
 const fileShares_1 = __importDefault(require("./routes/fileShares"));
@@ -50,7 +52,7 @@ app.use((0, cors_1.default)({
         : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-login-code']
 }));
 app.use(express_1.default.json({ limit: '50mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
@@ -84,6 +86,8 @@ app.use('/api/lesson-instructions', lessonInstructions_1.default);
 app.use('/api/ka-corrections', kaCorrections_1.default);
 app.use('/api/messages', messages_1.default);
 app.use('/api/exit-ticket', exitTicket_1.default);
+app.use('/api/entry-ticket', entryTicket_1.default);
+app.use('/api/journey', journey_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
 // Enhanced health check endpoint with monitoring

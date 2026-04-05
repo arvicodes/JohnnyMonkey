@@ -98,7 +98,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
-  const isUpdatingRef = useRef(false);
   const lastValueRef = useRef(value);
   const lastReceivedValueRef = useRef(value);
 
@@ -302,10 +301,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     lastReceivedValueRef.current = value;
     // Nur synchronisieren wenn: Wert von außen geändert ODER initialer Mount (Editor leer, Wert da). Nicht während Nutzer tippt.
     const editorHasFocus = editorRef.current.contains(document.activeElement);
-    const shouldUpdate = !isUpdatingRef.current && (
+    // Kein „isUpdating“-Gate: Bei schnellem Tippen würde sonst handleInput Events verwerfen
+    // und der Parent-State blieb hinter dem DOM zurück („Fertig“ speicherte alte Texte).
+    // Solange der Editor fokussiert ist, überschreiben wir nicht (siehe editorHasFocus).
+    const shouldUpdate =
       (valueChangedExternally && !editorHasFocus) ||
-      (editorEmpty && valueNonEmpty)
-    );
+      (editorEmpty && valueNonEmpty);
     if (shouldUpdate) {
       const cursorPosition = saveCursorPosition();
       editorRef.current.innerHTML = value;
@@ -678,20 +679,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const handleInput = useCallback(() => {
-    if (editorRef.current && !isUpdatingRef.current) {
-      isUpdatingRef.current = true;
-      const newValue = editorRef.current.innerHTML;
-      
-      // Only trigger onChange if editor content actually changed.
-      // Wichtig: Wir filtern nur gegen den letzten bekannten Editor-Wert,
-      // nicht zusätzlich gegen `value` (das kann im selben Event-Tick noch stale sein).
-      if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
-      
-      // Reset the flag after a short delay
-      setTimeout(() => {
-        isUpdatingRef.current = false;
-      }, 100);
-    }
+    if (!editorRef.current) return;
+    const newValue = editorRef.current.innerHTML;
+    // Only trigger onChange if editor content actually changed.
+    // Wichtig: Wir filtern nur gegen den letzten bekannten Editor-Wert,
+    // nicht zusätzlich gegen `value` (das kann im selben Event-Tick noch stale sein).
+    if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
   }, [debouncedOnChange]);
 
   const makeImageResizable = useCallback((img: HTMLImageElement) => {
@@ -892,7 +885,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const handleBlur = () => {
-    // Don't close color picker on blur to allow clicking on it
+    // Vor Klick auf „Fertig“ verliert der Editor den Fokus: letzte Änderung sicher an Parent geben
+    if (editorRef.current) {
+      const newValue = editorRef.current.innerHTML;
+      if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {

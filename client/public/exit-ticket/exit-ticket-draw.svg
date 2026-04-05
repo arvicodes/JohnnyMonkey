@@ -1,45 +1,44 @@
 <svg width="960" height="540" viewBox="0 0 960 540" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="40" y1="0" x2="930" y2="540" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFD6A5"/>
-      <stop offset="0.45" stop-color="#FBC2EB"/>
-      <stop offset="1" stop-color="#A6C8FF"/>
+    <linearGradient id="dr-bg" x1="0" y1="0" x2="960" y2="540">
+      <stop stop-color="#FFF8E1"/>
+      <stop offset="0.55" stop-color="#FFE0B2"/>
+      <stop offset="1" stop-color="#FFCC80"/>
     </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-opacity="0.18"/>
+    <linearGradient id="dr-stroke" x1="220" y1="280" x2="740" y2="280">
+      <stop stop-color="#E91E63"/>
+      <stop offset="0.35" stop-color="#9C27B0"/>
+      <stop offset="0.65" stop-color="#3F51B5"/>
+      <stop offset="1" stop-color="#00ACC1"/>
+    </linearGradient>
+    <filter id="dr-soft" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.12"/>
     </filter>
-    <linearGradient id="pencil" x1="340" y1="120" x2="650" y2="420" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#1E88E5"/>
-      <stop offset="1" stop-color="#0D47A1"/>
-    </linearGradient>
   </defs>
-
-  <rect width="960" height="540" rx="40" fill="url(#bg)"/>
-
-  <!-- Frame -->
-  <g filter="url(#softShadow)">
-    <rect x="120" y="120" width="720" height="300" rx="28" fill="rgba(255,255,255,0.38)" stroke="rgba(255,255,255,0.55)" stroke-width="2"/>
-  </g>
-
-  <!-- Pencil -->
-  <g filter="url(#softShadow)">
-    <path d="M420 160l60-40 60 90-60 40-60-90z" fill="#FFB86B" opacity="0.95"/>
-    <path d="M360 210l60-40 200 300-60 40-200-300z" fill="url(#pencil)" opacity="0.95"/>
-    <path d="M430 165l60-40 18 27-60 40-18-27z" fill="#7CFFCB" opacity="0.95"/>
-  </g>
-
-  <!-- Scribbles -->
-  <g stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
-    <path d="M220 320c35-45 75-60 120-45 55 18 85 60 135 55 58-6 95-60 150-72 45-10 92 3 135 40" stroke="#1a237e" stroke-width="10"/>
-    <path d="M240 240c25 10 50 30 65 55" stroke="#0D47A1" stroke-width="7"/>
-    <path d="M650 250c30 15 45 35 55 65" stroke="#0D47A1" stroke-width="7"/>
-  </g>
-
-  <!-- Little dots -->
-  <g>
-    <circle cx="260" cy="185" r="10" fill="#FFFFFF" opacity="0.9"/>
-    <circle cx="720" cy="180" r="12" fill="#FFFFFF" opacity="0.85"/>
-    <circle cx="760" cy="290" r="9" fill="#FFFFFF" opacity="0.8"/>
+  <rect width="960" height="540" rx="40" fill="url(#dr-bg)"/>
+  <!-- Blatt -->
+  <rect x="200" y="120" width="560" height="300" rx="20" fill="#FFFEF7" stroke="#E0E0E0" stroke-width="3" filter="url(#dr-soft)"/>
+  <!-- Freie Strich-Zeichnung (wie mit Stift) -->
+  <path
+    d="M260 300 C 320 200, 400 380, 480 260 S 620 220, 700 300"
+    stroke="url(#dr-stroke)"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <path
+    d="M280 340 Q 400 420, 520 360 T 720 380"
+    stroke="#FF7043"
+    stroke-width="12"
+    stroke-linecap="round"
+    fill="none"
+    opacity="0.85"
+  />
+  <!-- Stift-Spitze unten rechts -->
+  <g transform="translate(620 360) rotate(-35)">
+    <rect x="0" y="0" width="120" height="22" rx="4" fill="#FFC107" stroke="#F57F17" stroke-width="2"/>
+    <path d="M120 11 L150 11 L142 0 L120 0Z" fill="#37474F"/>
+    <path d="M150 11 L158 11 L150 22 L142 22Z" fill="#FFB300"/>
   </g>
 </svg>
-

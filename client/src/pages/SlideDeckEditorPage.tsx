@@ -7,6 +7,7 @@ import {
   Divider,
   IconButton,
   Slider,
+  Snackbar,
   Toolbar,
   Tooltip,
   Typography,
@@ -26,9 +27,11 @@ import {
   OpenInNew as OpenInNewIcon,
   TextFields as TextIcon,
   Undo as UndoIcon,
+  Save as SaveIcon,
 } from '@mui/icons-material';
 import * as pdfjsLib from 'pdfjs-dist';
 import { jsPDF } from 'jspdf';
+import { buildStemSuffixPdfName, getStemForSave, parentDirGitPath } from '../lib/folienVersions';
 
 try {
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -230,6 +233,8 @@ const SlideDeckEditorPage: React.FC = () => {
   const laserCanvasRef = useRef<HTMLCanvasElement>(null);
   const laserTrailRef = useRef<{ x: number; y: number; t: number }[]>([]);
   const laserHeadRef = useRef<{ x: number; y: number } | null>(null);
+  /** Laser nur sichtbar, solange Primärbutton gedrückt (Präsentations-Laser) */
+  const laserPointerDownRef = useRef(false);
   const laserRafRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<{ width: number; height: number } | null>(null);
@@ -259,7 +264,14 @@ const SlideDeckEditorPage: React.FC = () => {
     fontSize: 18,
   });
   const [fromPptx, setFromPptx] = useState(false);
+  const [imageMode, setImageMode] = useState(false);
   const [loadPhase, setLoadPhase] = useState<'server' | 'download' | 'parse'>('server');
+  const baseImageRef = useRef<HTMLImageElement | null>(null);
+  const imageBlobUrlRef = useRef<string | null>(null);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveLabel, setSaveLabel] = useState('');
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   const strokesSyncRef = useRef(strokesByPage);
   const textSyncRef = useRef(textByPage);
@@ -291,11 +303,34 @@ const SlideDeckEditorPage: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const fp = params.get('filePath') || '';
+    const rawFp = params.get('filePath') || '';
+    const fp = rawFp.replace(/\\/g, '/').trim();
     const fn = params.get('fileName') || '';
     const source = params.get('source') || '';
-    const isPptx =
-      source === 'pptx' || /\.pptx$/i.test(fn) || /\.ppt$/i.test(fn);
+    const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'];
+    const baseFromPath = fp.split('/').pop() || '';
+    const extFromPath = baseFromPath.match(/\.([^.]+)$/i)?.[1]?.toLowerCase() || '';
+    const extFromFn = fn.match(/\.([^.]+)$/i)?.[1]?.toLowerCase() || '';
+    const extFallback = extFromPath || extFromFn;
+
+    /** Endung im echten Pfad hat Vorrang (verhindert pptx-API bei .pdf im Pfad; git-intern muss mit / laufen). */
+    let isPptx = false;
+    let isImage = false;
+    if (extFromPath === 'pdf') {
+      isPptx = false;
+      isImage = false;
+    } else if (extFromPath === 'pptx' || extFromPath === 'ppt') {
+      isPptx = true;
+      isImage = false;
+    } else if (extFromPath && IMAGE_EXTS.includes(extFromPath)) {
+      isPptx = false;
+      isImage = true;
+    } else {
+      const ext = extFallback;
+      isPptx = source === 'pptx' || ext === 'pptx' || ext === 'ppt';
+      isImage = source === 'image' || IMAGE_EXTS.includes(ext);
+    }
+
     setFilePath(fp);
     setFileName(fn || 'Folien');
     setFromPptx(isPptx);
@@ -308,30 +343,84 @@ const SlideDeckEditorPage: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        setLoadPhase(isPptx ? 'server' : 'download');
-        const apiUrl = isPptx
-          ? `/api/file-system-paths/pptx-as-pdf?filePath=${encodeURIComponent(fp)}`
-          : `/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(fp)}`;
-        const res = await fetch(apiUrl);
-        if (!res.ok) {
-          let msg = 'Datei konnte nicht geladen werden';
-          try {
-            const j = await res.json();
-            msg = (j.message as string) || (j.error as string) || msg;
-          } catch {
-            /* ignore */
+        if (isImage) {
+          setLoadPhase('download');
+          const res = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(fp)}`);
+          if (!res.ok) {
+            let msg = 'Bild konnte nicht geladen werden';
+            try {
+              const j = await res.json();
+              msg = (j.message as string) || (j.error as string) || msg;
+            } catch {
+              /* ignore */
+            }
+            throw new Error(msg);
           }
-          throw new Error(msg);
+          const blob = await res.blob();
+          if (cancelled) return;
+          setLoadPhase('parse');
+          const blobUrl = URL.createObjectURL(blob);
+          const img = new Image();
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Bild konnte nicht angezeigt werden'));
+            img.src = blobUrl;
+          });
+          if (cancelled) {
+            URL.revokeObjectURL(blobUrl);
+            return;
+          }
+          if (imageBlobUrlRef.current) URL.revokeObjectURL(imageBlobUrlRef.current);
+          imageBlobUrlRef.current = blobUrl;
+          baseImageRef.current = img;
+          setPdfDoc(null);
+          setNumPages(1);
+          setPageNum(1);
+          setImageMode(true);
+        } else if (isPptx) {
+          setLoadPhase('server');
+          const res = await fetch(`/api/file-system-paths/pptx-as-pdf?filePath=${encodeURIComponent(fp)}`);
+          if (!res.ok) {
+            let msg = 'Datei konnte nicht geladen werden';
+            try {
+              const j = await res.json();
+              msg = (j.message as string) || (j.error as string) || msg;
+            } catch {
+              /* ignore */
+            }
+            throw new Error(msg);
+          }
+          setLoadPhase('download');
+          const buf = await res.arrayBuffer();
+          if (cancelled) return;
+          setLoadPhase('parse');
+          const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+          if (cancelled) return;
+          setPdfDoc(doc);
+          setNumPages(doc.numPages);
+          setPageNum(1);
+        } else {
+          setLoadPhase('download');
+          const res = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(fp)}`);
+          if (!res.ok) {
+            let msg = 'Datei konnte nicht geladen werden';
+            try {
+              const j = await res.json();
+              msg = (j.message as string) || (j.error as string) || msg;
+            } catch {
+              /* ignore */
+            }
+            throw new Error(msg);
+          }
+          const buf = await res.arrayBuffer();
+          if (cancelled) return;
+          setLoadPhase('parse');
+          const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+          if (cancelled) return;
+          setPdfDoc(doc);
+          setNumPages(doc.numPages);
+          setPageNum(1);
         }
-        setLoadPhase('download');
-        const buf = await res.arrayBuffer();
-        if (cancelled) return;
-        setLoadPhase('parse');
-        const doc = await pdfjsLib.getDocument({ data: buf }).promise;
-        if (cancelled) return;
-        setPdfDoc(doc);
-        setNumPages(doc.numPages);
-        setPageNum(1);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Fehler beim Laden');
       } finally {
@@ -341,6 +430,11 @@ const SlideDeckEditorPage: React.FC = () => {
 
     return () => {
       cancelled = true;
+      if (imageBlobUrlRef.current) {
+        URL.revokeObjectURL(imageBlobUrlRef.current);
+        imageBlobUrlRef.current = null;
+      }
+      baseImageRef.current = null;
     };
   }, []);
 
@@ -388,9 +482,9 @@ const SlideDeckEditorPage: React.FC = () => {
           ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
           ctx.stroke();
         };
-        strokeLaserLayer(`rgba(255, 210, 170, ${u * 0.5})`, 20);
-        strokeLaserLayer(`rgba(255, 85, 55, ${u * 0.82})`, 10);
-        strokeLaserLayer(`rgba(255, 245, 230, ${u * 0.98})`, 3.5);
+        strokeLaserLayer(`rgba(255, 200, 140, ${u * 0.72})`, 34);
+        strokeLaserLayer(`rgba(255, 45, 28, ${u * 0.94})`, 16);
+        strokeLaserLayer(`rgba(255, 255, 255, ${u * 1})`, 6);
       }
     }
 
@@ -398,21 +492,21 @@ const SlideDeckEditorPage: React.FC = () => {
     if (head) {
       const { x: hx, y: hy } = head;
       ctx.save();
-      const gr = ctx.createRadialGradient(hx, hy, 0, hx, hy, 42);
+      const gr = ctx.createRadialGradient(hx, hy, 0, hx, hy, 58);
       gr.addColorStop(0, 'rgba(255, 255, 255, 1)');
-      gr.addColorStop(0.1, 'rgba(255, 230, 120, 0.98)');
-      gr.addColorStop(0.28, 'rgba(255, 70, 45, 0.92)');
-      gr.addColorStop(0.55, 'rgba(255, 35, 25, 0.45)');
+      gr.addColorStop(0.08, 'rgba(255, 245, 160, 1)');
+      gr.addColorStop(0.22, 'rgba(255, 80, 40, 0.98)');
+      gr.addColorStop(0.48, 'rgba(255, 30, 15, 0.62)');
       gr.addColorStop(1, 'rgba(255, 0, 0, 0)');
       ctx.fillStyle = gr;
       ctx.beginPath();
-      ctx.arc(hx, hy, 42, 0, Math.PI * 2);
+      ctx.arc(hx, hy, 58, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowColor = 'rgba(255, 60, 40, 0.95)';
-      ctx.shadowBlur = 18;
+      ctx.shadowColor = 'rgba(255, 90, 50, 1)';
+      ctx.shadowBlur = 32;
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+      ctx.arc(hx, hy, 10, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -435,6 +529,7 @@ const SlideDeckEditorPage: React.FC = () => {
   const clearLaserCanvas = useCallback(() => {
     laserTrailRef.current = [];
     laserHeadRef.current = null;
+    laserPointerDownRef.current = false;
     if (laserRafRef.current != null) {
       cancelAnimationFrame(laserRafRef.current);
       laserRafRef.current = null;
@@ -494,10 +589,44 @@ const SlideDeckEditorPage: React.FC = () => {
     redrawOverlay();
   }, [pdfDoc, pageNum, redrawOverlay, clearLaserCanvas]);
 
+  const renderImagePage = useCallback(() => {
+    const img = baseImageRef.current;
+    if (!img || !imageMode || !pdfCanvasRef.current) return;
+    const nw = img.naturalWidth || img.width;
+    const nh = img.naturalHeight || img.height;
+    if (!nw || !nh) return;
+    const w = Math.round(nw * PDF_RENDER_SCALE);
+    const h = Math.round(nh * PDF_RENDER_SCALE);
+    viewportRef.current = { width: w, height: h };
+    const canvas = pdfCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    canvas.width = w;
+    canvas.height = h;
+    const overlay = overlayRef.current;
+    if (overlay) {
+      overlay.width = w;
+      overlay.height = h;
+    }
+    const laser = laserCanvasRef.current;
+    if (laser) {
+      laser.width = w;
+      laser.height = h;
+    }
+    clearLaserCanvas();
+    ctx.drawImage(img, 0, 0, w, h);
+    redrawOverlay();
+  }, [imageMode, redrawOverlay, clearLaserCanvas]);
+
   useEffect(() => {
     if (!pdfDoc) return;
     void renderPdfPage();
   }, [pdfDoc, pageNum, renderPdfPage]);
+
+  useEffect(() => {
+    if (!imageMode) return;
+    void renderImagePage();
+  }, [imageMode, pageNum, renderImagePage]);
 
   useEffect(() => {
     redrawOverlay();
@@ -657,7 +786,7 @@ const SlideDeckEditorPage: React.FC = () => {
     }));
   };
 
-  const onLaserPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const pushLaserSamplesFromEvent = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = laserCanvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -679,9 +808,48 @@ const SlideDeckEditorPage: React.FC = () => {
     scheduleLaserPaint();
   };
 
-  const onLaserPointerLeave = () => {
+  const onLaserPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
+    laserPointerDownRef.current = true;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    pushLaserSamplesFromEvent(e);
+  };
+
+  const onLaserPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!laserPointerDownRef.current) return;
+    pushLaserSamplesFromEvent(e);
+  };
+
+  const endLaserStroke = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+    laserPointerDownRef.current = false;
     laserHeadRef.current = null;
+    if (e) {
+      try {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     scheduleLaserPaint();
+  };
+
+  const onLaserPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
+    endLaserStroke(e);
+  };
+
+  const onLaserPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    endLaserStroke(e);
+  };
+
+  const onLaserLostPointerCapture = () => {
+    endLaserStroke();
   };
 
   const commitText = () => {
@@ -718,15 +886,46 @@ const SlideDeckEditorPage: React.FC = () => {
     setTextDialog((d) => ({ ...d, open: false, value: '', editingId: undefined }));
   };
 
-  const exportPdf = async () => {
-    if (!pdfDoc) return;
+  const buildAnnotatedPdfBlob = useCallback(async (): Promise<Blob | null> => {
+    if (imageMode) {
+      const img = baseImageRef.current;
+      if (!img) return null;
+      const nw = img.naturalWidth || img.width;
+      const nh = img.naturalHeight || img.height;
+      if (!nw || !nh) return null;
+      const w = Math.round(nw * PDF_RENDER_SCALE);
+      const h = Math.round(nh * PDF_RENDER_SCALE);
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const cctx = c.getContext('2d');
+      if (!cctx) return null;
+      cctx.drawImage(img, 0, 0, w, h);
+      const idx = pageNum - 1;
+      const strokes = strokesByPage[idx] || [];
+      const texts = textByPage[idx] || [];
+      for (const s of strokes) {
+        drawStrokeSmooth(cctx, s);
+      }
+      for (const t of texts) {
+        cctx.font = `${t.fontSize}px sans-serif`;
+        cctx.fillStyle = t.color;
+        cctx.fillText(t.text, t.x, t.y);
+      }
+      const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgData = c.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', 0, 0, pageW, pageH, undefined, 'FAST');
+      return pdf.output('blob');
+    }
+    if (!pdfDoc) return null;
     const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
 
     for (let p = 1; p <= numPages; p++) {
       const page = await pdfDoc.getPage(p);
-      // Gleicher Maßstab wie im Editor — Annotationen liegen in diesen Viewport-Koordinaten
       const vp = page.getViewport({ scale: PDF_RENDER_SCALE });
       const c = document.createElement('canvas');
       c.width = vp.width;
@@ -750,11 +949,109 @@ const SlideDeckEditorPage: React.FC = () => {
       if (p > 1) pdf.addPage();
       pdf.addImage(img, 'PNG', 0, 0, pageW, pageH, undefined, 'FAST');
     }
-    pdf.save(`${(fileName || 'folien').replace(/\.pdf$/i, '')}_bearbeitet.pdf`);
+    return pdf.output('blob');
+  }, [imageMode, pdfDoc, numPages, pageNum, strokesByPage, textByPage]);
+
+  const exportPdf = async () => {
+    const blob = await buildAnnotatedPdfBlob();
+    if (!blob) return;
+    const base = (fileName || 'folien').replace(/\.(pdf|png|jpe?g|gif|webp|bmp|svg|pptx?)$/i, '');
+    const downloadName = `${base}_bearbeitet.pdf`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = downloadName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const saveFolienVersion = async () => {
+    const label = saveLabel.trim();
+    if (!label) {
+      window.alert('Bitte einen Zusatz für den Dateinamen eingeben (z. B. Klasse5 oder mitLoesungen).');
+      return;
+    }
+    const normPath = filePath.replace(/\\/g, '/').trim();
+    if (!normPath) {
+      window.alert('Kein Dateipfad – bitte die Datei aus dem Ordner erneut öffnen.');
+      return;
+    }
+    if (!normPath.includes('/')) {
+      window.alert(
+        'Kein Zielordner im Pfad. Die Datei muss in einem Ordner liegen (Pfad mit „/“), damit die Kopie daneben gespeichert werden kann.'
+      );
+      return;
+    }
+    const blob = await buildAnnotatedPdfBlob();
+    if (!blob) {
+      window.alert('PDF konnte nicht erzeugt werden. Bitte kurz warten und erneut versuchen.');
+      return;
+    }
+    const stem = getStemForSave(fileName || 'folien') || 'folien';
+    const outName = buildStemSuffixPdfName(stem, label);
+    let parentPath = parentDirGitPath(normPath);
+    if (parentPath.startsWith('git-intern//Users/')) {
+      parentPath = parentPath.replace(
+        'git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/',
+        'git-intern/'
+      );
+    }
+    if (!parentPath) {
+      window.alert('Kein Zielordner für diese Datei.');
+      return;
+    }
+    setSaveBusy(true);
+    try {
+      const fd = new FormData();
+      // Reihenfolge wie Whiteboard: zuerst Datei, dann targetPath (multer/express-kompatibel)
+      fd.append('file', blob, outName);
+      fd.append('targetPath', parentPath);
+      const res = await fetch('/api/file-system-paths/save-file', {
+        method: 'POST',
+        body: fd,
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        let msg = 'Speichern fehlgeschlagen';
+        try {
+          const j = (await res.json()) as { error?: string; message?: string };
+          if (j.message) msg = j.message;
+          else if (j.error) msg = j.error;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
+      }
+      setSaveDialogOpen(false);
+      setSaveLabel('');
+      setSnackbar({ open: true, message: `Gespeichert: ${outName}` });
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Fehler beim Speichern');
+    } finally {
+      setSaveBusy(false);
+    }
   };
 
   const openRawPdf = async () => {
     if (!filePath) return;
+    if (imageMode) {
+      const existing = imageBlobUrlRef.current;
+      if (existing) {
+        window.open(existing, '_blank');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(filePath)}`);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 8000);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     try {
       const apiUrl = fromPptx
         ? `/api/file-system-paths/pptx-as-pdf?filePath=${encodeURIComponent(filePath)}`
@@ -774,9 +1071,14 @@ const SlideDeckEditorPage: React.FC = () => {
     const p = new URLSearchParams(window.location.search);
     const fnQ = p.get('fileName') || '';
     const srcQ = p.get('source') || '';
-    const isPptxUrl = srcQ === 'pptx' || /\.pptx$/i.test(fnQ) || /\.ppt$/i.test(fnQ);
-    const hint =
-      loadPhase === 'parse'
+    const extQ = fnQ.match(/\.([^.]+)$/i)?.[1]?.toLowerCase() || '';
+    const isPptxUrl = srcQ === 'pptx' || extQ === 'pptx' || extQ === 'ppt';
+    const isImageUrl = srcQ === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(extQ);
+    const hint = isImageUrl
+      ? loadPhase === 'parse'
+        ? 'Bild wird vorbereitet …'
+        : 'Bild wird vom Server gelesen und übertragen. Große Dateien brauchen länger.'
+      : loadPhase === 'parse'
         ? 'PDF wird im Browser analysiert (pdf.js) …'
         : loadPhase === 'download' && isPptxUrl
           ? 'Konvertiertes PDF wird übertragen …'
@@ -859,9 +1161,11 @@ const SlideDeckEditorPage: React.FC = () => {
         >
           <Tooltip
             title={
-              fromPptx
-                ? `${fileName} — PowerPoint → PDF (Server), Stift/Text wie bei PDF`
-                : fileName
+              imageMode
+                ? `${fileName} — Bild, Stift/Text wie bei PDF`
+                : fromPptx
+                  ? `${fileName} — PowerPoint → PDF (Server), Stift/Text wie bei PDF`
+                  : fileName
             }
           >
             <Typography
@@ -898,7 +1202,7 @@ const SlideDeckEditorPage: React.FC = () => {
               <TextIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Laserpointer mit Nachleuchten (~3 s, nicht im PDF)">
+          <Tooltip title="Laserpointer: Maustaste gedrückt halten (~3 s Nachleuchten, nicht im PDF)">
             <IconButton size="small" color={tool === 'laser' ? 'primary' : 'default'} onClick={() => setTool('laser')}>
               <LaserPointerIcon sx={{ fontSize: 18 }} />
             </IconButton>
@@ -1006,12 +1310,17 @@ const SlideDeckEditorPage: React.FC = () => {
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title={fromPptx ? 'Vorschau-PDF (Tab)' : 'Original-PDF (Tab)'}>
+          <Tooltip title={imageMode ? 'Originalbild (Tab)' : fromPptx ? 'Vorschau-PDF (Tab)' : 'Original-PDF (Tab)'}>
             <IconButton size="small" onClick={() => void openRawPdf()}>
               <OpenInNewIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="PDF speichern (mit Anmerkungen)">
+          <Tooltip title="Version im gleichen Ordner speichern (PDF-Kopie mit Beschriftung)">
+            <IconButton size="small" color="secondary" onClick={() => setSaveDialogOpen(true)}>
+              <SaveIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="PDF herunterladen (mit Anmerkungen)">
             <IconButton size="small" color="primary" onClick={() => void exportPdf()}>
               <GetAppIcon />
             </IconButton>
@@ -1087,9 +1396,11 @@ const SlideDeckEditorPage: React.FC = () => {
             />
             <canvas
               ref={laserCanvasRef}
+              onPointerDown={onLaserPointerDown}
               onPointerMove={onLaserPointerMove}
-              onPointerLeave={onLaserPointerLeave}
-              onPointerDown={onLaserPointerMove}
+              onPointerUp={onLaserPointerUp}
+              onPointerCancel={onLaserPointerCancel}
+              onLostPointerCapture={onLaserLostPointerCapture}
               style={{
                 position: 'absolute',
                 left: 0,
@@ -1098,7 +1409,7 @@ const SlideDeckEditorPage: React.FC = () => {
                 height: '100%',
                 display: 'block',
                 pointerEvents: tool === 'laser' ? 'auto' : 'none',
-                cursor: tool === 'laser' ? 'none' : 'default',
+                cursor: tool === 'laser' ? 'crosshair' : 'default',
                 touchAction: 'none',
               }}
             />
@@ -1152,6 +1463,42 @@ const SlideDeckEditorPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={saveDialogOpen} onClose={() => !saveBusy && setSaveDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Version speichern</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Zusatz im Dateinamen"
+            value={saveLabel}
+            onChange={(e) => setSaveLabel(e.target.value)}
+            placeholder="z. B. Klasse5 oder mitLoesungen"
+            disabled={saveBusy}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && saveLabel.trim() && !saveBusy) {
+                e.preventDefault();
+                void saveFolienVersion();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)} disabled={saveBusy}>
+            Abbrechen
+          </Button>
+          <Button variant="contained" disabled={!saveLabel.trim() || saveBusy} onClick={() => void saveFolienVersion()}>
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3500}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        message={snackbar.message}
+      />
     </Box>
   );
 };

@@ -43,8 +43,20 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const mammoth_1 = __importDefault(require("mammoth"));
 const XLSX = __importStar(require("xlsx"));
+const libreoffice_convert_1 = require("libreoffice-convert");
 const prisma = new client_1.PrismaClient();
 class FileSystemPathController {
+    /** PPTX/PPT → PDF (LibreOffice/soffice; lokal installiert) für Folien-Editor */
+    static convertPowerPointBufferToPdf(fileContent) {
+        return new Promise((resolve, reject) => {
+            (0, libreoffice_convert_1.convert)(fileContent, '.pdf', undefined, (err, done) => {
+                if (err)
+                    reject(err);
+                else
+                    resolve(done);
+            });
+        });
+    }
     /**
      * Get all paths
      */
@@ -663,6 +675,45 @@ class FileSystemPathController {
             res.status(500).json({ error: 'Failed to read PowerPoint file' });
         }
     }
+    /**
+     * PowerPoint-Datei nach PDF konvertieren und inline ausliefern (Folien-Editor im Browser).
+     * Benötigt eine funktionierende LibreOffice-/soffice-Installation auf dem Server.
+     */
+    static async readPptxAsPdf(req, res) {
+        try {
+            const { filePath } = req.query;
+            if (!filePath || typeof filePath !== 'string') {
+                return res.status(400).json({ error: 'filePath is required' });
+            }
+            const ext = path_1.default.extname(filePath).toLowerCase();
+            if (ext !== '.pptx' && ext !== '.ppt') {
+                return res.status(400).json({ error: 'Nur .pptx oder .ppt' });
+            }
+            const fileContent = await storageManager_1.StorageManager.readFile(filePath);
+            if (!fileContent) {
+                return res.status(404).json({ error: 'File not found' });
+            }
+            const pdfBuffer = await FileSystemPathController.convertPowerPointBufferToPdf(fileContent);
+            const baseName = path_1.default.basename(filePath, ext).replace(/[^\w.\-äöüÄÖÜß ]+/g, '_');
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${baseName}.pdf"`);
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.send(pdfBuffer);
+        }
+        catch (error) {
+            console.error('readPptxAsPdf:', error);
+            const errMsg = error instanceof Error ? error.message : String(error);
+            const hint = /soffice|libreoffice|spawn|ENOENT|convert/i.test(errMsg)
+                ? ' Auf dem Server muss LibreOffice (soffice) installiert und im PATH erreichbar sein.'
+                : '';
+            res.status(503).json({
+                error: 'pptx_to_pdf_failed',
+                message: `PowerPoint konnte nicht nach PDF konvertiert werden.${hint}`,
+                detail: errMsg,
+            });
+        }
+    }
     // PDF-Datei lesen
     static async readPdfFile(req, res) {
         try {
@@ -1083,28 +1134,26 @@ class FileSystemPathController {
             console.log('=== SAVE FILE REQUEST ===');
             console.log('File:', file.originalname);
             console.log('Target path:', targetPath);
-            // Determine the full path
+            let tp = String(targetPath).replace(/\\/g, '/').trim();
+            if (tp.startsWith('git-intern//Users/')) {
+                tp = tp.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', 'git-intern/');
+            }
             let fullTargetPath;
-            if (targetPath.startsWith('git-intern/')) {
-                // Handle git-intern paths
-                const relativePath = decodeURIComponent(targetPath.replace('git-intern/', ''));
-                // Use absolute path to project root for development
-                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                fullTargetPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+            if (tp.startsWith('git-intern/')) {
+                let rel = tp.replace(/^git-intern\//, '');
+                try {
+                    rel = decodeURIComponent(rel);
+                }
+                catch {
+                    /* ignore */
+                }
+                fullTargetPath = storageManager_1.StorageManager.resolveGitInternRelativePath(rel);
             }
-            else if (targetPath.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
-                // Handle already absolute paths
-                fullTargetPath = targetPath;
-            }
-            else if (targetPath.startsWith('git-intern//Users/')) {
-                // Handle double git-intern paths (fix for the bug)
-                const relativePath = decodeURIComponent(targetPath.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', ''));
-                const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                fullTargetPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+            else if (tp.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
+                fullTargetPath = tp;
             }
             else {
-                // Handle local paths
-                fullTargetPath = path_1.default.resolve(targetPath);
+                fullTargetPath = path_1.default.resolve(tp);
             }
             console.log('Full target path:', fullTargetPath);
             // Ensure directory exists
@@ -1501,6 +1550,65 @@ class FileSystemPathController {
         catch (error) {
             console.error('Fehler beim Erstellen der Prüfungsdatei:', error);
             res.status(500).json({ error: 'Fehler beim Erstellen der Prüfungsdatei' });
+        }
+    }
+    /**
+     * Create a new lesson folder with standard markdown files
+     */
+    static async createLessonFolder(req, res) {
+        try {
+            const { folderPath, lessonName } = req.body;
+            if (!folderPath || !lessonName || !lessonName.trim()) {
+                return res.status(400).json({ error: 'folderPath und lessonName sind erforderlich' });
+            }
+            const normalizedLessonName = lessonName.trim();
+            const sanitizeForFolder = (input) => input
+                .replace(/[\\/:*?"<>|]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const lessonFolderBaseName = sanitizeForFolder(normalizedLessonName);
+            if (!lessonFolderBaseName) {
+                return res.status(400).json({ error: 'lessonName enthält keine gültigen Zeichen' });
+            }
+            let fullParentFolderPath;
+            if (folderPath.startsWith('git-intern/')) {
+                const relativePath = folderPath.replace('git-intern/', '');
+                if (process.env.NODE_ENV === 'production') {
+                    const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                    const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
+                    const jmReihenPath = fs_1.default.existsSync(serverPath) ? serverPath : projectPath;
+                    fullParentFolderPath = path_1.default.join(jmReihenPath, relativePath);
+                }
+                else {
+                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+                    fullParentFolderPath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+                }
+            }
+            else {
+                fullParentFolderPath = path_1.default.resolve(folderPath);
+            }
+            if (!fs_1.default.existsSync(fullParentFolderPath)) {
+                return res.status(404).json({ error: 'Ausgewählter Zielordner wurde nicht gefunden' });
+            }
+            const lessonFolderName = lessonFolderBaseName;
+            const fullLessonFolderPath = path_1.default.join(fullParentFolderPath, lessonFolderName);
+            if (fs_1.default.existsSync(fullLessonFolderPath)) {
+                return res.status(409).json({ error: 'Ein Stundenordner mit diesem Namen existiert bereits' });
+            }
+            fs_1.default.mkdirSync(fullLessonFolderPath, { recursive: true });
+            const relativeFolderPath = folderPath.startsWith('git-intern/')
+                ? `${folderPath}/${lessonFolderName}`
+                : fullLessonFolderPath;
+            res.json({
+                success: true,
+                lessonFolderName,
+                lessonFolderPath: relativeFolderPath,
+                children: []
+            });
+        }
+        catch (error) {
+            console.error('Fehler beim Erstellen des Stundenordners:', error);
+            res.status(500).json({ error: 'Fehler beim Erstellen des Stundenordners' });
         }
     }
     /**

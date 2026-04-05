@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -16,55 +16,38 @@ import {
   Typography,
   ButtonBase,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, CheckCircle as CheckCircleIcon, Close as CloseIcon } from '@mui/icons-material';
+import {
+  ArrowBack as ArrowBackIcon,
+  AssignmentTurnedIn as AssignmentTurnedInIcon,
+  CheckCircle as CheckCircleIcon,
+  Close as CloseIcon,
+  EditNote as EditNoteIcon,
+  PhotoCamera as PhotoCameraIcon,
+  Quiz as QuizIcon,
+} from '@mui/icons-material';
 import { apiGet, apiPost } from '../lib/api';
-import { DialogCloseIconButton, dialogCloseTitleSx } from '../components/ui/dialog-close-icon-button';
-
-type ExitTicketTemplateType =
-  | 'feedback'
-  | 'quick-check'
-  | 'transfer'
-  | 'draw'
-  | 'error-hunt'
-  | 'exam-question'
-  | 'prediction';
-
-type ExitTicketResponseMode = 'questions-only' | 'text-input' | 'photo-upload';
-
-type ExitTicketTemplate = {
-  id: ExitTicketTemplateType;
-  title: string;
-  description: string;
-  questions: string[];
-  responseMode: ExitTicketResponseMode;
-};
-
-type CollectedExitTicketResponse = {
-  studentId: string;
-  studentName: string;
-  answers: string[];
-  drawingDataUrl?: string;
-  photoDataUrl?: string;
-  completionOnly?: boolean;
-  submittedAt: string;
-};
+import { DialogCloseIconButton } from '../components/ui/dialog-close-icon-button';
+import {
+  StudentExitTicketRender,
+  EXIT_TICKET_CARD_IMAGE_SRC,
+  TEMPLATE_IMAGE_SRC,
+  renderWithBoldOperators,
+  withTemplateDefaults,
+  type ExitTicketSubmitMeta,
+  type ExitTicketTemplate,
+  type ExitTicketTemplateType,
+  type ExitTicketResponseMode,
+} from '../components/exit-ticket/ExitTicketStudentForm';
+import { ExitTicketAllResponsesDialog } from '../components/exit-ticket/ExitTicketAllResponsesDialog';
+import { ExitTicketCardHeaderImage } from '../components/exit-ticket/ExitTicketCardHeaderImage';
+import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
 
 const EXIT_TICKET_STORAGE_KEY = 'activeExitTicketTemplateV1';
-
-const TEMPLATE_IMAGE_SRC: Record<ExitTicketTemplateType, string> = {
-  feedback: '/exit-ticket/exit-ticket-feedback.svg',
-  'quick-check': '/exit-ticket/exit-ticket-quick-check.svg',
-  transfer: '/exit-ticket/exit-ticket-transfer.svg',
-  draw: '/exit-ticket/exit-ticket-draw.svg',
-  'error-hunt': '/exit-ticket/exit-ticket-quick-check.svg',
-  'exam-question': '/exit-ticket/exit-ticket-feedback.svg',
-  prediction: '/exit-ticket/exit-ticket-transfer.svg',
-};
 
 const FEEDBACK_TEMPLATE: ExitTicketTemplate = {
   id: 'feedback',
   title: '3-Fragen-Feedback',
-  description: 'Reflexion zur Stunde aus Sicht der SuS.',
+  description: '',
   responseMode: 'questions-only',
   questions: [
     'Was ist das Wichtigste, das du aus der heutigen Stunde mitnimmst?',
@@ -78,7 +61,7 @@ const buildQuickCheckTemplate = (topic: string): ExitTicketTemplate => {
   return {
     id: 'quick-check',
     title: '3 kurze Fragen zum Thema',
-    description: `Automatisch erzeugte Kurzfragen zu "${cleanedTopic}".`,
+    description: '',
     responseMode: 'questions-only',
     questions: [
       `Erkläre in 1-2 Sätzen die Kernidee von ${cleanedTopic}.`,
@@ -91,7 +74,7 @@ const buildQuickCheckTemplate = (topic: string): ExitTicketTemplate => {
 const TRANSFER_TEMPLATE: ExitTicketTemplate = {
   id: 'transfer',
   title: 'Transferaufgabe',
-  description: 'Übertrage das Gelernte auf eine neue Situation.',
+  description: '',
   responseMode: 'questions-only',
   questions: [
     'Beschreibe eine reale Situation, in der das heutige Thema vorkommt.',
@@ -103,7 +86,7 @@ const TRANSFER_TEMPLATE: ExitTicketTemplate = {
 const DRAW_TEMPLATE: ExitTicketTemplate = {
   id: 'draw',
   title: 'Zeichne ein Bild zur Stunde',
-  description: 'Zeig mit einer Zeichnung, was dir heute am wichtigsten war.',
+  description: '',
   responseMode: 'questions-only',
   questions: [
     'Zeichne ein Bild, das deine wichtigste Idee aus der Stunde zeigt.',
@@ -115,7 +98,7 @@ const DRAW_TEMPLATE: ExitTicketTemplate = {
 const ERROR_HUNT_TEMPLATE: ExitTicketTemplate = {
   id: 'error-hunt',
   title: 'Fehler-Fahndung',
-  description: 'Finde und verbessere typische Denk- oder Rechenfehler.',
+  description: '',
   responseMode: 'questions-only',
   questions: [
     'Finde einen typischen Fehler zum heutigen Thema.',
@@ -127,7 +110,7 @@ const ERROR_HUNT_TEMPLATE: ExitTicketTemplate = {
 const EXAM_QUESTION_TEMPLATE: ExitTicketTemplate = {
   id: 'exam-question',
   title: 'Prüfungsfrage bauen',
-  description: 'Erstelle eine mögliche Prüfungsfrage zur heutigen Stunde.',
+  description: '',
   responseMode: 'questions-only',
   questions: [
     'Erstelle eine sinnvolle Prüfungsfrage zum heutigen Thema.',
@@ -139,7 +122,7 @@ const EXAM_QUESTION_TEMPLATE: ExitTicketTemplate = {
 const PREDICTION_TEMPLATE: ExitTicketTemplate = {
   id: 'prediction',
   title: 'Vorhersage fürs nächste Mal',
-  description: 'Schätze, was als Nächstes kommt und warum.',
+  description: '',
   responseMode: 'questions-only',
   questions: [
     'Schätze: Was wird in der nächsten Stunde wahrscheinlich behandelt?',
@@ -160,144 +143,164 @@ const parseStoredTemplate = (): ExitTicketTemplate | null => {
   }
 };
 
-const withTemplateDefaults = (template: ExitTicketTemplate | null | undefined): ExitTicketTemplate | null => {
-  if (!template) return null;
-  return {
-    ...template,
-    responseMode: template.responseMode ?? 'questions-only',
-  };
-};
-
-const OPERATOR_WORDS = [
-  'Erkläre',
-  'Nenne',
-  'Beschreibe',
-  'Formuliere',
-  'Zeichne',
-  'Beschrifte',
-  'Gib',
-  'Zeig',
-  'Übertrage',
-  'Schreibe',
-  'Bearbeite',
-  'Finde',
-  'Korrigiere',
-  'Erstelle',
-  'Begründe',
-  'Schätze',
+const ALLOWED_EXIT_TICKET_TEMPLATE_PARAMS: ExitTicketTemplateType[] = [
+  'feedback',
+  'quick-check',
+  'transfer',
+  'draw',
+  'error-hunt',
+  'exam-question',
+  'prediction',
 ];
 
-const renderWithBoldOperators = (text: string, keyPrefix: string) => {
-  const escapedWords = OPERATOR_WORDS.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const pattern = new RegExp(`\\b(${escapedWords.join('|')})\\b`, 'gi');
-  const parts = text.split(pattern);
+function getExitTicketTemplateFromSearch(search: string): ExitTicketTemplateType | null {
+  const params = new URLSearchParams(search);
+  const template = params.get('template');
+  if (!template || !ALLOWED_EXIT_TICKET_TEMPLATE_PARAMS.includes(template as ExitTicketTemplateType)) {
+    return null;
+  }
+  return template as ExitTicketTemplateType;
+}
 
-  return parts.map((part, index) => {
-    const isOperatorWord = OPERATOR_WORDS.some((word) => word.toLowerCase() === part.toLowerCase());
-    return (
-      <Box component="span" key={`${keyPrefix}-${index}`} sx={isOperatorWord ? { fontWeight: 900 } : undefined}>
-        {part}
-      </Box>
-    );
-  });
-};
+const EXIT_TICKET_LEGACY_LESSON_PATH = '__exit_ticket_active__';
+
+/** Optional: Exit-Ticket-Zeile (Gruppe oder Legacy), für gefilterte Lehrer-Antwortliste */
+function parseExitTicketLessonPathFromSearch(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const lp = params.get('lessonPath');
+  if (!lp) return null;
+  if (lp === EXIT_TICKET_LEGACY_LESSON_PATH) return lp;
+  if (lp.startsWith('__exit_ticket_g_') && lp.endsWith('__') && lp.length > 20) return lp;
+  return null;
+}
+
+/** Nur gleiche Origin + /teacher/stunde mit groupId & lessonPath (Open-Redirect vermeiden) */
+function parseSafeStundeReturnTo(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const raw = params.get('returnTo');
+  if (!raw) return null;
+  try {
+    const url = new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+    if (url.pathname !== '/teacher/stunde') return null;
+    const gid = url.searchParams.get('groupId');
+    const lp = url.searchParams.get('lessonPath');
+    if (!gid?.trim() || !lp?.trim()) return null;
+    const pm = url.searchParams.get('planMode');
+    if (pm !== null && pm !== 'create' && pm !== 'run' && pm !== 'background') {
+      url.searchParams.delete('planMode');
+    }
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return null;
+  }
+}
 
 export default function ExitTicketPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const safeStundeReturnTo = useMemo(() => parseSafeStundeReturnTo(location.search), [location.search]);
+  const exitTicketLessonPathFilter = useMemo(() => parseExitTicketLessonPathFromSearch(location.search), [location.search]);
+  /** Karten-Markierung + Button auch ohne vorherigen Klick, wenn ?template= in der URL steht */
+  const templateFromUrlForCard = useMemo(
+    () => getExitTicketTemplateFromSearch(location.search),
+    [location.search]
+  );
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
-  const [selectedType, setSelectedType] = useState<ExitTicketTemplateType>('feedback');
+  /** Kein Default „feedback“ — erst nach Klick auf eine Karte oder ?template= in der URL */
+  const [selectedType, setSelectedType] = useState<ExitTicketTemplateType | null>(null);
+  const activeExitTicketCardId = useMemo(
+    () => selectedType ?? templateFromUrlForCard,
+    [selectedType, templateFromUrlForCard]
+  );
   const [selectedResponseMode, setSelectedResponseMode] = useState<ExitTicketResponseMode>('questions-only');
   const [quickCheckTopic, setQuickCheckTopic] = useState('');
-  const [publishedTemplate, setPublishedTemplate] = useState<ExitTicketTemplate | null>(parseStoredTemplate());
+  /** SuS: kein localStorage — sonst wirkt „3-Fragen-Feedback“ aus Lehrer-Cache/Altstand */
+  const [publishedTemplate, setPublishedTemplate] = useState<ExitTicketTemplate | null>(null);
+  const [exitTicketSubmitMeta, setExitTicketSubmitMeta] = useState<ExitTicketSubmitMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
-  const [responses, setResponses] = useState<CollectedExitTicketResponse[]>([]);
-  const [loadingResponses, setLoadingResponses] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
-  const [draftTemplateType, setDraftTemplateType] = useState<ExitTicketTemplateType>('feedback');
+  const [draftTemplateType, setDraftTemplateType] = useState<ExitTicketTemplateType>('exam-question');
   const [draftTopic, setDraftTopic] = useState('');
   const [draftResponseMode, setDraftResponseMode] = useState<ExitTicketResponseMode>('questions-only');
   const [draftAnswers, setDraftAnswers] = useState<string[]>([]);
   const [draftPhotoDataUrl, setDraftPhotoDataUrl] = useState<string>('');
   const draftCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  /** Verhindert mehrfaches Auto-Öffnen bei gleichem ?template= solange die URL gleich bleibt */
+  const lastAutoOpenedTemplateFromUrlRef = useRef<ExitTicketTemplateType | null>(null);
+  const [allResponsesOpen, setAllResponsesOpen] = useState(false);
+  /** Gleicher Index wie Entry-Ticket (API heroImageIndex) */
+  const [exitHeroImageIndex, setExitHeroImageIndex] = useState(0);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const template = params.get('template');
-    const allowed: ExitTicketTemplateType[] = [
-      'feedback',
-      'quick-check',
-      'transfer',
-      'draw',
-      'error-hunt',
-      'exam-question',
-      'prediction',
-    ];
-    if (template && allowed.includes(template as ExitTicketTemplateType)) {
-      setSelectedType(template as ExitTicketTemplateType);
-    }
-  }, [location.search]);
+  /** „Vorhersage …“ oben in der Seitenleiste statt nur „ExitTicket“, wenn diese Vorlage aktiv ist */
+  const exitTicketPageHeaderTitle = useMemo(() => {
+    if (activeExitTicketCardId === 'prediction') return PREDICTION_TEMPLATE.title;
+    if (!isTeacher && publishedTemplate?.id === 'prediction' && publishedTemplate.title) return publishedTemplate.title;
+    return 'ExitTicket';
+  }, [activeExitTicketCardId, isTeacher, publishedTemplate]);
 
-  useEffect(() => {
-    let mounted = true;
+  const loadCurrentTemplate = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const response = await apiGet('/api/exit-ticket/current');
+      if (!response.ok) throw new Error('Laden fehlgeschlagen');
+      const data = await response.json();
 
-    const loadCurrentTemplate = async () => {
-      setLoading(true);
-      try {
-        const response = await apiGet('/api/exit-ticket/current');
-        if (!response.ok) throw new Error('Laden fehlgeschlagen');
-        const data = await response.json();
-        if (!mounted) return;
+      if (typeof data?.heroImageIndex === 'number') {
+        setExitHeroImageIndex(data.heroImageIndex);
+      }
+
+      if (isTeacher) {
         setPublishedTemplate(withTemplateDefaults(data?.template ?? null));
-      } catch {
-        if (mounted) {
-          // Fallback for existing local state in case API is temporarily unavailable.
-          setPublishedTemplate(withTemplateDefaults(parseStoredTemplate()));
+        setExitTicketSubmitMeta(null);
+      } else {
+        const tid = typeof data?.teacherId === 'string' ? data.teacherId : '';
+        const lp = typeof data?.lessonPath === 'string' ? data.lessonPath : '';
+        const pubAt = typeof data?.publishedAt === 'string' ? data.publishedAt.trim() : '';
+        const tpl = withTemplateDefaults(data?.template ?? null);
+        if (!pubAt || !tpl) {
+          setPublishedTemplate(null);
+          setExitTicketSubmitMeta(null);
+        } else {
+          setPublishedTemplate(tpl);
+          if (tid && lp) setExitTicketSubmitMeta({ teacherId: tid, lessonPath: lp });
+          else setExitTicketSubmitMeta(null);
         }
-      } finally {
-        if (mounted) setLoading(false);
       }
-    };
-
-    const loadResponses = async () => {
-      if (!isTeacher) return;
-      setLoadingResponses(true);
-      try {
-        const response = await apiGet('/api/exit-ticket/responses');
-        if (!response.ok) throw new Error('Antworten konnten nicht geladen werden');
-        const data = await response.json();
-        if (!mounted) return;
-        setResponses(Array.isArray(data?.responses) ? data.responses : []);
-      } catch {
-        if (mounted) setResponses([]);
-      } finally {
-        if (mounted) setLoadingResponses(false);
+    } catch {
+      if (isTeacher) {
+        setPublishedTemplate(withTemplateDefaults(parseStoredTemplate()));
+      } else {
+        setPublishedTemplate(null);
+        setExitTicketSubmitMeta(null);
       }
-    };
-
-    loadCurrentTemplate();
-    loadResponses();
-
-    return () => {
-      mounted = false;
-    };
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [isTeacher]);
 
-  const refreshResponses = async () => {
-    if (!isTeacher) return;
-    setLoadingResponses(true);
-    try {
-      const response = await apiGet('/api/exit-ticket/responses');
-      if (!response.ok) throw new Error('Antworten konnten nicht geladen werden');
-      const data = await response.json();
-      setResponses(Array.isArray(data?.responses) ? data.responses : []);
-    } catch {
-      setResponses([]);
-    } finally {
-      setLoadingResponses(false);
-    }
-  };
+  useEffect(() => {
+    void loadCurrentTemplate(false);
+  }, [loadCurrentTemplate]);
+
+  /** SuS: sanftes Nachladen, sobald die Lehrkraft freigibt (ohne Dashboard-Popup) */
+  useEffect(() => {
+    if (isTeacher) return;
+    const id = window.setInterval(() => {
+      void loadCurrentTemplate(true);
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [isTeacher, loadCurrentTemplate]);
+
+  useEffect(() => {
+    if (isTeacher) return;
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void loadCurrentTemplate(true);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [isTeacher, loadCurrentTemplate]);
 
   useEffect(() => {
     const isTypingTarget = (target: EventTarget | null) => {
@@ -312,12 +315,12 @@ export default function ExitTicketPage() {
       if (e.key !== 'Escape') return;
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
-      navigate('/dashboard');
+      navigate(safeStundeReturnTo ?? '/dashboard');
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [navigate]);
+  }, [navigate, safeStundeReturnTo]);
 
   useEffect(() => {
     if (!isTeacher) return;
@@ -331,23 +334,27 @@ export default function ExitTicketPage() {
     };
 
     const templateOrder: ExitTicketTemplateType[] = [
-      'feedback',
       'quick-check',
       'transfer',
       'draw',
       'error-hunt',
       'exam-question',
       'prediction',
+      'feedback',
     ];
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
 
+      e.preventDefault();
+      if (selectedType === null) {
+        setSelectedType(e.key === 'ArrowRight' ? templateOrder[0] : templateOrder[templateOrder.length - 1]);
+        return;
+      }
       const currentIndex = templateOrder.indexOf(selectedType);
       if (currentIndex < 0) return;
 
-      e.preventDefault();
       const delta = e.key === 'ArrowRight' ? 1 : -1;
       const nextIndex = Math.min(templateOrder.length - 1, Math.max(0, currentIndex + delta));
       setSelectedType(templateOrder[nextIndex]);
@@ -356,24 +363,6 @@ export default function ExitTicketPage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isTeacher, selectedType]);
-
-  const selectedTemplate = useMemo(() => {
-    const baseTemplate =
-      selectedType === 'feedback'
-        ? FEEDBACK_TEMPLATE
-        : selectedType === 'quick-check'
-          ? buildQuickCheckTemplate(quickCheckTopic)
-          : selectedType === 'error-hunt'
-            ? ERROR_HUNT_TEMPLATE
-            : selectedType === 'exam-question'
-              ? EXAM_QUESTION_TEMPLATE
-              : selectedType === 'prediction'
-                ? PREDICTION_TEMPLATE
-                : selectedType === 'draw'
-                  ? DRAW_TEMPLATE
-                  : TRANSFER_TEMPLATE;
-    return { ...baseTemplate, responseMode: selectedResponseMode };
-  }, [selectedType, quickCheckTopic, selectedResponseMode]);
 
   const draftTemplate = useMemo(() => {
     const baseTemplate =
@@ -393,31 +382,55 @@ export default function ExitTicketPage() {
     return { ...baseTemplate, responseMode: draftResponseMode };
   }, [draftTemplateType, draftTopic, draftResponseMode]);
 
-  const publishTemplate = async (templateToPublish: ExitTicketTemplate = selectedTemplate) => {
+  const publishTemplate = async (templateToPublish: ExitTicketTemplate): Promise<boolean> => {
     setPublishing(true);
     try {
       const response = await apiPost('/api/exit-ticket/publish', { template: templateToPublish });
       if (!response.ok) throw new Error('Veröffentlichen fehlgeschlagen');
+      const data = (await response.json()) as { lessonPath?: string };
       localStorage.setItem(EXIT_TICKET_STORAGE_KEY, JSON.stringify(templateToPublish));
       setPublishedTemplate(templateToPublish);
-      await refreshResponses();
+      if (typeof data?.lessonPath === 'string' && data.lessonPath.trim()) {
+        const next = new URLSearchParams(location.search);
+        next.set('lessonPath', data.lessonPath.trim());
+        navigate({ pathname: location.pathname, search: next.toString() }, { replace: true });
+      }
+      return true;
     } catch {
-      // Keep UI stable if server fails.
+      return false;
     } finally {
       setPublishing(false);
     }
   };
 
+  const openTemplateModal = useCallback((templateType: ExitTicketTemplateType) => {
+    setSelectedType(templateType);
+    setDraftTemplateType(templateType);
+    setDraftTopic(quickCheckTopic);
+    setDraftResponseMode(selectedResponseMode);
+    setDraftAnswers(new Array(3).fill(''));
+    setDraftPhotoDataUrl('');
+    setTemplateModalOpen(true);
+  }, [quickCheckTopic, selectedResponseMode]);
+
+  /** Stundenplan / Deep-Link: ?template=draw öffnet direkt den Vorlagen-Dialog (wie Klick auf die Karte) */
+  useEffect(() => {
+    const valid = getExitTicketTemplateFromSearch(location.search);
+    if (!valid) {
+      lastAutoOpenedTemplateFromUrlRef.current = null;
+      return;
+    }
+    if (!isTeacher || loading) return;
+    if (lastAutoOpenedTemplateFromUrlRef.current === valid) return;
+    lastAutoOpenedTemplateFromUrlRef.current = valid;
+    openTemplateModal(valid);
+  }, [isTeacher, loading, location.search, openTemplateModal]);
+
   const TEMPLATE_CARDS: Array<{ id: ExitTicketTemplateType; title: string; description: string }> = [
-    {
-      id: 'feedback',
-      title: FEEDBACK_TEMPLATE.title,
-      description: 'Reflexion: Was bleibt hängen?',
-    },
     {
       id: 'quick-check',
       title: '3 kurze Fragen (auto)',
-      description: 'Zum Thema passende Mini-Fragen.',
+      description: '',
     },
     {
       id: 'transfer',
@@ -444,28 +457,25 @@ export default function ExitTicketPage() {
       title: PREDICTION_TEMPLATE.title,
       description: 'Inhalt der nächsten Stunde vorhersagen.',
     },
+    {
+      id: 'feedback',
+      title: FEEDBACK_TEMPLATE.title,
+      description: 'Reflexion: Was bleibt hängen?',
+    },
   ];
-
-  const openTemplateModal = (templateType: ExitTicketTemplateType) => {
-    setSelectedType(templateType);
-    setDraftTemplateType(templateType);
-    setDraftTopic(quickCheckTopic);
-    setDraftResponseMode(selectedResponseMode);
-    setDraftAnswers(new Array(3).fill(''));
-    setDraftPhotoDataUrl('');
-    setTemplateModalOpen(true);
-  };
 
   const closeTemplateModal = () => {
     setTemplateModalOpen(false);
+    if (safeStundeReturnTo) navigate(safeStundeReturnTo);
   };
 
   const publishFromModal = async () => {
     setSelectedType(draftTemplateType);
     setQuickCheckTopic(draftTopic);
     setSelectedResponseMode(draftResponseMode);
-    await publishTemplate(draftTemplate);
+    const ok = await publishTemplate(draftTemplate);
     setTemplateModalOpen(false);
+    if (ok && safeStundeReturnTo) navigate(safeStundeReturnTo);
   };
 
   const clearDraftCanvas = () => {
@@ -525,9 +535,9 @@ export default function ExitTicketPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6fb', py: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 2.5 } }}>
       <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Tooltip title="Zurück">
+          <Tooltip title={safeStundeReturnTo ? 'Zurück zur Stunde' : 'Zurück'}>
             <IconButton
-              onClick={() => navigate(-1)}
+              onClick={() => (safeStundeReturnTo ? navigate(safeStundeReturnTo) : navigate(-1))}
               size="small"
               aria-label="Zurück"
               sx={{ p: 0, minWidth: 32, width: 32, height: 32, bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}
@@ -535,12 +545,23 @@ export default function ExitTicketPage() {
               <ArrowBackIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Tooltip>
-          <Typography variant="h6" sx={{ color: '#1a237e' }}>
-            ExitTicket
+          <Typography
+            variant="h6"
+            sx={{
+              color: '#1a237e',
+              textAlign: 'center',
+              px: 1,
+              lineHeight: 1.25,
+              maxWidth: { xs: '70vw', sm: 480 },
+              fontWeight: exitTicketPageHeaderTitle !== 'ExitTicket' ? 800 : 600,
+              fontSize: exitTicketPageHeaderTitle !== 'ExitTicket' ? { xs: '0.92rem', sm: '1.05rem' } : undefined,
+            }}
+          >
+            {exitTicketPageHeaderTitle}
           </Typography>
-          <Tooltip title="Schließen (zum Dashboard)">
+          <Tooltip title={safeStundeReturnTo ? 'Schließen (zurück zur Stunde)' : 'Schließen (zum Dashboard)'}>
             <IconButton
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(safeStundeReturnTo ?? '/dashboard')}
               size="small"
               aria-label="Schließen"
               sx={{ p: 0, minWidth: 32, width: 32, height: 32, bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}
@@ -561,6 +582,9 @@ export default function ExitTicketPage() {
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                   ExitTicket-Vorlage auswählen
                 </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+                  Klicke eine Karte — es gibt keine voreingestellte Vorlage.
+                </Typography>
                 <Box
                   sx={{
                     display: 'grid',
@@ -569,119 +593,74 @@ export default function ExitTicketPage() {
                   }}
                 >
                   {TEMPLATE_CARDS.map((card) => {
-                    const isActive = selectedType === card.id;
+                    const isActive = activeExitTicketCardId === card.id;
                     return (
-                      <ButtonBase
+                      <Box
                         key={card.id}
-                        onClick={() => openTemplateModal(card.id)}
-                        sx={{ borderRadius: 2, overflow: 'hidden', height: '100%', textAlign: 'left' }}
+                        sx={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0.75 }}
                       >
-                        <Box
-                          sx={{
-                            borderRadius: 2,
-                            border: '1px solid',
-                            borderColor: isActive ? 'primary.main' : 'divider',
-                            bgcolor: isActive ? 'rgba(25, 118, 210, 0.06)' : 'white',
-                            p: 1.1,
-                            transition: 'all 0.15s ease',
-                            '&:hover': {
-                              transform: 'translateY(-1px)',
-                              boxShadow: isActive ? '0 10px 22px rgba(25,118,210,0.12)' : '0 8px 16px rgba(0,0,0,0.06)',
-                            },
-                          }}
+                        <ButtonBase
+                          onClick={() => openTemplateModal(card.id)}
+                          sx={{ borderRadius: 2, overflow: 'hidden', height: '100%', textAlign: 'left' }}
                         >
                           <Box
                             sx={{
-                              height: 124,
-                              borderRadius: 1.6,
-                              overflow: 'hidden',
+                              borderRadius: 2,
                               border: '1px solid',
-                              borderColor: 'divider',
-                              bgcolor: '#f7faff',
+                              borderColor: isActive ? 'primary.main' : 'divider',
+                              bgcolor: isActive ? 'rgba(25, 118, 210, 0.06)' : 'white',
+                              p: 1.1,
+                              transition: 'all 0.15s ease',
+                              width: '100%',
+                              '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: isActive ? '0 10px 22px rgba(25,118,210,0.12)' : '0 8px 16px rgba(0,0,0,0.06)',
+                              },
                             }}
                           >
                             <Box
-                              component="img"
-                              src={TEMPLATE_IMAGE_SRC[card.id]}
-                              alt={card.title}
-                              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                            />
+                              sx={{
+                                height: 124,
+                                borderRadius: 1.6,
+                                overflow: 'hidden',
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                bgcolor: '#f7faff',
+                              }}
+                            >
+                              <Box
+                                component="img"
+                                src={EXIT_TICKET_CARD_IMAGE_SRC[card.id]}
+                                alt={card.title}
+                                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                              />
+                            </Box>
+                            <Typography variant="subtitle2" sx={{ mt: 0.8, fontWeight: 800 }}>
+                              {card.title}
+                            </Typography>
+                            {card.description.trim() ? (
+                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                {card.description}
+                              </Typography>
+                            ) : null}
                           </Box>
-                          <Typography variant="subtitle2" sx={{ mt: 0.8, fontWeight: 800 }}>
-                            {card.title}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {card.description}
-                          </Typography>
-                        </Box>
-                      </ButtonBase>
+                        </ButtonBase>
+                        {isActive ? (
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            size="small"
+                            startIcon={<AssignmentTurnedInIcon sx={{ fontSize: 16 }} />}
+                            onClick={() => setAllResponsesOpen(true)}
+                            sx={{ py: 0.35, fontSize: '0.72rem', minHeight: 30 }}
+                          >
+                            Alle Antworten
+                          </Button>
+                        ) : null}
+                      </Box>
                     );
                   })}
                 </Box>
-
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Vorlage anklicken, um sie im Modal mit Antwortmodus und Funktionalität zu konfigurieren.
-                </Typography>
-
-                <Card variant="outlined" sx={{ mt: 1, bgcolor: '#fff' }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                        Antworten gesammelt ({responses.length})
-                      </Typography>
-                      <Button size="small" variant="outlined" onClick={refreshResponses}>
-                        Aktualisieren
-                      </Button>
-                    </Box>
-                    {loadingResponses ? (
-                      <Box sx={{ py: 2, display: 'flex', justifyContent: 'center' }}>
-                        <CircularProgress size={20} />
-                      </Box>
-                    ) : responses.length === 0 ? (
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        Noch keine Antworten vorhanden.
-                      </Typography>
-                    ) : (
-                      <Box sx={{ display: 'grid', gap: 1 }}>
-                        {responses.map((item) => (
-                          <Card key={item.studentId} variant="outlined" sx={{ bgcolor: '#f8fbff' }}>
-                            <CardContent sx={{ py: 1.1 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.4 }}>
-                                {item.studentName}
-                              </Typography>
-                              {item.answers.map((answer, idx) => (
-                                <Typography key={`${item.studentId}-${idx}`} variant="body2" sx={{ mb: 0.35 }}>
-                                  {idx + 1}. {answer || '—'}
-                                </Typography>
-                              ))}
-                              {item.completionOnly && (
-                                <Typography variant="body2" sx={{ mb: 0.35, fontStyle: 'italic', color: 'text.secondary' }}>
-                                  Nur angezeigt / als gesehen markiert
-                                </Typography>
-                              )}
-                              {item.drawingDataUrl && (
-                                <Box
-                                  component="img"
-                                  src={item.drawingDataUrl}
-                                  alt={`Zeichnung von ${item.studentName}`}
-                                  sx={{ mt: 0.8, width: 220, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
-                                />
-                              )}
-                              {item.photoDataUrl && (
-                                <Box
-                                  component="img"
-                                  src={item.photoDataUrl}
-                                  alt={`Antwortfoto von ${item.studentName}`}
-                                  sx={{ mt: 0.8, width: 220, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
-                                />
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
               </Box>
             ) : (
               <Box>
@@ -690,12 +669,16 @@ export default function ExitTicketPage() {
                 </Typography>
                 {!publishedTemplate ? (
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Es wurde noch kein ExitTicket freigegeben.
+                    Es wurde noch kein ExitTicket freigegeben. Die Seite lädt automatisch nach, sobald deine Lehrkraft
+                    etwas veröffentlicht.
                   </Typography>
                 ) : (
                   <StudentExitTicketRender
                     publishedTemplate={publishedTemplate}
                     TEMPLATE_IMAGE_SRC={TEMPLATE_IMAGE_SRC}
+                    heroImageSrc={entryTicketHeroSrc(exitHeroImageIndex)}
+                    submitMeta={exitTicketSubmitMeta}
+                    omitTitle={publishedTemplate.id === 'prediction'}
                     onSubmitted={() => {
                       // no-op in student view, but keeps future extension easy
                     }}
@@ -707,70 +690,202 @@ export default function ExitTicketPage() {
         </Card>
 
         {isTeacher && (
-          <Dialog open={templateModalOpen} onClose={closeTemplateModal} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ ...dialogCloseTitleSx }}>
-              <Typography variant="h6">
-                Vorlage konfigurieren: {draftTemplate.title}
+          <ExitTicketAllResponsesDialog
+            open={allResponsesOpen}
+            onClose={() => setAllResponsesOpen(false)}
+            lessonPathFilter={exitTicketLessonPathFilter}
+            heroImageIndex={exitHeroImageIndex}
+          />
+        )}
+
+        {isTeacher && (
+          <Dialog
+            open={templateModalOpen}
+            onClose={closeTemplateModal}
+            maxWidth={false}
+            fullWidth
+            PaperProps={{
+              sx: {
+                width: 'min(96vw, 1320px)',
+                maxWidth: '1320px',
+                height: 'min(92vh, 960px)',
+                maxHeight: '92vh',
+                display: 'flex',
+                flexDirection: 'column',
+                m: { xs: 1, sm: 2 },
+              },
+            }}
+          >
+            <DialogTitle
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: { xs: 1.25, sm: 2 },
+                pr: 2,
+                pt: 2,
+                pb: 1.5,
+                flexShrink: 0,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <ExitTicketCardHeaderImage templateId={draftTemplate.id} size={72} />
+              <Typography variant="h6" component="span" sx={{ flex: 1, minWidth: 0, pr: 1, lineHeight: 1.25 }}>
+                {draftTemplate.title}
               </Typography>
-              <DialogCloseIconButton onClose={closeTemplateModal} />
-            </DialogTitle>
-            <DialogContent dividers>
-              {draftTemplateType === 'quick-check' && (
-                <TextField
-                  size="small"
-                  fullWidth
-                  sx={{ mb: 1.2 }}
-                  label="Thema für automatische Fragen"
-                  placeholder="z. B. Alan Turing und Enigma"
-                  value={draftTopic}
-                  onChange={(e) => setDraftTopic(e.target.value)}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+                <Tooltip title="Nur Fragen anzeigen">
+                  <IconButton
+                    size="small"
+                    onClick={() => setDraftResponseMode('questions-only')}
+                    aria-label="Nur Fragen anzeigen"
+                    aria-pressed={draftResponseMode === 'questions-only'}
+                    sx={{
+                      p: 0.25,
+                      minWidth: 28,
+                      width: 28,
+                      height: 28,
+                      color: draftResponseMode === 'questions-only' ? 'primary.contrastText' : 'action.active',
+                      bgcolor: draftResponseMode === 'questions-only' ? 'primary.main' : 'transparent',
+                      '&:hover': {
+                        bgcolor: draftResponseMode === 'questions-only' ? 'primary.dark' : 'action.hover',
+                      },
+                    }}
+                  >
+                    <QuizIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Antworten eingeben">
+                  <IconButton
+                    size="small"
+                    onClick={() => setDraftResponseMode('text-input')}
+                    aria-label="Antworten eingeben"
+                    aria-pressed={draftResponseMode === 'text-input'}
+                    sx={{
+                      p: 0.25,
+                      minWidth: 28,
+                      width: 28,
+                      height: 28,
+                      color: draftResponseMode === 'text-input' ? 'primary.contrastText' : 'action.active',
+                      bgcolor: draftResponseMode === 'text-input' ? 'primary.main' : 'transparent',
+                      '&:hover': {
+                        bgcolor: draftResponseMode === 'text-input' ? 'primary.dark' : 'action.hover',
+                      },
+                    }}
+                  >
+                    <EditNoteIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Antworten fotografieren">
+                  <IconButton
+                    size="small"
+                    onClick={() => setDraftResponseMode('photo-upload')}
+                    aria-label="Antworten fotografieren"
+                    aria-pressed={draftResponseMode === 'photo-upload'}
+                    sx={{
+                      p: 0.25,
+                      minWidth: 28,
+                      width: 28,
+                      height: 28,
+                      color: draftResponseMode === 'photo-upload' ? 'primary.contrastText' : 'action.active',
+                      bgcolor: draftResponseMode === 'photo-upload' ? 'primary.main' : 'transparent',
+                      '&:hover': {
+                        bgcolor: draftResponseMode === 'photo-upload' ? 'primary.dark' : 'action.hover',
+                      },
+                    }}
+                  >
+                    <PhotoCameraIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={publishing ? 'Wird freigegeben …' : 'Für SuS freigeben'}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() => void publishFromModal()}
+                      disabled={publishing}
+                      aria-label="Für SuS freigeben"
+                      color="primary"
+                      sx={{
+                        p: 0.25,
+                        minWidth: 28,
+                        width: 28,
+                        height: 28,
+                        ml: 0.25,
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText',
+                        '&:hover': { bgcolor: 'primary.dark' },
+                        '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' },
+                      }}
+                    >
+                      {publishing ? <CircularProgress size={16} color="inherit" /> : <CheckCircleIcon sx={{ fontSize: 18 }} />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <DialogCloseIconButton
+                  onClose={closeTemplateModal}
+                  sx={{ position: 'static', transform: 'none', top: 'auto', right: 'auto', ml: 0.25 }}
                 />
-              )}
-
-              <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', mb: 1.2 }}>
-                <Button
-                  size="small"
-                  variant={draftResponseMode === 'questions-only' ? 'contained' : 'outlined'}
-                  onClick={() => setDraftResponseMode('questions-only')}
-                >
-                  Nur Fragen anzeigen
-                </Button>
-                <Button
-                  size="small"
-                  variant={draftResponseMode === 'text-input' ? 'contained' : 'outlined'}
-                  onClick={() => setDraftResponseMode('text-input')}
-                >
-                  Antworten eingeben
-                </Button>
-                <Button
-                  size="small"
-                  variant={draftResponseMode === 'photo-upload' ? 'contained' : 'outlined'}
-                  onClick={() => setDraftResponseMode('photo-upload')}
-                >
-                  Antworten fotografieren
-                </Button>
               </Box>
+            </DialogTitle>
+            <DialogContent
+              sx={{
+                flex: '1 1 auto',
+                overflow: 'auto',
+                pt: 4,
+                pb: 3,
+                px: { xs: 2, sm: 3 },
+                bgcolor: '#f8fafc',
+              }}
+            >
+              <Box sx={{ pt: 2 }}>
+                {draftTemplate.description.trim() ? (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'text.secondary', mb: 2.5, lineHeight: 1.5 }}
+                  >
+                    {renderWithBoldOperators(draftTemplate.description, 'draft-desc')}
+                  </Typography>
+                ) : null}
 
-              <Card variant="outlined" sx={{ bgcolor: '#f0f7ff' }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', gap: 1.4, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                    <Box sx={{ flex: 1, minWidth: 260 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 900, mb: 0.5 }}>
-                        {renderWithBoldOperators(draftTemplate.title, 'draft-title')}
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: 'text.secondary', mb: 0.9 }}>
-                        {renderWithBoldOperators(draftTemplate.description, 'draft-desc')}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ width: { xs: '100%', sm: 220 }, height: { xs: 140, sm: 128 }, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-                      <Box component="img" src={TEMPLATE_IMAGE_SRC[draftTemplate.id]} alt={draftTemplate.title} sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    </Box>
-                  </Box>
-
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 3,
+                    alignItems: 'flex-start',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                  }}
+                >
+                  <Box sx={{ flex: '1 1 auto', minWidth: 0, order: { xs: 1, sm: 1 } }}>
                   {draftTemplate.questions.map((question, index) => (
-                    <Box key={`draft-q-${index}`} sx={{ mb: 0.7 }}>
-                      <Typography variant="body1" sx={{ mb: 0.4 }}>
-                        {index + 1}. {renderWithBoldOperators(question, `draft-q-${index}`)}
+                    <Box
+                      key={`draft-q-${index}`}
+                      sx={{
+                        mb: 2.25,
+                        pl: 2.25,
+                        py: 2,
+                        pr: 2,
+                        borderRadius: 2,
+                        bgcolor: '#fff',
+                        borderLeft: '5px solid',
+                        borderColor: 'primary.main',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        component="div"
+                        sx={{
+                          fontWeight: 400,
+                          fontSize: { xs: '1.05rem', sm: '1.15rem' },
+                          lineHeight: 1.45,
+                          color: 'text.primary',
+                          mb: draftResponseMode === 'text-input' ? 1.25 : 0,
+                        }}
+                      >
+                        <Box component="span" sx={{ color: 'primary.main', mr: 1, fontVariantNumeric: 'tabular-nums' }}>
+                          {index + 1}.
+                        </Box>
+                        {renderWithBoldOperators(question, `draft-q-${index}`)}
                       </Typography>
                       {draftResponseMode === 'text-input' && (
                         <TextField
@@ -778,28 +893,29 @@ export default function ExitTicketPage() {
                           multiline
                           minRows={2}
                           fullWidth
-                          placeholder="Antwortfeld für SuS"
+                          placeholder="Antwortfeld"
                           value={draftAnswers[index] ?? ''}
                           onChange={(e) => {
                             const next = [...draftAnswers];
                             next[index] = e.target.value;
                             setDraftAnswers(next);
                           }}
+                          sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fafafa' } }}
                         />
                       )}
                     </Box>
                   ))}
 
                   {draftTemplate.id === 'draw' && draftResponseMode === 'text-input' && (
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
                         Malfläche (SuS-Ansicht)
                       </Typography>
                       <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden', bgcolor: '#fff' }}>
                         <canvas
                           ref={draftCanvasRef}
-                          width={720}
-                          height={260}
+                          width={960}
+                          height={320}
                           style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'none' }}
                           onPointerDown={onDraftCanvasPointer}
                           onPointerMove={onDraftCanvasPointer}
@@ -808,14 +924,16 @@ export default function ExitTicketPage() {
                         />
                       </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.7 }}>
-                        <Button size="small" variant="outlined" onClick={clearDraftCanvas}>Malfläche leeren</Button>
+                        <Button size="small" variant="outlined" onClick={clearDraftCanvas}>
+                          Malfläche leeren
+                        </Button>
                       </Box>
                     </Box>
                   )}
 
                   {draftResponseMode === 'photo-upload' && (
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
                         Bild-Upload (SuS-Ansicht)
                       </Typography>
                       <Button variant="outlined" component="label" size="small">
@@ -829,391 +947,74 @@ export default function ExitTicketPage() {
                         />
                       </Button>
                       {draftPhotoDataUrl && (
-                        <Box component="img" src={draftPhotoDataUrl} alt="Vorschau" sx={{ mt: 0.8, width: 220, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }} />
+                        <Box
+                          component="img"
+                          src={draftPhotoDataUrl}
+                          alt="Vorschau"
+                          sx={{ mt: 1, width: 260, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+                        />
                       )}
                     </Box>
                   )}
-                </CardContent>
-              </Card>
+                </Box>
+
+                <Box
+                  sx={{
+                    width: { xs: '100%', sm: 220 },
+                    flexShrink: 0,
+                    order: { xs: 2, sm: 2 },
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: { sm: 'sticky' },
+                      top: { sm: 8 },
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      bgcolor: '#fff',
+                      aspectRatio: '16 / 10',
+                      maxHeight: { sm: 200 },
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={entryTicketHeroSrc(exitHeroImageIndex)}
+                      alt={draftTemplate.title}
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </Box>
+                </Box>
+              </Box>
+              </Box>
             </DialogContent>
-            <DialogActions sx={{ px: 2, py: 1.2 }}>
-              <Button onClick={closeTemplateModal}>Abbrechen</Button>
+            <DialogActions
+              sx={{
+                flexShrink: 0,
+                px: { xs: 1.5, sm: 2 },
+                py: 1,
+                borderTop: '1px solid',
+                borderColor: 'divider',
+                bgcolor: '#f4f6fb',
+                justifyContent: 'stretch',
+              }}
+            >
               <Button
-                variant="contained"
-                startIcon={<CheckCircleIcon />}
-                onClick={publishFromModal}
-                disabled={publishing}
+                fullWidth
+                variant="outlined"
+                size="small"
+                startIcon={<AssignmentTurnedInIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setAllResponsesOpen(true)}
+                sx={{ py: 0.5, fontSize: '0.8rem' }}
               >
-                Für SuS freigeben
+                Alle Antworten
               </Button>
             </DialogActions>
           </Dialog>
         )}
       </Box>
     </Box>
-  );
-}
-
-function StudentExitTicketRender(props: {
-  publishedTemplate: ExitTicketTemplate;
-  TEMPLATE_IMAGE_SRC: Record<ExitTicketTemplateType, string>;
-  onSubmitted: () => void;
-}) {
-  const { publishedTemplate, TEMPLATE_IMAGE_SRC, onSubmitted } = props;
-  const studentId = localStorage.getItem('studentId') || localStorage.getItem('userId') || 'guest';
-  const drawStorageKey = `exitTicketResponse_draw_${studentId}_v1`;
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [photoDataUrl, setPhotoDataUrl] = useState<string>('');
-
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
-  const questionRefs = useRef<Array<HTMLElement | null>>([]);
-  const [answers, setAnswers] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (publishedTemplate.id !== 'draw') return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const raw = localStorage.getItem(drawStorageKey);
-    if (raw) {
-      const img = new Image();
-      img.onload = () => {
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setIsReady(true);
-      };
-      img.src = raw;
-    } else {
-      // Ensure the canvas has a clean white background.
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-      setIsReady(true);
-    }
-  }, [drawStorageKey, publishedTemplate.id]);
-
-  useEffect(() => {
-    setActiveQuestionIndex(0);
-    questionRefs.current = [];
-    setAnswers(new Array(publishedTemplate.questions.length).fill(''));
-    setPhotoDataUrl('');
-  }, [publishedTemplate.id, publishedTemplate.questions.length]);
-
-  useEffect(() => {
-    const isTypingTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false;
-      const tag = target.tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
-      if (target.isContentEditable) return true;
-      return false;
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target)) return;
-
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-
-      // For student: navigate between questions and scroll the active one into view.
-      const delta = e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 1;
-      const nextIndex = Math.min(
-        publishedTemplate.questions.length - 1,
-        Math.max(0, activeQuestionIndex + delta),
-      );
-      if (nextIndex === activeQuestionIndex) return;
-
-      e.preventDefault();
-      setActiveQuestionIndex(nextIndex);
-
-      // Scroll after state update tick.
-      window.setTimeout(() => {
-        const el = questionRefs.current[nextIndex];
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 0);
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeQuestionIndex, publishedTemplate.questions, publishedTemplate.questions.length]);
-
-  const beginPathAt = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#1a237e';
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-
-    canvas.setPointerCapture(e.pointerId);
-  };
-
-  const strokeTo = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    if (e.buttons === 0) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const endPath = (_e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.closePath();
-  };
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  };
-
-  const saveDrawing = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    try {
-      const dataUrl = canvas.toDataURL('image/png');
-      localStorage.setItem(drawStorageKey, dataUrl);
-    } catch {
-      // ignore (e.g. quota exceeded)
-    }
-  };
-
-  const submitAnswers = async () => {
-    if (publishedTemplate.responseMode === 'text-input') {
-      const hasAnyText = answers.some((entry) => entry.trim().length > 0);
-      if (!hasAnyText) return;
-    }
-
-    if (publishedTemplate.responseMode === 'photo-upload' && !photoDataUrl) return;
-
-    setSubmitting(true);
-    try {
-      const drawingDataUrl = publishedTemplate.id === 'draw' ? canvasRef.current?.toDataURL('image/png') : undefined;
-      const response = await apiPost('/api/exit-ticket/submit', {
-        answers: publishedTemplate.responseMode === 'text-input' ? answers : [],
-        drawingDataUrl,
-        photoDataUrl: publishedTemplate.responseMode === 'photo-upload' ? photoDataUrl : undefined,
-        completionOnly: publishedTemplate.responseMode === 'questions-only',
-      });
-      if (!response.ok) throw new Error('Speichern fehlgeschlagen');
-      if (drawingDataUrl) {
-        localStorage.setItem(drawStorageKey, drawingDataUrl);
-      }
-      onSubmitted();
-    } catch {
-      // keep page stable
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onPickPhoto = (file: File | undefined) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      setPhotoDataUrl(result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <Card variant="outlined" sx={{ bgcolor: '#f0f7ff' }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.6, flexWrap: 'wrap', mt: 0.6 }}>
-          <Box sx={{ flex: 1, minWidth: 260, pt: 0.3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 900, mb: 0.45, lineHeight: 1.15 }}>
-              {renderWithBoldOperators(publishedTemplate.title, `stud-title-${publishedTemplate.id}`)}
-            </Typography>
-            <Typography variant="body1" sx={{ color: 'text.secondary', mb: 1.2 }}>
-              {renderWithBoldOperators(publishedTemplate.description, `stud-desc-${publishedTemplate.id}`)}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.2 }}>
-              Modus: {publishedTemplate.responseMode === 'questions-only'
-                ? 'Nur Fragen'
-                : publishedTemplate.responseMode === 'text-input'
-                  ? 'Antworten eingeben'
-                  : 'Antworten fotografieren'}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              width: { xs: '100%', sm: 240 },
-              maxWidth: '100%',
-              height: { xs: 150, sm: 136 },
-              borderRadius: 2,
-              overflow: 'hidden',
-              border: '1px solid',
-              borderColor: 'divider',
-              bgcolor: '#edf3ff',
-              boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
-            }}
-          >
-            <Box
-              component="img"
-              src={TEMPLATE_IMAGE_SRC[publishedTemplate.id]}
-              alt={publishedTemplate.title}
-              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          </Box>
-        </Box>
-
-        {publishedTemplate.questions.map((question, index) => (
-          <Box
-            key={`${publishedTemplate.id}-${index}`}
-            ref={(el: HTMLElement | null) => {
-              questionRefs.current[index] = el;
-            }}
-            sx={{ scrollMarginTop: 90 }}
-          >
-            <Typography
-              variant="body1"
-              sx={{
-                mb: 0.5,
-                fontWeight: index === activeQuestionIndex ? 900 : undefined,
-              }}
-            >
-              {index + 1}. {renderWithBoldOperators(question, `stud-q-${publishedTemplate.id}-${index}`)}
-            </Typography>
-            {publishedTemplate.responseMode === 'text-input' && (
-              <TextField
-                size="small"
-                multiline
-                minRows={2}
-                fullWidth
-                placeholder="Deine Antwort..."
-                value={answers[index] ?? ''}
-                onChange={(e) => {
-                  const next = [...answers];
-                  next[index] = e.target.value;
-                  setAnswers(next);
-                }}
-                sx={{ mb: 1 }}
-              />
-            )}
-          </Box>
-        ))}
-
-        {publishedTemplate.responseMode === 'photo-upload' && (
-          <Box sx={{ mt: 1, mb: 1.2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.6 }}>
-              Foto deiner Antworten hochladen
-            </Typography>
-            <Button variant="outlined" component="label" size="small">
-              Foto auswählen
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                hidden
-                onChange={(e) => onPickPhoto(e.target.files?.[0])}
-              />
-            </Button>
-            {photoDataUrl && (
-              <Box
-                component="img"
-                src={photoDataUrl}
-                alt="Antwortfoto"
-                sx={{ mt: 1, width: 260, maxWidth: '100%', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
-              />
-            )}
-          </Box>
-        )}
-
-        {publishedTemplate.id === 'draw' && publishedTemplate.responseMode === 'text-input' && (
-          <Box sx={{ mt: 1.5 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.8 }}>
-              Zeichne hier:
-            </Typography>
-            <Box
-              sx={{
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 2,
-                overflow: 'hidden',
-                bgcolor: '#fff',
-                width: '100%',
-                maxWidth: 760,
-                mx: 'auto',
-              }}
-            >
-              <canvas
-                ref={canvasRef}
-                width={760}
-                height={420}
-                style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'none' }}
-                onPointerDown={beginPathAt}
-                onPointerMove={strokeTo}
-                onPointerUp={endPath}
-                onPointerCancel={endPath}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
-              <Button variant="outlined" onClick={clearCanvas} size="small">
-                Löschen
-              </Button>
-              <Button variant="contained" onClick={saveDrawing} size="small" disabled={!isReady}>
-                Bild speichern
-              </Button>
-            </Box>
-          </Box>
-        )}
-
-        {publishedTemplate.responseMode === 'questions-only' && (
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-            <Button variant="contained" onClick={submitAnswers} disabled={submitting}>
-              {submitting ? 'Sende...' : 'Als gesehen markieren'}
-            </Button>
-          </Box>
-        )}
-
-        {publishedTemplate.responseMode !== 'questions-only' && (
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-            <Button
-              variant="contained"
-              onClick={submitAnswers}
-              disabled={
-                submitting
-                || (publishedTemplate.responseMode === 'photo-upload' && !photoDataUrl)
-                || (publishedTemplate.responseMode === 'text-input' && !answers.some((entry) => entry.trim().length > 0))
-              }
-            >
-              {submitting ? 'Sende...' : 'Antworten senden'}
-            </Button>
-          </Box>
-        )}
-      </CardContent>
-    </Card>
   );
 }

@@ -4,6 +4,7 @@ import { ExitTicketController } from '../controllers/ExitTicketController';
 const router = express.Router();
 
 router.get('/current', ExitTicketController.getCurrent);
+router.get('/my-submission', ExitTicketController.getMySubmission);
 router.post('/publish', ExitTicketController.publish);
 router.post('/submit', ExitTicketController.submit);
 router.get('/responses', ExitTicketController.getResponses);

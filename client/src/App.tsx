@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import './App.css';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
+import StudentLiveTicketAlerts from './components/StudentLiveTicketAlerts';
 import LearningGroupPage from './pages/LearningGroupPage';
 import QuizPlayerPage from './pages/QuizPlayerPage';
 import QuizSessionPage from './pages/QuizSessionPage';
@@ -289,6 +290,10 @@ function AppContent() {
         <Route path="/exit-ticket" element={<ExitTicketPage />} />
 
       </Routes>
+
+      {authReady && user && String(user.role).toUpperCase() === 'STUDENT' && (
+        <StudentLiveTicketAlerts userId={user.id} />
+      )}
       
       {/* Johnny Companion - Für alle sichtbar, wenn eingeblendet */}
       {user && (

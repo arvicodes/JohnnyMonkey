@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.exportTeacherDecks = exports.exportStudentProgress = exports.markAllDueCardsAsLearned = exports.migrateToNewSpacedRepetitionSystem = exports.getAllAssignedCards = exports.endLearningSession = exports.startLearningSession = exports.getTodayCards = exports.getStudentAllProgress = exports.updateCardProgress = exports.getStudentAssignedFlashcards = exports.getDocumentProcessingHistory = exports.getFlashcardDeck = exports.getFlashcardDecks = exports.addFlashcardsToExistingDeck = exports.createFlashcardDeckFromWord = exports.removeDeckAssignment = exports.assignDeckToGroup = exports.getDueCards = exports.submitCardReview = exports.getStudentProgress = exports.getGroupFlashcardDecks = exports.getFlashcardAssignments = exports.deleteAssignment = exports.createAssignment = exports.deleteCard = exports.updateCard = exports.createCard = exports.deleteDeck = exports.updateDeck = exports.getDeckCards = exports.getDeck = exports.getDecks = exports.createDeck = void 0;
 const client_1 = require("@prisma/client");
 const SpacedRepetitionService_1 = require("../services/SpacedRepetitionService");
+const journeyService_1 = require("../services/journeyService");
 const flashcardWordParser_1 = require("../utils/flashcardWordParser");
 const prisma = new client_1.PrismaClient();
 // FlashcardDeck Controller
@@ -1264,6 +1265,15 @@ const endLearningSession = async (req, res) => {
                 sessionDuration: Math.floor((Date.now() - new Date().getTime()) / 1000)
             }
         });
+        const reviewed = cardsReviewed || 0;
+        if (reviewed > 0) {
+            try {
+                await (0, journeyService_1.applyJourneyEvent)(session.studentId, 'flashcard_session', { cardsReviewed: reviewed });
+            }
+            catch (journeyErr) {
+                console.error('Reisebegleiter: flashcard_session', journeyErr);
+            }
+        }
         res.json({ session });
     }
     catch (error) {

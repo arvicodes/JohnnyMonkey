@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -24,6 +24,8 @@ import {
   SkipPrevious as SkipPreviousIcon,
 } from '@mui/icons-material';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
+import { apiGet, apiPost } from '../lib/api';
+import { entryTicketHeroSrc } from '../lib/ticketHeroImages';
 
 type EntryTicketTask = {
   category: string;
@@ -242,7 +244,7 @@ function randomTaskSeed(): number {
   return (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
 }
 
-function parseEntryTicketSearch(search: string): { grade: Grade; autostart: boolean } {
+function parseEntryTicketSearch(search: string): { grade: Grade; autostart: boolean; groupId: string | null } {
   const params = new URLSearchParams(search);
   const gradeParam = Number(params.get('grade'));
   const grade =
@@ -253,7 +255,9 @@ function parseEntryTicketSearch(search: string): { grade: Grade; autostart: bool
     params.get('autostart') === '1' ||
     params.get('autostart') === 'true' ||
     params.get('start') === '1';
-  return { grade, autostart };
+  const rawGid = params.get('groupId') || params.get('learningGroupId');
+  const groupId = rawGid && rawGid.trim() ? rawGid.trim() : null;
+  return { grade, autostart, groupId };
 }
 
 const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
@@ -318,7 +322,9 @@ export default function EntryTicketPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const initialRoute =
-    typeof window !== 'undefined' ? parseEntryTicketSearch(window.location.search || '') : { grade: 7 as Grade, autostart: false };
+    typeof window !== 'undefined'
+      ? parseEntryTicketSearch(window.location.search || '')
+      : { grade: 7 as Grade, autostart: false, groupId: null as string | null };
   const [sessionStarted, setSessionStarted] = useState(false);
   const [grade, setGrade] = useState<Grade>(() => initialRoute.grade);
   const [taskSeed, setTaskSeed] = useState(() => randomTaskSeed());
@@ -385,12 +391,18 @@ export default function EntryTicketPage() {
   const [newPrompt, setNewPrompt] = useState('');
   const [newSolution, setNewSolution] = useState('');
   const [autoStartPending, setAutoStartPending] = useState(() => initialRoute.autostart);
+  const [entryTicketGroupId, setEntryTicketGroupId] = useState<string | null>(() => initialRoute.groupId);
+  /** Motiv 0..9 — kommt vom Server (pro neuem Signal / neuer Stunden-Klick neu gewürfelt) */
+  const [entryHeroImageIndex, setEntryHeroImageIndex] = useState(0);
+  /** Autostart signalisiert sofort in useLayoutEffect; kein zweites Signal beim ersten startSession */
+  const skipDuplicateEntrySignalRef = useRef(false);
 
   /** Klassenstufe aus URL; neuer Zufallssatz bei jedem Aufruf (inkl. &r=… vom Klick auf das Dashboard-Icon). */
   useLayoutEffect(() => {
-    const { grade: g, autostart } = parseEntryTicketSearch(location.search);
+    const { grade: g, autostart, groupId } = parseEntryTicketSearch(location.search);
     setGrade(g);
     setAutoStartPending(autostart);
+    setEntryTicketGroupId(groupId);
     setTaskSeed(randomTaskSeed());
     setSessionStarted(false);
     setSessionDone(false);
@@ -398,9 +410,49 @@ export default function EntryTicketPage() {
     setSecondsLeft(SLIDE_DURATION_SEC);
     setIsRunning(false);
     setShowSolutions(false);
+
+    const teacher = Boolean(typeof window !== 'undefined' && localStorage.getItem('teacherId'));
+    if (autostart && teacher) {
+      skipDuplicateEntrySignalRef.current = true;
+      void (async () => {
+        try {
+          const res = await apiPost('/api/entry-ticket/signal', groupId ? { learningGroupId: groupId } : {});
+          if (res.ok) {
+            const data = await res.json();
+            if (typeof data.heroImageIndex === 'number') setEntryHeroImageIndex(data.heroImageIndex);
+          }
+        } catch {
+          // ignore
+        }
+      })();
+    } else {
+      skipDuplicateEntrySignalRef.current = false;
+    }
   }, [location.search]);
 
   const isTeacher = useMemo(() => Boolean(localStorage.getItem('teacherId')), []);
+
+  useEffect(() => {
+    if (!isTeacher) return;
+    const { autostart } = parseEntryTicketSearch(location.search);
+    if (autostart) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGet('/api/entry-ticket/current');
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (typeof data.heroImageIndex === 'number' && data.startedAt) {
+          setEntryHeroImageIndex(data.heroImageIndex);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacher, location.search]);
   const activeTasks = selectedTasks;
   const totalRunSeconds = activeTasks.length * SLIDE_DURATION_SEC;
   const currentTask = activeTasks[currentIndex] ?? activeTasks[0];
@@ -568,6 +620,24 @@ export default function EntryTicketPage() {
     setTeacherNotes('');
     setIsRunning(true);
     setPickedListIndices([]);
+    if (isTeacher) {
+      if (skipDuplicateEntrySignalRef.current) {
+        skipDuplicateEntrySignalRef.current = false;
+      } else {
+        const gid = entryTicketGroupId;
+        void (async () => {
+          try {
+            const res = await apiPost('/api/entry-ticket/signal', gid ? { learningGroupId: gid } : {});
+            if (res.ok) {
+              const data = await res.json();
+              if (typeof data.heroImageIndex === 'number') setEntryHeroImageIndex(data.heroImageIndex);
+            }
+          } catch {
+            // ignore
+          }
+        })();
+      }
+    }
   };
 
   const startOrResume = () => {
@@ -1237,7 +1307,7 @@ export default function EntryTicketPage() {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6fb', py: { xs: 2, sm: 3 }, px: { xs: 1.5, sm: 2.5 } }}>
       <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, gap: 1 }}>
           <Tooltip title="Zurück">
             <IconButton
               onClick={handleBack}
@@ -1251,15 +1321,48 @@ export default function EntryTicketPage() {
                 bgcolor: 'white',
                 border: '1px solid',
                 borderColor: 'divider',
+                flexShrink: 0,
               }}
             >
               <ArrowBackIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Tooltip>
 
-          <Typography variant="h6" sx={{ color: '#1a237e' }}>
-            EntryTicket
-          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.25,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <Box
+              title="Aktuelles Motiv (wie bei den Schüler:innen)"
+              sx={{
+                width: 60,
+                height: 60,
+                flexShrink: 0,
+                borderRadius: 1.75,
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: 'rgba(30, 136, 229, 0.28)',
+                boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
+                bgcolor: 'grey.200',
+              }}
+            >
+              <Box
+                component="img"
+                src={entryTicketHeroSrc(entryHeroImageIndex)}
+                alt=""
+                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            </Box>
+            <Typography variant="h6" sx={{ color: '#1a237e', fontWeight: 700, lineHeight: 1.2 }}>
+              EntryTicket
+            </Typography>
+          </Box>
 
           <IconButton
             onClick={() => navigate('/dashboard')}
@@ -1273,6 +1376,7 @@ export default function EntryTicketPage() {
               bgcolor: 'white',
               border: '1px solid',
               borderColor: 'divider',
+              flexShrink: 0,
             }}
           >
             <CloseIcon sx={{ fontSize: 20 }} />
@@ -1715,11 +1819,8 @@ export default function EntryTicketPage() {
                       overflow: 'hidden',
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', mb: 0.75 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        Alle Aufgaben
-                      </Typography>
-                      {isTeacher && (
+                    {isTeacher && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, flexWrap: 'wrap', mb: 0.75 }}>
                         <FormControlLabel
                           control={
                             <Switch
@@ -1730,8 +1831,8 @@ export default function EntryTicketPage() {
                           label="Lösungen anzeigen"
                           sx={{ mr: 0 }}
                         />
-                      )}
-                    </Box>
+                      </Box>
+                    )}
 
                     <Box
                       sx={{
@@ -1740,7 +1841,7 @@ export default function EntryTicketPage() {
                         gridTemplateRows: `repeat(${finalSlideRows}, minmax(0, auto))`,
                         gridAutoFlow: 'column',
                         gap: 0.8,
-                        mt: 0.75,
+                        mt: isTeacher ? 0 : 0.75,
                       }}
                     >
                       {activeTasks.map((task, index) => (

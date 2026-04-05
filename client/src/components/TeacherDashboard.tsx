@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  computeCanonicalStemForFiles,
+  isFolienFileName,
+  isBearbeitungVersionFileName,
+  isDerivedFolienVersionFile,
+  sortFolienVariants,
+  labelForFolienOption,
+} from '../lib/folienVersions';
 import KACorrectionMode from './KACorrectionMode';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import TeacherMessageBox from './TeacherMessageBox';
@@ -5380,7 +5388,7 @@ const MOVEMENT_GAMES_OUTDOOR: MovementGameCard[] = [
   },
 ];
 
-/** PDF/PPTX/ODP und gängige Bildformate – für „Dokumente im Ordner dieser Stunde“. */
+/** PDF/PPTX/ODP und gängige Bildformate – für die Stundenordner-Dokumentenliste. */
 const LESSON_FOLDER_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 
 /** Alle Dateien aus dem Stundenordner-Baum (read?recursive=true liefert Unterordner in children). */
@@ -5396,6 +5404,114 @@ function collectLessonFolderFilesFromTree(nodes: any[] | undefined): any[] {
   };
   walk(nodes);
   return out;
+}
+
+/** Dropdown: Original + gespeicherte Bearbeitungen (gleicher Stammname) → Folien-Editor. */
+function FolienVersionSelect({
+  versions,
+  iconBtnSx,
+  onOpenFile,
+  groupStem,
+}: {
+  versions: { ext: string; file: any }[];
+  iconBtnSx: Record<string, unknown>;
+  onOpenFile: (item: any) => void;
+  groupStem: string;
+}) {
+  const folienVariants = useMemo(
+    () => versions.filter((v) => isFolienFileName(v.file.name)),
+    [versions]
+  );
+  const sorted = useMemo(
+    () => sortFolienVariants(folienVariants, groupStem),
+    [folienVariants, groupStem]
+  );
+  const sortedPathsKey = sorted.map((s) => s.file.path).join('|');
+  const [selectedPath, setSelectedPath] = useState('');
+
+  useEffect(() => {
+    const first = sorted[0]?.file.path ?? '';
+    setSelectedPath((prev) => (sorted.some((s) => s.file.path === prev) ? prev : first));
+  }, [sortedPathsKey]);
+
+  const selectedFile = sorted.find((s) => s.file.path === selectedPath)?.file ?? sorted[0]?.file;
+  const value = selectedPath || sorted[0]?.file.path || '';
+
+  if (sorted.length === 0) return null;
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0, justifyContent: 'flex-start' }}>
+      <Select
+        size="small"
+        value={value}
+        onChange={(e) => setSelectedPath(e.target.value as string)}
+        variant="standard"
+        disableUnderline
+        sx={{
+          width: 240,
+          minWidth: 240,
+          maxWidth: 240,
+          flexShrink: 0,
+          fontSize: '0.7rem',
+          height: 28,
+          bgcolor: 'transparent',
+          boxShadow: 'none',
+          '&:before': { display: 'none' },
+          '&:after': { display: 'none' },
+          '&:hover:not(.Mui-disabled):before': { display: 'none' },
+          '& .MuiSelect-select': {
+            py: 0.35,
+            fontSize: '0.7rem',
+            textAlign: 'center',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          },
+          '& .MuiSelect-icon': { color: 'text.secondary' },
+        }}
+      >
+        {sorted.map(({ file }) => (
+          <MenuItem
+            key={file.path}
+            value={file.path}
+            sx={{ fontSize: '0.75rem', justifyContent: 'center', textAlign: 'center' }}
+          >
+            {labelForFolienOption(file, groupStem)}
+          </MenuItem>
+        ))}
+      </Select>
+      <Tooltip title="Im Folien-Editor öffnen">
+        <Box
+          component="button"
+          type="button"
+          aria-label="Im Folien-Editor öffnen"
+          onClick={() => selectedFile && onOpenFile(selectedFile)}
+          sx={{
+            border: 'none',
+            margin: 0,
+            padding: 0,
+            width: 28,
+            height: 28,
+            minWidth: 28,
+            flexShrink: 0,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'transparent',
+            borderRadius: 0,
+            boxShadow: 'none',
+            outline: 'none',
+            color: (iconBtnSx as { color?: string }).color,
+            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.06)' },
+            '&:focus-visible': { outline: '2px solid', outlineOffset: 1, outlineColor: 'primary.main' },
+          }}
+        >
+          <SlideshowIcon sx={{ fontSize: 18 }} />
+        </Box>
+      </Tooltip>
+    </Box>
+  );
 }
 
 const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 'TEACHER', onLogout }) => {
@@ -5681,7 +5797,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     type: LessonPlanItemType;
     label: string;
     grade?: number;
-    exitType?: 'feedback' | 'quick-check' | 'transfer' | 'draw';
+    exitType?:
+      | 'feedback'
+      | 'quick-check'
+      | 'transfer'
+      | 'draw'
+      | 'error-hunt'
+      | 'exam-question'
+      | 'prediction';
     /** Optionale Datei aus dem Stundenordner (Input / Arbeitsauftrag) */
     linkedMaterialPath?: string;
     linkedMaterialName?: string;
@@ -5691,9 +5814,29 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   };
   const [editedLessonInstructions, setEditedLessonInstructions] = useState<Record<string, LessonInstructionContent>>({});
   const [lessonBoxEdit, setLessonBoxEdit] = useState<{ lessonName: string; lessonPath: string; section: LessonBoxField; draft: string; originalDraft: string } | null>(null);
+  /** Immer letzter Editor-HTML-Stand — verhindert, dass „Fertig“ einen veralteten draft aus dem Closure speichert (Blur/Click vor React-Commit). */
+  const lessonBoxDraftRef = useRef<string | null>(null);
+  const patchLessonBoxDraftFromEditor = useCallback((value: string) => {
+    setLessonBoxEdit((prev) => {
+      if (!prev) return null;
+      if (!value?.trim() && prev.originalDraft?.trim()) {
+        return prev;
+      }
+      lessonBoxDraftRef.current = value;
+      return { ...prev, draft: value };
+    });
+  }, []);
   const [selectedPlanTypes, setSelectedPlanTypes] = useState<LessonPlanItemType[]>([]);
   const [newPlanGrade, setNewPlanGrade] = useState<number>(7);
-  const [newExitType, setNewExitType] = useState<'feedback' | 'quick-check' | 'transfer' | 'draw'>('feedback');
+  type ExitPlanType =
+    | 'feedback'
+    | 'quick-check'
+    | 'transfer'
+    | 'draw'
+    | 'error-hunt'
+    | 'exam-question'
+    | 'prediction';
+  const [newExitType, setNewExitType] = useState<ExitPlanType>('exam-question');
   const [dragPlanIndex, setDragPlanIndex] = useState<number | null>(null);
   const [dragOverPlanIndex, setDragOverPlanIndex] = useState<number | null>(null);
   const [lessonPlanViewMode, setLessonPlanViewMode] = useState<'create' | 'run' | 'background'>('create');
@@ -6507,6 +6650,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       cancelled = true;
     };
   }, [isLessonStundeRoute, location.search, navigate]);
+
+  // Stundenplan-Ansicht (Erstellen / TABLET / Laptop) aus URL — z. B. Rückkehr vom ExitTicket mit ?planMode=
+  useEffect(() => {
+    if (!isLessonStundeRoute) return;
+    const params = new URLSearchParams(location.search);
+    const pm = params.get('planMode');
+    if (pm === 'create' || pm === 'run' || pm === 'background') {
+      setLessonPlanViewMode(pm);
+    }
+  }, [isLessonStundeRoute, location.search]);
 
   // Fokussiere das Betreff-Feld beim Öffnen des Nachrichten-Dialogs
   useEffect(() => {
@@ -7993,25 +8146,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         alert('HTML-Datei konnte nicht geöffnet werden.');
       }
     } else if (fileExtension === 'pdf') {
-      // PDF-Dateien mit der bestehenden Implementierung öffnen
+      // PDF-Foliensatz im Folien-Editor (Stift, Text, Export) — „Nur PDF“ im Editor möglich
       try {
-        const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          // Erstelle Blob mit benutzerdefiniertem Namen
-          const file = new File([blob], item.name || 'document.pdf', { type: 'application/pdf' });
-          const url = URL.createObjectURL(file);
-          const newWindow = window.open(url, '_blank');
-          if (newWindow) {
-            // Cleanup nach 5 Sekunden
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-          }
-        } else {
-          throw new Error('PDF konnte nicht geladen werden');
+        const url = `/folien-editor?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name || 'document.pdf')}`;
+        const w = window.open(url, '_blank');
+        if (!w || w.closed) {
+          alert('Pop-up wurde blockiert. Bitte Pop-ups erlauben oder den Link manuell öffnen.');
         }
       } catch (error) {
-        console.error('Fehler beim Öffnen der PDF-Datei:', error);
-        alert('Fehler beim Öffnen der PDF-Datei. Bitte versuchen Sie es erneut.');
+        console.error('Fehler beim Öffnen des Folien-Editors:', error);
+        alert('Fehler beim Öffnen des Folien-Editors. Bitte versuchen Sie es erneut.');
       }
     } else if (fileExtension === 'docx') {
       // DOCX-Vorschau über den bestehenden Endpunkt
@@ -8038,35 +8182,28 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         alert('Excel-Vorschau konnte nicht geladen werden.');
       }
     } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
-      // PowerPoint-Dateien direkt herunterladen
+      // PowerPoint im Folien-Editor (Server: PPTX→PDF, dann wie PDF bearbeiten)
       try {
-        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
+        const url = `/folien-editor?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name || 'folien.pptx')}&source=pptx`;
+        const w = window.open(url, '_blank');
+        if (!w || w.closed) {
+          alert('Pop-up wurde blockiert. Bitte Pop-ups erlauben oder den Link manuell öffnen.');
         }
       } catch (error) {
-        console.error('Fehler beim Laden der PowerPoint-Datei:', error);
-        alert('PowerPoint-Datei konnte nicht heruntergeladen werden.');
+        console.error('Fehler beim Öffnen des Folien-Editors:', error);
+        alert('Folien-Editor konnte nicht geöffnet werden.');
       }
     } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
-      // Bild-Vorschau über den bestehenden Endpunkt
+      // Bild im Folien-Editor (Stift, Text, Export wie PDF)
       try {
-        const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const imageData = await response.json();
-          showImagePreviewModal(item.name, imageData, item.path);
+        const url = `/folien-editor?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name || 'bild.png')}&source=image`;
+        const w = window.open(url, '_blank');
+        if (!w || w.closed) {
+          alert('Pop-up wurde blockiert. Bitte Pop-ups erlauben oder den Link manuell öffnen.');
         }
       } catch (error) {
-        console.error('Fehler beim Laden des Bildes:', error);
-        alert('Bild-Vorschau konnte nicht geladen werden.');
+        console.error('Fehler beim Öffnen des Folien-Editors:', error);
+        alert('Folien-Editor konnte nicht geöffnet werden.');
       }
     } else if (fileExtension === 'goodnotes' || fileExtension === 'gn') {
       // GoodNotes-Vorschau über den bestehenden Endpunkt
@@ -9101,10 +9238,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   /** Gruppiert Dateien nach Basisname (ohne Endung). Eine Zeile pro Dokument, Buttons PDF/DOC pro Version. Freigabe nur für PDF. */
   const groupFilesByBaseName = (files: any[]): { baseName: string; versions: { ext: string; file: any }[] }[] => {
+    const stemMap = computeCanonicalStemForFiles(files.map((f) => ({ name: f.name || '' })));
     const map = new Map<string, { ext: string; file: any }[]>();
     for (const file of files) {
       const name = file.name || '';
-      const baseName = name.replace(/\.[^.]+$/, '') || name;
+      const baseName = (stemMap.get(name) ?? name.replace(/\.[^.]+$/, '')) || name;
       const ext = (name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
       if (!map.has(baseName)) map.set(baseName, []);
       map.get(baseName)!.push({ ext, file });
@@ -9112,8 +9250,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return Array.from(map.entries()).map(([baseName, versions]) => ({ baseName, versions }));
   };
 
-  const getPdfFromGroup = (versions: { ext: string; file: any }[]) =>
-    versions.find(v => v.ext === 'pdf')?.file || null;
+  const getPdfFromGroup = (versions: { ext: string; file: any }[], groupBaseName: string) => {
+    const pdfs = versions.filter((v) => v.ext === 'pdf');
+    const exact = pdfs.find((v) => v.file.name.replace(/\.[^.]+$/, '') === groupBaseName);
+    if (exact) return exact.file;
+    const orig = pdfs.find(
+      (v) =>
+        !isBearbeitungVersionFileName(v.file.name) &&
+        !v.file.name.toLowerCase().startsWith(groupBaseName.toLowerCase() + '_')
+    );
+    return orig?.file || pdfs[0]?.file || null;
+  };
+
+  /** Für SuS-Freigabe: PDF bevorzugt, sonst erste Datei nach PDF-zuerst-Sortierung (z. B. nur DOCX). */
+  const getShareFileForGroup = (versions: { ext: string; file: any }[], groupBaseName: string) => {
+    const pdf = getPdfFromGroup(versions, groupBaseName);
+    if (pdf) return pdf;
+    const sorted = [...versions].sort((a, b) =>
+      a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0
+    );
+    return sorted[0]?.file || null;
+  };
+
+  /** Kapitel-Container (z. B. „Kap 6 - Ganze Zahlen“) – Überschrift, keine Stunden-Ansicht. */
+  const isChapterHeadingFolderName = (name: string) =>
+    /^(Kap\.?\s*\d+|Kapitel\s*\d+)/i.test((name || '').trim());
 
   /** Wandelt eine Item-Liste (Ordner + Dateien) in Anzeige-Items um: Ordner unverändert, Dateien nach Basisname gruppiert. */
   const itemsToDisplayItems = (items: any[]): any[] => {
@@ -9134,15 +9295,21 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     // Filtere PDF-Dateien aus, die zu .wb Dateien gehören - NUR für die Anzeige
     // Die ursprünglichen Daten bleiben unverändert für Schüler
     const filteredItems = filterPdfFiles(items);
-    
+    const folderFilesForStem = filteredItems
+      .filter((i: any) => i.type === 'file')
+      .map((f: any) => ({ name: f.name || '' }));
+
     // Sortierung: PDF immer zuerst, danach Rest
     const sortVersionsPdfFirst = (versions: { ext: string; file: any }[]) =>
       [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
 
-    // Zeile für eine Dateigruppe (ein Name, mehrere Formate): Icons + nur PDF-Freigabe
+    // Zeile für eine Dateigruppe (ein Name, mehrere Formate): Icons + Freigabe (PDF bevorzugt, sonst z. B. DOCX)
     const renderFileGroupRow = (group: { baseName: string; versions: { ext: string; file: any }[] }, level: number) => {
-      const pdfFile = getPdfFromGroup(group.versions);
+      const shareFile = getShareFileForGroup(group.versions, group.baseName);
       const sortedVersions = sortVersionsPdfFirst(group.versions);
+      const versionsShownInList = sortedVersions.filter(
+        (v) => !isDerivedFolienVersionFile(v.file.name, folderFilesForStem)
+      );
       const getExtIcon = (ext: string) => {
         if (ext === 'pdf') return <PictureAsPdfIcon sx={{ fontSize: 18 }} />;
         if (['doc', 'docx'].includes(ext.toLowerCase())) return <DescriptionIcon sx={{ fontSize: 18 }} />;
@@ -9157,12 +9324,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       return (
         <Box key={`group-${group.baseName}-${level}`} sx={{ mb: 0.7 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
-            {pdfFile && (
-              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }} title={fileShares[fileShareKey(pdfFile.path, groupId)] ? 'Für Schüler freigegeben' : 'Nur PDF freigeben'}>
+            {shareFile && (
+              <Box
+                sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}
+                title={
+                  fileShares[fileShareKey(shareFile.path, groupId)]
+                    ? 'Für Schüler freigegeben'
+                    : 'Für Schüler freigeben (PDF bevorzugt, sonst gewählte Datei)'
+                }
+              >
                 <input
                   type="checkbox"
-                  checked={!!fileShares[fileShareKey(pdfFile.path, groupId)]}
-                  onChange={() => toggleFileShare(pdfFile.path, groupId)}
+                  checked={!!fileShares[fileShareKey(shareFile.path, groupId)]}
+                  onChange={() => toggleFileShare(shareFile.path, groupId)}
                   onClick={(e) => e.stopPropagation()}
                   style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#4caf50' }}
                 />
@@ -9172,7 +9346,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               📄 {group.baseName}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-              {sortedVersions.map(({ ext, file }) => (
+              {versionsShownInList.map(({ ext, file }) => (
                 <Tooltip key={file.path} title={`${ext.toUpperCase()} öffnen`}>
                   <IconButton size="small" onClick={() => handleFileClick(file)} sx={iconBtnSx}>
                     {getExtIcon(ext)}
@@ -9326,19 +9500,26 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               alignItems: 'flex-start',
               gap: 0.5,
               mb: 0.5,
-              cursor: (item.type === 'file' || item.type === 'directory') ? 'pointer' : 'default',
+              cursor:
+                item.type === 'file' ||
+                (item.type === 'directory' && !isChapterHeadingFolderName(item.name))
+                  ? 'pointer'
+                  : 'default',
               textDecoration: 'none',
               wordBreak: 'break-word',
               maxWidth: '100%',
               flex: 1,
-              '&:hover': (item.type === 'file' || item.type === 'directory') ? {
-                color: '#1976D2'
-              } : {}
+              '&:hover':
+                item.type === 'file' ||
+                (item.type === 'directory' && !isChapterHeadingFolderName(item.name))
+                  ? { color: '#1976D2' }
+                  : {}
             }}
             onClick={() => {
               if (item.type === 'file') {
                 handleFileClick(item);
               } else if (item.type === 'directory') {
+                if (isChapterHeadingFolderName(item.name)) return;
                 const lp = item.path || `${folderPath}/${item.name}`;
                 const q = new URLSearchParams({
                   groupId,
@@ -12878,6 +13059,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   const handleCloseLessonPage = () => {
     setLessonModalData(null);
+    lessonBoxDraftRef.current = null;
     setLessonBoxEdit(null);
     setLessonPlanViewMode('create');
     setParticipationModalOpen(false);
@@ -13003,15 +13185,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         } 
       }}
     >
-      {isLessonStundeRoute && lessonStundeTabLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-          <CircularProgress />
-        </Box>
-      )}
-      {!isLessonStundeRoute && (
       <>
       <Grid container spacing={0}>
-        {/* Header Section */}
+        {/* Header Section – auch auf /teacher/stunde (eigener Tab) */}
         <Grid item xs={12}>
           <Box sx={{ 
             p: 1.05,
@@ -13355,7 +13531,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       ? groups.find((x) => x.id === selectedGroupId)
                       : groups[0];
                     const band = g ? gradeFromGroupNames([g.name]) : 7;
-                    navigate(`/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}`);
+                    const gid = selectedGroupId || g?.id;
+                    navigate(
+                      `/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}${gid ? `&groupId=${encodeURIComponent(gid)}` : ''}`,
+                    );
                   }}
                   sx={{
                     ml: 'auto',
@@ -13460,6 +13639,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           </Box>
         </Grid>
 
+        {isLessonStundeRoute && lessonStundeTabLoading && (
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+              <CircularProgress />
+            </Box>
+          </Grid>
+        )}
+
+      {!isLessonStundeRoute && (
+      <>
         <Grid item xs={12}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 1.4 }}>
             <Tabs value={mainTabValue} onChange={handleMainTabChange} aria-label="dashboard tabs" sx={{ minHeight: 28 }}>
@@ -15418,6 +15607,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
 
         </Grid>
+      </>
+      )}
       </Grid>
 
       {/* New Group Dialog */}
@@ -15757,12 +15948,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', mt: 2 }}>
-        <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
-          Tastatur: Tab zum Navigieren, Pfeiltasten für Tabs, ESC zum Logout
-        </Typography>
-      </Box>
 
       {/* Ordner-Zuordnungs-Dialog */}
       <Dialog 
@@ -17258,7 +17443,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       />
 
       </>
-      )}
 
       {/* Unterrichtsstunde: nur als eigene Seite /teacher/stunde (kein Modal) */}
       {isLessonStundeRoute && lessonModalData && (
@@ -17291,13 +17475,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           <Box
             component="header"
             sx={{
+              position: 'relative',
               borderBottom: '1px solid #e0e0e0',
               pb: 1.5,
               pt: 1.5,
               px: 2,
-              position: 'relative',
               pr: 5,
               flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              flexWrap: 'wrap',
+              rowGap: 1,
               bgcolor: lessonSplitLeft ? alpha('#fff', 0.82) : 'background.paper',
               backdropFilter: lessonSplitLeft ? 'blur(8px)' : 'none',
               isolation: 'isolate',
@@ -17316,12 +17507,49 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 WebkitBoxOrient: 'vertical',
                 overflow: 'hidden',
                 wordBreak: 'break-word',
+                flex: '1 1 140px',
+                minWidth: 0,
                 maxWidth: '100%',
-                paddingRight: '40px',
+                pr: 1,
               }}
             >
               {lessonModalData.lessonName}
             </Typography>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={lessonPlanViewMode}
+              onChange={(_, v: 'create' | 'run' | 'background' | null) => {
+                if (v != null) setLessonPlanViewMode(v);
+              }}
+              sx={{
+                flexShrink: 0,
+                mr: 4.5,
+                '& .MuiToggleButton-root': {
+                  py: 0.35,
+                  px: 1,
+                  fontSize: '0.68rem',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                },
+              }}
+            >
+              <ToggleButton value="create">Erstellen</ToggleButton>
+              <ToggleButton value="run">TABLET</ToggleButton>
+              <ToggleButton
+                value="background"
+                sx={{
+                  '&.Mui-selected': {
+                    bgcolor: alpha('#3949ab', 0.14),
+                    color: '#283593',
+                    fontWeight: 700,
+                    '&:hover': { bgcolor: alpha('#3949ab', 0.2) },
+                  },
+                }}
+              >
+                Laptop
+              </ToggleButton>
+            </ToggleButtonGroup>
             <DialogCloseIconButton
               onClose={handleCloseLessonPage}
               sx={{
@@ -17430,22 +17658,37 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const openPlanItem = async (item: LessonPlanItem) => {
                   if (item.type === 'entry-ticket') {
-                    window.open(`/entry-ticket?grade=${encodeURIComponent(String(item.grade || 7))}&autostart=1&r=${Date.now()}`, '_blank');
+                    const gid = lessonModalData.groupId ? encodeURIComponent(lessonModalData.groupId) : '';
+                    const qs = new URLSearchParams();
+                    qs.set('grade', String(item.grade || 7));
+                    qs.set('autostart', '1');
+                    qs.set('r', String(Date.now()));
+                    if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
+                    const etUrl = `${window.location.origin}/entry-ticket?${qs.toString()}`;
+                    window.open(etUrl, '_blank', 'noopener,noreferrer');
                     return;
                   }
                   if (item.type === 'exit-ticket') {
-                    const template = item.exitType || 'feedback';
-                    const exitTicketUrl = `/exit-ticket?template=${encodeURIComponent(template)}`;
+                    const template = item.exitType || 'exam-question';
+                    const stundeParams = new URLSearchParams();
+                    stundeParams.set('groupId', lessonModalData.groupId);
+                    stundeParams.set('lessonPath', lessonPath);
+                    stundeParams.set('lessonName', lessonName || '');
+                    stundeParams.set('planMode', lessonPlanViewMode);
+                    const stundeReturn = `/teacher/stunde?${stundeParams.toString()}`;
                     const openedWindow = window.open('about:blank', '_blank');
                     if (!openedWindow) {
                       showSnackbar('Popup wurde blockiert. Bitte Popups für diese Seite erlauben.', 'error');
                       return;
                     }
                     const topic = (lessonName || '').trim() || 'dem heutigen Thema';
-                    const exitTemplateByType: Record<'feedback' | 'quick-check' | 'transfer' | 'draw', { title: string; description: string; questions: string[] }> = {
+                    const exitTemplateByType: Record<
+                      ExitPlanType,
+                      { title: string; description: string; questions: string[] }
+                    > = {
                       feedback: {
                         title: '3-Fragen-Feedback',
-                        description: 'Reflexion zur Stunde aus Sicht der SuS.',
+                        description: '',
                         questions: [
                           'Was ist das Wichtigste, das du aus der heutigen Stunde mitnimmst?',
                           'Was war heute neu oder besonders interessant für dich?',
@@ -17454,7 +17697,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       },
                       'quick-check': {
                         title: '3 kurze Fragen zum Thema',
-                        description: `Automatisch erzeugte Kurzfragen zu "${topic}".`,
+                        description: '',
                         questions: [
                           `Erkläre in 1-2 Sätzen die Kernidee von ${topic}.`,
                           `Nenne zwei wichtige Begriffe aus ${topic} und erkläre sie kurz.`,
@@ -17463,7 +17706,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       },
                       transfer: {
                         title: 'Transferaufgabe',
-                        description: 'Übertrage das Gelernte auf eine neue Situation.',
+                        description: '',
                         questions: [
                           'Beschreibe eine reale Situation, in der das heutige Thema vorkommt.',
                           'Erkläre, wie du das Gelernte auf diese Situation anwendest.',
@@ -17472,16 +17715,48 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       },
                       draw: {
                         title: 'Zeichne ein Bild zur Stunde',
-                        description: 'Zeig mit einer Zeichnung, was dir heute am wichtigsten war.',
+                        description: '',
                         questions: [
                           'Zeichne ein Bild, das deine wichtigste Idee aus der Stunde zeigt.',
                           'Beschrifte mindestens 1 Teil deiner Zeichnung.',
                           'Schreibe 1 Satz dazu: „Das bedeutet für mich …“'
                         ]
+                      },
+                      'error-hunt': {
+                        title: 'Fehler-Fahndung',
+                        description: '',
+                        questions: [
+                          'Finde einen typischen Fehler zum heutigen Thema.',
+                          'Korrigiere den Fehler und erkläre kurz, warum er falsch ist.',
+                          'Formuliere eine Merkhilfe, damit der Fehler nicht noch einmal passiert.'
+                        ]
+                      },
+                      'exam-question': {
+                        title: 'Prüfungsfrage bauen',
+                        description: '',
+                        questions: [
+                          'Erstelle eine sinnvolle Prüfungsfrage zum heutigen Thema.',
+                          'Gib eine kurze Musterlösung dazu an.',
+                          'Begründe in 1 Satz, warum diese Frage wichtig ist.'
+                        ]
+                      },
+                      prediction: {
+                        title: 'Vorhersage fürs nächste Mal',
+                        description: '',
+                        questions: [
+                          'Schätze: Was wird in der nächsten Stunde wahrscheinlich behandelt?',
+                          'Begründe deine Vorhersage mit Bezug zur heutigen Stunde.',
+                          'Formuliere eine Frage, die du in der nächsten Stunde klären willst.'
+                        ]
                       }
                     };
 
-                    const selected = exitTemplateByType[template];
+                    const selected = exitTemplateByType[template as ExitPlanType];
+                    if (!selected) {
+                      showSnackbar('Exit-Ticket-Vorlage unbekannt. Bitte Baustein neu wählen.', 'error');
+                      openedWindow?.close();
+                      return;
+                    }
                     const loginCode = localStorage.getItem('loginCode') || '';
                     try {
                       const publishRes = await fetch('/api/exit-ticket/publish', {
@@ -17496,20 +17771,41 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                             title: selected.title,
                             description: selected.description,
                             questions: selected.questions
-                          }
+                          },
+                          learningGroupId: lessonModalData.groupId
                         })
                       });
                       if (!publishRes.ok) {
-                        showSnackbar('Exit Ticket konnte nicht veröffentlicht werden.', 'error');
+                        let errMsg = '';
+                        try {
+                          const j = await publishRes.json();
+                          if (j && typeof j === 'object' && typeof (j as { error?: unknown }).error === 'string') {
+                            errMsg = (j as { error: string }).error;
+                          }
+                        } catch {
+                          /* ignore */
+                        }
+                        showSnackbar(errMsg || 'Exit Ticket konnte nicht veröffentlicht werden.', 'error');
                         openedWindow.close();
                         return;
                       }
+                      let publishedLessonPath: string | null = null;
+                      try {
+                        const pj = (await publishRes.json()) as { lessonPath?: string };
+                        if (typeof pj?.lessonPath === 'string') publishedLessonPath = pj.lessonPath;
+                      } catch {
+                        /* ignore */
+                      }
+                      const etParams = new URLSearchParams();
+                      etParams.set('template', template);
+                      if (publishedLessonPath) etParams.set('lessonPath', publishedLessonPath);
+                      etParams.set('returnTo', stundeReturn);
+                      openedWindow.location.href = `/exit-ticket?${etParams.toString()}`;
                     } catch (_) {
                       showSnackbar('Fehler beim Starten des Exit Tickets.', 'error');
                       openedWindow.close();
                       return;
                     }
-                    openedWindow.location.href = exitTicketUrl;
                     return;
                   }
                   if (item.type === 'quiz') {
@@ -17575,6 +17871,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 const startEdit = (section: LessonBoxField) => {
                   const currentText = (instructions as any)?.[section] ?? '';
                   const htmlText = plainTextToEditorHtml(currentText, section);
+                  lessonBoxDraftRef.current = htmlText;
                   setLessonBoxEdit({ lessonName, lessonPath, section, draft: htmlText, originalDraft: htmlText });
                 };
                 const sanitizeSavedHtml = (html: string): string => {
@@ -17587,18 +17884,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   e?.preventDefault();
                   e?.stopPropagation();
                   if (!lessonBoxEdit) return;
-                  const { lessonPath: lp, section, draft, originalDraft } = lessonBoxEdit;
+                  const { lessonPath: lp, section, originalDraft } = lessonBoxEdit;
+                  const draft = lessonBoxDraftRef.current ?? lessonBoxEdit.draft;
                   if (!draft?.trim() && originalDraft?.trim()) {
+                    lessonBoxDraftRef.current = null;
                     setLessonBoxEdit(null);
                     return;
                   }
                   const sanitized = sanitizeSavedHtml(draft);
                   if (sanitized === originalDraft || sanitized === sanitizeSavedHtml(originalDraft)) {
+                    lessonBoxDraftRef.current = null;
                     setLessonBoxEdit(null);
                     return;
                   }
                   const nextOverrides = { ...(editedLessonInstructions[lp] || {}), [section]: sanitized };
                   setEditedLessonInstructions(prev => ({ ...prev, [lp]: nextOverrides }));
+                  lessonBoxDraftRef.current = null;
                   setLessonBoxEdit(null);
                   try {
                     await fetch('/api/lesson-instructions', {
@@ -17612,12 +17913,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const undoEdit = () => {
                   if (!lessonBoxEdit) return;
+                  const od = lessonBoxEdit.originalDraft;
+                  lessonBoxDraftRef.current = od;
                   // Stellt den Zustand beim Öffnen der Bearbeitung wieder her
                   setLessonBoxEdit(prev => prev ? { ...prev, draft: prev.originalDraft } : null);
                 };
                 const isABByName = (name: string) => /^AB_|Sicherheitsziele/i.test((name || '').replace(/\.[^.]+$/, ''));
                 const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
-                /** Ohne reine Bilddateien: die erscheinen unter „Dokumente im Ordner dieser Stunde“ (außer AB_* / Sicherheitsziele). */
+                /** Ohne reine Bilddateien: die erscheinen in der Dokumentenliste (außer AB_* / Sicherheitsziele). */
                 const abFiles = allFiles.filter((f: any) => {
                   const name = f.name || '';
                   if (isABByName(name)) return true;
@@ -17661,13 +17964,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               <RichTextEditor
                                 key={`edit-abAnleitung-plan-${lessonName}`}
                                 value={lessonBoxEdit?.draft ?? ''}
-                                onChange={(value) =>
-                                  setLessonBoxEdit((prev) => {
-                                    if (!prev) return null;
-                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                    return { ...prev, draft: value };
-                                  })
-                                }
+                                onChange={patchLessonBoxDraftFromEditor}
                                 placeholder="Arbeitsblatt-Anleitung eingeben..."
                                 rows={4}
                                 compact={true}
@@ -17688,37 +17985,45 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       )}
                       <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
                         {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
-                          const pdfFile = getPdfFromGroup(versions);
-                          const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
                           const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                          const abStemNames = abFiles.map((f) => ({ name: f.name || '' }));
+                          const versionsIconsOnly = sortedVersions.filter(
+                            (v) => !isDerivedFolienVersionFile(v.file.name, abStemNames)
+                          );
+                          const shareFile = getShareFileForGroup(versions, baseName);
+                          const isFileShared = shareFile
+                            ? !!fileShares[fileShareKey(shareFile.path, lessonModalData.groupId)]
+                            : false;
                           return (
                             <ListItem key={`plan-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
                               <ListItemIcon sx={{ minWidth: 28 }}>
                                 <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
                               </ListItemIcon>
-                              <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                              <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }} />
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                {sortedVersions.map(({ ext, file }) => (
+                                {versionsIconsOnly.map(({ ext, file }) => (
                                   <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
                                     <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#f57c00', '&:hover': { bgcolor: 'action.hover' } }}>
                                       {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
                                     </IconButton>
                                   </Tooltip>
                                 ))}
-                                {pdfFile && (
+                              </Box>
+                              {shareFile && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
                                   <FormControlLabel
                                     control={
                                       <Checkbox
                                         size="small"
-                                        checked={isPdfShared}
-                                        onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                        checked={isFileShared}
+                                        onChange={() => toggleFileShare(shareFile.path, lessonModalData.groupId)}
                                         sx={{ py: 0 }}
                                       />
                                     }
-                                    label={<Typography variant="caption">Freigeben (PDF)</Typography>}
+                                    label={<Typography variant="caption">Material freigeben</Typography>}
                                   />
-                                )}
-                              </Box>
+                                </Box>
+                              )}
                             </ListItem>
                           );
                         })}
@@ -17747,6 +18052,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Typography>
                     );
                   }
+                  const allLessonFolderNamesForStem = lessonFolderPdfFiles.map((f) => ({ name: f.name || '' }));
                   const docIconColor = '#546e7a';
                   return (
                     <List
@@ -17761,86 +18067,100 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     >
                       {groupFilesByBaseName(lessonFolderPdfFiles).map(({ baseName, versions }) => {
                         const sortedVersions = sortLessonFolderVersions(versions);
-                        const primary = sortedVersions[0];
-                        const pExt = primary.ext.toLowerCase();
-                        const openPrimary = () => handleFileClick(primary.file);
-                        const frontTooltip =
-                          pExt === 'pdf'
-                            ? 'PDF öffnen'
-                            : isImageExt(pExt)
-                              ? 'Bild öffnen'
-                              : `${pExt.toUpperCase()} öffnen`;
-                        const frontGlyph =
-                          pExt === 'pdf' ? (
-                            <PictureAsPdfIcon sx={{ fontSize: 20, color: docIconColor }} />
-                          ) : isImageExt(pExt) ? (
-                            <ImageIcon sx={{ fontSize: 20, color: docIconColor }} />
-                          ) : (
-                            <DescriptionIcon sx={{ fontSize: 20, color: docIconColor }} />
-                          );
+                        const folienIconBtnSx = {
+                          p: 0.35,
+                          color: docIconColor,
+                          '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.06)' },
+                        };
                         return (
                           <ListItem
                             key={`${keyPrefix}-${baseName}`}
+                            disablePadding
                             sx={{
-                              flexWrap: 'wrap',
-                              gap: 0.5,
-                              alignItems: 'center',
-                              display: 'flex',
+                              display: 'block',
                               py: runModeMinimal ? 0.4 : 0.65,
+                              px: runModeMinimal ? 0 : 1,
                               borderBottom: runModeMinimal ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
                               '&:last-of-type': { borderBottom: 'none' },
-                              '&:hover': { bgcolor: runModeMinimal ? 'rgba(0, 0, 0, 0.03)' : 'rgba(0, 0, 0, 0.04)' }
+                              '&:hover': { bgcolor: runModeMinimal ? 'rgba(0, 0, 0, 0.03)' : 'rgba(0, 0, 0, 0.04)' },
                             }}
                           >
-                            <ListItemIcon sx={{ minWidth: 36 }}>
-                              <Tooltip title={frontTooltip}>
-                                <IconButton
-                                  size="small"
-                                  onClick={openPrimary}
-                                  aria-label={frontTooltip}
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'flex-start',
+                                width: '100%',
+                                minWidth: 0,
+                                gap: 1,
+                                flexWrap: 'nowrap',
+                              }}
+                            >
+                              <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                                <FolienVersionSelect
+                                  versions={sortedVersions}
+                                  iconBtnSx={folienIconBtnSx}
+                                  onOpenFile={handleFileClick}
+                                  groupStem={baseName}
+                                />
+                              </Box>
+                              <Typography
+                                component="span"
+                                sx={{
+                                  flex: '1 1 0%',
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  textAlign: 'left',
+                                  fontSize: LESSON_MODAL_FONT_SIZE,
+                                  color: '#333',
+                                  fontWeight: runModeMinimal ? 400 : 500,
+                                }}
+                              >
+                                {baseName}
+                              </Typography>
+                              {!runModeMinimal && (
+                                <Box
                                   sx={{
-                                    p: 0.35,
-                                    color: docIconColor,
-                                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.06)' }
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.35,
+                                    flexShrink: 0,
+                                    flexWrap: 'wrap',
+                                    justifyContent: 'flex-end',
                                   }}
                                 >
-                                  {frontGlyph}
-                                </IconButton>
-                              </Tooltip>
-                            </ListItemIcon>
-                            <ListItemText
-                              primary={baseName}
-                              primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE, color: '#333', fontWeight: runModeMinimal ? 400 : 500 }}
-                              sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }}
-                            />
-                            {!runModeMinimal && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0, flexWrap: 'wrap' }}>
-                                {sortedVersions.map(({ ext, file }) => {
-                                  const shareKey = fileShareKey(file.path, lessonModalData.groupId);
-                                  const isFileShared = !!fileShares[shareKey];
-                                  return (
-                                    <Tooltip key={file.path} title={`${ext.toUpperCase()} für die Lerngruppe freigeben`}>
-                                      <FormControlLabel
-                                        control={
-                                          <Checkbox
-                                            size="small"
-                                            checked={isFileShared}
-                                            onChange={() => toggleFileShare(file.path, lessonModalData.groupId)}
-                                            sx={{ py: 0 }}
+                                  {sortedVersions
+                                    .filter((v) => !isDerivedFolienVersionFile(v.file.name, allLessonFolderNamesForStem))
+                                    .map(({ ext, file }) => {
+                                      const shareKey = fileShareKey(file.path, lessonModalData.groupId);
+                                      const isFileShared = !!fileShares[shareKey];
+                                      return (
+                                        <Tooltip key={file.path} title={`${ext.toUpperCase()} für die Lerngruppe freigeben`}>
+                                          <FormControlLabel
+                                            control={
+                                              <Checkbox
+                                                size="small"
+                                                checked={isFileShared}
+                                                onChange={() => toggleFileShare(file.path, lessonModalData.groupId)}
+                                                sx={{ py: 0 }}
+                                              />
+                                            }
+                                            label={<Typography variant="caption">Freigeben</Typography>}
+                                            sx={{
+                                              m: 0,
+                                              mr: 0.25,
+                                              '& .MuiFormControlLabel-label': { fontSize: '0.7rem' }
+                                            }}
                                           />
-                                        }
-                                        label={<Typography variant="caption">Freigeben</Typography>}
-                                        sx={{
-                                          m: 0,
-                                          mr: 0.25,
-                                          '& .MuiFormControlLabel-label': { fontSize: '0.7rem' }
-                                        }}
-                                      />
-                                    </Tooltip>
-                                  );
-                                })}
-                              </Box>
-                            )}
+                                        </Tooltip>
+                                      );
+                                    })}
+                                </Box>
+                              )}
+                            </Box>
                           </ListItem>
                         );
                       })}
@@ -17857,7 +18177,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   editorKeySuffix: string;
                   showDocumentsSection: boolean;
                   documentsKeyPrefix: string;
-                  /** Im Modus „TABLET“ nur Dokumente, keine Voraussetzungen/Material/Ablauf-Kästen */
+                  /** Im Modus „TABLET“ nur Dokumente, keine drei Phasen-Textkästen (blau/gelb/grün) */
                   showTextPhasen: boolean;
                 }) => {
                   if (!showTextPhasen && !showDocumentsSection) return null;
@@ -17883,10 +18203,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       )}
                       {isEditing('voraussetzungen') ? (
                         <>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0' }}>
-                              Voraussetzungen
-                            </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
                             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
                               <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 13 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.5, py: 0.1, fontSize: '0.65rem', '& .MuiButton-startIcon': { mr: 0.25 } }}>Rückgängig</Button>
                               <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#1565c0', minWidth: 0, px: 0.6, py: 0.1, fontSize: '0.65rem' }}>Fertig</Button>
@@ -17895,21 +18212,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           <RichTextEditor
                             key={`edit-voraussetzungen-${editorKeySuffix}-${lessonName}`}
                             value={lessonBoxEdit?.draft ?? ''}
-                            onChange={value => setLessonBoxEdit(prev => {
-                              if (!prev) return null;
-                              if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                              return { ...prev, draft: value };
-                            })}
-                            placeholder="Voraussetzungen eingeben…"
+                            onChange={patchLessonBoxDraftFromEditor}
+                            placeholder="Text eingeben…"
                             rows={3}
                             compact={true}
                           />
                         </>
                       ) : (
                         <>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0', display: 'block', mb: 0.35, pr: 2.5 }}>
-                            Voraussetzungen
-                          </Typography>
                           {isMeaningfulVoraussetzungenDisplay(instructions?.voraussetzungen) ? (
                             renderTextContent(instructions.voraussetzungen ?? '', undefined, 1.75, true)
                           ) : (
@@ -17938,10 +18248,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       )}
                       {isEditing('materialliste') ? (
                         <>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17' }}>
-                              Material
-                            </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
                             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
                               <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 13 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.5, py: 0.1, fontSize: '0.65rem', '& .MuiButton-startIcon': { mr: 0.25 } }}>Rückgängig</Button>
                               <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#f9a825', minWidth: 0, px: 0.6, py: 0.1, fontSize: '0.65rem' }}>Fertig</Button>
@@ -17950,21 +18257,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           <RichTextEditor
                             key={`edit-materialliste-${editorKeySuffix}-${lessonName}`}
                             value={lessonBoxEdit?.draft ?? ''}
-                            onChange={value => setLessonBoxEdit(prev => {
-                              if (!prev) return null;
-                              if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                              return { ...prev, draft: value };
-                            })}
-                            placeholder="Benötigtes Material eintragen…"
+                            onChange={patchLessonBoxDraftFromEditor}
+                            placeholder="Stichliste, Geräte …"
                             rows={2}
                             compact={true}
                           />
                         </>
                       ) : (
                         <>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#f57f17', display: 'block', mb: 0.35, pr: 2.5 }}>
-                            Material
-                          </Typography>
                           {instructions?.materialliste?.trim() ? (
                             <Box sx={{ m: 0, pl: 0, color: '#333', fontSize: LESSON_MODAL_FONT_SIZE, lineHeight: 1.5 }}>
                               {renderMateriallisteDisplay(instructions.materialliste ?? '')}
@@ -17995,10 +18295,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       )}
                       {isEditing('anweisungen') ? (
                         <>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32' }}>
-                              Ablauf / Sprechakte
-                            </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, flexWrap: 'wrap', mb: 0.4 }}>
                             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
                               <Button size="small" startIcon={<UndoIcon sx={{ fontSize: 13 }} />} onClick={undoEdit} sx={{ color: '#666', minWidth: 0, px: 0.5, py: 0.1, fontSize: '0.65rem', '& .MuiButton-startIcon': { mr: 0.25 } }}>Rückgängig</Button>
                               <Button type="button" size="small" onClick={(e) => { e.preventDefault(); saveEdit(e); }} sx={{ color: '#2e7d32', minWidth: 0, px: 0.6, py: 0.1, fontSize: '0.65rem' }}>Fertig</Button>
@@ -18007,21 +18304,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           <RichTextEditor
                             key={`edit-anweisungen-${editorKeySuffix}-${lessonName}`}
                             value={lessonBoxEdit?.draft ?? ''}
-                            onChange={value => setLessonBoxEdit(prev => {
-                              if (!prev) return null;
-                              if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                              return { ...prev, draft: value };
-                            })}
-                            placeholder="Ablauf, Sprechimpulse, Leitfragen…"
+                            onChange={patchLessonBoxDraftFromEditor}
+                            placeholder="Leitfragen, Sprechimpulse …"
                             rows={4}
                             compact={true}
                           />
                         </>
                       ) : (
                         <>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#2e7d32', display: 'block', mb: 0.35, pr: 2.5 }}>
-                            Ablauf / Sprechakte
-                          </Typography>
                           {instructions?.anweisungen?.trim() ? (
                             renderTextContent(instructions.anweisungen ?? '', '#ed6c02', LESSON_MODAL_LINE_HEIGHT, true)
                           ) : (
@@ -18049,11 +18339,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           borderTop: showTextPhasen ? '1px solid #bdbdbd' : 'none'
                         }}
                       >
-                        {showTextPhasen && (
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#424242', display: 'block', mb: 0.35 }}>
-                            Dokumente im Ordner dieser Stunde
-                          </Typography>
-                        )}
                         {renderLessonFolderDocumentsList(documentsKeyPrefix, !showTextPhasen)}
                       </Box>
                     )}
@@ -18081,42 +18366,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         alignItems: 'stretch',
                       }}
                     >
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-                        <ToggleButtonGroup
-                          size="small"
-                          exclusive
-                          value={lessonPlanViewMode}
-                          onChange={(_, v: 'create' | 'run' | 'background' | null) => {
-                            if (v != null) setLessonPlanViewMode(v);
-                          }}
-                          sx={{
-                            '& .MuiToggleButton-root': {
-                              py: 0.35,
-                              px: 1,
-                              fontSize: '0.68rem',
-                              textTransform: 'none',
-                              fontWeight: 600,
-                            },
-                          }}
-                        >
-                          <ToggleButton value="create">Erstellen</ToggleButton>
-                          <ToggleButton value="run">TABLET</ToggleButton>
-                          <ToggleButton
-                            value="background"
-                            sx={{
-                              '&.Mui-selected': {
-                                bgcolor: alpha('#3949ab', 0.14),
-                                color: '#283593',
-                                fontWeight: 700,
-                                '&:hover': { bgcolor: alpha('#3949ab', 0.2) },
-                              },
-                            }}
-                          >
-                            Laptop
-                          </ToggleButton>
-                        </ToggleButtonGroup>
-                      </Box>
-
                       {lessonPlanViewMode === 'create' && (
                       <Box sx={{ mb: 1.0, display: 'flex', alignItems: 'flex-start', gap: 0.6, flexWrap: 'wrap', width: '100%' }}>
                         {[
@@ -18219,16 +18468,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 />
                               )}
                               {optionId === 'exit-ticket' && isSelected && (
-                                <FormControl size="small" sx={{ minWidth: 108 }}>
+                                <FormControl size="small" sx={{ minWidth: 132 }}>
                                   <Select
                                     value={newExitType}
-                                    onChange={(e) => setNewExitType(e.target.value as 'feedback' | 'quick-check' | 'transfer' | 'draw')}
+                                    onChange={(e) => setNewExitType(e.target.value as ExitPlanType)}
                                     sx={{ fontSize: '0.68rem', '& .MuiSelect-select': { py: 0.45, px: 0.7 } }}
                                   >
-                                    <MenuItem value="feedback">Feedback</MenuItem>
+                                    <MenuItem value="exam-question">Prüfungsfrage bauen</MenuItem>
                                     <MenuItem value="quick-check">Quick Check</MenuItem>
                                     <MenuItem value="transfer">Transfer</MenuItem>
                                     <MenuItem value="draw">Zeichnung</MenuItem>
+                                    <MenuItem value="error-hunt">Fehler-Fahndung</MenuItem>
+                                    <MenuItem value="prediction">Vorhersage</MenuItem>
+                                    <MenuItem value="feedback">3-Fragen-Feedback</MenuItem>
                                   </Select>
                                 </FormControl>
                               )}
@@ -18260,7 +18512,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                       )}
 
-                      {/* Input: Voraussetzungen / Material / Ablauf (+ ggf. Dokumente) unter jedem Input-Baustein in allen Modi */}
+                      {/* Input: Phasen-Texte (+ ggf. Dokumente) unter jedem Input-Baustein in allen Modi */}
                       {abPlanSection}
 
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
@@ -18357,7 +18609,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   >
                                     {item.label}
                                     {item.type === 'entry-ticket' && ` (Klasse ${item.grade || 7})`}
-                                    {item.type === 'exit-ticket' && ` (${item.exitType || 'feedback'})`}
+                                    {item.type === 'exit-ticket' && ` (${item.exitType || 'exam-question'})`}
                                     {item.type === 'arbeitsauftrag' && item.linkedMaterialName
                                       ? ` · ${item.linkedMaterialName}`
                                       : ''}
@@ -18496,7 +18748,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     </Box>
 
-                    {/* Voraussetzungen / Material nur in der Input-Karte (Baustein „Input“ im Stundenplan). Kein zweiter blau/gelb-Block ohne Input. */}
+                    {/* Obere Phasen-Karten nur in der Input-Karte (Baustein „Input“ im Stundenplan). Kein zweiter blau/gelb-Block ohne Input. */}
 
                     {lessonPlanViewMode === 'background' && planHasArbeitsauftrag && (
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 1 }}>
@@ -18544,11 +18796,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     <RichTextEditor
                                       key={`edit-abAnleitung-bg-${lessonName}`}
                                       value={lessonBoxEdit?.draft ?? ''}
-                                      onChange={value => setLessonBoxEdit(prev => {
-                                        if (!prev) return null;
-                                        if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                        return { ...prev, draft: value };
-                                      })}
+                                      onChange={patchLessonBoxDraftFromEditor}
                                       placeholder="Arbeitsblatt-Anleitung eingeben..."
                                       rows={4}
                                       compact={true}
@@ -18577,37 +18825,45 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 }}
                               >
                                 {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
-                                  const pdfFile = getPdfFromGroup(versions);
-                                  const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
                                   const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                                  const abStemNamesBg = abFiles.map((f) => ({ name: f.name || '' }));
+                                  const versionsIconsOnly = sortedVersions.filter(
+                                    (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesBg)
+                                  );
+                                  const shareFile = getShareFileForGroup(versions, baseName);
+                                  const isFileShared = shareFile
+                                    ? !!fileShares[fileShareKey(shareFile.path, lessonModalData.groupId)]
+                                    : false;
                                   return (
                                     <ListItem key={`bg-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
                                       <ListItemIcon sx={{ minWidth: 28 }}>
                                         <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
                                       </ListItemIcon>
-                                      <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                      <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }} />
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                        {sortedVersions.map(({ ext, file }) => (
+                                        {versionsIconsOnly.map(({ ext, file }) => (
                                           <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
                                             <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#f57c00' }}>
                                               {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
                                             </IconButton>
                                           </Tooltip>
                                         ))}
-                                        {pdfFile && (
+                                      </Box>
+                                      {shareFile && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
                                           <FormControlLabel
                                             control={
                                               <Checkbox
                                                 size="small"
-                                                checked={isPdfShared}
-                                                onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                                checked={isFileShared}
+                                                onChange={() => toggleFileShare(shareFile.path, lessonModalData.groupId)}
                                                 sx={{ py: 0 }}
                                               />
                                             }
                                             label={<Typography variant="caption">Material freigeben</Typography>}
                                           />
-                                        )}
-                                      </Box>
+                                        </Box>
+                                      )}
                                     </ListItem>
                                   );
                                 })}
@@ -18634,8 +18890,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       }}
                                     >
                                         <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32' }}>Musterlösung (Schritt {idx + 1})</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
-                                          <Button size="small" variant="text" onClick={() => handleFileClick(musterLoesungFiles[idx])} sx={{ textTransform: 'none', p: 0, minWidth: 0 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5, width: '100%' }}>
+                                          <Button
+                                            size="small"
+                                            variant="text"
+                                            onClick={() => handleFileClick(musterLoesungFiles[idx])}
+                                            sx={{ textTransform: 'none', p: 0, minWidth: 0, flex: '1 1 0%', justifyContent: 'flex-start' }}
+                                          >
                                             {musterLoesungFiles[idx].name}
                                           </Button>
                                           {(() => {
@@ -18644,16 +18905,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                             if (!pdfFile || !bgGroupId) return null;
                                             const shared = !!fileShares[fileShareKey(pdfFile.path, bgGroupId)];
                                             return (
-                                              <FormControlLabel
-                                                control={
-                                                  <Checkbox
-                                                    size="small"
-                                                    checked={shared}
-                                                    onChange={() => toggleFileShare(pdfFile.path, bgGroupId)}
-                                                  />
-                                                }
-                                                label={<Typography variant="caption">Material freigeben</Typography>}
-                                              />
+                                              <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
+                                                <FormControlLabel
+                                                  control={
+                                                    <Checkbox
+                                                      size="small"
+                                                      checked={shared}
+                                                      onChange={() => toggleFileShare(pdfFile.path, bgGroupId)}
+                                                    />
+                                                  }
+                                                  label={<Typography variant="caption">Material freigeben</Typography>}
+                                                />
+                                              </Box>
                                             );
                                           })()}
                                         </Box>
@@ -18706,12 +18969,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               <RichTextEditor
                                 key={`edit-anweisungen-${lessonName}`}
                                 value={lessonBoxEdit?.draft ?? ''}
-                                onChange={value => setLessonBoxEdit(prev => {
-                                if (!prev) return null;
-                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
-                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                return { ...prev, draft: value };
-                              })}
+                                onChange={patchLessonBoxDraftFromEditor}
                                 placeholder="Lehrer-Anweisungen eingeben..."
                                 rows={6}
                                 compact={true}
@@ -18742,12 +19000,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               <RichTextEditor
                                 key={`edit-geheimtexte-${lessonName}`}
                                 value={lessonBoxEdit?.draft ?? ''}
-                                onChange={value => setLessonBoxEdit(prev => {
-                                if (!prev) return null;
-                                // Verhindern, dass der Editor vorhandenen Inhalt mit leerem Wert überschreibt
-                                if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                return { ...prev, draft: value };
-                              })}
+                                onChange={patchLessonBoxDraftFromEditor}
                                 placeholder="Klartexte eingeben..."
                                 rows={6}
                                 compact={true}
@@ -18782,7 +19035,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Box>
                     ) : null}
 
-                    {/* Folien/PDF-Listen nur bei Input-Baustein: „Dokumente im Ordner dieser Stunde“ in der Input-Karte */}
+                    {/* Folien/PDF-Listen nur bei Input-Baustein in der Input-Karte */}
     
                     {/* Arbeitsblatt (AB) – ausgeblendet, wenn „Arbeitsauftrag“ im Plan (dann oben im gelben Block; in „Laptop“ separat) */}
                     {abFiles.length > 0 && !planHasArbeitsauftrag && lessonPlanViewMode !== 'background' && (
@@ -18799,11 +19052,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 <RichTextEditor
                                   key={`edit-abAnleitung-${lessonName}`}
                                   value={lessonBoxEdit?.draft ?? ''}
-                                  onChange={value => setLessonBoxEdit(prev => {
-                                    if (!prev) return null;
-                                    if (!value?.trim() && prev.originalDraft?.trim()) return prev;
-                                    return { ...prev, draft: value };
-                                  })}
+                                  onChange={patchLessonBoxDraftFromEditor}
                                   placeholder="Arbeitsblatt-Anleitung eingeben..."
                                   rows={4}
                                   compact={true}
@@ -18820,43 +19069,51 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         )}
                         <List dense sx={{ bgcolor: '#fffde7', borderRadius: 0, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, py: 0, border: '1px solid #ffe082', borderTop: instructions?.abAnleitung ? 'none' : undefined }}>
                             {groupFilesByBaseName(abFiles).map(({ baseName, versions }) => {
-                              const pdfFile = getPdfFromGroup(versions);
-                              const isPdfShared = pdfFile ? !!fileShares[fileShareKey(pdfFile.path, lessonModalData.groupId)] : false;
                               const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+                              const abStemNamesInput = abFiles.map((f) => ({ name: f.name || '' }));
+                              const versionsIconsOnly = sortedVersions.filter(
+                                (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesInput)
+                              );
+                              const shareFile = getShareFileForGroup(versions, baseName);
+                              const isFileShared = shareFile
+                                ? !!fileShares[fileShareKey(shareFile.path, lessonModalData.groupId)]
+                                : false;
                               return (
                                 <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
                                   <ListItemIcon sx={{ minWidth: 28 }}>
                                     <DescriptionIcon fontSize="small" sx={{ color: '#f57c00' }} />
                                   </ListItemIcon>
-                                  <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '0 1 25%', overflow: 'hidden' }} />
+                                  <ListItemText primary={baseName} primaryTypographyProps={{ fontSize: LESSON_MODAL_FONT_SIZE }} sx={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden' }} />
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-                                    {sortedVersions.map(({ ext, file }) => (
+                                    {versionsIconsOnly.map(({ ext, file }) => (
                                       <Tooltip key={file.path} title={`${ext === 'pdf' ? 'PDF' : ext.toUpperCase()} öffnen`}>
                                         <IconButton size="small" onClick={() => handleFileClick(file)} sx={{ p: 0.25, minWidth: 28, width: 28, height: 28, borderRadius: 1, color: '#f57c00', '&:hover': { bgcolor: 'action.hover' } }}>
                                           {ext === 'pdf' ? <PictureAsPdfIcon sx={{ fontSize: 18 }} /> : <DescriptionIcon sx={{ fontSize: 18 }} />}
                                         </IconButton>
                                       </Tooltip>
                                     ))}
-                                    {pdfFile && (
+                                  </Box>
+                                  {shareFile && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
                                       <FormControlLabel
                                         control={
                                           <Checkbox
                                             size="small"
-                                            checked={isPdfShared}
-                                            onChange={() => toggleFileShare(pdfFile.path, lessonModalData.groupId)}
+                                            checked={isFileShared}
+                                            onChange={() => toggleFileShare(shareFile.path, lessonModalData.groupId)}
                                             sx={{ py: 0 }}
                                           />
                                         }
-                                        label={<Typography variant="caption">Freigeben (PDF)</Typography>}
+                                        label={<Typography variant="caption">Material freigeben</Typography>}
                                       />
-                                    )}
-                                  </Box>
+                                    </Box>
+                                  )}
                                 </ListItem>
                               );
                             })}
-                        </List>
-                      </Box>
-                    )}
+                          </List>
+                        </Box>
+                      )}
 
                     {!instructions && folienFiles.length === 0 && abFiles.length === 0 && (
                       <Typography variant="body2" color="text.secondary">
@@ -23521,7 +23778,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         )}
       </Dialog>
 
-      {!isLessonStundeRoute && (
       <>
       {/* Reset Confirmation Dialog */}
       <Dialog 
@@ -24267,7 +24523,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         </DialogContent>
       </Dialog>
       </>
-      )}
     </Box>
   );
 };

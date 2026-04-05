@@ -22,6 +22,8 @@ export interface DirectoryContent {
     maxDepth: number;
 }
 export declare class FileSystemPathController {
+    /** PPTX/PPT → PDF (LibreOffice/soffice; lokal installiert) für Folien-Editor */
+    private static convertPowerPointBufferToPdf;
     /**
      * Get all paths
      */
@@ -38,6 +40,11 @@ export declare class FileSystemPathController {
     static readDocxFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readExcelFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readPowerPointFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * PowerPoint-Datei nach PDF konvertieren und inline ausliefern (Folien-Editor im Browser).
+     * Benötigt eine funktionierende LibreOffice-/soffice-Installation auf dem Server.
+     */
+    static readPptxAsPdf(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readPdfFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static readPdfByFilename(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     private static findFileInDirectory;
@@ -73,6 +80,10 @@ export declare class FileSystemPathController {
      * Create a new examination file (KA, KU, HU, QZ)
      */
     static createExamination(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
+     * Create a new lesson folder with standard markdown files
+     */
+    static createLessonFolder(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Generiert Prüfungsinhalte basierend auf einem Prompt
      */

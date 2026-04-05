@@ -25,6 +25,7 @@ import fileSystemPathsRoutes from './routes/fileSystemPaths';
 import kaCorrectionsRoutes from './routes/kaCorrections';
 import messageRoutes from './routes/messages';
 import exitTicketRoutes from './routes/exitTicket';
+import entryTicketRoutes from './routes/entryTicket';
 import journeyRoutes from './routes/journey';
 import flashcardRoutes from './routes/flashcards';
 import submissionRoutes from './routes/submissions';
@@ -87,6 +88,7 @@ app.use('/api/lesson-instructions', lessonInstructionsRoutes);
 app.use('/api/ka-corrections', kaCorrectionsRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/exit-ticket', exitTicketRoutes);
+app.use('/api/entry-ticket', entryTicketRoutes);
 app.use('/api/journey', journeyRoutes);
 
 // Material static files

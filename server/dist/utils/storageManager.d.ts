@@ -17,6 +17,11 @@ export declare class StorageManager {
      */
     private static readLocalDirectory;
     /**
+     * Absoluter Pfad zu einer Datei oder einem Ordner unter git-intern (Relativpfad ohne Präfix "git-intern/").
+     * Gleiche Logik wie readFile — wichtig für saveFile, damit Speichern und Lesen dasselbe Verzeichnis nutzen.
+     */
+    static resolveGitInternRelativePath(relativePath: string): string;
+    /**
      * Read file contents
      */
     static readFile(filePath: string): Promise<Buffer | null>;

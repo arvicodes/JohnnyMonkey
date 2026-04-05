@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteParticipation = exports.getQuizStatistics = exports.resetParticipation = exports.getParticipationStatus = exports.getParticipationResultsForTeacher = exports.getParticipationResults = exports.submitAnswers = exports.startParticipation = void 0;
 const client_1 = require("@prisma/client");
 const gradeConverter_1 = require("../utils/gradeConverter");
+const journeyService_1 = require("../services/journeyService");
 const prisma = new client_1.PrismaClient();
 // Start participation in a quiz session (student only)
 const startParticipation = async (req, res) => {
@@ -197,6 +198,12 @@ const submitAnswers = async (req, res) => {
                 }
             })
         ]);
+        try {
+            await (0, journeyService_1.applyJourneyEvent)(participation.studentId, 'quiz_complete');
+        }
+        catch (journeyErr) {
+            console.error('Reisebegleiter: quiz_complete', journeyErr);
+        }
         // Calculate percentage and create grade if quiz has a gradeCategory
         const percentage = participation.maxScore ? Math.round((totalScore / participation.maxScore) * 100) : 0;
         if (participation.session.quiz.gradeCategory) {

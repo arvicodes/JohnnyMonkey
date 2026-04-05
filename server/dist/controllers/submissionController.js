@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getStudentSubmissionStats = exports.deleteSubmission = exports.addTeacherComment = exports.checkStudentSubmission = exports.downloadSubmission = exports.getAssignmentSubmissions = exports.getSubmission = exports.submitAssignment = exports.getOrCreateAssignment = exports.upload = void 0;
 const client_1 = require("@prisma/client");
+const journeyService_1 = require("../services/journeyService");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const promises_1 = __importDefault(require("fs/promises"));
@@ -241,6 +242,12 @@ const submitAssignment = async (req, res) => {
                 }
             }
         });
+        try {
+            await (0, journeyService_1.applyJourneyEvent)(studentId, 'homework_submit');
+        }
+        catch (journeyErr) {
+            console.error('Reisebegleiter: homework_submit', journeyErr);
+        }
         res.json(submission);
     }
     catch (error) {

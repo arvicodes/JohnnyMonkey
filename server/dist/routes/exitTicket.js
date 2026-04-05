@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const ExitTicketController_1 = require("../controllers/ExitTicketController");
 const router = express_1.default.Router();
 router.get('/current', ExitTicketController_1.ExitTicketController.getCurrent);
+router.get('/my-submission', ExitTicketController_1.ExitTicketController.getMySubmission);
 router.post('/publish', ExitTicketController_1.ExitTicketController.publish);
 router.post('/submit', ExitTicketController_1.ExitTicketController.submit);
 router.get('/responses', ExitTicketController_1.ExitTicketController.getResponses);

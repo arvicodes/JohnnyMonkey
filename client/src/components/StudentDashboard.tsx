@@ -66,9 +66,11 @@ import InboxModal from './InboxModal';
 import QuizStartButton from './QuizStartButton';
 import SubmissionUpload from './SubmissionUpload';
 import ReisebegleiterAvatarBadge from './ReisebegleiterPanel';
+import { StudentExitTicketMyAnswersBadge } from './exit-ticket/StudentExitTicketMyAnswersBadge';
 import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { gradeFromGroupNames } from '../lib/entryTicketGrade';
+import { apiGetSafe } from '../lib/api';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -1747,6 +1749,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
   const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
 
+  /** Exit-Ticket-Seite nur nutzbar, wenn Lehrkraft per Freigabe publishedAt gesetzt hat */
+  const [exitTicketPublishedForStudent, setExitTicketPublishedForStudent] = useState(false);
+
   // Dialog: Gemeinsames Eingabefeld beim Klick auf Stunde (z. B. 01 / 01 Einstieg / 01 Skytale)
 
   /** Stunde mit gemeinsamem Eingabefeld (Skytale): Ordner 01, 01 Einstieg oder 01 Skytale */
@@ -1961,6 +1966,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       window.scrollTo(0, 0);
     }, 100);
     return () => clearTimeout(timer);
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      const res = await apiGetSafe('/api/exit-ticket/current');
+      if (!res?.ok) return;
+      let data: { publishedAt?: unknown; template?: unknown } = {};
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        return;
+      }
+      if (cancelled) return;
+      const pub = typeof data.publishedAt === 'string' && data.publishedAt.trim() !== '';
+      const tpl = data.template && typeof data.template === 'object';
+      setExitTicketPublishedForStudent(Boolean(pub && tpl));
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 5000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void tick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [userId]);
 
   // Minigame-Logik
@@ -2732,41 +2766,47 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           ) : (
             // Ordner: bei Stunde 01/01 Einstieg/01 Skytale und freigegeben → wie normaler Ordner, Leinwand darunter
             (isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path)) ? (
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
-                {level === 2 ? <span style={{ color: '#2e7d32' }}>▼</span> : level === 3 ? <span style={{ color: '#666' }}>▼</span> : <span style={{ color: level === 0 ? '#9c27b0' : level === 1 ? '#1976d2' : '#666' }}>▼</span>}
-                <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
-                <Typography component="span" variant="body2" sx={{ color: color, fontSize: '0.75rem', fontWeight: fontWeight, wordBreak: 'break-word' }}>
-                  {item.name}
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flex: 1, minWidth: 0 }}>
+                  {level === 2 ? <span style={{ color: '#2e7d32' }}>▼</span> : level === 3 ? <span style={{ color: '#666' }}>▼</span> : <span style={{ color: level === 0 ? '#9c27b0' : level === 1 ? '#1976d2' : '#666' }}>▼</span>}
+                  <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+                  <Typography component="span" variant="body2" sx={{ color: color, fontSize: '0.75rem', fontWeight: fontWeight, wordBreak: 'break-word' }}>
+                    {item.name}
+                  </Typography>
+                </Box>
+                {level >= 1 ? <StudentExitTicketMyAnswersBadge groupId={groupId} userId={userId} /> : null}
               </Box>
             ) : (
-              <Typography variant="body2" sx={{ 
-                color: color,
-                fontSize: '0.75rem',
-                fontWeight: fontWeight,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 0.5,
-                mb: 0.5,
-                cursor: 'default',
-                textDecoration: 'none',
-                wordBreak: 'break-word',
-                maxWidth: '100%',
-              }}>
-                {level === 0 ? (
-                  <span style={{ color: '#9c27b0' }}>▼</span>
-                ) : level === 1 ? (
-                  <span style={{ color: '#1976d2' }}>▼</span>
-                ) : level === 2 ? (
-                  <span style={{ color: '#2e7d32' }}>▼</span>
-                ) : level === 3 ? (
-                  <span style={{ color: '#666' }}>▼</span>
-                ) : (
-                  <span style={{ color: '#666' }}>▼</span>
-                )}
-                <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
-                <span>{item.name}</span>
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5, maxWidth: '100%' }}>
+                <Typography variant="body2" sx={{ 
+                  color: color,
+                  fontSize: '0.75rem',
+                  fontWeight: fontWeight,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 0.5,
+                  cursor: 'default',
+                  textDecoration: 'none',
+                  wordBreak: 'break-word',
+                  flex: 1,
+                  minWidth: 0,
+                }}>
+                  {level === 0 ? (
+                    <span style={{ color: '#9c27b0' }}>▼</span>
+                  ) : level === 1 ? (
+                    <span style={{ color: '#1976d2' }}>▼</span>
+                  ) : level === 2 ? (
+                    <span style={{ color: '#2e7d32' }}>▼</span>
+                  ) : level === 3 ? (
+                    <span style={{ color: '#666' }}>▼</span>
+                  ) : (
+                    <span style={{ color: '#666' }}>▼</span>
+                  )}
+                  <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+                  <span>{item.name}</span>
+                </Typography>
+                {level >= 1 ? <StudentExitTicketMyAnswersBadge groupId={groupId} userId={userId} /> : null}
+              </Box>
             )
           )}
 
@@ -5201,9 +5241,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       navigate(`/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}`);
                     }}
                     sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1.4,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 1.25,
                       position: 'relative',
                       overflow: 'visible',
                       border: '2px solid rgba(33, 150, 243, 0.45)',
@@ -5222,7 +5262,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     <Typography
                       component="span"
                       sx={{
-                        fontSize: '1.35rem',
+                        fontSize: '1.2rem',
                         fontWeight: 800,
                         letterSpacing: 0,
                         lineHeight: 1,
@@ -5233,42 +5273,58 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Typography>
                   </IconButton>
                 </Box>
-                {/* ExitTicket */}
+                {/* ExitTicket — nur aktiv, wenn die Lehrkraft eine Vorlage freigegeben hat */}
                 <Box sx={{ position: 'relative' }}>
-                  <IconButton
-                    onClick={() => navigate('/exit-ticket')}
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1.4,
-                      position: 'relative',
-                      overflow: 'visible',
-                      border: '2px solid rgba(102, 187, 106, 0.45)',
-                      background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
-                      color: 'white',
-                      boxShadow: '0 2px 8px rgba(67, 160, 71, 0.35)',
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        borderColor: 'rgba(102, 187, 106, 0.75)',
-                        boxShadow: '0 4px 12px rgba(67, 160, 71, 0.45)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                    title="ExitTicket"
+                  <Tooltip
+                    title={
+                      exitTicketPublishedForStudent
+                        ? 'Exit Ticket (am besten den Link von der Lehrkraft mit der passenden Vorlage nutzen)'
+                        : 'Exit Ticket — deine Lehrkraft hat noch nichts freigegeben'
+                    }
                   >
-                    <Typography
-                      component="span"
-                      sx={{
-                        fontSize: '1.35rem',
-                        fontWeight: 800,
-                        letterSpacing: 0,
-                        lineHeight: 1,
-                        display: 'inline-block',
-                      }}
-                    >
-                      X
-                    </Typography>
-                  </IconButton>
+                    <span>
+                      <IconButton
+                        disabled={!exitTicketPublishedForStudent}
+                        onClick={() => navigate('/exit-ticket')}
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 1.25,
+                          position: 'relative',
+                          overflow: 'visible',
+                          border: '2px solid rgba(102, 187, 106, 0.45)',
+                          background: 'linear-gradient(135deg, #43a047 0%, #2e7d32 100%)',
+                          color: 'white',
+                          boxShadow: '0 2px 8px rgba(67, 160, 71, 0.35)',
+                          '&:hover': {
+                            transform: 'scale(1.05)',
+                            borderColor: 'rgba(102, 187, 106, 0.75)',
+                            boxShadow: '0 4px 12px rgba(67, 160, 71, 0.45)',
+                          },
+                          '&.Mui-disabled': {
+                            opacity: 0.45,
+                            background: 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',
+                            borderColor: 'rgba(0,0,0,0.12)',
+                            color: 'rgba(255,255,255,0.9)',
+                          },
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontSize: '1.2rem',
+                            fontWeight: 800,
+                            letterSpacing: 0,
+                            lineHeight: 1,
+                            display: 'inline-block',
+                          }}
+                        >
+                          X
+                        </Typography>
+                      </IconButton>
+                    </span>
+                  </Tooltip>
                 </Box>
                 {/* Bewegungsgeschichten (WIMASU-Klassiker) */}
                 <Box sx={{ position: 'relative' }}>
@@ -6195,6 +6251,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                                                               >
                                                                 📖 {lesson.name}
                                                               </Typography>
+                                                              <StudentExitTicketMyAnswersBadge groupId={gruppe.id} userId={userId} />
                                                               {((materialsMap[lesson.id] && materialsMap[lesson.id].length > 0) || quizzesMap[lesson.id]) && (
                                                                 <span 
                                                                   style={{ 

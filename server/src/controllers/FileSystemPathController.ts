@@ -1229,26 +1229,27 @@ export class FileSystemPathController {
       console.log('File:', file.originalname);
       console.log('Target path:', targetPath);
 
-      // Determine the full path
+      let tp = String(targetPath).replace(/\\/g, '/').trim();
+      if (tp.startsWith('git-intern//Users/')) {
+        tp = tp.replace(
+          'git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/',
+          'git-intern/'
+        );
+      }
+
       let fullTargetPath: string;
-      
-      if (targetPath.startsWith('git-intern/')) {
-        // Handle git-intern paths
-        const relativePath = decodeURIComponent(targetPath.replace('git-intern/', ''));
-        // Use absolute path to project root for development
-        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-        fullTargetPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
-      } else if (targetPath.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
-        // Handle already absolute paths
-        fullTargetPath = targetPath;
-      } else if (targetPath.startsWith('git-intern//Users/')) {
-        // Handle double git-intern paths (fix for the bug)
-        const relativePath = decodeURIComponent(targetPath.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', ''));
-        const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-        fullTargetPath = path.join(projectRoot, 'J-M-Reihen', relativePath);
+      if (tp.startsWith('git-intern/')) {
+        let rel = tp.replace(/^git-intern\//, '');
+        try {
+          rel = decodeURIComponent(rel);
+        } catch {
+          /* ignore */
+        }
+        fullTargetPath = StorageManager.resolveGitInternRelativePath(rel);
+      } else if (tp.startsWith('/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/')) {
+        fullTargetPath = tp;
       } else {
-        // Handle local paths
-        fullTargetPath = path.resolve(targetPath);
+        fullTargetPath = path.resolve(tp);
       }
 
       console.log('Full target path:', fullTargetPath);
