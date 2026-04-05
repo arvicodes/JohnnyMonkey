@@ -8,6 +8,8 @@ import {
   sortFolienVariants,
   labelForFolienOption,
   groupFilesByBaseName,
+  getShareFileForGroup,
+  getPdfFromGroup,
 } from '../lib/folienVersions';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
@@ -5408,7 +5410,7 @@ function collectLessonFolderFilesFromTree(nodes: any[] | undefined): any[] {
   return out;
 }
 
-/** Dropdown: Original + gespeicherte Bearbeitungen (gleicher Stammname) → Folien-Editor. */
+/** Dropdown: Folien-Version wählen + Button „Im Folien-Editor öffnen“. */
 function FolienVersionSelect({
   versions,
   iconBtnSx,
@@ -5449,26 +5451,32 @@ function FolienVersionSelect({
         onChange={(e) => setSelectedPath(e.target.value as string)}
         variant="standard"
         disableUnderline
-        renderValue={() => (
-          <Box
-            component="span"
-            aria-hidden
-            sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.8rem', lineHeight: 1, userSelect: 'none' }}
-          >
-            …
-          </Box>
-        )}
-        title="Folien-Version wählen (Namen im geöffneten Menü)"
         inputProps={{ 'aria-label': 'Folien-Version zum Öffnen im Editor wählen' }}
         MenuProps={{
           PaperProps: { sx: { maxWidth: 320 } },
           anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
           transformOrigin: { vertical: 'top', horizontal: 'left' },
         }}
+        renderValue={() => (
+          <Box
+            component="span"
+            aria-hidden
+            sx={{
+              color: 'text.secondary',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              lineHeight: 1,
+              userSelect: 'none',
+            }}
+          >
+            …
+          </Box>
+        )}
+        title="Folien-Version wählen (Namen im geöffneten Menü)"
         sx={{
-          width: 36,
-          minWidth: 36,
-          maxWidth: 36,
+          width: 38,
+          minWidth: 38,
+          maxWidth: 38,
           flexShrink: 0,
           fontSize: '0.7rem',
           height: 28,
@@ -5481,7 +5489,7 @@ function FolienVersionSelect({
             py: 0.35,
             px: 0,
             pl: 0.25,
-            pr: '18px !important',
+            pr: '20px !important',
             fontSize: '0.7rem',
             display: 'flex',
             alignItems: 'center',
@@ -5491,13 +5499,13 @@ function FolienVersionSelect({
           '& .MuiSelect-icon': { color: 'text.secondary', right: 0, fontSize: '1.15rem' },
         }}
       >
-        {sorted.map(({ file }) => (
+        {sorted.map(({ ext, file }) => (
           <MenuItem
             key={file.path}
             value={file.path}
             sx={{ fontSize: '0.75rem', justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
           >
-            {labelForFolienOption(file, groupStem)}
+            {labelForFolienOption(file, groupStem)} · {ext.toUpperCase()}
           </MenuItem>
         ))}
       </Select>
@@ -9297,8 +9305,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         (v) => !isDerivedFolienVersionFile(v.file.name, folderFilesForStem)
       );
       const getExtIcon = (ext: string) => {
-        if (ext === 'pdf') return <PictureAsPdfIcon sx={{ fontSize: 18 }} />;
-        if (['doc', 'docx'].includes(ext.toLowerCase())) return <DescriptionIcon sx={{ fontSize: 18 }} />;
+        const e = ext.toLowerCase();
+        if (e === 'pdf') return <PictureAsPdfIcon sx={{ fontSize: 18 }} />;
+        if (['ppt', 'pptx', 'odp'].includes(e)) return <SlideshowIcon sx={{ fontSize: 18 }} />;
+        if (['doc', 'docx'].includes(e)) return <DescriptionIcon sx={{ fontSize: 18 }} />;
         return <DescriptionIcon sx={{ fontSize: 18 }} />;
       };
       const iconBtnSx = {
@@ -9307,6 +9317,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         color: 'primary.main',
         '&:hover': { bgcolor: 'action.hover' },
       };
+      /** Max. ein PDF (Stamm/Kanon); Präsentation (PPT/PPTX/ODP) zusätzlich, wenn vorhanden. */
+      const pdfFile = getPdfFromGroup(sortedVersions, group.baseName);
+      const presentationVersion = versionsShownInList.find((v) =>
+        ['ppt', 'pptx', 'odp'].includes(v.ext.toLowerCase())
+      );
+      const hasPdfOrPresentation = Boolean(pdfFile || presentationVersion);
+      const fallbackFile =
+        !hasPdfOrPresentation
+          ? getShareFileForGroup(sortedVersions, group.baseName) ??
+            versionsShownInList[0]?.file ??
+            sortedVersions[0]?.file
+          : null;
+      const fallbackExt = ((fallbackFile?.name || '').match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
       return (
         <Box key={`group-${group.baseName}-${level}`} sx={{ mb: 0.7 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
@@ -9326,15 +9349,35 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             <Typography variant="body2" sx={{ color: '#03a9f4', fontSize: '0.75rem', flexShrink: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               📄 {group.baseName}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
-              {versionsShownInList.map(({ ext, file }) => (
-                <Tooltip key={file.path} title={`${ext.toUpperCase()} öffnen`}>
-                  <IconButton size="small" onClick={() => handleFileClick(file)} sx={iconBtnSx}>
-                    {getExtIcon(ext)}
-                  </IconButton>
-                </Tooltip>
-              ))}
-            </Box>
+            {(pdfFile || presentationVersion || fallbackFile) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+                {pdfFile && (
+                  <Tooltip title="PDF öffnen">
+                    <IconButton size="small" onClick={() => handleFileClick(pdfFile)} sx={iconBtnSx}>
+                      <PictureAsPdfIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {presentationVersion && (
+                  <Tooltip title={`${presentationVersion.ext.toUpperCase()} öffnen (Präsentation)`}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleFileClick(presentationVersion.file)}
+                      sx={iconBtnSx}
+                    >
+                      {getExtIcon(presentationVersion.ext)}
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {fallbackFile && (
+                  <Tooltip title={`${fallbackExt ? fallbackExt.toUpperCase() : 'Datei'} öffnen`}>
+                    <IconButton size="small" onClick={() => handleFileClick(fallbackFile)} sx={iconBtnSx}>
+                      {getExtIcon(fallbackExt)}
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            )}
           </Box>
         </Box>
       );
@@ -13055,6 +13098,37 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   /** Gemeinsame Mittellinie / Farbübergang Laptop-Zweispalter */
   const laptopSplitSeam = alpha('#3949ab', 0.2);
   const laptopSplitGlow = alpha('#3949ab', 0.12);
+
+  /** Epochal-Panel Kopfzeile: Laptop — höhere Buttons, lesbarere Schrift, Breite = Inhalt */
+  const epochalLaptopHeaderBtnSx = participationDocked
+    ? {
+        fontSize: '0.68rem',
+        py: 0.35,
+        px: 0.55,
+        minWidth: 'unset',
+        width: 'fit-content',
+        maxWidth: 'none',
+        textTransform: 'none' as const,
+        height: 28,
+        minHeight: 28,
+        lineHeight: 1.15,
+        whiteSpace: 'nowrap' as const,
+        '& .MuiButton-startIcon': { display: 'none' },
+      }
+    : {
+        fontSize: '0.65rem',
+        py: 0.25,
+        px: 0.6,
+        minWidth: 'auto',
+        textTransform: 'none' as const,
+        height: '24px',
+        minHeight: 24,
+        lineHeight: 1.1,
+        '& .MuiButton-startIcon': {
+          marginRight: '4px',
+          marginLeft: 0,
+        },
+      };
 
   useEffect(() => {
     if (!isLessonStundeRoute) return;
@@ -19107,9 +19181,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       >
         <DialogTitle
           sx={{
-            pb: 0.5,
-            pt: 1,
-            px: 1.5,
+            pb: participationDocked ? 0.35 : 0.5,
+            pt: participationDocked ? 0.5 : 1,
+            px: participationDocked ? 1 : 1.5,
             borderBottom: '1px solid #e0e0e0',
             ...(participationDocked && {
               borderBottomColor: alpha('#3949ab', 0.12),
@@ -19121,95 +19195,115 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               boxSizing: 'border-box',
             }),
             ...dialogCloseTitleSx,
+            ...(participationDocked && { pr: 4 }),
           }}
         >
           <Box
             sx={{
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 1,
-              flexWrap: participationDocked ? 'wrap' : 'nowrap',
-              rowGap: 0.75,
+              flexDirection: participationDocked ? 'column' : 'row',
+              alignItems: participationDocked ? 'flex-start' : 'center',
+              justifyContent: participationDocked ? 'flex-start' : 'space-between',
+              gap: participationDocked ? 0.35 : 1,
+              flexWrap: 'nowrap',
+              rowGap: participationDocked ? 0.35 : 0.75,
               minWidth: 0,
+              width: participationDocked ? '100%' : undefined,
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, minWidth: 0 }}>
-              <Box sx={{ 
-                width: 28, 
-                height: 28, 
-                borderRadius: '50%', 
-                bgcolor: '#FF6B35', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center' 
-              }}>
-                <HandRaiseIcon sx={{ color: 'white', fontSize: 16 }} />
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: participationDocked ? 0.4 : 1,
+                flexShrink: participationDocked ? 1 : 0,
+                minWidth: 0,
+                alignSelf: participationDocked ? 'stretch' : undefined,
+                width: participationDocked ? '100%' : undefined,
+              }}
+            >
+              <Box
+                sx={{
+                  width: participationDocked ? 22 : 28,
+                  height: participationDocked ? 22 : 28,
+                  borderRadius: '50%',
+                  bgcolor: '#FF6B35',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <HandRaiseIcon sx={{ color: 'white', fontSize: participationDocked ? 13 : 16 }} />
               </Box>
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="h6" sx={{ fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.2, wordBreak: 'break-word' }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontSize: participationDocked ? '0.72rem' : '0.9rem',
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                    wordBreak: 'break-word',
+                  }}
+                >
                   Eintragung Epochalnoten
                 </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem', lineHeight: 1.2, wordBreak: 'break-word' }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'text.secondary',
+                    fontSize: participationDocked ? '0.62rem' : '0.7rem',
+                    lineHeight: 1.2,
+                    wordBreak: 'break-word',
+                  }}
+                >
                   {participationGroupName}
                 </Typography>
               </Box>
             </Box>
-            {/* Buttons kompakt nebeneinander mittig zwischen Titel und X */}
+            {/* Laptop: eine Zeile, Buttonbreite = Inhalt; bei Bedarf horizontal scrollen */}
             <Box
               sx={{
                 display: 'flex',
-                gap: 0.4,
+                gap: participationDocked ? 0.2 : 0.4,
                 alignItems: 'center',
-                flexWrap: participationDocked ? 'wrap' : 'nowrap',
-                flex: participationDocked ? '1 1 100%' : '1 1 auto',
+                flexWrap: 'nowrap',
+                flex: participationDocked ? '0 0 auto' : '1 1 auto',
                 justifyContent: participationDocked ? 'flex-start' : 'center',
-                mx: 1,
+                mx: participationDocked ? 0 : 1,
                 minWidth: 0,
+                alignSelf: participationDocked ? 'flex-start' : undefined,
+                width: participationDocked ? 'max-content' : undefined,
+                maxWidth: participationDocked ? '100%' : undefined,
+                overflowX: participationDocked ? 'auto' : 'visible',
+                pb: participationDocked ? 0.1 : 0,
+                WebkitOverflowScrolling: 'touch',
+                scrollbarGutter: participationDocked ? 'stable' : undefined,
+                '&::-webkit-scrollbar': participationDocked ? { height: 3 } : undefined,
+                '&::-webkit-scrollbar-thumb': participationDocked
+                  ? { bgcolor: alpha('#3949ab', 0.25), borderRadius: 1 }
+                  : undefined,
               }}
             >
               {/* Zeiträume einstellen */}
               <Button
                 size="small"
                 variant="outlined"
-                startIcon={<GradeIcon sx={{ fontSize: 12 }} />}
+                startIcon={<GradeIcon sx={{ fontSize: participationDocked ? 10 : 12 }} />}
                 onClick={() => setPeriodConfigModalOpen(true)}
-                sx={{ 
-                  fontSize: '0.65rem', 
-                  py: 0.25, 
-                  px: 0.6,
-                  minWidth: 'auto',
-                  textTransform: 'none',
-                  height: '24px',
-                  '& .MuiButton-startIcon': {
-                    marginRight: '4px',
-                    marginLeft: 0
-                  }
-                }}
+                sx={epochalLaptopHeaderBtnSx}
               >
-                Zeiträume
+                {participationDocked ? 'Zeitr.' : 'Zeiträume'}
               </Button>
               {/* EPO-Noten berechnen */}
               <Button
                 size="small"
                 variant="contained"
-                startIcon={<BarChartIcon sx={{ fontSize: 12 }} />}
+                startIcon={<BarChartIcon sx={{ fontSize: participationDocked ? 10 : 12 }} />}
                 onClick={calculateEpoGrades}
                 disabled={!periodConfig.period1Hours || !periodConfig.period2Hours}
-                sx={{ 
-                  fontSize: '0.65rem', 
-                  py: 0.25, 
-                  px: 0.6,
-                  minWidth: 'auto',
-                  textTransform: 'none',
-                  height: '24px',
-                  '& .MuiButton-startIcon': {
-                    marginRight: '4px',
-                    marginLeft: 0
-                  }
-                }}
+                sx={epochalLaptopHeaderBtnSx}
               >
-                Berechnen
+                {participationDocked ? 'Rechn.' : 'Berechnen'}
               </Button>
               {/* Zeitraum 1 */}
               {(() => {
@@ -19223,22 +19317,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     color={allReleased1 ? "success" : "error"}
                     size="small"
                     disabled={!hasPeriod1Grades}
-                    startIcon={allReleased1 ? <CheckIcon sx={{ fontSize: 12, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 12, color: 'white' }} />}
+                    startIcon={
+                      allReleased1 ? (
+                        <CheckIcon sx={{ fontSize: participationDocked ? 10 : 12, color: 'white' }} />
+                      ) : (
+                        <CloseIcon sx={{ fontSize: participationDocked ? 10 : 12, color: 'white' }} />
+                      )
+                    }
                     onClick={() => {
                       releaseEpoGrade(1, !allReleased1);
                     }}
-                    sx={{ 
-                      fontSize: '0.65rem', 
-                      py: 0.25,
-                      px: 0.6,
-                      minWidth: 'auto',
-                      textTransform: 'none',
-                      height: '24px',
-                      '& .MuiButton-startIcon': {
-                        marginRight: '4px',
-                        marginLeft: 0
-                      }
-                    }}
+                    sx={epochalLaptopHeaderBtnSx}
                     title={!hasPeriod1Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
                   >
                     Z1 {allReleased1 ? '✓' : '✗'}
@@ -19257,22 +19346,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     color={allReleased2 ? "success" : "error"}
                     size="small"
                     disabled={!hasPeriod2Grades}
-                    startIcon={allReleased2 ? <CheckIcon sx={{ fontSize: 12, color: 'white' }} /> : <CloseIcon sx={{ fontSize: 12, color: 'white' }} />}
+                    startIcon={
+                      allReleased2 ? (
+                        <CheckIcon sx={{ fontSize: participationDocked ? 10 : 12, color: 'white' }} />
+                      ) : (
+                        <CloseIcon sx={{ fontSize: participationDocked ? 10 : 12, color: 'white' }} />
+                      )
+                    }
                     onClick={() => {
                       releaseEpoGrade(2, !allReleased2);
                     }}
-                    sx={{ 
-                      fontSize: '0.65rem', 
-                      py: 0.25,
-                      px: 0.6,
-                      minWidth: 'auto',
-                      textTransform: 'none',
-                      height: '24px',
-                      '& .MuiButton-startIcon': {
-                        marginRight: '4px',
-                        marginLeft: 0
-                      }
-                    }}
+                    sx={epochalLaptopHeaderBtnSx}
                     title={!hasPeriod2Grades ? 'Bitte zuerst EPO-Noten berechnen' : ''}
                   >
                     Z2 {allReleased2 ? '✓' : '✗'}
@@ -19283,29 +19367,26 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               <Button
                 size="small"
                 variant="outlined"
-                startIcon={<BarChartIcon sx={{ fontSize: 12 }} />}
+                startIcon={<BarChartIcon sx={{ fontSize: participationDocked ? 10 : 12 }} />}
                 onClick={() => {
                   console.log(`[STAT-DEBUG] 🖱️ BUTTON CLICK - Epochalstatistik Button wurde geklickt!`);
                   handleStatisticsOpen();
                 }}
-                sx={{ 
-                  fontSize: '0.65rem', 
-                  py: 0.25, 
-                  px: 0.6,
-                  minWidth: 'auto',
-                  textTransform: 'none',
-                  height: '24px',
-                  '& .MuiButton-startIcon': {
-                    marginRight: '4px',
-                    marginLeft: 0
-                  }
-                }}
+                sx={epochalLaptopHeaderBtnSx}
               >
-                Statistik
+                {participationDocked ? 'Stat.' : 'Statistik'}
               </Button>
             </Box>
           </Box>
-          <DialogCloseIconButton onClose={handleParticipationClose} />
+          <DialogCloseIconButton
+            onClose={handleParticipationClose}
+            sx={
+              participationDocked
+                ? { minWidth: 24, width: 24, height: 24, right: 2, top: '48%' }
+                : undefined
+            }
+            iconSx={participationDocked ? { fontSize: 16 } : undefined}
+          />
         </DialogTitle>
         
         <DialogContent
