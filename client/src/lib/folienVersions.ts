@@ -201,3 +201,42 @@ export function parentDirGitPath(filePath: string): string {
   const i = norm.lastIndexOf('/');
   return i > 0 ? norm.slice(0, i) : '';
 }
+
+/** Gruppiert Dateien nach kanonischem Basisnamen (Stamm) — eine Zeile pro logischem Dokument. */
+export function groupFilesByBaseName(files: { name?: string }[]): {
+  baseName: string;
+  versions: { ext: string; file: any }[];
+}[] {
+  const stemMap = computeCanonicalStemForFiles(files.map((f) => ({ name: f.name || '' })));
+  const map = new Map<string, { ext: string; file: any }[]>();
+  for (const file of files) {
+    const name = file.name || '';
+    const baseName = (stemMap.get(name) ?? name.replace(/\.[^.]+$/, '')) || name;
+    const ext = (name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
+    if (!map.has(baseName)) map.set(baseName, []);
+    map.get(baseName)!.push({ ext, file });
+  }
+  return Array.from(map.entries()).map(([baseName, versions]) => ({ baseName, versions }));
+}
+
+export function getPdfFromGroup(versions: { ext: string; file: any }[], groupBaseName: string) {
+  const pdfs = versions.filter((v) => v.ext === 'pdf');
+  const exact = pdfs.find((v) => v.file.name.replace(/\.[^.]+$/, '') === groupBaseName);
+  if (exact) return exact.file;
+  const orig = pdfs.find(
+    (v) =>
+      !isBearbeitungVersionFileName(v.file.name) &&
+      !v.file.name.toLowerCase().startsWith(groupBaseName.toLowerCase() + '_')
+  );
+  return orig?.file || pdfs[0]?.file || null;
+}
+
+/** Für SuS-Freigabe: PDF bevorzugt, sonst erste Datei nach PDF-zuerst-Sortierung (z. B. nur DOCX). */
+export function getShareFileForGroup(versions: { ext: string; file: any }[], groupBaseName: string) {
+  const pdf = getPdfFromGroup(versions, groupBaseName);
+  if (pdf) return pdf;
+  const sorted = [...versions].sort((a, b) =>
+    a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0
+  );
+  return sorted[0]?.file || null;
+}

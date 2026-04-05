@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { computeCanonicalStemForFiles, groupFilesByBaseName, getShareFileForGroup } from '../lib/folienVersions';
+import MaterialShareVersionControl from './MaterialShareVersionControl';
 import {
   Box,
   Typography,
@@ -55,6 +57,36 @@ interface FileSystemPath {
   updatedAt: string;
 }
 
+type PreviewRow =
+  | { kind: 'dir'; item: DirectoryItem }
+  | { kind: 'group'; baseName: string; versions: { ext: string; file: any }[] };
+
+/** Ordner-Vorschau: gleiche Reihenfolge wie `filteredItems`, Dateien mit gleichem Stamm zu einer Zeile zusammengefasst. */
+function buildFolderPreviewRows(filteredItems: DirectoryItem[]): PreviewRow[] {
+  const files = filteredItems.filter((i) => i.type === 'file');
+  if (files.length === 0) {
+    return filteredItems.map((item) => ({ kind: 'dir' as const, item }));
+  }
+  const groups = groupFilesByBaseName(files);
+  const byBase = new Map(groups.map((g) => [g.baseName, g]));
+  const stemMap = computeCanonicalStemForFiles(files.map((f) => ({ name: f.name || '' })));
+  const emitted = new Set<string>();
+  const rows: PreviewRow[] = [];
+  for (const item of filteredItems) {
+    if (item.type === 'directory') {
+      rows.push({ kind: 'dir', item });
+      continue;
+    }
+    const name = item.name || '';
+    const baseName = (stemMap.get(name) ?? name.replace(/\.[^.]+$/, '')) || name;
+    if (emitted.has(baseName)) continue;
+    emitted.add(baseName);
+    const g = byBase.get(baseName);
+    if (g) rows.push({ kind: 'group', baseName: g.baseName, versions: g.versions });
+  }
+  return rows;
+}
+
 const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
   groupId,
   onClose,
@@ -75,6 +107,9 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
 
   // File Share States
   const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
+  const [materialSharePickPath, setMaterialSharePickPath] = useState<Record<string, string>>({});
+
+  const fileShareKey = (path: string, gid: string) => `${(path || '').replace(/\\/g, '/').trim()}:${gid}`;
 
   // Lade gespeicherte Pfade
   useEffect(() => {
@@ -262,7 +297,7 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
         const data = await response.json();
         const shareMap: {[key: string]: boolean} = {};
         data.filePaths.forEach((filePath: string) => {
-          shareMap[`${filePath}:${groupId}`] = true;
+          shareMap[fileShareKey(filePath, groupId)] = true;
         });
         setFileShares(shareMap);
       }
@@ -271,17 +306,18 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     }
   };
 
-  const toggleFileShare = async (filePath: string) => {
+  const toggleFileShare = async (filePath: string, gid: string) => {
+    const normalizedPath = (filePath || '').replace(/\\/g, '/').trim();
     try {
       const response = await fetch('/api/file-shares/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filePath, groupId })
+        body: JSON.stringify({ filePath: normalizedPath, groupId: gid })
       });
       
       if (response.ok) {
         const data = await response.json();
-        const key = `${filePath}:${groupId}`;
+        const key = fileShareKey(normalizedPath, gid);
         setFileShares(prev => ({ ...prev, [key]: data.shared }));
         showSnackbar(data.message, 'success');
       } else {
@@ -1161,7 +1197,10 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
     
     // Filtere PDF-Dateien aus, die zu .wb Dateien gehören
     const filteredItems = filterPdfFiles(items);
-    
+    const previewRows = buildFolderPreviewRows(filteredItems);
+    const sortPdfFirst = (versions: { ext: string; file: any }[]) =>
+      [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
+
     return (
       <Box key={folderPath} sx={{ mb: 1 }}>
         <Card variant="outlined">
@@ -1223,111 +1262,103 @@ const FolderAssignmentSelector: React.FC<FolderAssignmentSelectorProps> = ({
                     <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
                       Inhalt ({filteredItems.filter(item => item.type === 'directory').length} Ordner, {filteredItems.filter(item => item.type === 'file').length} Dateien):
                     </Typography>
-                    {filteredItems.slice(0, 5).map((item, index) => (
-                      <Box 
-                        key={index} 
-                        sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          mb: 0.5,
-                          cursor: item.type === 'file' ? 'pointer' : 'default',
-                          userSelect: 'none',
-                          '&:hover': item.type === 'file' ? { 
-                            bgcolor: 'rgba(0,0,0,0.04)', 
-                            borderRadius: 1,
-                            px: 0.5
-                          } : {}
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log('Item clicked:', item);
-                          if (item.type === 'file') {
-                            console.log('File clicked, calling handleFileClick');
-                            handleFileClick(item);
-                          } else {
-                            console.log('Not a file, item type:', item.type);
-                          }
-                        }}
-                        onMouseDown={(e) => e.preventDefault()}
-                      >
-                        {/* Checkbox/Grüner Punkt LINKS - nur für Dateien */}
-                        {item.type === 'file' && (
-                          item.name.startsWith('K_') ? (
-                            // Grüner Punkt für K_ Dateien (automatisch freigegeben)
-                            <Box sx={{ 
-                              width: '12px', 
-                              height: '12px', 
-                              borderRadius: '50%', 
-                              bgcolor: '#4caf50',
-                              flexShrink: 0,
-                              mr: 0.5
-                            }} title="Karteikarten-Datei (automatisch freigegeben)" />
-                          ) : (
-                            // Checkbox für alle anderen Dateien
+                    {previewRows.slice(0, 5).map((row, index) => {
+                      if (row.kind === 'dir') {
+                        const item = row.item;
+                        return (
+                          <Box
+                            key={`d-${item.path}-${index}`}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              mb: 0.5,
+                              cursor: 'default',
+                              userSelect: 'none',
+                            }}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <Box sx={{ width: 12, mr: 0.5, flexShrink: 0 }} />
+                            <Box sx={{ mr: 0.5, fontSize: '0.8rem', color: '#2e7d32' }}>📁</Box>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', flex: 1 }}>
+                              {item.name}
+                            </Typography>
+                          </Box>
+                        );
+                      }
+                      const sortedVersions = sortPdfFirst(row.versions);
+                      const openFile =
+                        getShareFileForGroup(sortedVersions, row.baseName) ?? sortedVersions[0]?.file;
+                      const kAuto = row.versions.every((v) => v.file.name.startsWith('K_'));
+                      return (
+                        <Box
+                          key={`g-${row.baseName}-${index}`}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            mb: 0.5,
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            '&:hover': {
+                              bgcolor: 'rgba(0,0,0,0.04)',
+                              borderRadius: 1,
+                              px: 0.5,
+                            },
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (openFile) handleFileClick(openFile);
+                          }}
+                          onMouseDown={(e) => e.preventDefault()}
+                        >
+                          {kAuto ? (
                             <Box
                               sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                cursor: 'pointer',
-                                userSelect: 'none',
+                                width: '12px',
+                                height: '12px',
+                                borderRadius: '50%',
+                                bgcolor: '#4caf50',
                                 flexShrink: 0,
-                                mr: 0.5
+                                mr: 0.5,
                               }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                toggleFileShare(item.path);
-                              }}
-                              title={fileShares[`${item.path}:${groupId}`] ? 'Für Schüler freigegeben (klicken zum Deaktivieren)' : 'Nicht für Schüler sichtbar (klicken zum Freigeben)'}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={!!fileShares[`${item.path}:${groupId}`]}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  toggleFileShare(item.path);
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                }}
-                                style={{
-                                  width: '12px',
-                                  height: '12px',
-                                  cursor: 'pointer',
-                                  accentColor: '#4caf50'
-                                }}
+                              title="Karteikarten-Datei (automatisch freigegeben)"
+                            />
+                          ) : (
+                            <Box sx={{ mr: 0.5, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                              <MaterialShareVersionControl
+                                groupId={groupId}
+                                baseName={row.baseName}
+                                sortedVersions={sortedVersions}
+                                fileShares={fileShares}
+                                fileShareKey={fileShareKey}
+                                materialSharePickPath={materialSharePickPath}
+                                setMaterialSharePickPath={setMaterialSharePickPath}
+                                toggleFileShare={toggleFileShare}
+                                variant="dashboard"
                               />
                             </Box>
-                          )
-                        )}
+                          )}
 
-                        <Box sx={{ 
-                          mr: 0.5, 
-                          fontSize: '0.8rem',
-                          color: item.type === 'directory' ? '#2e7d32' : '#1976d2'
-                        }}>
-                          {item.type === 'directory' ? '📁' : '📄'}
+                          <Box sx={{ mr: 0.5, fontSize: '0.8rem', color: '#1976d2' }}>📄</Box>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'primary.main',
+                              fontSize: '0.7rem',
+                              textDecoration: 'underline',
+                              fontWeight: 'medium',
+                              flex: 1,
+                              '&:hover': { color: 'primary.dark', textDecoration: 'underline' },
+                            }}
+                          >
+                            {row.baseName}
+                          </Typography>
                         </Box>
-                        <Typography variant="caption" sx={{ 
-                          color: item.type === 'file' ? 'primary.main' : 'text.secondary',
-                          fontSize: '0.7rem',
-                          textDecoration: item.type === 'file' ? 'underline' : 'none',
-                          fontWeight: item.type === 'file' ? 'medium' : 'normal',
-                          flex: 1,
-                          '&:hover': item.type === 'file' ? {
-                            color: 'primary.dark',
-                            textDecoration: 'underline'
-                          } : {}
-                        }}>
-                          {item.name}
-                        </Typography>
-                      </Box>
-                    ))}
-                    {filteredItems.length > 5 && (
+                      );
+                    })}
+                    {previewRows.length > 5 && (
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                        ... und {filteredItems.length - 5} weitere Elemente
+                        ... und {previewRows.length - 5} weitere Elemente
                       </Typography>
                     )}
                   </Box>

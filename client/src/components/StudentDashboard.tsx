@@ -5162,6 +5162,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Box>
                   )}
                 </Box>
+                <Box sx={{ display: 'none' }} aria-hidden>
                 {/* Karnevals-Minigame Button */}
                 <Box sx={{ position: 'relative' }}>
                   <IconButton
@@ -5351,6 +5352,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   >
                     <AutoStoriesIcon sx={{ fontSize: 22 }} />
                   </IconButton>
+                </Box>
                 </Box>
                 {/* Logout Button */}
                 <Button 

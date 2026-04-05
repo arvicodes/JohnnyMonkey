@@ -7,7 +7,9 @@ import {
   isDerivedFolienVersionFile,
   sortFolienVariants,
   labelForFolienOption,
+  groupFilesByBaseName,
 } from '../lib/folienVersions';
+import MaterialShareVersionControl from './MaterialShareVersionControl';
 import KACorrectionMode from './KACorrectionMode';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 import TeacherMessageBox from './TeacherMessageBox';
@@ -5447,10 +5449,26 @@ function FolienVersionSelect({
         onChange={(e) => setSelectedPath(e.target.value as string)}
         variant="standard"
         disableUnderline
+        renderValue={() => (
+          <Box
+            component="span"
+            aria-hidden
+            sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.8rem', lineHeight: 1, userSelect: 'none' }}
+          >
+            …
+          </Box>
+        )}
+        title="Folien-Version wählen (Namen im geöffneten Menü)"
+        inputProps={{ 'aria-label': 'Folien-Version zum Öffnen im Editor wählen' }}
+        MenuProps={{
+          PaperProps: { sx: { maxWidth: 320 } },
+          anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
+          transformOrigin: { vertical: 'top', horizontal: 'left' },
+        }}
         sx={{
-          width: 240,
-          minWidth: 240,
-          maxWidth: 240,
+          width: 36,
+          minWidth: 36,
+          maxWidth: 36,
           flexShrink: 0,
           fontSize: '0.7rem',
           height: 28,
@@ -5461,20 +5479,23 @@ function FolienVersionSelect({
           '&:hover:not(.Mui-disabled):before': { display: 'none' },
           '& .MuiSelect-select': {
             py: 0.35,
+            px: 0,
+            pl: 0.25,
+            pr: '18px !important',
             fontSize: '0.7rem',
-            textAlign: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
           },
-          '& .MuiSelect-icon': { color: 'text.secondary' },
+          '& .MuiSelect-icon': { color: 'text.secondary', right: 0, fontSize: '1.15rem' },
         }}
       >
         {sorted.map(({ file }) => (
           <MenuItem
             key={file.path}
             value={file.path}
-            sx={{ fontSize: '0.75rem', justifyContent: 'center', textAlign: 'center' }}
+            sx={{ fontSize: '0.75rem', justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
           >
             {labelForFolienOption(file, groupStem)}
           </MenuItem>
@@ -6318,6 +6339,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
 
   // File Share States (Datei-Freigaben für Lerngruppen)
   const [fileShares, setFileShares] = useState<{[key: string]: boolean}>({});
+  /** Gewählte Datei-Version für Freigabe-Dropdown (wenn noch keine Freigabe aktiv). Key: groupId:baseName */
+  const [materialSharePickPath, setMaterialSharePickPath] = useState<Record<string, string>>({});
   // Freigabe „Gemeinsame Eingabe“ pro Gruppe: [groupId] = Liste der freigegebenen lessonPath
   const [lessonSharedInputSharePaths, setLessonSharedInputSharePaths] = useState<{[groupId: string]: string[]}>({});
 
@@ -9236,42 +9259,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return htmlParts.join('').replace(/\r\n?|\n/g, '<br>');
   }
 
-  /** Gruppiert Dateien nach Basisname (ohne Endung). Eine Zeile pro Dokument, Buttons PDF/DOC pro Version. Freigabe nur für PDF. */
-  const groupFilesByBaseName = (files: any[]): { baseName: string; versions: { ext: string; file: any }[] }[] => {
-    const stemMap = computeCanonicalStemForFiles(files.map((f) => ({ name: f.name || '' })));
-    const map = new Map<string, { ext: string; file: any }[]>();
-    for (const file of files) {
-      const name = file.name || '';
-      const baseName = (stemMap.get(name) ?? name.replace(/\.[^.]+$/, '')) || name;
-      const ext = (name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
-      if (!map.has(baseName)) map.set(baseName, []);
-      map.get(baseName)!.push({ ext, file });
-    }
-    return Array.from(map.entries()).map(([baseName, versions]) => ({ baseName, versions }));
-  };
-
-  const getPdfFromGroup = (versions: { ext: string; file: any }[], groupBaseName: string) => {
-    const pdfs = versions.filter((v) => v.ext === 'pdf');
-    const exact = pdfs.find((v) => v.file.name.replace(/\.[^.]+$/, '') === groupBaseName);
-    if (exact) return exact.file;
-    const orig = pdfs.find(
-      (v) =>
-        !isBearbeitungVersionFileName(v.file.name) &&
-        !v.file.name.toLowerCase().startsWith(groupBaseName.toLowerCase() + '_')
-    );
-    return orig?.file || pdfs[0]?.file || null;
-  };
-
-  /** Für SuS-Freigabe: PDF bevorzugt, sonst erste Datei nach PDF-zuerst-Sortierung (z. B. nur DOCX). */
-  const getShareFileForGroup = (versions: { ext: string; file: any }[], groupBaseName: string) => {
-    const pdf = getPdfFromGroup(versions, groupBaseName);
-    if (pdf) return pdf;
-    const sorted = [...versions].sort((a, b) =>
-      a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0
-    );
-    return sorted[0]?.file || null;
-  };
-
   /** Kapitel-Container (z. B. „Kap 6 - Ganze Zahlen“) – Überschrift, keine Stunden-Ansicht. */
   const isChapterHeadingFolderName = (name: string) =>
     /^(Kap\.?\s*\d+|Kapitel\s*\d+)/i.test((name || '').trim());
@@ -9303,9 +9290,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     const sortVersionsPdfFirst = (versions: { ext: string; file: any }[]) =>
       [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
 
-    // Zeile für eine Dateigruppe (ein Name, mehrere Formate): Icons + Freigabe (PDF bevorzugt, sonst z. B. DOCX)
+    // Zeile für eine Dateigruppe (ein Name, mehrere Formate): Icons + Freigabe (Version wählbar)
     const renderFileGroupRow = (group: { baseName: string; versions: { ext: string; file: any }[] }, level: number) => {
-      const shareFile = getShareFileForGroup(group.versions, group.baseName);
       const sortedVersions = sortVersionsPdfFirst(group.versions);
       const versionsShownInList = sortedVersions.filter(
         (v) => !isDerivedFolienVersionFile(v.file.name, folderFilesForStem)
@@ -9324,23 +9310,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       return (
         <Box key={`group-${group.baseName}-${level}`} sx={{ mb: 0.7 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
-            {shareFile && (
-              <Box
-                sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}
-                title={
-                  fileShares[fileShareKey(shareFile.path, groupId)]
-                    ? 'Für Schüler freigegeben'
-                    : 'Für Schüler freigeben (PDF bevorzugt, sonst gewählte Datei)'
-                }
-              >
-                <input
-                  type="checkbox"
-                  checked={!!fileShares[fileShareKey(shareFile.path, groupId)]}
-                  onChange={() => toggleFileShare(shareFile.path, groupId)}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#4caf50' }}
-                />
-              </Box>
+            {sortedVersions.length > 0 && (
+              <MaterialShareVersionControl
+                groupId={groupId}
+                baseName={group.baseName}
+                sortedVersions={sortedVersions}
+                fileShares={fileShares}
+                fileShareKey={fileShareKey}
+                materialSharePickPath={materialSharePickPath}
+                setMaterialSharePickPath={setMaterialSharePickPath}
+                toggleFileShare={toggleFileShare}
+                variant="dashboard"
+              />
             )}
             <Typography variant="body2" sx={{ color: '#03a9f4', fontSize: '0.75rem', flexShrink: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               📄 {group.baseName}
@@ -9457,40 +9438,39 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             justifyContent: 'space-between',
             gap: 0.5
           }}>
-            {/* Checkbox/Grüner Punkt LINKS - nur für Dateien */}
-            {item.type === 'file' && (
-              // Checkbox für alle Dateien (inklusive K_ Dateien)
+            {/* Freigabe: Versionswahl (K_ = nur Hinweis, keine Checkbox) */}
+            {item.type === 'file' &&
+              (item.name.startsWith('K_') ? (
                 <Box
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    flexShrink: 0
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    bgcolor: '#4caf50',
+                    flexShrink: 0,
                   }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFileShare(item.path, groupId);
-                  }}
-                  title={fileShares[fileShareKey(item.path, groupId)] ? 'Für Schüler freigegeben (klicken zum Deaktivieren)' : 'Nicht für Schüler sichtbar (klicken zum Freigeben)'}
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!fileShares[fileShareKey(item.path, groupId)]}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleFileShare(item.path, groupId);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      width: '14px',
-                      height: '14px',
-                      cursor: 'pointer',
-                      accentColor: '#4caf50'
-                    }}
+                  title="Karteikarten-Datei (automatisch freigegeben)"
+                />
+              ) : (
+                <Box sx={{ flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                  <MaterialShareVersionControl
+                    groupId={groupId}
+                    baseName={item.name.replace(/\.[^.]+$/, '')}
+                    sortedVersions={[
+                      {
+                        ext: (item.name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase(),
+                        file: item,
+                      },
+                    ]}
+                    fileShares={fileShares}
+                    fileShareKey={fileShareKey}
+                    materialSharePickPath={materialSharePickPath}
+                    setMaterialSharePickPath={setMaterialSharePickPath}
+                    toggleFileShare={toggleFileShare}
+                    variant="dashboard"
                   />
                 </Box>
-            )}
+              ))}
 
             <Typography variant="body2" sx={{ 
               color: color,
@@ -17990,10 +17970,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           const versionsIconsOnly = sortedVersions.filter(
                             (v) => !isDerivedFolienVersionFile(v.file.name, abStemNames)
                           );
-                          const shareFile = getShareFileForGroup(versions, baseName);
-                          const isFileShared = shareFile
-                            ? !!fileShares[fileShareKey(shareFile.path, lessonModalData.groupId)]
-                            : false;
                           return (
                             <ListItem key={`plan-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
                               <ListItemIcon sx={{ minWidth: 28 }}>
@@ -18009,20 +17985,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   </Tooltip>
                                 ))}
                               </Box>
-                              {shareFile && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
-                                  <FormControlLabel
-                                    control={
-                                      <Checkbox
-                                        size="small"
-                                        checked={isFileShared}
-                                        onChange={() => toggleFileShare(shareFile.path, lessonModalData.groupId)}
-                                        sx={{ py: 0 }}
-                                      />
-                                    }
-                                    label={<Typography variant="caption">Material freigeben</Typography>}
-                                  />
-                                </Box>
+                              {sortedVersions.length > 0 && (
+                                <MaterialShareVersionControl
+                                  groupId={lessonModalData.groupId}
+                                  baseName={baseName}
+                                  sortedVersions={sortedVersions}
+                                  fileShares={fileShares}
+                                  fileShareKey={fileShareKey}
+                                  materialSharePickPath={materialSharePickPath}
+                                  setMaterialSharePickPath={setMaterialSharePickPath}
+                                  toggleFileShare={toggleFileShare}
+                                  variant="modal"
+                                />
                               )}
                             </ListItem>
                           );
@@ -18052,7 +18026,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       </Typography>
                     );
                   }
-                  const allLessonFolderNamesForStem = lessonFolderPdfFiles.map((f) => ({ name: f.name || '' }));
                   const docIconColor = '#546e7a';
                   return (
                     <List
@@ -18121,44 +18094,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               >
                                 {baseName}
                               </Typography>
-                              {!runModeMinimal && (
-                                <Box
-                                  sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 0.35,
-                                    flexShrink: 0,
-                                    flexWrap: 'wrap',
-                                    justifyContent: 'flex-end',
-                                  }}
-                                >
-                                  {sortedVersions
-                                    .filter((v) => !isDerivedFolienVersionFile(v.file.name, allLessonFolderNamesForStem))
-                                    .map(({ ext, file }) => {
-                                      const shareKey = fileShareKey(file.path, lessonModalData.groupId);
-                                      const isFileShared = !!fileShares[shareKey];
-                                      return (
-                                        <Tooltip key={file.path} title={`${ext.toUpperCase()} für die Lerngruppe freigeben`}>
-                                          <FormControlLabel
-                                            control={
-                                              <Checkbox
-                                                size="small"
-                                                checked={isFileShared}
-                                                onChange={() => toggleFileShare(file.path, lessonModalData.groupId)}
-                                                sx={{ py: 0 }}
-                                              />
-                                            }
-                                            label={<Typography variant="caption">Freigeben</Typography>}
-                                            sx={{
-                                              m: 0,
-                                              mr: 0.25,
-                                              '& .MuiFormControlLabel-label': { fontSize: '0.7rem' }
-                                            }}
-                                          />
-                                        </Tooltip>
-                                      );
-                                    })}
-                                </Box>
+                              {!runModeMinimal && sortedVersions.length > 0 && (
+                                <MaterialShareVersionControl
+                                  groupId={lessonModalData.groupId}
+                                  baseName={baseName}
+                                  sortedVersions={sortedVersions}
+                                  fileShares={fileShares}
+                                  fileShareKey={fileShareKey}
+                                  materialSharePickPath={materialSharePickPath}
+                                  setMaterialSharePickPath={setMaterialSharePickPath}
+                                  toggleFileShare={toggleFileShare}
+                                  variant="modal"
+                                  label="Material freigeben"
+                                />
                               )}
                             </Box>
                           </ListItem>
@@ -18830,10 +18778,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   const versionsIconsOnly = sortedVersions.filter(
                                     (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesBg)
                                   );
-                                  const shareFile = getShareFileForGroup(versions, baseName);
-                                  const isFileShared = shareFile
-                                    ? !!fileShares[fileShareKey(shareFile.path, lessonModalData.groupId)]
-                                    : false;
                                   return (
                                     <ListItem key={`bg-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
                                       <ListItemIcon sx={{ minWidth: 28 }}>
@@ -18849,20 +18793,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                           </Tooltip>
                                         ))}
                                       </Box>
-                                      {shareFile && (
-                                        <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
-                                          <FormControlLabel
-                                            control={
-                                              <Checkbox
-                                                size="small"
-                                                checked={isFileShared}
-                                                onChange={() => toggleFileShare(shareFile.path, lessonModalData.groupId)}
-                                                sx={{ py: 0 }}
-                                              />
-                                            }
-                                            label={<Typography variant="caption">Material freigeben</Typography>}
-                                          />
-                                        </Box>
+                                      {sortedVersions.length > 0 && (
+                                        <MaterialShareVersionControl
+                                          groupId={lessonModalData.groupId}
+                                          baseName={baseName}
+                                          sortedVersions={sortedVersions}
+                                          fileShares={fileShares}
+                                          fileShareKey={fileShareKey}
+                                          materialSharePickPath={materialSharePickPath}
+                                          setMaterialSharePickPath={setMaterialSharePickPath}
+                                          toggleFileShare={toggleFileShare}
+                                          variant="modal"
+                                        />
                                       )}
                                     </ListItem>
                                   );
@@ -18903,18 +18845,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                             const f = musterLoesungFiles[idx];
                                             const pdfFile = /\.pdf$/i.test(f.name || '') ? f : null;
                                             if (!pdfFile || !bgGroupId) return null;
-                                            const shared = !!fileShares[fileShareKey(pdfFile.path, bgGroupId)];
                                             return (
-                                              <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
-                                                <FormControlLabel
-                                                  control={
-                                                    <Checkbox
-                                                      size="small"
-                                                      checked={shared}
-                                                      onChange={() => toggleFileShare(pdfFile.path, bgGroupId)}
-                                                    />
-                                                  }
-                                                  label={<Typography variant="caption">Material freigeben</Typography>}
+                                              <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                                                <MaterialShareVersionControl
+                                                  groupId={bgGroupId}
+                                                  baseName={(f.name || '').replace(/\.[^.]+$/, '')}
+                                                  sortedVersions={[{ ext: 'pdf', file: pdfFile }]}
+                                                  fileShares={fileShares}
+                                                  fileShareKey={fileShareKey}
+                                                  materialSharePickPath={materialSharePickPath}
+                                                  setMaterialSharePickPath={setMaterialSharePickPath}
+                                                  toggleFileShare={toggleFileShare}
+                                                  variant="modal"
                                                 />
                                               </Box>
                                             );
@@ -19074,10 +19016,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               const versionsIconsOnly = sortedVersions.filter(
                                 (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesInput)
                               );
-                              const shareFile = getShareFileForGroup(versions, baseName);
-                              const isFileShared = shareFile
-                                ? !!fileShares[fileShareKey(shareFile.path, lessonModalData.groupId)]
-                                : false;
                               return (
                                 <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
                                   <ListItemIcon sx={{ minWidth: 28 }}>
@@ -19093,20 +19031,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       </Tooltip>
                                     ))}
                                   </Box>
-                                  {shareFile && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, ml: 'auto' }}>
-                                      <FormControlLabel
-                                        control={
-                                          <Checkbox
-                                            size="small"
-                                            checked={isFileShared}
-                                            onChange={() => toggleFileShare(shareFile.path, lessonModalData.groupId)}
-                                            sx={{ py: 0 }}
-                                          />
-                                        }
-                                        label={<Typography variant="caption">Material freigeben</Typography>}
-                                      />
-                                    </Box>
+                                  {sortedVersions.length > 0 && (
+                                    <MaterialShareVersionControl
+                                      groupId={lessonModalData.groupId}
+                                      baseName={baseName}
+                                      sortedVersions={sortedVersions}
+                                      fileShares={fileShares}
+                                      fileShareKey={fileShareKey}
+                                      materialSharePickPath={materialSharePickPath}
+                                      setMaterialSharePickPath={setMaterialSharePickPath}
+                                      toggleFileShare={toggleFileShare}
+                                      variant="modal"
+                                    />
                                   )}
                                 </ListItem>
                               );
