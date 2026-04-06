@@ -485,41 +485,95 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Datenbanken', prompt: 'UPDATE-SQL: was macht es?', solution: 'ändert Werte bestehender Zeilen' },
 ];
 
-/** Grundlagen Informatik – Klassenstufe / Kurs 13 (vertieft) */
+/** Inf 13: genau vier Fachbänder (Computergrafik, Bildverarbeitung, 3D Modellierung, 3D Druck), je mindestens 20 Fragen; zusätzlich „Eigen“ im Editor möglich. */
 const TASK_POOL_INF_13: EntryTicketTask[] = [
-  { category: 'Inf · Wahr/Falsch', prompt: 'Wahr oder falsch: Jede reguläre Sprache ist kontextfrei.', solution: 'Wahr' },
-  { category: 'Inf · Wahr/Falsch', prompt: 'Wahr oder falsch: P ⊆ NP.', solution: 'Wahr' },
-  { category: 'Inf · Wahr/Falsch', prompt: 'Wahr oder falsch: Jede berechenbare Funktion ist in polynomialer Zeit lösbar.', solution: 'Falsch' },
-  { category: 'Inf · Theorie', prompt: 'Turingmaschine: unendliches Band und ?', solution: 'Lesen/Schreiben/Kopfbewegung' },
-  { category: 'Inf · Theorie', prompt: 'Halteproblem: für alle Programme algorithmisch entscheidbar? (ja/nein)', solution: 'nein' },
-  { category: 'Inf · Theorie', prompt: 'Church-Turing-These: Was beschreibt sie grob?', solution: 'Berechenbarkeit ≈ Turing-berechenbar' },
-  { category: 'Inf · Algorithmus', prompt: 'Dynamische Programmierung nutzt typischerweise ? bereits gelöster Teilprobleme.', solution: 'Speicherung/Tabellen' },
-  { category: 'Inf · Algorithmus', prompt: 'Greedy-Algorithmus: lokal optimal ⇒ immer global optimal? (ja/nein)', solution: 'nein' },
-  { category: 'Inf · Algorithmus', prompt: 'Dijkstra: Kantengewichte dürfen negativ sein? (ja/nein)', solution: 'nein' },
-  { category: 'Inf · Daten', prompt: 'Normalform: Welche verbietet transitive Abhängigkeit vom Schlüssel (oft 3NF)?', solution: '3. Normalform' },
-  { category: 'Inf · Daten', prompt: 'B-Baum: Ziel bei Datenbank-Indizes oft ?', solution: 'weniger Plattenzugriffe / balanciert' },
-  { category: 'Inf · Daten', prompt: 'CAP: man kann typischerweise nicht alle drei gleichzeitig maximal: Consistency, Availability, ?', solution: 'Partition tolerance' },
-  { category: 'Inf · Netzwerk', prompt: 'TLS sitzt in der Protokollhierarchie typischerweise über ?', solution: 'TCP' },
-  { category: 'Inf · Netzwerk', prompt: 'VPN: Hauptziel oft ? des Datenverkehrs.', solution: 'Verschlüsselung/Schutz' },
-  { category: 'Inf · Sicherheit', prompt: 'Man-in-the-Middle: Angreifer steht zwischen ?', solution: 'Sender und Empfänger' },
-  { category: 'Inf · Sicherheit', prompt: 'Zero-Knowledge-Beweis: Information über Geheimnis wird ?', solution: 'nicht preisgegeben' },
-  { category: 'Inf · Software', prompt: 'MVC: wofür steht das „M“?', solution: 'Model' },
-  { category: 'Inf · Software', prompt: 'OOP: Polymorphismus bedeutet grob ?', solution: 'gleiche Schnittstelle, verschiedene Implementierungen' },
-  { category: 'Inf · Software', prompt: 'Race Condition entsteht bei ? Zugriff auf gemeinsame Daten.', solution: 'parallelem/konkurrierendem' },
-  { category: 'Inf · Hardware', prompt: 'Cache: näher an der CPU = typischerweise ? Latenz.', solution: 'geringere' },
-  { category: 'Inf · Hardware', prompt: 'Pipeline in der CPU: Was wird überlappt?', solution: 'Befehlsausführung (mehrere Stufen)' },
-  { category: 'Eigen · Inf', prompt: 'Blockchain: Blöcke sind typischerweise durch ? verkettet.', solution: 'Hashwerte' },
-  { category: 'Eigen · Inf', prompt: 'Quantenbit kann (vereinfacht) ? Zustände überlagern.', solution: 'mehrere' },
-  { category: 'Eigen · Inf', prompt: 'Ethik KI: Bias in Trainingsdaten kann zu ? führen.', solution: 'Diskriminierung / Fehlentscheidungen' },
-  { category: 'Inf · Logik', prompt: 'Aussagenlogik: (A → B) ist äquivalent zu (¬A ∨ B)? (ja/nein)', solution: 'ja' },
-  { category: 'Inf · Theorie', prompt: 'Komplexitätsklasse NP: Lösung ist in polynomialer Zeit ?', solution: 'verifizierbar' },
-  { category: 'Inf · Daten', prompt: 'Transaktion: Isolation verhindert typischerweise ?', solution: 'Dirty Reads / gegenseitige Störungen' },
-  { category: 'Inf · Algorithmus', prompt: 'O(n²) Sortierverfahren: nenne eines.', solution: 'Bubblesort / Insertionsort (eines)' },
-  { category: 'Inf · Netzwerk', prompt: 'IPv6-Adresslänge in Bit?', solution: '128' },
-  { category: 'Inf · Sicherheit', prompt: 'Perfect Forward Secrecy: vergangene Sessions bleiben bei Schlüsselleck ?', solution: 'geschützt' },
+  // Computergrafik
+  { category: 'Computergrafik', prompt: 'Pixel vs. Vektor: Welche Darstellung skaliert typischerweise verlustfrei bei Linien und Text?', solution: 'Vektorgrafik' },
+  { category: 'Computergrafik', prompt: 'RGB-Farbraum: aus welchen drei Grundfarben setzt sich additive Mischung grob zusammen?', solution: 'Rot, Grün, Blau' },
+  { category: 'Computergrafik', prompt: 'Auflösung 1920×1080: was bedeutet die erste Zahl grob?', solution: 'Breite in Pixeln (volle HD quer)' },
+  { category: 'Computergrafik', prompt: 'Aliasing bei schrägen Kanten: welcher Effekt entsteht oft stufenförmig?', solution: 'Treppchen / Treppenartifact (Jaggies)' },
+  { category: 'Computergrafik', prompt: 'Anti-Aliasing: welches Ziel verfolgt es typischerweise?', solution: 'Kanten weicher/ glatter darstellen, Stufen reduzieren' },
+  { category: 'Computergrafik', prompt: 'GPU vs. CPU in der Echtzeitgrafik: wofür wird die GPU typischerweise genutzt?', solution: 'parallelisierte Geometrie- und Pixelberechnung (Rendern)' },
+  { category: 'Computergrafik', prompt: 'Framebuffer: was enthält er grob?', solution: 'Farbwerte der darzustellenden Pixel (Bildpuffer)' },
+  { category: 'Computergrafik', prompt: 'Doppel-Pufferung (Double Buffering): wozu dient sie grob?', solution: 'Flackern vermeiden; ein Puffer wird gefüllt, der andere angezeigt' },
+  { category: 'Computergrafik', prompt: 'Rasterisierung vs. Raytracing (vereinfacht): Was berechnet typischerweise Strahl-Schnitte mit Objekten?', solution: 'Raytracing' },
+  { category: 'Computergrafik', prompt: 'Z-Buffer (Tiefenpuffer): welche Information speichert er pro Pixel oft?', solution: 'Tiefenwert / Distanz zur Kamera' },
+  { category: 'Computergrafik', prompt: 'Textur-Mapping: was wird typischerweise auf eine 3D-Oberfläche gelegt?', solution: 'ein 2D-Bild (Textur) auf UV-Koordinaten' },
+  { category: 'Computergrafik', prompt: 'Beleuchtungsmodell (z. B. Phong): „Specular“ beschreibt grob welchen Anteil?', solution: 'Glanzlicht / spiegelnde Reflexion' },
+  { category: 'Computergrafik', prompt: 'Bezier-Kurve: wofür werden Kontrollpunkte genutzt?', solution: 'Kurvenform steuern, ohne alle Punkte auf der Kurve zu legen' },
+  { category: 'Computergrafik', prompt: 'SVG ist typischerweise welcher Grafiktyp?', solution: 'Vektorgrafik (XML-basiert)' },
+  { category: 'Computergrafik', prompt: 'Alpha-Kanal in RGBA: wofür steht er grob?', solution: 'Transparenz / Deckkraft' },
+  { category: 'Computergrafik', prompt: 'Viewport-Transformation: welche Aufgabe hat sie grob?', solution: '3D/NDC in Bildschirm-/Pixelkoordinaten überführen' },
+  { category: 'Computergrafik', prompt: 'Clipping in der Grafikpipeline: was wird typischerweise abgeschnitten?', solution: 'Geometrie außerhalb des sichtbaren Bereichs (Frustum)' },
+  { category: 'Computergrafik', prompt: 'LOD (Level of Detail): welches Ziel verfolgt man mit vereinfachten Meshes?', solution: 'Rechenzeit sparen bei kleiner Darstellung / Entfernung' },
+  { category: 'Computergrafik', prompt: 'Normalenvektor auf einer Oberfläche: wofür wird er typischerweise genutzt?', solution: 'Beleuchtung, Orientierung der Fläche' },
+  { category: 'Computergrafik', prompt: 'Gamma-Korrektur: welches Problem adressiert sie grob?', solution: 'lichtlinear vs. wahrgenommene Helligkeit (nichtlineare Kodierung)' },
+  // Bildverarbeitung
+  { category: 'Bildverarbeitung', prompt: 'Histogramm eines Grauwertbildes: was wird auf der x-Achse typischerweise abgetragen?', solution: 'Intensitätswert / Grauwert' },
+  { category: 'Bildverarbeitung', prompt: 'Faltung (Convolution): wozu dient eine Kernel-Matrix grob?', solution: 'Nachbarschaft gewichten (Filter: Glätten, Kanten, …)' },
+  { category: 'Bildverarbeitung', prompt: 'Gauss-Filter: typischer Effekt auf Rauschen und Kanten?', solution: 'Glättung / Weichzeichnen' },
+  { category: 'Bildverarbeitung', prompt: 'Median-Filter: womit geht er typischerweise besser um als der Mittelwert bei „Salt-and-Pepper“-Rauschen?', solution: 'Ausreißer / isolierte Pixel' },
+  { category: 'Bildverarbeitung', prompt: 'Sobel-Operator: welche Bildstruktur hebt er typischerweise hervor?', solution: 'Kanten / Intensitätsgradienten' },
+  { category: 'Bildverarbeitung', prompt: 'Schwellwertverfahren (Thresholding): Segmentierung in Vorder- und Hintergrund nach ?', solution: 'Grauwert über/unter Grenzwert' },
+  { category: 'Bildverarbeitung', prompt: 'Morphologische Operation „Erosion“ auf Binärbildern: typischer Effekt?', solution: 'helle Objekte schrumpfen / Grenzen nach innen' },
+  { category: 'Bildverarbeitung', prompt: 'Morphologische „Dilation“: typischer Effekt auf helle Bereiche?', solution: 'Regionen wachsen / werden breiter' },
+  { category: 'Bildverarbeitung', prompt: 'JPEG: verlustbehaftet oder verlustfrei typischerweise?', solution: 'verlustbehaftet (für Fotos üblich)' },
+  { category: 'Bildverarbeitung', prompt: 'PNG vs. JPEG für Screenshots mit scharfen Kanten: welches Format oft besser?', solution: 'PNG (verlustfrei, harte Kanten)' },
+  { category: 'Bildverarbeitung', prompt: 'Abtasttheorem (Nyquist): Sampling muss typischerweise mindestens wie hoch zur höchsten Frequenz sein?', solution: 'mindestens doppelt so hoch (über der Nyquist-Rate)' },
+  { category: 'Bildverarbeitung', prompt: 'Aliasing beim Herunterskalieren: welche Vorverarbeitung reduziert es oft?', solution: 'Tiefpass / Prefiltering vor Unterabtastung' },
+  { category: 'Bildverarbeitung', prompt: 'Bilineare Interpolation: wofür wird sie bei Bildern oft genutzt?', solution: 'Zwischenwerte zwischen vier Nachbarpixeln (Skalierung/Rotation)' },
+  { category: 'Bildverarbeitung', prompt: 'Farbraum HSV: wofür steht „S“ grob?', solution: 'Sättigung (Saturation)' },
+  { category: 'Bildverarbeitung', prompt: 'Segmentierung: was ist das Ziel in einem Satz?', solution: 'Bild in sinnvolle Regionen/Objekte zerlegen' },
+  { category: 'Bildverarbeitung', prompt: 'Integrales Bild (Summed-area table): wofür nutzt man es oft?', solution: 'schnelle Rechteck-Summen / Box-Filter' },
+  { category: 'Bildverarbeitung', prompt: 'Kontrastspreizung über Histogramm: was wird typischerweise genutzt?', solution: 'Grauwerte linear/nichtlinear auf größeren Wertebereich strecken' },
+  { category: 'Bildverarbeitung', prompt: 'Rauschmodell „additivem Gauß-Rauschen“: wie wirkt es auf das Pixel grob?', solution: 'Zufälliger Offset zum Intensitätswert' },
+  { category: 'Bildverarbeitung', prompt: 'Canny-Kantendetektor (grob): welche Schritte gehören typisch dazu?', solution: 'Glätten, Gradient, Non-Maximum-Suppression, Schwellwerte' },
+  { category: 'Bildverarbeitung', prompt: 'Superresolution (KI-basiert): welches Ziel verfolgt sie grob?', solution: 'höhere Auflösung / feinere Details aus mehreren oder einem Bild schätzen' },
+  // 3D Modellierung
+  { category: '3D Modellierung', prompt: 'Mesh (Polygonnetz): aus welchen Elementen besteht es typischerweise?', solution: 'Vertices, Kanten, meist Dreiecke oder Vierecke (Faces)' },
+  { category: '3D Modellierung', prompt: 'Normalen pro Vertex vs. pro Face: wozu dienen glatte Normalen oft?', solution: 'weichere Schattierung ohne mehr Geometrie' },
+  { category: '3D Modellierung', prompt: 'UV-Unwrapping: was wird „ausgebreitet“?', solution: 'Oberfläche in 2D-Koordinaten für Texturen (UV-Karte)' },
+  { category: '3D Modellierung', prompt: 'Subdivision Surface: was passiert typischerweise iterativ?', solution: 'Mesh wird verfeinert, Form wird geglättet (Kanten zu runden Flächen)' },
+  { category: '3D Modellierung', prompt: 'NURBS vs. Polygon-Mesh (grob): womit arbeitet NURBS oft?', solution: 'parametrische Kurven/Flächen (mathematisch glatt)' },
+  { category: '3D Modellierung', prompt: 'Boolean Operation (Union/Differenz) im Modellieren: wozu dient sie?', solution: 'Objekte kombinieren oder aus einander ausstanzen' },
+  { category: '3D Modellierung', prompt: 'Extrusion eines 2D-Profils: welchen Effekt erzeugt man typischerweise?', solution: 'Profil entlang einer Richtung zu 3D-Volumen ausziehen' },
+  { category: '3D Modellierung', prompt: 'Low-Poly vs. High-Poly: welches Mesh ist typischerweise für Echtzeit-Spiele oft präferiert?', solution: 'Low-Poly (weniger Polygone, schneller)' },
+  { category: '3D Modellierung', prompt: 'Retopology: wozu baut man ein neues Mesh typischerweise mit sauberer Kantenschleife?', solution: 'Topologie für Animation/Spiele optimieren nach High-Poly-Sculpt' },
+  { category: '3D Modellierung', prompt: 'Rigging: was bereitet man am Modell typischerweise vor?', solution: 'Knochen/Skelett und Gewichte für Animation' },
+  { category: '3D Modellierung', prompt: 'Keyframe-Animation: was speichert ein Keyframe grob?', solution: 'Pose/Zustand zu einem bestimmten Zeitpunkt' },
+  { category: '3D Modellierung', prompt: 'Material vs. Textur (grob): was beschreibt das Material zusätzlich zur Farbtex oft?', solution: 'Glänzendkeit, Metall, Beleuchtungsmodell-Parameter' },
+  { category: '3D Modellierung', prompt: 'Displacement vs. Normal Mapping: welches verändert typischerweise echte Geometrie?', solution: 'Displacement (verschiebt Vertices); Normal Map täuscht nur Licht' },
+  { category: '3D Modellierung', prompt: 'Scene Graph: wozu dient er grob?', solution: 'Hierarchie von Objekten (Transformationen, Gruppen)' },
+  { category: '3D Modellierung', prompt: 'Kollisions-Mesh oft einfacher als Render-Mesh: warum?', solution: 'Physik schneller/ stabiler; sichtbare Details unnötig' },
+  { category: '3D Modellierung', prompt: 'Quad-Topologie bei Charakteren: welchen Vorteil haben Vierecke oft für Deformation?', solution: 'gleichmäßigere Verzerrung beim Biegen als Dreiecks-Wildwuchs' },
+  { category: '3D Modellierung', prompt: 'Sculpting vs. klassisches Box-Modeling (grob): Sculpting betont typischerweise ?', solution: 'organische Formen durch „kneten“ mit vielen Polygonen' },
+  { category: '3D Modellierung', prompt: 'Instancing: mehrere identische Objekte in der Szene: was spart man typischerweise?', solution: 'Speicher und Verwaltung (eine Geometrie, viele Transformationen)' },
+  { category: '3D Modellierung', prompt: 'Einheiten in der 3D-Szene (m/cm): warum sind konsistente Maße wichtig für Druck/Export?', solution: 'Export und physische Größe (z. B. STL) müssen passen' },
+  { category: '3D Modellierung', prompt: 'Non-manifold Geometrie: warum problematisch für 3D-Druck oft?', solution: 'kein eindeutiges Volumen / Löcher oder mehrfache Flächen an Kanten' },
+  // 3D Druck
+  { category: '3D Druck', prompt: 'FDM (Fused Deposition Modeling): wie entsteht das Teil typischerweise?', solution: 'Kunststofffilament schichtweise extrudiert und abgekühlt' },
+  { category: '3D Druck', prompt: 'SLA (Stereolithografie): womit wird typischerweise gehärtet?', solution: 'lichtempfindliches Harz (UV-Laser oder Display)' },
+  { category: '3D Druck', prompt: 'Slicer: welche Aufgabe hat er?', solution: '3D-Modell in Schichten und Druckerbefehle (z. B. G-Code) zerlegen' },
+  { category: '3D Druck', prompt: 'Layer Height (Schichthöhe): kleinere Werte bedeuten typischerweise?', solution: 'feinere Oberfläche, aber längere Druckzeit' },
+  { category: '3D Druck', prompt: 'Infill (Füllstruktur): wozu dient er grob?', solution: 'Innere Stabilität bei weniger Material und Gewicht' },
+  { category: '3D Druck', prompt: 'Support-Strukturen: wann werden sie typischerweise benötigt?', solution: 'bei Überhängen größer als ~45° oder fehlendem Auflagepunkt' },
+  { category: '3D Druck', prompt: 'STL-Datei: was beschreibt sie grob?', solution: 'Oberfläche als Dreiecksnetz (ohne Farb/Material pro Standard)' },
+  { category: '3D Druck', prompt: 'G-Code: was steuert er?', solution: 'Druckerbewegungen, Temperaturen, Extrusion Zeile für Zeile' },
+  { category: '3D Druck', prompt: 'Warping bei ABS: typische Ursache grob?', solution: 'Schwindung durch Abkühlung / Haftung am Bett' },
+  { category: '3D Druck', prompt: 'PLA vs. ABS (grob): welches Material oft einfacher für Einsteiger und geringere Verzug-Neigung?', solution: 'PLA (oft), ABS schwerer wegen Temperatur/Verzug' },
+  { category: '3D Druck', prompt: 'Betreibtemperatur der Druckplatte: wozu dient sie oft?', solution: 'Haftung verbessern, Verzug reduzieren' },
+  { category: '3D Druck', prompt: 'Brim vs. Raft: welches ist typischerweise eine dünne Randfläche um die erste Schicht?', solution: 'Brim' },
+  { category: '3D Druck', prompt: 'Nozzle-Durchmesser (z. B. 0,4 mm): welchen Einfluss hat größerer Durchmesser grob?', solution: 'dickere Wände/Schneller, weniger feine Details' },
+  { category: '3D Druck', prompt: 'Overhang ohne Support: bis zu welchem Winkel wird oft als „noch druckbar“ grob genannt?', solution: 'ca. 45° (druckerabhängig)' },
+  { category: '3D Druck', prompt: 'Post-Processing bei SLA: was ist typischerweise nötig?', solution: 'Harzreste entfernen, UV-Nachhärten, ggf. stützen entfernen' },
+  { category: '3D Druck', prompt: 'Wandstärke (Shell) zu dünn: typisches Problem?', solution: 'Bruch / undichte Teile (nicht druckbar oder fragil)' },
+  { category: '3D Druck', prompt: 'Maßhaltigkeit/Toleranz: warum sind Spielpassungen im CAD oft größer als nominell?', solution: 'Materialexpansion und Druckerungenauigkeit ausgleichen' },
+  { category: '3D Druck', prompt: 'Mehrfarbig-FDM mit einem Extruder (grob): wie erreicht man Farbwechsel oft?', solution: 'Filamentwechsel / Pause oder spezieller Mischer (Standard: ein Extruder = oft einfarbig pro Layer)' },
+  { category: '3D Druck', prompt: 'Orientierung auf dem Bett: warum kann eine andere Drehung Stärke und Stützbedarf ändern?', solution: 'Last entlang der Schichten vs. dagegen; Überhänge ändern sich' },
+  { category: '3D Druck', prompt: 'Hohlkörper mit einer Öffnung: was muss typischerweise erfüllt sein beim FDM?', solution: 'kein eingeschlossenes Hohlraum ohne Entlüftung / Zugriff (sonst Überdruck)' },
 ];
 
-/** v2: Inf 11/12 behalten Fachkategorien beim Auffüllen (inflateInf11/12PerBand) */
+/** v2: Inf 11/12/13 behalten Fachkategorien beim Auffüllen (inflateInf11/12/13PerBand) */
 const QUESTION_SET_STORAGE_KEY = 'entry-ticket-question-sets-v2';
 
 function randomTaskSeed(): number {
@@ -697,6 +751,43 @@ function inflateInf12PerBand(list: EntryTicketTask[]): EntryTicketTask[] {
   return next;
 }
 
+/** Inf 13: vier Fachbänder, pro Band auf 50 auffüllen (wie Inf 12, ohne Mathe-Grobkategorien). */
+const INF13_BAND_ORDER: readonly string[] = [
+  'Computergrafik',
+  'Bildverarbeitung',
+  '3D Modellierung',
+  '3D Druck',
+];
+
+const INF13_CATEGORY_MARKERS = new Set<string>(INF13_BAND_ORDER);
+
+function mergeInf13FromStorage(stored: EntryTicketTask[] | undefined): EntryTicketTask[] {
+  if (stored === undefined || stored.length === 0) return DEFAULT_QUESTION_SETS.inf13;
+  const allowedInf13Category = (cat: string) =>
+    INF13_CATEGORY_MARKERS.has(cat) || coarseCategoryForTask(cat) === 'Eigen';
+  const cleaned = stored.filter((q) => allowedInf13Category(q.category));
+  if (cleaned.length === 0) return DEFAULT_QUESTION_SETS.inf13;
+  const markerQs = cleaned.filter((q) => INF13_CATEGORY_MARKERS.has(q.category));
+  const eigenQs = cleaned.filter((q) => coarseCategoryForTask(q.category) === 'Eigen');
+  const baseMarkers = markerQs.length > 0 ? markerQs : DEFAULT_QUESTION_SETS.inf13;
+  return [...baseMarkers, ...eigenQs];
+}
+
+function inflateInf13PerBand(list: EntryTicketTask[]): EntryTicketTask[] {
+  const next = [...list];
+  for (const band of INF13_BAND_ORDER) {
+    const inBand = next.filter((q) => q.category === band);
+    if (inBand.length === 0) continue;
+    let i = 0;
+    while (next.filter((q) => q.category === band).length < 50) {
+      const template = inBand[i % inBand.length];
+      next.push({ ...template, category: band });
+      i += 1;
+    }
+  }
+  return next;
+}
+
 const INF12_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: string; border: string }> = {
   Allgemein: { icon: '📋', bg: '#e3f2fd', fg: '#0d47a1', border: '#90caf9' },
   Python: { icon: '🐍', bg: '#e8f5e9', fg: '#1b5e20', border: '#66bb6a' },
@@ -708,6 +799,27 @@ const INF12_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: strin
   Datenbanken: { icon: '🗄️', bg: '#fce4ec', fg: '#880e4f', border: '#f06292' },
 };
 
+const INF13_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: string; border: string }> = {
+  Computergrafik: { icon: '🖼️', bg: '#e8eaf6', fg: '#311b92', border: '#7986cb' },
+  Bildverarbeitung: { icon: '🔍', bg: '#e0f2f1', fg: '#004d40', border: '#4db6ac' },
+  '3D Modellierung': { icon: '🧊', bg: '#fff3e0', fg: '#e65100', border: '#ffb74d' },
+  '3D Druck': { icon: '🖨️', bg: '#fce4ec', fg: '#880e4f', border: '#f06292' },
+};
+
+function categoryForFragensetSave(grade: EntryBand, rawCat: string): string {
+  const t = rawCat.trim() || 'Zeit/Geld/Alltag';
+  if (grade === 'inf11') {
+    return INF11_CATEGORY_MARKERS.has(t) || coarseCategoryForTask(t) === 'Eigen' ? t : coarseCategoryForTask(t);
+  }
+  if (grade === 'inf12') {
+    return INF12_CATEGORY_MARKERS.has(t) || coarseCategoryForTask(t) === 'Eigen' ? t : coarseCategoryForTask(t);
+  }
+  if (grade === 'inf13') {
+    return INF13_CATEGORY_MARKERS.has(t) || coarseCategoryForTask(t) === 'Eigen' ? t : coarseCategoryForTask(t);
+  }
+  return coarseCategoryForTask(t);
+}
+
 /** Farben für Fragenset-Gruppen unter Inf 11 (Fachkategorien) */
 const INF11_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: string; border: string }> = {
   Allgemein: { icon: '📋', bg: '#e3f2fd', fg: '#0d47a1', border: '#90caf9' },
@@ -718,7 +830,7 @@ const INF11_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: strin
   KI: { icon: '🤖', bg: '#e0f7fa', fg: '#006064', border: '#4dd0e1' },
 };
 
-/** Fragenset-Editor: feste Band-Reihenfolge, „Eigen“-Kategorien oben (Inf 11 und Inf 12 getrennt konfigurierbar). */
+/** Fragenset-Editor: feste Band-Reihenfolge, „Eigen“-Kategorien oben (Inf 11/12/13 je eigen). */
 function groupPoolTasksByBandOrder(
   poolForBand: EntryTicketTask[],
   bandOrder: readonly string[],
@@ -801,7 +913,7 @@ export default function EntryTicketPage() {
           13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[13])),
           inf11: dedupeEigenQuestions(inflateInf11PerBand(DEFAULT_QUESTION_SETS.inf11)),
           inf12: dedupeEigenQuestions(inflateInf12PerBand(DEFAULT_QUESTION_SETS.inf12)),
-          inf13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS.inf13)),
+          inf13: dedupeEigenQuestions(inflateInf13PerBand(DEFAULT_QUESTION_SETS.inf13)),
         };
       }
       const parsed = JSON.parse(raw) as Partial<GradeQuestionSets>;
@@ -817,7 +929,7 @@ export default function EntryTicketPage() {
         13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[13] ?? DEFAULT_QUESTION_SETS[13])),
         inf11: dedupeEigenQuestions(inflateInf11PerBand(mergeInf11FromStorage(parsed.inf11))),
         inf12: dedupeEigenQuestions(inflateInf12PerBand(mergeInf12FromStorage(parsed.inf12))),
-        inf13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed.inf13 ?? DEFAULT_QUESTION_SETS.inf13)),
+        inf13: dedupeEigenQuestions(inflateInf13PerBand(mergeInf13FromStorage(parsed.inf13))),
       };
     } catch {
       return {
@@ -832,7 +944,7 @@ export default function EntryTicketPage() {
         13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[13])),
         inf11: dedupeEigenQuestions(inflateInf11PerBand(DEFAULT_QUESTION_SETS.inf11)),
         inf12: dedupeEigenQuestions(inflateInf12PerBand(DEFAULT_QUESTION_SETS.inf12)),
-        inf13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS.inf13)),
+        inf13: dedupeEigenQuestions(inflateInf13PerBand(DEFAULT_QUESTION_SETS.inf13)),
       };
     }
   });
@@ -939,6 +1051,9 @@ export default function EntryTicketPage() {
     if (grade === 'inf12') {
       return groupPoolTasksByBandOrder(poolForBand, INF12_BAND_ORDER);
     }
+    if (grade === 'inf13') {
+      return groupPoolTasksByBandOrder(poolForBand, INF13_BAND_ORDER);
+    }
 
     const indexed = poolForBand.map((q, idx) => ({ q, idx }));
     const categoryOrder: CoarseCategory[] = [
@@ -1008,6 +1123,9 @@ export default function EntryTicketPage() {
     if (grade === 'inf12' && INF12_EDITOR_VISUALS[groupCategory]) {
       return INF12_EDITOR_VISUALS[groupCategory];
     }
+    if (grade === 'inf13' && INF13_EDITOR_VISUALS[groupCategory]) {
+      return INF13_EDITOR_VISUALS[groupCategory];
+    }
     return categoryVisuals[groupCategory as CoarseCategory] ?? categoryVisuals.Grundrechenarten;
   };
 
@@ -1020,7 +1138,8 @@ export default function EntryTicketPage() {
     category === 'Technische Informatik' ||
     category === 'Digitaltechnik' ||
     category === 'KI' ||
-    INF12_BAND_ORDER.includes(category);
+    INF12_BAND_ORDER.includes(category) ||
+    INF13_BAND_ORDER.includes(category);
 
   const varyNumbersOnly = (prompt: string, seed: number): string => {
     if (/wahr\s*oder\s*falsch/i.test(prompt)) return prompt;
@@ -1197,16 +1316,7 @@ export default function EntryTicketPage() {
     const prompt = setEditPrompt.trim();
     const solution = setEditSolution.trim();
     const rawCat = setEditCategory.trim() || 'Zeit/Geld/Alltag';
-    const category =
-      grade === 'inf11'
-        ? INF11_CATEGORY_MARKERS.has(rawCat) || coarseCategoryForTask(rawCat) === 'Eigen'
-          ? rawCat
-          : coarseCategoryForTask(rawCat)
-        : grade === 'inf12'
-          ? INF12_CATEGORY_MARKERS.has(rawCat) || coarseCategoryForTask(rawCat) === 'Eigen'
-            ? rawCat
-            : coarseCategoryForTask(rawCat)
-          : coarseCategoryForTask(rawCat);
+    const category = categoryForFragensetSave(grade, rawCat);
     if (!prompt || !solution) return;
     setQuestionSets((prev) => {
       const list = [...(prev[grade] ?? [])];
@@ -1260,6 +1370,9 @@ export default function EntryTicketPage() {
       }
       if (grade === 'inf12') {
         return { ...prev, [grade]: inflateInf12PerBand(base) };
+      }
+      if (grade === 'inf13') {
+        return { ...prev, [grade]: inflateInf13PerBand(base) };
       }
       const categories: CoarseCategory[] = [
         'Grundrechenarten',
