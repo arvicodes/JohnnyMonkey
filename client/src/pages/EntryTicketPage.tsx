@@ -278,17 +278,17 @@ const TASK_POOL_INF_11: EntryTicketTask[] = [
   { category: 'OO', prompt: 'Darf man von einer abstrakten Klasse direkt ein Objekt erzeugen? (ja/nein)', solution: 'nein' },
   { category: 'OO', prompt: '„Hund ist ein Tier“ – modelliert man das eher mit Vererbung oder mit Assoziation?', solution: 'Vererbung' },
   { category: 'OO', prompt: 'Wozu dienen Getter- und Setter-Methoden typischerweise?', solution: 'Kontrollierter Zugriff auf Attribute / Kapselung' },
-  // Technische Informatik: Von-Neumann, Hardware, Murmelrechner, Johnny-Simulator & Mikrobefehle
-  { category: 'Technische Informatik', prompt: 'Von-Neumann-Architektur: Wo liegen Programmcode und Daten typischerweise?', solution: 'Im gemeinsamen Hauptspeicher' },
-  { category: 'Technische Informatik', prompt: 'Von-Neumann-CPU: Welche beiden zentralen funktionalen Teile bilden mit Registern oft die CPU ab?', solution: 'Rechenwerk und Leitwerk (Steuerwerk)' },
-  { category: 'Technische Informatik', prompt: 'Hardware: Was verbindet CPU, Arbeitsspeicher und Anbindungen zur Peripherie typischerweise?', solution: 'Systembus(se) (Daten-, Adress- und Steuerbus)' },
-  { category: 'Technische Informatik', prompt: 'Murmelrechner: Welche Idee aus der Informatik wird damit oft sichtbar gemacht?', solution: 'Steuerbare/mechanische Abläufe wie ein sehr einfacher „Computer“ ohne Elektronik (Algorithmus nachvollziehen)' },
-  { category: 'Technische Informatik', prompt: 'Johnny-Simulator: Welcher Kernzyklus beschreibt die Abarbeitung eines Maschinenbefehls typischerweise?', solution: 'Holen – Dekodieren – Ausführen (Fetch–Decode–Execute)' },
-  { category: 'Technische Informatik', prompt: 'Johnny: Wozu dient der Akkumulator typischerweise?', solution: 'Zwischenspeicher für Operanden und Ergebnisse (ein zentraler Wert)' },
-  { category: 'Technische Informatik', prompt: 'Johnny: Was macht der Mikrobefehl LDA (Load) grob?', solution: 'Wert aus dem Speicher an der Adresse in den Akkumulator laden' },
-  { category: 'Technische Informatik', prompt: 'Johnny: Was macht STA (Store) grob?', solution: 'Akkumulatorwert an eine Speicheradresse schreiben' },
-  { category: 'Technische Informatik', prompt: 'Johnny: Was macht ADD grob?', solution: 'Speicherwert zum Akkumulator addieren' },
-  { category: 'Technische Informatik', prompt: 'Johnny: Was macht SUB grob?', solution: 'Speicherwert vom Akkumulator subtrahieren' },
+  // Technische Informatik (Hardware, Von-Neumann, Johnny / Mikrobefehle)
+  { category: 'Technische Informatik', prompt: 'Von-Neumann-Rechner: Wo liegen Programme und Daten typischerweise?', solution: 'Im gleichen Hauptspeicher (gemeinsam)' },
+  { category: 'Technische Informatik', prompt: 'Nenne die beiden zentralen funktionalen Teile der CPU (Von-Neumann): Rechenwerk und …?', solution: 'Leitwerk (Steuerwerk)' },
+  { category: 'Technische Informatik', prompt: 'Wozu dient der Akkumulator beim Johnny-Rechner typischerweise?', solution: 'Zwischenergebnisse / Operanden (ein zentraler Wert)' },
+  { category: 'Technische Informatik', prompt: 'Was macht der Mikrobefehl LDA (Load) beim Johnny grob?', solution: 'Wert aus dem Speicher in den Akkumulator laden' },
+  { category: 'Technische Informatik', prompt: 'Was macht STA (Store) beim Johnny grob?', solution: 'Akkumulatorwert an eine Speicheradresse schreiben' },
+  { category: 'Technische Informatik', prompt: 'Was macht ADD beim Johnny in einem Satz?', solution: 'Speicherwert zum Akkumulator addieren' },
+  { category: 'Technische Informatik', prompt: 'Wahr oder falsch: Systembusse verbinden CPU, Arbeitsspeicher und Schnittstellen zu E/A.', solution: 'Wahr' },
+  { category: 'Technische Informatik', prompt: 'RAM vs. ROM: Welcher Speicher ist typischerweise flüchtig?', solution: 'RAM (Arbeitsspeicher)' },
+  { category: 'Technische Informatik', prompt: 'Wahr oder falsch: Die CPU holt Befehle aus dem Speicher und dekodiert sie im Leitwerk.', solution: 'Wahr' },
+  { category: 'Technische Informatik', prompt: 'Was steuert der Befehlszähler (Program Counter) beim Ablauf grob?', solution: 'Adresse des nächsten Befehls' },
   // Digitaltechnik
   { category: 'Digitaltechnik', prompt: 'Wozu dient das Zweierkomplement bei Festkomma-Darstellung typischerweise?', solution: 'Darstellung negativer Zahlen' },
   { category: 'Digitaltechnik', prompt: 'Wahr oder falsch: Ein Halbaddierer berücksichtigt den Übertrag einer niedrigeren Stelle.', solution: 'Falsch' },
@@ -313,8 +313,29 @@ const TASK_POOL_INF_11: EntryTicketTask[] = [
   { category: 'KI', prompt: 'Nenne ein ethisches Prinzip neben Transparenz bei KI-Systemen.', solution: 'z. B. Fairness, Datenschutz, Rechenschaftspflicht, Menschliche Aufsicht' },
 ];
 
-/** Grundlagen Informatik – Inf 12: Python, Programmiergrundlagen, Algorithmen, Darstellung, Netzwerke, Internet, Datenbanken (je 10) */
+/** Grundlagen Informatik – Inf 12: genau acht Kategorien, je mindestens 20 Fragen im Standardpool */
 const TASK_POOL_INF_12: EntryTicketTask[] = [
+  // Allgemein
+  { category: 'Allgemein', prompt: 'Was ist die zentrale Aufgabe eines Betriebssystems in einem Satz?', solution: 'Hardware verwalten und Programmausführung ermöglichen' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: „Open Source“ bedeutet immer, die Software sei kostenlos.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Was beschreibt ein Algorithmus?', solution: 'Eine endliche, eindeutige Vorschrift zur Problemlösung' },
+  { category: 'Allgemein', prompt: 'Wofür wird ein Versionskontrollsystem wie Git in der Praxis genutzt?', solution: 'Änderungen nachverfolgen, zusammenarbeiten, Historie' },
+  { category: 'Allgemein', prompt: 'Im Client-Server-Modell: Wer startet typischerweise die Anfrage?', solution: 'Client' },
+  { category: 'Allgemein', prompt: 'Was ist eine API in einem Satz?', solution: 'Schnittstelle, über die Programme miteinander sprechen' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: JSON ist eine Programmiersprache.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Backup-Strategie „3-2-1“: Was bedeuten die drei Zahlen grob?', solution: '3 Kopien, 2 Medien/Orte, 1 extern/offsite' },
+  { category: 'Allgemein', prompt: 'IDE vs. reiner Texteditor: Nenne zwei typische Zusatzfunktionen einer IDE.', solution: 'z. B. Debugger, Syntaxhervorhebung, Build, Projektverwaltung (zwei)' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: IPv4- und IPv6-Adressen haben dieselbe übliche Bitlänge.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: Jede E-Mail mit Firmenlogo ist automatisch vertrauenswürdig.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Phishing versucht typischerweise, was von Nutzer:innen zu erlangen?', solution: 'Zugangsdaten oder sensible Daten (durch Täuschung)' },
+  { category: 'Allgemein', prompt: 'Malware: Was ist das in einem Satz?', solution: 'Software mit schädlicher oder unerwünschter Wirkung' },
+  { category: 'Allgemein', prompt: 'DSGVO betrifft typischerweise Daten von ?', solution: 'identifizierbaren natürlichen Personen' },
+  { category: 'Allgemein', prompt: 'Cloud Computing grob: Rechenleistung oder Speicher oft ?', solution: 'bei einem Dienstleister/extern (On-Demand)' },
+  { category: 'Allgemein', prompt: 'GUI vs. CLI in einem Satz?', solution: 'GUI grafisch bedienbar; CLI zeilenorientierte Eingabe' },
+  { category: 'Allgemein', prompt: 'Unicode erlaubt gegenüber ASCII typischerweise ?', solution: 'deutlich mehr verschiedene Zeichen/Schriften' },
+  { category: 'Allgemein', prompt: 'Wozu dienen Software-Updates/Patches grob?', solution: 'Fehler beheben, Sicherheit verbessern, Funktionen erweitern' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: Kommentare im Quellcode ändern das Laufzeitverhalten des Programms.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Digitale Kompetenz umfasst grob neben Technik auch ?', solution: 'Reflexion, Rechtliches/Ethik, Medienkritik (Auswahl)' },
   // Python
   { category: 'Python', prompt: 'Welche Dateiendung hat eine typische Python-Quelldatei?', solution: '.py' },
   { category: 'Python', prompt: 'Wahr oder falsch: Python wird typischerweise interpretiert (nicht vorab in Maschinencode übersetzt).', solution: 'Wahr' },
@@ -326,6 +347,16 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Python', prompt: 'Womit kennzeichnet Python „kein Wert“ statt null?', solution: 'None' },
   { category: 'Python', prompt: 'Standardwerkzeug zum Installieren von Python-Paketen von PyPI?', solution: 'pip' },
   { category: 'Python', prompt: 'Listen-Abstraktion (list comprehension): was beschreibt sie in einem Satz?', solution: 'Neue Liste aus einer Ausdrucksregel über eine Iterable (kompakt)' },
+  { category: 'Python', prompt: 'Sind Tupel in Python veränderbar (mutable)? (ja/nein)', solution: 'nein' },
+  { category: 'Python', prompt: 'Wozu dient typischerweise `with open(...) as f:`?', solution: 'Datei zuverlässig schließen (auch bei Fehlern)' },
+  { category: 'Python', prompt: 'Welches Schlüsselwort löst eine Ausnahme (Exception) aus?', solution: 'raise' },
+  { category: 'Python', prompt: 'Welches Schlüsselwort ist ein Platzhalter für einen leeren Codeblock?', solution: 'pass' },
+  { category: 'Python', prompt: 'Was liefert `len([])` typischerweise?', solution: '0' },
+  { category: 'Python', prompt: 'Wofür dient `enumerate(iterable)` grob?', solution: 'Zähler (Index) und Elemente zusammen durchlaufen' },
+  { category: 'Python', prompt: 'Wahr oder falsch: Python erlaubt Mehrfachvererbung bei Klassen.', solution: 'Wahr' },
+  { category: 'Python', prompt: 'Strings mit einfachen oder doppelten Anführungszeichen: gleicher Typ (str) in Python?', solution: 'ja' },
+  { category: 'Python', prompt: 'Wozu dient `if __name__ == "__main__":` oft?', solution: 'Code nur beim direkten Start des Skripts ausführen' },
+  { category: 'Python', prompt: 'Liste vs. Set: Was erlaubt typischerweise keine Duplikate?', solution: 'set' },
   // Programmiergrundlagen
   { category: 'Programmiergrundlagen', prompt: 'Variable vs. Literal: Was ist ein Literal?', solution: 'Fester Wert direkt im Code (z. B. 42, "Hallo")' },
   { category: 'Programmiergrundlagen', prompt: 'int vs. float: Welcher Typ ist für ganze Zahlen gedacht?', solution: 'int' },
@@ -337,6 +368,16 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Programmiergrundlagen', prompt: 'Wozu teilt man Code in Funktionen/Module ein?', solution: 'Wiederverwendbarkeit, Übersicht, Testbarkeit' },
   { category: 'Programmiergrundlagen', prompt: 'Syntaxfehler vs. Laufzeitfehler: Wann tritt ein Syntaxfehler auf?', solution: 'beim Übersetzen/Parsen (vor der Ausführung)' },
   { category: 'Programmiergrundlagen', prompt: 'Was beschreibt eine API grob?', solution: 'Schnittstelle, über die Programme zusammenarbeiten' },
+  { category: 'Programmiergrundlagen', prompt: 'Unit-Test: Was wird typischerweise klein und isoliert geprüft?', solution: 'einzelne Funktionen/Module' },
+  { category: 'Programmiergrundlagen', prompt: 'Refactoring: Ziel ohne das beobachtbare Verhalten zu ändern?', solution: 'Code lesbarer/wartbarer machen' },
+  { category: 'Programmiergrundlagen', prompt: 'Code Review: wozu dient es grob?', solution: 'Qualität sichern, Fehler finden, Wissen teilen' },
+  { category: 'Programmiergrundlagen', prompt: 'Branch in Git: wofür nutzt man ihn typischerweise?', solution: 'parallele Entwicklung ohne Hauptstand zu zerstören' },
+  { category: 'Programmiergrundlagen', prompt: 'Pair Programming grob: wie arbeiten zwei Personen?', solution: 'gemeinsam an einem Rechner/Code (Rollenwechsel möglich)' },
+  { category: 'Programmiergrundlagen', prompt: 'Abstraktion: was wird typischerweise verborgen?', solution: 'Implementierungsdetails hinter einer klaren Schnittstelle' },
+  { category: 'Programmiergrundlagen', prompt: 'Wahr oder falsch: Rekursion ist immer effizienter als eine iterative Schleife.', solution: 'Falsch' },
+  { category: 'Programmiergrundlagen', prompt: 'Kontrollfluss: Was steuert if/else und Schleifen grob?', solution: 'welche Anweisungen in welcher Reihenfolge ausgeführt werden' },
+  { category: 'Programmiergrundlagen', prompt: 'Wahr oder falsch: Ein guter Variablenname kann die Lesbarkeit verbessern.', solution: 'Wahr' },
+  { category: 'Programmiergrundlagen', prompt: 'Fehlerbehandlung: try/catch (bzw. try/except) fängt typischerweise ? ab.', solution: 'Ausnahmen zur Laufzeit' },
   // Algorithmen (allgemein, Suchen, Sortieren, Wege)
   { category: 'Algorithmen', prompt: 'O-Notation: Was wird typischerweise abgeschätzt?', solution: 'Wachstum von Zeit- oder Speicherbedarf in n' },
   { category: 'Algorithmen', prompt: 'Lineare Suche in n Elementen: Worst-Case oft ?', solution: 'O(n)' },
@@ -348,6 +389,16 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Algorithmen', prompt: 'Dynamische Programmierung: wozu speichert man Teilprobleme?', solution: 'mehrfaches Berechnen vermeiden (überlappende Teilprobleme)' },
   { category: 'Algorithmen', prompt: 'Breitensuche (BFS) in Graphen: welche Datenstruktur typisch für die Frontier?', solution: 'Warteschlange (Queue)' },
   { category: 'Algorithmen', prompt: 'Tiefensuche (DFS) vs. BFS: welche nutzt typischerweise einen Stack bzw. Rekursion?', solution: 'DFS' },
+  { category: 'Algorithmen', prompt: 'Quicksort: durchschnittliche Zeit oft ? (Landau)', solution: 'O(n log n)' },
+  { category: 'Algorithmen', prompt: 'Quicksort: Worst-Case ohne gute Pivot-Wahl oft ?', solution: 'O(n²)' },
+  { category: 'Algorithmen', prompt: 'Heapsort nutzt typischerweise welche Datenstruktur?', solution: 'Heap (Prioritäts-/Heap-Struktur)' },
+  { category: 'Algorithmen', prompt: 'Selectionsort: was wird pro Durchlauf typisch gesucht?', solution: 'Minimum (oder Maximum) im unsortierten Rest' },
+  { category: 'Algorithmen', prompt: 'Stabiles Sortieren: gleiche Schlüssel behalten ihre ?', solution: 'relative Reihenfolge zueinander' },
+  { category: 'Algorithmen', prompt: 'A* (A-Stern): nutzt typischerweise zusätzlich zu Dijkstra eine ?', solution: 'Heuristik (geschätzte Restkosten)' },
+  { category: 'Algorithmen', prompt: 'Floyd-Warshall: berechnet kürzeste Wege zwischen ?', solution: 'allen Paaren von Knoten' },
+  { category: 'Algorithmen', prompt: 'Hashing mit guter Streuung: erwartete Suchzeit in einer Hash-Tabelle oft ?', solution: 'O(1) amortisiert (idealisiert)' },
+  { category: 'Algorithmen', prompt: 'Minimum Spanning Tree (MST): was wird über alle Knoten minimiert?', solution: 'Summe der Kantengewichte (spanning, minimal)' },
+  { category: 'Algorithmen', prompt: 'Bellman-Ford vs. Dijkstra: Bellman-Ford kann typischerweise mit ? Kantengewichten umgehen (unter Voraussetzungen).', solution: 'negativen' },
   // Darstellung von Algorithmen
   { category: 'Darstellung von Algorithmen', prompt: 'Wozu dient Pseudocode?', solution: 'Algorithmus sprachunabhängig und knapp zu beschreiben' },
   { category: 'Darstellung von Algorithmen', prompt: 'Struktogramm (Nassi-Shneiderman): womit werden Abläufe dargestellt?', solution: 'rechteckige Strukturblöcke (Sequenz, Verzweigung, Schleife)' },
@@ -359,6 +410,16 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Darstellung von Algorithmen', prompt: 'UML-Aktivitätsdiagramm: wofür wird es oft genutzt?', solution: 'Abläufe/Workflows modellieren' },
   { category: 'Darstellung von Algorithmen', prompt: 'Ablaufplan vs. Programm: der Plan ist typischerweise ? maschinennah.', solution: 'weniger / abstrakter' },
   { category: 'Darstellung von Algorithmen', prompt: 'Warum strukturierte Blöcke im Struktogramm oft klarer als Sprunglinien?', solution: 'keine unübersichtlichen Sprünge / bessere Lesbarkeit' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Strukturierte Programmierung: unbeschränkte Sprünge (goto) werden typischerweise ?', solution: 'vermieden / durch klare Kontrollstrukturen ersetzt' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Sequenz im Struktogramm: wie werden Schritte angeordnet?', solution: 'nacheinander von oben nach unten' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Flussdiagramm: einfache Anweisung/Prozess oft in welcher Form?', solution: 'Rechteck' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Datenfluss vs. Kontrollfluss: Datenfluss beschreibt grob ?', solution: 'wie Daten zwischen Schritten fließen' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Warum schreibt man Algorithmen oft zuerst in Pseudocode statt sofort in Python?', solution: 'sprachneutral, Fokus auf Logik, leichter zu diskutieren' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Testfall: was beschreibt er mindestens?', solution: 'Eingabe(n) und erwartetes Ergebnis / Verhalten' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Vorbedingung (Precondition): gilt typischerweise ? dem betrachteten Schritt.', solution: 'vor' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Aktivitätsdiagramm (UML): modelliert typischerweise ?', solution: 'Abläufe mit Verzweigungen, Schleifen, Parallelität' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Welche Verzweigung hat im Struktogramm oft zwei Zweige (ja/nein)?', solution: 'Auswahl/IF (zwei Alternativen)' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Dokumentation neben Code: wann ist sie besonders wichtig?', solution: 'bei komplexer Logik, Schnittstellen, Annahmen für andere Teammitglieder' },
   // Netzwerke
   { category: 'Netzwerke', prompt: 'OSI-Modell: wie viele Schichten werden oft genannt?', solution: '7' },
   { category: 'Netzwerke', prompt: 'MAC-Adresse: typische OSI-Schicht?', solution: 'Schicht 2 (Sicherung/Data Link)' },
@@ -370,6 +431,16 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Netzwerke', prompt: 'Latenz vs. Bandbreite: was misst die Bandbreite grob?', solution: 'übertragbare Datenmenge pro Zeit' },
   { category: 'Netzwerke', prompt: 'Subnetz / Präfix (z. B. /24): wozu dient es grob?', solution: 'Adressbereich eines Netzes segmentieren' },
   { category: 'Netzwerke', prompt: 'VLAN: wozu dient es grob?', solution: 'logische Trennung von Netzen auf gemeinsamer Infrastruktur' },
+  { category: 'Netzwerke', prompt: 'ARP: welche Zuordnung löst es typischerweise auf?', solution: 'IP-Adresse zu MAC-Adresse (im lokalen Segment)' },
+  { category: 'Netzwerke', prompt: 'NAT: wozu dient es typischerweise in Heim-/Firmennetzen?', solution: 'mehrere private IPs teilen eine öffentliche Adresse' },
+  { category: 'Netzwerke', prompt: 'ICMP: wofür wird es oft genutzt (Beispiel)?', solution: 'Ping / Fehlermeldungen der Schicht 3' },
+  { category: 'Netzwerke', prompt: 'UDP: verbindungsorientiert wie TCP? (ja/nein)', solution: 'nein' },
+  { category: 'Netzwerke', prompt: 'Ethernet-Broadcast auf Schicht 2: Empfänger grob?', solution: 'alle Stationen im Broadcast-Segment' },
+  { category: 'Netzwerke', prompt: 'Topologie Stern: zentrales Element oft?', solution: 'Switch oder Access Point' },
+  { category: 'Netzwerke', prompt: 'PoE (Power over Ethernet): was wird zusätzlich über das Kabel geführt?', solution: 'elektrische Versorgung (Strom)' },
+  { category: 'Netzwerke', prompt: 'Jumbo Frames: typisch größer als ? Bytes Nutzlast (Richtung, kein exakter Wert nötig).', solution: 'klassische 1500 (MTU-Erhöhung)' },
+  { category: 'Netzwerke', prompt: 'Was misst „Latenz“ grob?', solution: 'Verzögerung bis ein Signal/Antwort ankommt' },
+  { category: 'Netzwerke', prompt: 'Was misst „Durchsatz“ grob?', solution: 'übertragene Datenmenge pro Zeit' },
   // Internet und Kommunikation
   { category: 'Internet und Kommunikation', prompt: 'HTTP nutzt typischerweise welches Transportprotokoll?', solution: 'TCP' },
   { category: 'Internet und Kommunikation', prompt: 'HTTPS: HTTP plus typischerweise ?', solution: 'TLS-Verschlüsselung' },
@@ -381,6 +452,16 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Internet und Kommunikation', prompt: 'Welcher Port ist typisch für HTTPS?', solution: '443' },
   { category: 'Internet und Kommunikation', prompt: 'Client-Server vs. Peer-to-Peer: bei P2P sind viele Knoten gleichzeitig ?', solution: 'Client und Server / gleichberechtigt' },
   { category: 'Internet und Kommunikation', prompt: 'CDN grob: welches Ziel verfolgt es oft?', solution: 'Inhalte geografisch näher ausliefern (Latenz senken)' },
+  { category: 'Internet und Kommunikation', prompt: 'HTTP 301 vs. 302 grob: welche Umleitung ist oft „dauerhaft“?', solution: '301 (Moved Permanently)' },
+  { category: 'Internet und Kommunikation', prompt: 'MIME-Type im HTTP-Header: wozu dient er dem Client?', solution: 'Art des Inhalts anzugegen (z. B. text/html, image/png)' },
+  { category: 'Internet und Kommunikation', prompt: 'CORS schränkt im Browser typischerweise ? ein.', solution: 'Zugriffe von anderen Origins (Domains/Ports/Schemes)' },
+  { category: 'Internet und Kommunikation', prompt: 'WebSocket vs. klassisches HTTP-Request/Response: WebSocket ist typischerweise ?', solution: 'persistente, beidseitige Verbindung' },
+  { category: 'Internet und Kommunikation', prompt: 'HSTS: was erzwingt es für eine Domain typischerweise?', solution: 'nur noch HTTPS-Verbindungen (vom Browser)' },
+  { category: 'Internet und Kommunikation', prompt: 'SameSite-Cookie-Attribut: schützt teilweise vor ?', solution: 'CSRF (Cross-Site Request Forgery)' },
+  { category: 'Internet und Kommunikation', prompt: 'OAuth2 grob: wofür wird es oft genutzt?', solution: 'delegierter Zugriff ohne Passwortweitergabe an Dritte' },
+  { category: 'Internet und Kommunikation', prompt: 'Webhook: wie wird ein Ereignis typischerweise gemeldet?', solution: 'HTTP-Callback an eine registrierte URL' },
+  { category: 'Internet und Kommunikation', prompt: 'IMAP vs. POP3: IMAP lässt Mails typischerweise ?', solution: 'auf dem Server (Synchronisation mehrerer Geräte)' },
+  { category: 'Internet und Kommunikation', prompt: 'HTTP-Status 500 steht grob für ?', solution: 'Serverfehler (Internal Server Error)' },
   // Datenbanken
   { category: 'Datenbanken', prompt: 'Primärschlüssel: wozu dient er?', solution: 'Zeilen eindeutig identifizieren' },
   { category: 'Datenbanken', prompt: 'Fremdschlüssel referenziert typischerweise einen ? einer anderen Tabelle.', solution: 'Primärschlüssel' },
@@ -392,6 +473,16 @@ const TASK_POOL_INF_12: EntryTicketTask[] = [
   { category: 'Datenbanken', prompt: 'Index in einer Datenbank: wozu dient er grob?', solution: 'schnelleres Suchen/Filtern (auf Kosten von Pflege/Speicher)' },
   { category: 'Datenbanken', prompt: 'SQL vs. NoSQL in einem Satz?', solution: 'SQL relational/tabellarisch; NoSQL oft flexiblere Modelle (Dokument, Key-Value, …)' },
   { category: 'Datenbanken', prompt: 'VIEW in SQL: was ist es grob?', solution: 'gespeicherte Abfrage / virtuelle Tabelle' },
+  { category: 'Datenbanken', prompt: 'DELETE vs. DROP TABLE: was entfernt die ganze Tabelle?', solution: 'DROP TABLE' },
+  { category: 'Datenbanken', prompt: 'PRIMARY KEY: darf NULL sein? (ja/nein)', solution: 'nein' },
+  { category: 'Datenbanken', prompt: 'GROUP BY wird typischerweise mit ? Funktionen kombiniert.', solution: 'Aggregat- (COUNT, SUM, AVG, …)' },
+  { category: 'Datenbanken', prompt: 'HAVING filtert auf ? WHERE filtert auf Zeilen.', solution: 'Gruppen-Ergebnisse (nach GROUP BY)' },
+  { category: 'Datenbanken', prompt: '2NF verbietet partielle Abhängigkeit von ?', solution: 'einem zusammengesetzten Schlüssel / Nicht-Schlüsselattributen vom Teil des Schlüssels' },
+  { category: 'Datenbanken', prompt: 'ER-Modell: Rechteck steht oft für ?', solution: 'Entitätstyp / Entity' },
+  { category: 'Datenbanken', prompt: 'Redundanz in Tabellen: typischer Nachteil?', solution: 'Update-/Insert-/Delete-Anomalien' },
+  { category: 'Datenbanken', prompt: 'Stored Procedure: wo wird sie ausgeführt?', solution: 'auf dem Datenbankserver' },
+  { category: 'Datenbanken', prompt: 'SQLite typischerweise: eingebettete Datei oder separater Server-Prozess?', solution: 'eingebettete Bibliothek/Datei (kein eigener Server nötig)' },
+  { category: 'Datenbanken', prompt: 'UPDATE-SQL: was macht es?', solution: 'ändert Werte bestehender Zeilen' },
 ];
 
 /** Grundlagen Informatik – Klassenstufe / Kurs 13 (vertieft) */
@@ -428,7 +519,7 @@ const TASK_POOL_INF_13: EntryTicketTask[] = [
   { category: 'Inf · Sicherheit', prompt: 'Perfect Forward Secrecy: vergangene Sessions bleiben bei Schlüsselleck ?', solution: 'geschützt' },
 ];
 
-/** v2: Inf 11 behält Fachkategorien beim Auffüllen; mergeInf11FromStorage bereinigt fälschlich als TI gespeicherte Theorie-Fragen */
+/** v2: Inf 11/12 behalten Fachkategorien beim Auffüllen (inflateInf11/12PerBand) */
 const QUESTION_SET_STORAGE_KEY = 'entry-ticket-question-sets-v2';
 
 function randomTaskSeed(): number {
@@ -486,37 +577,23 @@ const INF11_CATEGORY_MARKERS = new Set([
   'KI',
 ]);
 
-/** Inhalt, der unter „Technische Informatik“ (Hardware/Johnny) nicht hingehört, aber früher fälschlich dort landete. */
-const INF11_TI_LOOKS_LIKE_THEORY = /endlich(er)?\s+Automat|Zustandsautomat|\bDEA\b|\bNEA\b|Turing|Chomsky|Grammatik|kontextfrei|regulär(e)?\s+Spr|Halteproblem|NP[-\s]?voll|berechenbarkeit/i;
-
-function defaultInf11TechnicalBand(): EntryTicketTask[] {
-  return DEFAULT_QUESTION_SETS.inf11.filter((q) => q.category === 'Technische Informatik');
-}
-
 /**
- * Ersetzt alte Inf-11-Speicherstände sinnvoll durch den aktuellen Standard.
+ * Ersetzt alte Inf-11-Speicherstände durch den aktuellen Standard.
  * Früher war inf11 = Mathe-11-Pool (Prozent, Bruch, …) oder „Inf · …“ – ohne die neuen Band-Kategorien.
- * Nur wenn mindestens eine Aufgabe eine der Kategorien Allgemein/Java/OO/Technische Informatik/… hat, bleibt der gespeicherte Satz erhalten.
- * „Theoretische Informatik“ war kein Inf-11-Fachband: Einträge werden entfernt (gehören nicht in die sechs Bänder).
- * Früher wurden Theorie-Fragen irrtümlich in „Technische Informatik“ umbenannt – solche TI-Einträge werden durch die aktuellen Standard-TI-Fragen ersetzt.
+ * Kategorien „Inf · …“ gehören nicht zu Inf 11 (sechs Fachbänder) und werden aus dem gespeicherten Satz entfernt.
+ * Nur wenn danach noch Marker-Kategorien oder „Eigen“-Fragen übrig sind, bleibt der Rest erhalten.
  */
 function mergeInf11FromStorage(stored: EntryTicketTask[] | undefined): EntryTicketTask[] {
   if (stored === undefined || stored.length === 0) return DEFAULT_QUESTION_SETS.inf11;
-
-  const withoutTheoryBand = stored.filter((q) => q.category !== 'Theoretische Informatik');
-
-  const usesNewInf11Curriculum = withoutTheoryBand.some((q) => INF11_CATEGORY_MARKERS.has(q.category));
-  if (!usesNewInf11Curriculum) return DEFAULT_QUESTION_SETS.inf11;
-
-  const tiTasks = withoutTheoryBand.filter((q) => q.category === 'Technische Informatik');
-  const tiCorrupt =
-    tiTasks.length === 0 ||
-    tiTasks.some((q) => INF11_TI_LOOKS_LIKE_THEORY.test(`${q.prompt} ${q.solution}`));
-
-  if (!tiCorrupt) return withoutTheoryBand;
-
-  const withoutTi = withoutTheoryBand.filter((q) => q.category !== 'Technische Informatik');
-  return [...withoutTi, ...defaultInf11TechnicalBand()];
+  const migrated = stored.map((q) =>
+    q.category === 'Theoretische Informatik' ? { ...q, category: 'Technische Informatik' } : q,
+  );
+  const cleaned = migrated.filter((q) => !q.category.startsWith('Inf ·'));
+  const usesNewInf11Curriculum = cleaned.some(
+    (q) => INF11_CATEGORY_MARKERS.has(q.category) || coarseCategoryForTask(q.category) === 'Eigen',
+  );
+  if (usesNewInf11Curriculum) return cleaned;
+  return DEFAULT_QUESTION_SETS.inf11;
 }
 
 const coarseCategoryForTask = (category: string): CoarseCategory => {
@@ -578,8 +655,9 @@ function inflateInf11PerBand(list: EntryTicketTask[]): EntryTicketTask[] {
   return next;
 }
 
-/** Inf 12: sieben Fachbänder, pro Band auf 50 auffüllen (wie Inf 11, nicht Mathe-Grobkategorien). */
+/** Inf 12: Allgemein + sieben Fachbänder, pro Band auf 50 auffüllen (nicht Mathe-Grobkategorien). */
 const INF12_BAND_ORDER: readonly string[] = [
+  'Allgemein',
   'Python',
   'Programmiergrundlagen',
   'Algorithmen',
@@ -593,11 +671,15 @@ const INF12_CATEGORY_MARKERS = new Set<string>(INF12_BAND_ORDER);
 
 function mergeInf12FromStorage(stored: EntryTicketTask[] | undefined): EntryTicketTask[] {
   if (stored === undefined || stored.length === 0) return DEFAULT_QUESTION_SETS.inf12;
-  const looksLikeNewInf12 = stored.some(
-    (q) => INF12_CATEGORY_MARKERS.has(q.category) || coarseCategoryForTask(q.category) === 'Eigen',
-  );
-  if (looksLikeNewInf12) return stored;
-  return DEFAULT_QUESTION_SETS.inf12;
+  const allowedInf12Category = (cat: string) =>
+    INF12_CATEGORY_MARKERS.has(cat) || coarseCategoryForTask(cat) === 'Eigen';
+  const cleaned = stored.filter((q) => allowedInf12Category(q.category));
+  if (cleaned.length === 0) return DEFAULT_QUESTION_SETS.inf12;
+  const markerQs = cleaned.filter((q) => INF12_CATEGORY_MARKERS.has(q.category));
+  const eigenQs = cleaned.filter((q) => coarseCategoryForTask(q.category) === 'Eigen');
+  /** Wenn nach Migration/Editor-Bug keine Marker-Fragen mehr übrig sind, Standardpool wiederherstellen („Eigen“ behalten). */
+  const baseMarkers = markerQs.length > 0 ? markerQs : DEFAULT_QUESTION_SETS.inf12;
+  return [...baseMarkers, ...eigenQs];
 }
 
 function inflateInf12PerBand(list: EntryTicketTask[]): EntryTicketTask[] {
@@ -616,6 +698,7 @@ function inflateInf12PerBand(list: EntryTicketTask[]): EntryTicketTask[] {
 }
 
 const INF12_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: string; border: string }> = {
+  Allgemein: { icon: '📋', bg: '#e3f2fd', fg: '#0d47a1', border: '#90caf9' },
   Python: { icon: '🐍', bg: '#e8f5e9', fg: '#1b5e20', border: '#66bb6a' },
   Programmiergrundlagen: { icon: '⚙️', bg: '#eceff1', fg: '#37474f', border: '#90a4ae' },
   Algorithmen: { icon: '📶', bg: '#fff8e1', fg: '#f57f17', border: '#ffca28' },
@@ -634,6 +717,48 @@ const INF11_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: strin
   Digitaltechnik: { icon: '⚡', bg: '#eceff1', fg: '#37474f', border: '#90a4ae' },
   KI: { icon: '🤖', bg: '#e0f7fa', fg: '#006064', border: '#4dd0e1' },
 };
+
+/** Fragenset-Editor: feste Band-Reihenfolge, „Eigen“-Kategorien oben (Inf 11 und Inf 12 getrennt konfigurierbar). */
+function groupPoolTasksByBandOrder(
+  poolForBand: EntryTicketTask[],
+  bandOrder: readonly string[],
+): Array<{
+  category: string;
+  items: Array<{ q: EntryTicketTask; idx: number; displayNumber: number }>;
+}> {
+  const indexed = poolForBand.map((q, idx) => ({ q, idx }));
+  const rankInf = (cat: string) => {
+    if (coarseCategoryForTask(cat) === 'Eigen') return -1;
+    const i = bandOrder.indexOf(cat);
+    return i === -1 ? 999 : i;
+  };
+  indexed.sort((a, b) => {
+    const ra = rankInf(a.q.category);
+    const rb = rankInf(b.q.category);
+    if (ra !== rb) return ra - rb;
+    return a.idx - b.idx;
+  });
+  let displayCounter = 1;
+  const withDisplay = indexed.map((item) => {
+    const displayNumber = displayCounter;
+    displayCounter += 1;
+    return { ...item, displayNumber };
+  });
+  const groups: Array<{
+    category: string;
+    items: Array<{ q: EntryTicketTask; idx: number; displayNumber: number }>;
+  }> = [];
+  for (const item of withDisplay) {
+    const band = item.q.category;
+    const last = groups[groups.length - 1];
+    if (!last || last.category !== band) {
+      groups.push({ category: band, items: [item] });
+    } else {
+      last.items.push(item);
+    }
+  }
+  return groups;
+}
 
 const dedupeEigenQuestions = (list: EntryTicketTask[]): EntryTicketTask[] => {
   const seen = new Set<string>();
@@ -808,43 +933,14 @@ export default function EntryTicketPage() {
 
   const poolForBand = useMemo(() => questionSets[grade] ?? [], [questionSets, grade]);
   const groupedSetQuestions = useMemo(() => {
-    const indexed = poolForBand.map((q, idx) => ({ q, idx }));
-
-    if (grade === 'inf11' || grade === 'inf12') {
-      const bandOrder = grade === 'inf11' ? INF11_BAND_ORDER : INF12_BAND_ORDER;
-      const rankInf = (cat: string) => {
-        if (coarseCategoryForTask(cat) === 'Eigen') return -1;
-        const i = bandOrder.indexOf(cat);
-        return i === -1 ? 999 : i;
-      };
-      indexed.sort((a, b) => {
-        const ra = rankInf(a.q.category);
-        const rb = rankInf(b.q.category);
-        if (ra !== rb) return ra - rb;
-        return a.idx - b.idx;
-      });
-      let displayCounter = 1;
-      const withDisplay = indexed.map((item) => {
-        const displayNumber = displayCounter;
-        displayCounter += 1;
-        return { ...item, displayNumber };
-      });
-      const groups: Array<{
-        category: string;
-        items: Array<{ q: EntryTicketTask; idx: number; displayNumber: number }>;
-      }> = [];
-      for (const item of withDisplay) {
-        const band = item.q.category;
-        const last = groups[groups.length - 1];
-        if (!last || last.category !== band) {
-          groups.push({ category: band, items: [item] });
-        } else {
-          last.items.push(item);
-        }
-      }
-      return groups;
+    if (grade === 'inf11') {
+      return groupPoolTasksByBandOrder(poolForBand, INF11_BAND_ORDER);
+    }
+    if (grade === 'inf12') {
+      return groupPoolTasksByBandOrder(poolForBand, INF12_BAND_ORDER);
     }
 
+    const indexed = poolForBand.map((q, idx) => ({ q, idx }));
     const categoryOrder: CoarseCategory[] = [
       'Eigen',
       'Grundrechenarten',
@@ -1100,7 +1196,17 @@ export default function EntryTicketPage() {
     if (setEditIndex === null) return;
     const prompt = setEditPrompt.trim();
     const solution = setEditSolution.trim();
-    const category = toCoarseCategory(setEditCategory.trim() || 'Zeit/Geld/Alltag');
+    const rawCat = setEditCategory.trim() || 'Zeit/Geld/Alltag';
+    const category =
+      grade === 'inf11'
+        ? INF11_CATEGORY_MARKERS.has(rawCat) || coarseCategoryForTask(rawCat) === 'Eigen'
+          ? rawCat
+          : coarseCategoryForTask(rawCat)
+        : grade === 'inf12'
+          ? INF12_CATEGORY_MARKERS.has(rawCat) || coarseCategoryForTask(rawCat) === 'Eigen'
+            ? rawCat
+            : coarseCategoryForTask(rawCat)
+          : coarseCategoryForTask(rawCat);
     if (!prompt || !solution) return;
     setQuestionSets((prev) => {
       const list = [...(prev[grade] ?? [])];
