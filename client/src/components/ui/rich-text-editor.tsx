@@ -100,6 +100,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const timeoutRef = useRef<NodeJS.Timeout>();
   const lastValueRef = useRef(value);
   const lastReceivedValueRef = useRef(value);
+  /** true solange der Nutzer dieses Feld aktiv bearbeitet (zuverlässiger als activeElement im useEffect). */
+  const isEditingRef = useRef(false);
+  const showFontSizePickerRef = useRef(false);
+  /** Toolbar + Editor: Fokus-Tracking ohne falsches „Blur“ nur wegen Toolbar-Klick */
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   // Debounced onChange to prevent excessive updates
   const debouncedOnChange = useCallback((newValue: string) => {
@@ -293,31 +298,78 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   useEffect(() => {
+    showFontSizePickerRef.current = showFontSizePicker;
+  }, [showFontSizePicker]);
+
+  const flushEditorToParent = useCallback(() => {
     if (!editorRef.current) return;
-    const currentContent = editorRef.current.innerHTML;
+    const newValue = editorRef.current.innerHTML;
+    if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
+  }, [debouncedOnChange]);
+
+  // Fokus irgendwo in Toolbar+Editor = Bearbeitung; nur wenn Fokus die ganze Komponente verlässt → Sync erlauben
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const onFocusIn = () => {
+      isEditingRef.current = true;
+    };
+
+    const onFocusOut = (e: FocusEvent) => {
+      const next = e.relatedTarget as Node | null;
+      if (next && root.contains(next)) return;
+      window.setTimeout(() => {
+        if (showFontSizePickerRef.current) return;
+        const ae = document.activeElement;
+        if (ae && root.contains(ae)) return;
+        isEditingRef.current = false;
+        flushEditorToParent();
+      }, 0);
+    };
+
+    root.addEventListener('focusin', onFocusIn);
+    root.addEventListener('focusout', onFocusOut);
+    return () => {
+      root.removeEventListener('focusin', onFocusIn);
+      root.removeEventListener('focusout', onFocusOut);
+    };
+  }, [flushEditorToParent]);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    const host = editorRef.current;
+    // Während Eingabe oder offenem Schriftgrößen-Popover (Portal): kein innerHTML aus Props —
+    // sonst springt der Cursor nach vorn / Inhalt flackert.
+    if (isEditingRef.current || showFontSizePicker) {
+      lastReceivedValueRef.current = value;
+      return;
+    }
+
+    const currentContent = host.innerHTML;
     const editorEmpty = !currentContent || currentContent.trim() === '' || currentContent === '<br>' || currentContent === '<br/>';
     const valueNonEmpty = value && value.trim() !== '';
     const valueChangedExternally = value !== lastReceivedValueRef.current;
     lastReceivedValueRef.current = value;
-    // Nur synchronisieren wenn: Wert von außen geändert ODER initialer Mount (Editor leer, Wert da). Nicht während Nutzer tippt.
-    const editorHasFocus = editorRef.current.contains(document.activeElement);
-    // Kein „isUpdating“-Gate: Bei schnellem Tippen würde sonst handleInput Events verwerfen
-    // und der Parent-State blieb hinter dem DOM zurück („Fertig“ speicherte alte Texte).
-    // Solange der Editor fokussiert ist, überschreiben wir nicht (siehe editorHasFocus).
-    const shouldUpdate =
-      (valueChangedExternally && !editorHasFocus) ||
-      (editorEmpty && valueNonEmpty);
+
+    // Bereits identisch: nichts anfassen (vermeidet Selection-Reset in Edge-Fällen)
+    if (valueChangedExternally && currentContent === value) {
+      lastValueRef.current = value;
+      return;
+    }
+
+    const shouldUpdate = valueChangedExternally || (editorEmpty && valueNonEmpty);
     if (shouldUpdate) {
       const cursorPosition = saveCursorPosition();
-      editorRef.current.innerHTML = value;
+      host.innerHTML = value;
       lastValueRef.current = value;
       requestAnimationFrame(() => {
         restoreCursorPosition(cursorPosition);
       });
     }
-  }, [value]);
+  }, [value, showFontSizePicker]);
 
-  // Initialize lastValueRef with the initial value
+  // Parent-Wert spiegeln (ohne DOM anzufassen)
   useEffect(() => {
     lastValueRef.current = value;
   }, [value]);
@@ -346,7 +398,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const syncFormatStateFromDocument = useCallback(() => {
     try {
       const el = document.activeElement;
-      if (!editorRef.current || el !== editorRef.current) return;
+      const host = editorRef.current;
+      if (!host || !el || (el !== host && !host.contains(el))) return;
       setIsBold(document.queryCommandState('bold'));
       setIsItalic(document.queryCommandState('italic'));
       setIsUnderline(document.queryCommandState('underline'));
@@ -356,11 +409,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, []);
 
   const handleFocus = useCallback(() => {
+    isEditingRef.current = true;
     syncFormatStateFromDocument();
   }, [syncFormatStateFromDocument]);
 
   const handleSelectionChange = useCallback(() => {
-    if (!editorRef.current || document.activeElement !== editorRef.current) return;
+    if (!editorRef.current) return;
+    const ae = document.activeElement;
+    const host = editorRef.current;
+    if (!ae || (ae !== host && !host.contains(ae))) return;
     syncFormatStateFromDocument();
   }, [syncFormatStateFromDocument]);
 
@@ -884,14 +941,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  const handleBlur = () => {
-    // Vor Klick auf „Fertig“ verliert der Editor den Fokus: letzte Änderung sicher an Parent geben
-    if (editorRef.current) {
-      const newValue = editorRef.current.innerHTML;
-      if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
-    }
-  };
-
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     if (!editorRef.current) return;
@@ -919,6 +968,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   return (
     <Box
+      ref={rootRef}
       sx={{
         border: `1px solid ${appColors.border}`,
         borderRadius: 2,
@@ -949,6 +999,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onMouseDownCapture={(e) => {
           const t = e.target as HTMLElement;
           if (t.closest?.('input[type="file"]')) return;
+          if (t.closest?.('input, textarea, select, [contenteditable="true"]')) return;
           e.preventDefault();
         }}
         sx={{
@@ -1319,7 +1370,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               onClick={() => {
                 const saved = saveSelection();
                 (window as any).savedTextSelection = saved;
-                setShowFontSizePicker((v) => !v);
+                setShowFontSizePicker((v) => {
+                  const next = !v;
+                  showFontSizePickerRef.current = next;
+                  return next;
+                });
               }}
               sx={{
                 width: compact ? 28 : 32,
@@ -1336,7 +1391,22 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <Popover
             open={showFontSizePicker}
             anchorEl={fontSizePickerRef.current}
-            onClose={() => setShowFontSizePicker(false)}
+            disableAutoFocus
+            disableEnforceFocus
+            onClose={() => {
+              showFontSizePickerRef.current = false;
+              setShowFontSizePicker(false);
+              window.setTimeout(() => {
+                const host = editorRef.current;
+                const ae = document.activeElement;
+                if (host && ae && (ae === host || host.contains(ae))) {
+                  isEditingRef.current = true;
+                } else {
+                  isEditingRef.current = false;
+                  flushEditorToParent();
+                }
+              }, 0);
+            }}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
             transformOrigin={{ vertical: 'top', horizontal: 'left' }}
             slotProps={{
@@ -1484,7 +1554,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
-        onBlur={handleBlur}
         onPaste={handlePaste}
         sx={{
           p: compact ? 2 : 3,

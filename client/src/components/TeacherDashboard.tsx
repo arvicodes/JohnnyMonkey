@@ -5820,7 +5820,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [geheimtexteOpen, setGeheimtexteOpen] = useState(false);
   // Bearbeitbare Stunden-Texte und Ablaufplanung pro Stunde (lessonPath)
   type LessonBoxField = 'voraussetzungen' | 'materialliste' | 'anweisungen' | 'abAnleitung' | 'geheimtexte';
-  type LessonPlanItemType = 'entry-ticket' | 'exit-ticket' | 'quiz' | 'arbeitsauftrag' | 'leinwand' | 'tafel' | 'input' | 'fortlaufend';
+  type LessonPlanItemType =
+    | 'entry-ticket'
+    | 'exit-ticket'
+    | 'quiz'
+    | 'arbeitsauftrag'
+    | 'leinwand'
+    | 'tafel'
+    | 'input'
+    | 'fortlaufend'
+    | 'karteikarten-erstellen';
   type LessonPlanItem = {
     id: string;
     type: LessonPlanItemType;
@@ -11794,6 +11803,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const [flashcardModalOpen, setFlashcardModalOpen] = useState(false);
   const [flashcardSourceFile, setFlashcardSourceFile] = useState('');
   const [flashcardFileName, setFlashcardFileName] = useState('');
+  /** Stundenplan „Karteikarten“: mehrere der Gruppe zugewiesene Decks → Umschalter im Verwaltungs-Modal */
+  const [lessonPlanAssignedFlashcardDecks, setLessonPlanAssignedFlashcardDecks] = useState<FlashcardDeck[] | null>(null);
+  const [flashcardLessonInitialMode, setFlashcardLessonInitialMode] = useState<'learning' | 'viewing' | null>(null);
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('');
   const [quizTimeLimit, setQuizTimeLimit] = useState(30);
@@ -11838,7 +11850,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     setSelectedGradeSchema('');
   };
 
-  // Flashcard creation handlers
+  // Flashcard creation handlers (Word-Import aus Ordner)
   const handleFlashcardDialogOpen = (filePath: string, fileName: string) => {
     setFlashcardSourceFile(filePath);
     setFlashcardFileName(fileName);
@@ -11852,8 +11864,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   const handleFlashcardSuccess = () => {
-    // Refresh data if needed
-    console.log('Flashcard deck created/updated successfully');
+    void fetchFlashcardDecks();
   };
 
   const loadGradeSchemas = async () => {
@@ -12247,6 +12258,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   const handleViewCards = async (deck: FlashcardDeck) => {
+    setLessonPlanAssignedFlashcardDecks(null);
     setSelectedDeck(deck);
     
     // Lade alle Karten für das ausgewählte Deck
@@ -12276,6 +12288,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   // Verbesserte Funktion zum Öffnen des Karteikarten-Modals
   const handleOpenFlashcardModal = async (deck: FlashcardDeck) => {
+    setLessonPlanAssignedFlashcardDecks(null);
     setSelectedDeck(deck);
     
     // Lade Karten, falls sie noch nicht geladen sind
@@ -12304,6 +12317,82 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       }
     } else if (deck.cards && deck.cards.length > 0) {
       console.log(`Verwende bereits geladene Karten für Deck ${deck.title}:`, deck.cards);
+    }
+  };
+
+  /** Stundenplan: Verwaltungs-Modal öffnen (ohne erzwungenes „Neue Karte“-Formular). */
+  const openDeckForLessonPlanManagement = async (deck: FlashcardDeck) => {
+    try {
+      const res = await fetch(`/api/flashcards/${deck.id}`);
+      if (!res.ok) {
+        showSnackbar('Deck konnte nicht geladen werden.', 'error');
+        return;
+      }
+      const data = await res.json();
+      const full: FlashcardDeck = data.deck;
+      setFlashcardDecks((prev) => {
+        const i = prev.findIndex((d) => d.id === full.id);
+        if (i === -1) return [...prev, full];
+        return prev.map((d) => (d.id === full.id ? full : d));
+      });
+      setSelectedDeck(full);
+      setEditingCard(null);
+      setIsAddingCard(false);
+      setNewCardFront('');
+      setNewCardBack('');
+    } catch {
+      showSnackbar('Deck konnte nicht geladen werden.', 'error');
+    }
+  };
+
+  const startLessonPlanFlashcardFlow = async (groupId: string) => {
+    try {
+      const res = await fetch(`/api/flashcards/assignments/group/${encodeURIComponent(groupId)}`);
+      if (!res.ok) {
+        showSnackbar('Karteikarten-Decks konnten nicht geladen werden.', 'error');
+        return;
+      }
+      const data = await res.json();
+      const decks: FlashcardDeck[] = data.decks || [];
+      if (decks.length === 0) {
+        showSnackbar(
+          'Dieser Lerngruppe ist kein Karteikarten-Deck zugewiesen. Weisen Sie im Tab „Karteikarten“ ein Deck zu.',
+          'error'
+        );
+        return;
+      }
+      setLessonPlanAssignedFlashcardDecks(decks);
+      await openDeckForLessonPlanManagement(decks[0]);
+    } catch {
+      showSnackbar('Fehler beim Laden der Decks.', 'error');
+    }
+  };
+
+  const switchLessonPlanAssignedDeck = async (deckId: string) => {
+    const deck = lessonPlanAssignedFlashcardDecks?.find((d) => d.id === deckId);
+    if (deck) await openDeckForLessonPlanManagement(deck);
+  };
+
+  /** Aus Verwaltungs-Modal: Karten ansehen (Overlay); Deck wird vollständig geladen. */
+  const openFlashcardViewOverlay = async (deck: FlashcardDeck) => {
+    try {
+      const res = await fetch(`/api/flashcards/${deck.id}`);
+      if (!res.ok) {
+        showSnackbar('Deck konnte nicht geladen werden.', 'error');
+        return;
+      }
+      const data = await res.json();
+      const full: FlashcardDeck = data.deck;
+      setFlashcardDecks((prev) => {
+        const i = prev.findIndex((d) => d.id === full.id);
+        if (i === -1) return [...prev, full];
+        return prev.map((d) => (d.id === full.id ? full : d));
+      });
+      setFlashcardLessonInitialMode('viewing');
+      setSelectedFlashcardDeck(full);
+      setShowFlashcardModal(true);
+    } catch {
+      showSnackbar('Deck konnte nicht geladen werden.', 'error');
     }
   };
 
@@ -12644,6 +12733,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         // Falls das gelöschte Deck gerade angezeigt wird, zurücksetzen
         if (selectedDeck?.id === deckId) {
           setSelectedDeck(null);
+          setLessonPlanAssignedFlashcardDecks(null);
         }
         if (editingDeck?.id === deckId) {
           setEditingDeck(null);
@@ -13586,9 +13676,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       : groups[0];
                     const band = g ? gradeFromGroupNames([g.name]) : 7;
                     const gid = selectedGroupId || g?.id;
-                    navigate(
-                      `/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}${gid ? `&groupId=${encodeURIComponent(gid)}` : ''}`,
-                    );
+                    const qs = new URLSearchParams();
+                    qs.set('grade', String(band));
+                    qs.set('r', String(Date.now()));
+                    if (gid) qs.set('groupId', gid);
+                    navigate(`/entry-ticket?${qs.toString()}`);
                   }}
                   sx={{
                     ml: 'auto',
@@ -13610,7 +13702,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     },
                     transition: 'all 0.2s ease',
                   }}
-                  title="EntryTicket (10 zufällige Fragen, Klasse aus gewählter Gruppe)"
+                  title="EntryTicket: Auswahl vor Start & Fragenset (Klasse aus gewählter Gruppe)"
                 >
                   <Typography
                     component="span"
@@ -14468,6 +14560,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                             const responseData = await response.json();
                                             // Die API gibt { deck } zurück
                                             const deckData = responseData.deck || responseData;
+                                            setFlashcardLessonInitialMode(null);
                                             setSelectedFlashcardDeck(deckData);
                                             setShowFlashcardModal(true);
                                           }
@@ -16324,6 +16417,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             setIsAddingCard(false);
             setNewCardFront('');
             setNewCardBack('');
+            setLessonPlanAssignedFlashcardDecks(null);
           }}
           maxWidth={false}
           fullWidth
@@ -16369,6 +16463,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     {selectedDeck?.title}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                    {lessonPlanAssignedFlashcardDecks && lessonPlanAssignedFlashcardDecks.length > 1 && selectedDeck?.id && (
+                      <FormControl size="small" sx={{ minWidth: 200, maxWidth: 280 }}>
+                        <InputLabel id="lesson-plan-deck-select-label">Deck</InputLabel>
+                        <Select
+                          labelId="lesson-plan-deck-select-label"
+                          label="Deck"
+                          value={selectedDeck.id}
+                          onChange={(e) => void switchLessonPlanAssignedDeck(String(e.target.value))}
+                          sx={{ fontSize: '0.8rem' }}
+                        >
+                          {lessonPlanAssignedFlashcardDecks.map((d) => (
+                            <MenuItem key={d.id} value={d.id} dense>
+                              {d.title}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
                     <Chip 
                       label={`${selectedDeck?.cards?.length || 0} Karten`}
                       size="small"
@@ -16399,8 +16511,35 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 </Box>
               </Box>
               
-              {/* Action Buttons */}
-              <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
+              {/* Action Buttons — eine Zeile */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  flexWrap: 'nowrap',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  ml: 1,
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disabled={!selectedDeck}
+                  onClick={() => selectedDeck && void openFlashcardViewOverlay(selectedDeck)}
+                  sx={{
+                    borderRadius: '6px',
+                    px: 1.25,
+                    py: 0.5,
+                    fontSize: '0.7rem',
+                    fontWeight: '600',
+                    minWidth: 'auto',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Ansehen
+                </Button>
                 <Button
                   variant="contained"
                   size="small"
@@ -16413,6 +16552,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     fontSize: '0.7rem',
                     fontWeight: '600',
                     minWidth: 'auto',
+                    whiteSpace: 'nowrap',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     '&:hover': {
                       transform: 'translateY(-1px)',
@@ -16884,6 +17024,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 setIsAddingCard(false);
                 setNewCardFront('');
                 setNewCardBack('');
+                setLessonPlanAssignedFlashcardDecks(null);
               }}
               variant="outlined"
               size="small"
@@ -17673,6 +17814,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'tafel') return 'Tafel';
                   if (type === 'input') return 'Input';
                   if (type === 'fortlaufend') return 'Fortlaufende Aufgaben';
+                  if (type === 'karteikarten-erstellen') return 'Karteikarten';
                   return 'Leinwand';
                 };
                 const getPlanTypeStyle = (type: LessonPlanItemType) => {
@@ -17683,6 +17825,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'tafel') return { bg: '#eceff1', border: '#b0bec5', text: '#37474f' }; // neutral
                   if (type === 'input') return { bg: '#fff8e1', border: '#ffcc80', text: '#e65100' }; // warm / input
                   if (type === 'fortlaufend') return { bg: '#e0f7fa', border: '#4dd0e1', text: '#006064' }; // teal: dauerhaft / wiederholung
+                  if (type === 'karteikarten-erstellen')
+                    return { bg: '#f3e5f5', border: '#ba68c8', text: '#6a1b9a' }; // violett: Karteikarten
                   return { bg: '#f3e5f5', border: '#ce93d8', text: '#7b1fa2' }; // leicht lila
                 };
                 const addPlanItems = async () => {
@@ -17919,6 +18063,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                       return;
                     }
                     handleFlashcardDialogOpen(flashcardFile.path, flashcardFile.name);
+                    return;
+                  }
+                  if (item.type === 'karteikarten-erstellen') {
+                    if (!lessonModalData.groupId) {
+                      showSnackbar('Keine Lerngruppe für diese Stunde.', 'error');
+                      return;
+                    }
+                    void startLessonPlanFlashcardFlow(lessonModalData.groupId);
                     return;
                   }
                 };
@@ -18398,7 +18550,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           { id: 'arbeitsauftrag', label: 'Arbeitsauftrag' },
                           { id: 'leinwand', label: 'Leinwand' },
                           { id: 'tafel', label: 'Tafel' },
-                          { id: 'quiz', label: 'Quiz' }
+                          { id: 'quiz', label: 'Quiz' },
+                          { id: 'karteikarten-erstellen', label: 'Karteikarten' }
                         ].map((option) => {
                           const optionId = option.id as LessonPlanItemType;
                           const style = getPlanTypeStyle(optionId);
@@ -18408,6 +18561,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               ? 150
                               : optionId === 'leinwand'
                                 ? 115
+                              : optionId === 'karteikarten-erstellen'
+                                ? 118
                                 : optionId === 'fortlaufend'
                                   ? 118
                                   : optionId === 'input'
@@ -22026,10 +22181,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         onClose={() => {
           setShowFlashcardModal(false);
           setSelectedFlashcardDeck(null);
+          setFlashcardLessonInitialMode(null);
         }}
         isTeacher={true}
         teacherDeck={selectedFlashcardDeck}
         teacherId={userId}
+        initialTeacherMode={flashcardLessonInitialMode}
       />
 
       {/* Rätseljahr 2026 Übersicht Dialog */}

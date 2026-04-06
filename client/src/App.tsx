@@ -129,8 +129,15 @@ function AppContent() {
   // Global keyboard shortcuts for companions
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Only handle shortcuts when not typing in input fields
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      const t = e.target as Node | null;
+      const el = t instanceof HTMLElement ? t : null;
+      // Keine Begleiter-Kürzel während Texteingabe (inkl. RichTextEditor = contenteditable)
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement ||
+        (el && (el.isContentEditable || el.closest('[contenteditable="true"]')))
+      ) {
         return;
       }
 

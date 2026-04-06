@@ -7335,6 +7335,8 @@ interface FlashcardLearningModalProps {
   teacherDeck?: any; // Deck für Lehrer-Modus
   teacherId?: string; // Lehrer-ID für Export
   onSessionEnded?: () => void;
+  /** Lehrer: direkt Ansehen- oder Lern-Modus ohne Deck-Kachel (Ansehen aus Verwaltung → letztes „Weiter“ schließt) */
+  initialTeacherMode?: 'learning' | 'viewing' | null;
 }
 
 export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
@@ -7345,6 +7347,7 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
   teacherDeck,
   teacherId,
   onSessionEnded,
+  initialTeacherMode = null,
 }) => {
   const [assignedDecks, setAssignedDecks] = useState<any[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<any>(null);
@@ -7451,17 +7454,24 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
             break;
         }
       } else if (learningMode === 'viewing') {
-        // Pfeiltasten für Navigation im Ansehen-Modus
+        const n = selectedDeck?.cards?.length ?? 0;
+        const last = Math.max(0, n - 1);
+        const closeAfterViewingFromDeck =
+          isTeacher && initialTeacherMode === 'viewing';
         switch (event.key) {
           case 'ArrowLeft':
             event.preventDefault();
             setCurrentCardIndex(Math.max(0, currentCardIndex - 1));
-            setShowAnswer(false); // Karte zurücksetzen
+            setShowAnswer(false);
             break;
           case 'ArrowRight':
             event.preventDefault();
-            setCurrentCardIndex(Math.min(selectedDeck?.cards?.length - 1 || 0, currentCardIndex + 1));
-            setShowAnswer(false); // Karte zurücksetzen
+            if (currentCardIndex < last) {
+              setCurrentCardIndex(currentCardIndex + 1);
+              setShowAnswer(false);
+            } else if (closeAfterViewingFromDeck) {
+              onClose();
+            }
             break;
         }
       }
@@ -7474,7 +7484,7 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
-  }, [open, learningMode, showAnswer]);
+  }, [open, learningMode, showAnswer, currentCardIndex, selectedDeck, isTeacher, initialTeacherMode, onClose]);
 
   // Funktion zum Formatieren von Karten-Text (Bold und Italic)
   const formatCardText = (text: string) => {
@@ -7489,46 +7499,62 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
     return formattedText;
   };
 
-  // Lade zugewiesene Karteikarten beim Öffnen
+  const buildTeacherFormattedDeck = (teacherDeckArg: any, dueCount: number, totalCards: number) => ({
+    ...teacherDeckArg,
+    totalCards,
+    dueCards: dueCount,
+    completedCards: 0,
+    progressPercentage: 0,
+    qualityStats: { perfect: 0, partial: 0, notKnown: 0 },
+    levelStats: { level0: 0, level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 },
+    dueCardsByDate: { today: dueCount, tomorrow: 0, thisWeek: 0, later: 0 },
+    reviewStats: { totalReviews: 0, avgReviewCount: 0, lastReviewDate: '-' },
+  });
+
+  // Lehrer: Stundenplan „Lernen“ / „Ansehen“ — ohne teacherLearnedCards in den deps (sonst Reset beim Lernen)
   useEffect(() => {
-    if (open) {
-      if (isTeacher && teacherDeck) {
-        // Lehrer-Modus: Deck als Array formatieren, wie bei Schülern
-        // Berücksichtige bereits gelernte Karten
-        const totalCards = teacherDeck.cards?.length || 0;
-        const unlearnedCards = teacherDeck.cards?.filter((card: any) => !teacherLearnedCards.has(card.id)) || [];
-        const dueCardsCount = unlearnedCards.length;
-        
-        const formattedDeck = {
-          ...teacherDeck,
-          totalCards: totalCards,
-          dueCards: dueCardsCount, // Nur nicht gelernte Karten sind fällig
-          completedCards: 0,
-          progressPercentage: 0,
-          qualityStats: { perfect: 0, partial: 0, notKnown: 0 },
-          levelStats: { level0: 0, level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 },
-          dueCardsByDate: { today: dueCardsCount, tomorrow: 0, thisWeek: 0, later: 0 },
-          reviewStats: { totalReviews: 0, avgReviewCount: 0, lastReviewDate: '-' }
-        };
-        setAssignedDecks([formattedDeck]);
-        setLearningMode('selection');
-        setSelectedDeck(null);
-        setCurrentCardIndex(0);
-        setShowAnswer(false);
-        setLoading(false);
-      } else if (studentId) {
-        // Schüler-Modus: Decks laden
-        fetchAssignedDecks();
-      }
-    } else {
-      // Reset beim Schließen
-      setSelectedDeck(null);
-      setLearningMode('selection');
+    if (!open || !isTeacher || !teacherDeck || !initialTeacherMode) return;
+    const totalCards = teacherDeck.cards?.length || 0;
+    const cardsAll = teacherDeck.cards || [];
+    const formattedDeck = buildTeacherFormattedDeck(teacherDeck, totalCards, totalCards);
+    if (initialTeacherMode === 'viewing') {
+      setAssignedDecks([formattedDeck]);
+      setSelectedDeck({ ...teacherDeck, cards: cardsAll });
+      setLearningMode('viewing');
       setCurrentCardIndex(0);
       setShowAnswer(false);
-      setAssignedDecks([]);
+      setLoading(false);
+      return;
     }
-  }, [open, isTeacher, teacherDeck, studentId, teacherLearnedCards]);
+    setTeacherLearnedCards(new Set());
+    setAssignedDecks([formattedDeck]);
+    setSelectedDeck({
+      ...teacherDeck,
+      cards: cardsAll,
+      totalCards,
+      dueCards: totalCards,
+    });
+    setLearningMode('learning');
+    setCurrentCardIndex(0);
+    setShowAnswer(false);
+    setSessionStats({ cardsReviewed: 0, correctAnswers: 0, incorrectAnswers: 0 });
+    setLoading(false);
+  }, [open, isTeacher, teacherDeck, initialTeacherMode]);
+
+  // Lehrer: Deck-Kachel (Tab Dashboard) — fällige Karten hängen von teacherLearnedCards ab
+  useEffect(() => {
+    if (!open || !isTeacher || !teacherDeck || initialTeacherMode) return;
+    const totalCards = teacherDeck.cards?.length || 0;
+    const unlearnedCards = teacherDeck.cards?.filter((card: any) => !teacherLearnedCards.has(card.id)) || [];
+    const dueCardsCount = unlearnedCards.length;
+    const formattedDeck = buildTeacherFormattedDeck(teacherDeck, dueCardsCount, totalCards);
+    setAssignedDecks([formattedDeck]);
+    setLearningMode('selection');
+    setSelectedDeck(null);
+    setCurrentCardIndex(0);
+    setShowAnswer(false);
+    setLoading(false);
+  }, [open, isTeacher, teacherDeck, teacherLearnedCards, initialTeacherMode]);
 
   const fetchAssignedDecks = async () => {
     if (!studentId || isTeacher) return; // Nur für Schüler
@@ -7732,6 +7758,21 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
       setLoading(false);
     }
   };
+
+  // Schließen / Schüler-Decks laden (nach fetchAssignedDecks, sonst TDZ)
+  useEffect(() => {
+    if (!open) {
+      setSelectedDeck(null);
+      setLearningMode('selection');
+      setCurrentCardIndex(0);
+      setShowAnswer(false);
+      setAssignedDecks([]);
+      return;
+    }
+    if (studentId && !isTeacher) {
+      fetchAssignedDecks();
+    }
+  }, [open, studentId, isTeacher]);
 
   const startLearningSession = async (deck: any) => {
     // Lehrer-Modus: Gleiche Logik wie Schüler
@@ -8914,7 +8955,7 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
                 {/* Navigation für Ansehen-Modus */}
                 {learningMode === 'viewing' && (
                   <Box sx={{ textAlign: 'center', mt: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mb: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mb: 2, flexWrap: 'nowrap' }}>
                       <Button
                         variant="outlined"
                         size="small"
@@ -8948,10 +8989,25 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
                             color: '#495057'
                           }
                         }}
-                        onClick={() => setCurrentCardIndex(Math.min(selectedDeck.cards.length - 1, currentCardIndex + 1))}
-                        disabled={currentCardIndex === selectedDeck.cards.length - 1}
+                        onClick={() => {
+                          const last = selectedDeck.cards.length - 1;
+                          if (currentCardIndex < last) {
+                            setCurrentCardIndex(currentCardIndex + 1);
+                            setShowAnswer(false);
+                          } else if (isTeacher && initialTeacherMode === 'viewing') {
+                            onClose();
+                          }
+                        }}
+                        disabled={
+                          currentCardIndex === selectedDeck.cards.length - 1 &&
+                          !(isTeacher && initialTeacherMode === 'viewing')
+                        }
                       >
-                        Weiter ➡️
+                        {currentCardIndex === selectedDeck.cards.length - 1 &&
+                        isTeacher &&
+                        initialTeacherMode === 'viewing'
+                          ? 'Fertig'
+                          : 'Weiter ➡️'}
                       </Button>
                     </Box>
                   </Box>
@@ -9001,9 +9057,14 @@ export const FlashcardLearningModal: React.FC<FlashcardLearningModalProps> = ({
                 <Typography variant="body2" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
                   • Leertaste: Karte umdrehen
                 </Typography>
-                <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
+                <Typography variant="body2" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
                   • ← →: Navigation zwischen Karten
                 </Typography>
+                {isTeacher && initialTeacherMode === 'viewing' && (
+                  <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>
+                    • An letzter Karte: Weiter / → schließt und kehrt zum Deck zurück
+                  </Typography>
+                )}
               </>
             )}
           </Box>

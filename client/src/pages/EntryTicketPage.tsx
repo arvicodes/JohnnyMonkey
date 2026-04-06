@@ -42,8 +42,18 @@ const FINAL_DISPLAY_BOX_HEIGHT = 500;
 const OPERATOR_COLOR = '#ef6c00';
 const QUESTION_COLOR = '#d32f2f';
 
-type Grade = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
-type GradeQuestionSets = Record<Grade, EntryTicketTask[]>;
+type GradeNum = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
+/** Zusätzliche Kurs-Bänder (eigene Fragensätze, Start wie Klassenstufe 11/12/13). */
+type InfBand = 'inf11' | 'inf12' | 'inf13';
+type EntryBand = GradeNum | InfBand;
+type GradeQuestionSets = Record<EntryBand, EntryTicketTask[]>;
+
+function fragensetHeadingLabel(band: EntryBand): string {
+  if (band === 'inf11') return 'Inf 11';
+  if (band === 'inf12') return 'Inf 12';
+  if (band === 'inf13') return 'Inf 13';
+  return `Klasse ${band}`;
+}
 type CoarseCategory =
   | 'Grundrechenarten'
   | 'Bruch/Dezimal/Prozent'
@@ -233,7 +243,193 @@ const TASK_POOL_13: EntryTicketTask[] = [
   { category: 'Alltag', prompt: 'Reisezeit: 210 km bei 105 km/h + 25 min Stopp = ? min', solution: '145' },
 ];
 
-const QUESTION_SET_STORAGE_KEY = 'entry-ticket-question-sets-v1';
+/** Grundlagen Informatik – Inf 11: Kategorien Allgemein, Java, OO, Technische Informatik, Digitaltechnik, KI (je 10 Fragen) */
+const TASK_POOL_INF_11: EntryTicketTask[] = [
+  // Allgemein
+  { category: 'Allgemein', prompt: 'Was ist die zentrale Aufgabe eines Betriebssystems in einem Satz?', solution: 'Hardware verwalten und Programmausführung ermöglichen' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: „Open Source“ bedeutet immer, die Software sei kostenlos.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Was beschreibt ein Algorithmus?', solution: 'Eine endliche, eindeutige Vorschrift zur Problemlösung' },
+  { category: 'Allgemein', prompt: 'IDE vs. reiner Texteditor: Nenne zwei typische Zusatzfunktionen einer IDE.', solution: 'z. B. Debugger, Syntaxhervorhebung, Build, Projektverwaltung (zwei)' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: JSON ist eine Programmiersprache.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Wofür wird ein Versionskontrollsystem wie Git in der Praxis genutzt?', solution: 'Änderungen nachverfolgen, zusammenarbeiten, Historie' },
+  { category: 'Allgemein', prompt: 'Im Client-Server-Modell: Wer startet typischerweise die Anfrage?', solution: 'Client' },
+  { category: 'Allgemein', prompt: 'Wahr oder falsch: Jede Dateiendung ist weltweit eindeutig einem Format zugeordnet.', solution: 'Falsch' },
+  { category: 'Allgemein', prompt: 'Was ist eine API in einem Satz?', solution: 'Schnittstelle, über die Programme miteinander sprechen' },
+  { category: 'Allgemein', prompt: 'Backup-Strategie „3-2-1“: Was bedeuten die drei Zahlen grob?', solution: '3 Kopien, 2 Medien/Orte, 1 extern/offsite' },
+  // Java
+  { category: 'Java', prompt: 'Welche Dateiendung hat eine typische Java-Quelldatei?', solution: '.java' },
+  { category: 'Java', prompt: 'Wahr oder falsch: Java-Quellcode wird in Bytecode übersetzt und auf der JVM ausgeführt.', solution: 'Wahr' },
+  { category: 'Java', prompt: 'Wofür steht die Abkürzung JVM?', solution: 'Java Virtual Machine' },
+  { category: 'Java', prompt: 'Vollständige Signatur der Einstiegsmethode main in Java?', solution: 'public static void main(String[] args)' },
+  { category: 'Java', prompt: 'Wahr oder falsch: Der Typ int ist ein primitiver Datentyp in Java.', solution: 'Wahr' },
+  { category: 'Java', prompt: 'Wahr oder falsch: Eine Klasse kann in Java von mehreren Klassen gleichzeitig erben (extends).', solution: 'Falsch' },
+  { category: 'Java', prompt: 'Welches Schlüsselwort leitet eine Paketdeklaration ein?', solution: 'package' },
+  { category: 'Java', prompt: 'Sind String-Objekte in Java nach Erzeugung veränderbar (mutable)? (ja/nein)', solution: 'nein' },
+  { category: 'Java', prompt: 'Welche zwei Schlüsselwörter nutzt man typischerweise zum Abfangen von Ausnahmen?', solution: 'try und catch' },
+  { category: 'Java', prompt: 'Nenne ein typisches Interface für eine geordnete, indexierbare Liste in Java.', solution: 'List (z. B. ArrayList)' },
+  // OO
+  { category: 'OO', prompt: 'Was kapselt eine Klasse in der Objektorientierung typischerweise?', solution: 'Zustand (Attribute) und Verhalten (Methoden)' },
+  { category: 'OO', prompt: 'Wahr oder falsch: Vererbung modelliert oft eine „ist-ein“-Beziehung.', solution: 'Wahr' },
+  { category: 'OO', prompt: 'Was ermöglicht Polymorphismus grob?', solution: 'Gleiche Schnittstelle, verschiedene Implementierungen' },
+  { category: 'OO', prompt: 'Wann wird ein Konstruktor einer Klasse aufgerufen?', solution: 'Beim Erzeugen eines Objekts (new …)' },
+  { category: 'OO', prompt: 'Wer darf auf als private deklarierte Attribute zugreifen?', solution: 'Nur die eigene Klasse' },
+  { category: 'OO', prompt: 'Wahr oder falsch: Ein Interface in Java kann direkt mit new instanziiert werden.', solution: 'Falsch' },
+  { category: 'OO', prompt: 'Gehört eine statische Methode zur Instanz oder zur Klasse?', solution: 'Zur Klasse' },
+  { category: 'OO', prompt: 'Darf man von einer abstrakten Klasse direkt ein Objekt erzeugen? (ja/nein)', solution: 'nein' },
+  { category: 'OO', prompt: '„Hund ist ein Tier“ – modelliert man das eher mit Vererbung oder mit Assoziation?', solution: 'Vererbung' },
+  { category: 'OO', prompt: 'Wozu dienen Getter- und Setter-Methoden typischerweise?', solution: 'Kontrollierter Zugriff auf Attribute / Kapselung' },
+  // Technische Informatik: Von-Neumann, Hardware, Murmelrechner, Johnny-Simulator & Mikrobefehle
+  { category: 'Technische Informatik', prompt: 'Von-Neumann-Architektur: Wo liegen Programmcode und Daten typischerweise?', solution: 'Im gemeinsamen Hauptspeicher' },
+  { category: 'Technische Informatik', prompt: 'Von-Neumann-CPU: Welche beiden zentralen funktionalen Teile bilden mit Registern oft die CPU ab?', solution: 'Rechenwerk und Leitwerk (Steuerwerk)' },
+  { category: 'Technische Informatik', prompt: 'Hardware: Was verbindet CPU, Arbeitsspeicher und Anbindungen zur Peripherie typischerweise?', solution: 'Systembus(se) (Daten-, Adress- und Steuerbus)' },
+  { category: 'Technische Informatik', prompt: 'Murmelrechner: Welche Idee aus der Informatik wird damit oft sichtbar gemacht?', solution: 'Steuerbare/mechanische Abläufe wie ein sehr einfacher „Computer“ ohne Elektronik (Algorithmus nachvollziehen)' },
+  { category: 'Technische Informatik', prompt: 'Johnny-Simulator: Welcher Kernzyklus beschreibt die Abarbeitung eines Maschinenbefehls typischerweise?', solution: 'Holen – Dekodieren – Ausführen (Fetch–Decode–Execute)' },
+  { category: 'Technische Informatik', prompt: 'Johnny: Wozu dient der Akkumulator typischerweise?', solution: 'Zwischenspeicher für Operanden und Ergebnisse (ein zentraler Wert)' },
+  { category: 'Technische Informatik', prompt: 'Johnny: Was macht der Mikrobefehl LDA (Load) grob?', solution: 'Wert aus dem Speicher an der Adresse in den Akkumulator laden' },
+  { category: 'Technische Informatik', prompt: 'Johnny: Was macht STA (Store) grob?', solution: 'Akkumulatorwert an eine Speicheradresse schreiben' },
+  { category: 'Technische Informatik', prompt: 'Johnny: Was macht ADD grob?', solution: 'Speicherwert zum Akkumulator addieren' },
+  { category: 'Technische Informatik', prompt: 'Johnny: Was macht SUB grob?', solution: 'Speicherwert vom Akkumulator subtrahieren' },
+  // Digitaltechnik
+  { category: 'Digitaltechnik', prompt: 'Wozu dient das Zweierkomplement bei Festkomma-Darstellung typischerweise?', solution: 'Darstellung negativer Zahlen' },
+  { category: 'Digitaltechnik', prompt: 'Wahr oder falsch: Ein Halbaddierer berücksichtigt den Übertrag einer niedrigeren Stelle.', solution: 'Falsch' },
+  { category: 'Digitaltechnik', prompt: 'Was macht ein Multiplexer grob?', solution: 'Wählt eine von vielen Eingangsleitungen auf eine Ausgangsleitung' },
+  { category: 'Digitaltechnik', prompt: 'Schaltalgebra: A AND 1 = ? (in Abhängigkeit von A)', solution: 'A' },
+  { category: 'Digitaltechnik', prompt: 'Was speichert ein Flipflop typischerweise?', solution: 'Ein Bit' },
+  { category: 'Digitaltechnik', prompt: 'Wahr oder falsch: Mit NAND-Gattern lässt sich jede boolesche Funktion aufbauen (funktionale Vollständigkeit).', solution: 'Wahr' },
+  { category: 'Digitaltechnik', prompt: 'Was transportiert ein Bus in einem Rechner?', solution: 'Daten/Adressen/Steuersignale zwischen Bausteinen' },
+  { category: 'Digitaltechnik', prompt: 'Sind SRAM und DRAM flüchtig oder nicht flüchtig?', solution: 'flüchtig' },
+  { category: 'Digitaltechnik', prompt: 'Was macht ein Encoder typischerweise?', solution: 'Viele Eingänge auf weniger Ausgabebits abbilden' },
+  { category: 'Digitaltechnik', prompt: 'Höhere Taktfrequenz der CPU bedeutet oft auch was für die Leistungsaufnahme?', solution: 'höher (meist)' },
+  // KI
+  { category: 'KI', prompt: 'Was ist der Unterschied zwischen überwachtem und unüberwachtem Lernen in einem Satz?', solution: 'Überwacht: mit Labels; unüberwacht: ohne Zielvorgaben/Muster suchen' },
+  { category: 'KI', prompt: 'Wahr oder falsch: Neuronale Netze brauchen immer beschriftete Trainingsdaten.', solution: 'Falsch' },
+  { category: 'KI', prompt: 'Was ist Overfitting?', solution: 'Modell lernt Trainingsdaten zu genau auswendig, generalisiert schlecht' },
+  { category: 'KI', prompt: 'Wozu dient ein Validierungsdatensatz typischerweise?', solution: 'Modell/Hyperparameter wählen ohne den Testdatensatz zu verfälschen' },
+  { category: 'KI', prompt: 'Warum können verzerrte Trainingsdaten (Bias) problematisch sein?', solution: 'Modell diskriminiert oder trifft unfaire Vorhersagen' },
+  { category: 'KI', prompt: 'Wahr oder falsch: „Starke KI“ (AGI) ist in der Schule als gelöstes Standardthema behandelt.', solution: 'Falsch' },
+  { category: 'KI', prompt: 'Was ist ein „Feature“ beim maschinellen Lernen?', solution: 'Eingabegröße / gemessenes Attribut' },
+  { category: 'KI', prompt: 'Warum gelten manche KI-Modelle als „Black Box“?', solution: 'Entscheidungen sind schwer nachvollziehbar / wenig transparent' },
+  { category: 'KI', prompt: 'Welche Architektur/Technik steckt oft hinter großen Sprachmodellen (z. B. ChatGPT-ähnlich)?', solution: 'Transformer / LLM (große neuronale Netze)' },
+  { category: 'KI', prompt: 'Nenne ein ethisches Prinzip neben Transparenz bei KI-Systemen.', solution: 'z. B. Fairness, Datenschutz, Rechenschaftspflicht, Menschliche Aufsicht' },
+];
+
+/** Grundlagen Informatik – Inf 12: Python, Programmiergrundlagen, Algorithmen, Darstellung, Netzwerke, Internet, Datenbanken (je 10) */
+const TASK_POOL_INF_12: EntryTicketTask[] = [
+  // Python
+  { category: 'Python', prompt: 'Welche Dateiendung hat eine typische Python-Quelldatei?', solution: '.py' },
+  { category: 'Python', prompt: 'Wahr oder falsch: Python wird typischerweise interpretiert (nicht vorab in Maschinencode übersetzt).', solution: 'Wahr' },
+  { category: 'Python', prompt: 'Wie heißt der Datentyp für Wahrheitswerte in Python?', solution: 'bool' },
+  { category: 'Python', prompt: 'Sind Python-Listen nach der Erzeugung veränderbar (mutable)? (ja/nein)', solution: 'ja' },
+  { category: 'Python', prompt: 'Was liefert list(range(3)) in typischen Python-Versionen als Elemente?', solution: '0, 1, 2' },
+  { category: 'Python', prompt: 'Wozu dient die Einrückung in Python syntaktisch?', solution: 'Struktur von Blöcken (z. B. nach if, for, def)' },
+  { category: 'Python', prompt: 'Welches Schlüsselwort leitet eine Funktionsdefinition ein?', solution: 'def' },
+  { category: 'Python', prompt: 'Womit kennzeichnet Python „kein Wert“ statt null?', solution: 'None' },
+  { category: 'Python', prompt: 'Standardwerkzeug zum Installieren von Python-Paketen von PyPI?', solution: 'pip' },
+  { category: 'Python', prompt: 'Listen-Abstraktion (list comprehension): was beschreibt sie in einem Satz?', solution: 'Neue Liste aus einer Ausdrucksregel über eine Iterable (kompakt)' },
+  // Programmiergrundlagen
+  { category: 'Programmiergrundlagen', prompt: 'Variable vs. Literal: Was ist ein Literal?', solution: 'Fester Wert direkt im Code (z. B. 42, "Hallo")' },
+  { category: 'Programmiergrundlagen', prompt: 'int vs. float: Welcher Typ ist für ganze Zahlen gedacht?', solution: 'int' },
+  { category: 'Programmiergrundlagen', prompt: 'for vs. while: Wann eignet sich while oft besser?', solution: 'Wenn die Wiederholungsanzahl vorher unbekannt ist' },
+  { category: 'Programmiergrundlagen', prompt: 'Wahr oder falsch: Jede Programmiersprache erzwingt exakt denselben Programmierstil.', solution: 'Falsch' },
+  { category: 'Programmiergrundlagen', prompt: 'Was ist ein Haltepunkt (Breakpoint) beim Debugging grob?', solution: 'Stelle, an der das Programm anhält zur Inspektion' },
+  { category: 'Programmiergrundlagen', prompt: 'Interpreter vs. Compiler in einem Satz?', solution: 'Interpreter arbeitet oft zeilenweise zur Laufzeit; Compiler übersetzt vorab' },
+  { category: 'Programmiergrundlagen', prompt: 'Syntax vs. Semantik: Syntax beschreibt ?', solution: 'formale Regeln der Schreibweise' },
+  { category: 'Programmiergrundlagen', prompt: 'Wozu teilt man Code in Funktionen/Module ein?', solution: 'Wiederverwendbarkeit, Übersicht, Testbarkeit' },
+  { category: 'Programmiergrundlagen', prompt: 'Syntaxfehler vs. Laufzeitfehler: Wann tritt ein Syntaxfehler auf?', solution: 'beim Übersetzen/Parsen (vor der Ausführung)' },
+  { category: 'Programmiergrundlagen', prompt: 'Was beschreibt eine API grob?', solution: 'Schnittstelle, über die Programme zusammenarbeiten' },
+  // Algorithmen (allgemein, Suchen, Sortieren, Wege)
+  { category: 'Algorithmen', prompt: 'O-Notation: Was wird typischerweise abgeschätzt?', solution: 'Wachstum von Zeit- oder Speicherbedarf in n' },
+  { category: 'Algorithmen', prompt: 'Lineare Suche in n Elementen: Worst-Case oft ?', solution: 'O(n)' },
+  { category: 'Algorithmen', prompt: 'Binäre Suche: welche Voraussetzung an die Daten?', solution: 'sortiert / geordnet' },
+  { category: 'Algorithmen', prompt: 'Mergesort: typische Worst-Case-Laufzeit?', solution: 'O(n log n)' },
+  { category: 'Algorithmen', prompt: 'Bubblesort: typische Laufzeitordnung?', solution: 'O(n²)' },
+  { category: 'Algorithmen', prompt: 'Dijkstra-Algorithmus: welches Problem löst er typischerweise?', solution: 'Kürzeste Wege (mit nicht-negativen Kantengewichten)' },
+  { category: 'Algorithmen', prompt: 'Greedy: lokal optimale Wahl ist immer global optimal? (ja/nein)', solution: 'nein' },
+  { category: 'Algorithmen', prompt: 'Dynamische Programmierung: wozu speichert man Teilprobleme?', solution: 'mehrfaches Berechnen vermeiden (überlappende Teilprobleme)' },
+  { category: 'Algorithmen', prompt: 'Breitensuche (BFS) in Graphen: welche Datenstruktur typisch für die Frontier?', solution: 'Warteschlange (Queue)' },
+  { category: 'Algorithmen', prompt: 'Tiefensuche (DFS) vs. BFS: welche nutzt typischerweise einen Stack bzw. Rekursion?', solution: 'DFS' },
+  // Darstellung von Algorithmen
+  { category: 'Darstellung von Algorithmen', prompt: 'Wozu dient Pseudocode?', solution: 'Algorithmus sprachunabhängig und knapp zu beschreiben' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Struktogramm (Nassi-Shneiderman): womit werden Abläufe dargestellt?', solution: 'rechteckige Strukturblöcke (Sequenz, Verzweigung, Schleife)' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Flussdiagramm: welches Symbol für Verzweigung oft?', solution: 'Raute' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Flussdiagramm: Start und Ende werden oft mit welcher Form dargestellt?', solution: 'abgerundetes Rechteck oder Ellipse' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Kommentare im Quellcode: wozu dienen sie vor allem?', solution: 'Erklärungen für Menschen (Absicht, Annahmen)' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Schleifeninvariante: was beschreibt sie grob?', solution: 'Eigenschaft, die vor/nach jedem Schleifendurchlauf gilt' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Vor- und Nachbedingung: was ist eine Nachbedingung?', solution: 'Zustand/Ergebnis, das nach Ausführung gelten soll' },
+  { category: 'Darstellung von Algorithmen', prompt: 'UML-Aktivitätsdiagramm: wofür wird es oft genutzt?', solution: 'Abläufe/Workflows modellieren' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Ablaufplan vs. Programm: der Plan ist typischerweise ? maschinennah.', solution: 'weniger / abstrakter' },
+  { category: 'Darstellung von Algorithmen', prompt: 'Warum strukturierte Blöcke im Struktogramm oft klarer als Sprunglinien?', solution: 'keine unübersichtlichen Sprünge / bessere Lesbarkeit' },
+  // Netzwerke
+  { category: 'Netzwerke', prompt: 'OSI-Modell: wie viele Schichten werden oft genannt?', solution: '7' },
+  { category: 'Netzwerke', prompt: 'MAC-Adresse: typische OSI-Schicht?', solution: 'Schicht 2 (Sicherung/Data Link)' },
+  { category: 'Netzwerke', prompt: 'IPv4-Adresse: typische OSI-Schicht?', solution: 'Schicht 3 (Vermittlung/Network)' },
+  { category: 'Netzwerke', prompt: 'Switch vs. Router grob: wer arbeitet typischerweise auf Schicht 2 vs. 3?', solution: 'Switch eher L2, Router eher L3' },
+  { category: 'Netzwerke', prompt: 'Paket vs. Frame: was ist typisch auf der Sicherungsschicht benannt?', solution: 'Frame' },
+  { category: 'Netzwerke', prompt: 'Wofür steht DNS grob?', solution: 'Namen (Domain) in IP-Adressen auflösen' },
+  { category: 'Netzwerke', prompt: 'Wofür steht DHCP grob?', solution: 'automatische Vergabe von IP-Konfiguration' },
+  { category: 'Netzwerke', prompt: 'Latenz vs. Bandbreite: was misst die Bandbreite grob?', solution: 'übertragbare Datenmenge pro Zeit' },
+  { category: 'Netzwerke', prompt: 'Subnetz / Präfix (z. B. /24): wozu dient es grob?', solution: 'Adressbereich eines Netzes segmentieren' },
+  { category: 'Netzwerke', prompt: 'VLAN: wozu dient es grob?', solution: 'logische Trennung von Netzen auf gemeinsamer Infrastruktur' },
+  // Internet und Kommunikation
+  { category: 'Internet und Kommunikation', prompt: 'HTTP nutzt typischerweise welches Transportprotokoll?', solution: 'TCP' },
+  { category: 'Internet und Kommunikation', prompt: 'HTTPS: HTTP plus typischerweise ?', solution: 'TLS-Verschlüsselung' },
+  { category: 'Internet und Kommunikation', prompt: 'REST grob: Ressourcen werden oft mit welchen HTTP-Methoden angesprochen?', solution: 'GET, POST, PUT/PATCH, DELETE (Auswahl)' },
+  { category: 'Internet und Kommunikation', prompt: 'URL: welche Teile gehören oft dazu (mindestens zwei nennen)?', solution: 'Schema (https), Host, Pfad (zwei reichen)' },
+  { category: 'Internet und Kommunikation', prompt: 'HTTP-Statuscode 404 bedeutet grob?', solution: 'nicht gefunden' },
+  { category: 'Internet und Kommunikation', prompt: 'Cookie im Web: wozu typisch?', solution: 'Zustand/Session speichern (clientseitig vom Server gesetzt)' },
+  { category: 'Internet und Kommunikation', prompt: 'SMTP vs. IMAP grob: welches ist eher zum Versand, welches zum Abruf von Postfächern?', solution: 'SMTP Versand, IMAP Abruf/Sync' },
+  { category: 'Internet und Kommunikation', prompt: 'Welcher Port ist typisch für HTTPS?', solution: '443' },
+  { category: 'Internet und Kommunikation', prompt: 'Client-Server vs. Peer-to-Peer: bei P2P sind viele Knoten gleichzeitig ?', solution: 'Client und Server / gleichberechtigt' },
+  { category: 'Internet und Kommunikation', prompt: 'CDN grob: welches Ziel verfolgt es oft?', solution: 'Inhalte geografisch näher ausliefern (Latenz senken)' },
+  // Datenbanken
+  { category: 'Datenbanken', prompt: 'Primärschlüssel: wozu dient er?', solution: 'Zeilen eindeutig identifizieren' },
+  { category: 'Datenbanken', prompt: 'Fremdschlüssel referenziert typischerweise einen ? einer anderen Tabelle.', solution: 'Primärschlüssel' },
+  { category: 'Datenbanken', prompt: '1. Normalform (1NF): Attributwerte sollen typischerweise ? sein.', solution: 'atomar' },
+  { category: 'Datenbanken', prompt: 'SQL: welches Schlüsselwort liest Daten aus Tabellen?', solution: 'SELECT' },
+  { category: 'Datenbanken', prompt: 'SQL: welches Schlüsselwort fügt neue Zeilen ein?', solution: 'INSERT' },
+  { category: 'Datenbanken', prompt: 'JOIN: wozu dient er?', solution: 'Zeilen aus mehreren Tabellen verknüpfen' },
+  { category: 'Datenbanken', prompt: 'Transaktion ACID: wofür steht „A“ oft?', solution: 'Atomicity / Atomarität' },
+  { category: 'Datenbanken', prompt: 'Index in einer Datenbank: wozu dient er grob?', solution: 'schnelleres Suchen/Filtern (auf Kosten von Pflege/Speicher)' },
+  { category: 'Datenbanken', prompt: 'SQL vs. NoSQL in einem Satz?', solution: 'SQL relational/tabellarisch; NoSQL oft flexiblere Modelle (Dokument, Key-Value, …)' },
+  { category: 'Datenbanken', prompt: 'VIEW in SQL: was ist es grob?', solution: 'gespeicherte Abfrage / virtuelle Tabelle' },
+];
+
+/** Grundlagen Informatik – Klassenstufe / Kurs 13 (vertieft) */
+const TASK_POOL_INF_13: EntryTicketTask[] = [
+  { category: 'Inf · Wahr/Falsch', prompt: 'Wahr oder falsch: Jede reguläre Sprache ist kontextfrei.', solution: 'Wahr' },
+  { category: 'Inf · Wahr/Falsch', prompt: 'Wahr oder falsch: P ⊆ NP.', solution: 'Wahr' },
+  { category: 'Inf · Wahr/Falsch', prompt: 'Wahr oder falsch: Jede berechenbare Funktion ist in polynomialer Zeit lösbar.', solution: 'Falsch' },
+  { category: 'Inf · Theorie', prompt: 'Turingmaschine: unendliches Band und ?', solution: 'Lesen/Schreiben/Kopfbewegung' },
+  { category: 'Inf · Theorie', prompt: 'Halteproblem: für alle Programme algorithmisch entscheidbar? (ja/nein)', solution: 'nein' },
+  { category: 'Inf · Theorie', prompt: 'Church-Turing-These: Was beschreibt sie grob?', solution: 'Berechenbarkeit ≈ Turing-berechenbar' },
+  { category: 'Inf · Algorithmus', prompt: 'Dynamische Programmierung nutzt typischerweise ? bereits gelöster Teilprobleme.', solution: 'Speicherung/Tabellen' },
+  { category: 'Inf · Algorithmus', prompt: 'Greedy-Algorithmus: lokal optimal ⇒ immer global optimal? (ja/nein)', solution: 'nein' },
+  { category: 'Inf · Algorithmus', prompt: 'Dijkstra: Kantengewichte dürfen negativ sein? (ja/nein)', solution: 'nein' },
+  { category: 'Inf · Daten', prompt: 'Normalform: Welche verbietet transitive Abhängigkeit vom Schlüssel (oft 3NF)?', solution: '3. Normalform' },
+  { category: 'Inf · Daten', prompt: 'B-Baum: Ziel bei Datenbank-Indizes oft ?', solution: 'weniger Plattenzugriffe / balanciert' },
+  { category: 'Inf · Daten', prompt: 'CAP: man kann typischerweise nicht alle drei gleichzeitig maximal: Consistency, Availability, ?', solution: 'Partition tolerance' },
+  { category: 'Inf · Netzwerk', prompt: 'TLS sitzt in der Protokollhierarchie typischerweise über ?', solution: 'TCP' },
+  { category: 'Inf · Netzwerk', prompt: 'VPN: Hauptziel oft ? des Datenverkehrs.', solution: 'Verschlüsselung/Schutz' },
+  { category: 'Inf · Sicherheit', prompt: 'Man-in-the-Middle: Angreifer steht zwischen ?', solution: 'Sender und Empfänger' },
+  { category: 'Inf · Sicherheit', prompt: 'Zero-Knowledge-Beweis: Information über Geheimnis wird ?', solution: 'nicht preisgegeben' },
+  { category: 'Inf · Software', prompt: 'MVC: wofür steht das „M“?', solution: 'Model' },
+  { category: 'Inf · Software', prompt: 'OOP: Polymorphismus bedeutet grob ?', solution: 'gleiche Schnittstelle, verschiedene Implementierungen' },
+  { category: 'Inf · Software', prompt: 'Race Condition entsteht bei ? Zugriff auf gemeinsame Daten.', solution: 'parallelem/konkurrierendem' },
+  { category: 'Inf · Hardware', prompt: 'Cache: näher an der CPU = typischerweise ? Latenz.', solution: 'geringere' },
+  { category: 'Inf · Hardware', prompt: 'Pipeline in der CPU: Was wird überlappt?', solution: 'Befehlsausführung (mehrere Stufen)' },
+  { category: 'Eigen · Inf', prompt: 'Blockchain: Blöcke sind typischerweise durch ? verkettet.', solution: 'Hashwerte' },
+  { category: 'Eigen · Inf', prompt: 'Quantenbit kann (vereinfacht) ? Zustände überlagern.', solution: 'mehrere' },
+  { category: 'Eigen · Inf', prompt: 'Ethik KI: Bias in Trainingsdaten kann zu ? führen.', solution: 'Diskriminierung / Fehlentscheidungen' },
+  { category: 'Inf · Logik', prompt: 'Aussagenlogik: (A → B) ist äquivalent zu (¬A ∨ B)? (ja/nein)', solution: 'ja' },
+  { category: 'Inf · Theorie', prompt: 'Komplexitätsklasse NP: Lösung ist in polynomialer Zeit ?', solution: 'verifizierbar' },
+  { category: 'Inf · Daten', prompt: 'Transaktion: Isolation verhindert typischerweise ?', solution: 'Dirty Reads / gegenseitige Störungen' },
+  { category: 'Inf · Algorithmus', prompt: 'O(n²) Sortierverfahren: nenne eines.', solution: 'Bubblesort / Insertionsort (eines)' },
+  { category: 'Inf · Netzwerk', prompt: 'IPv6-Adresslänge in Bit?', solution: '128' },
+  { category: 'Inf · Sicherheit', prompt: 'Perfect Forward Secrecy: vergangene Sessions bleiben bei Schlüsselleck ?', solution: 'geschützt' },
+];
+
+/** v2: Inf 11 behält Fachkategorien beim Auffüllen; mergeInf11FromStorage bereinigt fälschlich als TI gespeicherte Theorie-Fragen */
+const QUESTION_SET_STORAGE_KEY = 'entry-ticket-question-sets-v2';
 
 function randomTaskSeed(): number {
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -244,13 +440,19 @@ function randomTaskSeed(): number {
   return (Date.now() ^ (Math.random() * 0x7fffffff)) >>> 0;
 }
 
-function parseEntryTicketSearch(search: string): { grade: Grade; autostart: boolean; groupId: string | null } {
+function parseEntryTicketSearch(search: string): { grade: EntryBand; autostart: boolean; groupId: string | null } {
   const params = new URLSearchParams(search);
-  const gradeParam = Number(params.get('grade'));
-  const grade =
-    Number.isFinite(gradeParam) && gradeParam >= 5 && gradeParam <= 13
-      ? (gradeParam as Grade)
-      : (7 as Grade);
+  const rawG = params.get('grade');
+  let grade: EntryBand = 7;
+  if (rawG === 'inf11' || rawG === 'inf12' || rawG === 'inf13') {
+    grade = rawG;
+  } else {
+    const gradeParam = Number(rawG);
+    grade =
+      Number.isFinite(gradeParam) && gradeParam >= 5 && gradeParam <= 13
+        ? (gradeParam as GradeNum)
+        : 7;
+  }
   const autostart =
     params.get('autostart') === '1' ||
     params.get('autostart') === 'true' ||
@@ -270,7 +472,52 @@ const DEFAULT_QUESTION_SETS: GradeQuestionSets = {
   11: TASK_POOL_11,
   12: TASK_POOL_12,
   13: TASK_POOL_13,
+  inf11: TASK_POOL_INF_11,
+  inf12: TASK_POOL_INF_12,
+  inf13: TASK_POOL_INF_13,
 };
+
+const INF11_CATEGORY_MARKERS = new Set([
+  'Allgemein',
+  'Java',
+  'OO',
+  'Technische Informatik',
+  'Digitaltechnik',
+  'KI',
+]);
+
+/** Inhalt, der unter „Technische Informatik“ (Hardware/Johnny) nicht hingehört, aber früher fälschlich dort landete. */
+const INF11_TI_LOOKS_LIKE_THEORY = /endlich(er)?\s+Automat|Zustandsautomat|\bDEA\b|\bNEA\b|Turing|Chomsky|Grammatik|kontextfrei|regulär(e)?\s+Spr|Halteproblem|NP[-\s]?voll|berechenbarkeit/i;
+
+function defaultInf11TechnicalBand(): EntryTicketTask[] {
+  return DEFAULT_QUESTION_SETS.inf11.filter((q) => q.category === 'Technische Informatik');
+}
+
+/**
+ * Ersetzt alte Inf-11-Speicherstände sinnvoll durch den aktuellen Standard.
+ * Früher war inf11 = Mathe-11-Pool (Prozent, Bruch, …) oder „Inf · …“ – ohne die neuen Band-Kategorien.
+ * Nur wenn mindestens eine Aufgabe eine der Kategorien Allgemein/Java/OO/Technische Informatik/… hat, bleibt der gespeicherte Satz erhalten.
+ * „Theoretische Informatik“ war kein Inf-11-Fachband: Einträge werden entfernt (gehören nicht in die sechs Bänder).
+ * Früher wurden Theorie-Fragen irrtümlich in „Technische Informatik“ umbenannt – solche TI-Einträge werden durch die aktuellen Standard-TI-Fragen ersetzt.
+ */
+function mergeInf11FromStorage(stored: EntryTicketTask[] | undefined): EntryTicketTask[] {
+  if (stored === undefined || stored.length === 0) return DEFAULT_QUESTION_SETS.inf11;
+
+  const withoutTheoryBand = stored.filter((q) => q.category !== 'Theoretische Informatik');
+
+  const usesNewInf11Curriculum = withoutTheoryBand.some((q) => INF11_CATEGORY_MARKERS.has(q.category));
+  if (!usesNewInf11Curriculum) return DEFAULT_QUESTION_SETS.inf11;
+
+  const tiTasks = withoutTheoryBand.filter((q) => q.category === 'Technische Informatik');
+  const tiCorrupt =
+    tiTasks.length === 0 ||
+    tiTasks.some((q) => INF11_TI_LOOKS_LIKE_THEORY.test(`${q.prompt} ${q.solution}`));
+
+  if (!tiCorrupt) return withoutTheoryBand;
+
+  const withoutTi = withoutTheoryBand.filter((q) => q.category !== 'Technische Informatik');
+  return [...withoutTi, ...defaultInf11TechnicalBand()];
+}
 
 const coarseCategoryForTask = (category: string): CoarseCategory => {
   const c = category.toLowerCase();
@@ -306,6 +553,88 @@ const inflateSetToFiftyPerCategory = (list: EntryTicketTask[]): EntryTicketTask[
   return next;
 };
 
+/** Inf 11: Kategorien Allgemein … KI beibehalten, pro Band auf 50 Aufgaben auffüllen (nicht Mathe-Grobkategorien). */
+const INF11_BAND_ORDER: readonly string[] = [
+  'Allgemein',
+  'Java',
+  'OO',
+  'Technische Informatik',
+  'Digitaltechnik',
+  'KI',
+];
+
+function inflateInf11PerBand(list: EntryTicketTask[]): EntryTicketTask[] {
+  const next = [...list];
+  for (const band of INF11_BAND_ORDER) {
+    const inBand = next.filter((q) => q.category === band);
+    if (inBand.length === 0) continue;
+    let i = 0;
+    while (next.filter((q) => q.category === band).length < 50) {
+      const template = inBand[i % inBand.length];
+      next.push({ ...template, category: band });
+      i += 1;
+    }
+  }
+  return next;
+}
+
+/** Inf 12: sieben Fachbänder, pro Band auf 50 auffüllen (wie Inf 11, nicht Mathe-Grobkategorien). */
+const INF12_BAND_ORDER: readonly string[] = [
+  'Python',
+  'Programmiergrundlagen',
+  'Algorithmen',
+  'Darstellung von Algorithmen',
+  'Netzwerke',
+  'Internet und Kommunikation',
+  'Datenbanken',
+];
+
+const INF12_CATEGORY_MARKERS = new Set<string>(INF12_BAND_ORDER);
+
+function mergeInf12FromStorage(stored: EntryTicketTask[] | undefined): EntryTicketTask[] {
+  if (stored === undefined || stored.length === 0) return DEFAULT_QUESTION_SETS.inf12;
+  const looksLikeNewInf12 = stored.some(
+    (q) => INF12_CATEGORY_MARKERS.has(q.category) || coarseCategoryForTask(q.category) === 'Eigen',
+  );
+  if (looksLikeNewInf12) return stored;
+  return DEFAULT_QUESTION_SETS.inf12;
+}
+
+function inflateInf12PerBand(list: EntryTicketTask[]): EntryTicketTask[] {
+  const next = [...list];
+  for (const band of INF12_BAND_ORDER) {
+    const inBand = next.filter((q) => q.category === band);
+    if (inBand.length === 0) continue;
+    let i = 0;
+    while (next.filter((q) => q.category === band).length < 50) {
+      const template = inBand[i % inBand.length];
+      next.push({ ...template, category: band });
+      i += 1;
+    }
+  }
+  return next;
+}
+
+const INF12_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: string; border: string }> = {
+  Python: { icon: '🐍', bg: '#e8f5e9', fg: '#1b5e20', border: '#66bb6a' },
+  Programmiergrundlagen: { icon: '⚙️', bg: '#eceff1', fg: '#37474f', border: '#90a4ae' },
+  Algorithmen: { icon: '📶', bg: '#fff8e1', fg: '#f57f17', border: '#ffca28' },
+  'Darstellung von Algorithmen': { icon: '📐', bg: '#f3e5f5', fg: '#6a1b9a', border: '#ba68c8' },
+  Netzwerke: { icon: '🔌', bg: '#e1f5fe', fg: '#01579b', border: '#4fc3f7' },
+  'Internet und Kommunikation': { icon: '🌐', bg: '#e8eaf6', fg: '#283593', border: '#7986cb' },
+  Datenbanken: { icon: '🗄️', bg: '#fce4ec', fg: '#880e4f', border: '#f06292' },
+};
+
+/** Farben für Fragenset-Gruppen unter Inf 11 (Fachkategorien) */
+const INF11_EDITOR_VISUALS: Record<string, { icon: string; bg: string; fg: string; border: string }> = {
+  Allgemein: { icon: '📋', bg: '#e3f2fd', fg: '#0d47a1', border: '#90caf9' },
+  Java: { icon: '☕', bg: '#fff3e0', fg: '#e65100', border: '#ffcc80' },
+  OO: { icon: '🔷', bg: '#e8f5e9', fg: '#2e7d32', border: '#a5d6a7' },
+  'Technische Informatik': { icon: '🖥️', bg: '#e8eaf6', fg: '#283593', border: '#9fa8da' },
+  Digitaltechnik: { icon: '⚡', bg: '#eceff1', fg: '#37474f', border: '#90a4ae' },
+  KI: { icon: '🤖', bg: '#e0f7fa', fg: '#006064', border: '#4dd0e1' },
+};
+
 const dedupeEigenQuestions = (list: EntryTicketTask[]): EntryTicketTask[] => {
   const seen = new Set<string>();
   return list.filter((q) => {
@@ -324,11 +653,13 @@ export default function EntryTicketPage() {
   const initialRoute =
     typeof window !== 'undefined'
       ? parseEntryTicketSearch(window.location.search || '')
-      : { grade: 7 as Grade, autostart: false, groupId: null as string | null };
+      : { grade: 7 as EntryBand, autostart: false, groupId: null as string | null };
   const [sessionStarted, setSessionStarted] = useState(false);
-  const [grade, setGrade] = useState<Grade>(() => initialRoute.grade);
+  const [grade, setGrade] = useState<EntryBand>(() => initialRoute.grade);
   const [taskSeed, setTaskSeed] = useState(() => randomTaskSeed());
-  const [showSetEditor, setShowSetEditor] = useState(false);
+  const [showSetEditor, setShowSetEditor] = useState(
+    () => typeof window !== 'undefined' && Boolean(localStorage.getItem('teacherId')),
+  );
   const [questionSets, setQuestionSets] = useState<GradeQuestionSets>(() => {
     try {
       const raw = localStorage.getItem(QUESTION_SET_STORAGE_KEY);
@@ -343,6 +674,9 @@ export default function EntryTicketPage() {
           11: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[11])),
           12: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[12])),
           13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[13])),
+          inf11: dedupeEigenQuestions(inflateInf11PerBand(DEFAULT_QUESTION_SETS.inf11)),
+          inf12: dedupeEigenQuestions(inflateInf12PerBand(DEFAULT_QUESTION_SETS.inf12)),
+          inf13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS.inf13)),
         };
       }
       const parsed = JSON.parse(raw) as Partial<GradeQuestionSets>;
@@ -356,6 +690,9 @@ export default function EntryTicketPage() {
         11: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[11] ?? DEFAULT_QUESTION_SETS[11])),
         12: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[12] ?? DEFAULT_QUESTION_SETS[12])),
         13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed[13] ?? DEFAULT_QUESTION_SETS[13])),
+        inf11: dedupeEigenQuestions(inflateInf11PerBand(mergeInf11FromStorage(parsed.inf11))),
+        inf12: dedupeEigenQuestions(inflateInf12PerBand(mergeInf12FromStorage(parsed.inf12))),
+        inf13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(parsed.inf13 ?? DEFAULT_QUESTION_SETS.inf13)),
       };
     } catch {
       return {
@@ -368,6 +705,9 @@ export default function EntryTicketPage() {
         11: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[11])),
         12: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[12])),
         13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS[13])),
+        inf11: dedupeEigenQuestions(inflateInf11PerBand(DEFAULT_QUESTION_SETS.inf11)),
+        inf12: dedupeEigenQuestions(inflateInf12PerBand(DEFAULT_QUESTION_SETS.inf12)),
+        inf13: dedupeEigenQuestions(inflateSetToFiftyPerCategory(DEFAULT_QUESTION_SETS.inf13)),
       };
     }
   });
@@ -441,7 +781,7 @@ export default function EntryTicketPage() {
       try {
         const res = await apiGet('/api/entry-ticket/current');
         if (!res.ok || cancelled) return;
-        const data = await res.json();
+        const data = (await res.json()) as { startedAt?: string | null; heroImageIndex?: number | null };
         if (typeof data.heroImageIndex === 'number' && data.startedAt) {
           setEntryHeroImageIndex(data.heroImageIndex);
         }
@@ -469,6 +809,42 @@ export default function EntryTicketPage() {
   const poolForBand = useMemo(() => questionSets[grade] ?? [], [questionSets, grade]);
   const groupedSetQuestions = useMemo(() => {
     const indexed = poolForBand.map((q, idx) => ({ q, idx }));
+
+    if (grade === 'inf11' || grade === 'inf12') {
+      const bandOrder = grade === 'inf11' ? INF11_BAND_ORDER : INF12_BAND_ORDER;
+      const rankInf = (cat: string) => {
+        if (coarseCategoryForTask(cat) === 'Eigen') return -1;
+        const i = bandOrder.indexOf(cat);
+        return i === -1 ? 999 : i;
+      };
+      indexed.sort((a, b) => {
+        const ra = rankInf(a.q.category);
+        const rb = rankInf(b.q.category);
+        if (ra !== rb) return ra - rb;
+        return a.idx - b.idx;
+      });
+      let displayCounter = 1;
+      const withDisplay = indexed.map((item) => {
+        const displayNumber = displayCounter;
+        displayCounter += 1;
+        return { ...item, displayNumber };
+      });
+      const groups: Array<{
+        category: string;
+        items: Array<{ q: EntryTicketTask; idx: number; displayNumber: number }>;
+      }> = [];
+      for (const item of withDisplay) {
+        const band = item.q.category;
+        const last = groups[groups.length - 1];
+        if (!last || last.category !== band) {
+          groups.push({ category: band, items: [item] });
+        } else {
+          last.items.push(item);
+        }
+      }
+      return groups;
+    }
+
     const categoryOrder: CoarseCategory[] = [
       'Eigen',
       'Grundrechenarten',
@@ -507,7 +883,7 @@ export default function EntryTicketPage() {
       }
     }
     return groups;
-  }, [poolForBand]);
+  }, [poolForBand, grade]);
 
   const displayNumberByPoolIndex = useMemo(() => {
     const map = new Map<number, number>();
@@ -528,6 +904,27 @@ export default function EntryTicketPage() {
     'Wahr/Falsch': { icon: '✅', bg: '#e0f2f1', fg: '#004d40', border: '#80cbc4' },
     Eigen: { icon: '🧾', bg: '#e8f5ff', fg: '#0b3a91', border: '#90caf9' },
   };
+
+  const visualForFragensetGroup = (groupCategory: string) => {
+    if (grade === 'inf11' && INF11_EDITOR_VISUALS[groupCategory]) {
+      return INF11_EDITOR_VISUALS[groupCategory];
+    }
+    if (grade === 'inf12' && INF12_EDITOR_VISUALS[groupCategory]) {
+      return INF12_EDITOR_VISUALS[groupCategory];
+    }
+    return categoryVisuals[groupCategory as CoarseCategory] ?? categoryVisuals.Grundrechenarten;
+  };
+
+  const skipInfNumberVary = (category: string) =>
+    category.startsWith('Inf ·') ||
+    category.startsWith('Eigen · Inf') ||
+    category === 'Allgemein' ||
+    category === 'Java' ||
+    category === 'OO' ||
+    category === 'Technische Informatik' ||
+    category === 'Digitaltechnik' ||
+    category === 'KI' ||
+    INF12_BAND_ORDER.includes(category);
 
   const varyNumbersOnly = (prompt: string, seed: number): string => {
     if (/wahr\s*oder\s*falsch/i.test(prompt)) return prompt;
@@ -569,7 +966,7 @@ export default function EntryTicketPage() {
     return {
       tasks: sliced.map(({ task }, idx) => ({
         ...task,
-        prompt: varyNumbersOnly(task.prompt, seed + idx * 31),
+        prompt: skipInfNumberVary(task.category) ? task.prompt : varyNumbersOnly(task.prompt, seed + idx * 31),
       })),
       indices: sliced.map(({ i }) => i),
     };
@@ -668,7 +1065,9 @@ export default function EntryTicketPage() {
       const baseIndex = poolForBand.indexOf(pickBase);
       const replacement = {
         ...pickBase,
-        prompt: varyNumbersOnly(pickBase.prompt, Date.now() + index),
+        prompt: skipInfNumberVary(pickBase.category)
+          ? pickBase.prompt
+          : varyNumbersOnly(pickBase.prompt, Date.now() + index),
       };
       const next = [...prev];
       next[index] = replacement;
@@ -750,6 +1149,12 @@ export default function EntryTicketPage() {
   const fillToFiftyPerCategory = () => {
     setQuestionSets((prev) => {
       const base = [...(prev[grade] ?? [])];
+      if (grade === 'inf11') {
+        return { ...prev, [grade]: inflateInf11PerBand(base) };
+      }
+      if (grade === 'inf12') {
+        return { ...prev, [grade]: inflateInf12PerBand(base) };
+      }
       const categories: CoarseCategory[] = [
         'Grundrechenarten',
         'Bruch/Dezimal/Prozent',
@@ -869,32 +1274,39 @@ export default function EntryTicketPage() {
 
   useEffect(() => {
     const isTypingTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) return false;
-      const tag = target.tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
-      if (target.isContentEditable) return true;
-      return false;
+      const el = target instanceof HTMLElement ? target : null;
+      if (!el) return false;
+      if (el.isContentEditable) return true;
+      const field = el.closest<HTMLElement>(
+        'textarea, select, [contenteditable="true"], input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"])'
+      );
+      return !!field;
     };
+
+    const typingOrInField = (e: KeyboardEvent) =>
+      isTypingTarget(e.target) || isTypingTarget(document.activeElement);
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (isTypingTarget(e.target)) return;
+      if (typingOrInField(e)) return;
 
       if (e.key === 'ArrowLeft') {
+        if (!sessionStarted) return;
         e.preventDefault();
-        if (sessionStarted) goPrevious();
+        goPrevious();
         return;
       }
 
       if (e.key === 'ArrowRight') {
+        if (!sessionStarted) return;
         e.preventDefault();
-        if (sessionStarted) goNext();
+        goNext();
         return;
       }
 
       if (e.key === 'Enter') {
-        e.preventDefault();
         if (!sessionStarted) return;
+        e.preventDefault();
         if (isRunning) {
           pause();
         } else {
@@ -1388,41 +1800,92 @@ export default function EntryTicketPage() {
             {!sessionStarted ? (
               <Box
                 sx={{
-                  width: DISPLAY_BOX_WIDTH,
-                  minWidth: DISPLAY_BOX_WIDTH,
+                  width: '100%',
                   maxWidth: DISPLAY_BOX_WIDTH,
+                  minWidth: 0,
                   borderRadius: 2,
                   border: '1px solid #d9e0ff',
                   bgcolor: '#f8faff',
                   p: 1.5,
+                  boxSizing: 'border-box',
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    Auswahl vor Start ({activeTasks.length}/{TARGET_TASK_COUNT})
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.75 }}>
-                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mr: 0.5 }}>
-                      {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
-                        <Button
-                          key={g}
-                          size="small"
-                          variant={grade === g ? 'contained' : 'outlined'}
-                          onClick={() => setGrade(g)}
-                          sx={{ minWidth: 36, px: 0.6 }}
-                        >
-                          {g}
-                        </Button>
-                      ))}
+                <Box sx={{ mb: 1, minWidth: 0 }}>
+                  <Box
+                    component="div"
+                    role="toolbar"
+                    aria-label="Klassenstufe und Aktionen"
+                    sx={{
+                      display: 'grid',
+                      gridAutoFlow: 'column',
+                      gridAutoColumns: 'max-content',
+                      gridTemplateRows: 'auto',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      overflowX: 'auto',
+                      overflowY: 'hidden',
+                      py: 0.25,
+                      WebkitOverflowScrolling: 'touch',
+                      '&::-webkit-scrollbar': { height: 8 },
+                      '&::-webkit-scrollbar-thumb': {
+                        borderRadius: 1,
+                        bgcolor: 'rgba(25, 118, 210, 0.35)',
+                      },
+                    }}
+                  >
+                    {([5, 6, 7, 8, 9, 10, 11, 12, 13] as const).map((g) => (
                       <Button
+                        key={g}
                         size="small"
-                        variant="outlined"
-                        onClick={() => setTaskSeed((s) => s + 1)}
-                        sx={{ minWidth: 74, px: 0.75 }}
+                        variant={grade === g ? 'contained' : 'outlined'}
+                        onClick={() => setGrade(g)}
+                        sx={{ minWidth: 36, px: 0.6, flexShrink: 0 }}
                       >
-                        Mischen
+                        {g}
                       </Button>
-                    </Box>
+                    ))}
+                    {(
+                      [
+                        { band: 'inf11' as const, label: 'Inf 11', main: '#00695c', hoverBg: 'rgba(0, 105, 92, 0.1)' },
+                        { band: 'inf12' as const, label: 'Inf 12', main: '#e65100', hoverBg: 'rgba(230, 81, 0, 0.1)' },
+                        { band: 'inf13' as const, label: 'Inf 13', main: '#4527a0', hoverBg: 'rgba(69, 39, 160, 0.1)' },
+                      ] as const
+                    ).map(({ band, label, main, hoverBg }) => (
+                      <Button
+                        key={band}
+                        size="small"
+                        variant={grade === band ? 'contained' : 'outlined'}
+                        onClick={() => setGrade(band)}
+                        sx={{
+                          minWidth: 48,
+                          px: 0.45,
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          lineHeight: 1.15,
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          ...(grade === band
+                            ? {
+                                bgcolor: main,
+                                color: '#fff',
+                                borderColor: main,
+                                '&:hover': { bgcolor: main, filter: 'brightness(0.92)' },
+                              }
+                            : {
+                                color: main,
+                                borderColor: main,
+                                borderWidth: 2,
+                                bgcolor: 'rgba(255,255,255,0.85)',
+                                '&:hover': { bgcolor: hoverBg, borderColor: main },
+                              }),
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    ))}
                     <Button
                       size="small"
                       variant="outlined"
@@ -1430,6 +1893,7 @@ export default function EntryTicketPage() {
                         setTaskSeed((s) => s + 1);
                         cancelEditingTask();
                       }}
+                      sx={{ flexShrink: 0 }}
                     >
                       Reset
                     </Button>
@@ -1437,7 +1901,7 @@ export default function EntryTicketPage() {
                       size="small"
                       variant={showSetEditor ? 'contained' : 'outlined'}
                       onClick={() => setShowSetEditor((v) => !v)}
-                      sx={{ minWidth: 92 }}
+                      sx={{ minWidth: 92, flexShrink: 0 }}
                     >
                       Fragenset
                     </Button>
@@ -1446,7 +1910,7 @@ export default function EntryTicketPage() {
                       variant="contained"
                       startIcon={<PlayArrowIcon sx={{ fontSize: 18 }} />}
                       onClick={startSession}
-                      sx={{ minWidth: 96 }}
+                      sx={{ minWidth: 96, flexShrink: 0 }}
                     >
                       Start
                     </Button>
@@ -1456,8 +1920,6 @@ export default function EntryTicketPage() {
                   sx={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',
-                    gridTemplateRows: `repeat(${Math.ceil(activeTasks.length / 2)}, minmax(0, auto))`,
-                    gridAutoFlow: 'column',
                     gap: 0.65,
                   }}
                 >
@@ -1543,7 +2005,7 @@ export default function EntryTicketPage() {
                 {showSetEditor && (
                   <Box sx={{ mt: 1.5, p: 1, border: '1px solid', borderColor: '#bcd3ff', borderRadius: 1.25, bgcolor: '#eef4ff' }}>
                     <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 700 }}>
-                      Fragenset Klasse {grade} ({poolForBand.length} Fragen)
+                      Fragenset {fragensetHeadingLabel(grade)} ({poolForBand.length} Fragen)
                     </Typography>
                     <Box sx={{ mt: 0.8, display: 'flex', gap: 0.5, alignItems: 'center' }}>
                       <TextField
@@ -1567,7 +2029,9 @@ export default function EntryTicketPage() {
                       </Button>
                     </Box>
                     <Box sx={{ display: 'grid', gap: 0.6, mt: 0.8 }}>
-                      {groupedSetQuestions.map((group) => (
+                      {groupedSetQuestions.map((group) => {
+                        const vis = visualForFragensetGroup(group.category);
+                        return (
                         <Box key={group.category} sx={{ display: 'grid', gap: 0.45 }}>
                           <Box
                             sx={{
@@ -1578,14 +2042,14 @@ export default function EntryTicketPage() {
                               py: 0.35,
                               borderRadius: 1,
                               width: 'fit-content',
-                              bgcolor: categoryVisuals[group.category as CoarseCategory].bg,
-                              color: categoryVisuals[group.category as CoarseCategory].fg,
+                              bgcolor: vis.bg,
+                              color: vis.fg,
                               border: '1px solid',
-                              borderColor: categoryVisuals[group.category as CoarseCategory].border,
+                              borderColor: vis.border,
                             }}
                           >
                             <Box component="span" sx={{ fontSize: '0.85rem', lineHeight: 1 }}>
-                              {categoryVisuals[group.category as CoarseCategory].icon}
+                              {vis.icon}
                             </Box>
                             <Typography variant="caption" sx={{ fontWeight: 800, color: 'inherit' }}>
                               {group.category}
@@ -1600,9 +2064,9 @@ export default function EntryTicketPage() {
                                 gap: 0.5,
                                 p: 0.5,
                                 border: '1px solid',
-                                borderColor: categoryVisuals[group.category as CoarseCategory].border,
+                                borderColor: vis.border,
                                 borderRadius: 1,
-                                bgcolor: categoryVisuals[group.category as CoarseCategory].bg,
+                                bgcolor: vis.bg,
                               }}
                             >
                               {setEditIndex === idx ? (
@@ -1653,7 +2117,8 @@ export default function EntryTicketPage() {
                             </Box>
                           ))}
                         </Box>
-                      ))}
+                        );
+                      })}
                     </Box>
                   </Box>
                 )}
