@@ -1,0 +1,41 @@
+---
+description: Vergrößern-/Öffnen-in-neuem-Tab-Button – klein, kompakt, ganz rechts oben, Icon überdeckt den Button
+globs: client/src/**/*.tsx
+alwaysApply: false
+---
+
+# Vergrößern / Öffnen in neuem Tab – Button
+
+Buttons, die eine Ansicht in einem neuen Tab öffnen (z. B. „Vergrößern“, „Präsentieren“), so umsetzen:
+
+- **Position:** Ganz rechts oben im Container (`position: 'absolute'`, `top: 4`, `right: 4`). Container braucht `position: 'relative'`.
+- **Größe:** Klein und kompakt – z. B. `minWidth: 28`, `width: 28`, `height: 28`.
+- **Padding:** `p: 0`, damit das Icon den ganzen Button ausfüllt/überdeckt.
+- **Icon:** Zentriert, z. B. `fontSize: 20`, sodass es den Button optisch überdeckt.
+- **Inhalt/Titel:** Ausreichend `pr` (padding-right), damit Text nicht unter dem Button liegt (z. B. `pr: 5`).
+
+Beispiel (MUI):
+
+```tsx
+<Box sx={{ position: 'relative', p: 1 }}>
+  <Tooltip title="Vergrößern (in neuem Tab)">
+    <IconButton
+      size="small"
+      onClick={() => window.open(url, '_blank')}
+      sx={{
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        p: 0,
+        minWidth: 28,
+        width: 28,
+        height: 28,
+      }}
+      aria-label="Vergrößern in neuem Tab"
+    >
+      <OpenInNewIcon sx={{ fontSize: 20 }} />
+    </IconButton>
+  </Tooltip>
+  <Typography sx={{ pr: 5 }}>Titel / Inhalt</Typography>
+</Box>
+```

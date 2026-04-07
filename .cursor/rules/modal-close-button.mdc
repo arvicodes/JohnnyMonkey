@@ -1,0 +1,28 @@
+---
+description: Schließen-Button in Modals/Dialogs – klein, ganz rechts, Icon überdeckt den Button
+globs: client/src/**/*.tsx
+alwaysApply: false
+---
+
+# Modal: X-Button (Schließen)
+
+**Umsetzung im Projekt:** `DialogCloseIconButton` und `dialogCloseTitleSx` aus `client/src/components/ui/dialog-close-icon-button.tsx` verwenden – gleiche Maße und Position überall.
+
+- **DialogTitle:** `sx={{ ...dialogCloseTitleSx, … }}` (enthält `position: 'relative'`, `pr: 5`).
+- **Schließen:** `<DialogCloseIconButton onClose={…} />` – optional `sx` / `iconSx` für helle oder farbige Titelzeilen (z. B. `color: 'white'`).
+- **Icon:** `fontSize: 18`, Button 28×28, `p: 0.25` – Icon füllt den Klickbereich.
+
+Beispiel:
+
+```tsx
+import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
+
+<DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: '#1976d2', color: '#fff' }}>
+  <Typography variant="h6">Titel</Typography>
+  <DialogCloseIconButton
+    onClose={onClose}
+    sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
+    iconSx={{ color: '#fff' }}
+  />
+</DialogTitle>
+```

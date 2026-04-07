@@ -61,3 +61,6 @@ db-checkpoint-*.db
 *.temp
 *.pid
 server/uploads/
+
+# Einzeldatei > 100 MB (GitHub-Hardlimit); ZIP bleibt lokal
+/J-M-Reihen.zip
