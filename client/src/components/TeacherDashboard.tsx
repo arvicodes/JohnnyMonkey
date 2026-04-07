@@ -19,7 +19,13 @@ import { FlashcardLearningModal } from './StudentDashboard';
 import { RIDDLES } from './riddles';
 import { MOVEMENT_STORIES } from '../data/movementStories';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
-import { gradeFromGroupNames } from '../lib/entryTicketGrade';
+import {
+  gradeFromGroupNames,
+  ENTRY_TICKET_PLAN_GRADE_OPTIONS,
+  formatEntryTicketPlanBandLabel,
+  parseEntryTicketPlanBand,
+  type EntryTicketPlanBand,
+} from '../lib/entryTicketGrade';
 import {
   Box,
   Typography,
@@ -5392,7 +5398,9 @@ const MOVEMENT_GAMES_OUTDOOR: MovementGameCard[] = [
   },
 ];
 
-/** PDF/PPTX/ODP und gängige Bildformate – für die Stundenordner-Dokumentenliste. */
+/** PDF, Präsentationen, Word/Writer sowie RTF – erscheinen in der Input-Materialliste (mit Folien/AB_*-Ausnahmen). */
+const LESSON_FOLDER_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
+/** Gängige Bildformate – für die Stundenordner-Dokumentenliste. */
 const LESSON_FOLDER_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 
 /** Alle Dateien aus dem Stundenordner-Baum (read?recursive=true liefert Unterordner in children). */
@@ -5410,8 +5418,8 @@ function collectLessonFolderFilesFromTree(nodes: any[] | undefined): any[] {
   return out;
 }
 
-/** Dropdown: Folien-Version wählen + Button „Im Folien-Editor öffnen“. */
-function FolienVersionSelect({
+/** Dropdown „…“ + Öffnen – gleiche Bedienung für Folien, PDF, Word und Bilder. */
+function LessonFolderVersionSelect({
   versions,
   iconBtnSx,
   onOpenFile,
@@ -5422,26 +5430,58 @@ function FolienVersionSelect({
   onOpenFile: (item: any) => void;
   groupStem: string;
 }) {
-  const folienVariants = useMemo(
-    () => versions.filter((v) => isFolienFileName(v.file.name)),
-    [versions]
-  );
-  const sorted = useMemo(
-    () => sortFolienVariants(folienVariants, groupStem),
-    [folienVariants, groupStem]
-  );
-  const sortedPathsKey = sorted.map((s) => s.file.path).join('|');
+  const ordered = useMemo(() => {
+    const folien = versions.filter((v) => isFolienFileName(v.file.name));
+    const other = versions.filter((v) => !isFolienFileName(v.file.name));
+    const folienSorted = sortFolienVariants(folien, groupStem);
+    const otherSorted = [...other].sort((a, b) => a.file.name.localeCompare(b.file.name, 'de'));
+    return [...folienSorted, ...otherSorted];
+  }, [versions, groupStem]);
+
+  const pathsKey = ordered.map((s) => s.file.path).join('|');
   const [selectedPath, setSelectedPath] = useState('');
 
   useEffect(() => {
-    const first = sorted[0]?.file.path ?? '';
-    setSelectedPath((prev) => (sorted.some((s) => s.file.path === prev) ? prev : first));
-  }, [sortedPathsKey]);
+    const first = ordered[0]?.file.path ?? '';
+    setSelectedPath((prev) => (ordered.some((s) => s.file.path === prev) ? prev : first));
+  }, [pathsKey]);
 
-  const selectedFile = sorted.find((s) => s.file.path === selectedPath)?.file ?? sorted[0]?.file;
-  const value = selectedPath || sorted[0]?.file.path || '';
+  const selected = ordered.find((s) => s.file.path === selectedPath) ?? ordered[0];
+  const selectedFile = selected?.file;
+  const value = selectedPath || ordered[0]?.file.path || '';
 
-  if (sorted.length === 0) return null;
+  if (ordered.length === 0) return null;
+
+  const openAction = (() => {
+    const name = selectedFile?.name || '';
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    if (isFolienFileName(name)) {
+      return {
+        title: 'Im Folien-Editor öffnen',
+        aria: 'Im Folien-Editor öffnen',
+        icon: <SlideshowIcon sx={{ fontSize: 18 }} />,
+      };
+    }
+    if (LESSON_FOLDER_IMAGE_EXT_RE.test(name)) {
+      return {
+        title: 'Bild öffnen',
+        aria: 'Bild öffnen',
+        icon: <ImageIcon sx={{ fontSize: 18 }} />,
+      };
+    }
+    if (ext === 'pdf') {
+      return {
+        title: 'PDF öffnen',
+        aria: 'PDF öffnen',
+        icon: <PictureAsPdfIcon sx={{ fontSize: 18 }} />,
+      };
+    }
+    return {
+      title: 'Dokument öffnen',
+      aria: 'Dokument öffnen',
+      icon: <DescriptionIcon sx={{ fontSize: 18 }} />,
+    };
+  })();
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0, justifyContent: 'flex-start' }}>
@@ -5451,9 +5491,9 @@ function FolienVersionSelect({
         onChange={(e) => setSelectedPath(e.target.value as string)}
         variant="standard"
         disableUnderline
-        inputProps={{ 'aria-label': 'Folien-Version zum Öffnen im Editor wählen' }}
+        inputProps={{ 'aria-label': 'Materialversion wählen' }}
         MenuProps={{
-          PaperProps: { sx: { maxWidth: 320 } },
+          PaperProps: { sx: { maxWidth: 360 } },
           anchorOrigin: { vertical: 'bottom', horizontal: 'left' },
           transformOrigin: { vertical: 'top', horizontal: 'left' },
         }}
@@ -5472,7 +5512,7 @@ function FolienVersionSelect({
             …
           </Box>
         )}
-        title="Folien-Version wählen (Namen im geöffneten Menü)"
+        title="Version wählen (Details im Menü)"
         sx={{
           width: 38,
           minWidth: 38,
@@ -5499,21 +5539,23 @@ function FolienVersionSelect({
           '& .MuiSelect-icon': { color: 'text.secondary', right: 0, fontSize: '1.15rem' },
         }}
       >
-        {sorted.map(({ ext, file }) => (
+        {ordered.map(({ ext, file }) => (
           <MenuItem
             key={file.path}
             value={file.path}
             sx={{ fontSize: '0.75rem', justifyContent: 'flex-start', textAlign: 'left', whiteSpace: 'normal' }}
           >
-            {labelForFolienOption(file, groupStem)} · {ext.toUpperCase()}
+            {isFolienFileName(file.name)
+              ? `${labelForFolienOption(file, groupStem)} · ${ext.toUpperCase()}`
+              : file.name}
           </MenuItem>
         ))}
       </Select>
-      <Tooltip title="Im Folien-Editor öffnen">
+      <Tooltip title={openAction.title}>
         <Box
           component="button"
           type="button"
-          aria-label="Im Folien-Editor öffnen"
+          aria-label={openAction.aria}
           onClick={() => selectedFile && onOpenFile(selectedFile)}
           sx={{
             border: 'none',
@@ -5536,7 +5578,7 @@ function FolienVersionSelect({
             '&:focus-visible': { outline: '2px solid', outlineOffset: 1, outlineColor: 'primary.main' },
           }}
         >
-          <SlideshowIcon sx={{ fontSize: 18 }} />
+          {openAction.icon}
         </Box>
       </Tooltip>
     </Box>
@@ -5642,7 +5684,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     // Warten bis subjects-State existiert (weiter unten deklariert)
     // Dieser Effekt wird nach der Erst-Initialisierung erneut getriggert
   }, []);
-  // Track which groups are expanded (Standard: eingeklappt; Ausnahmen: Klasse 7a, Informatik GK 12)
+  // Track which groups are expanded (Standard: eingeklappt; Ausnahme: Informatik GK 11)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   // Track which groups' student lists are expanded (default: collapsed)
   const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
@@ -5654,9 +5696,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
       const next: Record<string, boolean> = { ...prev };
       for (const g of groups) {
         if (next[g.id] === undefined) {
-          const isInformatikGk12 = /gk\s*12|informatik\s*gk\s*12/i.test(g.name);
-          const is7a = /7a|klasse\s*7a/i.test(g.name);
-          next[g.id] = isInformatikGk12 || is7a;
+          const isInformatikGk11 = /informatik\s*gk\s*11/i.test(g.name);
+          next[g.id] = isInformatikGk11;
         }
       }
       return next;
@@ -5834,7 +5875,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     id: string;
     type: LessonPlanItemType;
     label: string;
-    grade?: number;
+    grade?: EntryTicketPlanBand;
     exitType?:
       | 'feedback'
       | 'quick-check'
@@ -5865,7 +5906,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     });
   }, []);
   const [selectedPlanTypes, setSelectedPlanTypes] = useState<LessonPlanItemType[]>([]);
-  const [newPlanGrade, setNewPlanGrade] = useState<number>(7);
+  const [newPlanGrade, setNewPlanGrade] = useState<EntryTicketPlanBand>(7);
   type ExitPlanType =
     | 'feedback'
     | 'quick-check'
@@ -8645,7 +8686,30 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     // Gespeichertes HTML aus dem Editor: immer als HTML rendern (Tag-Heuristik, auch bei führendem Whitespace)
     const hasHtml = trimmed.length > 0 && (/<[a-z][^>]*>/i.test(trimmed) || (trimmed.includes('<') && trimmed.includes('>')));
     if (hasHtml) {
-      return <Box component="div" dangerouslySetInnerHTML={{ __html: text }} sx={{ fontSize: LESSON_MODAL_FONT_SIZE, lineHeight, color: '#333', '& p': { margin: '0.5em 0' }, '& ul, & ol': { margin: '0.5em 0', paddingLeft: '1.5em' }, '& li': { margin: '0.25em 0', lineHeight }, '& a': { fontSize: LESSON_MODAL_FONT_SIZE }, '& span': { fontSize: 'inherit' }, '& br': { display: 'block', content: '""', marginBottom: '0.5em' }, '& img[data-editor-icon]': { display: 'none' } }} />;
+      return (
+        <Box
+          component="div"
+          dangerouslySetInnerHTML={{ __html: text }}
+          sx={{
+            fontSize: LESSON_MODAL_FONT_SIZE,
+            lineHeight,
+            color: '#333',
+            '& p': { margin: '0.5em 0', marginLeft: 0, paddingLeft: 0, textIndent: 0, textAlign: 'left' },
+            '& div': {
+              marginLeft: '0 !important',
+              paddingLeft: '0 !important',
+              textIndent: '0 !important',
+              textAlign: 'left',
+            },
+            '& ul, & ol': { margin: '0.5em 0', paddingLeft: '1.5em' },
+            '& li': { margin: '0.25em 0', lineHeight },
+            '& a': { fontSize: LESSON_MODAL_FONT_SIZE },
+            '& span': { fontSize: 'inherit' },
+            '& br': { display: 'block', content: '""', marginBottom: '0.5em' },
+            '& img[data-editor-icon]': { display: 'none' },
+          }}
+        />
+      );
     }
     // Plaintext: Wenn als Liste, zeige als Liste mit renderBoldText pro Zeile
     if (asList) {
@@ -9280,6 +9344,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const isChapterHeadingFolderName = (name: string) =>
     /^(Kap\.?\s*\d+|Kapitel\s*\d+)/i.test((name || '').trim());
 
+  /**
+   * Oberste Ebene im zugeordneten Ordner: „1 Rechnerarchitektur“ (Nummer + Leerzeichen) = Themenblock, keine Stundenseite.
+   * „2.01 Gatter“ (Nummer.nummer …) bleibt Stunden-Ebene und ist weiter klickbar.
+   */
+  const isTopicSectionFolderName = (name: string) => {
+    const t = (name || '').trim();
+    if (/^\d+\.\d+/.test(t)) return false;
+    return /^\d+\s+/.test(t);
+  };
+
+  const directoryOpensStundePage = (name: string, level: number) => {
+    if (isChapterHeadingFolderName(name)) return false;
+    if (level === 0 && isTopicSectionFolderName(name)) return false;
+    return true;
+  };
+
   /** Wandelt eine Item-Liste (Ordner + Dateien) in Anzeige-Items um: Ordner unverändert, Dateien nach Basisname gruppiert. */
   const itemsToDisplayItems = (items: any[]): any[] => {
     const dirs = items.filter((i: any) => i.type === 'directory');
@@ -9534,7 +9614,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               mb: 0.5,
               cursor:
                 item.type === 'file' ||
-                (item.type === 'directory' && !isChapterHeadingFolderName(item.name))
+                (item.type === 'directory' && directoryOpensStundePage(item.name, level))
                   ? 'pointer'
                   : 'default',
               textDecoration: 'none',
@@ -9543,7 +9623,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               flex: 1,
               '&:hover':
                 item.type === 'file' ||
-                (item.type === 'directory' && !isChapterHeadingFolderName(item.name))
+                (item.type === 'directory' && directoryOpensStundePage(item.name, level))
                   ? { color: '#1976D2' }
                   : {}
             }}
@@ -9551,7 +9631,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               if (item.type === 'file') {
                 handleFileClick(item);
               } else if (item.type === 'directory') {
-                if (isChapterHeadingFolderName(item.name)) return;
+                if (!directoryOpensStundePage(item.name, level)) return;
                 const lp = item.path || `${folderPath}/${item.name}`;
                 const q = new URLSearchParams({
                   groupId,
@@ -17858,7 +17938,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (item.type === 'entry-ticket') {
                     const gid = lessonModalData.groupId ? encodeURIComponent(lessonModalData.groupId) : '';
                     const qs = new URLSearchParams();
-                    qs.set('grade', String(item.grade || 7));
+                    qs.set('grade', String(item.grade ?? 7));
                     qs.set('autostart', '1');
                     qs.set('r', String(Date.now()));
                     if (lessonModalData.groupId) qs.set('groupId', lessonModalData.groupId);
@@ -18126,17 +18206,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 };
                 const isABByName = (name: string) => /^AB_|Sicherheitsziele/i.test((name || '').replace(/\.[^.]+$/, ''));
                 const folienFiles = allFiles.filter((f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') && !isABByName(f.name));
-                /** Ohne reine Bilddateien: die erscheinen in der Dokumentenliste (außer AB_* / Sicherheitsziele). */
+                /** Materialien für den gelben Arbeitsauftrag-Block – nicht Input-Dokumente (PDF/Word/…) noch Bilder. */
                 const abFiles = allFiles.filter((f: any) => {
                   const name = f.name || '';
                   if (isABByName(name)) return true;
-                  if (/\.(pdf|pptx?|odp)$/i.test(name)) return false;
+                  if (LESSON_FOLDER_INPUT_DOCS_RE.test(name)) return false;
                   if (LESSON_FOLDER_IMAGE_EXT_RE.test(name)) return false;
                   return true;
                 });
-                /** PDF/PPTX/ODP und Bilder im Stundenordner (inkl. Unterordner). */
+                /** Unterrichtsmaterialien im Stundenbaum: Präsentationen, Dokumente, Bilder (inkl. Unterordner wie 01a/01b). */
                 const lessonFolderPdfFiles = allFiles.filter(
-                  (f: any) => /\.(pdf|pptx?|odp)$/i.test(f.name || '') || LESSON_FOLDER_IMAGE_EXT_RE.test(f.name || '')
+                  (f: any) => LESSON_FOLDER_INPUT_DOCS_RE.test(f.name || '') || LESSON_FOLDER_IMAGE_EXT_RE.test(f.name || '')
                 );
                 const planHasArbeitsauftrag = lessonPlan.some((i) => i.type === 'arbeitsauftrag');
                 const planHasInput = lessonPlan.some((i) => i.type === 'input');
@@ -18239,8 +18319,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         const e = ext.toLowerCase();
                         if (e === 'pdf') return 0;
                         if (e === 'ppt' || e === 'pptx' || e === 'odp') return 1;
-                        if (isImageExt(e)) return 2;
-                        return 3;
+                        if (e === 'doc' || e === 'docx' || e === 'odt' || e === 'rtf') return 2;
+                        if (isImageExt(e)) return 3;
+                        return 4;
                       };
                       return rank(a.ext) - rank(b.ext) || a.ext.localeCompare(b.ext);
                     });
@@ -18248,7 +18329,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     if (runModeMinimal) return null;
                     return (
                       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.75 }}>
-                        Keine PDF-, Präsentations- oder Bilddateien im Ordner dieser Stunde.
+                        Keine Materialdateien (PDF, Präsentation, Word, …) oder Bilder im Ordner dieser Stunde.
                       </Typography>
                     );
                   }
@@ -18297,7 +18378,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               }}
                             >
                               <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                                <FolienVersionSelect
+                                <LessonFolderVersionSelect
                                   versions={sortedVersions}
                                   iconBtnSx={folienIconBtnSx}
                                   onOpenFile={handleFileClick}
@@ -18367,7 +18448,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     }}
                   >
                     {showTextPhasen && (
-                    <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', px: 0.75, pt: 0.65, pb: 0.65, pr: isEditing('voraussetzungen') ? 0.75 : 3.5, borderBottom: '1px solid #90caf9' }}>
+                    <Box sx={{ position: 'relative', bgcolor: '#e3f2fd', pl: 'max(8px, 1%)', pr: isEditing('voraussetzungen') ? 0.75 : 3.5, pt: 0.65, pb: 0.65, borderBottom: '1px solid #90caf9' }}>
                       {!isEditing('voraussetzungen') && (
                         <Tooltip title="Text bearbeiten">
                           <IconButton size="small" onClick={() => startEdit('voraussetzungen')} sx={{ position: 'absolute', top: 3, right: 3, p: 0.2, minWidth: 26, width: 26, height: 26, color: '#1565c0', '&:hover': { bgcolor: 'rgba(21, 101, 192, 0.08)' } }}>
@@ -18412,7 +18493,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     )}
 
                     {showTextPhasen && (
-                    <Box sx={{ position: 'relative', bgcolor: '#fffde7', px: 0.75, pt: 0.65, pb: 0.65, pr: isEditing('materialliste') ? 0.75 : 3.5, borderBottom: '1px solid #ffd54f' }}>
+                    <Box sx={{ position: 'relative', bgcolor: '#fffde7', pl: 'max(8px, 1%)', pr: isEditing('materialliste') ? 0.75 : 3.5, pt: 0.65, pb: 0.65, borderBottom: '1px solid #ffd54f' }}>
                       {!isEditing('materialliste') && (
                         <Tooltip title="Text bearbeiten">
                           <IconButton size="small" onClick={() => startEdit('materialliste')} sx={{ position: 'absolute', top: 3, right: 3, p: 0.2, minWidth: 26, width: 26, height: 26, color: '#f9a825', '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' } }}>
@@ -18459,7 +18540,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     )}
 
                     {showTextPhasen && (
-                    <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', px: 0.75, pt: 0.65, pb: 0.65, pr: isEditing('anweisungen') ? 0.75 : 3.5 }}>
+                    <Box sx={{ position: 'relative', bgcolor: '#f1f8e9', pl: 'max(8px, 1%)', pr: isEditing('anweisungen') ? 0.75 : 3.5, pt: 0.65, pb: 0.65 }}>
                       {!isEditing('anweisungen') && (
                         <Tooltip title="Text bearbeiten">
                           <IconButton size="small" onClick={() => startEdit('anweisungen')} sx={{ position: 'absolute', top: 3, right: 3, p: 0.2, minWidth: 26, width: 26, height: 26, color: '#2e7d32', '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.08)' } }}>
@@ -18507,7 +18588,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         sx={{
                           position: 'relative',
                           bgcolor: showTextPhasen ? '#f5f5f5' : 'transparent',
-                          px: showTextPhasen ? 0.75 : 0.5,
+                          pl: showTextPhasen ? 'max(8px, 1%)' : 0.5,
+                          pr: showTextPhasen ? 0.75 : 0.5,
                           pt: showTextPhasen ? 0.65 : 0.5,
                           pb: showTextPhasen ? 0.65 : 0.5,
                           borderTop: showTextPhasen ? '1px solid #bdbdbd' : 'none'
@@ -18626,23 +18708,31 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 }}
                               />
                               {optionId === 'entry-ticket' && isSelected && (
-                                <TextField
-                                  size="small"
-                                  type="number"
-                                  placeholder="Kl."
-                                  value={newPlanGrade}
-                                  onChange={(e) => setNewPlanGrade(Math.max(5, Math.min(13, Number(e.target.value) || 7)))}
-                                  inputProps={{ min: 5, max: 13 }}
-                                  sx={{
-                                    width: 56,
-                                    '& .MuiInputBase-input': {
-                                      fontSize: '0.68rem',
-                                      py: 0.32,
-                                      px: 0.55,
-                                      textAlign: 'center'
+                                <FormControl size="small" sx={{ minWidth: 128, maxWidth: 200 }}>
+                                  <Select
+                                    value={String(newPlanGrade)}
+                                    onChange={(e) =>
+                                      setNewPlanGrade(parseEntryTicketPlanBand(e.target.value as string))
                                     }
-                                  }}
-                                />
+                                    displayEmpty
+                                    sx={{
+                                      fontSize: '0.68rem',
+                                      '& .MuiSelect-select': { py: 0.45, px: 0.7 },
+                                    }}
+                                    title="Fragenset / Klassenstufe für dieses Entry Ticket"
+                                    MenuProps={{
+                                      PaperProps: {
+                                        style: { maxHeight: 320 },
+                                      },
+                                    }}
+                                  >
+                                    {ENTRY_TICKET_PLAN_GRADE_OPTIONS.map((opt) => (
+                                      <MenuItem key={opt.value} value={opt.value} sx={{ fontSize: '0.68rem' }}>
+                                        {opt.label}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
                               )}
                               {optionId === 'exit-ticket' && isSelected && (
                                 <FormControl size="small" sx={{ minWidth: 132 }}>
@@ -18744,6 +18834,30 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               },
                             }}
                           >
+                            {/* Zeilennummer links; Badge + Folgeinhalt rechts – damit z. B. Input-Phasen bündig mit dem Typ-Badge */}
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'flex-start',
+                                gap: 1,
+                                width: '100%',
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: '#455a64',
+                                  fontWeight: 700,
+                                  minWidth: 22,
+                                  flexShrink: 0,
+                                  pt: 0.2,
+                                  lineHeight: 1.5,
+                                }}
+                              >
+                                {index + 1}.
+                              </Typography>
+                              <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.35 }}>
                             <Box
                               onClick={() => openPlanItem(item)}
                               sx={{
@@ -18752,12 +18866,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 gap: 1,
                                 cursor: 'pointer',
                                 flex: 1,
-                                minWidth: 0
+                                minWidth: 0,
+                                width: '100%',
                               }}
                             >
-                              <Typography variant="caption" sx={{ color: '#455a64', fontWeight: 700, minWidth: 22 }}>
-                                {index + 1}.
-                              </Typography>
                               {(() => {
                                 const style = getPlanTypeStyle(item.type);
                                 return (
@@ -18785,7 +18897,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     }}
                                   >
                                     {item.label}
-                                    {item.type === 'entry-ticket' && ` (Klasse ${item.grade || 7})`}
+                                    {item.type === 'entry-ticket' &&
+                                      ` (${formatEntryTicketPlanBandLabel(
+                                        parseEntryTicketPlanBand(item.grade),
+                                      )})`}
                                     {item.type === 'exit-ticket' && ` (${item.exitType || 'exam-question'})`}
                                     {item.type === 'arbeitsauftrag' && item.linkedMaterialName
                                       ? ` · ${item.linkedMaterialName}`
@@ -18852,7 +18967,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               <FormControl
                                 size="small"
                                 fullWidth
-                                sx={{ maxWidth: 420, ml: 0.5, mt: 0.25 }}
+                                sx={{ maxWidth: 420, mt: 0.25 }}
                                 onClick={(e) => e.stopPropagation()}
                                 onMouseDown={(e) => e.stopPropagation()}
                               >
@@ -18901,8 +19016,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       display: 'flex',
                                       flexDirection: 'column',
                                       gap: 0.65,
-                                      /* Bündig mit gelbem Input-Chip: 1. Spalte (min. 22px) + gap:1 */
-                                      pl: '30px',
+                                      pl: 0,
                                       boxSizing: 'border-box',
                                     }}
                                   >
@@ -18920,6 +19034,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   </Box>
                                 );
                               })()}
+                            </Box>
+                            </Box>
                           </Box>
                         ))}
                       </Box>

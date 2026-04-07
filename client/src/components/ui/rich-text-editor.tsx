@@ -1,11 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  Box, 
-  IconButton, 
-  Tooltip, 
-  Popover, 
-  MenuItem
-} from '@mui/material';
+import { Box, IconButton, Tooltip, Popover, MenuItem } from '@mui/material';
 import {
   FormatBold,
   FormatItalic,
@@ -15,7 +9,8 @@ import {
   FormatAlignRight,
   FormatListBulleted,
   FormatListNumbered,
-  Image
+  FormatIndentDecrease,
+  Image,
 } from '@mui/icons-material';
 
 interface RichTextEditorProps {
@@ -69,13 +64,37 @@ const appColors = {
   border: '#E0E0E0',
 };
 
+/**
+ * Entfernt text-align / align aus eingefügtem oder gespeichertem HTML (Word, Google Docs, Browser),
+ * damit der Text wirklich links startet – sonst schlagen Inline-Styles das Editor-CSS.
+ */
+function sanitizeEditorHtmlForLeftAlign(html: string): string {
+  if (!html || typeof html !== 'string') return html;
+  let s = html.replace(/\salign\s*=\s*["']?(?:center|right|justify)["']?/gi, '');
+  s = s.replace(/style\s*=\s*["']([^"']*)["']/gi, (_match, styles: string) => {
+    const cleaned = styles
+      .replace(/text-align\s*:\s*[^;]+;?/gi, '')
+      /* Google Docs / Browser: schiebt Blöcke nach rechts */
+      .replace(/margin-left\s*:\s*[^;]+;?/gi, '')
+      .replace(/padding-left\s*:\s*[^;]+;?/gi, '')
+      .replace(/text-indent\s*:\s*[^;]+;?/gi, '')
+      .replace(/;\s*;/g, ';')
+      .trim()
+      .replace(/^;+|;+$/g, '');
+    if (!cleaned) return '';
+    return `style="${cleaned}"`;
+  });
+  s = s.replace(/\sstyle\s*=\s*["']\s*["']/gi, '');
+  return s;
+}
+
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
   placeholder,
   rows = 3,
   className,
-  compact = false
+  compact = false,
 }) => {
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
@@ -347,22 +366,23 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
 
     const currentContent = host.innerHTML;
+    const safeValue = sanitizeEditorHtmlForLeftAlign(value);
     const editorEmpty = !currentContent || currentContent.trim() === '' || currentContent === '<br>' || currentContent === '<br/>';
     const valueNonEmpty = value && value.trim() !== '';
     const valueChangedExternally = value !== lastReceivedValueRef.current;
     lastReceivedValueRef.current = value;
 
-    // Bereits identisch: nichts anfassen (vermeidet Selection-Reset in Edge-Fällen)
-    if (valueChangedExternally && currentContent === value) {
-      lastValueRef.current = value;
+    // Bereits identisch (nach Links-Sanitisierung): nichts anfassen
+    if (valueChangedExternally && currentContent === safeValue) {
+      lastValueRef.current = safeValue;
       return;
     }
 
     const shouldUpdate = valueChangedExternally || (editorEmpty && valueNonEmpty);
     if (shouldUpdate) {
       const cursorPosition = saveCursorPosition();
-      host.innerHTML = value;
-      lastValueRef.current = value;
+      host.innerHTML = safeValue;
+      lastValueRef.current = safeValue;
       requestAnimationFrame(() => {
         restoreCursorPosition(cursorPosition);
       });
@@ -538,6 +558,32 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       setAlignment(align);
     } catch (error) {
       console.warn('Error applying alignment:', error);
+    }
+  };
+
+  /** Gesamten Inhalt markieren: links ausrichten und Listen-/Block-Einzüge reduzieren. */
+  const normalizeWholeEditorToLeft = () => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(editorRef.current);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      document.execCommand('justifyLeft');
+      for (let i = 0; i < 28; i++) {
+        document.execCommand('outdent');
+      }
+      sel?.removeAllRanges();
+      setAlignment('left');
+      const cleaned = sanitizeEditorHtmlForLeftAlign(editorRef.current.innerHTML);
+      if (cleaned !== editorRef.current.innerHTML) {
+        editorRef.current.innerHTML = cleaned;
+      }
+      handleInput();
+    } catch (e) {
+      console.warn('normalizeWholeEditorToLeft:', e);
     }
   };
 
@@ -949,10 +995,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const text = e.clipboardData.getData('text/plain');
       // Wenn HTML vorhanden (z. B. aus unserem Editor inkl. Icons), sicher einfügen
       if (html && html.trim()) {
-        const sanitized = html
-          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-          .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-          .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
+        const sanitized = sanitizeEditorHtmlForLeftAlign(
+          html
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+            .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+        );
         if (sanitized.trim()) {
           document.execCommand('insertHTML', false, sanitized);
           handleInput();
@@ -970,10 +1018,14 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     <Box
       ref={rootRef}
       sx={{
+        width: '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
         border: `1px solid ${appColors.border}`,
         borderRadius: 2,
         backgroundColor: appColors.cardBg,
-        overflow: 'hidden',
+        /* Scroll statt hidden: kein Abschneiden am Rand; bei Bedarf horizontal scrollen */
+        overflow: 'auto',
         ...(className && { className }),
         '& img': {
           pointerEvents: 'auto !important',
@@ -1545,6 +1597,26 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <FormatAlignRight fontSize="small" />
           </IconButton>
         </Tooltip>
+
+        <Tooltip title="Gesamten Text nach links: Ausrichtung links und Einzüge (Listen/Blöcke) zurücknehmen">
+          <IconButton
+            size="small"
+            onClick={normalizeWholeEditorToLeft}
+            sx={{
+              width: compact ? 28 : 32,
+              height: compact ? 28 : 32,
+              backgroundColor: 'transparent',
+              color: appColors.textPrimary,
+              border: `1px solid ${appColors.border}`,
+              '&:hover': {
+                backgroundColor: `${appColors.primary}10`,
+                borderColor: appColors.primary,
+              },
+            }}
+          >
+            <FormatIndentDecrease fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
       
       {/* Editor */}
@@ -1556,7 +1628,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onFocus={handleFocus}
         onPaste={handlePaste}
         sx={{
-          p: compact ? 2 : 3,
+          width: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box',
+          /* Linker Abstand: 1 % der Editor-Breite, mind. 8px (Phasen-Boxen haben separat noch 1 % am Container) */
+          pl: 'max(8px, 1%)',
+          pr: compact ? 0.5 : 0.75,
+          pt: compact ? 0.5 : 0.75,
+          pb: compact ? 1.25 : 1.5,
+          ml: 0,
+          textIndent: 0,
+          textAlign: 'left !important',
+          direction: 'ltr',
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
           minHeight: `${Math.max(rows * 1.5, 4)}rem`,
           lineHeight: 1.5,
           color: appColors.textPrimary,
@@ -1565,6 +1650,39 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           userSelect: 'text',
           WebkitUserSelect: 'text',
           cursor: 'text',
+          '& p': {
+            marginLeft: '0 !important',
+            paddingLeft: '0 !important',
+            textIndent: '0 !important',
+            textAlign: 'left !important',
+            marginTop: '0.35em',
+            marginBottom: '0.35em',
+          },
+          '& p:first-of-type': { marginTop: 0 },
+          '& p:last-of-type': { marginBottom: 0 },
+          '& h1, & h2, & h3, & h4': {
+            marginLeft: 0,
+            paddingLeft: 0,
+            textAlign: 'left !important',
+          },
+          '& ul, & ol': { marginLeft: 0, paddingLeft: '1.25em', textAlign: 'left !important' },
+          '& li': { textAlign: 'left !important' },
+          '& a': { wordBreak: 'break-word', overflowWrap: 'anywhere', maxWidth: '100%' },
+          /* Eingefügte Blöcke (Google Docs o. Ä.) mit margin-left im style-Attribut */
+          '& [style*="margin-left"]': { marginLeft: '0 !important' },
+          /* Enter erzeugt oft neue <div>: kein zusätzlicher Einzug (3 % bleiben nur am äußeren Editor) */
+          '& div': {
+            marginLeft: '0 !important',
+            marginRight: '0 !important',
+            paddingLeft: '0 !important',
+            textIndent: '0 !important',
+            textAlign: 'left !important',
+          },
+          '& blockquote': {
+            marginLeft: '0 !important',
+            paddingLeft: '0.75em !important',
+            textAlign: 'left !important',
+          },
           '&:focus': {
             boxShadow: `0 0 0 2px ${appColors.primary}40`
           },
