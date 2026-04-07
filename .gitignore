@@ -62,5 +62,5 @@ db-checkpoint-*.db
 *.pid
 server/uploads/
 
-# Einzeldatei > 100 MB (GitHub-Hardlimit); ZIP bleibt lokal
+# Zusammengefügte ZIP > 100 MB – Teile liegen als J-M-Reihen.zip.aa / .ab im Repo; siehe scripts/assemble-j-m-reihen-zip.sh
 /J-M-Reihen.zip
