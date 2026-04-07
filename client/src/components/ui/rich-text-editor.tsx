@@ -124,6 +124,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const showFontSizePickerRef = useRef(false);
   /** Toolbar + Editor: Fokus-Tracking ohne falsches „Blur“ nur wegen Toolbar-Klick */
   const rootRef = useRef<HTMLDivElement | null>(null);
+  /** Pro Wrapper nur einmal Hover/Contextmenu – Griff wird bei Bedarf erneuert */
+  const imageResizeUiAttached = useRef(new WeakSet<HTMLElement>());
 
   // Debounced onChange to prevent excessive updates
   const debouncedOnChange = useCallback((newValue: string) => {
@@ -413,8 +415,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFontSizePicker]);
 
-  // Add image resize handlers after content updates - moved after makeImageResizable definition
-
   const syncFormatStateFromDocument = useCallback(() => {
     try {
       const el = document.activeElement;
@@ -689,75 +689,73 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handleImageUpload = async (file: File) => {
     if (!file) return;
-    
+
     try {
       setIsUploading(true);
-      
+
       const formData = new FormData();
       formData.append('image', file);
-      
+
       const response = await fetch('/api/materials/upload-image', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Fehler beim Hochladen des Bildes');
       }
-      
+
       const result = await response.json();
-      
-      // Bild in den Editor einfügen
+
       if (editorRef.current) {
+        const wrap = document.createElement('span');
+        wrap.className = 'editor-image-wrap';
+        wrap.setAttribute('contenteditable', 'false');
+        wrap.style.cssText =
+          'position:relative;display:inline-block;max-width:100%;vertical-align:middle;line-height:0;margin:8px 0;';
+
         const imgElement = document.createElement('img');
+        imgElement.setAttribute('draggable', 'false');
         imgElement.src = result.imagePath;
         imgElement.alt = result.fileName;
         imgElement.style.maxWidth = '100%';
         imgElement.style.height = 'auto';
-        imgElement.style.margin = '8px 0';
-        imgElement.style.cursor = 'nw-resize';
-        imgElement.style.position = 'relative';
-        
-        // Store original dimensions
+        imgElement.style.display = 'block';
+        imgElement.style.cursor = 'default';
+
         imgElement.setAttribute('data-original-width', '0');
         imgElement.setAttribute('data-original-height', '0');
-        
-        // Wait for image to load to get natural dimensions
+
+        wrap.appendChild(imgElement);
+
         imgElement.onload = () => {
           imgElement.setAttribute('data-original-width', imgElement.naturalWidth.toString());
           imgElement.setAttribute('data-original-height', imgElement.naturalHeight.toString());
-          // Mark as resizable and add resize functionality
-          imgElement.setAttribute('data-resizable', 'true');
           makeImageResizable(imgElement);
         };
-        
-        // Bild an der aktuellen Cursor-Position einfügen
+
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
           range.deleteContents();
-          range.insertNode(imgElement);
-          range.setStartAfter(imgElement);
-          range.setEndAfter(imgElement);
+          range.insertNode(wrap);
+          range.setStartAfter(wrap);
+          range.setEndAfter(wrap);
           selection.removeAllRanges();
           selection.addRange(range);
         } else {
-          // Wenn keine Auswahl, am Ende einfügen
-          editorRef.current.appendChild(imgElement);
+          editorRef.current.appendChild(wrap);
         }
-        
-        // Cursor nach dem Bild setzen
+
         const newRange = document.createRange();
-        newRange.setStartAfter(imgElement);
+        newRange.setStartAfter(wrap);
         newRange.collapse(true);
         selection?.removeAllRanges();
         selection?.addRange(newRange);
-        
-        // onChange auslösen
+
         handleInput();
       }
-      
     } catch (error) {
       console.error('Error uploading image:', error);
       alert(error instanceof Error ? error.message : 'Fehler beim Hochladen des Bildes');
@@ -790,168 +788,141 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (newValue !== lastValueRef.current) debouncedOnChange(newValue);
   }, [debouncedOnChange]);
 
-  const makeImageResizable = useCallback((img: HTMLImageElement) => {
-    console.log('🎯 DEBUG: makeImageResizable aufgerufen für:', img.src);
-    
-    // Remove any existing resize functionality
-    const existingHandle = img.querySelector('.resize-handle');
-    if (existingHandle) {
-      console.log('🗑️ Entferne existierenden Handle');
-      existingHandle.remove();
+  /** <img> darf keine Kindelemente haben – Griff sitzt im Wrapper-Span. */
+  const ensureEditorImageWrap = (img: HTMLImageElement): HTMLSpanElement => {
+    const p = img.parentElement;
+    if (p?.classList.contains('editor-image-wrap')) {
+      return p as HTMLSpanElement;
     }
-    
-    // Add visual styling
-    img.style.position = 'relative';
-    img.style.display = 'inline-block';
+    const wrap = document.createElement('span');
+    wrap.className = 'editor-image-wrap';
+    wrap.setAttribute('contenteditable', 'false');
+    wrap.style.cssText =
+      'position:relative;display:inline-block;max-width:100%;vertical-align:middle;line-height:0;margin:8px 0;';
+    img.parentNode?.insertBefore(wrap, img);
+    wrap.appendChild(img);
+    img.style.margin = '0';
+    img.style.display = 'block';
     img.style.maxWidth = '100%';
     img.style.height = 'auto';
-    img.style.cursor = 'default';
-    
-    // Create resize handle (small square in bottom-right corner)
-    const handle = document.createElement('div');
-    handle.className = 'resize-handle';
-    handle.style.cssText = `
+    return wrap;
+  };
+
+  const makeImageResizable = useCallback(
+    (img: HTMLImageElement) => {
+      if (img.hasAttribute('data-editor-icon')) return;
+
+      const wrap = ensureEditorImageWrap(img);
+      wrap.querySelector('.resize-handle')?.remove();
+
+      const handle = document.createElement('div');
+      handle.className = 'resize-handle';
+      handle.setAttribute('contenteditable', 'false');
+      handle.title = 'Ziehen zum Größenändern';
+      handle.style.cssText = `
       position: absolute;
-      bottom: -8px;
-      right: -8px;
-      width: 16px;
-      height: 16px;
+      bottom: 2px;
+      right: 2px;
+      width: 18px;
+      height: 18px;
       background: ${appColors.primary};
       border: 2px solid white;
       border-radius: 4px;
       cursor: se-resize;
       z-index: 1000;
       opacity: 0;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.15s ease;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      pointer-events: auto;
     `;
-    
-    console.log('🔧 Handle erstellt:', handle);
-    
-    // Show handle on hover
-    img.addEventListener('mouseenter', () => {
-      console.log('🖱️ Hover über Bild, zeige Handle');
-      handle.style.opacity = '1';
-    });
-    
-    img.addEventListener('mouseleave', () => {
-      console.log('🖱️ Hover verlassen, verstecke Handle');
-      handle.style.opacity = '0';
-    });
-    
-    // Right click to delete
-    img.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (window.confirm('Möchten Sie dieses Bild löschen?')) {
-        img.remove();
+
+      let isResizing = false;
+      let startX = 0;
+      let startWidth = 0;
+      let aspectRatio = 1;
+
+      const showHandle = () => {
+        const h = wrap.querySelector('.resize-handle') as HTMLElement | null;
+        if (h) h.style.opacity = '1';
+      };
+      const hideHandle = () => {
+        if (isResizing) return;
+        const h = wrap.querySelector('.resize-handle') as HTMLElement | null;
+        if (h) h.style.opacity = '0';
+      };
+
+      const startResize = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isResizing = true;
+        startX = e.clientX;
+        const ow = img.offsetWidth;
+        const oh = img.offsetHeight;
+        const w = ow || img.naturalWidth || 200;
+        const h = oh || img.naturalHeight || 1;
+        startWidth = ow || w;
+        aspectRatio = w / h;
+        document.body.style.cursor = 'se-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', doResize);
+        document.addEventListener('mouseup', endResize);
+      };
+
+      const doResize = (e: MouseEvent) => {
+        if (!isResizing) return;
+        const editorW = editorRef.current?.clientWidth ?? 800;
+        const deltaX = e.clientX - startX;
+        const minW = 40;
+        const maxW = Math.max(minW, editorW - 4);
+        const newWidth = Math.max(minW, Math.min(maxW, startWidth + deltaX));
+        const newHeight = newWidth / aspectRatio;
+        img.style.width = `${newWidth}px`;
+        img.style.height = `${newHeight}px`;
+        img.style.maxWidth = 'none';
+      };
+
+      const endResize = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        hideHandle();
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', doResize);
+        document.removeEventListener('mouseup', endResize);
         handleInput();
+      };
+
+      if (!imageResizeUiAttached.current.has(wrap)) {
+        wrap.addEventListener('mouseenter', showHandle);
+        wrap.addEventListener('mouseleave', hideHandle);
+        img.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (window.confirm('Dieses Bild löschen?')) {
+            wrap.remove();
+            imageResizeUiAttached.current.delete(wrap);
+            handleInput();
+          }
+        });
+        imageResizeUiAttached.current.add(wrap);
       }
-    });
-    
-    // Resize functionality
-    let isResizing = false;
-    let startX = 0;
-    let startY = 0;
-    let startWidth = 0;
-    let startHeight = 0;
-    
-    const startResize = (e: MouseEvent) => {
-      console.log('🎯 Starte Resize');
-      e.preventDefault();
-      e.stopPropagation();
-      
-      isResizing = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      startWidth = img.offsetWidth;
-      startHeight = img.offsetHeight;
-      
-      // Change cursor
-      document.body.style.cursor = 'se-resize';
-      document.body.style.userSelect = 'none';
-      
-      // Add event listeners
-      document.addEventListener('mousemove', doResize);
-      document.addEventListener('mouseup', endResize);
-    };
-    
-    const doResize = (e: MouseEvent) => {
-      if (!isResizing) return;
-      
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-      
-      // Calculate new dimensions (maintain aspect ratio)
-      const aspectRatio = startWidth / startHeight;
-      const newWidth = Math.max(50, Math.min(800, startWidth + deltaX));
-      const newHeight = newWidth / aspectRatio;
-      
-      // Apply new dimensions
-      img.style.width = `${newWidth}px`;
-      img.style.height = `${newHeight}px`;
-    };
-    
-    const endResize = () => {
-      if (!isResizing) return;
-      
-      console.log('🏁 Beende Resize');
-      isResizing = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      
-      // Remove event listeners
-      document.removeEventListener('mousemove', doResize);
-      document.removeEventListener('mouseup', endResize);
-      
-      // Trigger change
-      handleInput();
-    };
-    
-    // Add resize handle to image
-    img.appendChild(handle);
-    console.log('✅ Handle zum Bild hinzugefügt');
-    console.log('🔍 Handle DOM-Element:', handle);
-    console.log('🔍 Handle im Bild gefunden:', img.querySelector('.resize-handle'));
-    console.log('🔍 Handle Computed Styles:', window.getComputedStyle(handle));
-    
-    // Add resize event listener to handle
-    handle.addEventListener('mousedown', startResize);
-    console.log('✅ Event Listener für Handle hinzugefügt');
-    
-  }, [handleInput]);
 
-  // Add image resize handlers after content updates
+      wrap.appendChild(handle);
+      handle.addEventListener('mousedown', startResize);
+    },
+    [handleInput],
+  );
+
   useEffect(() => {
-    console.log('🔍 DEBUG: useEffect für Bildgrößenänderung aufgerufen');
-    if (editorRef.current) {
-      console.log('✅ Editor ref gefunden');
-      // Wait a bit for DOM to be fully updated
-      const timeoutId = setTimeout(() => {
-        const images = editorRef.current?.querySelectorAll('img');
-        console.log('🔍 Gefundene Bilder:', images?.length || 0);
-        if (images) {
-          images.forEach((img, index) => {
-            console.log(`🖼️ Bild ${index}:`, img.src, img.hasAttribute('data-resizable'));
-            // Only add resize functionality if not already added
-            if (!img.hasAttribute('data-resizable')) {
-              console.log(`🔧 Mache Bild ${index} resizable`);
-              img.setAttribute('data-resizable', 'true');
-              makeImageResizable(img);
-            }
-          });
-        }
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
-    } else {
-      console.log('❌ Kein Editor ref gefunden');
-    }
+    if (!editorRef.current) return;
+    const timeoutId = window.setTimeout(() => {
+      const images = editorRef.current?.querySelectorAll('img:not([data-editor-icon])');
+      images?.forEach((node) => {
+        makeImageResizable(node as HTMLImageElement);
+      });
+    }, 100);
+    return () => clearTimeout(timeoutId);
   }, [value, makeImageResizable]);
-
-  // Simple image resize function - removed complex corner handling
-
-  // OLD RESIZE FUNCTION REMOVED - Using inline approach now
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -988,9 +959,49 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
     if (!editorRef.current) return;
     try {
+      const cd = e.clipboardData;
+      if (cd) {
+        if (cd.files && cd.files.length > 0) {
+          const f = cd.files[0];
+          if (f.type.startsWith('image/')) {
+            e.preventDefault();
+            editorRef.current.focus();
+            void handleImageUpload(f);
+            return;
+          }
+        }
+        if (cd.items) {
+          for (let i = 0; i < cd.items.length; i++) {
+            const item = cd.items[i];
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+              const blob = item.getAsFile();
+              if (blob) {
+                e.preventDefault();
+                editorRef.current.focus();
+                const ext =
+                  blob.type === 'image/png'
+                    ? 'png'
+                    : blob.type === 'image/jpeg' || blob.type === 'image/jpg'
+                      ? 'jpg'
+                      : blob.type === 'image/gif'
+                        ? 'gif'
+                        : blob.type === 'image/webp'
+                          ? 'webp'
+                          : 'png';
+                const file = blob.name
+                  ? blob
+                  : new File([blob], `eingefuegt-${Date.now()}.${ext}`, { type: blob.type || 'image/png' });
+                void handleImageUpload(file);
+                return;
+              }
+            }
+          }
+        }
+      }
+
+      e.preventDefault();
       const html = e.clipboardData.getData('text/html');
       const text = e.clipboardData.getData('text/plain');
       // Wenn HTML vorhanden (z. B. aus unserem Editor inkl. Icons), sicher einfügen
@@ -1389,7 +1400,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </Tooltip>
         
         {/* Image Upload */}
-        <Tooltip title="Bild einfügen">
+        <Tooltip title="Bild einfügen (oder aus Zwischenablage). Größe: grünen Punkt unten rechts ziehen. Rechtsklick: löschen.">
           <IconButton
             size="small"
             onClick={triggerImageUpload}
