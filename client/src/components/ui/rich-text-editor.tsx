@@ -88,6 +88,198 @@ function sanitizeEditorHtmlForLeftAlign(html: string): string {
   return s;
 }
 
+/** Erkennt http(s) und www.… in Fließtext (für Auto-Links). */
+const URL_IN_TEXT =
+  /\b(https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+|www\.[\w\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
+
+function escapeHtmlText(s: string): string {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function tokenToSafeHref(raw: string): string | null {
+  const trimmed = raw.trim();
+  const t = trimmed.replace(/[.,;:!?)}\]>]+$/g, '');
+  if (!t) return null;
+  let href = t;
+  if (/^www\./i.test(href)) href = 'https://' + href;
+  if (!/^https?:\/\//i.test(href)) return null;
+  try {
+    const u = new URL(href);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.href;
+  } catch {
+    return null;
+  }
+}
+
+function linkifyPlainTextToHtml(plain: string): string {
+  const re = new RegExp(URL_IN_TEXT.source, 'gi');
+  let out = '';
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(plain)) !== null) {
+    out += escapeHtmlText(plain.slice(last, m.index));
+    const raw = m[0];
+    const href = tokenToSafeHref(raw);
+    if (!href) {
+      out += escapeHtmlText(raw);
+    } else {
+      out += `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${escapeHtmlText(raw)}</a>`;
+    }
+    last = m.index + raw.length;
+  }
+  out += escapeHtmlText(plain.slice(last));
+  return out;
+}
+
+/** Laufenden Textknoten (nicht in &lt;a&gt;) in Fragment mit Verknüpfungen aufteilen. */
+function linkifySingleTextNode(textNode: Text): void {
+  const text = textNode.textContent || '';
+  const re = new RegExp(URL_IN_TEXT.source, 'gi');
+  const hits: { index: number; raw: string; href: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const href = tokenToSafeHref(m[0]);
+    if (href) hits.push({ index: m.index, raw: m[0], href });
+  }
+  if (hits.length === 0) return;
+  const frag = document.createDocumentFragment();
+  let pos = 0;
+  for (const hit of hits) {
+    if (hit.index > pos) {
+      frag.appendChild(document.createTextNode(text.slice(pos, hit.index)));
+    }
+    const a = document.createElement('a');
+    a.href = hit.href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = hit.raw;
+    frag.appendChild(a);
+    pos = hit.index + hit.raw.length;
+  }
+  if (pos < text.length) {
+    frag.appendChild(document.createTextNode(text.slice(pos)));
+  }
+  textNode.parentNode?.replaceChild(frag, textNode);
+}
+
+function linkifyTextNodesUnder(root: HTMLElement): void {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const p = (node as Text).parentElement;
+      if (!p || p.closest('a')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const list: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    list.push(n as Text);
+  }
+  for (const textNode of list) {
+    linkifySingleTextNode(textNode);
+  }
+}
+
+/** Nach Leerzeichen: vorheriges „Wort“ prüfen und ggf. verlinken. */
+function tryLinkifyWordBeforeCaret(host: HTMLElement | null, notify: () => void): void {
+  if (!host) return;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return;
+  if (!host.contains(sel.anchorNode)) return;
+  const range = sel.getRangeAt(0);
+  if (range.startContainer.nodeType !== Node.TEXT_NODE) return;
+  const textNode = range.startContainer as Text;
+  const offset = range.startOffset;
+  const text = textNode.textContent || '';
+  if (offset < 1) return;
+  const chBefore = text[offset - 1];
+  if (chBefore !== ' ' && chBefore !== '\u00a0') return;
+  let end = offset - 1;
+  while (end > 0 && /\s/.test(text[end - 1])) {
+    end--;
+  }
+  if (end < 1) return;
+  let start = end;
+  while (start > 0 && !/\s/.test(text[start - 1])) {
+    start--;
+  }
+  const token = text.slice(start, end);
+  const href = tokenToSafeHref(token);
+  if (!href) return;
+  if (textNode.parentElement?.closest('a')) return;
+  const tr = document.createRange();
+  tr.setStart(textNode, start);
+  tr.setEnd(textNode, end);
+  sel.removeAllRanges();
+  sel.addRange(tr);
+  const label = escapeHtmlText(token);
+  const safeHref = escapeAttr(href);
+  document.execCommand(
+    'insertHTML',
+    false,
+    `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${label}</a>`
+  );
+  notify();
+}
+
+/** "-->" automatisch in Pfeil (→), wie Toolbar-Symbol; gilt für Tippen und Einfügen. */
+function replaceDashGtWithArrowInHost(host: HTMLElement): boolean {
+  const sel = window.getSelection();
+  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const p = (node as Text).parentElement;
+      if (!p || p.closest('[contenteditable="false"]')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    nodes.push(n as Text);
+  }
+  let changed = false;
+  for (const tn of nodes) {
+    let guard = 0;
+    while (guard++ < 64 && (tn.textContent || '').includes('-->')) {
+      const text = tn.textContent || '';
+      const idx = text.indexOf('-->');
+      if (idx < 0) break;
+      if (sel) {
+        const r = document.createRange();
+        r.setStart(tn, idx);
+        r.setEnd(tn, idx + 3);
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+      document.execCommand('insertText', false, '→');
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/** Caret in ul/ol/li? queryCommandState ist in contenteditable oft unzuverlässig – ohne das bricht Enter in Listen. */
+function isCaretInsideListStructure(editorRoot: HTMLElement | null): boolean {
+  if (!editorRoot) return false;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  let n: Node | null = sel.getRangeAt(0).startContainer;
+  if (n.nodeType === Node.TEXT_NODE) n = n.parentNode;
+  while (n && n !== editorRoot) {
+    const name = n.nodeName;
+    if (name === 'UL' || name === 'OL' || name === 'LI') return true;
+    n = n.parentNode;
+  }
+  return false;
+}
+
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
@@ -781,6 +973,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handleInput = useCallback(() => {
     if (!editorRef.current) return;
+    replaceDashGtWithArrowInHost(editorRef.current);
     const newValue = editorRef.current.innerHTML;
     // Only trigger onChange if editor content actually changed.
     // Wichtig: Wir filtern nur gegen den letzten bekannten Editor-Wert,
@@ -926,19 +1119,35 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      const host = editorRef.current;
+      let commandReportsList = false;
       try {
-        const inList = editorRef.current && (document.queryCommandState('insertUnorderedList') || document.queryCommandState('insertOrderedList'));
+        if (host) {
+          commandReportsList =
+            document.queryCommandState('insertUnorderedList') ||
+            document.queryCommandState('insertOrderedList');
+        }
+      } catch {
+        commandReportsList = false;
+      }
+      const inList = isCaretInsideListStructure(host) || commandReportsList;
+      try {
         if (!inList) {
           e.preventDefault();
           document.execCommand('insertLineBreak', false, undefined);
           handleInput();
         }
       } catch (_) {
-        e.preventDefault();
-        document.execCommand('insertHTML', false, '<br>');
-        handleInput();
+        if (!isCaretInsideListStructure(host)) {
+          e.preventDefault();
+          document.execCommand('insertHTML', false, '<br>');
+          handleInput();
+        }
       }
       return;
+    }
+    if (e.key === ' ' && !e.nativeEvent.isComposing) {
+      queueMicrotask(() => tryLinkifyWordBeforeCaret(editorRef.current, handleInput));
     }
     if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -1013,12 +1222,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
         );
         if (sanitized.trim()) {
-          document.execCommand('insertHTML', false, sanitized);
+          const wrap = document.createElement('div');
+          wrap.innerHTML = sanitized;
+          linkifyTextNodesUnder(wrap);
+          document.execCommand('insertHTML', false, wrap.innerHTML);
           handleInput();
           return;
         }
       }
-      document.execCommand('insertText', false, text || '');
+      const linkHtml = linkifyPlainTextToHtml(text || '');
+      document.execCommand('insertHTML', false, linkHtml);
       handleInput();
     } catch (error) {
       console.warn('Error handling paste:', error);
@@ -1678,7 +1891,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           },
           '& ul, & ol': { marginLeft: 0, paddingLeft: '1.25em', textAlign: 'left !important' },
           '& li': { textAlign: 'left !important' },
-          '& a': { wordBreak: 'break-word', overflowWrap: 'anywhere', maxWidth: '100%' },
+          '& a': {
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+            maxWidth: '100%',
+            fontSize: 'inherit',
+            lineHeight: 'inherit',
+            fontWeight: 'inherit',
+            color: '#1565c0',
+            textDecoration: 'underline',
+            textUnderlineOffset: '2px',
+            cursor: 'pointer',
+          },
           /* Eingefügte Blöcke (Google Docs o. Ä.) mit margin-left im style-Attribut */
           '& [style*="margin-left"]': { marginLeft: '0 !important' },
           /* Enter erzeugt oft neue <div>: kein zusätzlicher Einzug (3 % bleiben nur am äußeren Editor) */

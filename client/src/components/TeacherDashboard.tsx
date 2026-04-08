@@ -13346,6 +13346,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       ref={dashboardRef}
       tabIndex={-1}
       onKeyDown={async (e) => { 
+        // Enter nicht global abfangen während Texteingabe (RichTextEditor, Felder) — sonst z. B. keine neuen Listenpunkte.
+        const t = e.target as Node | null;
+        const el = t instanceof HTMLElement ? t : null;
+        if (
+          el instanceof HTMLInputElement ||
+          el instanceof HTMLTextAreaElement ||
+          el instanceof HTMLSelectElement ||
+          (el && (el.isContentEditable || el.closest('[contenteditable="true"]')))
+        ) {
+          return;
+        }
         if (e.key === 'Enter' && !e.shiftKey) { 
           e.preventDefault(); 
           if (!participationGroupId) return; 
