@@ -71,6 +71,7 @@ import { RIDDLES, Riddle } from './riddles';
 import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 import { apiGetSafe } from '../lib/api';
+import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -3555,360 +3556,69 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     return false;
   };
 
-  // Vorschau-Funktion für Dateien (ohne H_ Check) - für Submission Upload Modal
-  const previewFile = async (item: any) => {
-    if (item.type !== 'file') return;
-    
-    const fileExtension = item.name.split('.').pop()?.toLowerCase();
-    
-    if (fileExtension === 'html' || fileExtension === 'htm') {
-      // Prüfe ob es eine korrigierbare Datei (KA_, HÜ_, HU_) ist und ob sie bereits abgegeben wurde
-      const isCorrectionFileType = isCorrectionFile(item.name);
-      if (isCorrectionFileType) {
-        // Prüfe in der Datenbank, ob bereits abgegeben
-        try {
-          const loginCode = localStorage.getItem('loginCode');
-          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html" oder "HU_geometrische-abbildungen.html"
-          
-          if (loginCode) {
-            const response = await fetch(`/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
-              headers: {
-                'Content-Type': 'application/json',
-                'x-login-code': loginCode
-              }
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              if (data.exists === true) {
-                const fileType = item.name.startsWith('KA_') ? 'Klassenarbeit' : 'Hausaufgabenüberprüfung';
-                alert(`⏳ Diese ${fileType} wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.`);
-                return;
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Fehler beim Prüfen der Abgabe:', error);
-          // Bei Fehler: Datei trotzdem öffnen, die echte Prüfung erfolgt in der HTML-Datei
+  /** KA_/HÜ_/HU_/QZ_-HTML: bereits abgegeben → Alert; true = nicht weiter öffnen. */
+  const checkStudentCorrectionHtmlBlocked = async (item: { type: string; name: string }) => {
+    if (item.type !== 'file') return false;
+    const ext = item.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'html' && ext !== 'htm') return false;
+    if (!isCorrectionFile(item.name)) return false;
+    try {
+      const loginCode = localStorage.getItem('loginCode');
+      if (!loginCode) return false;
+      const response = await fetch(
+        `/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(item.name)}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.exists === true) {
+          const fileType = item.name.startsWith('KA_') ? 'Klassenarbeit' : 'Hausaufgabenüberprüfung';
+          alert(
+            `⏳ Diese ${fileType} wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.`
+          );
+          return true;
         }
       }
-      
-      try {
-        const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          const blob = new Blob([htmlContent], { type: 'text/html' });
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der HTML-Datei:', error);
-        alert('HTML-Datei konnte nicht geöffnet werden.');
-      }
-    } else if (fileExtension === 'pdf') {
-      try {
-        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der PDF-Datei:', error);
-        alert('PDF-Datei konnte nicht geöffnet werden.');
-      }
-    } else if (fileExtension === 'docx') {
-      try {
-        const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der DOCX-Datei:', error);
-        alert('DOCX-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-      try {
-        const response = await fetch(`/api/file-system-paths/read-excel?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'excel');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der Excel-Datei:', error);
-        alert('Excel-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
-      // PowerPoint-Dateien direkt herunterladen
-      try {
-        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der PowerPoint-Datei:', error);
-        alert('PowerPoint-Datei konnte nicht heruntergeladen werden.');
-      }
-    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
-      try {
-        const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const imageData = await response.json();
-          showImagePreviewModal(item.name, imageData, item.path);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden des Bildes:', error);
-        alert('Bild-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
-      try {
-        const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const textContent = await response.text();
-          showTextPreviewModal(item.name, textContent, item.path);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der Textdatei:', error);
-        alert('Text-Vorschau konnte nicht geladen werden.');
-      }
-    } else {
-      try {
-        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-      } catch (error) {
-        console.error('Fehler beim Download:', error);
-        alert('Datei konnte nicht heruntergeladen werden.');
-      }
+    } catch (error) {
+      console.error('Fehler beim Prüfen der Abgabe:', error);
     }
+    return false;
   };
 
-  // Funktion zum Öffnen von Dateien - nutzt die bereits vorhandenen, schönen Vorschau-Methoden
+  // Vorschau / Öffnen wie in der Stundenansicht (Folien-Editor, Download, HTML-Tab)
+  const previewFile = async (item: any) => {
+    if (item.type !== 'file') return;
+    if (await checkStudentCorrectionHtmlBlocked(item)) return;
+    await openLessonFolderFile(item);
+  };
+
   const handleFileClick = async (item: any) => {
     if (item.type !== 'file') return;
-    
-    // Prüfe ob es eine H_ Datei (Hausaufgaben-Abgabe) ist
+
     if (item.name.startsWith('H_')) {
-      // Finde den Lehrer für diese Datei (aus den Lerngruppen)
       let teacherId = null;
-      
       for (const gruppe of lerngruppen) {
         if (gruppe.teacher?.id) {
           teacherId = gruppe.teacher.id;
           break;
         }
       }
-      
       if (teacherId) {
         setSelectedSubmissionFile({ ...item, teacherId });
         setShowSubmissionModal(true);
         return;
-      } else {
-        alert('Fehler: Kein Lehrer gefunden. Bitte melde dich ab und wieder an.');
-        return;
       }
+      alert('Fehler: Kein Lehrer gefunden. Bitte melde dich ab und wieder an.');
+      return;
     }
-    
-    const fileExtension = item.name.split('.').pop()?.toLowerCase();
-    
-    if (fileExtension === 'html' || fileExtension === 'htm') {
-      // Prüfe ob es eine korrigierbare Datei (KA_, HÜ_, HU_) ist und ob sie bereits abgegeben wurde
-      const isCorrectionFileType = isCorrectionFile(item.name);
-      if (isCorrectionFileType) {
-        // Prüfe in der Datenbank, ob bereits abgegeben
-        try {
-          const loginCode = localStorage.getItem('loginCode');
-          const kaFilePath = item.name; // z.B. "KA_prozent-zinsrechnung.html" oder "HU_geometrische-abbildungen.html"
-          
-          if (loginCode) {
-            const response = await fetch(`/api/ka-corrections/check-my-submission?kaFilePath=${encodeURIComponent(kaFilePath)}`, {
-              headers: {
-                'Content-Type': 'application/json',
-                'x-login-code': loginCode
-              }
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              if (data.exists === true) {
-                const fileType = item.name.startsWith('KA_') ? 'Klassenarbeit' : 'Hausaufgabenüberprüfung';
-                alert(`⏳ Diese ${fileType} wurde bereits abgegeben.\n\nBitte warte auf die Korrektur durch deine Lehrkraft.`);
-                return;
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Fehler beim Prüfen der Abgabe:', error);
-          // Bei Fehler: Datei trotzdem öffnen, die echte Prüfung erfolgt in der HTML-Datei
-        }
-      }
-      
-      // HTML-Dateien im neuen Tab öffnen (mit Fallback für Tablets)
-      try {
-        const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          const blob = new Blob([htmlContent], { type: 'text/html' });
-          const url = URL.createObjectURL(blob);
-          
-          // Versuche im neuen Tab zu öffnen
-          const newWindow = window.open(url, '_blank');
-          
-          // Prüfe ob window.open() erfolgreich war (nicht blockiert)
-          if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-            // Fallback: Zeige HTML in Modal (für Tablets, die Pop-ups blockieren)
-            showFilePreviewModal(item.name, htmlContent, item.path, 'html');
-            // URL sofort revoken, da wir sie nicht mehr brauchen
-            URL.revokeObjectURL(url);
-          } else {
-            // Erfolgreich geöffnet: URL nach längerer Zeit revoken (für Tablets)
-            setTimeout(() => URL.revokeObjectURL(url), 10000);
-          }
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der HTML-Datei:', error);
-        alert('HTML-Datei konnte nicht geöffnet werden.');
-      }
-    } else if (fileExtension === 'pdf') {
-      // PDF-Dateien mit der bestehenden Implementierung öffnen
-      try {
-        const response = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          // Erstelle Blob mit benutzerdefiniertem Namen
-          const file = new File([blob], item.name || 'document.pdf', { type: 'application/pdf' });
-          const url = URL.createObjectURL(file);
-          const newWindow = window.open(url, '_blank');
-          if (newWindow) {
-            // Cleanup nach 5 Sekunden
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-          }
-        } else {
-          throw new Error('PDF konnte nicht geladen werden');
-        }
-      } catch (error) {
-        console.error('Fehler beim Öffnen der PDF-Datei:', error);
-        alert('Fehler beim Öffnen der PDF-Datei. Bitte versuchen Sie es erneut.');
-      }
-    } else if (fileExtension === 'docx') {
-      // DOCX-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der DOCX-Datei:', error);
-        alert('DOCX-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-      // Excel-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-excel?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'excel');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der Excel-Datei:', error);
-        alert('Excel-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
-      // PowerPoint-Dateien direkt herunterladen
-      try {
-        const response = await fetch(`/api/file-system-paths/read-powerpoint?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der PowerPoint-Datei:', error);
-        alert('PowerPoint-Datei konnte nicht heruntergeladen werden.');
-      }
-    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
-      // Bild-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const imageData = await response.json();
-          showImagePreviewModal(item.name, imageData, item.path);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden des Bildes:', error);
-        alert('Bild-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'goodnotes' || fileExtension === 'gn') {
-      // GoodNotes-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-goodnotes?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'goodnotes');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der GoodNotes-Datei:', error);
-        alert('GoodNotes-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
-      // Text-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const textContent = await response.text();
-          showTextPreviewModal(item.name, textContent, item.path);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der Textdatei:', error);
-        alert('Text-Vorschau konnte nicht geladen werden.');
-      }
-    } else {
-      // Download über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-      } catch (error) {
-        console.error('Fehler beim Download:', error);
-        alert('Datei konnte nicht heruntergeladen werden.');
-      }
-    }
+
+    if (await checkStudentCorrectionHtmlBlocked(item)) return;
+    await openLessonFolderFile(item);
   };
 
   // Hilfsfunktion: Hole Materialien für eine Lesson

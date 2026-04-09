@@ -316,19 +316,28 @@ const SlideDeckEditorPage: React.FC = () => {
     /** Endung im echten Pfad hat Vorrang (verhindert pptx-API bei .pdf im Pfad; git-intern muss mit / laufen). */
     let isPptx = false;
     let isImage = false;
+    let isDocx = false;
     if (extFromPath === 'pdf') {
       isPptx = false;
       isImage = false;
+      isDocx = false;
+    } else if (extFromPath === 'docx') {
+      isPptx = false;
+      isImage = false;
+      isDocx = true;
     } else if (extFromPath === 'pptx' || extFromPath === 'ppt') {
       isPptx = true;
       isImage = false;
+      isDocx = false;
     } else if (extFromPath && IMAGE_EXTS.includes(extFromPath)) {
       isPptx = false;
       isImage = true;
+      isDocx = false;
     } else {
       const ext = extFallback;
       isPptx = source === 'pptx' || ext === 'pptx' || ext === 'ppt';
       isImage = source === 'image' || IMAGE_EXTS.includes(ext);
+      isDocx = source === 'docx' || ext === 'docx';
     }
 
     setFilePath(fp);
@@ -399,6 +408,84 @@ const SlideDeckEditorPage: React.FC = () => {
           setPdfDoc(doc);
           setNumPages(doc.numPages);
           setPageNum(1);
+        } else if (isDocx) {
+          setLoadPhase('server');
+          const res = await fetch(
+            `/api/file-system-paths/read-docx?filePath=${encodeURIComponent(fp)}&preview=true`
+          );
+          if (!res.ok) {
+            let msg = 'Word-Datei konnte nicht geladen werden';
+            try {
+              const j = await res.json();
+              msg = (j.message as string) || (j.error as string) || msg;
+            } catch {
+              /* ignore */
+            }
+            throw new Error(msg);
+          }
+          const htmlText = await res.text();
+          if (cancelled) return;
+          setLoadPhase('parse');
+          const iframe = document.createElement('iframe');
+          iframe.setAttribute('sandbox', 'allow-same-origin');
+          iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:960px;height:400px;border:none;visibility:hidden';
+          document.body.appendChild(iframe);
+          const idoc = iframe.contentDocument;
+          if (!idoc) {
+            document.body.removeChild(iframe);
+            throw new Error('Vorschau konnte nicht erstellt werden.');
+          }
+          idoc.open();
+          idoc.write(htmlText);
+          idoc.close();
+          await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+          const bodyEl = idoc.body;
+          if (!bodyEl || bodyEl.scrollHeight < 8) {
+            document.body.removeChild(iframe);
+            throw new Error('Word-Vorschau ist leer.');
+          }
+          const docH = Math.min(bodyEl.scrollHeight, 20000);
+          const docW = Math.min(bodyEl.scrollWidth + 32, 1400);
+          iframe.style.width = `${docW}px`;
+          iframe.style.height = `${docH}px`;
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
+          const maxCanvasPx = 12000;
+          const scale = Math.min(1, maxCanvasPx / Math.max(bodyEl.scrollHeight, bodyEl.scrollWidth, 1));
+          const html2canvas = (await import('html2canvas')).default;
+          let canvas: HTMLCanvasElement;
+          try {
+            canvas = await html2canvas(bodyEl, {
+              scale,
+              useCORS: true,
+              logging: false,
+              backgroundColor: '#ffffff',
+              windowWidth: bodyEl.scrollWidth,
+              windowHeight: bodyEl.scrollHeight,
+            });
+          } finally {
+            document.body.removeChild(iframe);
+          }
+          if (cancelled) return;
+          const blob: Blob | null = await new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+          if (!blob) throw new Error('Raster der Vorschau fehlgeschlagen.');
+          const blobUrl = URL.createObjectURL(blob);
+          const img = new Image();
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Vorschau konnte nicht angezeigt werden'));
+            img.src = blobUrl;
+          });
+          if (cancelled) {
+            URL.revokeObjectURL(blobUrl);
+            return;
+          }
+          if (imageBlobUrlRef.current) URL.revokeObjectURL(imageBlobUrlRef.current);
+          imageBlobUrlRef.current = blobUrl;
+          baseImageRef.current = img;
+          setPdfDoc(null);
+          setNumPages(1);
+          setPageNum(1);
+          setImageMode(true);
         } else {
           setLoadPhase('download');
           const res = await fetch(`/api/file-system-paths/read-pdf?filePath=${encodeURIComponent(fp)}`);

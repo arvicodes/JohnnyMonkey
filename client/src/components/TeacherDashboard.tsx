@@ -332,6 +332,7 @@ import { SubmissionStatistics } from './StudentDashboard';
 import { RichTextEditor } from './ui/rich-text-editor';
 import { FlashcardCreationModal } from './FlashcardCreationModal';
 import SubmissionViewer from './SubmissionViewer';
+import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -5476,6 +5477,13 @@ function LessonFolderVersionSelect({
         icon: <PictureAsPdfIcon sx={{ fontSize: 18 }} />,
       };
     }
+    if (ext === 'docx') {
+      return {
+        title: 'Im Folien-Editor öffnen (Word-Vorschau)',
+        aria: 'Im Folien-Editor öffnen',
+        icon: <SlideshowIcon sx={{ fontSize: 18 }} />,
+      };
+    }
     return {
       title: 'Dokument öffnen',
       aria: 'Dokument öffnen',
@@ -8186,161 +8194,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     document.addEventListener('keydown', handleModalKeyDown);
   };
 
-  // Funktion zum Öffnen von Dateien - nutzt die bereits vorhandenen, schönen Vorschau-Methoden
+  /** Stundenordner-Dateien: einheitlich wie z. B. „Battleground“ (Folien-Editor / Download / Tab), siehe `openLessonFolderFile`. */
   const handleFileClick = async (item: any) => {
-    if (item.type !== 'file') return;
-    
-    const fileExtension = item.name.split('.').pop()?.toLowerCase();
-    
-    // Korrigierbare Dateien (KA_, HÜ_, HU_): Korrekturmodus öffnen
-    if (isCorrectionFile(item.name) && (fileExtension === 'html' || fileExtension === 'htm')) {
-      setSelectedKAFilePath(item.path); // Verwende den vollständigen Pfad, nicht nur den Dateinamen
-      setShowKACorrectionMode(true);
+    if (item?.folienPdfRedirect?.path && item?.folienPdfRedirect?.name) {
+      await openLessonFolderFile(
+        { type: 'file', name: item.folienPdfRedirect.name, path: item.folienPdfRedirect.path },
+        {
+          onOpenCorrectionHtml: (p) => {
+            setSelectedKAFilePath(p);
+            setShowKACorrectionMode(true);
+          },
+        }
+      );
       return;
     }
-    
-    if (fileExtension === 'html' || fileExtension === 'htm') {
-      // HTML-Dateien im neuen Tab öffnen (mit Fallback für Tablets)
-      try {
-        const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          const blob = new Blob([htmlContent], { type: 'text/html' });
-          const url = URL.createObjectURL(blob);
-          
-          // Versuche im neuen Tab zu öffnen
-          const newWindow = window.open(url, '_blank');
-          
-          // Prüfe ob window.open() erfolgreich war (nicht blockiert)
-          if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-            // Fallback: Zeige HTML in Modal (für Tablets, die Pop-ups blockieren)
-            showFilePreviewModal(item.name, htmlContent, item.path, 'html');
-            // URL sofort revoken, da wir sie nicht mehr brauchen
-            URL.revokeObjectURL(url);
-          } else {
-            // Erfolgreich geöffnet: URL nach längerer Zeit revoken (für Tablets)
-            setTimeout(() => URL.revokeObjectURL(url), 10000);
-          }
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der HTML-Datei:', error);
-        alert('HTML-Datei konnte nicht geöffnet werden.');
-      }
-    } else if (fileExtension === 'pdf') {
-      // PDF-Foliensatz im Folien-Editor (Stift, Text, Export) — „Nur PDF“ im Editor möglich
-      try {
-        const url = `/folien-editor?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name || 'document.pdf')}`;
-        const w = window.open(url, '_blank');
-        if (!w || w.closed) {
-          alert('Pop-up wurde blockiert. Bitte Pop-ups erlauben oder den Link manuell öffnen.');
-        }
-      } catch (error) {
-        console.error('Fehler beim Öffnen des Folien-Editors:', error);
-        alert('Fehler beim Öffnen des Folien-Editors. Bitte versuchen Sie es erneut.');
-      }
-    } else if (fileExtension === 'docx') {
-      // DOCX-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-docx?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'docx');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der DOCX-Datei:', error);
-        alert('DOCX-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-      // Excel-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-excel?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'excel');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der Excel-Datei:', error);
-        alert('Excel-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
-      // PowerPoint im Folien-Editor (Server: PPTX→PDF, dann wie PDF bearbeiten)
-      try {
-        const url = `/folien-editor?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name || 'folien.pptx')}&source=pptx`;
-        const w = window.open(url, '_blank');
-        if (!w || w.closed) {
-          alert('Pop-up wurde blockiert. Bitte Pop-ups erlauben oder den Link manuell öffnen.');
-        }
-      } catch (error) {
-        console.error('Fehler beim Öffnen des Folien-Editors:', error);
-        alert('Folien-Editor konnte nicht geöffnet werden.');
-      }
-    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp', 'webp'].includes(fileExtension || '')) {
-      // Bild im Folien-Editor (Stift, Text, Export wie PDF)
-      try {
-        const url = `/folien-editor?filePath=${encodeURIComponent(item.path)}&fileName=${encodeURIComponent(item.name || 'bild.png')}&source=image`;
-        const w = window.open(url, '_blank');
-        if (!w || w.closed) {
-          alert('Pop-up wurde blockiert. Bitte Pop-ups erlauben oder den Link manuell öffnen.');
-        }
-      } catch (error) {
-        console.error('Fehler beim Öffnen des Folien-Editors:', error);
-        alert('Folien-Editor konnte nicht geöffnet werden.');
-      }
-    } else if (fileExtension === 'goodnotes' || fileExtension === 'gn') {
-      // GoodNotes-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-goodnotes?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const htmlContent = await response.text();
-          showFilePreviewModal(item.name, htmlContent, item.path, 'goodnotes');
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der GoodNotes-Datei:', error);
-        alert('GoodNotes-Vorschau konnte nicht geladen werden.');
-      }
-    } else if (fileExtension === 'wb') {
-      // Whiteboard-Dateien im Whiteboard öffnen
-      try {
-        // Navigiere zum Whiteboard mit der Datei als Parameter
-        const fileName = item.name.replace('.wb', '');
-        const whiteboardUrl = `/whiteboard?loadFile=${encodeURIComponent(item.path)}&filename=${encodeURIComponent(fileName)}`;
-        window.open(whiteboardUrl, '_blank');
-      } catch (error) {
-        console.error('Fehler beim Öffnen der Whiteboard-Datei:', error);
-        alert('Whiteboard-Datei konnte nicht geöffnet werden.');
-      }
-    } else if (['txt', 'md', 'rtf'].includes(fileExtension || '')) {
-      // Text-Vorschau über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/read-text?filePath=${encodeURIComponent(item.path)}&preview=true`);
-        if (response.ok) {
-          const textContent = await response.text();
-          showTextPreviewModal(item.name, textContent, item.path);
-        }
-      } catch (error) {
-        console.error('Fehler beim Laden der Textdatei:', error);
-        alert('Text-Vorschau konnte nicht geladen werden.');
-      }
-    } else {
-      // Download über den bestehenden Endpunkt
-      try {
-        const response = await fetch(`/api/file-system-paths/download?filePath=${encodeURIComponent(item.path)}`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = item.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-      } catch (error) {
-        console.error('Fehler beim Download:', error);
-        alert('Datei konnte nicht heruntergeladen werden.');
-      }
-    }
+    await openLessonFolderFile(item, {
+      onOpenCorrectionHtml: (p) => {
+        setSelectedKAFilePath(p);
+        setShowKACorrectionMode(true);
+      },
+    });
   };
 
   // Whiteboard Functions
@@ -8424,27 +8297,35 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     }
   };
 
-  // Hilfsfunktion zum Filtern von PDF-Dateien, die zu .wb Dateien gehören, und temporären Dateien
+  // PDF neben gleichnamiger .wb ausblenden; beim Klick auf .wb → Folien-Editor mit PDF (wie Battlefield)
   const filterPdfFiles = (items: any[]): any[] => {
-    return items.filter((item) => {
-      // Filtere temporäre Dateien, die mit ~$ starten (z.B. Microsoft Office temporäre Dateien)
-      if (item.type === 'file' && item.name.startsWith('~$')) {
-        return false;
+    const namesEq = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+    const pdfKeyToHide = new Set<string>();
+    for (const item of items) {
+      if (item.type !== 'file' || !item.name) continue;
+      if (!/\.pdf$/i.test(item.name)) continue;
+      const stem = item.name.replace(/\.pdf$/i, '');
+      const wbCandidate = `${stem}.wb`;
+      if (items.some((o) => o.type === 'file' && o.name && namesEq(o.name, wbCandidate))) {
+        pdfKeyToHide.add(item.name.toLowerCase());
       }
-      
-      if (item.type === 'file' && item.name.endsWith('.pdf')) {
-        // Prüfe ob es eine entsprechende .wb Datei gibt (irgendwo in der Liste)
-        const wbFileName = item.name.replace('.pdf', '.wb');
-        const hasCorrespondingWb = items.some((otherItem) => 
-          otherItem.type === 'file' && 
-          otherItem.name === wbFileName
-        );
-        if (hasCorrespondingWb) {
-          return false; // PDF-Datei ausblenden
+    }
+    return items
+      .filter((item) => {
+        if (item.type === 'file' && item.name.startsWith('~$')) return false;
+        if (item.type === 'file' && item.name && pdfKeyToHide.has(item.name.toLowerCase())) return false;
+        return true;
+      })
+      .map((item) => {
+        if (item.type !== 'file' || !item.name || !/\.wb$/i.test(item.name)) return item;
+        const stem = item.name.replace(/\.wb$/i, '');
+        const pdfName = `${stem}.pdf`;
+        const pdfItem = items.find((i) => i.type === 'file' && i.name && namesEq(i.name, pdfName));
+        if (pdfItem && pdfKeyToHide.has(pdfItem.name.toLowerCase())) {
+          return { ...item, folienPdfRedirect: { path: pdfItem.path, name: pdfItem.name } };
         }
-      }
-      return true;
-    });
+        return item;
+      });
   };
 
   // Einheitliche Schriftgröße und Zeilenhöhe in allen Stundenmodals (01_Skytale etc.)
@@ -9383,6 +9264,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       .filter((i: any) => i.type === 'file')
       .map((f: any) => ({ name: f.name || '' }));
 
+    const resolvePdfHiddenBehindWb = (baseName: string, folderItems: any[]) => {
+      const bn = (baseName || '').trim().toLowerCase();
+      if (!bn) return null;
+      const pdf = folderItems.find(
+        (i) => i.type === 'file' && i.name && i.name.replace(/\.pdf$/i, '').trim().toLowerCase() === bn && /\.pdf$/i.test(i.name)
+      );
+      const wb = folderItems.find(
+        (i) => i.type === 'file' && i.name && i.name.replace(/\.wb$/i, '').trim().toLowerCase() === bn && /\.wb$/i.test(i.name)
+      );
+      return pdf && wb ? pdf : null;
+    };
+
     // Sortierung: PDF immer zuerst, danach Rest
     const sortVersionsPdfFirst = (versions: { ext: string; file: any }[]) =>
       [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
@@ -9407,7 +9300,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         '&:hover': { bgcolor: 'action.hover' },
       };
       /** Max. ein PDF (Stamm/Kanon); Präsentation (PPT/PPTX/ODP) zusätzlich, wenn vorhanden. */
-      const pdfFile = getPdfFromGroup(sortedVersions, group.baseName);
+      const pdfFile =
+        getPdfFromGroup(sortedVersions, group.baseName) || resolvePdfHiddenBehindWb(group.baseName, items);
       const presentationVersion = versionsShownInList.find((v) =>
         ['ppt', 'pptx', 'odp'].includes(v.ext.toLowerCase())
       );
@@ -17734,6 +17628,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       {isLessonStundeRoute && lessonModalData && (
         <Box
           sx={{
+            // In Laptop-Ansicht ist rechts ein (Dialog-)Dock; MUI lockt dann body-scroll.
+            // Daher muss die linke Seite als eigener Scroll-Container zuverlässig funktionieren (auch iPad).
+            height: '100dvh',
             minHeight: '100vh',
             width: lessonSplitLeft ? '50%' : '100%',
             maxWidth: lessonSplitLeft ? '50%' : 'none',
@@ -17748,6 +17645,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             alignSelf: lessonSplitLeft ? 'flex-start' : 'stretch',
             position: 'relative',
             zIndex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
             ...(lessonSplitLeft && {
               borderRight: `1px solid ${laptopSplitSeam}`,
               boxShadow: `8px 0 28px -10px ${laptopSplitGlow}`,
@@ -17761,7 +17661,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           <Box
             component="header"
             sx={{
-              position: 'relative',
+              position: 'sticky',
+              top: 0,
               borderBottom: '1px solid #e0e0e0',
               pb: 1.5,
               pt: 1.5,
@@ -17778,6 +17679,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               bgcolor: lessonSplitLeft ? alpha('#fff', 0.82) : 'background.paper',
               backdropFilter: lessonSplitLeft ? 'blur(8px)' : 'none',
               isolation: 'isolate',
+              zIndex: 3,
               ...(lessonSplitLeft && {
                 borderBottomColor: alpha('#3949ab', 0.12),
               }),
@@ -17844,7 +17746,14 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }}
             />
           </Box>
-          <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', overflowX: 'hidden', pt: 2, px: 2, pb: 2 }}>
+          <Box
+            sx={{
+              minWidth: 0,
+              pt: 2,
+              px: 2,
+              pb: 6,
+            }}
+          >
               {(() => {
                 const lessonName = lessonModalData.lessonName;
                 const lessonPath = lessonModalData.lessonPath;
