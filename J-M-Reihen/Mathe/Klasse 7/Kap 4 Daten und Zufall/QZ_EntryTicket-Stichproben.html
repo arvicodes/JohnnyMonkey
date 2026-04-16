@@ -783,7 +783,7 @@
         </div>
         <div class="header-info">
             <div class="timer-container" id="timer">
-                5:00
+                3:45
             </div>
         </div>
         <div class="header-buttons">
@@ -1184,7 +1184,7 @@
         }
         
         // Timer-Funktionalität
-        let timeLeft = 5 * 60; // 5 Minuten in Sekunden
+        let timeLeft = 5 * 45; // 45 Sekunden pro Aufgabe (5 Aufgaben)
         let timerElement = null;
         let timerInterval = null;
         
@@ -1354,11 +1354,12 @@
             localStorage.setItem(TIMER_KEY, timeLeft.toString());
             
             // Farbänderung bei wenig Zeit
-            if (timeLeft <= 5 * 60) { // 5 Minuten
+            if (timeLeft <= 45) { // letzte 45 Sekunden
                 timerElement.classList.add('timer-danger');
                 timerElement.classList.remove('timer-warning');
-            } else if (timeLeft <= 10 * 60) { // 10 Minuten
+            } else if (timeLeft <= 90) { // letzte 90 Sekunden
                 timerElement.classList.add('timer-warning');
+                timerElement.classList.remove('timer-danger');
             }
             
             // Prüfe ob Zeit abgelaufen

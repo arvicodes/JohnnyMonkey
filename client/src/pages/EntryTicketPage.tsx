@@ -33,7 +33,7 @@ type EntryTicketTask = {
   solution: string;
 };
 
-const SLIDE_DURATION_SEC = 10;
+const SLIDE_DURATION_SEC = 20;
 /** Zufällige Auswahl aus dem klassenspezifischen Fragenset */
 const TARGET_TASK_COUNT = 10;
 const DISPLAY_BOX_WIDTH = 1320;
