@@ -11,14 +11,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=file:/app/server/prisma/dev.db
+      - DATABASE_URL=file:./prisma/dev.db
+      - FORCE_DB_IMPORT=true
     volumes:
-      # Verwende Prisma-Verzeichnis aus dem Git-Checkout (inkl. dev.db)
-      - ./server/prisma:/app/server/prisma
+      # Persistente Datenbank (wird beim Start aus backup_latest.db synchronisiert)
+      - johnnymonkey_db:/app/server/prisma
       # Material-Dateien
       - ./material:/app/material:ro
-      # Verwende J-M-Reihen direkt aus dem Git-Checkout
-      - ./J-M-Reihen:/app/J-M-Reihen
+      # J-M-Reihen kommt aus dem Docker-Image (Git-Stand beim Build)
       # Optional: Logs für einfacheren Zugriff
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
@@ -45,6 +45,9 @@ networks:
 volumes:
   postgres_data:
     name: johnnymonkey_postgres_data
+  johnnymonkey_db:
+    name: johnnymonkey_database
+    driver: local
   johnnymonkey_logs:
     name: johnnymonkey_logs
     driver: local

@@ -9,12 +9,18 @@ echo "🐵 Starting JohnnyMonkey in Docker container..."
 
 # Prisma Client generieren - IMMER neu generieren, um sicherzustellen, dass Schema aktuell ist
 cd /app/server
+# Erzwinge einen stabilen SQLite-Pfad im Container (unabhängig von Compose-Overrides)
+export DATABASE_URL="file:./prisma/dev.db"
 echo "📦 Generating Prisma client..."
 # Verwende explizit schema.prisma (enthält seatingOrder und statisticsOrder)
-npx prisma generate --schema=prisma/schema.prisma || {
-  echo "⚠️  Prisma generate failed, trying without explicit schema..."
-  npx prisma generate || echo "⚠️  Prisma generate failed completely"
-}
+if [ -f "prisma/schema.prisma" ]; then
+  npx prisma generate --schema=prisma/schema.prisma || {
+    echo "⚠️  Prisma generate failed, trying without explicit schema..."
+    npx prisma generate || echo "⚠️  Prisma generate failed completely"
+  }
+else
+  echo "ℹ️  prisma/schema.prisma not found at runtime, using bundled Prisma Client"
+fi
 
 # Datenbank initialisieren oder aktualisieren
 SHOULD_IMPORT=false
