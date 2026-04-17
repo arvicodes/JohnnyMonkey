@@ -12,8 +12,9 @@ services:
       - NODE_ENV=production
       - PORT=3001
     volumes:
-      - johnnymonkey_db:/app/server/prisma
+      - ./server/prisma/dev.db:/app/server/prisma/dev.db
       - johnnymonkey_material:/app/material:ro
+      - ./J-M-Reihen:/app/J-M-Reihen
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
@@ -34,8 +35,6 @@ networks:
     driver: bridge
 
 volumes:
-  johnnymonkey_db:
-    name: johnnymonkey_database
   johnnymonkey_material:
     name: johnnymonkey_material
   johnnymonkey_logs:

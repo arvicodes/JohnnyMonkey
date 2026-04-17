@@ -1710,3 +1710,152 @@ export const exportTeacherDecks = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Interner Serverfehler beim Exportieren' });
   }
 };
+
+async function resolveStudentUserFromLoginHeader(req: Request) {
+  const raw = req.headers['x-login-code'] as string | undefined;
+  if (!raw?.trim()) return null;
+  const user = await prisma.user.findFirst({
+    where: { loginCode: raw.trim() },
+    select: { id: true, role: true, name: true },
+  });
+  if (!user || user.role !== 'STUDENT') return null;
+  return user;
+}
+
+/** SuS: Karten eines der Gruppe zugewiesenen Decks laden (Polling, Live-Sync). */
+export const getCollaborativeDeckCards = async (req: Request, res: Response) => {
+  try {
+    const { deckId } = req.params;
+    const groupId = typeof req.query.groupId === 'string' ? req.query.groupId : '';
+    const student = await resolveStudentUserFromLoginHeader(req);
+    if (!student) {
+      return res.status(401).json({ error: 'Anmeldung als Schüler erforderlich' });
+    }
+    if (!groupId) {
+      return res.status(400).json({ error: 'groupId fehlt' });
+    }
+    const inGroup = await prisma.learningGroup.findFirst({
+      where: {
+        id: groupId,
+        students: { some: { id: student.id } },
+      },
+      select: { id: true },
+    });
+    if (!inGroup) {
+      return res.status(403).json({ error: 'Keine Berechtigung für diese Gruppe' });
+    }
+    const assigned = await prisma.flashcardAssignment.findFirst({
+      where: { deckId, groupId },
+    });
+    if (!assigned) {
+      return res.status(403).json({ error: 'Dieses Deck ist dieser Gruppe nicht zugewiesen' });
+    }
+    const cards = await prisma.flashcard.findMany({
+      where: { deckId },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+    });
+    res.json(cards);
+  } catch (error) {
+    console.error('getCollaborativeDeckCards:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+/** SuS: Vollständiges Deck wie in der Lehrer-Ansicht (Karten + Metadaten), für gemeinsames Erstellen. */
+export const getCollaborativeDeckFull = async (req: Request, res: Response) => {
+  try {
+    const { deckId } = req.params;
+    const groupId = typeof req.query.groupId === 'string' ? req.query.groupId : '';
+    const student = await resolveStudentUserFromLoginHeader(req);
+    if (!student) {
+      return res.status(401).json({ error: 'Anmeldung als Schüler erforderlich' });
+    }
+    if (!groupId) {
+      return res.status(400).json({ error: 'groupId fehlt' });
+    }
+    const inGroup = await prisma.learningGroup.findFirst({
+      where: {
+        id: groupId,
+        students: { some: { id: student.id } },
+      },
+      select: { id: true },
+    });
+    if (!inGroup) {
+      return res.status(403).json({ error: 'Keine Berechtigung für diese Gruppe' });
+    }
+    const assigned = await prisma.flashcardAssignment.findFirst({
+      where: { deckId, groupId },
+    });
+    if (!assigned) {
+      return res.status(403).json({ error: 'Dieses Deck ist dieser Gruppe nicht zugewiesen' });
+    }
+    const deck = await prisma.flashcardDeck.findUnique({
+      where: { id: deckId },
+      include: {
+        cards: {
+          orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+        },
+        subject: true,
+      },
+    });
+    if (!deck) {
+      return res.status(404).json({ error: 'Deck nicht gefunden' });
+    }
+    res.json({ deck });
+  } catch (error) {
+    console.error('getCollaborativeDeckFull:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};
+
+/** SuS: Karte zum gemeinsamen Deck hinzufügen (nur wenn Gruppe das Deck zugewiesen hat). */
+export const createCollaborativeCard = async (req: Request, res: Response) => {
+  try {
+    const { deckId } = req.params;
+    const student = await resolveStudentUserFromLoginHeader(req);
+    if (!student) {
+      return res.status(401).json({ error: 'Anmeldung als Schüler erforderlich' });
+    }
+    const { groupId, front, back } = req.body as { groupId?: string; front?: string; back?: string };
+    if (!groupId || typeof front !== 'string' || typeof back !== 'string') {
+      return res.status(400).json({ error: 'groupId, front und back sind erforderlich' });
+    }
+    const tf = front.trim();
+    const tb = back.trim();
+    if (!tf || !tb) {
+      return res.status(400).json({ error: 'Vorder- und Rückseite dürfen nicht leer sein' });
+    }
+    const inGroup = await prisma.learningGroup.findFirst({
+      where: { id: groupId, students: { some: { id: student.id } } },
+      select: { id: true },
+    });
+    if (!inGroup) {
+      return res.status(403).json({ error: 'Keine Berechtigung für diese Gruppe' });
+    }
+    const assigned = await prisma.flashcardAssignment.findFirst({
+      where: { deckId, groupId },
+    });
+    if (!assigned) {
+      return res.status(403).json({ error: 'Dieses Deck ist dieser Gruppe nicht zugewiesen' });
+    }
+    const maxRow = await prisma.flashcard.aggregate({
+      where: { deckId },
+      _max: { order: true },
+    });
+    const nextOrder = (maxRow._max.order ?? 0) + 1;
+    const card = await prisma.flashcard.create({
+      data: {
+        deckId,
+        front: tf,
+        back: tb,
+        hint: student.name ? `von ${student.name}` : null,
+        difficulty: 1,
+        order: nextOrder,
+      },
+    });
+    res.status(201).json(card);
+  } catch (error) {
+    console.error('createCollaborativeCard:', error);
+    res.status(500).json({ error: 'Interner Serverfehler' });
+  }
+};

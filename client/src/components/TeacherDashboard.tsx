@@ -5404,18 +5404,30 @@ const LESSON_FOLDER_INPUT_DOCS_RE = /\.(pdf|pptx?|odp|docx?|odt|rtf)$/i;
 /** Gängige Bildformate – für die Stundenordner-Dokumentenliste. */
 const LESSON_FOLDER_IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|svg|bmp|heic|avif|tiff?)$/i;
 
+/** Rohmaterial-Archiv (z. B. „ROhdateine“ / „Rohdateien“) – Inhalt nicht in Stunden-Materiallisten. */
+const LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES = new Set(['rohdateine', 'rohdateien']);
+function isLessonRohdatArchiveFolderName(name: string): boolean {
+  return LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES.has((name || '').trim().toLowerCase());
+}
+
+function isLsgFileName(name: string): boolean {
+  return /\bLSG\b/i.test(name || '');
+}
+
 /** Alle Dateien aus dem Stundenordner-Baum (read?recursive=true liefert Unterordner in children). */
 function collectLessonFolderFilesFromTree(nodes: any[] | undefined): any[] {
   const out: any[] = [];
-  const walk = (items: any[] | undefined) => {
+  const walk = (items: any[] | undefined, underRohArchive: boolean) => {
     if (!Array.isArray(items)) return;
     for (const n of items) {
       if (!n || typeof n !== 'object') continue;
-      if (n.type === 'file' && n.name && !String(n.name).startsWith('~$')) out.push(n);
-      if (Array.isArray(n.children)) walk(n.children);
+      const isRohDir = n.type === 'directory' && isLessonRohdatArchiveFolderName(n.name);
+      const skipFiles = underRohArchive || isRohDir;
+      if (n.type === 'file' && n.name && !String(n.name).startsWith('~$') && !skipFiles) out.push(n);
+      if (Array.isArray(n.children)) walk(n.children, underRohArchive || !!isRohDir);
     }
   };
-  walk(nodes);
+  walk(nodes, false);
   return out;
 }
 
@@ -5827,6 +5839,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   // Neue States für echte Ordner-Vorschau
   const [assignedFolderContents, setAssignedFolderContents] = useState<{[key: string]: any[]}>({});
   const [expandedAssignedFolders, setExpandedAssignedFolders] = useState<{[key: string]: Set<string>}>({});
+  /** Dashboard-Ordnerbaum: Unterzweige von Rohmaterial-Archiv (ROhdateine/Rohdateien) per Pfad aufgeklappt; Standard leer = zu. */
+  const [dashboardRohArchivExpanded, setDashboardRohArchivExpanded] = useState<Record<string, Set<string>>>({});
   const [loadingFolderContents, setLoadingFolderContents] = useState<{[key: string]: boolean}>({});
   
   // States für zugeordnete Karteikarten-Decks
@@ -5878,7 +5892,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     | 'tafel'
     | 'input'
     | 'fortlaufend'
-    | 'karteikarten-erstellen';
+    | 'karteikarten-erstellen'
+    | 'karteikarten-gemeinsam-erstellen';
   type LessonPlanItem = {
     id: string;
     type: LessonPlanItemType;
@@ -5895,6 +5910,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
     /** Optionale Datei aus dem Stundenordner (Input / Arbeitsauftrag) */
     linkedMaterialPath?: string;
     linkedMaterialName?: string;
+    /** Ziel-Deck für „Karteikarten gemeinsam erstellen“ (muss der Gruppe zugewiesen sein) */
+    linkedCollaborativeDeckId?: string;
+    linkedCollaborativeDeckTitle?: string;
   };
   type LessonInstructionContent = Partial<Record<LessonBoxField, string>> & {
     lessonPlan?: LessonPlanItem[];
@@ -9238,8 +9256,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const directoryOpensStundePage = (name: string, level: number) => {
     if (isChapterHeadingFolderName(name)) return false;
     if (level === 0 && isTopicSectionFolderName(name)) return false;
+    if (isLessonRohdatArchiveFolderName(name)) return false;
     return true;
   };
+
+  const dashboardRohArchivKey = (gid: string, previewRoot: string) =>
+    `${gid}:${(previewRoot || '').replace(/\\/g, '/')}`;
+  const toggleDashboardRohArchivBranch = (gid: string, previewRoot: string, dirPath: string) => {
+    if (!dirPath) return;
+    const k = dashboardRohArchivKey(gid, previewRoot);
+    setDashboardRohArchivExpanded((prev) => {
+      const cur = prev[k] ? new Set(prev[k]) : new Set<string>();
+      if (cur.has(dirPath)) cur.delete(dirPath);
+      else cur.add(dirPath);
+      return { ...prev, [k]: cur };
+    });
+  };
+  const isDashboardRohArchivBranchExpanded = (gid: string, previewRoot: string, dirPath: string) =>
+    !!(dirPath && dashboardRohArchivExpanded[dashboardRohArchivKey(gid, previewRoot)]?.has(dirPath));
 
   /** Wandelt eine Item-Liste (Ordner + Dateien) in Anzeige-Items um: Ordner unverändert, Dateien nach Basisname gruppiert. */
   const itemsToDisplayItems = (items: any[]): any[] => {
@@ -9284,7 +9318,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     const renderFileGroupRow = (group: { baseName: string; versions: { ext: string; file: any }[] }, level: number) => {
       const sortedVersions = sortVersionsPdfFirst(group.versions);
       const versionsShownInList = sortedVersions.filter(
-        (v) => !isDerivedFolienVersionFile(v.file.name, folderFilesForStem)
+        (v) => !isDerivedFolienVersionFile(v.file.name, folderFilesForStem) || isLsgFileName(v.file.name)
       );
       const getExtIcon = (ext: string) => {
         const e = ext.toLowerCase();
@@ -9375,7 +9409,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       if (item.type === 'file' && item.name.startsWith('~$')) {
         return null;
       }
-      
+      const dirPathKey = item.type === 'directory' ? (item.path || '').replace(/\\/g, '/').trim() : '';
+      const isRohDir = item.type === 'directory' && isLessonRohdatArchiveFolderName(item.name);
+      const rohBranchExpanded =
+        !isRohDir || (dirPathKey ? isDashboardRohArchivBranchExpanded(groupId, folderPath, dirPathKey) : false);
+
       // Bestimme Icon und Farbe basierend auf dem Screenshot
       let icon = '📁';
       let color = '#666';
@@ -9508,7 +9546,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               mb: 0.5,
               cursor:
                 item.type === 'file' ||
-                (item.type === 'directory' && directoryOpensStundePage(item.name, level))
+                (item.type === 'directory' &&
+                  (directoryOpensStundePage(item.name, level) || isLessonRohdatArchiveFolderName(item.name)))
                   ? 'pointer'
                   : 'default',
               textDecoration: 'none',
@@ -9517,7 +9556,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               flex: 1,
               '&:hover':
                 item.type === 'file' ||
-                (item.type === 'directory' && directoryOpensStundePage(item.name, level))
+                (item.type === 'directory' &&
+                  (directoryOpensStundePage(item.name, level) || isLessonRohdatArchiveFolderName(item.name)))
                   ? { color: '#1976D2' }
                   : {}
             }}
@@ -9525,6 +9565,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               if (item.type === 'file') {
                 handleFileClick(item);
               } else if (item.type === 'directory') {
+                if (isLessonRohdatArchiveFolderName(item.name)) {
+                  if (dirPathKey) toggleDashboardRohArchivBranch(groupId, folderPath, dirPathKey);
+                  return;
+                }
                 if (!directoryOpensStundePage(item.name, level)) return;
                 const lp = item.path || `${folderPath}/${item.name}`;
                 const q = new URLSearchParams({
@@ -9545,9 +9589,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }
             }}
             >
-            {/* Dreiecke nur für Ordner - exakt wie im Screenshot */}
+            {/* Dreiecke für Ordner; Rohmaterial-Archiv: ▶/▼ je nach Aufklappzustand */}
             {item.type === 'directory' ? (
-              level === 0 ? (
+              isRohDir ? (
+                <span style={{ color: '#666' }}>{rohBranchExpanded ? '▼' : '▶'}</span>
+              ) : level === 0 ? (
                 <span style={{ color: '#9c27b0' }}>▼</span> // Lila für Level 0
               ) : level === 1 ? (
                 <span style={{ color: '#1976d2' }}>▼</span> // Blau für Level 1
@@ -9660,8 +9706,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             
           </Box>
           
-          {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
-          {item.type === 'directory' && item.children && item.children.length > 0 && (
+          {/* Unterordner: sonst immer sichtbar; Rohmaterial-Archiv nur nach Aufklappen */}
+          {item.type === 'directory' && item.children && item.children.length > 0 && rohBranchExpanded && (
             <Box sx={{ ml: 2, mb: 0.7 }}>
               {itemsToDisplayItems(filterPdfFiles(item.children)).map((child: any, childIndex: number) => 
                 renderItemRecursively(child, level + 1)
@@ -17805,6 +17851,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   );
                   await updateLessonPlan(next);
                 };
+                const setPlanItemLinkedCollaborativeDeck = async (
+                  itemId: string,
+                  deckId: string | undefined,
+                  deckTitle: string | undefined
+                ) => {
+                  const next = lessonPlan.map((p) =>
+                    p.id === itemId
+                      ? { ...p, linkedCollaborativeDeckId: deckId, linkedCollaborativeDeckTitle: deckTitle }
+                      : p
+                  );
+                  await updateLessonPlan(next);
+                };
                 const resolvePlanLabel = (type: LessonPlanItemType) => {
                   if (type === 'entry-ticket') return 'Entry Ticket';
                   if (type === 'exit-ticket') return 'Exit Ticket';
@@ -17815,6 +17873,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'input') return 'Input';
                   if (type === 'fortlaufend') return 'Fortlaufende Aufgaben';
                   if (type === 'karteikarten-erstellen') return 'Karteikarten';
+                  if (type === 'karteikarten-gemeinsam-erstellen') return 'Karteikarten gemeinsam erstellen';
                   return 'Leinwand';
                 };
                 const getPlanTypeStyle = (type: LessonPlanItemType) => {
@@ -17827,6 +17886,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   if (type === 'fortlaufend') return { bg: '#e0f7fa', border: '#4dd0e1', text: '#006064' }; // teal: dauerhaft / wiederholung
                   if (type === 'karteikarten-erstellen')
                     return { bg: '#f3e5f5', border: '#ba68c8', text: '#6a1b9a' }; // violett: Karteikarten
+                  if (type === 'karteikarten-gemeinsam-erstellen')
+                    return { bg: '#fff3e0', border: '#ffb74d', text: '#e65100' }; // orange: gemeinsam sammeln
                   return { bg: '#f3e5f5', border: '#ce93d8', text: '#7b1fa2' }; // leicht lila
                 };
                 const addPlanItems = async () => {
@@ -18073,6 +18134,36 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     void startLessonPlanFlashcardFlow(lessonModalData.groupId);
                     return;
                   }
+                  if (item.type === 'karteikarten-gemeinsam-erstellen') {
+                    if (!lessonModalData.groupId) {
+                      showSnackbar('Keine Lerngruppe für diese Stunde.', 'error');
+                      return;
+                    }
+                    if (!lessonModalData.lessonPath) {
+                      showSnackbar('Kein Stundenordner für diese Stunde.', 'error');
+                      return;
+                    }
+                    if (lessonPlanViewMode === 'background' || lessonPlanViewMode === 'run') {
+                      try {
+                        await fetch('/api/learning-groups/collab-flashcard-beacon', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            teacherId: userId,
+                            groupId: lessonModalData.groupId,
+                            lessonPath: lessonModalData.lessonPath,
+                          }),
+                        });
+                      } catch {
+                        /* Netzwerkfehler: SuS können das Modal weiterhin manuell öffnen */
+                      }
+                    }
+                    const qs = new URLSearchParams();
+                    qs.set('groupId', lessonModalData.groupId);
+                    qs.set('lessonPath', lessonModalData.lessonPath);
+                    window.open(`${window.location.origin}/shared-overview?${qs.toString()}`, '_blank', 'noopener,noreferrer');
+                    return;
+                  }
                 };
                 const startEdit = (section: LessonBoxField) => {
                   const currentText = (instructions as any)?.[section] ?? '';
@@ -18194,7 +18285,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
                           const abStemNames = abFiles.map((f) => ({ name: f.name || '' }));
                           const versionsIconsOnly = sortedVersions.filter(
-                            (v) => !isDerivedFolienVersionFile(v.file.name, abStemNames)
+                            (v) => !isDerivedFolienVersionFile(v.file.name, abStemNames) || isLsgFileName(v.file.name)
                           );
                           return (
                             <ListItem key={`plan-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
@@ -18254,6 +18345,29 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                     );
                   }
                   const docIconColor = '#546e7a';
+
+                  const normalizeBaseNameForLsgPairing = (rawName: string): string => {
+                    const base = (rawName || '').replace(/\.[^.]+$/, '');
+                    const stripped = base.replace(/\bLSG\b/gi, ' ');
+                    return stripped
+                      .replace(/[_-]+/g, ' ')
+                      .replace(/\s+/g, ' ')
+                      .trim()
+                      .toLowerCase();
+                  };
+
+                  const nonLsgFiles = lessonFolderPdfFiles.filter((f: any) => !isLsgFileName(f?.name || ''));
+                  const lsgFiles = lessonFolderPdfFiles.filter((f: any) => isLsgFileName(f?.name || ''));
+                  const nonLsgKeys = new Set(nonLsgFiles.map((f: any) => normalizeBaseNameForLsgPairing(f?.name || '')));
+                  const lsgByKey = new Map<string, any>();
+                  for (const f of lsgFiles) {
+                    const k = normalizeBaseNameForLsgPairing(f?.name || '');
+                    if (k && !lsgByKey.has(k)) lsgByKey.set(k, f);
+                  }
+                  /** LSG ohne „Hauptdatei“: bleibt als eigene Zeile sichtbar. */
+                  const unmatchedLsgFiles = lsgFiles.filter((f: any) => !nonLsgKeys.has(normalizeBaseNameForLsgPairing(f?.name || '')));
+                  const filesForRows = [...nonLsgFiles, ...unmatchedLsgFiles];
+
                   return (
                     <List
                       dense
@@ -18265,8 +18379,20 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                         overflow: 'hidden'
                       }}
                     >
-                      {groupFilesByBaseName(lessonFolderPdfFiles).map(({ baseName, versions }) => {
+                      {groupFilesByBaseName(filesForRows).map(({ baseName, versions }) => {
                         const sortedVersions = sortLessonFolderVersions(versions);
+                        const k = normalizeBaseNameForLsgPairing(baseName);
+                        const lsgDirect = nonLsgKeys.has(k) ? lsgByKey.get(k) ?? null : null;
+                        const versionForFile = (file: any) => {
+                          const name = String(file?.name || '');
+                          const ext = (name.match(/\.([^.]+)$/) || ['', ''])[1].toLowerCase();
+                          return { ext, file };
+                        };
+                        const sortedVersionsForShare = (() => {
+                          if (!lsgDirect) return sortedVersions;
+                          if (sortedVersions.some((v) => v.file?.path === lsgDirect.path)) return sortedVersions;
+                          return sortLessonFolderVersions([...sortedVersions, versionForFile(lsgDirect)]);
+                        })();
                         const folienIconBtnSx = {
                           p: 0.35,
                           color: docIconColor,
@@ -18321,11 +18447,33 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               >
                                 {baseName}
                               </Typography>
+                              {lsgDirect && (
+                                <Tooltip title="LSG öffnen">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleFileClick(lsgDirect)}
+                                    sx={{
+                                      p: 0.25,
+                                      minWidth: 28,
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 1,
+                                      color: '#2e7d32',
+                                      '&:hover': { bgcolor: 'action.hover' },
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <Typography component="span" sx={{ fontSize: '0.7rem', fontWeight: 800 }}>
+                                      LSG
+                                    </Typography>
+                                  </IconButton>
+                                </Tooltip>
+                              )}
                               {!runModeMinimal && sortedVersions.length > 0 && (
                                 <MaterialShareVersionControl
                                   groupId={lessonModalData.groupId}
                                   baseName={baseName}
-                                  sortedVersions={sortedVersions}
+                                  sortedVersions={sortedVersionsForShare}
                                   fileShares={fileShares}
                                   fileShareKey={fileShareKey}
                                   materialSharePickPath={materialSharePickPath}
@@ -18553,7 +18701,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                           { id: 'leinwand', label: 'Leinwand' },
                           { id: 'tafel', label: 'Tafel' },
                           { id: 'quiz', label: 'Quiz' },
-                          { id: 'karteikarten-erstellen', label: 'Karteikarten' }
+                          { id: 'karteikarten-erstellen', label: 'Karteikarten' },
+                          { id: 'karteikarten-gemeinsam-erstellen', label: 'Karteikarten gemeinsam erstellen' }
                         ].map((option) => {
                           const optionId = option.id as LessonPlanItemType;
                           const style = getPlanTypeStyle(optionId);
@@ -18565,6 +18714,8 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                 ? 115
                               : optionId === 'karteikarten-erstellen'
                                 ? 118
+                              : optionId === 'karteikarten-gemeinsam-erstellen'
+                                ? 200
                                 : optionId === 'fortlaufend'
                                   ? 118
                                   : optionId === 'input'
@@ -18798,7 +18949,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     title={
                                       item.type === 'input'
                                         ? 'Klick: gemeinsame Input-Leinwand / Übersicht'
-                                        : undefined
+                                        : item.type === 'karteikarten-gemeinsam-erstellen'
+                                          ? 'Klick: gemeinsame Karteikarten-Leinwand öffnen'
+                                          : undefined
                                     }
                                     sx={{
                                       flex: 1,
@@ -18811,9 +18964,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                       fontSize: '0.78rem',
                                       fontWeight: 700,
                                       minWidth: 0,
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap'
+                                      ...(item.type === 'karteikarten-gemeinsam-erstellen'
+                                        ? {
+                                            whiteSpace: 'normal',
+                                            lineHeight: 1.25,
+                                            overflow: 'visible',
+                                          }
+                                        : {
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                          }),
                                     }}
                                   >
                                     {item.label}
@@ -18824,6 +18985,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                     {item.type === 'exit-ticket' && ` (${item.exitType || 'exam-question'})`}
                                     {item.type === 'arbeitsauftrag' && item.linkedMaterialName
                                       ? ` · ${item.linkedMaterialName}`
+                                      : ''}
+                                    {item.type === 'karteikarten-gemeinsam-erstellen' && item.linkedCollaborativeDeckTitle
+                                      ? ` · ${item.linkedCollaborativeDeckTitle}`
                                       : ''}
                                   </Typography>
                                 );
@@ -18913,6 +19077,42 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   {allFiles.map((f: any) => (
                                     <MenuItem key={f.path} value={f.path} sx={{ fontSize: '0.75rem' }}>
                                       {f.name}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            )}
+                            {lessonPlanViewMode === 'create' && item.type === 'karteikarten-gemeinsam-erstellen' && (
+                              <FormControl
+                                size="small"
+                                fullWidth
+                                sx={{ maxWidth: 420, mt: 0.25 }}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <InputLabel id={`plan-kdeck-${item.id}`} shrink>
+                                  Ziel-Deck (Gruppe)
+                                </InputLabel>
+                                <Select
+                                  labelId={`plan-kdeck-${item.id}`}
+                                  label="Ziel-Deck (Gruppe)"
+                                  notched
+                                  displayEmpty
+                                  value={item.linkedCollaborativeDeckId || ''}
+                                  onChange={(e) => {
+                                    const v = e.target.value as string;
+                                    const decks = assignedFlashcardDecks[lessonModalData.groupId] || [];
+                                    const d = decks.find((x: FlashcardDeck) => x.id === v);
+                                    void setPlanItemLinkedCollaborativeDeck(item.id, v || undefined, d?.title);
+                                  }}
+                                  sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.65 } }}
+                                >
+                                  <MenuItem value="">
+                                    <em>Deck wählen …</em>
+                                  </MenuItem>
+                                  {(assignedFlashcardDecks[lessonModalData.groupId] || []).map((d: FlashcardDeck) => (
+                                    <MenuItem key={d.id} value={d.id} sx={{ fontSize: '0.75rem' }}>
+                                      {d.title}
                                     </MenuItem>
                                   ))}
                                 </Select>
@@ -19041,7 +19241,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                                   const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
                                   const abStemNamesBg = abFiles.map((f) => ({ name: f.name || '' }));
                                   const versionsIconsOnly = sortedVersions.filter(
-                                    (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesBg)
+                                    (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesBg) || isLsgFileName(v.file.name)
                                   );
                                   return (
                                     <ListItem key={`bg-ab-${baseName}`} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>
@@ -19279,7 +19479,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                               const sortedVersions = [...versions].sort((a, b) => (a.ext.toLowerCase() === 'pdf' ? -1 : b.ext.toLowerCase() === 'pdf' ? 1 : 0));
                               const abStemNamesInput = abFiles.map((f) => ({ name: f.name || '' }));
                               const versionsIconsOnly = sortedVersions.filter(
-                                (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesInput)
+                                (v) => !isDerivedFolienVersionFile(v.file.name, abStemNamesInput) || isLsgFileName(v.file.name)
                               );
                               return (
                                 <ListItem key={baseName} sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center', display: 'flex' }}>

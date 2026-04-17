@@ -135,8 +135,21 @@ model LearningGroup {
   lessonKeywords       LessonKeyword[]
   lessonSharedInputs   LessonSharedInput[]
   lessonSharedInputShares LessonSharedInputShare[]
+  lessonCollabFlashcardBeacons LessonCollabFlashcardBeacon[]
   teacher              User                       @relation("TeacherGroups", fields: [teacherId], references: [id])
   students             User[]                     @relation("StudentGroups")
+}
+
+/// Lehrer-Klick „Karteikarten gemeinsam“ (Tablet): neues beaconId → SuS öffnen das Modal per Poll.
+model LessonCollabFlashcardBeacon {
+  groupId    String
+  lessonPath String
+  beaconId   String
+  updatedAt  DateTime      @updatedAt
+  group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, lessonPath])
+  @@index([groupId])
 }
 
 model LessonSharedInput {

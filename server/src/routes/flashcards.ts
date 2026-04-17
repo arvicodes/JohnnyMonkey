@@ -27,7 +27,10 @@ import {
   markAllDueCardsAsLearned,
   submitCardReview,
   exportStudentProgress,
-  exportTeacherDecks
+  exportTeacherDecks,
+  getCollaborativeDeckCards,
+  getCollaborativeDeckFull,
+  createCollaborativeCard
 } from '../controllers/FlashcardController';
 
 const router = express.Router();
@@ -50,6 +53,9 @@ router.delete('/decks/:id', deleteDeck);
 
 // Deck cards routes
 router.get('/decks/:deckId/cards', getDeckCards);
+router.get('/decks/:deckId/collaborative-cards', getCollaborativeDeckCards);
+router.get('/decks/:deckId/collaborative-deck-full', getCollaborativeDeckFull);
+router.post('/decks/:deckId/cards/collaborative', createCollaborativeCard);
 
 // Card routes
 router.post('/cards', createCard);

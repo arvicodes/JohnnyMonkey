@@ -13,10 +13,12 @@ services:
       - NODE_ENV=production
       - PORT=3000
     volumes:
-      # Persistente Datenbank
-      - johnnymonkey_db:/app/server/prisma
+      # Verwende die DB direkt aus dem Git-Checkout (immer aktueller Stand nach Pull)
+      - ./server/prisma/dev.db:/app/server/prisma/dev.db
       # Material-Dateien - für Portainer: absoluter Pfad oder Volume
       - johnnymonkey_material:/app/material:ro
+      # Verwende J-M-Reihen direkt aus dem Git-Checkout
+      - ./J-M-Reihen:/app/J-M-Reihen
       # Optional: Logs für einfacheren Zugriff
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
@@ -45,9 +47,6 @@ volumes:
     name: johnnymonkey_postgres_data
   portainer_data:
     name: johnnymonkey_portainer_data
-  johnnymonkey_db:
-    name: johnnymonkey_database
-    driver: local
   johnnymonkey_logs:
     name: johnnymonkey_logs
     driver: local

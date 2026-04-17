@@ -29,18 +29,11 @@ import {
   Undo as UndoIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
+import '../promiseWithResolversPolyfill';
 import * as pdfjsLib from 'pdfjs-dist';
 import { jsPDF } from 'jspdf';
 import { buildStemSuffixPdfName, getStemForSave, parentDirGitPath } from '../lib/folienVersions';
-
-try {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString();
-} catch {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-}
+import { ensurePdfjsWorkerWithPolyfill } from '../lib/ensurePdfjsWorkerWithPolyfill';
 
 type Stroke = {
   id: string;
@@ -352,6 +345,9 @@ const SlideDeckEditorPage: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
+        if (!isImage && !isDocx) {
+          await ensurePdfjsWorkerWithPolyfill(pdfjsLib);
+        }
         if (isImage) {
           setLoadPhase('download');
           const res = await fetch(`/api/file-system-paths/read-image?filePath=${encodeURIComponent(fp)}`);
@@ -999,24 +995,27 @@ const SlideDeckEditorPage: React.FC = () => {
         cctx.fillStyle = t.color;
         cctx.fillText(t.text, t.x, t.y);
       }
-      const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
       const imgData = c.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, pageW, pageH, undefined, 'FAST');
-      return pdf.output('blob');
+      /* Seitenmaß = Canvas (wie angezeigt), nicht A4 — sonst Streckung/Verzerrung */
+      const pdfImg = new jsPDF({
+        orientation: w > h ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [w, h],
+      });
+      pdfImg.addImage(imgData, 'PNG', 0, 0, w, h, undefined, 'FAST');
+      return pdfImg.output('blob');
     }
     if (!pdfDoc) return null;
-    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
 
+    let pdfOut: InstanceType<typeof jsPDF> | null = null;
     for (let p = 1; p <= numPages; p++) {
       const page = await pdfDoc.getPage(p);
       const vp = page.getViewport({ scale: PDF_RENDER_SCALE });
       const c = document.createElement('canvas');
       c.width = vp.width;
       c.height = vp.height;
+      const cw = c.width;
+      const ch = c.height;
       const cctx = c.getContext('2d');
       if (!cctx) continue;
       await page.render({ canvasContext: cctx, viewport: vp }).promise;
@@ -1033,10 +1032,18 @@ const SlideDeckEditorPage: React.FC = () => {
       }
 
       const img = c.toDataURL('image/png');
-      if (p > 1) pdf.addPage();
-      pdf.addImage(img, 'PNG', 0, 0, pageW, pageH, undefined, 'FAST');
+      if (!pdfOut) {
+        pdfOut = new jsPDF({
+          orientation: cw > ch ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [cw, ch],
+        });
+      } else {
+        pdfOut.addPage([cw, ch], cw > ch ? 'l' : 'p');
+      }
+      pdfOut.addImage(img, 'PNG', 0, 0, cw, ch, undefined, 'FAST');
     }
-    return pdf.output('blob');
+    return pdfOut ? pdfOut.output('blob') : null;
   }, [imageMode, pdfDoc, numPages, pageNum, strokesByPage, textByPage]);
 
   const exportPdf = async () => {

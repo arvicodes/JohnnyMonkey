@@ -72,6 +72,17 @@ import { determinateLinearProgressSx } from '../lib/muiLinearProgressSx';
 import { gradeFromGroupNames } from '../lib/entryTicketGrade';
 import { apiGetSafe } from '../lib/api';
 import { openLessonFolderFile } from '../lib/openLessonFolderFile';
+import { CollaborativeFlashcardSessionModal } from './CollaborativeFlashcardSessionModal';
+import { StudentLessonActivityLine } from './StudentLessonActivityLine';
+
+const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
+function loadCollabBeaconSeen(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(COLLAB_BEACON_LS_KEY) || '{}') as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
 
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, HÜ_, HU_)
@@ -79,6 +90,47 @@ import { openLessonFolderFile } from '../lib/openLessonFolderFile';
 const isCorrectionFile = (fileName: string): boolean => {
   return fileName.startsWith('KA_') || fileName.startsWith('HÜ_') || fileName.startsWith('HU_') || fileName.startsWith('QZ_');
 };
+
+const LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES_SD = new Set(['rohdateine', 'rohdateien']);
+function isLessonRohdatArchiveFolderNameStudent(name: string): boolean {
+  return LESSON_ROHDATEI_ARCHIVE_FOLDER_NAMES_SD.has((name || '').trim().toLowerCase());
+}
+
+/** Wie im TeacherDashboard: Kapitel-Container, keine Stunde. */
+function isChapterHeadingFolderNameStudent(name: string): boolean {
+  return /^(Kap\.?\s*\d+|Kapitel\s*\d+)/i.test((name || '').trim());
+}
+
+/**
+ * Oberste Ebene: „1 Rechnerarchitektur“ = Themenblock; „2.01 …“ = Stunde.
+ * Gleiche Regeln wie directoryOpensStundePage im Lehrkräfte-Dashboard.
+ */
+function isTopicSectionFolderNameStudent(name: string): boolean {
+  const t = (name || '').trim();
+  if (/^\d+\.\d+/.test(t)) return false;
+  return /^\d+\s+/.test(t);
+}
+
+function directoryIsStundeFolderForStudentTree(name: string, level: number): boolean {
+  if (isChapterHeadingFolderNameStudent(name)) return false;
+  if (level === 0 && isTopicSectionFolderNameStudent(name)) return false;
+  if (isLessonRohdatArchiveFolderNameStudent(name)) return false;
+  return true;
+}
+
+/** .wb ausblenden, wenn passende PDF existiert (Schüleransicht). */
+function filterWbFilesForStudentPreview(items: any[]): any[] {
+  return items.filter((item) => {
+    if (item.type === 'file' && item.name.endsWith('.wb')) {
+      const pdfFileName = item.name.replace('.wb', '.pdf');
+      const hasCorrespondingPdf = items.some(
+        (otherItem) => otherItem.type === 'file' && otherItem.name === pdfFileName
+      );
+      if (hasCorrespondingPdf) return false;
+    }
+    return true;
+  });
+}
 
 export type TextFormatRange = { start: number; end: number; type: 'material' | 'term' | 'instruction' };
 export type SharedInputItem = {
@@ -471,7 +523,15 @@ const DraggableCanvasCard: React.FC<{
 };
 
 /** Gemeinsame Leinwand: Einträge hinzufügen (+), frei auf der Fläche ziehen. fullScreen = für Präsentations-Tab (füllt Fenster). */
-export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: string; fullScreen?: boolean; autoFocusAddField?: boolean }> = ({ groupId, lessonPath, fullScreen, autoFocusAddField }) => {
+export const LessonSharedInputBox: React.FC<{
+  groupId: string;
+  lessonPath: string;
+  fullScreen?: boolean;
+  autoFocusAddField?: boolean;
+  /** Separate Leinwand zum gemeinsamen Sammeln von Karteikarten (eigener Speicher pro Stunde). */
+  variant?: 'default' | 'karteikarten';
+}> = ({ groupId, lessonPath, fullScreen, autoFocusAddField, variant = 'default' }) => {
+  const isKarteikarten = variant === 'karteikarten';
   const [items, setItems] = useState<SharedInputItem[]>([]);
   const [connections, setConnections] = useState<SharedInputConnection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -651,9 +711,9 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
         mt: fullScreen ? 0 : 0.75,
         mb: fullScreen ? 0 : 1,
         p: 1,
-        bgcolor: '#e8f5e9',
+        bgcolor: isKarteikarten ? '#f3e5f5' : '#e8f5e9',
         borderRadius: fullScreen ? 0 : 1,
-        border: '1px solid #a5d6a7',
+        border: isKarteikarten ? '1px solid #ce93d8' : '1px solid #a5d6a7',
         // ~5% weniger hoch, damit die Leinwand etwas Luft zum UI lässt
         ...(fullScreen && { height: '95vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }),
       }}
@@ -667,7 +727,10 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              window.open(`/shared-overview?groupId=${encodeURIComponent(groupId)}&lessonPath=${encodeURIComponent(lessonPath)}`, '_blank');
+              const u = new URL('/shared-overview', window.location.origin);
+              u.searchParams.set('groupId', groupId);
+              u.searchParams.set('lessonPath', lessonPath);
+              window.open(u.pathname + u.search, '_blank');
             }}
             onMouseDown={(e) => e.stopPropagation()}
             sx={{
@@ -678,8 +741,8 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
               minWidth: 28,
               width: 28,
               height: 28,
-              color: '#2e7d32',
-              '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.12)' },
+              color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
+              '&:hover': { bgcolor: isKarteikarten ? 'rgba(106, 27, 154, 0.12)' : 'rgba(46, 125, 50, 0.12)' },
             }}
             aria-label="Vergrößern in neuem Tab"
           >
@@ -687,8 +750,20 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
           </IconButton>
         </Tooltip>
       )}
-      <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem', mb: 0.5, pr: 5 }}>
-        Gemeinsame Leinwand (Einträge ziehen zum Verschieben)
+      <Typography
+        variant="caption"
+        sx={{
+          display: 'block',
+          fontWeight: 600,
+          color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
+          fontSize: '0.7rem',
+          mb: 0.5,
+          pr: 5,
+        }}
+      >
+        {isKarteikarten
+          ? 'Karteikarten gemeinsam erstellen (Einträge ziehen; optional Frage und Antwort verbinden)'
+          : 'Gemeinsame Leinwand (Einträge ziehen zum Verschieben)'}
       </Typography>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 0.75, flexWrap: 'wrap' }}>
         <Button
@@ -722,16 +797,26 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
           minHeight: fullScreen ? 'calc(95vh - 120px)' : 228,
           ...(fullScreen && { flex: 1, minHeight: 0 }),
           borderRadius: 1.5,
-          bgcolor: '#f1f8e9',
-          border: '1px dashed #81c784',
-          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(129,199,132,0.35) 1px, transparent 0)',
+          bgcolor: isKarteikarten ? '#faf5fc' : '#f1f8e9',
+          border: isKarteikarten ? '1px dashed #ba68c8' : '1px dashed #81c784',
+          backgroundImage: isKarteikarten
+            ? 'radial-gradient(circle at 1px 1px, rgba(186,104,200,0.35) 1px, transparent 0)'
+            : 'radial-gradient(circle at 1px 1px, rgba(129,199,132,0.35) 1px, transparent 0)',
           backgroundSize: '20px 20px',
           overflow: 'auto',
         }}
       >
         {loading ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: fullScreen ? '100%' : 220, color: '#2e7d32' }}>
-            <CircularProgress size={28} sx={{ color: '#2e7d32', mr: 1 }} />
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: fullScreen ? '100%' : 220,
+              color: isKarteikarten ? '#6a1b9a' : '#2e7d32',
+            }}
+          >
+            <CircularProgress size={28} sx={{ color: isKarteikarten ? '#6a1b9a' : '#2e7d32', mr: 1 }} />
             <Typography variant="body2">Laden …</Typography>
           </Box>
         ) : (
@@ -805,7 +890,7 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
         value={newText}
         onChange={(e) => setNewText(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); addItem(); } }}
-        placeholder="Neuer Eintrag …"
+        placeholder={isKarteikarten ? 'Frage | Antwort — oder Begriff | Erklärung …' : 'Neuer Eintrag …'}
         fullWidth
         disabled={loading}
         onClick={(e) => e.stopPropagation()}
@@ -839,10 +924,10 @@ export const LessonSharedInputBox: React.FC<{ groupId: string; lessonPath: strin
                   width: 32,
                   height: 32,
                   color: '#fff',
-                  bgcolor: '#2e7d32',
+                  bgcolor: isKarteikarten ? '#6a1b9a' : '#2e7d32',
                   borderRadius: '0 4px 4px 0',
-                  '&:hover': { bgcolor: '#1b5e20' },
-                  '&.Mui-disabled': { bgcolor: '#81c784', opacity: 0.7 },
+                  '&:hover': { bgcolor: isKarteikarten ? '#4a148c' : '#1b5e20' },
+                  '&.Mui-disabled': { bgcolor: isKarteikarten ? '#ce93d8' : '#81c784', opacity: 0.7 },
                 }}
                 aria-label="Eintrag hinzufügen"
               >
@@ -1749,6 +1834,74 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
   // Gemeinsame Leinwand pro Stunde aufklappbar (Schüleransicht)
   const [expandedSharedInputKeys, setExpandedSharedInputKeys] = useState<Record<string, boolean>>({});
+  const [studentStundeModal, setStudentStundeModal] = useState<null | {
+    groupId: string;
+    lessonPath: string;
+    lessonName: string;
+    materialRoot: any;
+    /** Zugeordneter Wurzelordner dieser Vorschau — verhindert doppelte Modals bei mehreren Zuordnungen. */
+    previewRootFolder: string;
+    previewGroupId: string;
+  }>(null);
+  /** Gemeinsame Karteikarten-Session (Modal, Live-Sync ins Lehrer-Deck) */
+  const [collabFlashcardSession, setCollabFlashcardSession] = useState<{ groupId: string; lessonPath: string } | null>(null);
+  const collabBeaconSeenRef = useRef<Record<string, string>>(loadCollabBeaconSeen());
+  const lastPollBeaconsRef = useRef<Record<string, string>>({});
+
+  /** Lehrer-Klick „Karteikarten gemeinsam“ (Tablet): Modal automatisch öffnen */
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const loginCode = localStorage.getItem('loginCode')?.trim();
+        if (!loginCode) return;
+        const res = await fetch('/api/learning-groups/collab-flashcard-beacon/student-poll', {
+          headers: { 'x-login-code': loginCode },
+        });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as {
+          beacons?: Array<{ groupId: string; lessonPath: string; beaconId: string }>;
+        };
+        const beacons = data.beacons || [];
+        const seen = collabBeaconSeenRef.current;
+        for (const b of beacons) {
+          const key = `${b.groupId}::${b.lessonPath}`;
+          lastPollBeaconsRef.current[key] = b.beaconId;
+          if (seen[key] === b.beaconId) continue;
+          setCollabFlashcardSession((prev) => prev ?? { groupId: b.groupId, lessonPath: b.lessonPath });
+          break;
+        }
+      } catch {
+        /* ignorieren */
+      }
+    };
+    void poll();
+    const t = window.setInterval(() => void poll(), 2800);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [userId]);
+
+  const handleCloseCollabModal = useCallback(() => {
+    setCollabFlashcardSession((prev) => {
+      if (prev) {
+        const key = `${prev.groupId}::${prev.lessonPath}`;
+        const bid = lastPollBeaconsRef.current[key];
+        if (bid) {
+          collabBeaconSeenRef.current = { ...collabBeaconSeenRef.current, [key]: bid };
+          try {
+            localStorage.setItem(COLLAB_BEACON_LS_KEY, JSON.stringify(collabBeaconSeenRef.current));
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      return null;
+    });
+  }, []);
 
   /** Exit-Ticket-Seite nur nutzbar, wenn Lehrkraft per Freigabe publishedAt gesetzt hat */
   const [exitTicketPublishedForStudent, setExitTicketPublishedForStudent] = useState(false);
@@ -2561,24 +2714,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     });
   };
 
-  // Hilfsfunktion: Filtert .wb Dateien aus, damit Schüler nur PDF-Dateien sehen
-  const filterWbFiles = (items: any[]): any[] => {
-    return items.filter((item) => {
-      if (item.type === 'file' && item.name.endsWith('.wb')) {
-        // Prüfe ob es eine entsprechende .pdf Datei gibt (irgendwo in der Liste)
-        const pdfFileName = item.name.replace('.wb', '.pdf');
-        const hasCorrespondingPdf = items.some((otherItem) => 
-          otherItem.type === 'file' && 
-          otherItem.name === pdfFileName
-        );
-        if (hasCorrespondingPdf) {
-          return false; // .wb-Datei ausblenden
-        }
-      }
-      return true;
-    });
-  };
-
   // Neue Funktion zum Rendern der echten Ordner-Vorschau (exakt wie im Screenshot)
   const renderAssignedFolderPreview = (groupId: string, folderPath: string) => {
     const items = assignedFolderContents[`${groupId}:${folderPath}`] || [];
@@ -2587,7 +2722,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     console.log(`🎨 Rendere Ordner-Vorschau für ${folderPath}, Items:`, items.length);
     
     // Filtere .wb-Dateien aus, damit Schüler nur PDF-Dateien sehen
-    const filteredItems = filterWbFiles(items);
+    const filteredItems = filterWbFilesForStudentPreview(items);
     
     // Hilfsfunktion: Prüft rekursiv, ob ein Ordner mindestens eine freigegebene Datei enthält
     const hasSharedFiles = (item: any): boolean => {
@@ -2619,8 +2754,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       return false;
     };
 
-    // Rekursive Funktion zum Rendern aller Ebenen
-    const renderItemRecursively = (item: any, level: number = 0) => {
+    // Rekursive Funktion zum Rendern aller Ebenen (dashboard: Stunden als Karte → Modal; modalMaterials: Inhalt im Modal)
+    const renderItemRecursively = (
+      item: any,
+      level: number = 0,
+      view: 'dashboard' | 'modalMaterials' = 'dashboard'
+    ) => {
       // Prüfe, ob die Datei für diese Gruppe freigegeben ist
       const groupSharedFiles = sharedFiles[groupId] || [];
       // K_ Dateien müssen explizit freigegeben werden (über Checkbox im Lehrerdashboard)
@@ -2708,9 +2847,110 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           fontWeight = 400;
         }
       }
-      
+
+      const treeKey = `${item.path || item.name}-${level}-${view}`;
+
+      if (view === 'dashboard' && item.type === 'directory' && directoryIsStundeFolderForStudentTree(item.name, level)) {
+        const openModal = () =>
+          setStudentStundeModal({
+            groupId,
+            lessonPath: item.path,
+            lessonName: item.name,
+            materialRoot: item,
+            previewRootFolder: folderPath,
+            previewGroupId: groupId,
+          });
+        return (
+          <Box key={treeKey} sx={{ mb: 0.7 }}>
+            <Box
+              component="button"
+              type="button"
+              onClick={openModal}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  openModal();
+                }
+              }}
+              sx={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                border: 'none',
+                background: 'none',
+                p: 0,
+                m: 0,
+                cursor: 'pointer',
+                font: 'inherit',
+                '&:hover': { opacity: 0.88 },
+                '&:focus-visible': {
+                  outline: '2px solid',
+                  outlineColor: 'primary.main',
+                  outlineOffset: 2,
+                  borderRadius: 0.5,
+                },
+              }}
+            >
+              {isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flex: 1, minWidth: 0 }}>
+                    {level === 2 ? (
+                      <span style={{ color: '#2e7d32' }}>▼</span>
+                    ) : level === 3 ? (
+                      <span style={{ color: '#666' }}>▼</span>
+                    ) : (
+                      <span style={{ color: level === 0 ? '#9c27b0' : level === 1 ? '#1976d2' : '#666' }}>▼</span>
+                    )}
+                    <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      sx={{ color: color, fontSize: '0.75rem', fontWeight: fontWeight, wordBreak: 'break-word' }}
+                    >
+                      {item.name}
+                    </Typography>
+                  </Box>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5, maxWidth: '100%' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: color,
+                      fontSize: '0.75rem',
+                      fontWeight: fontWeight,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 0.5,
+                      textDecoration: 'none',
+                      wordBreak: 'break-word',
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    {level === 0 ? (
+                      <span style={{ color: '#9c27b0' }}>▼</span>
+                    ) : level === 1 ? (
+                      <span style={{ color: '#1976d2' }}>▼</span>
+                    ) : level === 2 ? (
+                      <span style={{ color: '#2e7d32' }}>▼</span>
+                    ) : level === 3 ? (
+                      <span style={{ color: '#666' }}>▼</span>
+                    ) : (
+                      <span style={{ color: '#666' }}>▼</span>
+                    )}
+                    <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
+                    <span>{item.name}</span>
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        );
+      }
+
       return (
-        <Box key={`${item.name}-${level}`} sx={{ mb: 0.7 }}>
+        <Box key={treeKey} sx={{ mb: 0.7 }}>
           {item.type === 'file' ? (
             // Dateien als klickbares Box-Element für bessere Touch-Unterstützung
             <Box
@@ -2775,7 +3015,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     {item.name}
                   </Typography>
                 </Box>
-                {level >= 1 ? <StudentExitTicketMyAnswersBadge groupId={groupId} userId={userId} /> : null}
               </Box>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: 0.5, maxWidth: '100%' }}>
@@ -2806,7 +3045,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   <span style={{ fontSize: '1em', marginRight: '4px' }}>{icon}</span>
                   <span>{item.name}</span>
                 </Typography>
-                {level >= 1 ? <StudentExitTicketMyAnswersBadge groupId={groupId} userId={userId} /> : null}
               </Box>
             )
           )}
@@ -2843,12 +3081,43 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           </Box>
         );
       })()}
+      {item.type === 'directory' && isSharedInputLesson(item.name) && (sharedInputSharePaths[groupId] || []).includes(item.path) && (
+        <Box sx={{ mt: 0.5, mb: 0.5, ml: 1.5 }}>
+          <Box
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setCollabFlashcardSession({ groupId, lessonPath: item.path });
+              }
+            }}
+            onClick={() => setCollabFlashcardSession({ groupId, lessonPath: item.path })}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.35,
+              cursor: 'pointer',
+              py: 0.25,
+              px: 0.5,
+              borderRadius: 0.75,
+              bgcolor: '#f3e5f5',
+              border: '1px solid #ce93d8',
+              '&:hover': { bgcolor: '#e1bee7' },
+            }}
+          >
+            <Typography variant="caption" sx={{ fontWeight: 600, color: '#6a1b9a', fontSize: '0.7rem' }}>
+              Karteikarten gemeinsam erstellen (Live)
+            </Typography>
+          </Box>
+        </Box>
+      )}
           
       {/* Rekursive Anzeige für ALLE Unterordner und Dateien - IMMER aufgeklappt */}
       {item.type === 'directory' && item.children && item.children.length > 0 && (
         <Box sx={{ ml: 2, mb: 0.7 }}>
-          {filterWbFiles(item.children).map((child: any, childIndex: number) => 
-            renderItemRecursively(child, level + 1)
+          {filterWbFilesForStudentPreview(item.children).map((child: any) =>
+            renderItemRecursively(child, level + 1, view)
           )}
         </Box>
       )}
@@ -2860,50 +3129,229 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     // (damit Schüler sehen, welche Ordner zugeordnet sind)
     // Die Dateien darin müssen freigegeben werden, aber die Ordnerstruktur ist sichtbar
 
+    const modalOpen =
+      !!studentStundeModal &&
+      studentStundeModal.previewRootFolder === folderPath &&
+      studentStundeModal.previewGroupId === groupId;
+    const modalRoot = modalOpen ? studentStundeModal!.materialRoot : null;
+    const modalGid = modalOpen ? studentStundeModal!.groupId : '';
+
     return (
-      <Box key={folderPath} sx={{ mb: 1.4 }}>
-        {/* Hauptordner - Grauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
-        <Box sx={{ 
-          p: 1.4,
-          borderRadius: 1.4,
-          bgcolor: '#f8f9fa',
-          border: '1px solid #e9ecef',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            bgcolor: '#e9ecef'
-          }
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="body2" sx={{ 
-              color: '#D32F2F', // Rot wie im Screenshot
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5
-            }}>
-              ▼ 📁 {folderPath.split('/').pop() || folderPath}
-            </Typography>
+      <React.Fragment key={folderPath}>
+        <Box sx={{ mb: 1.4 }}>
+          {/* Hauptordner - Grauer Ordner mit rotem Dreieck (immer aufgeklappt) */}
+          <Box
+            sx={{
+              p: 1.4,
+              borderRadius: 1.4,
+              bgcolor: '#f8f9fa',
+              border: '1px solid #e9ecef',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: '#e9ecef',
+              },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: '#D32F2F',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                }}
+              >
+                ▼ 📁 {folderPath.split('/').pop() || folderPath}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ ml: 2, mt: 1 }}>
+            {isLoading ? (
+              <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+                Lade Inhalt...
+              </Typography>
+            ) : items.length === 0 ? (
+              <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+                Ordner ist leer
+              </Typography>
+            ) : (
+              <Box>
+                {filteredItems.map((item) => renderItemRecursively(item, 0, 'dashboard')).filter((el) => el !== null)}
+              </Box>
+            )}
           </Box>
         </Box>
-        
-        {/* Vorschau des Ordnerinhalts - IMMER aufgeklappt */}
-        <Box sx={{ ml: 2, mt: 1 }}>
-          {isLoading ? (
-            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-              Lade Inhalt...
+
+        <Dialog
+          open={modalOpen}
+          onClose={() => setStudentStundeModal(null)}
+          maxWidth="md"
+          fullWidth
+          scroll="paper"
+          aria-labelledby="student-stunde-modal-title"
+        >
+          <DialogTitle
+            id="student-stunde-modal-title"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              py: 1,
+              px: 2,
+              pr: 1,
+              boxSizing: 'border-box',
+            }}
+          >
+            <Typography
+              component="span"
+              variant="subtitle2"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                fontWeight: 700,
+                lineHeight: 1.35,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                pr: 0.5,
+              }}
+            >
+              📁 {studentStundeModal?.lessonName}
             </Typography>
-          ) : items.length === 0 ? (
-            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-              Ordner ist leer
-            </Typography>
-          ) : (
-            <Box>
-              {filteredItems.map((item, index) => renderItemRecursively(item, 0)).filter(item => item !== null)}
-            </Box>
-          )}
-        </Box>
-      </Box>
+            <IconButton
+              aria-label="Schließen"
+              onClick={() => setStudentStundeModal(null)}
+              size="small"
+              sx={{ flexShrink: 0, width: 30, height: 30, p: 0.5, ml: 'auto' }}
+            >
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent
+            dividers
+            sx={{
+              maxHeight: 'min(85vh, 760px)',
+              pb: 2,
+            }}
+          >
+            {modalOpen && modalRoot && (
+              <>
+                <StudentLessonActivityLine
+                  groupId={modalGid}
+                  lessonPath={studentStundeModal!.lessonPath}
+                  modalFlowActions={{
+                    userId,
+                    groupId: modalGid,
+                    onEntryTicket: () => {
+                      const g = lerngruppen.find((x) => x.id === modalGid);
+                      const band = gradeFromGroupNames(g ? [g.name] : lerngruppen.map((lg) => lg.name));
+                      navigate(`/entry-ticket?grade=${band}&autostart=1&r=${Date.now()}`);
+                    },
+                    onExitTicket: () => navigate('/exit-ticket'),
+                    exitTicketDisabled: !exitTicketPublishedForStudent,
+                    exitTicketTooltip: exitTicketPublishedForStudent
+                      ? 'Exit Ticket öffnen'
+                      : 'Noch nicht von der Lehrkraft freigegeben',
+                  }}
+                  modalMaterialsSlot={
+                    <>
+                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: 'text.secondary' }}>
+                        Materialien
+                      </Typography>
+                      {modalRoot.type === 'directory' &&
+                        isSharedInputLesson(modalRoot.name) &&
+                        (sharedInputSharePaths[modalGid] || []).includes(modalRoot.path) &&
+                        (() => {
+                          const sharedKey = `${modalGid}-${modalRoot.path}`;
+                          const isExpanded = expandedSharedInputKeys[sharedKey] !== false;
+                          return (
+                            <Box sx={{ mt: 0.5, mb: 1.5 }}>
+                              <Box
+                                onClick={() =>
+                                  setExpandedSharedInputKeys((prev) => ({ ...prev, [sharedKey]: !isExpanded }))
+                                }
+                                sx={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 0.35,
+                                  cursor: 'pointer',
+                                  py: 0.25,
+                                  px: 0.5,
+                                  borderRadius: 0.75,
+                                  bgcolor: '#e8f5e9',
+                                  border: '1px solid #a5d6a7',
+                                  '&:hover': { bgcolor: '#c8e6c9' },
+                                }}
+                              >
+                                {isExpanded ? (
+                                  <ExpandLessIcon sx={{ fontSize: 16, color: '#2e7d32' }} />
+                                ) : (
+                                  <ExpandMoreIcon sx={{ fontSize: 16, color: '#2e7d32' }} />
+                                )}
+                                <Typography variant="caption" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '0.7rem' }}>
+                                  Gemeinsame Leinwand
+                                </Typography>
+                              </Box>
+                              <Collapse in={isExpanded}>
+                                <LessonSharedInputBox groupId={modalGid} lessonPath={modalRoot.path} />
+                              </Collapse>
+                            </Box>
+                          );
+                        })()}
+                      {modalRoot.type === 'directory' &&
+                        isSharedInputLesson(modalRoot.name) &&
+                        (sharedInputSharePaths[modalGid] || []).includes(modalRoot.path) && (
+                          <Box sx={{ mt: 0.5, mb: 1.5 }}>
+                            <Box
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setCollabFlashcardSession({ groupId: modalGid, lessonPath: modalRoot.path });
+                                }
+                              }}
+                              onClick={() => setCollabFlashcardSession({ groupId: modalGid, lessonPath: modalRoot.path })}
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 0.35,
+                                cursor: 'pointer',
+                                py: 0.25,
+                                px: 0.5,
+                                borderRadius: 0.75,
+                                bgcolor: '#f3e5f5',
+                                border: '1px solid #ce93d8',
+                                '&:hover': { bgcolor: '#e1bee7' },
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: '#6a1b9a', fontSize: '0.7rem' }}>
+                                Karteikarten gemeinsam erstellen (Live)
+                              </Typography>
+                            </Box>
+                          </Box>
+                        )}
+                      <Box sx={{ mt: 0.5 }}>
+                        {modalRoot.type === 'directory' && (modalRoot.children?.length ?? 0) > 0
+                          ? filterWbFilesForStudentPreview(modalRoot.children).map((child: any) =>
+                              renderItemRecursively(child, 0, 'modalMaterials')
+                            )
+                          : null}
+                      </Box>
+                    </>
+                  }
+                />
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </React.Fragment>
     );
   };
 
@@ -6056,6 +6504,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         onClose={() => setFlashcardLearningOpen(false)}
         studentId={userId}
         onSessionEnded={() => setJourneyRefreshKey((k) => k + 1)}
+      />
+
+      <CollaborativeFlashcardSessionModal
+        open={!!collabFlashcardSession}
+        onClose={handleCloseCollabModal}
+        groupId={collabFlashcardSession?.groupId || ''}
+        lessonPath={collabFlashcardSession?.lessonPath || ''}
       />
       
       {/* Kommentar-Modal */}
