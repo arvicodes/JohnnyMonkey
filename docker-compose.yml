@@ -8,9 +8,9 @@ services:
     image: johnnymonkey:latest
     pull_policy: build
     container_name: johnnymonkey-app
-    # Port 80 für Portainer.io - Sophos Firewall übernimmt HTTPS
+    # Port 80 für direkten Zugriff im LAN
     ports:
-      - "8080:3000"  # Host Port 8080 → Container Port 3000 (Node.js Server)
+      - "80:3000"  # Host Port 80 → Container Port 3000 (Node.js Server)
     environment:
       - NODE_ENV=production
       - PORT=3000
