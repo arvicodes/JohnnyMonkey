@@ -11,6 +11,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - DATABASE_URL=file:/app/server/prisma/dev.db
     volumes:
       - ./server/prisma:/app/server/prisma
       - johnnymonkey_material:/app/material:ro
