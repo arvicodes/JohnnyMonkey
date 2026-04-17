@@ -32,6 +32,7 @@ RUN npm install --save-dev @types/file-saver || echo "Types already installed"
 ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
 ENV CI=false
+ENV NODE_OPTIONS=--max_old_space_size=4096
 # Build client (CI=false prevents warnings from failing the build)
 RUN npm run build
 
