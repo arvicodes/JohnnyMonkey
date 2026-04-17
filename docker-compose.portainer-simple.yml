@@ -12,7 +12,7 @@ services:
       - NODE_ENV=production
       - PORT=3001
     volumes:
-      - ./server/prisma/dev.db:/app/server/prisma/dev.db
+      - ./server/prisma:/app/server/prisma
       - johnnymonkey_material:/app/material:ro
       - ./J-M-Reihen:/app/J-M-Reihen
       - johnnymonkey_logs:/app/logs

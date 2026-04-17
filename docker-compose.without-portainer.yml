@@ -12,8 +12,8 @@ services:
       - NODE_ENV=production
       - PORT=3001
     volumes:
-      # Verwende die DB direkt aus dem Git-Checkout (immer aktueller Stand nach Pull)
-      - ./server/prisma/dev.db:/app/server/prisma/dev.db
+      # Verwende Prisma-Verzeichnis aus dem Git-Checkout (inkl. dev.db)
+      - ./server/prisma:/app/server/prisma
       # Material-Dateien
       - ./material:/app/material:ro
       # Verwende J-M-Reihen direkt aus dem Git-Checkout
