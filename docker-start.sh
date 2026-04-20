@@ -29,15 +29,6 @@ if [ ! -f "prisma/dev.db" ]; then
     echo "🗄️  Database file not found, checking for backup..."
     SHOULD_IMPORT=true
 elif [ -f "/app/backup_latest.db" ]; then
-    # Prüfe ob backup_latest.db neuer ist als dev.db
-    BACKUP_TIME=$(stat -c %Y /app/backup_latest.db 2>/dev/null || stat -f %m /app/backup_latest.db 2>/dev/null || echo 0)
-    DB_TIME=$(stat -c %Y prisma/dev.db 2>/dev/null || stat -f %m prisma/dev.db 2>/dev/null || echo 0)
-    
-    if [ "$BACKUP_TIME" -gt "$DB_TIME" ]; then
-        echo "🔄 backup_latest.db is newer than dev.db, will import..."
-        SHOULD_IMPORT=true
-    fi
-    
     # Erzwinge Import wenn Umgebungsvariable gesetzt ist
     if [ "$FORCE_DB_IMPORT" = "true" ]; then
         echo "🔄 FORCE_DB_IMPORT=true, forcing import..."

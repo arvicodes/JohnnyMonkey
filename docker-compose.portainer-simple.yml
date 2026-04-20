@@ -12,10 +12,10 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - DATABASE_URL=file:./prisma/dev.db
-      - FORCE_DB_IMPORT=true
     volumes:
       - johnnymonkey_db:/app/server/prisma
       - johnnymonkey_material:/app/material:ro
+      - ./J-M-Reihen:/app/J-M-Reihen
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:
