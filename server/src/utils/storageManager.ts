@@ -13,60 +13,77 @@ export class StorageManager {
   };
 
   /**
+   * Physical root of J-M-Reihen (Docker: usually /app/J-M-Reihen when LOCAL_MATERIALS_PATH=/app).
+   */
+  private static resolveJmReihenRoot(): string {
+    if (process.env.JM_REIHEN_PATH && fs.existsSync(process.env.JM_REIHEN_PATH)) {
+      return process.env.JM_REIHEN_PATH;
+    }
+    const base = process.env.LOCAL_MATERIALS_PATH;
+    if (base) {
+      const candidate = path.join(base, 'J-M-Reihen');
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      const projectRoot = path.resolve(__dirname, '../../..');
+      return path.join(projectRoot, 'J-M-Reihen');
+    }
+    const serverPath = path.join(process.cwd(), 'J-M-Reihen');
+    const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
+    if (fs.existsSync(serverPath)) {
+      return serverPath;
+    }
+    if (fs.existsSync(projectPath)) {
+      return projectPath;
+    }
+    return projectPath;
+  }
+
+  /**
+   * UI/DB sometimes stores "J-M-Reihen/..." instead of "git-intern/..." — normalize for one code path.
+   */
+  private static normalizeDirRequestPath(raw: string): string {
+    const p = raw.replace(/\\/g, '/').trim();
+    if (p === 'J-M-Reihen' || p === './J-M-Reihen') {
+      return 'git-intern';
+    }
+    if (p.startsWith('J-M-Reihen/')) {
+      return `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+    }
+    return p;
+  }
+
+  /**
    * Read directory contents
    */
   static async readDirectory(dirPath: string, recursive: boolean = false): Promise<any> {
-    console.log('StorageManager.readDirectory called with:', dirPath, 'recursive:', recursive);
-    
+    const normalized = this.normalizeDirRequestPath(dirPath);
+    console.log('StorageManager.readDirectory called with:', dirPath, '→', normalized, 'recursive:', recursive);
+
     // Check if this is a git-intern path (exact match or starts with git-intern/)
-    if (dirPath === 'git-intern' || dirPath.startsWith('git-intern/')) {
+    if (normalized === 'git-intern' || normalized.startsWith('git-intern/')) {
       console.log('Git-intern path detected, using J-M-Reihen directory...');
-      return this.readGitInternDirectory(dirPath, recursive);
+      return this.readGitInternDirectory(normalized, recursive);
     }
     
     // Check if this is an old OneDrive URL and return error
-    if (dirPath.includes('sharepoint.com') || dirPath.includes('onedrive')) {
+    if (normalized.includes('sharepoint.com') || normalized.includes('onedrive')) {
       console.log('Old OneDrive URL detected, returning error...');
       return { error: 'OneDrive-Integration wurde entfernt. Bitte verwenden Sie die Git-Intern-Option.' };
     }
     
     // Local file system handling
-    return this.readLocalDirectory(dirPath, recursive);
+    return this.readLocalDirectory(normalized, recursive);
   }
 
   /**
    * Read git-intern directory (J-M-Reihen)
    */
   private static readGitInternDirectory(dirPath: string, recursive: boolean): any {
-    // In production, look for J-M-Reihen in server directory
-    // In development, use absolute path from project root
-    let jmReihenPath: string;
-    
-    if (process.env.NODE_ENV === 'production') {
-      // Production: Look in server directory first, then project root
-      const serverPath = path.join(process.cwd(), 'J-M-Reihen');
-      const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
-      
-      console.log('Production paths:');
-      console.log('Server path:', serverPath, 'exists:', fs.existsSync(serverPath));
-      console.log('Project path:', projectPath, 'exists:', fs.existsSync(projectPath));
-      
-      if (fs.existsSync(serverPath)) {
-        jmReihenPath = serverPath;
-        console.log('Using server path');
-      } else if (fs.existsSync(projectPath)) {
-        jmReihenPath = projectPath;
-        console.log('Using project path');
-      } else {
-        jmReihenPath = serverPath; // Default to server path for error message
-        console.log('Using default server path (will fail)');
-      }
-    } else {
-      // Development: Use absolute path from project root
-      const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-      jmReihenPath = path.join(projectRoot, 'J-M-Reihen');
-    }
-    
+    const jmReihenPath = this.resolveJmReihenRoot();
+
     console.log('Reading git-intern J-M-Reihen directory:', jmReihenPath);
     console.log('Directory exists:', fs.existsSync(jmReihenPath));
     
@@ -211,28 +228,11 @@ export class StorageManager {
    */
   static resolveGitInternRelativePath(relativePath: string): string {
     const rel = relativePath.replace(/\\/g, '/');
-    if (process.env.NODE_ENV === 'production') {
-      const serverPath = path.join(process.cwd(), 'J-M-Reihen');
-      const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
-      let jmReihenPath: string;
-      if (fs.existsSync(serverPath)) {
-        jmReihenPath = serverPath;
-      } else if (fs.existsSync(projectPath)) {
-        jmReihenPath = projectPath;
-      } else {
-        jmReihenPath = serverPath;
-      }
-      if (rel.startsWith('J-M-Reihen/')) {
-        const basePath = jmReihenPath.replace(/J-M-Reihen$/, '');
-        return path.join(basePath, rel);
-      }
-      return path.join(jmReihenPath, rel);
-    }
-    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+    const jmReihenPath = this.resolveJmReihenRoot();
     if (rel.startsWith('J-M-Reihen/')) {
-      return path.join(projectRoot, rel);
+      return path.join(jmReihenPath, rel.slice('J-M-Reihen/'.length));
     }
-    return path.join(projectRoot, 'J-M-Reihen', rel);
+    return path.join(jmReihenPath, rel);
   }
 
   /**
@@ -240,7 +240,13 @@ export class StorageManager {
    */
   static async readFile(filePath: string): Promise<Buffer | null> {
     try {
-      const filePathNorm = filePath.replace(/\\/g, '/');
+      let filePathNorm = filePath.replace(/\\/g, '/');
+      if (filePathNorm === 'J-M-Reihen' || filePathNorm.startsWith('J-M-Reihen/')) {
+        filePathNorm =
+          filePathNorm === 'J-M-Reihen'
+            ? 'git-intern'
+            : `git-intern/${filePathNorm.slice('J-M-Reihen/'.length)}`;
+      }
       // Handle git-intern paths
       if (filePathNorm.startsWith('git-intern/')) {
         const relativePath = filePathNorm.replace('git-intern/', '');
