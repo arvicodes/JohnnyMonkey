@@ -13,10 +13,10 @@ services:
       - PORT=3001
       - DATABASE_URL=file:./prisma/dev.db
       - LOCAL_MATERIALS_PATH=/app
+      - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
       - johnnymonkey_db:/app/server/prisma
       - johnnymonkey_material:/app/material:ro
-      - ./J-M-Reihen:/app/J-M-Reihen
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
     healthcheck:

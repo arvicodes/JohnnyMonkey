@@ -16,13 +16,13 @@ services:
       - PORT=3000
       - DATABASE_URL=file:./prisma/dev.db
       - LOCAL_MATERIALS_PATH=/app
+      - JM_REIHEN_PATH=/app/J-M-Reihen
     volumes:
       # Persistente Datenbank (wird beim Start aus backup_latest.db synchronisiert)
       - johnnymonkey_db:/app/server/prisma
       # Material-Dateien
       - ./material:/app/material:ro
-      # J-M-Reihen direkt aus dem aktuellen Git-Checkout des Stacks
-      - ./J-M-Reihen:/app/J-M-Reihen
+      # J-M-Reihen kommt aus dem Docker-Image
       # Optional: Logs für einfacheren Zugriff
       - johnnymonkey_logs:/app/logs
     restart: unless-stopped
