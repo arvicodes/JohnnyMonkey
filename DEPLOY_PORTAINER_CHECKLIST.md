@@ -31,6 +31,9 @@ Bei `johnnymonkey-app` muss in den Container-Details stehen:
 
 ## Warum es jetzt klappt
 
-- JohnnyMonkey läuft intern auf `3000` und wird sauber auf Host-Port `80` veröffentlicht.
-- Der störende `webserver` ist raus aus dem Weg.
-- Der Aufruf geht auf den richtigen Dienst und das richtige Protokoll (`http`).
+- Der Container wurde wirklich neu gebaut und neu gestartet (`Recreate`), also mit den aktuellen Git-Änderungen.
+- `webserver` blockiert Port `80` nicht mehr, deshalb landet die Anfrage bei JohnnyMonkey.
+- Die App hört intern auf `3000`, und Portainer leitet `80 -> 3000` korrekt weiter.
+- Für `J-M-Reihen` wird jetzt der Inhalt aus dem Docker-Image genutzt (kein leerer Host-Ordner mehr darüber gemountet).
+- Gespeicherte Ordnerpfade wie `J-M-Reihen/...` werden im Backend auf `git-intern/...` umgebogen, deshalb werden die Inhalte wieder gefunden.
+- Die Datenbank-Verbindung zeigt stabil auf `./prisma/dev.db`, daher funktionieren Login und Karteikarten wieder.
