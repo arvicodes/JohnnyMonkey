@@ -13811,6 +13811,43 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 >
                   <AutoStoriesIcon sx={{ fontSize: 18 }} />
                 </IconButton>
+                {/* KI-Spiele */}
+                <IconButton
+                  onClick={() => navigate('/ki-spiele')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    position: 'relative',
+                    overflow: 'visible',
+                    border: '2px solid rgba(0, 188, 212, 0.45)',
+                    background: 'linear-gradient(135deg, #172554 0%, #3949ab 48%, #00acc1 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(57, 73, 171, 0.35)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(0, 188, 212, 0.75)',
+                      boxShadow: '0 4px 12px rgba(57, 73, 171, 0.45)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="KI-Spiele"
+                >
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: '0.75rem',
+                      fontWeight: 900,
+                      letterSpacing: -0.5,
+                      lineHeight: 1,
+                      display: 'inline-block',
+                    }}
+                  >
+                    KI
+                  </Typography>
+                </IconButton>
               </Box>
             </Box>
           </Box>

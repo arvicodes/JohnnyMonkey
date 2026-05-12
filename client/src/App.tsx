@@ -22,6 +22,7 @@ import SevenMinuteWorkoutPage from './pages/SevenMinuteWorkoutPage';
 import MovementStoriesPage from './pages/MovementStoriesPage';
 import EntryTicketPage from './pages/EntryTicketPage';
 import ExitTicketPage from './pages/ExitTicketPage';
+import KiGamesPage from './pages/KiGamesPage';
 
 import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
@@ -295,6 +296,7 @@ function AppContent() {
         <Route path="/bewegungsgeschichten-klassiker" element={<MovementStoriesPage />} />
         <Route path="/entry-ticket" element={<EntryTicketPage />} />
         <Route path="/exit-ticket" element={<ExitTicketPage />} />
+        <Route path="/ki-spiele" element={<KiGamesPage />} />
 
       </Routes>
 
